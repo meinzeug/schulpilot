@@ -9,7 +9,7 @@ def expanded_fraction(prompt):
     """Only recognize an explicit fraction and a positive expansion factor."""
     match = re.search(
         r"\berweitere\s+(?:den\s+bruch\s+)?(\d{1,4})\s*/\s*([1-9]\d{0,3})"
-        r"\s+mit\s+(?:(?:dem\s+)?faktor\s+)?([1-9]\d{0,3})\s*[.!?]?\s*$",
+        r"\s+(?:durch\s+multiplikation\s+)?mit\s+(?:(?:dem\s+)?faktor\s+)?([1-9]\d{0,3})\s*[.!?]?\s*$",
         prompt,
         re.I,
     )

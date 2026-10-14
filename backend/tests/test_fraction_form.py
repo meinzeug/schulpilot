@@ -25,9 +25,12 @@ def test_expansion_keeps_correct_answer_and_only_suitable_aliases():
     assert parsed.answer == "2/4" and parsed.accepted == ["2 / 4"]
 
 
-def test_wrong_main_expansion_answer_is_rejected_instead_of_replaced():
+@pytest.mark.parametrize(
+    "prompt", ["Erweitere den Bruch 1/2 mit dem Faktor 2.", "Erweitere den Bruch 1/2 durch Multiplikation mit 2."]
+)
+def test_wrong_main_expansion_answer_is_rejected_instead_of_replaced(prompt):
     with pytest.raises(ValidationError, match="Erweiterungsfaktor"):
-        Question.model_validate(expansion_question(answer="1/2"))
+        Question.model_validate(expansion_question(prompt=prompt, answer="1/2"))
 
 
 def test_expansion_grading_also_protects_previously_saved_model_output():

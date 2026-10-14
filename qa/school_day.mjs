@@ -66,7 +66,8 @@ async function answerSavedQuestions(page, questions) {
       const input = page.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false});
       await reveal(page, input);
       await input.click();
-      await page.keyboard.type(q.answer, {delay: 20});
+      await page.waitForTimeout(250);
+      await page.keyboard.type(q.answer, {delay: 80});
     }
     const saved = page.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
     await reveal(page, submit);
@@ -173,7 +174,8 @@ try {
     if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
     if (q.type === 'gap' || q.type === 'short') {
       await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
-      await c.keyboard.type(q.answer, {delay: 30});
+      await c.waitForTimeout(250);
+      await c.keyboard.type(q.answer, {delay: 80});
     }
     if (q.type === 'match') {
       for (const pair of q.options) {

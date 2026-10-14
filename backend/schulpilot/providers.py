@@ -329,6 +329,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Erkläre den bestätigten Stoff verständlich in höchstens sechs Sätzen. "
             "Bei Bruchrechnung frage nach vollständigen Bruchwerten, nicht nach einem einzelnen Zähler oder Nenner. "
             "Antwort und Auswahloptionen enthalten dann vollständige Brüche."
+            " Bei ausdrücklich verlangter Erweiterung ist die Hauptlösung der Bruch nach Multiplikation beider Zahlen mit dem Faktor, nicht der ursprüngliche Bruch."
         )
 
         def compact(node):
@@ -466,7 +467,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         elif config.provider == "openrouter":
             choice = raw["choices"][0]
             if choice.get("finish_reason") != "stop":
-                raise ValueError("incomplete")
+                if choice.get("finish_reason") == "length":
+                    raise ProviderError(
+                        "Die KI hat die begrenzte Ausgabelänge erreicht. Die unvollständige Antwort wurde verworfen; kein automatischer Wiederholungsversuch."
+                    )
+                raise ProviderError(
+                    "Die KI hat keine abgeschlossene Antwort geliefert. Die Ausgabe wurde verworfen; kein automatischer Wiederholungsversuch."
+                )
             text = choice["message"]["content"]
             input_tokens, output_tokens = usage.get("prompt_tokens"), usage.get("completion_tokens")
         else:
