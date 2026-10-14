@@ -1,24 +1,42 @@
 // Explicit opt-in on an operator-owned artificial browser. Never print FCM tokens.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {chromium} from '@playwright/test';
 const base='https://schulpilot.dorfspy.de';
 const credentials=JSON.parse(await fs.readFile('/home/dennis/.local/share/schulpilot-firebase/test-login-private.json','utf8'));
-const browser=await chromium.launch({headless:true,executablePath:'/opt/google/chrome/chrome'});
-const context=await browser.newContext({viewport:{width:1280,height:1000},permissions:['notifications']});
+// Chrome refuses PushManager.subscribe in incognito contexts. A private,
+// disposable persistent profile exercises the normal supported browser mode.
+const profile=await fs.mkdtemp(path.join(os.tmpdir(),'schulpilot-push-'));
+await fs.chmod(profile,0o700);
+const context=await chromium.launchPersistentContext(profile,{headless:true,executablePath:'/opt/google/chrome/chrome',viewport:{width:1280,height:1000},permissions:['notifications']});
 const headers={'X-Schulpilot-Request':'1'};
+const validate=process.argv.includes('--validate')||process.argv.includes('--send');
+const send=process.argv.includes('--send');
+if(validate)await context.route(base+'/api/notifications/device',async route=>{
+  // Only this artificial, disposable device: explicitly disable its quiet
+  // hours for the bounded operator test. The token stays in memory.
+  if(route.request().method()!=='PUT')return route.continue();
+  await route.continue({postData:JSON.stringify({...route.request().postDataJSON(),quiet_start:0,quiet_end:0})});
+});
 const hosts=[];
 context.on('response',r=>{const h=new URL(r.url()).hostname;if(/firebaseinstallations|fcmregistrations/.test(h))hosts.push({host:h,status:r.status()});});
 const page=await context.newPage();
 const report={explicit_optin:false,registration:false,visible_delivery:'not_tested',firebase_requests:hosts};
+const safeError=text=>text.replace(/https?:\/\/\S+|AIza[\w-]+|[A-Za-z0-9_:\-.]{48,}/g,'[REDACTED]').slice(0,350);
 const requestHosts=[];
 context.on('request',r=>{if(new URL(r.url()).hostname!=='schulpilot.dorfspy.de') requestHosts.push(new URL(r.url()).hostname);});
+context.on('requestfailed',r=>{
+  if(new URL(r.url()).hostname!=='schulpilot.dorfspy.de')report.failed_request={host:new URL(r.url()).hostname,error:safeError(r.failure()?.errorText||'unknown')};
+});
+page.on('pageerror',error=>{report.runtime_error=safeError(error.message);});
 page.on('console',m=>{if(m.type()==='error') {
   report.browser_error_count=(report.browser_error_count||0)+1;
   const text=m.text();
   const firebaseCode=text.match(/\b(?:app|messaging)\/[a-z-]+/g);
   if(firebaseCode)report.firebase_error_codes=firebaseCode;
-  if(/Content Security Policy|Refused to|Cannot read properties|initializeApp|Firebase has not/.test(text))report.error_category=text.replace(/https?:\/\/\S+|AIza[\w-]+/g,'[URL]').slice(0,350);
+  report.error_category=safeError(text);
 }});
 async function tap(locator) {
   for(let i=0;i<30;i++) {
@@ -54,8 +72,31 @@ try {
     const workers=await page.evaluate(async()=> (await navigator.serviceWorker.getRegistrations()).map(r=>({scope:new URL(r.scope).pathname,script:new URL(r.active?.scriptURL||r.installing?.scriptURL||r.waiting?.scriptURL).pathname})));
     report.dedicated_worker=workers.some(r=>r.scope==='/push/'&&r.script==='/push/firebase-messaging-sw.js');
     assert(report.dedicated_worker);
-    // Do not send here. Visible foreground/background delivery is a separate
-    // browser/device test and is not inferred from registration success.
+    if(validate) {
+      async function ownTest(mode) {
+        const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/notifications/test'&&r.request().method()==='POST');
+        await tap(page.getByRole('button',{name:mode==='validate'?'FCM-Anfrage validieren':'Test an dieses Gerät senden',exact:true}));
+        const queued=await response;assert.equal(queued.status(),202);
+        const {id}=await queued.json();
+        for(let i=0;i<20;i++) {
+          const tests=await (await context.request.get(base+'/api/notifications/tests')).json();
+          const result=tests.results.find(r=>r.id===id);
+          if(result&&!['queued','sending'].includes(result.status))return result.status;
+          await page.waitForTimeout(1500);
+        }
+        throw new Error('Own test did not finish within 30 seconds');
+      }
+      report.own_device_validation=await ownTest('validate');
+      assert.equal(report.own_device_validation,'validated');
+      if(send) {
+        const foreground=page.getByText('Es gibt Neuigkeiten in SCHULPILOT.',{exact:true}).waitFor({timeout:25000});
+        foreground.catch(()=>{});
+        report.own_device_send=await ownTest('send');
+        assert.equal(report.own_device_send,'accepted');
+        await foreground;
+        report.visible_delivery='observed_foreground_in_app_banner';
+      }
+    }
   }
   const logout=page.getByRole('button',{name:'Abmelden',exact:true});
   if(await logout.count())await tap(logout);
@@ -64,4 +105,8 @@ try {
   report.session_revoked=(await context.request.get(base+'/api/auth/me')).status()===401;
   console.log(JSON.stringify(report));
   if(!report.registration || !report.session_revoked)process.exitCode=1;
-} finally {await context.request.post(base+'/api/auth/logout',{headers}).catch(()=>{});await context.close();await browser.close();}
+} finally {
+  await context.request.post(base+'/api/auth/logout',{headers}).catch(()=>{});
+  await context.close();
+  await fs.rm(profile,{recursive:true,force:true});
+}

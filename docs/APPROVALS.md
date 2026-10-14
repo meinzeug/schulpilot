@@ -3,7 +3,7 @@
 Am 14.10.2026 hat der Auftraggeber ausdrücklich erklärt: „anbieter und datenschutz freigabe ist erteilt“.
 Diese Betreiberentscheidung wird für SCHULPILOT dokumentiert und bei der Konfiguration berücksichtigt. Eine erneute Zustimmung wird dafür nicht verlangt. Dieses Protokoll behauptet nicht, dass Vertragsunterlagen oder eine unabhängige Rechtsprüfung im Repository vorliegen.
 
-Die Entscheidung umfasst die beauftragte serverseitige KI-Verarbeitung und die vorbereitete Google-/Push-Anbindung. Technische Schutzvorgaben bleiben bestehen: keine Trainingsfreigabe für echte Inhalte, geschützte Providerroute, keine privaten Inhalte in Push, keine Analytics, keine Weitergabe von Schlüsseln.
+Die Entscheidung umfasst die beauftragte serverseitige KI-Verarbeitung. Die Google-/Push-Anbindung ist technisch beauftragt; der spätere ausdrückliche Firebase-Übergabeauftrag verlangt jedoch eine eigene konkrete Prüfung und Betreiberentscheidung vor allgemeinem Push-Versand. `PUSH_APPROVED` bleibt deshalb ausgeschaltet. Ein vorhandener Schlüssel oder eine erfolgreiche FCM-Validierung ersetzt diese Entscheidung nicht. Technische Schutzvorgaben bleiben bestehen: keine Trainingsfreigabe für echte Inhalte, geschützte Providerroute, keine privaten Inhalte in Push, keine Analytics, keine Weitergabe von Schlüsseln.
 
 ## Historische Endpunktprüfung mit zusätzlicher ZDR-Pflicht
 
@@ -34,4 +34,4 @@ ssh dorfspy 'python3 /opt/schulpilot/current/deploy/admin.py probe-private-route
 
 Dieser lokale Befehl führt genau drei feste synthetische kostenlose Anfragen für Bild, Einheit und Tagespaket aus und speichert den technischen Befund. Er erteilt keine neue rechtliche Freigabe und aktiviert keine kostenpflichtigen Modelle.
 
-Fehlende Firebase-/Play-Projektzugänge und vollständige Betreiberangaben sind eigenständige Voraussetzungen. Eine Betreiberfreigabe ersetzt keine Zugangsdaten oder noch unbekannte Anschrift.
+Der Firebase-Projektzugang und ein minimal berechtigtes Senderkonto sind inzwischen eingerichtet; tatsächliche Prüfergebnisse stehen in `CHATGPT_HANDOFF.txt`. Play-Console-Zugang und vollständige Betreiberangaben bleiben eigenständige Voraussetzungen. Eine Betreiberfreigabe ersetzt weder Zugangsdaten noch eine unbekannte Anschrift.
