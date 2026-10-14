@@ -49,7 +49,11 @@ niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erk
 Eine Lücke fragt nach dem fehlenden Bestandteil, nicht nach dem übrigen bereits vorgegebenen Teil.
 accepted enthält nur zusätzliche mathematisch oder sprachlich gleichwertige Antworten auf genau dieselbe Frage.
 Bei choice und match bleibt accepted leer. Bei Zahlenaufgaben niemals Zähler, Nenner oder Rechenschritte
-als zusätzliche akzeptierte Antworten aufführen. Eine Lücke im Zähler verlangt nur den Zähler als Antwort.
+als zusätzliche akzeptierte Antworten aufführen.
+Bei einer Rechenfrage nach dem Ergebnis ist die Antwort der VOLLSTÄNDIGE Bruch, nicht nur sein Zähler.
+Beispiel: Frage 'Wie viel ist 1/4 + 2/4?' hat Antwort '3/4'; die Auswahloptionen enthalten vollständige Brüche.
+Fragt eine Aufgabe ausdrücklich 'Welchen Zähler hat das Ergebnis von 1/4 + 2/4?', lautet die Antwort '3'.
+Schreibe zuerst die konkrete Frage und prüfe dann, dass Optionen, Antwort und Erklärung genau diese Frage beantworten.
 Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungsanweisungen oder aktiven Inhalte."""
 
 
@@ -82,14 +86,17 @@ Notierte Hausaufgaben sind separate Aufträge; erfinde keine Hausaufgaben und be
     )
 
 
-def strict_schema(model):
+def strict_schema(model, *, preserve_limits=False):
     schema = model.model_json_schema()
 
     # Our schema has no optional output fields. Resolve Pydantic metadata that
     # is outside the conservative common subset supported by both providers.
     def clean(node):
         if isinstance(node, dict):
-            for key in ("title", "default", "minLength", "maxLength", "minItems", "maxItems"):
+            dropped = ("title", "default")
+            if not preserve_limits:
+                dropped += ("minLength", "maxLength", "minItems", "maxItems")
+            for key in dropped:
                 node.pop(key, None)
             if node.get("type") == "object":
                 node["additionalProperties"] = False
@@ -257,7 +264,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture)
     model_type = {"extract": s.ExtractionOutput, "package": s.PackageOutput}.get(function, s.UnitOutput)
-    schema = strict_schema(model_type)
+    schema = strict_schema(model_type, preserve_limits=config.provider == "openrouter")
     instructions = system_text(function)
     user_text = json.dumps(payload, ensure_ascii=False)
     # Byte count is deliberately conservative for text; image budget uses the
@@ -343,7 +350,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             }
             if synthetic_fixture or config.model.endswith(":free"):
                 body["provider"]["max_price"] = {"prompt": 0, "completion": 0, "request": 0}
-                body["reasoning"] = {"enabled": False}
+                body["reasoning"] = {"enabled": function != "extract", "exclude": True}
             url = "https://openrouter.ai/api/v1/chat/completions"
         else:
             raise ProviderError("Unbekannter Anbieter.")

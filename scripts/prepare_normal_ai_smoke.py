@@ -119,8 +119,8 @@ def main():
         if PRIVATE.exists():
             raise RuntimeError("Resume or clean up the existing private QA account first")
         status = expect(parent.get("/status"))
-        if not status["ai_available"] or not status["ai_free_only"] or status["ai_data_collection"] != "deny":
-            raise RuntimeError("The regular, free, data-collection-denied AI route must be active")
+        if not status["real_data_enabled"] or not status["ai_free_only"] or status["ai_data_collection"] != "deny":
+            raise RuntimeError("The approved, free, data-collection-denied AI route must be configured")
         config = mail_config()
         local, domain = config["SMTP_USER"].split("@", 1)
         if domain.lower() not in ("gmail.com", "googlemail.com"):
