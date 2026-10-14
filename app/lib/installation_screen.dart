@@ -51,6 +51,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
     [
       ('fcm_public_config', 'Firebase-App-Konfiguration (JSON)'),
       ('fcm_service_account_json', 'Firebase-Dienstkonto (JSON)'),
+      ('google_oauth_client_json', 'Google-Anmeldung · Webclient (JSON)'),
       ('push_privacy_evidence', 'Nachweis der Push-Freigabe'),
       (
         'fcm_config_verification',
@@ -94,6 +95,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
         'synthetic_demo',
         'synthetic_ai_enabled',
         'push_approved',
+        'google_login_enabled',
       ]) {
         flags.putIfAbsent(key, () => site[key] == true);
       }
@@ -143,7 +145,11 @@ class _InstallationScreenState extends State<InstallationScreen> {
     padding: const EdgeInsets.only(bottom: 16),
     child: TextField(
       controller: fields[key],
-      obscureText: ['smtp_password', 'fcm_service_account_json'].contains(key),
+      obscureText: [
+        'smtp_password',
+        'fcm_service_account_json',
+        'google_oauth_client_json',
+      ].contains(key),
       maxLines:
           [
             'operator_address',
@@ -163,7 +169,9 @@ class _InstallationScreenState extends State<InstallationScreen> {
             (key == 'smtp_password' &&
                     config?['site']['has_smtp_password'] == true) ||
                 (key == 'fcm_service_account_json' &&
-                    config?['site']['has_fcm_service_account'] == true)
+                    config?['site']['has_fcm_service_account'] == true) ||
+                (key == 'google_oauth_client_json' &&
+                    config?['site']['has_google_oauth_client'] == true)
             ? 'Gespeichert · leer lassen zum Beibehalten'
             : null,
       ),
@@ -436,6 +444,10 @@ class _InstallationScreenState extends State<InstallationScreen> {
         children: [
           heading('Push-Benachrichtigungen'),
           toggle('push_approved', 'Push freigeben'),
+          toggle(
+            'google_login_enabled',
+            'Google-Anmeldung für Eltern aktivieren',
+          ),
           group(3),
         ],
       );

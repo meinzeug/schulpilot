@@ -175,6 +175,34 @@ class Token(Base):
     used = Column(Boolean, default=False, nullable=False)
 
 
+class GoogleIdentity(Base):
+    __tablename__ = "google_identities"
+    subject = Column(String(255), primary_key=True)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class GoogleFlow(Base):
+    __tablename__ = "google_flows"
+    id = Column(String(32), primary_key=True, default=uid)
+    request_digest = Column(String(64), unique=True, nullable=False)
+    state_digest = Column(String(64), unique=True)
+    browser_digest = Column(String(64))
+    nonce_digest = Column(String(64))
+    encrypted_verifier = Column(Text)
+    client_challenge = Column(String(43))
+    ticket_digest = Column(String(64))
+    platform = Column(String(8), nullable=False)
+    intent = Column(String(8), nullable=False)
+    previous_session_id = Column(ForeignKey("sessions.id", ondelete="CASCADE"))
+    phase = Column(String(16), nullable=False)
+    subject = Column(String(255))
+    email = Column(String(254))
+    failure = Column(String(32))
+    email_authoritative = Column(Boolean, default=False, server_default=false(), nullable=False)
+    expires = Column(Integer, nullable=False, index=True)
+
+
 class PushDevice(Base):
     __tablename__ = "push_devices"
     id = Column(String(32), primary_key=True, default=uid)

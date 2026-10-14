@@ -18,6 +18,7 @@ from .db import (
     Audit,
     Child,
     Family,
+    GoogleFlow,
     Job,
     LearningUnit,
     Material,
@@ -391,6 +392,7 @@ def maintenance():
                     db.execute(delete(User).where(User.id == user_id))
         db.execute(delete(Session).where(Session.expires < int(now()) - 7 * 86400))
         db.execute(delete(Token).where(Token.expires < int(now()) - 7 * 86400))
+        db.execute(delete(GoogleFlow).where(GoogleFlow.expires < int(now())))
         db.execute(delete(RateBucket).where(RateBucket.expires < int(now())))
         # Operational metadata, not invoices or private learning content.
         db.execute(delete(Usage).where(Usage.created < int(now()) - 90 * 86400))

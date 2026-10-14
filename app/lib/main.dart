@@ -17,6 +17,7 @@ import 'ui.dart';
 import 'unit_screen.dart';
 import 'store_screens.dart';
 import 'notification_panel.dart';
+import 'google_login.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +52,16 @@ Future<void> main() async {
       // A failed camera recovery must not prevent login or opening saved pages.
     }
   }
-  runApp(SchulpilotApp(state, initialLocation: kIsWeb ? null : '/app'));
+  runApp(
+    SchulpilotApp(
+      state,
+      initialLocation: kIsWeb
+          ? null
+          : nativeInitialLocation(
+              WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+            ),
+    ),
+  );
 }
 
 class SchulpilotApp extends StatefulWidget {
@@ -95,6 +105,9 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
     initialLocation: widget.initialLocation,
     refreshListenable: widget.state,
     redirect: (context, route) {
+      if (!kIsWeb && route.uri.scheme == 'schulpilot') {
+        return nativeInitialLocation(route.uri.toString());
+      }
       final path = route.uri.path;
       if (widget.state.needsSetup && path != '/setup') return '/setup';
       if (!widget.state.needsSetup && path == '/setup') {
@@ -124,6 +137,16 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/auth/google/start',
+        builder: (context, s) =>
+            GoogleCompletionScreen(widget.state, uri: s.uri, start: true),
+      ),
+      GoRoute(
+        path: '/auth/google/complete',
+        builder: (context, s) =>
+            GoogleCompletionScreen(widget.state, uri: s.uri),
+      ),
       GoRoute(
         path: '/setup',
         builder: (context, s) => InstallationScreen(widget.state),

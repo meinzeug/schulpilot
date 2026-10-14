@@ -275,6 +275,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> login(String username, String password) async {
+    if (!kIsWeb) await storage.delete(key: 'google_login_proof');
     await accept(
       await api.post('/auth/login', {
         'username': username,
@@ -285,6 +286,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    if (!kIsWeb) await storage.delete(key: 'google_login_proof');
     try {
       await api.post('/auth/logout');
     } on ApiError catch (e) {

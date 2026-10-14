@@ -31,8 +31,15 @@ def adb(*args):
 
 
 def nodes():
-    adb("shell", "uiautomator", "dump", "/sdcard/schulpilot-window.xml")
-    return list(ET.fromstring(adb("exec-out", "cat", "/sdcard/schulpilot-window.xml")).iter("node"))
+    # Android can replace its window while the installer opens. Discard the
+    # incomplete snapshot and take a new one; never print private UI contents.
+    for _ in range(4):
+        try:
+            adb("shell", "uiautomator", "dump", "/sdcard/schulpilot-window.xml")
+            return list(ET.fromstring(adb("exec-out", "cat", "/sdcard/schulpilot-window.xml")).iter("node"))
+        except ET.ParseError:
+            time.sleep(.3)
+    raise RuntimeError("Native window snapshot stayed incomplete")
 
 
 def matching(name):

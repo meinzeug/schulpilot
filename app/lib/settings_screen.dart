@@ -6,6 +6,7 @@ import 'api.dart';
 import 'dashboard.dart';
 import 'notification_panel.dart';
 import 'ui.dart';
+import 'google_login.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState state;
@@ -56,6 +57,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 24),
+        if (state.isParent) ...[
+          LoadView<Json>(
+            key: ValueKey('google-$version'),
+            load: () => state.api.get('/auth/google/identity'),
+            builder: (value, _) =>
+                value['available'] != true && value['linked'] != true
+                ? const SizedBox.shrink()
+                : Panel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        heading('Google-Anmeldung'),
+                        Text(
+                          value['linked'] == true
+                              ? 'Mit deinem Elternkonto verknüpft.'
+                              : 'Optional für deinen Elternzugang.',
+                        ),
+                        const SizedBox(height: 12),
+                        ActionButton(
+                          label: value['linked'] == true
+                              ? 'Google trennen'
+                              : 'Google verknüpfen',
+                          secondary: true,
+                          onPressed: () async {
+                            final password = await passwordDialog(
+                              context,
+                              'Elternzugang bestätigen',
+                              'Bestätige die Änderung mit deinem bisherigen Passwort. Bei Google verwendest du dieselbe E-Mail-Adresse.',
+                            );
+                            if (password == null) return;
+                            if (value['linked'] == true) {
+                              await state.api.delete('/auth/google/identity', {
+                                'password': password,
+                              });
+                              refresh();
+                            } else {
+                              final flow = await beginGoogleLogin(
+                                state,
+                                intent: 'link',
+                                password: password,
+                              );
+                              if (context.mounted && flow != null) {
+                                context.go('/auth/google/complete#flow=$flow');
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 24),
+        ],
         if (!state.isAdmin) ...[
           NotificationPanel(state),
           const SizedBox(height: 24),
@@ -97,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onPressed: () => showLicensePage(
             context: context,
             applicationName: 'SCHULPILOT',
-            applicationVersion: '0.1.0',
+            applicationVersion: '1.0.1',
           ),
           child: const Text('Open-Source-Lizenzen'),
         ),

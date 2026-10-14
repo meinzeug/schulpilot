@@ -6,6 +6,7 @@ import 'api.dart';
 import 'download_panel.dart';
 import 'ui.dart';
 import 'store_screens.dart';
+import 'google_login.dart';
 
 class LandingScreen extends StatelessWidget {
   final AppState state;
@@ -568,6 +569,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     },
                   ),
                   const SizedBox(height: 18),
+                  if (mode == 'login' || mode == 'register')
+                    GoogleLoginButton(widget.state),
                   if (mode == 'login')
                     Wrap(
                       alignment: WrapAlignment.spaceBetween,
@@ -666,6 +669,8 @@ Echte Lerninhalte werden nur über ausdrücklich freigegebene und technisch geei
 
 Fotos werden vor dem Upload zum Drehen und Zuschneiden angezeigt. Ausstehende zugeschnittene Fotos sind auf diesem Gerät 24 Stunden fortsetzbar (höchstens 8 Seiten / 3 MB). Ältere Einträge werden beim nächsten Appstart oder Öffnen des Assistenten bereinigt; Abmelden oder Entfernen löscht diese lokale Warteschlange. Der Server entfernt Metadaten und gibt private Bilder ausschließlich nach Berechtigungsprüfung aus. Eine Verkleinerung ersetzt nicht das Entfernen persönlicher Angaben im Bild.
 
+Die Google-Anmeldung ist freiwillig und ausschließlich für Eltern. Erst beim bewussten Start wird Google geöffnet. Wir prüfen die von Google bestätigte E-Mail-Adresse und eine eindeutige Kontokennung. Google-Passwörter, Zugriffstokens und Erneuerungstokens werden nicht gespeichert. Bestehende Elternkonten müssen Google nach Anmeldung mit ihrem bisherigen Passwort ausdrücklich verknüpfen. Kinder verwenden weiterhin ihren eigenen Zugang ohne Google. Verknüpfungen lassen sich in den Einstellungen trennen und werden bei Kontolöschung entfernt. Nicht abgeschlossene Anmeldevorgänge gelten zehn Minuten und werden spätestens beim nächsten täglichen Bereinigungslauf gelöscht.
+
 Sitzungen sind widerrufbar. Eltern können Kinderkonten und ihr eigenes Konto löschen sowie einen Familienexport mit Materialien und Lernverlauf herunterladen. Beim Löschen des Familieninhabers wird dessen gesamte Familie gelöscht; eingeladene Eltern verlieren den Zugriff.
 
 Aufbewahrung: Materialien, Einheiten, Antworten, Aktivitäten und Nachrichten höchstens 365 Tage; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere 7 Tage; tägliche Backups 14 Tage. Backups müssen vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen werden. Abrechnung und Betriebsprotokolle enthalten keine Fotos oder vollständigen Kinderantworten.
@@ -681,7 +686,7 @@ Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und k�
 
 Die Demo enthält vorbereitete Beispiele. In deinem eigenen Konto übst du mit deinem Unterrichtsmaterial und KI-Unterstützung.
 
-Version 1.0.0''',
+Version 1.0.1''',
                     style: const TextStyle(fontSize: 15, height: 1.8),
                   ),
                 ],

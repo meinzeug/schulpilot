@@ -14,6 +14,7 @@ __pycache__/
 *service-account*.json
 google-services.json
 GoogleService-Info.plist
+*oauth-client*.json
 firebase_options.dart
 key.properties
 data/

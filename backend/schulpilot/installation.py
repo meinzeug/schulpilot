@@ -17,7 +17,7 @@ from .db import DB, Family, Installation, OperatorJob, ProviderConfig, ServiceSt
 from .security import admin, audit, digest, encrypt, insert_ignore, password_hash, rate_limit
 
 router = APIRouter(tags=["Einrichtung"])
-SECRET_FIELDS = {"smtp_password", "fcm_service_account_json"}
+SECRET_FIELDS = {"smtp_password", "fcm_service_account_json", "google_oauth_client_json"}
 
 
 class SiteUpdate(s.Strict):
@@ -48,9 +48,16 @@ class SiteUpdate(s.Strict):
     push_approved: bool = False
     push_privacy_evidence: str = Field(default="", max_length=500)
     fcm_config_verification: str = Field(default="", max_length=1000)
+    google_login_enabled: bool = False
+    google_oauth_client_json: str | None = Field(default=None, max_length=16000)
+    clear_google_oauth_client_json: bool = False
 
     @model_validator(mode="after")
     def validate_config(self):
+        if self.google_oauth_client_json:
+            from .google_login import validate_client
+
+            validate_client(self.google_oauth_client_json, settings.public_url)
         for key in ("smtp_from", "operator_support_email"):
             value = getattr(self, key)
             if value:
@@ -194,6 +201,7 @@ def configuration(db):
     values.update(
         has_smtp_password=bool(site.smtp_password),
         has_fcm_service_account=bool(site.fcm_service_account_json or site.fcm_service_account_file),
+        has_google_oauth_client=bool(site.google_oauth_client_json or site.google_oauth_client_file),
         public_url=site.public_url,
     )
     worker = db.get(ServiceState, "worker")

@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from . import schemas as s
 from .config import runtime_settings, settings
-from .db import Child, Family, Membership, Session, Token, User, get_db, now
+from .db import Child, Family, GoogleFlow, Membership, Session, Token, User, get_db, now
 from .mail import require_mail, send_link
 from .security import audit, authenticated, digest, password_hash, rate_limit, verify_password
 
@@ -209,9 +209,13 @@ def me(p=Depends(authenticated), db=Depends(get_db)):
 
 @router.post("/logout")
 def logout(response: Response, p=Depends(authenticated), db=Depends(get_db)):
+    from sqlalchemy import delete
+
+    db.execute(delete(GoogleFlow).where(GoogleFlow.previous_session_id == p.session.id))
     db.execute(update(Session).where(Session.id == p.session.id).values(revoked=True))
     db.commit()
     response.delete_cookie("sp_session", path="/api", secure=settings.environment == "production", samesite="strict")
+    response.delete_cookie("sp_google", path="/api/auth/google")
     return {"message": "Abgemeldet."}
 
 

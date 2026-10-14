@@ -29,6 +29,9 @@ class Settings:
     push_approved: bool = os.getenv("PUSH_APPROVED", "false") == "true"
     push_privacy_evidence: str = os.getenv("PUSH_PRIVACY_EVIDENCE", "")
     fcm_config_verification: str = os.getenv("FCM_CONFIG_VERIFICATION", "")
+    google_oauth_client_file: str = os.getenv("GOOGLE_OAUTH_CLIENT_FILE", "")
+    google_oauth_client_json: str = ""
+    google_login_enabled: bool = os.getenv("GOOGLE_LOGIN_ENABLED", "false") == "true"
     operator_name: str = os.getenv("OPERATOR_NAME", "")
     operator_address: str = os.getenv("OPERATOR_ADDRESS", "")
     operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")
@@ -68,6 +71,8 @@ RUNTIME_FIELDS = frozenset(
         "push_approved",
         "push_privacy_evidence",
         "fcm_config_verification",
+        "google_oauth_client_json",
+        "google_login_enabled",
         "default_plan",
         "default_child_limit",
         "default_call_limit",

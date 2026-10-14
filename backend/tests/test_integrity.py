@@ -204,7 +204,9 @@ INSERT INTO provider_config(id,revision,provider,model,emergency_stop,image_capa
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0009"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0010"
+        assert db.execute("select count(*) from google_identities").fetchone()[0] == 0
+        assert db.execute("select count(*) from google_flows").fetchone()[0] == 0
         assert db.execute("select commerce_required from families where id='f'").fetchone()[0] == 0
         assert db.execute("select count(*) from bank_orders").fetchone()[0] == 0
         assert db.execute("select completed,bootstrap_digest from installation").fetchone() == (1, None)
