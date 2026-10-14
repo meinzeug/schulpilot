@@ -280,7 +280,13 @@ class LandingScreen extends StatelessWidget {
 class AuthScreen extends StatefulWidget {
   final AppState state;
   final String mode;
-  const AuthScreen(this.state, {super.key, required this.mode});
+  final Uri linkUri;
+  const AuthScreen(
+    this.state, {
+    super.key,
+    required this.mode,
+    required this.linkUri,
+  });
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -298,10 +304,31 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
-    final fragment = Uri.base.fragment;
-    token.text =
-        Uri.splitQueryString(fragment.contains('=') ? fragment : '')['token'] ??
-        '';
+    _readLink();
+  }
+
+  @override
+  void didUpdateWidget(covariant AuthScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.linkUri != widget.linkUri || oldWidget.mode != widget.mode) {
+      _readLink();
+      result = null;
+      error = null;
+    }
+  }
+
+  void _readLink() {
+    token.clear();
+    if (!['reset', 'verify', 'invite'].contains(widget.mode)) return;
+    try {
+      final values = Uri.splitQueryString(widget.linkUri.fragment);
+      final value = values['token'];
+      if (value != null && RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(value)) {
+        token.text = value;
+      }
+    } on FormatException {
+      // A damaged email link must still allow manual code entry.
+    }
   }
 
   @override

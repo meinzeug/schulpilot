@@ -17,7 +17,9 @@ import 'unit_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy();
+  // Email links carry one-time secrets in the fragment, outside HTTP logs.
+  // The default path strategy drops that fragment during initial routing.
+  setUrlStrategy(PathUrlStrategy(BrowserPlatformLocation(), true));
   final state = AppState();
   await state.restore();
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
@@ -100,7 +102,8 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       ])
         GoRoute(
           path: '/$mode',
-          builder: (context, s) => AuthScreen(widget.state, mode: mode),
+          builder: (context, s) =>
+              AuthScreen(widget.state, mode: mode, linkUri: s.uri),
         ),
       GoRoute(
         path: '/app',

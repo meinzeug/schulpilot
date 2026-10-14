@@ -4,6 +4,7 @@ Never prints credentials, addresses, links or tokens. Read-only IMAP reads only
 messages addressed to the cryptographically random test alias of this run.
 """
 
+import argparse
 import email
 import imaplib
 import json
@@ -11,16 +12,28 @@ import os
 import re
 import secrets
 import ssl
+import subprocess
+import sys
 import time
 from email import policy
+from pathlib import Path
 
 import httpx
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--browser", action="store_true", help="Submit actual mail links through the Flutter web forms")
+    args = parser.parse_args()
     public = os.getenv("PUBLIC_URL", "https://schulpilot.dorfspy.de").rstrip("/")
-    inbox_user = os.environ["TEST_IMAP_USER"]
-    inbox_password = os.environ["TEST_IMAP_PASSWORD"]
+    inbox_user = os.getenv("TEST_IMAP_USER")
+    inbox_password = os.getenv("TEST_IMAP_PASSWORD")
+    if not inbox_user or not inbox_password:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "deploy"))
+        from monitor import environment
+
+        config = environment(Path.home() / ".local/share/schulpilot-operations/monitor.env")
+        inbox_user, inbox_password = config["SMTP_USER"], config["SMTP_PASSWORD"]
     local, domain = inbox_user.split("@", 1)
     if domain.lower() not in ("gmail.com", "googlemail.com"):
         raise SystemExit("This test is restricted to authorized Gmail plus-addresses")
@@ -30,6 +43,22 @@ def main():
     password, recovered, guest_password = [secrets.token_urlsafe(25) for _ in range(3)]
     headers = {"X-Schulpilot-Request": "1", "X-Client-Platform": "native"}
     checks = []
+
+    def browser_link(route, token, new_password=None):
+        result = subprocess.run(
+            ["node", "auth_link.mjs"],
+            cwd=Path(__file__).resolve().parents[1] / "qa",
+            input=json.dumps({"public_url": public, "route": route, "token": token, "password": new_password}),
+            text=True,
+            capture_output=True,
+            timeout=100,
+        )
+        if result.returncode:
+            raise RuntimeError("Actual email link was not accepted by the web form")
+        report = json.loads(result.stdout)
+        if not report.get("prefill") or not report.get("reload") or not report.get("form_submitted"):
+            raise RuntimeError("Incomplete email-link browser check")
+        checks.append(route + "_browser_prefill_reload_and_form_submission")
 
     def received(alias, route):
         deadline = time.monotonic() + 50
@@ -84,7 +113,10 @@ def main():
             )
             parent_created = True
             verify_token = received(parent_email, "verify")
-            checked(parent, "POST", "/auth/verify", {"token": verify_token})
+            if args.browser:
+                browser_link("verify", verify_token)
+            else:
+                checked(parent, "POST", "/auth/verify", {"token": verify_token})
             checked(parent, "POST", "/auth/verify", {"token": verify_token}, 400)
             logged = checked(parent, "POST", "/auth/login", {"username": parent_email, "password": password})
             parent.headers["Authorization"] = "Bearer " + logged["token"]
@@ -113,12 +145,19 @@ def main():
                 parent, "POST", "/families/" + fid + "/invitations", {"email": guest_email, "permission": "view"}, 201
             )
             token = received(guest_email, "invite")
-            checked(
-                guest,
-                "POST",
-                "/invitations/accept",
-                {"token": token, "password": guest_password, "display_name": "Synthetischer eingeladener Elternteil"},
-            )
+            if args.browser:
+                browser_link("invite", token, guest_password)
+            else:
+                checked(
+                    guest,
+                    "POST",
+                    "/invitations/accept",
+                    {
+                        "token": token,
+                        "password": guest_password,
+                        "display_name": "Synthetischer eingeladener Elternteil",
+                    },
+                )
             guest_created = True
             logged_guest = checked(guest, "POST", "/auth/login", {"username": guest_email, "password": guest_password})
             guest.headers["Authorization"] = "Bearer " + logged_guest["token"]
@@ -131,7 +170,10 @@ def main():
             checks.append("invitation_mail_received_view_rights_and_revocation")
             checked(parent, "POST", "/auth/recovery", {"email": parent_email})
             token = received(parent_email, "reset")
-            checked(parent, "POST", "/auth/reset", {"token": token, "password": recovered})
+            if args.browser:
+                browser_link("reset", token, recovered)
+            else:
+                checked(parent, "POST", "/auth/reset", {"token": token, "password": recovered})
             password = recovered
             checked(parent, "GET", "/auth/me", expected=401)
             logged = checked(parent, "POST", "/auth/login", {"username": parent_email, "password": password})
