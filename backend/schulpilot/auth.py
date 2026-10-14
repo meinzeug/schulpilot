@@ -1,0 +1,250 @@
+import secrets
+import time
+
+import pyotp
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+
+from . import schemas as s
+from .config import settings
+from .db import Child, Family, Membership, Session, Token, User, get_db, now
+from .mail import require_mail, send_link
+from .security import authenticated, decrypt, digest, password_hash, rate_limit, verify_password
+
+router = APIRouter(prefix="/auth", tags=["Accounts"])
+
+
+def new_token(db, purpose, user_id=None, family_id=None, email=None, permission=None, ttl=3600):
+    value = secrets.token_urlsafe(32)
+    db.add(
+        Token(
+            digest=digest(value),
+            purpose=purpose,
+            user_id=user_id,
+            family_id=family_id,
+            email=email,
+            permission=permission,
+            expires=int(now()) + ttl,
+        )
+    )
+    db.flush()
+    return value
+
+
+def consume_token(db, value, purpose):
+    token = db.scalar(select(Token).where(Token.digest == digest(value), Token.purpose == purpose))
+    if not token or token.used or token.expires < now():
+        raise HTTPException(400, "Link ist ungültig oder abgelaufen.")
+    result = db.execute(update(Token).where(Token.id == token.id, Token.used.is_(False)).values(used=True))
+    if not result.rowcount:
+        raise HTTPException(400, "Dieser Link wurde bereits verwendet.")
+    return token
+
+
+def user_data(db, user):
+    result = {
+        "id": user.id,
+        "role": user.role,
+        "display_name": user.display_name,
+        "username": user.username,
+        "email": user.email,
+    }
+    if user.role == "parent":
+        result["families"] = [
+            {"id": f.id, "name": f.name, "permission": m.permission, "synthetic": f.synthetic}
+            for m, f in db.execute(
+                select(Membership, Family)
+                .join(Family, Family.id == Membership.family_id)
+                .where(Membership.user_id == user.id)
+            )
+        ]
+    elif user.role == "child":
+        child = db.scalar(select(Child).where(Child.user_id == user.id))
+        result["child_id"] = child.id
+        family = db.get(Family, child.family_id)
+        result["synthetic"] = family.synthetic
+    return result
+
+
+def create_session(db, user, response, request, device):
+    # At most ten live devices per account. Older sessions are revoked.
+    sessions = list(
+        db.scalars(
+            select(Session)
+            .where(Session.user_id == user.id, Session.revoked.is_(False))
+            .order_by(Session.created.desc())
+        )
+    )
+    for old in sessions[9:]:
+        old.revoked = True
+    token = secrets.token_urlsafe(48)
+    db.add(
+        Session(
+            user_id=user.id,
+            token_hash=digest(token),
+            device=device,
+            expires=int(now()) + (86400 if user.role == "admin" else 30 * 86400),
+        )
+    )
+    db.commit()
+    response.set_cookie(
+        "sp_session",
+        token,
+        httponly=True,
+        secure=settings.environment == "production",
+        samesite="strict",
+        path="/api",
+        max_age=30 * 86400,
+    )
+    result = {"user": user_data(db, user)}
+    if request.headers.get("x-client-platform") == "native":
+        result["token"] = token
+    return result
+
+
+@router.post("/register", status_code=201)
+def register(data: s.Register, request: Request, db=Depends(get_db)):
+    require_mail()
+    rate_limit(db, "register:" + digest(request.client.host), 5, 3600)
+    email = str(data.email).lower()
+    if db.scalar(select(User.id).where(User.username == email)):
+        # Uniform reply avoids revealing existing registrations.
+        return {"message": "Falls diese Adresse registriert werden kann, erhältst du eine Bestätigung per E-Mail."}
+    user = User(
+        username=email,
+        email=email,
+        display_name=data.display_name,
+        password_hash=password_hash(data.password),
+        role="parent",
+        verified=False,
+    )
+    family = Family(name=data.family_name)
+    db.add_all([user, family])
+    db.flush()
+    db.add(Membership(family_id=family.id, user_id=user.id, permission="owner"))
+    token = new_token(db, "verify", user.id, ttl=86400)
+    send_link(
+        email,
+        "SCHULPILOT: Elternkonto bestätigen",
+        "Bestätige deine E-Mail-Adresse für deinen Elternzugang.",
+        "verify",
+        token,
+    )
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+    return {"message": "Falls diese Adresse registriert werden kann, erhältst du eine Bestätigung per E-Mail."}
+
+
+@router.post("/verify")
+def verify(data: s.TokenRequest, db=Depends(get_db)):
+    token = consume_token(db, data.token, "verify")
+    user = db.get(User, token.user_id)
+    user.verified = True
+    db.commit()
+    return {"message": "E-Mail bestätigt. Du kannst dich jetzt anmelden."}
+
+
+@router.post("/resend-verification")
+def resend(data: s.EmailRequest, request: Request, db=Depends(get_db)):
+    require_mail()
+    rate_limit(db, "verify:" + digest(request.client.host), 5, 3600)
+    user = db.scalar(select(User).where(User.email == str(data.email).lower(), User.verified.is_(False)))
+    if user:
+        token = new_token(db, "verify", user.id, ttl=86400)
+        send_link(user.email, "SCHULPILOT: E-Mail bestätigen", "Bestätige deinen Elternzugang.", "verify", token)
+        db.commit()
+    return {"message": "Falls ein unbestätigtes Konto existiert, wurde ein neuer Link versandt."}
+
+
+@router.post("/login")
+def login(data: s.Login, request: Request, response: Response, db=Depends(get_db)):
+    rate_limit(db, "login-ip:" + digest(request.client.host), 30, 900)
+    rate_limit(db, "login-user:" + digest(data.username.lower()), 10, 900)
+    user = db.scalar(select(User).where(User.username == data.username.lower()))
+    valid = verify_password(data.password, user.password_hash if user else None)
+    if not user or not valid or user.disabled:
+        raise HTTPException(401, "Benutzername oder Passwort ist nicht richtig.")
+    if not user.verified:
+        raise HTTPException(403, "Bitte zuerst die E-Mail-Adresse bestätigen.")
+    if user.role == "admin":
+        if not user.totp_secret:
+            raise HTTPException(403, "Admin-Zweitfaktor fehlt.")
+        totp = pyotp.TOTP(decrypt(user.totp_secret))
+        current_step = int(time.time()) // 30
+        if not totp.verify(data.totp, valid_window=0):
+            raise HTTPException(401, "Gültiger Admin-Zweitfaktor erforderlich.")
+        updated = db.execute(
+            update(User)
+            .where(User.id == user.id, User.totp_last_step < current_step)
+            .values(totp_last_step=current_step)
+        )
+        if not updated.rowcount:
+            raise HTTPException(401, "Zweitfaktor wurde bereits verwendet.")
+    return create_session(db, user, response, request, data.device)
+
+
+@router.get("/me")
+def me(p=Depends(authenticated), db=Depends(get_db)):
+    return user_data(db, p.user)
+
+
+@router.post("/logout")
+def logout(response: Response, p=Depends(authenticated), db=Depends(get_db)):
+    db.execute(update(Session).where(Session.id == p.session.id).values(revoked=True))
+    db.commit()
+    response.delete_cookie("sp_session", path="/api", secure=settings.environment == "production", samesite="strict")
+    return {"message": "Abgemeldet."}
+
+
+@router.get("/sessions")
+def sessions(p=Depends(authenticated), db=Depends(get_db)):
+    return [
+        {"id": x.id, "device": x.device, "created": x.created, "seen": x.seen, "current": x.id == p.session.id}
+        for x in db.scalars(
+            select(Session).where(Session.user_id == p.user.id, Session.revoked.is_(False), Session.expires > now())
+        )
+    ]
+
+
+@router.delete("/sessions/{session_id}")
+def revoke(session_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    result = db.execute(
+        update(Session).where(Session.id == session_id, Session.user_id == p.user.id).values(revoked=True)
+    )
+    if not result.rowcount:
+        raise HTTPException(404, "Sitzung nicht gefunden.")
+    db.commit()
+    return {"message": "Zugang auf diesem Gerät widerrufen."}
+
+
+@router.post("/recovery")
+def recovery(data: s.EmailRequest, request: Request, db=Depends(get_db)):
+    require_mail()
+    rate_limit(db, "recovery:" + digest(request.client.host), 5, 3600)
+    user = db.scalar(select(User).where(User.email == str(data.email).lower(), User.role == "parent"))
+    if user:
+        token = new_token(db, "recovery", user.id)
+        send_link(
+            user.email,
+            "SCHULPILOT: Passwort zurücksetzen",
+            "Setze dein Elternpasswort über diesen einmaligen Link zurück.",
+            "reset",
+            token,
+        )
+        db.commit()
+    return {"message": "Falls ein Elternkonto existiert, wurde ein Wiederherstellungslink versandt."}
+
+
+@router.post("/reset")
+def reset(data: s.ResetRequest, db=Depends(get_db)):
+    token = consume_token(db, data.token, "recovery")
+    user = db.get(User, token.user_id)
+    user.password_hash = password_hash(data.password)
+    user.verified = True
+    db.execute(update(Session).where(Session.user_id == user.id).values(revoked=True))
+    db.execute(update(Token).where(Token.user_id == user.id, Token.purpose == "recovery").values(used=True))
+    db.commit()
+    return {"message": "Passwort erneuert. Alle bisherigen Sitzungen wurden beendet."}

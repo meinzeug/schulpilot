@@ -1,0 +1,32 @@
+[Unit]
+Description=SCHULPILOT durable learning job worker
+After=network.target postgresql.service schulpilot-api.service
+
+[Service]
+User=schulpilot
+Group=schulpilot
+WorkingDirectory=/opt/schulpilot/current/backend
+EnvironmentFile=/etc/schulpilot/environment
+ExecStart=/opt/schulpilot/current/venv/bin/python -m schulpilot.worker
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=160
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/schulpilot
+InaccessiblePaths=-/opt/merchagent -/opt/ai-artist-studio -/opt/artist-cli -/opt/buddys-art
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+MemoryMax=300M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

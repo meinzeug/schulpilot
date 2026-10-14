@@ -1,0 +1,344 @@
+"""Durable DB queue. At most one provider attempt; abandoned jobs never replay."""
+
+import logging
+import signal
+import time
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from fastapi import HTTPException
+from sqlalchemy import delete, select, update
+
+from . import schemas as s
+from .config import settings
+from .db import (
+    DB,
+    Activity,
+    Assignment,
+    Child,
+    Family,
+    Job,
+    LearningUnit,
+    Material,
+    Message,
+    ProviderConfig,
+    RateBucket,
+    Session,
+    Token,
+    Usage,
+    init_db,
+    now,
+)
+from .families import remove_family, unlink_uploads
+from .learning import record
+from .providers import ProviderError, request_provider, settle
+from .synthetic import sample_unit
+
+log = logging.getLogger("schulpilot.worker")
+running = True
+
+
+def claim(db):
+    query = select(Job).where(Job.status == "queued").order_by(Job.created).limit(1)
+    if db.bind.dialect.name == "postgresql":
+        query = query.with_for_update(skip_locked=True)
+    job = db.scalar(query)
+    if not job:
+        return None
+    result = db.execute(
+        update(Job)
+        .where(Job.id == job.id, Job.status == "queued")
+        .values(status="running", started=int(now()), attempts=Job.attempts + 1)
+    )
+    if not result.rowcount:
+        db.rollback()
+        return None
+    db.commit()
+    return job.id
+
+
+def process(job_id):
+    result = None
+    try:
+        with DB() as db:
+            job = db.get(Job, job_id)
+            if not job or job.status != "running":
+                return
+            child = db.get(Child, job.child_id)
+            family = db.get(Family, child.family_id)
+            if family.expires and family.expires < now():
+                raise ProviderError("Synthetischer Testraum abgelaufen.")
+            material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
+            assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
+            if job.payload.get("material_id") and (
+                not material or material.revision != job.payload.get("material_revision")
+            ):
+                raise ProviderError(
+                    "Das Material wurde seit Auftragserstellung geändert oder gelöscht. Bitte neu vorbereiten."
+                )
+            if job.payload.get("assignment_id") and (
+                not assignment or assignment.revision != job.payload.get("assignment_revision")
+            ):
+                raise ProviderError(
+                    "Der Elternauftrag wurde inzwischen geändert oder gelöscht. Bitte den aktuellen Plan öffnen."
+                )
+            if job.kind == "unit" and ((material and not material.confirmed) or (not material and not assignment)):
+                raise ProviderError("Bestätigtes Material oder Elternauftrag ist nicht mehr vorhanden.")
+            config = db.get(ProviderConfig, 1)
+            usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+            if usage and (
+                usage.provider != config.provider
+                or usage.model != config.model
+                or usage.config_revision != config.revision
+            ):
+                raise ProviderError(
+                    "Die Providerkonfiguration wurde seit Auftragserstellung geändert. Bitte neuen Auftrag anlegen."
+                )
+            preferences = s.Preferences(**child.preferences).model_dump(mode="json")
+            feedback = [
+                e.detail.get("kind")
+                for e in db.scalars(
+                    select(Activity)
+                    .where(Activity.child_id == child.id, Activity.kind == "feedback")
+                    .order_by(Activity.created.desc())
+                    .limit(3)
+                )
+            ]
+            previous = [
+                {"topic": u.topic, "status": u.status}
+                for u in db.scalars(
+                    select(LearningUnit)
+                    .where(LearningUnit.child_id == child.id)
+                    .order_by(LearningUnit.created.desc())
+                    .limit(5)
+                )
+            ]
+            difficulties = [
+                {"question_id": a.detail.get("question_id"), "outcome": a.detail.get("outcome")}
+                for a in db.scalars(
+                    select(Activity)
+                    .where(Activity.child_id == child.id, Activity.kind == "answer")
+                    .order_by(Activity.created.desc())
+                    .limit(12)
+                )
+            ]
+            payload = {
+                "function": job.kind,
+                "grade": child.grade,
+                "material": {"subject": material.subject, "topic": material.topic, "content": material.content}
+                if material and job.kind != "extract"
+                else None,
+                "goal": {
+                    "subject": assignment.subject,
+                    "topic": assignment.topic,
+                    "note": assignment.note,
+                    "mandatory": assignment.mandatory,
+                    "due": assignment.due,
+                }
+                if assignment
+                else None,
+                "preferences": preferences,
+                "feedback": feedback,
+                "recent_units": previous,
+                "recent_outcomes": difficulties,
+                "review": bool(job.payload.get("review_of")),
+            }
+            image_bytes = (
+                (settings.data_dir / "uploads" / material.path).read_bytes()
+                if job.kind == "extract" and material and material.path
+                else None
+            )
+            synthetic = bool(material and material.synthetic)
+            variant = len(previous)
+            config_values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            # Release the DB transaction before the bounded external request.
+            db.rollback()
+        if synthetic:
+            data = sample_unit(variant, feedback[0] if feedback else "normal")
+        else:
+            result = request_provider(
+                ProviderConfig(**config_values), "extract" if image_bytes else "unit", payload, image_bytes
+            )
+            data = result.data
+        with DB.begin() as db:
+            job = db.get(Job, job_id)
+            if not job or job.status != "running":
+                return
+            material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
+            assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
+            if job.payload.get("material_id") and (
+                not material or material.revision != job.payload.get("material_revision")
+            ):
+                raise ProviderError(
+                    "Das Material wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
+                )
+            if job.payload.get("assignment_id") and (
+                not assignment or assignment.revision != job.payload.get("assignment_revision")
+            ):
+                raise ProviderError(
+                    "Das Elternziel wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
+                )
+            if job.kind == "extract":
+                if not material or material.confirmed:
+                    raise ProviderError("Material wurde zwischenzeitlich entfernt oder bereits bestätigt.")
+                for key in ("subject", "topic", "content", "uncertainties", "homework"):
+                    setattr(material, key, data[key])
+                material.status = "review"
+                job.result = {"material_id": material.id}
+                record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
+            else:
+                goal = (
+                    db.get(Assignment, job.payload.get("assignment_id")) if job.payload.get("assignment_id") else None
+                )
+                if goal and data["subject"].casefold() != goal.subject.casefold():
+                    raise ProviderError(
+                        "Die erzeugte Einheit weicht vom verbindlichen Fach ab. Bitte den Auftrag präzisieren."
+                    )
+                unit = LearningUnit(
+                    child_id=job.child_id,
+                    material_id=material.id if material else None,
+                    assignment_id=job.payload.get("assignment_id"),
+                    review_of=job.payload.get("review_of"),
+                    subject=data["subject"],
+                    topic=data["topic"],
+                    explanation=data["explanation"],
+                    questions=data["questions"],
+                    synthetic=synthetic,
+                    provider="synthetic" if synthetic else config_values["provider"],
+                )
+                db.add(unit)
+                db.flush()
+                job.result = {"unit_id": unit.id}
+                record(
+                    db,
+                    job.child_id,
+                    "unit_created",
+                    {"subject": unit.subject, "topic": unit.topic, "synthetic": synthetic},
+                    unit.id,
+                )
+            usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+            if usage:
+                settle(db, usage, result)
+            job.status = "completed"
+            job.finished = int(now())
+    except Exception as exc:
+        # Do not log provider bodies, prompts, photos, answers or credentials.
+        message = (
+            str(exc)
+            if isinstance(exc, (ProviderError, HTTPException))
+            else "Verarbeitung fehlgeschlagen. Der Betreiber kann den technischen Fehlercode prüfen."
+        )
+        if isinstance(exc, HTTPException):
+            message = str(exc.detail)
+        with DB.begin() as db:
+            job = db.get(Job, job_id)
+            if job:
+                job.status = "failed"
+                job.error = message[:500]
+                job.finished = int(now())
+                usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+                if usage:
+                    settle(db, usage, result, failed=True)
+        log.warning("job_failed id=%s type=%s", job_id, type(exc).__name__)
+
+
+def maintenance():
+    paths = []
+    with DB.begin() as db:
+        stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240)))
+        for job in stale:
+            job.status = "failed"
+            job.error = "Worker wurde unterbrochen. Kein automatischer Wiederholungsversuch; mögliche Kosten bleiben reserviert."
+            job.finished = int(now())
+            usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+            if usage:
+                settle(db, usage, failed=True)
+        for family in list(db.scalars(select(Family).where(Family.expires.is_not(None), Family.expires < int(now())))):
+            # Demo owner users are not attached to other families.
+            from .db import Membership, User
+
+            owners = list(db.scalars(select(Membership.user_id).where(Membership.family_id == family.id)))
+            paths.extend(remove_family(db, family))
+            db.flush()
+            for user_id in owners:
+                if not db.scalar(select(Membership.id).where(Membership.user_id == user_id)):
+                    db.execute(delete(User).where(User.id == user_id))
+        db.execute(delete(Session).where(Session.expires < int(now()) - 7 * 86400))
+        db.execute(delete(Token).where(Token.expires < int(now()) - 7 * 86400))
+        db.execute(delete(RateBucket).where(RateBucket.expires < int(now())))
+        # Private learning records: 365 days; activities/answers disappear together.
+        db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
+        db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
+        db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
+        db.execute(delete(Job).where(Job.created < int(now()) - 30 * 86400, Job.status.in_(["failed", "completed"])))
+        # Also remove interrupted export files. Uploads have independent DB
+        # ownership; unfinished writes are never served from the webroot.
+        exports = settings.data_dir / "exports"
+        if exports.is_dir():
+            for file in exports.glob("family-*.zip"):
+                if file.stat().st_mtime < now() - 3600:
+                    file.unlink(missing_ok=True)
+        for m in list(db.scalars(select(Material).where(Material.created < int(now()) - 365 * 86400))):
+            if m.path:
+                paths.append(m.path)
+            db.delete(m)
+        # Bundled, in-app reminders only; no sensitive lock-screen messages.
+        for child in db.scalars(select(Child)):
+            prefs = s.Preferences(**child.preferences)
+            if not prefs.reminders:
+                continue
+            current = datetime.now(ZoneInfo(prefs.timezone))
+            if (
+                (prefs.quiet_start <= current.hour or current.hour < prefs.quiet_end)
+                if prefs.quiet_start > prefs.quiet_end
+                else (prefs.quiet_start <= current.hour < prefs.quiet_end)
+            ):
+                continue
+            if current.weekday() not in prefs.weekdays or (prefs.pause_until and current.date() <= prefs.pause_until):
+                continue
+            start = current.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+            if not db.scalar(
+                select(Message.id).where(
+                    Message.child_id == child.id, Message.kind == "reminder", Message.created >= start
+                )
+            ):
+                db.add(
+                    Message(
+                        child_id=child.id,
+                        sender_id=None,
+                        kind="reminder",
+                        body="Dein Lernplan ist bereit. Öffne ihn, wenn es für dich passt.",
+                    )
+                )
+    unlink_uploads(paths)
+
+
+def stop(*_):
+    global running
+    running = False
+
+
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    init_db()
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    last_maintenance = 0
+    while running:
+        try:
+            if now() - last_maintenance > 60:
+                maintenance()
+                last_maintenance = now()
+            with DB() as db:
+                job_id = claim(db)
+            if job_id:
+                process(job_id)
+            else:
+                time.sleep(1)
+        except Exception as exc:
+            log.error("worker_error type=%s", type(exc).__name__)
+            time.sleep(3)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,19 @@
+{
+  "name": "SCHULPILOT",
+  "short_name": "SCHULPILOT",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F7F8F2",
+  "theme_color": "#173B40",
+  "description": "Gemeinsam lernen, den Überblick behalten. Synthetischer Pilot.",
+  "orientation": "any",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "brand.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

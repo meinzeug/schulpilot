@@ -1,0 +1,13 @@
+{
+  "flutter": "3.47.7",
+  "flutter_revision": "abaf9c523780a608bd46686fd5e53740a07077f8",
+  "dart": "3.13.5",
+  "python": "3.12.3",
+  "android_compile_sdk": 36,
+  "android_target_sdk": 36,
+  "android_min_sdk": 24,
+  "android_gradle_plugin": "9.1.0",
+  "gradle": "9.3.1",
+  "kotlin": "2.4.0",
+  "codex_experimental": "0.162.1"
+}

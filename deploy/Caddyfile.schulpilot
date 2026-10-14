@@ -1,0 +1,31 @@
+schulpilot.dorfspy.de {
+  tls {
+    issuer acme {
+      dir https://acme-v02.api.letsencrypt.org/directory
+    }
+  }
+  encode zstd gzip
+  request_body {
+    max_size 12MB
+  }
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    X-Frame-Options "DENY"
+    Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Cache-Control "no-cache"
+  }
+  @api path /api /api/*
+  handle @api {
+    reverse_proxy 127.0.0.1:3240 {
+      header_up X-Forwarded-For {remote_host}
+    }
+  }
+  handle {
+    root * /opt/schulpilot/current/web
+    try_files {path} /index.html
+    file_server
+  }
+}

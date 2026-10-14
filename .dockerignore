@@ -1,0 +1,8 @@
+**
+!backend/
+!backend/requirements.lock
+!workers/
+!workers/codex/
+!workers/codex/worker.py
+!workers/codex/Containerfile
+!codex

@@ -1,0 +1,170 @@
+{
+  "child": {
+    "id": "00000000000000000000000000000001",
+    "display_name": "Mika (Beispiel)",
+    "username": "kind-fixture",
+    "grade": 6,
+    "subjects": [
+      "Mathematik",
+      "Deutsch",
+      "Englisch"
+    ],
+    "school_type": "",
+    "region": "",
+    "preferences": {
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "daily_minutes": 20,
+      "weekly_minutes": 100,
+      "session_minutes": 15,
+      "break_minutes": 5,
+      "focus_subjects": [],
+      "subject_days": {},
+      "repeat_topics": [],
+      "pause_until": null,
+      "quiet_start": 20,
+      "quiet_end": 8,
+      "reminders": false,
+      "notify_help": true,
+      "timezone": "Europe/Berlin"
+    }
+  },
+  "plan": {
+    "date": "2026-10-14",
+    "available_minutes": 20,
+    "session_minutes": 15,
+    "break_minutes": 5,
+    "today": [
+      {
+        "kind": "unit",
+        "id": "00000000000000000000000000000001",
+        "topic": "Brüche",
+        "subject": "Mathematik",
+        "mandatory": false,
+        "status": "not_started"
+      }
+    ],
+    "later": [],
+    "notices": [],
+    "completed_today": 0,
+    "free_day": false,
+    "paused": false,
+    "notice": "Versäumte Tage vergrößern das Tagesziel nicht. Eltern sehen ausschließlich Aktivitäten innerhalb von SCHULPILOT."
+  },
+  "day_summary": {
+    "period_days": 1,
+    "completed_units": 0,
+    "started_units": 0,
+    "answer_count": 0,
+    "hints_used": 0,
+    "uncertain_answers": 0,
+    "active_minutes_approx": 0.0,
+    "topics": [],
+    "support": "Noch keine Antworten im Zeitraum. Daraus lässt sich kein Verständnis ableiten.",
+    "help_requests": 0,
+    "recurring_difficulties": [],
+    "notice": "Zeitmessung ist eine Näherung. Eine richtige Antwort beweist noch keine sichere Beherrschung."
+  },
+  "week_summary": {
+    "period_days": 7,
+    "completed_units": 0,
+    "started_units": 0,
+    "answer_count": 0,
+    "hints_used": 0,
+    "uncertain_answers": 0,
+    "active_minutes_approx": 0.0,
+    "topics": [],
+    "support": "Noch keine Antworten im Zeitraum. Daraus lässt sich kein Verständnis ableiten.",
+    "help_requests": 0,
+    "recurring_difficulties": [],
+    "notice": "Zeitmessung ist eine Näherung. Eine richtige Antwort beweist noch keine sichere Beherrschung."
+  },
+  "materials": [
+    {
+      "id": "00000000000000000000000000000001",
+      "child_id": "00000000000000000000000000000001",
+      "title": "Synthetischer Hefteintrag · Brüche",
+      "status": "confirmed",
+      "subject": "Mathematik",
+      "topic": "Brüche",
+      "content": "Ein Bruch besteht aus Zähler und Nenner. Der Nenner sagt, in wie viele gleich große Teile ein Ganzes geteilt wird. Der Zähler zählt die ausgewählten Teile. Brüche mit gleichem Nenner werden addiert, indem man die Zähler addiert. Zum Kürzen teilt man Zähler und Nenner durch dieselbe Zahl. Beispiel: 2/4 = 1/2. Es sind keine Hausaufgaben notiert.",
+      "uncertainties": [],
+      "homework": [],
+      "confirmed": true,
+      "synthetic": true,
+      "created": 1791952622
+    }
+  ],
+  "assignments": [],
+  "units": [
+    {
+      "id": "00000000000000000000000000000001",
+      "subject": "Mathematik",
+      "topic": "Brüche",
+      "explanation": "Ein Ganzes kann in gleich große Teile geteilt werden. Bei 1/4 ist das Ganze in vier Teile geteilt; einer davon ist gemeint. Der Nenner steht unten, der Zähler oben. Bei gleichem Nenner addierst du die Zähler. Beim Kürzen teilst du oben und unten durch dieselbe Zahl.",
+      "questions": [
+        {
+          "id": "sum",
+          "type": "choice",
+          "prompt": "Was ergibt 1/4 + 1/4?",
+          "options": [
+            "2/4",
+            "2/8",
+            "1/8"
+          ],
+          "attempts": [],
+          "hints_used": 0
+        },
+        {
+          "id": "reduce",
+          "type": "gap",
+          "prompt": "Kürze 2/4 vollständig: 2/4 = __ (als Bruch)",
+          "options": [],
+          "attempts": [],
+          "hints_used": 0
+        },
+        {
+          "id": "parts",
+          "type": "match",
+          "prompt": "Ordne die Begriffe ihrer Bedeutung zu.",
+          "options": [
+            "Zähler",
+            "Nenner"
+          ],
+          "choices": [
+            "Anzahl aller gleich großen Teile",
+            "Anzahl ausgewählter Teile"
+          ],
+          "attempts": [],
+          "hints_used": 0
+        },
+        {
+          "id": "name",
+          "type": "short",
+          "prompt": "Wie heißt die Zahl unter dem Bruchstrich? Ein Wort reicht.",
+          "options": [],
+          "attempts": [],
+          "hints_used": 0
+        }
+      ],
+      "status": "not_started",
+      "synthetic": true,
+      "active_seconds_approx": 0,
+      "material_id": "00000000000000000000000000000001",
+      "assignment_id": null,
+      "review_of": null,
+      "created": 1791953059,
+      "completed": null,
+      "provider": "synthetic"
+    }
+  ],
+  "mastery": [],
+  "messages": []
+}

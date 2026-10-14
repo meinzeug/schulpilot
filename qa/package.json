@@ -1,0 +1,1 @@
+{"name":"schulpilot-browser-checks","private":true,"type":"module","devDependencies":{"@playwright/test":"1.64.0"}}
