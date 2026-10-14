@@ -266,6 +266,32 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     model_type = {"extract": s.ExtractionOutput, "package": s.PackageOutput}.get(function, s.UnitOutput)
     schema = strict_schema(model_type, preserve_limits=config.provider == "openrouter")
     instructions = system_text(function)
+    compact_free = config.provider == "openrouter" and config.model.endswith(":free") and function != "extract"
+    if compact_free:
+        instructions += (
+            "\nErstelle in diesem kurzen Lernpaket GENAU ZWEI Aufgaben pro Einheit: "
+            "eine Auswahlaufgabe und eine kurze Eingabe (gap oder short). "
+            "Verwende keine Zuordnungen. Je Aufgabe genau einen oder zwei kurze Hinweise. "
+            "Erkläre den bestätigten Stoff verständlich in höchstens sechs Sätzen. "
+            "Bei Rechenfragen nach einem Bruchwert enthalten Antwort und Auswahloptionen vollständige Brüche."
+        )
+
+        def compact(node):
+            if isinstance(node, dict):
+                properties = node.get("properties", {})
+                if "questions" in properties:
+                    properties["questions"].update(minItems=2, maxItems=2)
+                if "hints" in properties:
+                    properties["hints"]["maxItems"] = 2
+                if "type" in properties and properties["type"].get("enum") == ["choice", "gap", "match", "short"]:
+                    properties["type"]["enum"] = ["choice", "gap", "short"]
+                for item in node.values():
+                    compact(item)
+            elif isinstance(node, list):
+                for item in node:
+                    compact(item)
+
+        compact(schema)
     user_text = json.dumps(payload, ensure_ascii=False)
     # Byte count is deliberately conservative for text; image budget uses the
     # entire encoded payload rather than an optimistic model-specific formula.
@@ -350,7 +376,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             }
             if synthetic_fixture or config.model.endswith(":free"):
                 body["provider"]["max_price"] = {"prompt": 0, "completion": 0, "request": 0}
-                body["reasoning"] = {"enabled": function != "extract", "exclude": True}
+                body["reasoning"] = {"enabled": False, "exclude": True}
             url = "https://openrouter.ai/api/v1/chat/completions"
         else:
             raise ProviderError("Unbekannter Anbieter.")

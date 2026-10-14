@@ -1,12 +1,12 @@
 # SCHULPILOT
 
-Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen FastAPI-API. Persistente Familien, getrennte Kinderzugänge, bestätigter Schulstoff, strukturierte Aufgaben und nachvollziehbare Elternansichten. **Technischer Pilot. Betreiberfreigabe erteilt; die aktuell konfigurierten kostenlosen KI-Endpunkte erfüllen die geschützte Route für echte Inhalte noch nicht.** [Freigabe und konkreter Routingbefund](docs/APPROVALS.md).
+Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen FastAPI-API. Persistente Familien, getrennte Kinderzugänge, bestätigter Schulstoff, strukturierte Aufgaben und nachvollziehbare Elternansichten. **Technischer Pilot mit ausdrücklich freigegebenem OpenRouter-Free-Standard.** [Konfiguration und Datenregeln](docs/AI_STANDARD.md), [Betreiberfreigabe](docs/APPROVALS.md).
 
 Web: https://schulpilot.dorfspy.de · API: `/api` · Test-APK: `artifacts/schulpilot-0.1.0-test.apk` (lokal, absichtlich nicht in Git).
 
 ## Ausprobieren
 
-Der Kinderbereich enthält den geführten **„Nach der Schule“-Assistenten**: mehrere Heftseiten aufnehmen, jede Erkennung bestätigen und daraus ein gemeinsames, zeitlich begrenztes Tagespaket mit Erklärungen und interaktiven Übungen erstellen. Mehrfachauswahl, Drehen, Sortieren, begrenzte lokale Upload-Warteschlange, ergänzbare Paketversionen und eine Tageshistorie sind implementiert. Der Lernweg beginnt mit der Erklärung. [Ablauf, Grenzen und Tests](docs/AFTER_SCHOOL.md). Zum KI-Test stehen zwei künstliche Heftseiten bereit. Für echte Verarbeitung fehlt derzeit ein technisch passender geschützter KI-Endpunkt.
+Der Kinderbereich enthält den geführten **„Nach der Schule“-Assistenten**: mehrere Heftseiten aufnehmen, jede Erkennung bestätigen und daraus ein gemeinsames, zeitlich begrenztes Tagespaket mit Erklärungen und interaktiven Übungen erstellen. Mehrfachauswahl, Drehen, Sortieren, begrenzte lokale Upload-Warteschlange, ergänzbare Paketversionen und eine Tageshistorie sind implementiert. Der Lernweg beginnt mit der Erklärung. [Ablauf, Grenzen und Tests](docs/AFTER_SCHOOL.md). Reguläre Kinder verwenden eigene Zugänge und den normalen Fotoimport. Die zusätzlich verfügbare synthetische Demo ist ausdrücklich getrennt.
 
 „Synthetisch ausprobieren“ legt eine eigene isolierte Testfamilie für 24 Stunden an. Die einmalig angezeigten Eltern- und Kinderzugänge funktionieren auch auf einem zweiten Gerät. Den Beispielstoff bestätigen, eine Einheit vorbereiten und mit dem Kinderzugang lernen. Eltern sehen anschließend tatsächliche Aufgaben, Antworten, Hinweise und Aktivitäten. Die Demo führt **keine Fotoerkennung und keinen externen KI-Aufruf** aus; freie Foto-Uploads sind darin gesperrt.
 
@@ -60,7 +60,7 @@ Interaktiv eigenen Benutzernamen, starkes Passwort und TOTP einrichten und den a
 
 Gmail-SMTP ist serverseitig eingerichtet. Registrierung, Verifikation, Einladung und Wiederherstellung wurden über HTTPS mit tatsächlichem Eingang im autorisierten Testpostfach geprüft. Die Zugangsdaten wurden ausschließlich aus dem ausdrücklich freigegebenen Merchagent-Mailtresor übernommen; Merchagent wurde nicht verändert.
 
-Kostenlose OpenRouter-Bild- und Schemaaufrufe wurden tatsächlich mit festen synthetischen Inhalten getestet. Im Testraum führt „Material fotografieren / importieren“ zum gesonderten KI-Testblatt. Die normale feste Demo bleibt ohne KI nutzbar. Die Betreiberfreigabe liegt vor; eine nicht verfügbare geschützte KI-Route wird separat gesperrt und angezeigt. Codex ist nicht auf dem App-Server aktiviert und bleibt experimentell isoliert.
+OpenRouter Free ist der Standard für Bild, Lerneinheiten und Tagespakete: `dots-studio/dots-3-note-preview:free`, fest `atlas-cloud/fp8`, Preisgrenze 0, keine Provider-Fallbacks. Normale Lernanfragen behalten `data_collection=deny`; die zusätzliche ZDR-Pflicht wird in diesem ausdrücklich freigegebenen Modus nicht erzwungen. Tatsächlich ausgeführte Prüfungen und bekannte Grenzen stehen in [STATUS.md](docs/STATUS.md) und [AI_STANDARD.md](docs/AI_STANDARD.md). Die separate feste Demo bleibt ohne KI nutzbar. Codex ist auf dem App-Server nicht aktiviert.
 
 
 Download-Verifikation im echten Browser: `cd qa && node download.mjs`. Android-Gerätetest: `.venv/bin/python qa/android_smoke.py` gegen den eigens angelegten Emulator `emulator-5580` / AVD `schulpilot-qa-api36`, API 36. Das Skript löscht ausschließlich die Daten dieser Testinstallation, prüft eigene Eltern-/Kinderzugänge, Neustart, Hinweis/Antwort und Widerruf. Es verwendet eine private temporäre Datei unter `artifacts/` zur Fortsetzung; nach Erfolg wird die Testfamilie samt Datei gelöscht. Kein Test gegen ein fremdes Gerät oder echte Kinderdaten.
