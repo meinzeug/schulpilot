@@ -38,7 +38,7 @@ flutter build apk --release --dart-define=API_URL=https://schulpilot.dorfspy.de/
 
 Die öffentliche Test-APK und das AAB verwenden einen eigenen **Upload-Schlüssel außerhalb von Git**. Einrichtung und Store-Voraussetzungen: [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md). Ein tatsächlicher Test auf einem physischen Android-Gerät steht aus. Die APK ist auf der Startseite und nach Web-Login herunterladbar; `/api/app-release` liefert die aus dem echten APK berechneten Metadaten.
 
-Öffentlicher synthetischer API-Test: `.venv/bin/python scripts/public_smoke.py`. Browser: `cd qa && npm ci --ignore-scripts && node smoke.mjs`; vorhandenes Chrome wird verwendet, alternativ `CHROME_PATH` setzen. Der Browsertest verwendet vorübergehend eine private Datei unter `artifacts/`, um einen unterbrochenen Test fortzusetzen; sie wird nach erfolgreichem Test gelöscht. Keine echten Kinderdaten verwenden.
+Öffentlicher synthetischer API-Test: `.venv/bin/python scripts/public_smoke.py`. Echte kostenlose KI mit ausschließlich serverseitigen Testinhalten: `.venv/bin/python scripts/public_live_ai_smoke.py` (zwei mitgezählte Anfragen, Freigabe erforderlich). Browser: `cd qa && npm ci --ignore-scripts && node smoke.mjs`; vorhandenes Chrome wird verwendet, alternativ `CHROME_PATH` setzen. Der Browsertest verwendet vorübergehend eine private Datei unter `artifacts/`, um einen unterbrochenen Test fortzusetzen; sie wird nach erfolgreichem Test gelöscht. Keine echten Kinderdaten verwenden.
 
 ## Sicherer Erstadmin
 
@@ -59,3 +59,6 @@ Interaktiv eigenen Benutzernamen, starkes Passwort und TOTP einrichten und den a
 Gmail-SMTP ist serverseitig eingerichtet. Registrierung, Verifikation, Einladung und Wiederherstellung wurden über HTTPS mit tatsächlichem Eingang im autorisierten Testpostfach geprüft. Die Zugangsdaten wurden ausschließlich aus dem ausdrücklich freigegebenen Merchagent-Mailtresor übernommen; Merchagent wurde nicht verändert.
 
 Kostenlose OpenRouter-Bild- und Schemaaufrufe wurden tatsächlich mit festen synthetischen Inhalten getestet. Im Testraum führt „Material fotografieren / importieren“ zum gesonderten KI-Testblatt. Die normale feste Demo bleibt ohne KI nutzbar. Freie Kinderdaten sind weiterhin serverseitig gesperrt. OpenAI und der experimentelle Codex-Worker benötigen eigene Betriebsfreigaben; Codex ist nicht auf dem App-Server aktiviert.
+
+
+Download-Verifikation im echten Browser: `cd qa && node download.mjs`. Android-Gerätetest: `.venv/bin/python qa/android_smoke.py` gegen den eigens angelegten Emulator `emulator-5580` / AVD `schulpilot-qa-api36`, API 36. Das Skript löscht ausschließlich die Daten dieser Testinstallation, prüft eigene Eltern-/Kinderzugänge, Neustart, Hinweis/Antwort und Widerruf. Es verwendet eine private temporäre Datei unter `artifacts/` zur Fortsetzung; nach Erfolg wird die Testfamilie samt Datei gelöscht. Kein Test gegen ein fremdes Gerät oder echte Kinderdaten.

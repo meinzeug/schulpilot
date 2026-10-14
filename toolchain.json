@@ -14,5 +14,7 @@
   "firebase_messaging": "16.7.0",
   "firebase_core_web": "3.12.0",
   "firebase_js": "12.19.0",
-  "bundletool": "1.18.3"
+  "bundletool": "1.18.3",
+  "android_emulator": "37.2.12",
+  "android_test_image": "7"
 }
