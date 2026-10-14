@@ -43,6 +43,7 @@ Zuordnungen müssen eins zu eins eindeutig sein: jede linke UND jede rechte Seit
 Verschiedene Brüche mit derselben gekürzten Form sind dafür ungeeignet. Verwende dann choice oder short.
 Typ gap enthält genau EINE Lücke mit genau einer Ergänzung, keine Kombination mehrerer Werte mit Trennzeichen.
 Jede Aufgabe braucht 1 bis 3 hilfreiche Hinweise und eine verständliche Erklärung.
+Kennzeichne neue Beispiele als Übungen. Behaupte nie, ein erfundenes Beispiel stamme aus einer notierten Hausaufgabe.
 Jede Aufgaben-ID ist eindeutig, zum Beispiel q1, q2, q3, q4. Auswahloptionen enthalten vollständige inhaltliche Antworten,
 niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erklärung, insbesondere Rechenergebnisse.
 Eine Lücke fragt nach dem fehlenden Bestandteil, nicht nach dem übrigen bereits vorgegebenen Teil.
@@ -55,6 +56,9 @@ def system_text(function):
             SYSTEM
             + """\nDEINE EINZIGE AUFGABE: Lies das beigefügte Bild und transkribiere den erkennbaren Unterrichtsstoff in content.
 Erkenne Fach und Thema. Keine Übungen oder Lerneinheit erzeugen, keine erfundenen Ergänzungen.
+Setze legibility auf readable, partial oder unreadable. Bei vollständig unleserlichem Unterrichtsstoff:
+legibility=unreadable, content leer, keine Hausaufgaben; uncertainties erklärt, dass ein neues Foto benötigt wird.
+Fach und Thema dürfen dann leer sein. Bei partial nur lesbaren Stoff transkribieren und fehlende Stellen benennen.
 Unleserliche Stellen in uncertainties auflisten. Nur ausdrücklich notierte Hausaufgaben in homework.
 Ein Satz, dass keine Hausaufgaben notiert sind, ist selbst keine Hausaufgabe.
 content enthält den lesbaren Stoff einschließlich Begriffen, Regeln und Beispielen aus dem Bild."""
@@ -134,6 +138,8 @@ def external_allowed(config, image=False, synthetic_fixture=False):
         raise ProviderError(
             "Benötigte Modellfähigkeiten sind nicht bestätigt. Bitte Verbindung und Bild-/Schemaausgabe prüfen."
         )
+    if not synthetic_fixture and config.production_block_reason:
+        raise ProviderError(config.production_block_reason)
     if config.provider == "codex":
         if not settings.codex_approved or not settings.codex_socket:
             raise ProviderError("Codex ist experimentell: isolierter Worker und Nutzungsfreigabe fehlen.")
@@ -229,7 +235,7 @@ def settle(db, usage, result=None, failed=False):
             config.status = "Preisobergrenze überschritten. Notfallstopp wurde aktiviert. Abrechnung prüfen."
 
 
-def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False):
+def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False, private_probe=False):
     if synthetic_fixture:
         from .fixtures import FIXTURE_ID, PACKAGE_FIXTURE_ID, trusted_payload, worksheet
 
@@ -306,7 +312,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 raise ProviderError(
                     "OpenRouter benötigt einen ausdrücklich freigegebenen upstream=<slug> im Fähigkeitsnachweis."
                 )
-            if synthetic_fixture:
+            if synthetic_fixture or config.model.endswith(":free"):
                 verify_free_endpoint(config.model, upstream, bool(image_data))
             body = {
                 "model": config.model,
@@ -316,15 +322,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     "only": [upstream],
                     "allow_fallbacks": False,
                     "require_parameters": True,
-                    "data_collection": "allow" if synthetic_fixture else "deny",
-                    "zdr": not synthetic_fixture,
+                    "data_collection": "allow" if synthetic_fixture and not private_probe else "deny",
+                    "zdr": bool(not synthetic_fixture or private_probe),
                 },
                 "response_format": {
                     "type": "json_schema",
                     "json_schema": {"name": "schulpilot", "strict": True, "schema": schema},
                 },
             }
-            if synthetic_fixture:
+            if synthetic_fixture or config.model.endswith(":free"):
                 body["provider"]["max_price"] = {"prompt": 0, "completion": 0, "request": 0}
                 body["reasoning"] = {"enabled": False}
             url = "https://openrouter.ai/api/v1/chat/completions"
@@ -403,6 +409,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "content",
             "uncertainties",
             "homework",
+            "legibility",
         }
         locations = [
             ".".join(str(part) if isinstance(part, int) or part in fields else "field" for part in item["loc"])

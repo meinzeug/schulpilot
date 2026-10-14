@@ -35,3 +35,12 @@ Zusätzliche offizielle Quellen, geprüft am 14.10.2026:
 - Google Play Familien: https://support.google.com/googleplay/android-developer/answer/9893335 ; Kontolöschung: https://support.google.com/googleplay/android-developer/answer/13327111 .
 
 Bei echten Google-Projektzugängen sind die dann geltenden SDK-/Families-/Data-Safety-Vorgaben erneut zu prüfen. Ein gebautes AAB ersetzt keine Play-Prüfung.
+
+
+Ausbau vom 14.10.2026:
+
+- Mehrfachauswahl: https://pub.dev/packages/image_picker ; `pickMultiImage`, Version 1.2.4. Drehen: https://pub.dev/documentation/image/latest/image/copyRotate.html ; bestehende Version 4.12.0 beibehalten.
+- OpenRouter Datenkontrollen: https://openrouter.ai/docs/guides/privacy/data-collection und https://openrouter.ai/docs/guides/features/zdr ; geschützte synthetische Routingprüfung gegen die tatsächlich gewählten Endpunkte. Die erteilte Betreiberfreigabe ist kein Beleg für eine technisch verfügbare Route.
+- Firebase: https://firebase.google.com/docs/cloud-messaging/flutter/get-started ; reale Zustellung erst mit Projektkonfiguration und Gerätetest.
+- GitHub Actions: offizielle Repositories/Release-API von https://github.com/actions/checkout/tree/v7.0.1 und https://github.com/actions/setup-python/tree/v7.0.0 ; Release-Tags und vollständige Commit-IDs über Git verifiziert. Beide verwenden Node 24 und benötigen aktuelle Runner. CI nutzt Ubuntu 24.04, Python 3.12.3 und den bereits fixierten offiziellen Flutter-Commit; keine Deploy-/Signierschlüssel in CI.
+- Vorbereiteter späterer Zahlungsbetrieb: https://docs.stripe.com/api/checkout/sessions/create und https://support.google.com/googleplay/android-developer/answer/9858738 ; noch kein Checkout aktiviert, keine erfundenen Tarifpreise und kein fremdes Zahlungs-/Google-Konto verwendet.

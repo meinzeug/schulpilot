@@ -11,9 +11,16 @@ from .security import audit, encrypt, password_hash
 
 def main():
     parser = argparse.ArgumentParser(description="Lokale SCHULPILOT-Betriebsverwaltung")
-    parser.add_argument("command", choices=["init-db", "create-admin", "reset-admin", "configure-free-tests"])
+    parser.add_argument(
+        "command", choices=["init-db", "create-admin", "reset-admin", "configure-free-tests", "probe-private-route"]
+    )
     parser.add_argument("--username", default="")
     args = parser.parse_args()
+    if args.command == "probe-private-route":
+        from .provider_probe import run
+
+        run()
+        return
     if args.command == "configure-free-tests":
         from .free_test_setup import configure
 

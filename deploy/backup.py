@@ -1,5 +1,6 @@
 """Project-only encrypted daily backup; run as root by systemd timer."""
 
+import fcntl
 import hashlib
 import os
 import subprocess
@@ -26,6 +27,13 @@ with tempfile.TemporaryDirectory(prefix="schulpilot-backup-") as directory:
     with tarfile.open(archive, "w") as bundle:
         bundle.add(dump, arcname="database.dump")
         bundle.add("/var/lib/schulpilot/uploads", arcname="uploads")
+        ledger = Path("/var/lib/schulpilot/erasure-ledger.jsonl")
+        if ledger.exists():
+            with ledger.open("rb") as source:
+                fcntl.flock(source, fcntl.LOCK_SH)
+                snapshot = directory / "erasure-ledger.jsonl"
+                snapshot.write_bytes(source.read())
+            bundle.add(snapshot, arcname="erasure-ledger.jsonl")
     partial = final.with_suffix(".partial")
     key = hashlib.sha256(Path("/etc/schulpilot/backup.key").read_bytes()).digest()
     nonce = os.urandom(12)

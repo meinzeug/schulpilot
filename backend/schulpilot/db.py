@@ -14,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
     event,
+    false,
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -142,8 +143,24 @@ class SchoolDay(Base):
     school_date = Column(String(10), nullable=False)
     stage = Column(String(16), default="collecting", nullable=False)
     revision = Column(Integer, default=1, nullable=False)
+    package_version = Column(Integer, default=0, server_default="0", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
     __table_args__ = (UniqueConstraint("child_id", "school_date"),)
+
+
+class ErasureRequest(Base):
+    __tablename__ = "erasure_requests"
+    id = Column(String(32), primary_key=True, default=uid)
+    scope = Column(String(16), nullable=False)
+    target = Column(String(32), nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    published = Column(Boolean, default=False, server_default=false(), nullable=False)
+
+
+class ServiceState(Base):
+    __tablename__ = "service_state"
+    name = Column(String(40), primary_key=True)
+    updated = Column(Integer, nullable=False)
 
 
 class Material(Base):
@@ -153,6 +170,10 @@ class Material(Base):
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     school_day_id = Column(ForeignKey("school_days.id", ondelete="SET NULL"), index=True)
     page_number = Column(Integer)
+    upload_key = Column(String(80))
+    image_digest = Column(String(64))
+    quality_warnings = Column(JSON, default=list, server_default="[]", nullable=False)
+    legibility = Column(String(16), default="unknown", server_default="unknown", nullable=False)
     title = Column(String(160), nullable=False)
     path = Column(String(80))
     status = Column(String(24), default="uploaded", nullable=False)
@@ -167,6 +188,7 @@ class Material(Base):
     extraction_provider = Column(String(20), default="", server_default="", nullable=False)
     extraction_model = Column(String(160), default="", server_default="", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "upload_key", name="uq_material_upload_key"),)
 
 
 class Assignment(Base):
@@ -180,6 +202,7 @@ class Assignment(Base):
     topic = Column(String(160), nullable=False)
     note = Column(Text, default="", nullable=False)
     due = Column(String(10))
+    scheduled_for = Column(String(10))
     mandatory = Column(Boolean, default=True, nullable=False)
     done = Column(Boolean, default=False, nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
@@ -191,6 +214,8 @@ class LearningUnit(Base):
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     school_day_id = Column(ForeignKey("school_days.id", ondelete="SET NULL"), index=True)
     estimated_minutes = Column(Integer)
+    package_version = Column(Integer)
+    introduction_seen = Column(Boolean, default=False, server_default=false(), nullable=False)
     material_id = Column(ForeignKey("materials.id", ondelete="SET NULL"))
     assignment_id = Column(ForeignKey("assignments.id", ondelete="SET NULL"))
     subject = Column(String(80), nullable=False)
@@ -281,6 +306,7 @@ class ProviderConfig(Base):
     capability_evidence = Column(String(500), default="", nullable=False)
     privacy_approved = Column(Boolean, default=False, nullable=False)
     privacy_evidence = Column(String(500), default="", nullable=False)
+    production_block_reason = Column(String(500), default="", server_default="", nullable=False)
     reserve_micros = Column(Integer, default=250_000, nullable=False)
     input_per_million_micros = Column(Integer)
     output_per_million_micros = Column(Integer)

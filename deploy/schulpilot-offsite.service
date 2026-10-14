@@ -1,0 +1,11 @@
+[Unit]
+Description=SCHULPILOT encrypted offsite backup pull
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 %h/schulpilot/scripts/offsite_backup.py
+TimeoutStartSec=10min
+NoNewPrivileges=true
+PrivateTmp=true

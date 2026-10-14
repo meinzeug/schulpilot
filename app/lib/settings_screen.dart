@@ -692,6 +692,33 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
         const SizedBox(height: 28),
+        heading('Betriebszustand'),
+        LoadView<Json>(
+          key: ValueKey('operations-$version'),
+          load: () => widget.state.api.get('/admin/operations'),
+          builder: (data, _) => Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data['worker_age_seconds'] == null
+                      ? 'Noch kein Worker-Lebenszeichen erfasst.'
+                      : 'Letztes Worker-Lebenszeichen vor ${data['worker_age_seconds']} Sekunden.',
+                ),
+                Text(
+                  'Wartend: ${data['jobs']['queued'] ?? 0} · Laufend: ${data['jobs']['running'] ?? 0}',
+                ),
+                Text(
+                  'Überfällige Aufträge: ${data['stalled_queued'] + data['stalled_running']}',
+                ),
+                Text(
+                  'Ausstehende Löschprotokolle: ${data['pending_erasure_journal']} · Pushfehler in 24 Stunden: ${data['push_failures_24h']}',
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
         heading(
           'Familien-Tarifberechtigungen',
           subtitle: 'Betriebskennungen und Limits; keine Namen oder privaten Lerninhalte.',

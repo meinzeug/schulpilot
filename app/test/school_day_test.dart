@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -50,6 +51,7 @@ Widget app(AppState state) => MaterialApp.router(
 );
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   for (final width in [390.0, 1280.0]) {
     testWidgets('Saved wizard reviews every page on $width px', (tester) async {
       tester.view.physicalSize = Size(width, 1000);

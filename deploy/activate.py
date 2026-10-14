@@ -53,12 +53,25 @@ try:
         "schulpilot-worker.service",
         "schulpilot-backup.service",
         "schulpilot-backup.timer",
+        "schulpilot-monitor.service",
+        "schulpilot-monitor.timer",
+        "schulpilot-restore-check.service",
+        "schulpilot-restore-check.timer",
     ]:
-        shutil.copy2(release / "deploy" / name, Path("/etc/systemd/system") / name)
+        source = release / "deploy" / name
+        if source.is_file():
+            shutil.copy2(source, Path("/etc/systemd/system") / name)
     subprocess.run(["systemctl", "daemon-reload"], check=True)
-    subprocess.run(
-        ["systemctl", "enable", "schulpilot-api", "schulpilot-worker", "schulpilot-backup.timer"], check=True
-    )
+    timers = ["schulpilot-backup.timer"]
+    if (release / "deploy/schulpilot-restore-check.timer").is_file():
+        timers.append("schulpilot-restore-check.timer")
+    elif Path("/etc/systemd/system/schulpilot-restore-check.timer").exists():
+        subprocess.run(["systemctl", "stop", "schulpilot-restore-check.timer"], check=True)
+    if (release / "deploy/schulpilot-monitor.timer").is_file():
+        timers.append("schulpilot-monitor.timer")
+    elif Path("/etc/systemd/system/schulpilot-monitor.timer").exists():
+        subprocess.run(["systemctl", "stop", "schulpilot-monitor.timer"], check=True)
+    subprocess.run(["systemctl", "enable", "schulpilot-api", "schulpilot-worker", *timers], check=True)
     environment = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
     import shlex
 
@@ -74,7 +87,7 @@ try:
             check=True,
         )
     subprocess.run(["systemctl", "restart", "schulpilot-api", "schulpilot-worker"], check=True)
-    subprocess.run(["systemctl", "start", "schulpilot-backup.timer"], check=True)
+    subprocess.run(["systemctl", "start", *timers], check=True)
     healthy = False
     for _ in range(30):
         try:

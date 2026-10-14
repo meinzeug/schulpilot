@@ -314,15 +314,23 @@ def revoke_member(family_id: str, membership_id: str, p=Depends(parent), db=Depe
     membership = db.scalar(select(Membership).where(Membership.id == membership_id, Membership.family_id == family_id))
     if not membership or membership.permission == "owner":
         raise HTTPException(403, "Familieninhaber kann hier nicht entfernt werden.")
+    from .erasure import flush_journal, request
+
+    request(db, "membership", membership.id)
     db.delete(membership)
     # Revoke sessions as well as checking membership on every request.
     db.execute(update(Session).where(Session.user_id == membership.user_id).values(revoked=True))
     audit(db, p.user.id, "family.member_revoke", membership_id)
     db.commit()
+    flush_journal()
     return {"message": "Familienrechte und Sitzungen widerrufen."}
 
 
 def remove_child(db, child):
+    from .erasure import request
+
+    request(db, "child", child.id)
+    request(db, "user", child.user_id)
     paths = list(db.scalars(select(Material.path).where(Material.child_id == child.id, Material.path.is_not(None))))
     user = db.get(User, child.user_id)
     db.delete(child)
@@ -333,6 +341,9 @@ def remove_child(db, child):
 
 
 def remove_family(db, family):
+    from .erasure import request
+
+    request(db, "family", family.id)
     paths = []
     for child in list(db.scalars(select(Child).where(Child.family_id == family.id))):
         paths.extend(remove_child(db, child))
@@ -355,6 +366,9 @@ def delete_child(child_id: str, data: s.ConfirmPassword, p=Depends(parent), db=D
     audit(db, p.user.id, "child.delete", child_id)
     db.commit()
     unlink_uploads(paths)
+    from .erasure import flush_journal
+
+    flush_journal()
     return {"message": "Kinderkonto, Sitzungen und Lerndaten gelöscht. Backups verfallen spätestens nach 14 Tagen."}
 
 
@@ -372,10 +386,14 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
     )
     for family in owned:
         paths.extend(remove_family(db, family))
+    from .erasure import flush_journal, request
+
+    request(db, "user", p.user.id)
     db.execute(delete(User).where(User.id == p.user.id))
     audit(db, p.user.id, "account.delete", p.user.id)
     db.commit()
     unlink_uploads(paths)
+    flush_journal()
     return {"message": "Konto und eigene Familien gelöscht. Backups verfallen spätestens nach 14 Tagen."}
 
 

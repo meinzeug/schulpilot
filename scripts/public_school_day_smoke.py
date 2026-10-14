@@ -95,7 +95,7 @@ def main():
                         "ai_calls": usage["calls_used"],
                         "reported_cost_micros_usd": usage["known_cost_micros_usd"],
                         "model": unit["model"],
-                        "real_data_gate": "closed",
+                        "real_ai_available": expect(parent.get('/status'))['ai_available'],
                         "retained_for_browser": retained,
                     }
                 )

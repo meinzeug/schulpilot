@@ -6,12 +6,14 @@ data. The image is generated from constants and never contains account data.
 
 import io
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+from .evaluation_corpus import CASES
 
 FIXTURE_ID = "fractions-v1"
 DAY_FIXTURE_IDS = ("fractions-day-1-v1", "fractions-day-2-v1")
 PACKAGE_FIXTURE_ID = "fractions-day-package-v1"
-LIVE_FIXTURE_IDS = (FIXTURE_ID, *DAY_FIXTURE_IDS)
+LIVE_FIXTURE_IDS = (FIXTURE_ID, *DAY_FIXTURE_IDS, *CASES)
 CONTENT = (
     "Ein Bruch beschreibt Teile eines Ganzen. Der Nenner steht unter dem Bruchstrich "
     "und gibt an, in wie viele gleich große Teile das Ganze geteilt wird. "
@@ -30,6 +32,8 @@ SECOND_PAGE_CONTENT = (
 def worksheet(fixture_id=FIXTURE_ID):
     if fixture_id not in LIVE_FIXTURE_IDS:
         raise ValueError("Unknown server-owned fixture")
+    if fixture_id in CASES:
+        return evaluation_worksheet(CASES[fixture_id])
     image = Image.new("RGB", (1120, 760), "white")
     draw = ImageDraw.Draw(image)
     try:
@@ -69,6 +73,28 @@ def worksheet(fixture_id=FIXTURE_ID):
     return output.getvalue()
 
 
+def evaluation_worksheet(case):
+    image = Image.new("RGB", (1120, 760), "white")
+    draw = ImageDraw.Draw(image)
+    try:
+        font = ImageFont.truetype("DejaVuSans-Oblique.ttf" if case.get("slanted") else "DejaVuSans.ttf", 25)
+    except OSError:
+        font = ImageFont.load_default(size=25)
+    draw.text((35, 30), "SYNTHETISCHER QUALITÄTSTEST · KEINE KINDERDATEN", font=font, fill="#175b51")
+    if not case.get("unreadable"):
+        draw.text((35, 100), f"{case['subject']} · {case['topic']} · Klasse {case['grade']}", font=font, fill="black")
+    for i, line in enumerate(case["lines"]):
+        draw.text((35, 180 + i * 60), line, font=font, fill="black")
+    if case.get("unreadable"):
+        for i in range(6):
+            draw.rectangle((35, 180 + i * 60, 950, 220 + i * 60), fill="#999999")
+    if case.get("blur"):
+        image = image.filter(ImageFilter.GaussianBlur(case["blur"]))
+    output = io.BytesIO()
+    image.save(output, "JPEG", quality=85)
+    return output.getvalue()
+
+
 def trusted_payload(function, fixture_id=FIXTURE_ID):
     if fixture_id not in (*LIVE_FIXTURE_IDS, PACKAGE_FIXTURE_ID):
         raise ValueError("Unknown server-owned fixture")
@@ -84,6 +110,14 @@ def trusted_payload(function, fixture_id=FIXTURE_ID):
         "recent_outcomes": [],
         "review": False,
     }
+    if fixture_id in CASES:
+        case = CASES[fixture_id]
+        result["synthetic_fixture"] = fixture_id
+        result["grade"] = case["grade"]
+        result["material"] = None if function == "extract" else {
+            "subject": case["subject"], "topic": case["topic"], "content": "\n".join(case["lines"]),
+        }
+        return result
     if fixture_id in DAY_FIXTURE_IDS:
         result["material"] = (
             None

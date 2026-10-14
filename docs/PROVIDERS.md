@@ -1,3 +1,5 @@
+Aktueller Freigabestand: Der Betreiber hat die Anbieter- und Datenschutzfreigabe am 14.10.2026 ausdrücklich erteilt. [APPROVALS.md](APPROVALS.md) dokumentiert dies. Die konkret eingerichteten kostenlosen Endpunkte lehnen die geschützte Route derzeit ab; `production_block_reason` sperrt diesen Verarbeitungsweg getrennt von der Freigabe. Keine erneute Betreiberzustimmung erforderlich, kein heimlicher Providerwechsel. Die folgenden Einrichtungsregeln bleiben als allgemeine Schutzvorgaben bestehen.
+
 # KI-Anbieter und Freigabegrenzen
 
 ## Aktueller Stand

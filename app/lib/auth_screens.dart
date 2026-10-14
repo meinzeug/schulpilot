@@ -207,7 +207,7 @@ class LandingScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 55),
                     const Notice(
-                      'Der öffentliche Teststand verwendet synthetische Daten. Der feste Beispielraum funktioniert ohne KI; der gesonderte KI-Test erkennt ein künstliches Testblatt über einen ausdrücklich kostenlosen Anbieter. Echte Kinderdaten bleiben bis zur Datenschutzfreigabe gesperrt.',
+                      'Im Testraum werden künstliche Materialien verwendet. Das feste Beispiel funktioniert ohne KI; der gesonderte KI-Test nutzt einen ausdrücklich kostenlosen Anbieter. Echte Lerninhalte benötigen einen freigegebenen und technisch geeigneten KI-Dienst. Ist dieser nicht verfügbar, wird die Verarbeitung angehalten.',
                     ),
                     const SizedBox(height: 28),
                     AndroidDownload(state.api),
@@ -579,6 +579,32 @@ class InformationScreen extends StatelessWidget {
                         : 'SCHULPILOT · Entwicklungsstand',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
+                  FutureBuilder<Json>(
+                    future: Api().get('/legal'),
+                    builder: (context, result) {
+                      if (!result.hasData) return const SizedBox.shrink();
+                      final data = result.data!;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data['complete'] == true
+                                  ? 'Verantwortlicher Betreiber\n${data['operator']}\n${data['address']}\nSupport: ${data['support_email']}'
+                                  : 'Die vollständigen Betreiber- und Kontaktangaben für den kommerziellen Start sind noch nicht hinterlegt.',
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              data['operator_data_approval'] == true
+                                  ? 'Die Anbieter- und Datenschutzfreigabe des Betreibers liegt vor. Ob ein KI-Dienst tatsächlich verfügbar ist, hängt zusätzlich von seiner technischen Konfiguration ab.'
+                                  : 'Echte Unterrichtsmaterialien benötigen eine dokumentierte Betreiberfreigabe.',
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 24),
                   Text(
                     kind == 'privacy'
@@ -586,9 +612,9 @@ class InformationScreen extends StatelessWidget {
 
 Im öffentlichen Testraum werden ausschließlich synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die feste Demo benötigt keine KI. Der ausdrücklich gekennzeichnete KI-Test sendet ausschließlich ein vom Server erzeugtes künstliches Testblatt bzw. festen Beispielstoff an die konfigurierten kostenlosen OpenRouter-Modelle. Freie Kontoeingaben werden dabei nicht übertragen.
 
-Externe Verarbeitung echter Kinderdaten ist serverseitig gesperrt. Ein Betreiber muss zunächst Datenschutzgrundlagen, Auftragsverarbeitung, Minderjährigenschutz, konkrete Anbieter, Modellfähigkeiten und erforderliche Aufbewahrungsfreigaben dokumentieren. „store:false“ allein ist kein Nachweis.
+Echte Lerninhalte werden nur über ausdrücklich freigegebene und technisch geeignete Anbieter verarbeitet. Ist kein passender geschützter Endpunkt verfügbar, wird die Verarbeitung mit einer verständlichen Meldung angehalten. Die aktuelle Betreiberfreigabe steht oben.
 
-Fotos werden vor dem Upload zum Zuschneiden angezeigt. Der Server entfernt Metadaten und gibt private Bilder ausschließlich nach Berechtigungsprüfung aus. Eine Verkleinerung ersetzt nicht das Entfernen persönlicher Angaben im Bild.
+Fotos werden vor dem Upload zum Drehen und Zuschneiden angezeigt. Ausstehende zugeschnittene Fotos sind auf diesem Gerät 24 Stunden fortsetzbar (höchstens 8 Seiten / 3 MB). Ältere Einträge werden beim nächsten Appstart oder Öffnen des Assistenten bereinigt; Abmelden oder Entfernen löscht diese lokale Warteschlange. Der Server entfernt Metadaten und gibt private Bilder ausschließlich nach Berechtigungsprüfung aus. Eine Verkleinerung ersetzt nicht das Entfernen persönlicher Angaben im Bild.
 
 Sitzungen sind widerrufbar. Eltern können Kinderkonten und ihr eigenes Konto löschen sowie einen Familienexport mit Materialien und Lernverlauf herunterladen. Beim Löschen des Familieninhabers wird dessen gesamte Familie gelöscht; eingeladene Eltern verlieren den Zugriff.
 
@@ -597,15 +623,15 @@ Aufbewahrung im Pilot: Materialien, Einheiten, Antworten, Aktivitäten und Nachr
 Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Lernmaterialien. Aktive Lernzeit bleibt eine Näherung. Eine einzelne richtige Antwort begründet keine sichere Beherrschung; fehlende Nutzung keine Aussage über Verständnis.'''
                         : '''Version 0.1.0 · Technischer Pilot
 
-SCHULPILOT verbindet einen Flutter-Client für Web und Android mit einer eigenen Backend-API. Die öffentliche Umgebung dient derzeit ausschließlich Tests mit synthetischen Daten.
+SCHULPILOT verbindet einen Flutter-Client für Web und Android mit einer eigenen Backend-API. Ein eigener Testraum enthält ausschließlich künstliche Materialien. Die Verfügbarkeit echter KI-Verarbeitung hängt zusätzlich von der freigegebenen Anbieterkonfiguration ab.
 
 Registrierung, Verifikation, Einladungen und Wiederherstellung nutzen den eingerichteten verschlüsselten Gmail-SMTP-Versand. Diese Abläufe wurden über die öffentliche HTTPS-Adresse mit synthetischen Testkonten und tatsächlichem E-Mail-Eingang geprüft.
 
-OpenAI und OpenRouter sind als serverseitige Adapter implementiert. Für das feste künstliche KI-Testblatt wurden kostenlose OpenRouter-Bild- und Schemaaufrufe tatsächlich durchgeführt. Die Namen der verwendeten Modelle werden angezeigt. Freie Kinderdaten benötigen weiterhin dokumentierte Datenschutz- und Minderjährigenfreigaben. Codex CLI bleibt experimentell und benötigt einen separat isolierten Worker sowie eine Nutzungsfreigabe.
+OpenAI und OpenRouter sind als serverseitige Adapter implementiert. Für das feste künstliche KI-Testblatt wurden kostenlose OpenRouter-Bild- und Schemaaufrufe tatsächlich durchgeführt. Die Namen der verwendeten Modelle werden angezeigt. Für echte Lerninhalte werden die dokumentierte Betreiberfreigabe und die technische Eignung des konkret ausgewählten Endpunkts getrennt geprüft. Codex CLI bleibt experimentell und benötigt einen separat isolierten Worker sowie eine Nutzungsfreigabe.
 
-Erinnerungen erscheinen gebündelt innerhalb der App. Push für Android und Web ist mit Geräte-Opt-in, Sitzungswiderruf, neutralen Nachrichtentexten und Ruhezeiten implementiert. Ohne freigegebenes Firebase-Projekt und Dienstkonto bleibt der Versand gesperrt; eine echte Push-Zustellung wurde noch nicht nachgewiesen. Eine signierte Android-App-Bundle-Datei und die Store-Einrichtung werden vorbereitet. Eine Play-Veröffentlichung und ein Zahlungscheckout sind noch nicht erfolgt.
+Erinnerungen erscheinen gebündelt innerhalb der App. Push für Android und Web ist mit Geräte-Opt-in, Sitzungswiderruf, neutralen Nachrichtentexten und Ruhezeiten implementiert. Ohne freigegebenes Firebase-Projekt und Dienstkonto bleibt der Versand gesperrt; eine echte Push-Zustellung wurde noch nicht nachgewiesen. Eine signierte Android-App-Bundle-Datei ist gebaut und geprüft; die Store-Einrichtung ist dokumentiert. Eine Play-Veröffentlichung und ein Zahlungscheckout sind noch nicht erfolgt.
 
-Vor einem kommerziellen Start mit echten Daten fehlen außerdem die veröffentlichten Angaben zum verantwortlichen Betreiber, Kontakt, Impressum, rechtliche Datenschutzhinweise und Betriebsfreigaben. Diese Testseite enthält keine erfundenen Betreiberangaben.
+Vor einem kommerziellen Start mit echten Daten fehlen außerdem die veröffentlichten Angaben zum verantwortlichen Betreiber, Kontakt, Impressum, abschließende rechtliche Datenschutzhinweise und die Abnahme des Betriebs. Diese Testseite enthält keine erfundenen Betreiberangaben.
 
 Quellcode und technische Dokumentation: github.com/meinzeug/schulpilot''',
                     style: const TextStyle(fontSize: 15, height: 1.8),

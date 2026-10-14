@@ -4,7 +4,7 @@ Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keine
 
 ## Android-Dateien und Signierung
 
-- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, Version-Code `2`, Android 7.0 / API 24 bis Ziel-API 36.
+- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, Version-Code `5`, Android 7.0 / API 24 bis Ziel-API 36.
 - Test-APK: `artifacts/schulpilot-0.1.0-test.apk`. Wird bei Deployment unter `/downloads/schulpilot-android.apk` veröffentlicht und vor/nach Web-Login verlinkt. `/api/app-release` enthält die tatsächliche Größe, Version und SHA-256.
 - Upload-AAB: `artifacts/schulpilot-0.1.0-upload.aab`. Nicht öffentlich und nicht in Git. Google Play verteilt daraus mit Play App Signing signierte APKs.
 - Eigener RSA-4096-Upload-Schlüssel und Passwörter: `~/.local/share/schulpilot-signing/`, Verzeichnis 0700, Dateien 0600. Unbedingt separat verschlüsselt sichern. Der private Schlüssel wird weder auf den App-Server noch zu GitHub kopiert. Der Google-App-Signing-Schlüssel ist davon getrennt.
@@ -57,3 +57,6 @@ Web-Ressource zur Kontolöschung: https://schulpilot.dorfspy.de/account-deletion
 
 
 Tatsächliche Validierung vom 14.10.2026: endgültige APK installiert und in einem API-36-Emulator gegen die öffentliche HTTPS-API bedient (Eltern-/Kinderlogin, Sitzungsneustart, Hinweis/Antwort, Widerruf, Löschung). Alle vier Aufgabenarten zusätzlich im echten Web-Browser geprüft. Das endgültige AAB besteht `bundletool 1.18.3 validate`; APK besteht `apksigner verify` und `zipalign -c -P 16 4`. Alle acht geprüften 64-Bit-ELF-Bibliotheken haben PT_LOAD-Ausrichtungen von mindestens 16 KB. Das ist kein behaupteter Play-Console-Prüferfolg oder Firebase-Zustelltest.
+
+
+Aktueller Ausbau: Die Betreiberfreigabe wurde ausdrücklich erteilt und in [APPROVALS.md](APPROVALS.md) protokolliert. Fehlende Google-Projektkennungen und Zugangsdaten bleiben davon getrennte technische Voraussetzungen. Vorbereitete deutsche Storetexte und ein technisches Data-Safety-/Review-Arbeitsblatt stehen in `store/`. `scripts/google_readiness.py --bundletool /pfad/bundletool.jar` prüft den öffentlichen APK-Stand, Betreiberangaben, Textlängen und das tatsächliche AAB, führt aber keinen Console-Upload aus. Physische Geräteprüfung und echte FCM-Zustellung bleiben ohne entsprechendes Gerät/Projekt offen.

@@ -981,6 +981,11 @@ String activityLabel(String kind) => switch (kind) {
   'feedback' => 'Schwierigkeitsrückmeldung',
   'message' => 'Familiennachricht',
   'assignment_changed' => 'Lernauftrag neu geplant',
+  'introduction_read' => 'Einführung gelesen',
+  'school_day_extended' => 'Tagespaket ergänzt',
+  'school_day_reordered' => 'Heftseiten sortiert',
+  'day_additions_deferred' => 'Ergänzung für später gespeichert',
+  'plan_paused' => 'Wegen geänderter Elternplanung pausiert',
   _ => kind,
 };
 
@@ -1034,13 +1039,20 @@ Widget planTile(
                         : 'Freiwillige Übung',
                   ),
                   if (item['due'] != null) Tag('Termin: ${item['due']}'),
+                  if (item['scheduled_for'] != null)
+                    Tag('Ab ${item['scheduled_for']}'),
                   Tag(statusLabel(item['status'])),
                 ],
               ),
             ],
           ),
         ),
-        if (!parent)
+        if (!parent &&
+            (item['scheduled_for'] == null ||
+                item['scheduled_for'].toString().compareTo(
+                      data['plan']['date'],
+                    ) <=
+                    0))
           IconButton(
             tooltip: 'Lernen starten',
             icon: const Icon(Icons.arrow_forward_rounded, color: teal),
@@ -1059,7 +1071,16 @@ Widget planTile(
 
 Future<void> startNext(BuildContext context, AppState state, Json data) async {
   final pending = (data['materials'] as List)
-      .where((m) => m['confirmed'] != true)
+      .where(
+        (m) =>
+            m['confirmed'] != true &&
+            (m['school_day_id'] == null ||
+                (data['school_days'] as List? ?? []).any(
+                  (d) =>
+                      d['id'] == m['school_day_id'] &&
+                      d['date'] == data['plan']['date'],
+                )),
+      )
       .toList();
   if (pending.isNotEmpty) {
     if (pending.first['school_day_id'] != null) {
@@ -1070,7 +1091,14 @@ Future<void> startNext(BuildContext context, AppState state, Json data) async {
     return;
   }
   final today = data['plan']['today'] as List;
-  final later = data['plan']['later'] as List;
+  final later = (data['plan']['later'] as List)
+      .where(
+        (item) =>
+            item['scheduled_for'] == null ||
+            item['scheduled_for'].toString().compareTo(data['plan']['date']) <=
+                0,
+      )
+      .toList();
   if (data['plan']['paused'] == true) {
     throw ApiError(
       'Gerade ist eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen.',
@@ -1334,15 +1362,22 @@ Future<void> assignmentDialog(
   Json child,
   List materials, {
   Json? existing,
+  Json? source,
+  String? plannedFor,
 }) async {
   final subject = TextEditingController(
-        text: existing?['subject'] ?? 'Mathematik',
+        text: existing?['subject'] ?? source?['subject'] ?? 'Mathematik',
       ),
-      topic = TextEditingController(text: existing?['topic'] ?? ''),
+      topic = TextEditingController(
+        text: existing?['topic'] ?? source?['topic'] ?? '',
+      ),
       note = TextEditingController(text: existing?['note'] ?? ''),
-      due = TextEditingController(text: existing?['due'] ?? '');
+      due = TextEditingController(text: existing?['due'] ?? ''),
+      scheduled = TextEditingController(
+        text: existing?['scheduled_for'] ?? plannedFor ?? '',
+      );
   String kind = existing?['kind'] == 'exam' ? 'exam' : 'parent';
-  String? materialId = existing?['material_id'];
+  String? materialId = existing?['material_id'] ?? source?['id'];
   bool mandatory = existing?['mandatory'] ?? true;
   await showDialog(
     context: context,
@@ -1378,6 +1413,7 @@ Future<void> assignmentDialog(
                   (topic, 'Thema / Lernziel'),
                   (note, 'Was soll geübt werden?'),
                   (due, 'Termin (optional: JJJJ-MM-TT)'),
+                  (scheduled, 'Frühester Lernbeginn (optional: JJJJ-MM-TT)'),
                 ])
                   Padding(
                     padding: const EdgeInsets.only(bottom: 14),
@@ -1435,6 +1471,7 @@ Future<void> assignmentDialog(
                 'topic': topic.text,
                 'note': note.text,
                 'due': due.text.isEmpty ? null : due.text,
+                'scheduled_for': scheduled.text.isEmpty ? null : scheduled.text,
                 'material_id': materialId,
                 'mandatory': mandatory,
               };
@@ -1456,7 +1493,7 @@ Future<void> assignmentDialog(
       ),
     ),
   );
-  for (final c in [subject, topic, note, due]) {
+  for (final c in [subject, topic, note, due, scheduled]) {
     c.dispose();
   }
 }

@@ -33,6 +33,10 @@ def provider(p=Depends(admin), db=Depends(get_db)):
 @router.put("/admin/provider")
 def update_provider(data: s.ProviderUpdate, p=Depends(admin), db=Depends(get_db)):
     config = db.get(ProviderConfig, 1)
+    # An explicit model/provider change invalidates the previous endpoint result.
+    # The operator's privacy approval is separate from endpoint availability.
+    if (data.provider, data.model, data.extraction_model) != (config.provider, config.model, config.extraction_model):
+        config.production_block_reason = "Neue Modellkonfiguration: datenschutzkonformen Endpunkt zuerst mit künstlichen Daten prüfen und lokal freigeben."
     if data.provider != config.provider:
         config.encrypted_key = None
     for key, value in data.model_dump(exclude={"api_key"}).items():

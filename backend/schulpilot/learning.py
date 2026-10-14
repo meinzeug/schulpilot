@@ -44,6 +44,8 @@ def material_data(material):
             "child_id",
             "school_day_id",
             "page_number",
+            "quality_warnings",
+            "legibility",
             "title",
             "status",
             "subject",
@@ -64,7 +66,7 @@ def material_data(material):
 def assignment_data(assignment):
     return {
         k: getattr(assignment, k)
-        for k in ("id", "kind", "subject", "topic", "note", "due", "mandatory", "done", "material_id")
+        for k in ("id", "kind", "subject", "topic", "note", "due", "scheduled_for", "mandatory", "done", "material_id")
     }
 
 
@@ -122,6 +124,8 @@ def unit_data(db, unit, include_answers=False):
         "material_id": unit.material_id,
         "school_day_id": unit.school_day_id,
         "estimated_minutes": unit.estimated_minutes,
+        "package_version": unit.package_version,
+        "introduction_seen": unit.introduction_seen,
         "source_material_ids": list(db.scalars(select(UnitSource.material_id).where(UnitSource.unit_id == unit.id)))
         or ([unit.material_id] if unit.material_id else []),
         "assignment_id": unit.assignment_id,
@@ -242,6 +246,7 @@ def plan(db, child):
                     "mandatory": bool(unit.assignment_id),
                     "status": unit.status,
                     "estimated_minutes": unit.estimated_minutes,
+                    "scheduled_for": next((a.scheduled_for for a in assignments if a.id == unit.assignment_id), None),
                 }
             )
     for a in sorted(assignments, key=lambda a: (not a.mandatory, a.due or "9999", a.created)):
@@ -255,6 +260,7 @@ def plan(db, child):
                 "subject": a.subject,
                 "mandatory": a.mandatory,
                 "due": a.due,
+                "scheduled_for": a.scheduled_for,
                 "assignment_kind": a.kind,
                 "material_id": a.material_id,
                 "status": "practiced_today"
@@ -307,6 +313,7 @@ def plan(db, child):
         x
         for x in candidates
         if x["status"] != "practiced_today"
+        and (not x.get("scheduled_for") or x["scheduled_for"] <= today.isoformat())
         and (not prefs.subject_days.get(x["subject"]) or today.weekday() in prefs.subject_days[x["subject"]])
     ]
     selected = []
@@ -492,6 +499,11 @@ def start(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
     if unit.status == "completed":
         return unit_data(db, unit)
     child = db.get(Child, unit.child_id)
+    assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
+    if assignment and assignment.scheduled_for and assignment.scheduled_for > local_day(child).isoformat():
+        raise HTTPException(
+            409, f"Dieser Lernauftrag beginnt am {assignment.scheduled_for}. Deine Eltern können ihn neu planen."
+        )
     prefs = s.Preferences(**child.preferences)
     if prefs.pause_until and local_day(child) <= prefs.pause_until:
         raise HTTPException(
@@ -528,6 +540,16 @@ def heartbeat(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
     prefs = s.Preferences(**db.get(Child, unit.child_id).preferences)
     stamp = int(now())
     if unit.status == "active":
+        if learning_block(db, unit):
+            unit.status = "paused"
+            unit.heartbeat = None
+            record(db, unit.child_id, "plan_paused", unit_id=unit.id)
+            db.commit()
+            return {
+                "active_seconds_approx": unit.active_seconds,
+                "status": unit.status,
+                "break_until": unit.break_until,
+            }
         elapsed = stamp - (unit.heartbeat or stamp)
         if 0 < elapsed <= 45:
             seconds = min(min(elapsed, 25), max(0, prefs.session_minutes * 60 - unit.segment_seconds))
@@ -552,6 +574,18 @@ def explanation(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
     record(db, unit.child_id, "explanation", {"text": unit.explanation}, unit.id)
     db.commit()
     return {"explanation": unit.explanation}
+
+
+@router.post("/units/{unit_id}/introduction")
+def introduction(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
+    unit = get_unit(db, p, unit_id, True, True)
+    if unit.status != "active":
+        raise HTTPException(409, "Bitte die Einheit zuerst starten oder fortsetzen.")
+    if not unit.introduction_seen:
+        unit.introduction_seen = True
+        record(db, unit.child_id, "introduction_read", unit_id=unit.id)
+        db.commit()
+    return unit_data(db, unit)
 
 
 def question(unit, question_id):
@@ -592,6 +626,18 @@ def evaluate(q, answer):
     if q["type"] == "short":
         return "uncertain"
     return "incorrect"
+
+
+def learning_block(db, unit):
+    child = db.get(Child, unit.child_id)
+    today = local_day(child)
+    prefs = s.Preferences(**child.preferences)
+    if prefs.pause_until and today <= prefs.pause_until:
+        return "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
+    assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
+    if assignment and assignment.scheduled_for and assignment.scheduled_for > today.isoformat():
+        return f"Dieser Lernauftrag beginnt am {assignment.scheduled_for}. Deine Eltern können ihn neu planen."
+    return None
 
 
 def update_mastery(db, unit, attempts):
@@ -641,6 +687,8 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     unit = get_unit(db, p, unit_id, True, True)
     if unit.status != "active":
         raise HTTPException(409, "Bitte die Lerneinheit zuerst starten oder fortsetzen.")
+    if reason := learning_block(db, unit):
+        raise HTTPException(409, reason)
     q = question(unit, question_id)
     existing = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     previous = [a for a in existing if a.question_id == question_id]

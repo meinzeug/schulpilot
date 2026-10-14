@@ -2,9 +2,10 @@
 
 import hashlib
 import json
+from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import select, update
 
 from . import schemas as s
@@ -35,6 +36,10 @@ MAX_CONTENT = 60_000
 
 class StageUpdate(s.Strict):
     stage: Literal["collecting", "review"]
+
+
+class PageOrder(s.Strict):
+    material_ids: list[str]
 
 
 def pages(db, day):
@@ -89,11 +94,15 @@ def package_plan(db, day, child):
     current = plan(db, child)
     available = current["available_minutes"] if day.school_date == local_day(child).isoformat() else 0
     # Mandatory parent/homework goals keep their existing place in the day.
-    reserved = sum(current["session_minutes"] for x in current["today"] if x.get("mandatory"))
+    reserved = sum(x.get("estimated_minutes") or current["session_minutes"] for x in current["today"])
     remaining = max(0, available - reserved)
     minutes = min(8, s.Preferences(**child.preferences).session_minutes, max(5, remaining))
     slots = min(3, remaining // minutes)
     groups = []
+    covered = {
+        (source.material_id, source.revision)
+        for source in db.scalars(select(UnitSource).join(LearningUnit).where(LearningUnit.school_day_id == day.id))
+    }
     for material in pages(db, day):
         if not material.confirmed:
             continue
@@ -104,10 +113,13 @@ def package_plan(db, day, child):
                 "subject": material.subject,
                 "topics": [],
                 "material_ids": [],
+                "new_material_ids": [],
                 "estimated_minutes": minutes,
             }
             groups.append(group)
         group["material_ids"].append(material.id)
+        if (material.id, material.revision) not in covered:
+            group["new_material_ids"].append(material.id)
         if material.topic not in group["topics"]:
             group["topics"].append(material.topic)
     prefs = s.Preferences(**child.preferences)
@@ -121,21 +133,24 @@ def package_plan(db, day, child):
     eligible = [
         g
         for g in ranked
-        if not prefs.subject_days.get(g["subject"]) or local_day(child).weekday() in prefs.subject_days[g["subject"]]
+        if g["new_material_ids"]
+        and (not prefs.subject_days.get(g["subject"]) or local_day(child).weekday() in prefs.subject_days[g["subject"]])
     ]
     selected = eligible[:slots]
     for group in groups:
         group["selected"] = group in selected
+        group["covered"] = not bool(group["new_material_ids"])
     notices = []
     if reserved:
-        notices.append(f"Für bereits eingeplante verbindliche Aufträge bleiben {reserved} Minuten reserviert.")
+        notices.append(f"Für bereits eingeplante Einheiten und Aufträge bleiben {reserved} Minuten reserviert.")
     if current["paused"] or current["free_day"]:
         notices.extend(current["notices"][:1])
-    if len(selected) < len(groups):
+    pending_count = sum(not g["covered"] for g in groups)
+    if len(selected) < pending_count:
         notices.append(
             "Nicht alles passt heute in die Lernzeit oder zu den Fach-Lerntagen. Diese Seiten bleiben gespeichert; daraus entsteht kein automatischer Aufgabenberg."
         )
-    if groups and not selected:
+    if pending_count and not selected:
         notices.append(
             "Für neue Übungen ist heute keine Zeit eingeplant. Bitte mit deinen Eltern eine passende Lernzeit vereinbaren. Deine Seiten bleiben erhalten."
         )
@@ -180,6 +195,8 @@ def day_data(db, day, child, p):
         "child_id": child.id,
         "date": day.school_date,
         "stage": day.stage,
+        "package_version": day.package_version,
+        "read_only": day.school_date != local_day(child).isoformat(),
         "max_pages": MAX_PAGES,
         "pages": [material_data(m) for m in material_list],
         "confirmed_count": sum(m.confirmed for m in material_list),
@@ -218,6 +235,82 @@ def begin(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
 @router.get("/school-days/{day_id}")
 def view(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
     day, child = get_day(db, p, day_id)
+    return day_data(db, day, child, p)
+
+
+@router.get("/children/{child_id}/school-days")
+def history(
+    child_id: str,
+    before: date | None = None,
+    limit: int = Query(20, ge=1, le=50),
+    p=Depends(authenticated),
+    db=Depends(get_db),
+):
+    child = child_access(db, p, child_id)
+    query = select(SchoolDay).where(SchoolDay.child_id == child.id)
+    if before:
+        query = query.where(SchoolDay.school_date < before.isoformat())
+    days = list(db.scalars(query.order_by(SchoolDay.school_date.desc()).limit(limit + 1)))
+    rows = []
+    for day in days[:limit]:
+        units = list(db.scalars(select(LearningUnit).where(LearningUnit.school_day_id == day.id)))
+        rows.append(
+            {
+                "id": day.id,
+                "date": day.school_date,
+                "stage": day.stage,
+                "package_version": day.package_version,
+                "page_count": len(pages(db, day)),
+                "unit_count": len(units),
+                "completed_units": sum(u.status == "completed" for u in units),
+                "subjects": sorted({m.subject for m in pages(db, day) if m.subject}),
+            }
+        )
+    return {"days": rows, "next_before": rows[-1]["date"] if len(days) > limit else None}
+
+
+@router.post("/school-days/{day_id}/extend")
+def extend(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True)
+    idle(db, child.id)
+    if day.stage == "ready":
+        day.stage = "collecting"
+        day.revision += 1
+        record(db, child.id, "school_day_extended", {"school_day_id": day.id, "version": day.package_version})
+        db.commit()
+    return day_data(db, day, child, p)
+
+
+@router.put("/school-days/{day_id}/page-order")
+def reorder(day_id: str, data: PageOrder, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True)
+    idle(db, child.id)
+    source_pages = pages(db, day)
+    if day.stage != "collecting":
+        raise HTTPException(409, "Seiten können beim Sammeln sortiert werden.")
+    if len(data.material_ids) != len(source_pages) or set(data.material_ids) != {m.id for m in source_pages}:
+        raise HTTPException(422, "Bitte alle Seiten dieses Tages genau einmal angeben.")
+    by_id = {m.id: m for m in source_pages}
+    for position, material_id in enumerate(data.material_ids, 1):
+        by_id[material_id].page_number = position
+    day.revision += 1
+    record(db, child.id, "school_day_reordered", {"school_day_id": day.id})
+    db.commit()
+    return day_data(db, day, child, p)
+
+
+@router.post("/school-days/{day_id}/finish-additions")
+def finish_additions(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True)
+    idle(db, child.id)
+    if not db.scalar(select(LearningUnit.id).where(LearningUnit.school_day_id == day.id)) or not all(
+        m.confirmed for m in pages(db, day)
+    ):
+        raise HTTPException(409, "Bitte neue Seiten zuerst prüfen. Vorhandene Einheiten bleiben weiterhin nutzbar.")
+    day.stage = "ready"
+    day.revision += 1
+    record(db, child.id, "day_additions_deferred", {"school_day_id": day.id})
+    db.commit()
     return day_data(db, day, child, p)
 
 
@@ -290,18 +383,22 @@ def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depe
     material = db.get(Material, material_id)
     if not material or material.school_day_id != day.id:
         raise HTTPException(404, "Seite nicht gefunden.")
-    if day.stage != "collecting" or material.confirmed:
+    if (day.stage != "collecting" and material.status != "unreadable") or material.confirmed:
         raise HTTPException(
             409,
             "Nur noch unbestätigte Seiten können beim Sammeln entfernt werden. Bestätigte Inhalte verwalten deine Eltern.",
         )
     path = material.path
+    from .erasure import flush_journal, request
+
+    request(db, "material", material.id)
     db.delete(material)
     day.revision += 1
     record(db, child.id, "school_day_page_removed")
     db.commit()
     if path:
         (settings.data_dir / "uploads" / path).unlink(missing_ok=True)
+    flush_journal()
     return day_data(db, day, child, p)
 
 
@@ -402,5 +499,8 @@ def save_package(db, job, data, *, synthetic, provider, model):
             unit.id,
         )
     day.stage = "ready"
-    job.result = {"school_day_id": day.id, "unit_ids": ids}
+    day.package_version += 1
+    for unit_id in ids:
+        db.get(LearningUnit, unit_id).package_version = day.package_version
+    job.result = {"school_day_id": day.id, "unit_ids": ids, "package_version": day.package_version}
     record(db, job.child_id, "school_day_ready", {"page_count": len(source_pages), "unit_count": len(ids)})

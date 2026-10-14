@@ -3,7 +3,7 @@
 import logging
 import signal
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -15,6 +15,7 @@ from .db import (
     DB,
     Activity,
     Assignment,
+    Audit,
     Child,
     Family,
     Job,
@@ -24,10 +25,12 @@ from .db import (
     ProviderConfig,
     RateBucket,
     SchoolDay,
+    ServiceState,
     Session,
     Token,
     UnitSource,
     Usage,
+    UsageBucket,
     init_db,
     now,
 )
@@ -242,9 +245,10 @@ def process(job_id):
             elif job.kind == "extract":
                 if not material or material.confirmed:
                     raise ProviderError("Material wurde zwischenzeitlich entfernt oder bereits bestätigt.")
-                for key in ("subject", "topic", "content", "uncertainties", "homework"):
+                data = s.ExtractionOutput.model_validate(data).model_dump()
+                for key in ("subject", "topic", "content", "uncertainties", "homework", "legibility"):
                     setattr(material, key, data[key])
-                material.status = "review"
+                material.status = "unreadable" if data["legibility"] == "unreadable" else "review"
                 material.extraction_provider = config_values["provider"]
                 material.extraction_model = config_values["model"]
                 job.result = {"material_id": material.id}
@@ -333,6 +337,15 @@ def maintenance():
         db.execute(delete(Session).where(Session.expires < int(now()) - 7 * 86400))
         db.execute(delete(Token).where(Token.expires < int(now()) - 7 * 86400))
         db.execute(delete(RateBucket).where(RateBucket.expires < int(now())))
+        # Operational metadata, not invoices or private learning content.
+        db.execute(delete(Usage).where(Usage.created < int(now()) - 90 * 86400))
+        db.execute(delete(Audit).where(Audit.created < int(now()) - 180 * 86400))
+        current_month = datetime.now(timezone.utc)
+        oldest_period = f"{current_month.year - 1:04d}-{current_month.month:02d}"
+        for bucket in db.scalars(select(UsageBucket)):
+            period = bucket.id.rsplit(":", 1)[-1]
+            if len(period) == 7 and period[4] == "-" and period.replace("-", "").isdigit() and period < oldest_period:
+                db.delete(bucket)
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
@@ -379,6 +392,20 @@ def maintenance():
                     )
                 )
     unlink_uploads(paths)
+    from .erasure import flush_journal, prune_journal
+
+    flush_journal()
+    with DB() as db:
+        state = db.get(ServiceState, "erasure_compaction")
+        compact = not state or now() - state.updated > 86400
+    if compact:
+        prune_journal()
+        with DB.begin() as db:
+            state = db.get(ServiceState, "erasure_compaction")
+            if state:
+                state.updated = int(now())
+            else:
+                db.add(ServiceState(name="erasure_compaction", updated=int(now())))
     with DB.begin() as db:
         prepare_notifications(db)
 
@@ -394,8 +421,17 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     last_maintenance = 0
+    last_heartbeat = 0
     while running:
         try:
+            if now() - last_heartbeat > 10:
+                with DB.begin() as db:
+                    state = db.get(ServiceState, "worker")
+                    if state:
+                        state.updated = int(now())
+                    else:
+                        db.add(ServiceState(name="worker", updated=int(now())))
+                last_heartbeat = now()
             deliver_one(DB)
             if now() - last_maintenance > 60:
                 maintenance()

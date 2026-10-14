@@ -11,6 +11,7 @@ from sqlalchemy import text
 from . import __version__, admin, auth, families, learning, materials, notifications, releases, school_day, synthetic
 from .config import settings
 from .db import DB, ProviderConfig, init_db
+from .operations import router as operations_router
 
 log = logging.getLogger("schulpilot.api")
 
@@ -29,6 +30,36 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None if settings.environment == "production" else "/api/openapi.json",
 )
+
+
+class ActualBodyLimit:
+    """Limit received bytes too: Content-Length alone does not cover chunking."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope["method"] not in ("POST", "PUT", "PATCH", "DELETE"):
+            return await self.app(scope, receive, send)
+        path = scope.get("path", "")
+        maximum = 12 * 1024 * 1024 if path.startswith("/api/children/") and path.endswith("/materials") else 64 * 1024
+        if path.startswith("/api/materials/") and path.endswith("/confirm"):
+            maximum = 256 * 1024
+        size = 0
+
+        async def limited_receive():
+            nonlocal size
+            message = await receive()
+            if message["type"] == "http.request":
+                size += len(message.get("body", b""))
+                if size > maximum:
+                    raise HTTPException(413, "Anfrage ist zu groß.")
+            return message
+
+        await self.app(scope, limited_receive, send)
+
+
+app.add_middleware(ActualBodyLimit)
 
 
 @app.middleware("http")
@@ -87,6 +118,8 @@ def status():
             and config.provider != "disabled"
             and config.privacy_approved
             and settings.real_data_approved
+            and settings.privacy_evidence
+            and not config.production_block_reason
         )
     return {
         "version": __version__,
@@ -101,11 +134,33 @@ def status():
         ),
         "real_data_enabled": bool(settings.real_data_approved and settings.privacy_evidence),
         "ai_available": ai,
-        "notice": "Entwicklungsstand mit synthetischem Testraum. Externe Verarbeitung echter Kinderdaten bleibt bis zur dokumentierten Freigabe gesperrt.",
+        "ai_block_reason": (
+            "Der eingerichtete KI-Endpunkt erfüllt die erforderlichen Datenschutzeinstellungen derzeit nicht. Deine Materialien werden nicht an diesen Endpunkt gesendet."
+            if config.production_block_reason
+            else None
+        ),
+        "notice": (
+            "Technischer Pilot. Betreiberfreigabe liegt vor; die Verfügbarkeit externer KI wird zusätzlich geprüft."
+            if settings.real_data_approved and settings.privacy_evidence
+            else "Entwicklungsstand mit synthetischem Testraum. Externe Verarbeitung echter Kinderdaten bleibt bis zur dokumentierten Freigabe gesperrt."
+        ),
+    }
+
+
+@app.get("/api/legal")
+def legal():
+    return {
+        "operator": settings.operator_name,
+        "address": settings.operator_address,
+        "support_email": settings.operator_support_email,
+        "complete": bool(settings.operator_name and settings.operator_address and settings.operator_support_email),
+        "operator_data_approval": bool(settings.real_data_approved and settings.privacy_evidence),
+        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24},
     }
 
 
 for router in (
+    operations_router,
     auth.router,
     families.router,
     learning.router,

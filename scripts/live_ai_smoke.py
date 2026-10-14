@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--upstream", required=True)
     parser.add_argument("--key-file", type=Path, default=Path.home() / "or.txt")
     parser.add_argument("--function", choices=["extract", "unit", "package"], default="extract")
+    parser.add_argument("--strict-privacy", action="store_true", help="Probe deny + ZDR using synthetic data only")
     args = parser.parse_args()
     if not args.model.endswith(":free"):
         raise SystemExit("Only an explicitly selected :free model is permitted")
@@ -52,8 +53,8 @@ def main():
                 "only": [args.upstream],
                 "allow_fallbacks": False,
                 "require_parameters": True,
-                "data_collection": "allow",
-                "zdr": False,
+                "data_collection": "deny" if args.strict_privacy else "allow",
+                "zdr": args.strict_privacy,
                 "max_price": {"prompt": 0, "completion": 0, "request": 0},
             },
             "response_format": {
@@ -73,6 +74,7 @@ def main():
             "function": args.function,
             "http_status": response.status_code,
             "synthetic_only": True,
+            "strict_privacy": args.strict_privacy,
         }
         if response.status_code != 200:
             try:

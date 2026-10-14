@@ -11,6 +11,7 @@ import 'dashboard.dart';
 import 'material_screen.dart';
 import 'settings_screen.dart';
 import 'school_day_screen.dart';
+import 'school_day_history.dart';
 import 'ui.dart';
 import 'unit_screen.dart';
 
@@ -27,7 +28,18 @@ Future<void> main() async {
           owner == state.user?['child_id'] &&
           lost.files?.isNotEmpty == true &&
           await lost.files!.first.length() <= 10 * 1024 * 1024) {
-        state.recoveredPhoto = await lost.files!.first.readAsBytes();
+        var total = 0;
+        for (final file in lost.files!.take(8)) {
+          final length = await file.length();
+          if (length > 10 * 1024 * 1024 || total + length > 20 * 1024 * 1024) {
+            break;
+          }
+          state.recoveredPhotos.add(await file.readAsBytes());
+          total += length;
+        }
+        if (state.recoveredPhotos.isNotEmpty) {
+          state.recoveredPhoto = state.recoveredPhotos.removeAt(0);
+        }
       }
       await state.storage.delete(key: 'camera_child');
     } catch (_) {
@@ -101,8 +113,16 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       ),
       GoRoute(
         path: '/after-school/:id',
+        builder: (context, s) => SchoolDayScreen(
+          widget.state,
+          childId: s.pathParameters['id']!,
+          dayId: s.uri.queryParameters['day'],
+        ),
+      ),
+      GoRoute(
+        path: '/after-school/:id/history',
         builder: (context, s) =>
-            SchoolDayScreen(widget.state, childId: s.pathParameters['id']!),
+            SchoolDayHistory(widget.state, childId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/material/:id',

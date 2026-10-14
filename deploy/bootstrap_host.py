@@ -23,6 +23,7 @@ for path, mode in [
     ("/var/lib/schulpilot", 0o700),
     ("/var/lib/schulpilot/uploads", 0o700),
     ("/var/backups/schulpilot", 0o700),
+    ("/var/backups/schulpilot-monitor", 0o700),
     ("/etc/schulpilot", 0o750),
 ]:
     directory = Path(path)

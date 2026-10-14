@@ -34,6 +34,11 @@ Future<void> importMaterial(
       'Der Import echter Materialien ist bis zur dokumentierten Datenschutzfreigabe gesperrt.',
     );
   }
+  if (status['ai_available'] != true) {
+    throw ApiError(
+      status['ai_block_reason'] ?? 'Zurzeit ist kein geeigneter KI-Dienst verfügbar. Bitte später erneut versuchen.',
+    );
+  }
   if (!context.mounted) return;
   final source = await showModalBottomSheet<ImageSource>(
     context: context,
@@ -101,13 +106,13 @@ class CropDialog extends StatefulWidget {
 
 class _CropDialogState extends State<CropDialog> {
   double left = 0, top = 0, right = 1, bottom = 1;
-  late final img.Image? image = orientedImage();
+  late img.Image? image = orientedImage();
   img.Image? orientedImage() {
     final decoded = img.decodeImage(widget.bytes);
     return decoded == null ? null : img.bakeOrientation(decoded);
   }
 
-  late final Uint8List preview = image == null
+  late Uint8List preview = image == null
       ? widget.bytes
       : Uint8List.fromList(img.encodeJpg(image!, quality: 85));
   @override
@@ -120,7 +125,21 @@ class _CropDialogState extends State<CropDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Notice(
-              'Schneide Namen, Schule und andere persönliche Angaben aus dem sichtbaren Bild aus. Das Bild verlässt dein Gerät erst nach „Zuschneiden & hochladen“.',
+              'Schneide Namen, Schule und andere persönliche Angaben ab. Prüfe die Leserichtung. Erst nach deiner Bestätigung wird das zugeschnittene Bild für den Upload übernommen.',
+            ),
+            TextButton.icon(
+              onPressed: image == null
+                  ? null
+                  : () => setState(() {
+                      image = img.copyRotate(image!, angle: 90);
+                      preview = Uint8List.fromList(
+                        img.encodeJpg(image!, quality: 85),
+                      );
+                      left = top = 0;
+                      right = bottom = 1;
+                    }),
+              icon: const Icon(Icons.rotate_right),
+              label: const Text('Um 90° drehen'),
             ),
             SizedBox(
               height: 250,
@@ -204,7 +223,7 @@ class _CropDialogState extends State<CropDialog> {
         child: const Text('Abbrechen'),
       ),
       ActionButton(
-        label: 'Zuschneiden & hochladen',
+        label: 'Zuschnitt übernehmen',
         onPressed: () async {
           if (image == null) {
             throw ApiError(
@@ -333,7 +352,9 @@ class _MaterialReviewState extends State<MaterialReview> {
     final liveFixture = d['fixture_id'] != null;
     final readonly = widget.state.isParent && !widget.state.canManage;
     final canConfirm =
-        !readonly && !(widget.state.isChild && d['confirmed'] == true);
+        !readonly &&
+        d['status'] != 'unreadable' &&
+        !(widget.state.isChild && d['confirmed'] == true);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -373,8 +394,14 @@ class _MaterialReviewState extends State<MaterialReview> {
           Panel(
             child: LoadView<Uint8List>(
               load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
-              builder: (bytes, _) =>
-                  Image.memory(bytes, height: 350, fit: BoxFit.contain),
+              builder: (bytes, _) => SizedBox(
+                height: 350,
+                child: InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 5,
+                  child: Image.memory(bytes, fit: BoxFit.contain),
+                ),
+              ),
             ),
           ),
         if (d['status'] == 'uploaded')
@@ -392,6 +419,11 @@ class _MaterialReviewState extends State<MaterialReview> {
         for (final uncertainty in d['uncertainties'] as List)
           Notice(uncertainty, warning: true),
         const SizedBox(height: 18),
+        if (d['status'] == 'unreadable')
+          const Notice(
+            'Dieses Foto ist nicht zuverlässig lesbar. Bitte im Tagesassistenten entfernen und neu aufnehmen. Daraus werden keine Übungen erstellt.',
+            warning: true,
+          ),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

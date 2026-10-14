@@ -281,6 +281,59 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
       );
     }
+    if (u['introduction_seen'] == false) {
+      return Panel(
+        color: mint,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Tag('1 · Verstehen'),
+            if (u['synthetic'] == true)
+              Notice(
+                u['provider'] == 'synthetic'
+                    ? 'Synthetische Beispielübung. Keine externe KI beteiligt.'
+                    : 'Künstlicher Teststoff. Erklärung und Übungen wurden tatsächlich mit KI erstellt: ${u['provider']} · ${u['model']}.',
+              ),
+            const SizedBox(height: 16),
+            heading('${u['subject']} · ${u['topic']}'),
+            Text(
+              u['explanation'],
+              style: const TextStyle(fontSize: 18, height: 1.6),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Lies die Erklärung in deinem Tempo. Danach übst du und versuchst zum Schluss, dich selbstständig zu erinnern. Hinweise bleiben jederzeit möglich.',
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ActionButton(
+                  label: 'Weiter zu den Übungen',
+                  icon: Icons.arrow_forward,
+                  onPressed: () async {
+                    final data = await state.api.post(
+                      '/units/${u['id']}/introduction',
+                    );
+                    if (mounted) setState(() => unit = data);
+                  },
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final data = await state.api.post(
+                      '/units/${u['id']}/pause',
+                    );
+                    if (mounted) setState(() => unit = data);
+                  },
+                  child: const Text('Pause machen'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
     final q = questions.firstWhere((q) => !done(q));
     if (questionId != q['id']) {
       questionId = q['id'];
@@ -295,6 +348,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Tag(
+              completed == questions.length - 1
+                  ? '3 · Zum Schluss selbst erinnern'
+                  : '2 · Üben',
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Tag('${u['subject']} · ${u['topic']}'),

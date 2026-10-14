@@ -1,0 +1,11 @@
+[Unit]
+Description=SCHULPILOT independent public HTTPS and offsite watchdog
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 %h/schulpilot/scripts/watch_public.py
+TimeoutStartSec=60
+NoNewPrivileges=true
+PrivateTmp=true

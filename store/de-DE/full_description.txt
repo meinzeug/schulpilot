@@ -1,0 +1,9 @@
+SCHULPILOT begleitet Familien beim Lernen nach der Schule.
+
+Kinder haben einen eigenen Zugang. Im Nach-der-Schule-Assistenten sammeln sie Heftseiten, prüfen den erkannten Stoff und bearbeiten überschaubare Lernpakete direkt in der App. Erklärungen, Hinweise und interaktive Aufgaben unterstützen beim Üben. Gespeicherte Einheiten lassen sich pausieren und fortsetzen.
+
+Eltern legen Lernziele, Lerntage, Zeitrahmen und Termine fest. Sie sehen nachvollziehbar, welche Aufgaben bearbeitet, welche Antworten abgegeben und welche Hilfen genutzt wurden. Eine einzelne richtige Antwort gilt dabei noch nicht als sichere Beherrschung.
+
+Es gibt keine Werbung, öffentliche Kinderchats oder Überwachung anderer Apps. Push-Erinnerungen sind freiwillig und enthalten keine Lerninhalte auf dem Sperrbildschirm.
+
+Aktueller Stand: technischer Pilot mit einem deutlich gekennzeichneten synthetischen Testraum. Echte KI-Verarbeitung hängt von der Verfügbarkeit des freigegebenen Anbieters ab. Diese Beschreibung ist für die interne Testvorbereitung bestimmt; eine öffentliche Store-Veröffentlichung wurde noch nicht vorgenommen.

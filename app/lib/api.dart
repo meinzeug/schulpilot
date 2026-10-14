@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'push_client.dart';
+import 'pending_uploads.dart';
 
 import 'transport.dart' if (dart.library.js_interop) 'transport_web.dart';
 
@@ -77,8 +78,9 @@ class Api {
       });
       if (body != null) request.body = jsonEncode(body);
       return decode(
-        await http.Response.fromStream(await client.send(request))
-            .timeout(const Duration(seconds: 35)),
+        await http.Response.fromStream(
+          await client.send(request).timeout(const Duration(seconds: 35)),
+        ).timeout(const Duration(seconds: 35)),
       );
     } on ApiError {
       rethrow;
@@ -107,6 +109,7 @@ class Api {
     String childId,
     Uint8List bytes, {
     String? schoolDayId,
+    String? uploadKey,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -117,12 +120,17 @@ class Api {
       ),
     );
     request.headers.addAll(headers);
+    if (uploadKey != null) request.headers['Idempotency-Key'] = uploadKey;
     request.files.add(
       http.MultipartFile.fromBytes('file', bytes, filename: 'material.jpg'),
     );
     try {
       return Map<String, dynamic>.from(
-        decode(await http.Response.fromStream(await client.send(request))),
+        decode(
+          await http.Response.fromStream(
+            await client.send(request).timeout(const Duration(seconds: 45)),
+          ).timeout(const Duration(seconds: 45)),
+        ),
       );
     } on ApiError {
       rethrow;
@@ -167,12 +175,14 @@ class Api {
 class AppState extends ChangeNotifier {
   final Api api;
   final FlutterSecureStorage storage;
+  late final PendingUploads pendingUploads = PendingUploads(storage);
   late final PushClient push = PushClient(api);
   Json? user;
   String? familyId;
   int revision = 0;
   Json? demoCredentials;
   Uint8List? recoveredPhoto;
+  final List<Uint8List> recoveredPhotos = [];
   AppState({Api? api, FlutterSecureStorage? storage})
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
@@ -204,6 +214,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> restore() async {
     try {
+      await pendingUploads.purgeExpired();
+    } catch (_) {
+      // The wizard offers local deletion if storage cannot be recovered.
+    }
+    try {
       if (!kIsWeb) api.token = await storage.read(key: 'session');
       user = await api.get('/auth/me');
       _family();
@@ -226,6 +241,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> accept(Json response) async {
+    if (user != null && user!['id'] != response['user']['id']) {
+      await pendingUploads.clear();
+    }
     user = Map<String, dynamic>.from(response['user']);
     if (!kIsWeb && response['token'] != null) {
       api.token = response['token'];
@@ -274,6 +292,8 @@ class AppState extends ChangeNotifier {
     user = null;
     familyId = null;
     recoveredPhoto = null;
+    recoveredPhotos.clear();
+    await pendingUploads.clear();
     if (!kIsWeb) {
       await storage.delete(key: 'session');
       await storage.delete(key: 'camera_child');

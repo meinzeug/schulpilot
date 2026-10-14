@@ -1,8 +1,10 @@
+import hashlib
 import io
+import re
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
 from sqlalchemy import select, update
 
 from . import schemas as s
@@ -51,6 +53,7 @@ def upload(
     child_id: str,
     file: UploadFile = File(...),
     school_day_id: str | None = None,
+    idempotency_key: str | None = Header(None),
     p=Depends(authenticated),
     db=Depends(get_db),
 ):
@@ -63,12 +66,8 @@ def upload(
         )
     if not settings.real_data_approved:
         raise HTTPException(503, "Materialimport echter Daten ist bis zur dokumentierten Datenschutzfreigabe gesperrt.")
-    rate_limit(db, "upload:" + p.user.id, 30, 3600)
-    page_number = None
-    if school_day_id:
-        from .school_day import append_page
-
-        _, page_number = append_page(db, p, child, school_day_id)
+    if idempotency_key is not None and not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", idempotency_key):
+        raise HTTPException(422, "Bitte einen gültigen Upload-Schlüssel verwenden.")
     raw = file.file.read(10 * 1024 * 1024 + 1)
     if len(raw) > 10 * 1024 * 1024:
         raise HTTPException(413, "Das Bild darf höchstens 10 MB groß sein.")
@@ -80,12 +79,51 @@ def upload(
                 raise ValueError("dimensions")
             image = ImageOps.exif_transpose(source).convert("RGB")
             image.thumbnail((1600, 1600))
+            warnings = []
+            if min(image.size) < 600:
+                warnings.append("Das Foto ist klein. Bitte prüfen, ob der Text gut lesbar ist.")
+            probe = image.copy()
+            probe.thumbnail((320, 320))
+            probe = probe.convert("L").filter(ImageFilter.FIND_EDGES)
+            if (
+                min(probe.size) > 4
+                and ImageStat.Stat(probe.crop((2, 2, probe.width - 2, probe.height - 2))).var[0] < 70
+            ):
+                warnings.append(
+                    "Das Foto enthält wenig erkennbare Details und könnte unscharf oder leer sein. Bitte prüfen."
+                )
             output = io.BytesIO()
             image.save(output, format="JPEG", quality=88)  # EXIF/GPS/XMP are discarded.
     except (UnidentifiedImageError, ValueError, OSError, Image.DecompressionBombError):
         raise HTTPException(
             422, "Bitte ein gültiges JPEG-, PNG- oder WebP-Bild mit höchstens 16 Megapixeln wählen."
         ) from None
+    digest = hashlib.sha256(output.getvalue()).hexdigest()
+    # One lock per child also serializes replay checks, day state and file ownership.
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    if idempotency_key:
+        existing = db.scalar(
+            select(Material).where(Material.child_id == child.id, Material.upload_key == idempotency_key)
+        )
+        if existing:
+            if existing.image_digest != digest or existing.school_day_id != school_day_id:
+                raise HTTPException(409, "Dieser Upload-Schlüssel gehört bereits zu einem anderen Foto.")
+            return material_data(existing)
+    rate_limit(db, "upload:" + p.user.id, 30, 3600, commit=False)
+    page_number = None
+    if school_day_id:
+        from .school_day import append_page
+
+        _, page_number = append_page(db, p, child, school_day_id)
+    duplicate = db.scalar(
+        select(Material.id).where(
+            Material.child_id == child.id, Material.school_day_id == school_day_id, Material.image_digest == digest
+        )
+    )
+    if duplicate:
+        warnings.append(
+            "Ein identisches Foto ist bereits gespeichert. Bitte prüfen und eine doppelte Seite gegebenenfalls entfernen."
+        )
     directory = settings.data_dir / "uploads"
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     path = uid() + ".jpg"
@@ -96,6 +134,9 @@ def upload(
         child_id=child.id,
         school_day_id=school_day_id,
         page_number=page_number,
+        upload_key=idempotency_key,
+        image_digest=digest,
+        quality_warnings=warnings,
         title=f"Heftseite {page_number}" if page_number else "Unterrichtsmaterial",
         path=path,
         synthetic=False,
@@ -204,10 +245,14 @@ def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_d
     if p.user.role != "parent":
         raise HTTPException(403, "Materialien werden durch Eltern gelöscht.")
     path = material.path
+    from .erasure import flush_journal, request
+
+    request(db, "material", material.id)
     db.delete(material)
     db.commit()
     if path:
         (settings.data_dir / "uploads" / path).unlink(missing_ok=True)
+    flush_journal()
     return {
         "message": "Material und Bild gelöscht. Bereits erzeugte private Übungen bleiben bis zur Löschung des Lernverlaufs erhalten."
     }
@@ -285,6 +330,12 @@ def create_unit(
         assignment = db.get(Assignment, data.assignment_id)
         if not assignment or assignment.child_id != child.id:
             raise HTTPException(404, "Lernauftrag nicht gefunden.")
+        from .learning import local_day
+
+        if assignment.scheduled_for and assignment.scheduled_for > local_day(child).isoformat():
+            raise HTTPException(
+                409, f"Dieser Lernauftrag beginnt am {assignment.scheduled_for}. Deine Eltern können ihn neu planen."
+            )
         if assignment.material_id:
             material_id = assignment.material_id
     if data.review_of:
@@ -322,6 +373,22 @@ def create_unit(
                     422,
                     "Die synthetische Übungsquelle unterstützt nur Brüche. Für andere Themen ist ein freigegebener KI-Anbieter erforderlich.",
                 )
+        if material.school_day_id and not review_sources:
+            review_sources = [
+                {"id": m.id, "revision": m.revision}
+                for m in db.scalars(
+                    select(Material)
+                    .where(
+                        Material.child_id == child.id,
+                        Material.school_day_id == material.school_day_id,
+                        Material.confirmed.is_(True),
+                    )
+                    .order_by(Material.page_number, Material.id)
+                )
+                if m.subject.casefold() == material.subject.casefold()
+            ]
+            if sum(len(db.get(Material, source["id"]).content) for source in review_sources) > 60_000:
+                raise HTTPException(422, "Die zusammengehörigen Seiten sind für eine Einheit zu umfangreich.")
     elif not data.assignment_id:
         raise HTTPException(422, "Bitte bestätigtes Material oder einen Elternauftrag auswählen.")
     payload = {"material_id": material_id, "assignment_id": data.assignment_id, "review_of": data.review_of}

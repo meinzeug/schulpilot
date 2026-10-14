@@ -441,3 +441,198 @@ def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatc
     body = json.dumps(captured[0])
     assert "PRIVATE-" not in body
     assert "page_number" in body and "Kürzen" in json.dumps(captured[0], ensure_ascii=False)
+
+
+def test_extension_keeps_answers_and_only_generates_for_new_material(api, household, monkeypatch):
+    _, child = household
+    day, calls = prepare_day(api, child, monkeypatch, subjects=("Mathematik",))
+    first = finish_job(api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "v1"}))
+    old_id = first["result"]["unit_ids"][0]
+    with TestClient(app, headers=HEADERS) as kid:
+        login = kid.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"}).json()
+        kid.headers["Authorization"] = "Bearer " + login["token"]
+        original = api.get(f"/api/units/{old_id}").json()
+        assert kid.post(f"/api/units/{old_id}/start").status_code == 200
+        q = original["questions"][0]
+        assert (
+            kid.post(f"/api/units/{old_id}/questions/{q['id']}/answer", json={"answer": q["answer"]}).status_code == 200
+        )
+        assert kid.post(f"/api/school-days/{day['id']}/extend").json()["package_version"] == 1
+        assert kid.post(f"/api/school-days/{day['id']}/extend").status_code == 200
+    page = api.post(
+        f"/api/children/{child['id']}/materials?school_day_id={day['id']}", files={"file": ("extra.jpg", image_bytes())}
+    ).json()
+    with DB.begin() as db:
+        m = db.get(Material, page["id"])
+        m.subject, m.topic, m.content, m.confirmed, m.status = "Mathematik", "Erweitern", "1/2 = 2/4", True, "confirmed"
+    api.put(f"/api/school-days/{day['id']}/stage", json={"stage": "review"})
+    preview = api.get(f"/api/school-days/{day['id']}").json()["plan"]
+    assert preview["available_minutes"] == 32
+    assert preview["groups"][0]["new_material_ids"] == [page["id"]]
+    second = finish_job(api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "v2"}))
+    assert second["status"] == "completed", second
+    assert second["result"]["package_version"] == 2
+    final = api.get(f"/api/school-days/{day['id']}").json()
+    assert len(final["units"]) == 2 and final["plan"]["estimated_minutes"] == 0
+    old = next(u for u in final["units"] if u["id"] == old_id)
+    assert len(old["questions"][0]["attempts"]) == 1 and old["package_version"] == 1
+    assert len(calls[-1][1]["materials"]) == 2  # shared context without replacing v1
+    assert sorted(u["package_version"] for u in final["units"]) == [1, 2]
+    assert api.post(f"/api/school-days/{day['id']}/extend").status_code == 200
+    closed = api.post(f"/api/school-days/{day['id']}/finish-additions").json()
+    assert closed["stage"] == "ready" and closed["package_version"] == 2 and len(closed["units"]) == 2
+
+
+def test_upload_replay_after_stage_change_and_conflicting_key(api, household):
+    _, child = household
+    allow_synthetic_test_transport()
+    day = api.post(f"/api/children/{child['id']}/school-day/today").json()
+    path = f"/api/children/{child['id']}/materials?school_day_id={day['id']}"
+    key = {"Idempotency-Key": "fixed-upload-key-123456"}
+    first = api.post(path, headers=key, files={"file": ("x.jpg", image_bytes())})
+    assert first.status_code == 201
+    assert first.json()["quality_warnings"]
+    api.put(f"/api/school-days/{day['id']}/stage", json={"stage": "review"})
+    second = api.post(path, headers=key, files={"file": ("x.jpg", image_bytes())})
+    assert first.json()["id"] == second.json()["id"]
+    other = io.BytesIO()
+    Image.new("RGB", (80, 60), "black").save(other, "JPEG")
+    assert api.post(path, headers=key, files={"file": ("x.jpg", other.getvalue())}).status_code == 409
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Material)) == 1
+
+
+def test_history_pagination_ordering_and_sibling_guards(api, household, monkeypatch):
+    user, child = household
+    day, _ = prepare_day(api, child, monkeypatch, subjects=("Mathematik", "Mathematik"))
+    api.put(f"/api/school-days/{day['id']}/stage", json={"stage": "collecting"})
+    ids = [m["id"] for m in reversed(day["pages"])]
+    ordered = api.put(f"/api/school-days/{day['id']}/page-order", json={"material_ids": ids})
+    assert ordered.status_code == 200
+    assert [m["id"] for m in ordered.json()["pages"]] == ids
+    assert api.put(f"/api/school-days/{day['id']}/page-order", json={"material_ids": [ids[0]] * 2}).status_code == 422
+    with DB.begin() as db:
+        db.add(SchoolDay(child_id=child["id"], school_date="2000-01-01"))
+    first = api.get(f"/api/children/{child['id']}/school-days?limit=1").json()
+    assert first["days"][0]["id"] == day["id"] and first["next_before"] == day["date"]
+    older = api.get(f"/api/children/{child['id']}/school-days?before={first['next_before']}").json()
+    archived_id = older["days"][0]["id"]
+    assert api.get(f"/api/school-days/{archived_id}").json()["read_only"] is True
+    assert api.post(f"/api/school-days/{archived_id}/extend").status_code == 409
+    sibling = create_child(api, user, "history-sibling")
+    with TestClient(app, headers=HEADERS) as kid:
+        login = kid.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"}).json()
+        kid.headers["Authorization"] = "Bearer " + login["token"]
+        assert kid.get(f"/api/children/{sibling['id']}/school-days").status_code == 404
+        assert kid.put(f"/api/school-days/{archived_id}/page-order", json={"material_ids": []}).status_code == 409
+
+
+def test_introduction_is_saved_idempotently_without_claiming_assistance(api, household, monkeypatch):
+    _, child = household
+    day, _ = prepare_day(api, child, monkeypatch, subjects=("Mathematik",))
+    result = finish_job(api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "intro"}))
+    unit_id = result["result"]["unit_ids"][0]
+    assert api.post(f"/api/units/{unit_id}/introduction").status_code == 403
+    with TestClient(app, headers=HEADERS) as kid:
+        login = kid.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"}).json()
+        kid.headers["Authorization"] = "Bearer " + login["token"]
+        assert kid.post(f"/api/units/{unit_id}/introduction").status_code == 409
+        kid.post(f"/api/units/{unit_id}/start")
+        for _ in range(2):
+            assert kid.post(f"/api/units/{unit_id}/introduction").json()["introduction_seen"] is True
+        unit = api.get(f"/api/units/{unit_id}").json()
+        q = unit["questions"][0]
+        answer = kid.post(f"/api/units/{unit_id}/questions/{q['id']}/answer", json={"answer": q["answer"]}).json()
+        assert answer["assisted"] is False
+        assert kid.get(f"/api/units/{unit_id}").json()["introduction_seen"] is True
+
+
+def test_unreadable_page_requests_a_retake_and_cannot_be_confirmed(api, household, monkeypatch):
+    _, child = household
+    allow_synthetic_test_transport()
+    day = api.post(f"/api/children/{child['id']}/school-day/today").json()
+    page = api.post(
+        f"/api/children/{child['id']}/materials?school_day_id={day['id']}",
+        files={"file": ("synthetic.jpg", image_bytes())},
+    ).json()
+    api.put(f"/api/school-days/{day['id']}/stage", json={"stage": "review"})
+    monkeypatch.setattr(
+        "schulpilot.worker.request_provider",
+        lambda *a, **kw: Result(
+            {
+                "legibility": "unreadable",
+                "subject": "",
+                "topic": "",
+                "content": "",
+                "uncertainties": ["Bitte ein lesbares Foto aufnehmen."],
+                "homework": [],
+            },
+            1,
+            1,
+            0,
+        ),
+    )
+    result = finish_job(
+        api, api.post(f"/api/materials/{page['id']}/extract", headers={"Idempotency-Key": "unreadable"})
+    )
+    assert result["status"] == "completed"
+    material = api.get(f"/api/materials/{page['id']}").json()
+    assert material["status"] == "unreadable" and material["content"] == ""
+    assert (
+        api.put(
+            f"/api/materials/{page['id']}/confirm",
+            json={
+                "subject": "Mathematik",
+                "topic": "Brüche",
+                "content": "Erfunden",
+                "homework": [],
+                "uncertainties_resolved": True,
+            },
+        ).status_code
+        == 409
+    )
+    assert (
+        api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "no-invention"}).status_code
+        == 409
+    )
+    assert api.delete(f"/api/school-days/{day['id']}/pages/{page['id']}").status_code == 200
+
+
+def test_deferred_parent_goal_starts_on_selected_day_and_reuses_related_pages(api, household, monkeypatch):
+    from datetime import timedelta
+
+    from schulpilot.learning import local_day
+
+    _, child = household
+    day, calls = prepare_day(api, child, monkeypatch, subjects=("Mathematik", "Mathematik"))
+    with DB() as db:
+        today = local_day(db.get(Child, child["id"]))
+    body = {
+        "kind": "parent",
+        "subject": "Mathematik",
+        "topic": "Brüche später",
+        "material_id": day["pages"][0]["id"],
+        "scheduled_for": (today + timedelta(days=2)).isoformat(),
+        "mandatory": True,
+    }
+    goal = api.post(f"/api/children/{child['id']}/assignments", json=body).json()
+    plan = api.get(f"/api/children/{child['id']}/overview").json()["plan"]
+    assert not any(x["id"] == goal["id"] for x in plan["today"])
+    assert any(x["id"] == goal["id"] for x in plan["later"])
+    response = api.post(
+        f"/api/children/{child['id']}/units", json={"assignment_id": goal["id"]}, headers={"Idempotency-Key": "not-yet"}
+    )
+    assert response.status_code == 409
+    body["scheduled_for"] = today.isoformat()
+    assert api.put(f"/api/children/{child['id']}/assignments/{goal['id']}", json=body).status_code == 200
+    result = finish_job(
+        api,
+        api.post(
+            f"/api/children/{child['id']}/units", json={"assignment_id": goal["id"]}, headers={"Idempotency-Key": "now"}
+        ),
+    )
+    assert result["status"] == "completed", result
+    assert (
+        "SEITENINHALT 1" in calls[-1][1]["material"]["content"]
+        and "SEITENINHALT 2" in calls[-1][1]["material"]["content"]
+    )

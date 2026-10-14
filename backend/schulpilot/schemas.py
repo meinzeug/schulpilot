@@ -111,8 +111,15 @@ class AssignmentCreate(Strict):
     topic: Short
     note: str = Field(default="", max_length=2000)
     due: date | None = None
+    scheduled_for: date | None = None
     material_id: str | None = None
     mandatory: bool = True
+
+    @model_validator(mode="after")
+    def dates_consistent(self):
+        if self.due and self.scheduled_for and self.scheduled_for > self.due:
+            raise ValueError("Der Lernbeginn darf nicht nach dem Termin liegen.")
+        return self
 
 
 class MaterialConfirm(Strict):
@@ -176,11 +183,25 @@ class UnitOutput(Strict):
 
 
 class ExtractionOutput(Strict):
-    subject: str = Field(min_length=1, max_length=80)
-    topic: Short
-    content: str = Field(min_length=1, max_length=24000)
+    legibility: Literal["readable", "partial", "unreadable"] = "readable"
+    subject: str = Field(max_length=80)
+    topic: str = Field(max_length=160)
+    content: str = Field(max_length=24000)
     uncertainties: list[Annotated[str, Field(max_length=500)]] = Field(max_length=30)
     homework: list[Annotated[str, Field(max_length=500)]] = Field(max_length=20)
+
+    @model_validator(mode="after")
+    def readable_content(self):
+        if self.legibility == "unreadable":
+            if not self.uncertainties or self.homework or self.content.strip():
+                raise ValueError(
+                    "Unleserliche Seiten brauchen einen Unsicherheitshinweis und dürfen keinen erfundenen Stoff oder Hausaufgaben enthalten."
+                )
+        elif not all(value.strip() for value in (self.subject, self.topic, self.content)):
+            raise ValueError("Lesbarer oder teilweise lesbarer Stoff benötigt Fach, Thema und Inhalt.")
+        if self.legibility == "partial" and not self.uncertainties:
+            raise ValueError("Teilweise lesbarer Stoff benötigt einen Unsicherheitshinweis.")
+        return self
 
 
 class PackageUnitOutput(UnitOutput):

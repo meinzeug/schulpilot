@@ -155,6 +155,9 @@ def main():
         screenshot("android-child.png")
         checks.append("separate_native_child_login")
         press("Jetzt lernen")
+        current_unit = check(parent.get("/units/" + demo["unit_id"]))
+        if not current_unit["introduction_seen"]:
+            press("Weiter zu den Übungen", scroll=True)
         first = check(parent.get("/units/" + demo["unit_id"]))["questions"][0]
         press("Ein Hinweis bitte", scroll=True)
         press(first["answer"], scroll=True)

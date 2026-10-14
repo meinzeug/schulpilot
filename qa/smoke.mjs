@@ -65,6 +65,8 @@ try{
   await c.getByRole('button',{name:'Jetzt lernen',exact:true}).waitFor();
   if(authoritative.status==='completed'){await c.goto(url+'/unit/'+unitId,{waitUntil:'domcontentloaded'});await c.waitForSelector('flutter-view');await accessible(c);}else{
     await c.getByRole('button',{name:'Jetzt lernen',exact:true}).click();
+    const intro = c.getByRole('button',{name:'Weiter zu den Übungen',exact:true});
+    if (!authoritative.introduction_seen) { await intro.waitFor(); await intro.click(); }
     await c.getByRole('button',{name:'Ein Hinweis bitte',exact:true}).waitFor();
     if(authoritative.questions[0].hints_used===0)await c.getByRole('button',{name:'Ein Hinweis bitte',exact:true}).click();
   }

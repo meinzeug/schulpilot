@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -6,12 +7,20 @@ import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'material_screen.dart';
+import 'dashboard.dart';
+import 'pending_uploads.dart';
 import 'ui.dart';
 
 class SchoolDayScreen extends StatefulWidget {
   final AppState state;
   final String childId;
-  const SchoolDayScreen(this.state, {super.key, required this.childId});
+  final String? dayId;
+  const SchoolDayScreen(
+    this.state, {
+    super.key,
+    required this.childId,
+    this.dayId,
+  });
 
   @override
   State<SchoolDayScreen> createState() => _SchoolDayScreenState();
@@ -22,10 +31,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
   String? error, reviewId;
   String progress = '';
   bool loading = true, working = false, fetching = false;
+  List<Json> pendingPhotos = [];
   Timer? poll;
   AppState get state => widget.state;
   List<Json> get pages => (day?['pages'] as List? ?? []).cast<Json>();
   bool get locked => working || day?['active_job'] != null;
+  bool get readOnly => day?['read_only'] == true;
 
   @override
   void initState() {
@@ -44,10 +55,18 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
     fetching = true;
     poll?.cancel();
     try {
+      if (state.isChild) await refreshPending();
       final result = await state.api.get(
-        '/children/${widget.childId}/school-day/today',
+        widget.dayId == null
+            ? '/children/${widget.childId}/school-day/today'
+            : '/school-days/${widget.dayId}',
       );
-      Json? next = result['day'] as Json?;
+      Json? next = widget.dayId == null ? result['day'] as Json? : result;
+      if (widget.dayId != null &&
+          next != null &&
+          next['child_id'] != widget.childId) {
+        throw ApiError('Dieser Schultag gehört nicht zu diesem Lernraum.');
+      }
       if (next == null && state.isChild) {
         next = await state.api.post(
           '/children/${widget.childId}/school-day/today',
@@ -80,6 +99,68 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
     }
   }
 
+  Future<void> refreshPending() async {
+    final owner = state.user?['id'] as String?;
+    if (owner == null) return;
+    final stored = await state.pendingUploads.read(owner);
+    if (mounted) {
+      setState(
+        () => pendingPhotos = stored
+            .where((e) => e['child'] == widget.childId)
+            .toList(),
+      );
+    }
+  }
+
+  Future<void> sendPending() async {
+    final owner = state.user!['id'] as String;
+    final stored = await state.pendingUploads.read(owner);
+    for (final photo in stored.where((e) => e['child'] == widget.childId)) {
+      if (!mounted || state.user?['id'] != owner) return;
+      await state.api.upload(
+        widget.childId,
+        base64Decode(photo['image']),
+        schoolDayId: photo['day'],
+        uploadKey: photo['key'],
+      );
+      if (state.user?['id'] != owner) return;
+      await state.pendingUploads.remove(owner, photo['key']);
+      await refreshPending();
+    }
+  }
+
+  Future<void> reorderPage(String id, int offset) async {
+    final ids = pages.map((e) => e['id'] as String).toList();
+    final index = ids.indexOf(id);
+    final target = index + offset;
+    if (target < 0 || target >= ids.length) return;
+    ids.removeAt(index);
+    ids.insert(target, id);
+    await state.api.put('/school-days/${day!['id']}/page-order', {
+      'material_ids': ids,
+    });
+  }
+
+  Future<void> scheduleMaterial([Json? source]) async {
+    final overview = await state.api.get(
+      '/children/${widget.childId}/overview',
+    );
+    final tomorrow = DateTime.parse(overview['plan']['date'])
+        .add(const Duration(days: 1))
+        .toIso8601String()
+        .substring(0, 10);
+    if (!mounted) return;
+    await assignmentDialog(
+      context,
+      state,
+      overview['child'],
+      pages.where((p) => p['confirmed'] == true).toList(),
+      source: source,
+      plannedFor: tomorrow,
+    );
+    await load();
+  }
+
   Future<void> run(Future<void> Function() action) async {
     if (locked) return;
     setState(() {
@@ -108,11 +189,51 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
         'Echte Heftfotos sind bis zur dokumentierten Datenschutzfreigabe gesperrt. Im synthetischen Testraum kannst du den Ablauf mit zwei künstlichen Seiten testen.',
       );
     }
+    if (status['ai_available'] != true) {
+      throw ApiError(
+        status['ai_block_reason'] ?? 'Zurzeit ist kein geeigneter KI-Dienst verfügbar. Deine gespeicherten Einheiten bleiben nutzbar.',
+      );
+    }
     if (!mounted) return;
     final nativeAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     if (nativeAndroid && !recovered) {
       await state.storage.write(key: 'camera_child', value: widget.childId);
+    }
+    if (source == ImageSource.gallery) {
+      final remaining =
+          ((day!['max_pages'] as int) - pages.length - pendingPhotos.length)
+              .clamp(0, PendingUploads.maxPages);
+      if (remaining == 0) {
+        throw ApiError(
+          'Bitte gespeicherte Fotos zuerst senden oder entfernen.',
+        );
+      }
+      final files = await ImagePicker().pickMultiImage(
+        maxWidth: 3200,
+        maxHeight: 3200,
+        imageQuality: 90,
+        requestFullMetadata: false,
+        limit: remaining > 1 ? remaining : 2,
+      );
+      if (nativeAndroid) await state.storage.delete(key: 'camera_child');
+      for (final file in files.take(remaining)) {
+        if (!mounted) return;
+        final raw = await file.readAsBytes();
+        if (!mounted) return;
+        final bytes = await cropMaterialPhoto(context, raw);
+        if (bytes != null) {
+          await state.pendingUploads.add(
+            state.user!['id'],
+            widget.childId,
+            day!['id'],
+            bytes,
+          );
+          await refreshPending();
+        }
+      }
+      if (mounted) await sendPending();
+      return;
     }
     if (!mounted) return;
     final bytes = recovered && state.recoveredPhoto != null
@@ -120,8 +241,19 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
         : await pickMaterialPhoto(context, source);
     if (nativeAndroid) await state.storage.delete(key: 'camera_child');
     if (bytes == null) return;
-    await state.api.upload(widget.childId, bytes, schoolDayId: day!['id']);
-    if (recovered) state.recoveredPhoto = null;
+    await state.pendingUploads.add(
+      state.user!['id'],
+      widget.childId,
+      day!['id'],
+      bytes,
+    );
+    await refreshPending();
+    if (recovered) {
+      state.recoveredPhoto = state.recoveredPhotos.isEmpty
+          ? null
+          : state.recoveredPhotos.removeAt(0);
+    }
+    await sendPending();
   }
 
   Future<void> recognize() async {
@@ -154,6 +286,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
       subtitle: 'Deine Heftseiten von heute werden zu einem kleinen Lernpaket. Du kannst den Assistenten jederzeit verlassen und später fortsetzen.',
       actions: [
         OutlinedButton.icon(
+          onPressed: () =>
+              openRoute(context, '/after-school/${widget.childId}/history'),
+          icon: const Icon(Icons.history),
+          label: const Text('Tagespakete'),
+        ),
+        OutlinedButton.icon(
           onPressed: () => unawaited(load()),
           icon: const Icon(Icons.refresh),
           label: const Text('Aktualisieren'),
@@ -177,11 +315,66 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
           const SizedBox(height: 24),
           if (loading) const Center(child: CircularProgressIndicator()),
           if (error != null) Notice(error!, warning: true),
+          if (error != null && state.isChild && !working)
+            TextButton(
+              onPressed: () => run(() async {
+                await state.pendingUploads.clear();
+                await refreshPending();
+              }),
+              child: const Text('Lokale Uploadreste löschen'),
+            ),
+          if (pendingPhotos.isNotEmpty && state.isChild)
+            Panel(
+              color: cream,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  heading(
+                    '${pendingPhotos.length} Foto(s) auf diesem Gerät gespeichert',
+                  ),
+                  const Text(
+                    'Noch nicht sicher beim Server angekommen. Innerhalb von 24 Stunden fortsetzbar; ältere Fotos werden beim nächsten Appstart oder Öffnen des Assistenten bereinigt. Abmelden oder Entfernen löscht sie lokal.',
+                  ),
+                  for (final photo in pendingPhotos)
+                    ListTile(
+                      leading: Image.memory(
+                        base64Decode(photo['image']),
+                        width: 40,
+                        height: 48,
+                      ),
+                      title: const Text('Upload ausstehend'),
+                      trailing: IconButton(
+                        tooltip: 'Lokales Foto entfernen',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: working
+                            ? null
+                            : () => run(() async {
+                                await state.pendingUploads.remove(
+                                  state.user!['id'],
+                                  photo['key'],
+                                );
+                                await refreshPending();
+                              }),
+                      ),
+                    ),
+                  if (!working)
+                    ActionButton(
+                      label: 'Gespeicherte Fotos senden',
+                      icon: Icons.cloud_upload_outlined,
+                      onPressed: () => run(sendPending),
+                    ),
+                ],
+              ),
+            ),
           if (!loading && day == null)
             const Notice(
               'Für heute wurde noch kein Tagesassistent begonnen. Dein Kind kann ihn in seinem eigenen Lernraum starten.',
             ),
           if (day != null) ...[
+            if (readOnly)
+              const Notice(
+                'Gespeicherter Schultag. Seiten und vorhandene Einheiten bleiben einsehbar. Neue Fotos gehören zum heutigen Tag.',
+              ),
             Text(
               '${day!['date']} · ${pages.length} von ${day!['max_pages']} möglichen Seiten · $confirmed geprüft',
               style: const TextStyle(color: muted),
@@ -225,6 +418,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
               ),
               if (!parent &&
                   !locked &&
+                  !readOnly &&
                   pages.length < (day!['max_pages'] as int))
                 Wrap(
                   spacing: 12,
@@ -249,7 +443,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                         onPressed: () => run(() => capture(ImageSource.camera)),
                       ),
                       ActionButton(
-                        label: 'Foto aus Galerie hinzufügen',
+                        label: 'Mehrere Fotos auswählen',
                         icon: Icons.photo_library_outlined,
                         secondary: true,
                         onPressed: () =>
@@ -304,6 +498,15 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
+                              for (final warning
+                                  in page['quality_warnings'] as List? ?? [])
+                                Text(
+                                  warning,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.brown,
+                                  ),
+                                ),
                               Text(
                                 page['confirmed'] == true
                                     ? 'Geprüft · ${page['topic']}'
@@ -315,10 +518,40 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                                   fontSize: 12,
                                 ),
                               ),
+                              if (page['status'] == 'unreadable')
+                                const Text(
+                                  'Nicht lesbar · Bitte neu aufnehmen',
+                                  style: TextStyle(
+                                    color: Colors.brown,
+                                    fontSize: 12,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
                         if (stage == 'collecting' &&
+                            !parent &&
+                            !readOnly &&
+                            !locked) ...[
+                          IconButton(
+                            tooltip: 'Seite nach oben',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: pages.first['id'] == page['id']
+                                ? null
+                                : () => run(() => reorderPage(page['id'], -1)),
+                            icon: const Icon(Icons.arrow_upward, size: 18),
+                          ),
+                          IconButton(
+                            tooltip: 'Seite nach unten',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: pages.last['id'] == page['id']
+                                ? null
+                                : () => run(() => reorderPage(page['id'], 1)),
+                            icon: const Icon(Icons.arrow_downward, size: 18),
+                          ),
+                        ],
+                        if (stage == 'collecting' &&
+                            !readOnly &&
                             !locked &&
                             !parent &&
                             page['confirmed'] != true &&
@@ -332,7 +565,25 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                             }),
                             icon: const Icon(Icons.delete_outline),
                           ),
-                        if (stage == 'review' && page['status'] != 'uploaded')
+                        if (page['status'] == 'unreadable' &&
+                            !parent &&
+                            !readOnly &&
+                            !locked)
+                          TextButton(
+                            onPressed: () => run(() async {
+                              await state.api.delete(
+                                '/school-days/${day!['id']}/pages/${page['id']}',
+                              );
+                              await state.api.put(
+                                '/school-days/${day!['id']}/stage',
+                                {'stage': 'collecting'},
+                              );
+                            }),
+                            child: const Text('Ersetzen'),
+                          ),
+                        if (stage == 'review' &&
+                            page['status'] != 'uploaded' &&
+                            page['status'] != 'unreadable')
                           TextButton(
                             onPressed: () =>
                                 setState(() => reviewId = page['id']),
@@ -344,7 +595,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                 ),
               const SizedBox(height: 18),
             ],
-            if (stage == 'collecting' && pages.isNotEmpty && !locked && !parent)
+            if (stage == 'collecting' &&
+                pages.isNotEmpty &&
+                pendingPhotos.isEmpty &&
+                !locked &&
+                !parent &&
+                !readOnly)
               ActionButton(
                 label: 'Alle Seiten sind da · Weiter',
                 icon: Icons.arrow_forward,
@@ -357,13 +613,14 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
             if (stage == 'review') ...[
               if (!parent &&
                   !locked &&
+                  !readOnly &&
                   pages.any((p) => p['status'] == 'uploaded'))
                 ActionButton(
                   label: 'Heftseiten mit KI erkennen',
                   icon: Icons.document_scanner_outlined,
                   onPressed: () => run(recognize),
                 ),
-              if (selected != null && !locked) ...[
+              if (selected != null && !locked && !readOnly) ...[
                 const SizedBox(height: 22),
                 heading(
                   'Seite ${selected['page_number']} prüfen',
@@ -377,7 +634,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                   onRefresh: () => unawaited(load()),
                 ),
               ],
-              if (!locked && !parent) ...[
+              if (!locked && !parent && !readOnly) ...[
                 const SizedBox(height: 20),
                 TextButton.icon(
                   onPressed: () => run(() async {
@@ -390,6 +647,21 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                 ),
               ],
               if (allConfirmed) ...[
+                if ((day!['units'] as List).isNotEmpty &&
+                    !parent &&
+                    !readOnly &&
+                    !locked)
+                  TextButton.icon(
+                    onPressed: () => run(() async {
+                      await state.api.post(
+                        '/school-days/${day!['id']}/finish-additions',
+                      );
+                    }),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text(
+                      'Gespeichertes Paket weiter nutzen · Ergänzungen später',
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 heading(
                   'Dein Paket für heute',
@@ -406,13 +678,18 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                     ),
                     title: Text(group['subject']),
                     subtitle: Text(
-                      '${(group['topics'] as List).join(' · ')}\n${group['selected'] == true ? 'Heute · ca. ${group['estimated_minutes']} Minuten' : 'Gespeichert für später'}',
+                      '${(group['topics'] as List).join(' · ')}\n${group['covered'] == true
+                          ? 'Bereits im gespeicherten Paket'
+                          : group['selected'] == true
+                          ? 'Heute · ca. ${group['estimated_minutes']} Minuten'
+                          : 'Gespeichert für später'}',
                     ),
                   ),
                 for (final note in preview?['notices'] as List? ?? [])
                   Notice(note),
                 if (!locked &&
                     !parent &&
+                    !readOnly &&
                     (preview?['estimated_minutes'] ?? 0) > 0)
                   ActionButton(
                     label: 'Lernpaket für heute erstellen',
@@ -426,10 +703,11 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                   ),
               ],
             ],
-            if (stage == 'ready') ...[
+            if ((day!['units'] as List).isNotEmpty) ...[
               heading(
                 'Dein Lernpaket ist bereit',
-                subtitle: 'Die Übungen wurden aus deinen bestätigten Seiten erstellt. Richtige Antworten und spätere Wiederholungen werden getrennt gespeichert.',
+                subtitle:
+                    'Stand ${day!['package_version'] ?? 1}. Vorhandene Antworten bleiben auch bei Ergänzungen erhalten. Richtige Antworten und spätere Wiederholungen werden getrennt gespeichert.',
               ),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
@@ -494,19 +772,45 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
                 ),
               const SizedBox(height: 12),
               for (final group in preview?['groups'] as List? ?? [])
-                if (!(day!['units'] as List).any(
-                  (u) =>
-                      u['subject'].toString().toLowerCase() ==
-                      group['subject'].toString().toLowerCase(),
-                ))
+                if (group['covered'] != true)
                   Notice(
                     '${group['subject']}: ${(group['topics'] as List).join(', ')} bleibt für später gespeichert. Heute wird daraus kein zusätzlicher Pflichtauftrag.',
                   ),
+              if (stage == 'ready' &&
+                  !parent &&
+                  !readOnly &&
+                  !locked &&
+                  day!['synthetic'] != true)
+                ActionButton(
+                  label: 'Eine Seite vergessen? Paket ergänzen',
+                  secondary: true,
+                  icon: Icons.add_photo_alternate_outlined,
+                  onPressed: () => run(() async {
+                    await state.api.post('/school-days/${day!['id']}/extend');
+                  }),
+                ),
+              if (parent && state.canManage)
+                TextButton.icon(
+                  icon: const Icon(Icons.event_note),
+                  label: const Text(
+                    'Gespeicherten Stoff als Lernauftrag einplanen',
+                  ),
+                  onPressed: () => scheduleMaterial(),
+                ),
               if (!parent)
                 const Notice(
                   'Deine Eltern sehen die Heftseiten, Aufgaben, Antworten und verwendeten Hinweise. Nach einer Pause oder späteren Wiederholung kannst du hier wieder einsteigen.',
                 ),
             ],
+            if (parent &&
+                state.canManage &&
+                (day!['units'] as List).isEmpty &&
+                allConfirmed)
+              TextButton.icon(
+                onPressed: () => scheduleMaterial(pages.first),
+                icon: const Icon(Icons.event_note),
+                label: const Text('Gespeicherten Stoff für später einplanen'),
+              ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: () => openRoute(context, '/app'),

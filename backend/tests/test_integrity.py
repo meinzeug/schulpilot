@@ -165,6 +165,18 @@ def test_only_parent_can_close_binding_goal(api):
         assert db.get(Assignment, assignment["id"]).done
 
 
+def test_chunked_requests_cannot_bypass_actual_body_limit(api):
+    def body():
+        yield b'{"email":"'
+        for _ in range(8):
+            yield b"x" * 16_384
+        yield b'"}'
+
+    response = api.post("/api/auth/register", content=body(), headers={"Content-Type": "application/json"})
+    assert response.status_code == 413
+    assert "x" * 100 not in response.text
+
+
 def test_migration_preserves_existing_rows(tmp_path):
     path = tmp_path / "migration.sqlite"
     env = {**os.environ, "DATABASE_URL": "sqlite:///" + str(path), "ENVIRONMENT": "test"}
@@ -178,10 +190,26 @@ INSERT INTO users(id,username,display_name,password_hash,role,verified,disabled,
 INSERT INTO children(id,family_id,user_id,grade,subjects,school_type,region,preferences) VALUES('c','f','u',6,'[]','','','{}');
 INSERT INTO materials(id,child_id,title,status,subject,topic,content,uncertainties,homework,confirmed,synthetic,created) VALUES('m','c','Fixture','review','Math','X','x','[]','[]',0,1,0);
 """)
+    subprocess.run([*command, "0004"], env=env, check=True, capture_output=True)
+    with sqlite3.connect(path) as db:
+        db.executescript("""
+INSERT INTO school_days(id,child_id,school_date,stage,revision,created) VALUES('day','c','2026-10-14','ready',1,0);
+INSERT INTO learning_units(id,child_id,school_day_id,material_id,subject,topic,explanation,questions,status,synthetic,provider,created,active_seconds,segment_seconds) VALUES('unit','c','day','m','Math','X','Fixture','[]','active',1,'synthetic',0,0,0);
+INSERT INTO attempts(id,unit_id,question_id,answer,outcome,assisted,created) VALUES('attempt','unit','q1','"synthetic"','correct',0,0);
+""")
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0004"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0005"
+        assert db.execute(
+            "select package_version,introduction_seen,status from learning_units where id='unit'"
+        ).fetchone() == (1, 1, "active")
+        assert db.execute("select answer,outcome from attempts where id='attempt'").fetchone() == (
+            '"synthetic"',
+            "correct",
+        )
+        assert db.execute("select package_version from school_days where id='day'").fetchone()[0] == 1
+        assert db.execute("select upload_key,legibility from materials where id='m'").fetchone() == (None, "unknown")
         assert db.execute("select school_day_id,page_number from materials where id='m'").fetchone() == (None, None)
-        assert db.execute("select count(*) from school_days").fetchone()[0] == 0
+        assert db.execute("select count(*) from school_days").fetchone()[0] == 1
         assert db.execute("select extraction_model,fixture_id from materials where id='m'").fetchone() == ("", None)

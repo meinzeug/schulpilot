@@ -56,6 +56,11 @@ try {
   assert.equal(unitResponse.status(), 200);
   const unit = await unitResponse.json();
   await startButton().click();
+  if (!unit.introduction_seen) {
+    const intro = c.getByRole('button', {name: 'Weiter zu den Übungen', exact: true});
+    await reveal(c, intro);
+    await intro.click();
+  }
   await reveal(c, c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}));
   await c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}).click();
   const q = unit.questions.find(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));

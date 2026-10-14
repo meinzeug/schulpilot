@@ -26,6 +26,9 @@ class Settings:
     fcm_public_config: str = os.getenv("FCM_PUBLIC_CONFIG", "")
     push_approved: bool = os.getenv("PUSH_APPROVED", "false") == "true"
     push_privacy_evidence: str = os.getenv("PUSH_PRIVACY_EVIDENCE", "")
+    operator_name: str = os.getenv("OPERATOR_NAME", "")
+    operator_address: str = os.getenv("OPERATOR_ADDRESS", "")
+    operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")
     codex_socket: str = os.getenv("CODEX_SOCKET", "")
     codex_approved: bool = os.getenv("CODEX_APPROVED", "false") == "true"
 
