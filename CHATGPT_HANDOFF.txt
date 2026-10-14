@@ -1,242 +1,221 @@
 SCHULPILOT – sichere Übergabe an ChatGPT
-Stand: 14.10.2026; ausschließlich künstliche Testdaten
+Stand: 14.10.2026; sämtliche Lern-/Geräteprüfungen ausschließlich mit eigenen künstlichen Haushalten
 
-1. Tatsächlicher Projekt- und Deploymentstand
+1. Tatsächlicher Produkt- und Bereitstellungsstand
 
-Repository: /home/dennis/schulpilot
-GitHub: https://github.com/meinzeug/schulpilot, Branch main
-Website: https://schulpilot.dorfspy.de
-API: https://schulpilot.dorfspy.de/api
-Bereitgestellter Implementierungscommit:
-b2368834d58aff2ac4f502866856f3ca38688a78
-Aktiver Release: 20261014T211056Z-b236883
-Der tatsächlich laufende Stand ist öffentlich unter /api/health nachprüfbar.
-Nachfolgende Dokumentations-/QA-Commits können neuer sein als dieser Release.
+Repository /home/dennis/schulpilot; GitHub https://github.com/meinzeug/schulpilot, main.
+Website https://schulpilot.dorfspy.de ; eigene API https://schulpilot.dorfspy.de/api .
+Bereitgestellter Produktcommit e6faf722b9c0ef93ae7987d2f45aabdb36da918b.
+Aktiver Release 20261014T230555Z-e6faf72; Version 1.0.1, öffentlicher /api/health bestätigt.
+Nachfolgende QA-/Dokumentationscommits können neuer sein und ändern diesen Produktcode nicht.
 
-Eigene Eltern-/Kinderaccounts, Backend und PostgreSQL bleiben bestehen.
-Die gemeinsame Oberfläche ist Flutter; Android ist eine native Flutter-App,
-keine WebView. Der bestehende KI-Lernablauf bleibt erhalten. Neue Funktionen:
-getrennte Firebase-Plattformkeys, zusätzliche Elternzustimmung für Kinder-Push,
-sitzungsgebundene Geräte, geschützte Push-Betriebsseite und ausdrücklich
-ausgelöste Tests ausschließlich an das eigene aktuelle künstliche Testgerät.
-Web-Push verwendet den eigenen Serviceworker unter /push/. Die CSP bleibt
-streng; Firebase-Module werden erst nach Geräte-Opt-in extern geladen.
+Web und reguläre signierte native Flutter-APK 1.0.1+15 sind aktiv, keine WebView.
+Eigene PostgreSQL-Datenbank, Eltern-/Kinderaccounts, Rollen und Familien bleiben bestehen.
+Tagesassistent, tatsächliche KI-Erkennung, bestätigte Quellen, Erklärungen, vier Aufgabenarten,
+gespeicherte Antworten/Hinweise, KI-Lernbegleitung, Wiederholung, Elternplanung und Verlauf sind implementiert.
+OpenRouter Free bleibt freigegebener Standard mit Preisgrenze0 und Data-Collection-Deny.
+Erfolge werden aus gespeicherten Aktivitäten abgeleitet; kein behauptetes sicheres Verständnis nach nur einer Antwort.
+Keine ungefragte Wiederholung echter KI-Tests mit fremden Kinderinhalten.
 
-Web und Direct-APK 0.1.0+13 sind bereitgestellt. Play-AAB 0.1.0+13 ist gebaut,
-signiert und validiert, aber nicht zur Play Console hochgeladen.
-Paket: de.dorfspy.schulpilot; Android min. API 24, Ziel-API 36.
-Direct-APK lokal: /home/dennis/schulpilot/artifacts/schulpilot-0.1.0-test.apk
-Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
-APK: 61.290.600 Bytes, SHA256:
-ab5d002434599a0890a9c5aac97da3e39d151a7b4f2648c40b5d2ad45cb7fd68
-Play-AAB lokal: /home/dennis/schulpilot/artifacts/schulpilot-0.1.0-upload.aab
-AAB: 58.734.750 Bytes; keine REQUEST_INSTALL_PACKAGES-Berechtigung.
-Direct-APK und Play verwenden getrennte Updatewege. Die Direct-APK prüft bei
-jedem Start und erneutem Öffnen auf Updates; Android bestätigt Installationen.
+Neuer schwarzer US-Abschlusshut als App-Logo, adaptives Android-Icon, Startsymbol und Web/PWA/Store-Assets.
+Im installierten Android-Launcher mit APK-Build 15 sichtbar geprüft. Quelle/Vorgabe/Exporte: design/brand/README.md und scripts/export_brand.py.
 
-2. Tatsächlich geprüftes Google-Projekt
+APK /home/dennis/schulpilot/artifacts/schulpilot-android.apk
+Download https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+61.869.521 Bytes; SHA256 de2a48a357ececb5452c6c31a026a1c1f4dec7039af35b54689456da7cf9f1c0
+Kanal stable; Paket de.dorfspy.schulpilot; min. Android API 24, Ziel-API 36.
+Play-AAB /home/dennis/schulpilot/artifacts/schulpilot-play.aab ; 59.288.710 Bytes.
+Web, direct und play gebaut; APK-Signatur/16-KB-Zipausrichtung und bundletool 1.18.3 validiert.
+Play enthält keinen direkten APK-Installer; Play-In-App-Updates sind getrennt.
+Direct-Update 13→14 und 14→15 tatsächlich automatisch geprüft, heruntergeladen und über Android bestätigt,
+kein adb install für das Upgrade. Jeweils drei erneute Prüfungen auf 14 und 15 bei Kaltstart, Wiederöffnen und zusätzlichem Launcher-Intent bestanden. Updateprüfung bei jedem Start und Wiederöffnen bleibt aktiv.
 
-Operator: gvhindenburg@gmail.com. Die normale Google-Anmeldung wurde lokal
-abgeschlossen. Es ist kein erneuter Login zur abgeschlossenen Einrichtung nötig.
-Projekt schulpilot-f6bf3 / 460657028995 wurde über offizielle APIs verifiziert.
-Android-App: 1:460657028995:android:9475b4497b0c9de08590b6
-Web-App: 1:460657028995:web:67373b18092ab46f8590b6
-Apps und Android-Paket wurden unabhängig geprüft. Keine zweite App, kein neues
-Projekt oder VAPID-Paar erzeugt; kein Billing-Upgrade oder kostenpflichtiger Kauf.
-Spark und ausgeschaltete optionale Dienstdatennutzung wurden vom Betreiber aus
-der Konsole bestätigt; diese konkreten UI-Schalter wurden nicht erneut im
-Browser kontrolliert. Die App bindet ausschließlich Firebase Core/Messaging ein.
-Kein Firebase Authentication/Google-Produktlogin, Firestore, Storage, Hosting,
-Analytics, Werbung, Gemini oder Crashlytics wurde eingebaut.
+2. Google/Firebase – tatsächlich eingerichtet
 
-Diese APIs sind tatsächlich ENABLED:
-- fcm.googleapis.com
-- fcmregistrations.googleapis.com
-- firebaseinstallations.googleapis.com
-Für Verwaltung/Prüfung wurden zusätzlich nur iam.googleapis.com und
-apikeys.googleapis.com aktiviert. Vorhandene fremde Dienste wurden nicht geändert.
+Autorisiertes Google-Konto gvhindenburg@gmail.com; die vorhandene normale Browseranmeldung
+und die geschützte offizielle gcloud-Anmeldung funktionieren. Kein neuer Google-Account nötig.
+Bestehendes Projekt schulpilot-f6bf3 /460657028995, keine zweite Firebase-App oder VAPID-Schlüssel.
+Spark vom Betreiber bestätigt; kein Billing-Upgrade oder kostenpflichtiger Kauf ausgeführt.
+Android-App 1:460657028995:android:9475b4497b0c9de08590b6, Paket de.dorfspy.schulpilot.
+Web-App 1:460657028995:web:67373b18092ab46f8590b6; kein Firebase Hosting.
+Fixierte SDKs: firebase_core 4.15.0, firebase_messaging 16.7.0, Web-SDK 12.19.0; getToken/onTokenRefresh beibehalten.
+Google-Tokenprüfung über google-auth 2.62.0. Keine ungeprüfte Token-API-Migration.
+Kein Firebase Authentication, Firestore, Storage, Analytics, Werbung, Gemini oder Crashlytics eingebunden.
 
-Dedizierter Sender:
+Dediziertes Senderkonto:
 schulpilot-fcm-sender@schulpilot-f6bf3.iam.gserviceaccount.com
-Tatsächlich einzige zugewiesene Rolle:
+Tatsächlich einzige Senderrolle:
 projects/schulpilot-f6bf3/roles/schulpilotFcmSender
-Diese eigene Rolle enthält ausschließlich cloudmessaging.messages.create.
-Keine Owner-, Editor-, allgemeine Firebase-Admin- oder organisationsweite Rolle.
-Genau ein USER_MANAGED-Schlüssel wurde erzeugt; vorhandener Schlüssel wird bei
-erneuter Prüfung wiederverwendet. Kein Default-Firebase-Admin-SDK-Konto als Sender.
+Ausschließlich cloudmessaging.messages.create. Keine Owner-/Editor-/allgemeinen Firebase-Adminrechte.
+Genau ein USER_MANAGED-Schlüssel erzeugt; danach wiederverwendet, keine zusätzlichen Schlüssel.
 
-3. Tatsächliche API-Key-Prüfung
+Bestätigte APIs ENABLED:
+fcm.googleapis.com
+fcmregistrations.googleapis.com
+firebaseinstallations.googleapis.com
+Für die administrative Prüfung wurden iam.googleapis.com und apikeys.googleapis.com verwendet.
+Android- und Web-Key tatsächlich verschieden und unabhängig zugeordnet.
+Bestehende Anwendungseinschränkungsobjekte sind leer: keine wirksame Paket-/Refererbindung.
+Bestehende API-Allowlist umfasst 27 Firebase-/Google-APIs einschließlich beider Registrierungsdienste.
+Keine Einschränkung deaktiviert oder gelockert. Getrennte Runtime-Plattformkeys implementiert.
+Eine breite Allowlist ist weder die Einbindung anderer Firebase-Dienste noch deren Datenschutzfreigabe.
 
-Die beigefügte firebase-public-config.json enthält ausschließlich öffentliche
-Clientkennungen. apiKey ist der Web-Key; androidApiKey wurde aus der tatsächlichen
-Android-Konfiguration übernommen. Die Runtime wählt den jeweiligen Plattformkey.
-Beide sind verschieden; der vom Betreiber gelieferte Web-Key wurde bestätigt.
-
-Web-Key-Ressource:
-projects/460657028995/locations/global/keys/5bdc20a1-ccac-473f-882d-63110412bd78
-Anwendungsrestriktion: browserKeyRestrictions {}, keine allowedReferrers.
-Android-Key-Ressource:
-projects/460657028995/locations/global/keys/6a6a6fe0-4537-4029-8a81-37d0d04ed537
-Anwendungsrestriktion: androidKeyRestrictions {}, keine allowedApplications.
-Damit derzeit keine wirksame Referer-/Paketbindung. Die vorhandenen 27
-API-Ziele bleiben unverändert; FCM Registration und Firebase Installations
-sind enthalten, ohne Methodenbeschränkung. Keine Restriktion wurde entfernt,
-gelockert oder pauschal abgeschaltet. Erfolgreiche tatsächliche Web-Registrierung
-bestätigt die geprüfte Web-Konfiguration; Android-Push ist noch am Gerät zu prüfen.
-
-Vor künftigem Einschränken: HTTP-Referer und bestehende no-referrer-Richtlinie
-gemeinsam prüfen. Android benötigt die tatsächlich verteilenden Signierer.
-Direct-SHA1: bbd919be42f2d31ce98367651edf330596f9ebd0
-Ein Google-Play-App-Signing-Zertifikat liegt noch nicht vor. Keine ausschließliche
-Android-Restriktion auf den Web-Key oder umgekehrt übertragen.
-
-4. Private Dateien und Konfigurationsvorrang
-
-Lokales Verzeichnis /home/dennis/.local/share/schulpilot-firebase: 0700.
-Öffentliche Konfiguration: firebase-public-config.json dort, 0600.
-Private Datei lokal ausschließlich als Pfadangabe:
+Private Dienstkontodatei ausschließlich lokal:
 /home/dennis/.local/share/schulpilot-firebase/fcm-service-account.json
-Rechte 0600. Server ausschließlich als Pfadangabe:
-/etc/schulpilot/fcm-service-account.json
-Eigentümer root:schulpilot, Rechte 0640; Dienstidentität schulpilot geprüft.
-project_id, token_uri=https://oauth2.googleapis.com/token und dedizierte
-Senderidentität wurden ohne Ausgabe des privaten Inhalts validiert.
-Die private JSON-Datei ist ausdrücklich KEIN Bestandteil dieser Übergabe.
+Server /etc/schulpilot/fcm-service-account.json ; root:schulpilot,0640.
+Lokaler Ordner 0700, private Datei 0600. project_id, token_uri und Identität geprüft.
+Verschlüsselte Adminwerte haben Vorrang vor entsprechenden lokalen Umgebungsdefaults.
+FCM_SERVICE_ACCOUNT_FILE bleibt eine lokale Serverpfadeinstellung.
+Keine private Datei in Git, Flutter-Bundles, Downloads oder dieser Übergabe.
 
-Verschlüsselte Admin-Einstellungen haben Vorrang vor Umgebungswerten.
-Ein gespeichertes privates Dienstkonto-JSON hätte Vorrang vor der Datei; in
-dieser Installation wird die geschützte Datei verwendet. Öffentliche Konfiguration
-und technischer Prüfnachweis sind verschlüsselt gespeichert. FCM_SERVICE_ACCOUNT_FILE
-ist serverseitig gesetzt. Änderungen betrafen nur SCHULPILOT; andere Dienste aktiv.
+3. Google-Elternlogin – eigene API, nicht Firebase Authentication
 
-Allgemein PUSH_APPROVED=false; PUSH_PRIVACY_EVIDENCE noch nicht freigegeben.
-Die frühere OpenRouter-/KI-Freigabe gilt nicht automatisch als Firebase-Freigabe.
-Nur eine künstliche isolierte Testfamilie hat begrenzten Push-Testzugriff,
-gültig bis 21.10.2026, 18:57:06 UTC. Das aktiviert keinen allgemeinen Versand.
+Im selben Projekt genau ein Webclient SCHULPILOT Elternzugang erstellt.
+Ursprung https://schulpilot.dorfspy.de ; Rücksprung ausschließlich
+https://schulpilot.dorfspy.de/api/auth/google/callback .
+Scopes nur openid und email. Keine Gmail-/Drive-/Kalender-/Offlineberechtigung.
+Google-Access-/Refresh-Tokens werden nicht gespeichert oder an Flutter gegeben.
+Geprüfte Signatur, Aussteller, Audience, Ablauf, Nonce, State, serverseitiges PKCE.
+Web nur widerrufbares HttpOnly-/SameSite-Strict-Cookie. Android zusätzlich eigener Geräte-Proof
+UND zufälliges Callback-Ticket; Proof-Polling alleine reicht ausdrücklich nicht.
+Bestehende E-Mail-Adresse allein verknüpft kein Konto. Linken in Einstellungen verlangt bisheriges
+Elternpasswort und aktive Sitzung. Kinder und Admins bleiben unabhängig und können nicht per Google die Rolle wechseln.
+Drittanbieter-Mailboxen werden bei Neuregistrierung zusätzlich durch unsere echte Bestätigungsmail geprüft.
 
-5. Konkrete Testergebnisse
+Privater OAuth-Webclient lokal:
+/home/dennis/.local/share/schulpilot-firebase/google-oauth-client.json (0600)
+Server /etc/schulpilot/google-oauth-client.json (root:schulpilot,0640)
+GOOGLE_OAUTH_CLIENT_FILE bzw. verschlüsselter google_oauth_client_json; Laufzeitschalter google_login_enabled.
+Diese private Datei ist KEINE Übergabedatei. /api/auth/google/status liefert nur Verfügbarkeitsbooleans.
 
-- 166 Backendtests auf isoliertem PostgreSQL bestanden (120,48s), einschließlich
-  Familien-/Rollenprüfung, Elternzustimmung, Sitzung/Token, Ruhezeiten,
-  Parallelitäts-/Kostenkontrolle, manuellem Verkauf und Migration mit Datenerhalt.
-- Flutter-Analyse ohne Befunde; 41 Fluttertests bestanden. Web-Release,
-  signierte Direct-APK und signiertes Play-AAB erfolgreich gebaut.
-  apksigner verify, zipalign -c -P 16 4 und bundletool 1.18.3 validate bestanden.
-- Google-Dienstkonto: echte OAuth-Authentifizierung auf dem Server erfolgreich.
-  Reine FCM-HTTP-v1-Validierung mit festem künstlichem Topic: HTTP 200.
-  validate_only:true verschickt keine Nachricht. Zuvor wurde ein absichtlich
-  unregistriertes künstliches Geräte-Ziel mit HTTP 400 INVALID_ARGUMENT abgelehnt.
-- Öffentlicher Chrome-Test: keine Firebase-Netzanfragen vor Opt-in; nach Opt-in
-  Firebase Installations HTTP 200, FCM Registration HTTP 200, eigene API HTTP 200.
-  Dedizierter Serviceworker /push/firebase-messaging-sw.js mit Scope /push/ aktiv.
-  Eigene Gerätevalidierung über die App: validated. Ein ausdrücklich ausgelöster
-  neutraler Test an das eigene künstliche Browsergerät: accepted UND sichtbarer
-  In-App-Hinweis im Vordergrund beobachtet. Logout anschließend: Sitzung 401.
-  Das ist kein Nachweis einer Hintergrund-/Android-Zustellung.
-- Öffentliche Angebots-/Bedingungsdirektlinks, Preise bei 390 px, geschützte
-  Admin-Push-/Verkaufsseiten und Eltern-Rollensperre geprüft; keine JS-Laufzeitfehler.
-  Allgemeine Push-Sperre und fehlende private Schlüssel in API-Antworten geprüft.
-- APK tatsächlich vor und nach Web-Login heruntergeladen: Größe und SHA256
-  stimmen mit /api/app-release überein. Eigenen zusätzlichen Download-Testraum
-  anschließend gelöscht; die separate Übergabe-Testfamilie bleibt zeitlich begrenzt.
-- Quelltext, Web-Bundle, APK und AAB gegen 12 tatsächliche Geheimnisquellen
-  geprüft, keine Treffer. Keine Zugangsdaten oder privaten Schlüssel weitergeben.
+Echter Google-Consent, erster und wiederholter Weblogin, Erstellung genau eines eigenen künstlichen
+Haushalts/Identität, normales Elternpasswort, künstliche Kinderanlage, unabhängiger Kinderlogin,
+403 gegen Eltern/Admin/Google-Rollenwechsel und Logout 401 bestanden. Google-QA-Haushalt,
+Google-Identität und Sitzungen danach regulär gelöscht, keine echten Kinder-/Lerndaten angelegt.
+Android-App-Links tatsächlich verified, kalter HTTPS- und warmer eigener Rücksprung geprüft.
+Vollständiger Google-Login im Android-Systembrowser benötigt weiterhin eine dort normale Google-Anmeldung;
+kein Google-Konto oder Cookie wurde in den Emulator injiziert. Dieser Teil ist nicht als beobachtet behauptet.
 
-Behobene/erklärte Befunde:
-Das Inline-Bootstrap des fixierten FlutterFire-Web-SDK war von der CSP blockiert.
-Version 13 lädt die fixierten Module über den externen Opt-in-Loader; kein
-unsafe-inline für Skripte. Chrome sperrt Push im Inkognito-Modus; der erfolgreiche
-Test nutzte ein temporäres geschütztes normales Profil, anschließend entfernt.
-Eine HTTP 401 während des abschließenden Logout-Tests ist erwartet.
-Die Entwicklungsuhr geht rund zwei Stunden vor. Lokale Dienstkonto-JWTs wurden
-deshalb abgewiesen. Server-NTP stimmt; echte OAuth-/FCM-Prüfungen wurden dort
-erfolgreich ausgeführt. Keine Host-Uhr wurde geändert.
+Google-Branding: Name SCHULPILOT, schwarzer Hut, Support/Entwicklerkontakt und Website/Datenschutz/Bedingungen gespeichert.
+Zielgruppe extern, Veröffentlichungsstatus In Produktion. Grundlegender Datenzugriff benötigt laut Konsole keine Zusatzprüfung.
+Branding-Prüfung meldete zuvor fehlende Inhaberschaft und unzureichend lesbaren Datenschutz.
+Beides technisch korrigiert: öffentliche HTML-Datenschutzseite /privacy ohne JavaScript,
+offizielle HTML-Datei google54ecba42793aa9c8.html veröffentlicht und Eigentum an ausschließlich
+https://schulpilot.dorfspy.de/ erfolgreich bestätigt. Keine anderen DNS-/Nameserver geändert.
+Google nennt nach Bestätigung bis zu 24 Stunden Aktualisierung vor Wiederprüfung.
+Branding ist deshalb noch NICHT als genehmigt behauptet; tatsächlicher Login funktioniert bereits.
+Konsole kann vor Genehmigung dorfspy.de statt SCHULPILOT anzeigen.
 
-6. Erreichbare Browserseiten und Anmeldung
+4. Push-Freigabe und tatsächliche Zustellnachweise
 
-https://schulpilot.dorfspy.de/login          normaler sicherer Login
-https://schulpilot.dorfspy.de/app            eigener Familien-/Kinderbereich
-https://schulpilot.dorfspy.de/settings       Geräte, Opt-in und eigene Testknöpfe
-https://schulpilot.dorfspy.de/admin          Betriebsübersicht, nur Admin
-https://schulpilot.dorfspy.de/admin/push     Sender-/Freigabe-/Prüfstatus
-https://schulpilot.dorfspy.de/admin/settings verschlüsselte Betriebseinstellungen
-https://schulpilot.dorfspy.de/admin/verkauf  manuelle Überweisungsfreischaltung
-https://schulpilot.dorfspy.de/angebote       öffentliche Tarife
-https://schulpilot.dorfspy.de/bedingungen    Vertrags-/Widerrufstexte
-https://schulpilot.dorfspy.de/bestellungen   eigene Elternbestellungen
-https://schulpilot.dorfspy.de/privacy        Datenschutzinformationen
-https://schulpilot.dorfspy.de/account-deletion Kontolöschung
+Die spätere ausdrückliche Betreiberanweisung zum regulären Produktionsbetrieb wurde als eigenständige
+Push-Entscheidung nach technischer Abnahme dokumentiert (docs/APPROVALS.md) und auditierbar gespeichert.
+production_approved=true, production_available=true; Nachweis im geschützten Adminstatus.
+Das ist keine automatische Folge eines Schlüssels oder der früheren KI-Freigabe.
+Neue Installationen sind standardmäßig aus, Geräte brauchen Opt-in und Kinder zusätzliche Elternfreigabe.
+Vollständige Betreiber-/Vertragsangaben bleiben noch zu ergänzen; die Betriebsentscheidung ist kein Rechtsgutachten.
 
-Der Betreiber meldet sich selbst im normalen Browser an und übergibt ChatGPT
-nur die bereits angemeldete Browseroberfläche. Keine Passwörter, OAuth-Tokens,
-Cookies oder Geräte-Tokens in Chat, Screenshots, Dateien für ChatGPT oder Logs.
-Eigene künstliche Eltern-/Kinderanmeldung steht ausschließlich lokal geschützt:
-/home/dennis/.local/share/schulpilot-firebase/test-login-private.json
-Diese Datei nicht an ChatGPT hochladen. Admin separat normal als admin anmelden;
-das bestehende Passwort bleibt beim Betreiber. Es gibt keinen Debug-Login.
-Google-Konsole nur falls nötig: https://console.firebase.google.com/project/schulpilot-f6bf3/settings/general
-Dort meldet sich der Betreiber selbst mit dem oben genannten Google-Konto an.
+A) Sender-Authentifizierung: echte OAuth-Anmeldung auf synchronisiertem Server erfolgreich.
+B) API/Berechtigung: HTTPv1 validate_only:true an festes künstliches Ziel HTTP 200; dadurch kein Versand.
+C) Tatsächlich sichtbare Zustellung:
+- Web: normales eigenes temporäres Chrome-Profil, keine Firebase-Anfragen vor Opt-in, danach FIS/FCMReg/eigene API 200;
+  separater Serviceworker /push/, validated, accepted und sichtbarer neutraler In-App-Hinweis im Vordergrund.
+  Profil danach entfernt, Logout 401. Inkognito blockiert Push und wurde nicht als Erfolg gewertet.
+- APK-Build 14 im Android-Emulator (API 36): eigene künstliche Kinderanmeldung, native Registrierung und Systemberechtigung, zwei angenommene Nachrichten,
+  Vordergrundhinweis sichtbar. Zweite Nachricht traf 456 ms vor onStop ein: kein sauberer Hintergrundtest, kein bewiesener Produktfehler.
+- APK-Build 15 im selben Android-Emulator (API 36): neues eigenes Gerät, Activity STOPPED vor Queue belegt, genau eine neutrale Nachricht über den geschützten
+  normalen Testhandler einschließlich Freigaben/Ruhezeiten/Sitzung/6-pro-Tag-Limit eingereiht; accepted,
+  Android-Benachrichtigung tatsächlich sichtbar. Tippen öffnete das richtige geschützte Kinderkonto.
+  Gerät danach über App entfernt, App und Beobachtersitzung korrekt abgemeldet.
+Diese Emulatorbeobachtung beweist keine Zustellung auf jedem physischen Gerät oder Huawei ohne geeignete Google Play Services.
 
-7. Genaue Fortsetzung für ChatGPT
+Push initialisiert erst nach Opt-in. Kein beliebiger Token-Versandendpunkt. Tokens verschlüsselt,
+sitzungsgebunden, Wechsel gespeichert, ungültige Registrierungen entfernt. Logout/Widerruf/Rechteentzug sperren Sendungen.
+Ruhezeiten, neutrale Nachrichten und kurze TTL gelten weiter. Google verarbeitet technische Installations-/Verbindungsdaten
+auch außerhalb der EU; sofortige Löschung aller Google-Installations-/Backupdaten wird nicht behauptet. Details in privacy-review.txt.
 
-1) Normales Browserprofil verwenden, kein Inkognito. Betreiber meldet den
-   künstlichen Elternzugang unter /login an. /settings öffnen, Testkennzeichnung
-   und ausgeschaltete/noch nicht registrierte Geräteansicht prüfen.
-2) Auf diesem Gerät einschalten und Browsererlaubnis selbst bestätigen.
-   Vor dem Klick dürfen keine Firebase-Installations-/Registrierungsanfragen
-   stattfinden. Den eigenen Geräteeintrag und Serviceworker /push/ kontrollieren.
-3) Für den ausdrücklich gewünschten Test die eigenen Geräte-Ruhezeiten beachten.
-   Standard 20–08 Uhr Europe/Berlin. Am künstlichen Gerät können beide Zeiten
-   ausdrücklich auf 00:00 gesetzt werden. Elternvorgaben gelten zusätzlich.
-4) FCM-Anfrage validieren: nur validated zählt als erfolgreiche Validierung,
-   nicht als Zustellung. Test an dieses Gerät senden: accepted bestätigt nur
-   FCM-Annahme. Vordergrundhinweis selbst beobachten und dokumentieren.
-5) Dann bei geöffnetem Browser im Hintergrund und nach Browserneustart testen:
-   neutrale Systemmeldung, keine Namen/Lerninhalte, Öffnen führt zu /app.
-   Gesperrten Bildschirm und Ruhezeiten beobachten. Höchstens sechs ausgelöste
-   Tests je Nutzer/Tag; zwei wurden am 14.10.2026 für diesen Elternzugang benutzt.
-6) In einem eigenen unterstützten Android-Gerät mit Google Play Services die
-   Direct-APK 13 installieren. Eigenständigen künstlichen Kinderlogin verwenden.
-   Elterliche Push-Freigabe ist nur für diese künstliche Testfamilie vorbereitet;
-   Android-Berechtigung bleibt freiwillig. Vordergrund/Hintergrund/Neustart,
-   Benachrichtigung öffnen und Updateprüfung beobachten. Huawei ohne geeignete
-   Google Play Services ist nicht als unterstützt bestätigt.
-7) Eigene Registrierung ausschalten, neu einschalten und Tokenwechsel prüfen.
-   Logout und Sitzungswiderruf müssen weitere Backend-Sendungen verhindern.
-   Elternfreigabe des Kindes entziehen: Registrierung muss verschwinden und
-   erneutes Kinder-Opt-in abgewiesen werden. Nur die künstliche Familie verändern.
-   Bereits an den Provider übergebene Nachrichten können nicht zurückgerufen
-   werden; kurze TTL ist kein Ersatz für Prüfung vor Versand.
-8) Sichtbar beobachtete Anzeige, FCM-Annahme und Validierung getrennt festhalten.
-   Produktions-Push nicht nebenbei einschalten. Nach Ablauf der Testfreigabe
-   kann der Betreiber diese lokal per firebase_ops für den künstlichen Raum
-   erneuern; es gibt keine öffentliche Freigabe- oder beliebige Token-Sende-API.
+5. Tests, Builds und Grenzen
 
-8. Tatsächlich verbleibende Voraussetzungen
+191 PostgreSQL-Backendtests bestanden (238,43 s), 43 Fluttertests bestanden, Flutter-Analyse/Ruff ohne Befund.
+Migration 0010 erhält vorhandene Daten. Negative Signierer-/Debug-/Versionstests; OIDC-Missbrauch, Signatur,
+Ablauf/Audience/Nonce, native Proof-/Ticketbindung, Cookie-/Plattformtrennung und Drittanbieter-Mailnachweis geprüft.
+Web, direkte APK und Play-AAB15 gebaut und validiert. Öffentliches HTTPS, Datenschutz-HTML, AppLinks und VerifikationsdateiHTTP 200.
+Öffentliche Browserprüfung bei 390 px, Rollen-/Push-/Verkaufsseiten und kein Firebase vor Opt-in; keine Laufzeitfehler.
+Zwei echte APK-Downloads vor/nach Login mit Manifest-Hash geprüft; zusätzlichen eigenen Testraum gelöscht.
+Private Google-/FCM-Dateien, reale Schlüssel/Passwörter, Web, APK, AAB und Übergabedateien werden auf Geheimnisse geprüft.
+Keine pauschale Aussage von 100% Fehlerfreiheit, vollständiger juristischer Abnahme oder Play-Veröffentlichung.
 
-Sichtbare Hintergrund-/Android-Zustellung, Benachrichtigung öffnen, Neustart und
-Tokenwechsel benötigen die oben beschriebene Browser-/Gerätebeobachtung.
-Firebase-Vertragspartei, einschlägige Google APIs Terms/Datenverarbeitung,
-internationale Übermittlung, Elterninformation und Löschweg für Installationen
-konkret dokumentieren; dann separate bewusste Betreiberentscheidung samt Nachweis
-unter /admin/settings. Bis dahin allgemeiner Push AUS. privacy-review.txt enthält
-den genauen Prüfstand; ein Schlüssel allein ist kein Freigabenachweis.
+GitHub-Push main funktioniert. CI-Lauf 38637840266 für den Produktcommit wurde tatsächlich geprüft:
+beide Jobs ohne ausgeführte Schritte, Annotation „The job was not started because your account is locked due to a billing issue.“
+Lokale Tests sind ausgeführt; keine erfolgreiche GitHub-CI behauptet.
 
-Die zusätzliche Verkaufsseite und der vollständige manuelle Bankfreischaltungsweg
-sind implementiert. Der öffentliche Verkauf bleibt gesperrt, solange echte
-Betreiber-/Steuer-/Bankangaben fehlen. Diese trägt der Betreiber unter
-/admin/settings und /admin/verkauf ein und prüft vor Freischaltung die Bedingungen.
-Keine IBAN oder Betreiberidentität wurde erfunden. Play-Veröffentlichung benötigt
-weiterhin ein berechtigtes Play-Console-Konto und tatsächliche Pflichtangaben.
-Push auf main ist erfolgt; der Remote-Hash für cdc2f8cb6374469bb36dc98b6b63bfe84a0f9d31
-wurde überprüft. Nachfolgende reine Dokumentationscommits sind möglich.
-Aktuell tatsächlich geprüfter CI-Lauf:
-https://github.com/meinzeug/schulpilot/actions/runs/38623272407
-Backend- und Flutter-Jobs wurden beide NICHT gestartet. GitHub meldet:
-The job was not started because your account is locked due to a billing issue.
-Das ist kein fehlgeschlagener Testlauf. Der Kontobetreiber muss bei Bedarf
-die GitHub-Abrechnungssperre beheben; lokale Tests/Builds sind davon getrennt.
+6. Konkrete Browserfortsetzung für ChatGPT
 
-Nur diese drei bereinigten Dateien an ChatGPT geben:
-CHATGPT_HANDOFF.txt, firebase-public-config.json, privacy-review.txt.
-Die private Dienstkonto-JSON und test-login-private.json bleiben geschützt lokal.
+Erreichbar:
+https://schulpilot.dorfspy.de/login – normaler sicherer Login, optional Google ausschließlich für Eltern
+https://schulpilot.dorfspy.de/app – berechtigter Lernraum
+https://schulpilot.dorfspy.de/settings – Gerät/Push und Google-Verknüpfung
+https://schulpilot.dorfspy.de/admin – Administratorbereich
+https://schulpilot.dorfspy.de/admin/settings – geschützte Betriebseinstellungen
+https://schulpilot.dorfspy.de/admin/push – geschützter Sender-/Freigabestatus
+https://schulpilot.dorfspy.de/admin/verkauf – manuelle Bankprüfung
+https://schulpilot.dorfspy.de/angebote und /bedingungen – öffentliche Angebote/Bedingungen
+https://schulpilot.dorfspy.de/privacy – lesbare Datenschutzerklärung
+https://schulpilot.dorfspy.de/account-deletion – eigener authentifizierter Löschablauf
+
+Anmeldungen erfolgen normal im Browser durch den Nutzer. Keine Passwörter, Cookies, OAuth- oder Gerätetokens
+an ChatGPT übermitteln. Admin heißt admin und nutzt sein bestehendes sicheres Passwort ohne TOTP;
+Google-Projektinhaberschaft verleiht keine SCHULPILOT-Adminrolle.
+Neue leere Installationen öffnen /setup; der lokale einmalige Installationscode liegt unter
+/var/lib/schulpilot/setup-code.txt. Erst danach eigenen Admin und Betrieb einrichten; kein öffentliches Standardpasswort.
+Für Push nur das eigene künstliche Testkonto verwenden. Seine private lokale Zugangsdaten-Datei
+/home/dennis/.local/share/schulpilot-firebase/test-login-private.json ist KEINE ChatGPT-Übergabe.
+Nutzer trägt den passenden Eltern-/Kinderlogin selbst im normalen Formular ein.
+Testfreigabe dieses Fixtures läuft 2026-10-21T18:57:06Z ab; danach keine stillschweigende Verlängerung.
+Keine echten Kinderfotos oder Antworten für Abnahmen verwenden. Frühere Google-QA-Familie ist bereits gelöscht.
+
+Testfolge:
+1. Als Nutzer Login durchführen. Eltern/Kinder getrennt, richtige Familienansicht und Geräteübersicht prüfen.
+2. Normales Chrome-Profil (kein Inkognito): unter Einstellungen Push bewusst auf diesem Gerät einschalten,
+   Browserberechtigung bestätigen. Eltern müssen Kinder-Push vorher im Kinderlernplan freigeben.
+3. Nur am freigegebenen eigenen künstlichen Gerät die vorhandene geschützte Testsektion verwenden:
+   erst validieren, dann ausdrücklich an dieses Gerät senden; höchstens 6 Testanforderungen pro Konto/Tag.
+   Validierung/Message-ID getrennt von tatsächlichem sichtbaren Hinweis dokumentieren.
+4. Für Hintergrundbeobachtung tatsächlichen App-/Tab-Hintergrund VOR Versand sicherstellen. Erster Androidversuch
+   zeigte, warum ein sehr schneller Sendeklick+Home allein keinen ausreichenden Timingnachweis liefert.
+5. Öffnen der Nachricht, Konto-/Sitzungswechsel, Ausschalten, Widerruf, Ruhezeiten und kalter Neustart
+   bei Bedarf auf dem eigenen physischen Gerät beobachten. Keine bereits bestandenen Tests als neue Beobachtung ausgeben.
+6. Optionalen Google-Login mit eigener normaler Google-Anmeldung bedienen; bestehende Eltern verknüpfen nach
+   Passwortlogin unter Einstellungen. Kein automatisch angelegter Admin. Android Google-Login auf eigenem
+   Gerät mit normal angemeldetem Google-Konto abschließen; Providerfehler/Cancellation ebenfalls beobachten.
+7. Google-Branding frühestens nach der genannten 24-h-Aktualisierung erneut prüfen:
+   https://console.cloud.google.com/auth/branding?project=schulpilot-f6bf3
+   unter Probleme aufrufen → behoben → Wiederprüfung. Inhaberbestätigung und HTML-Datei erhalten.
+   Die bestehende normale Google-Sitzung ist nutzbar; falls abgelaufen Nutzer selbst wieder anmelden.
+
+7. Tatsächliche verbleibende Betreiberaktionen
+
+- Play Console unter https://play.google.com/console/u/0/developers wurde mit gvhindenburg@gmail.com geöffnet.
+  Sie zeigt Entwicklerkonto erstellen; kein bestehender Entwicklerzugang zugänglich. Nutzer muss sein passendes
+  Entwicklerkonto bereitstellen oder Registrierung/gegebenenfalls Gebühren/Identitätsprüfung selbst abschließen.
+  Es wurde kein kostenpflichtiges Konto erstellt und nichts hochgeladen/veröffentlicht.
+- Für Play: vollständige Betreiber-/Supportdaten, Zielalter/Families, Data Safety, Inhaltsbewertung und Reviewzugang
+  wahrheitsgemäß ergänzen. Vorbereitete Texte unter store/; Play-AAB bereit. Tatsächlichen Play-App-Signing-
+  Fingerprint erst aus der Console übernehmen; Upload-Zertifikat nicht mit Play-Signatur verwechseln.
+- Öffentlicher Überweisungsverkauf ist technisch implementiert, bleibt aber wegen fehlender echter
+  Betreiberanschrift, Steuerangaben, Kontoinhaber/IBAN gesperrt. Keine erfundenen Zahlungsdaten.
+- Branding-Wiederprüfung nach Google-Aktualisierung und gegebenenfalls verbleibende konkrete Google-Rückmeldung.
+- GitHub-Kontoinhaber muss die tatsächliche Actions-Abrechnungssperre lösen, wenn gehostete CI laufen soll.
+- Physische Geräte und vollständiger Google-Systembrowser-Login unter Android bleiben getrennte Beobachtungen;
+  Android- und Web-Testclients sowie geschützte Appseiten sind bereit.
+
+8. Die drei bereinigten Übergabedateien
+
+CHATGPT_HANDOFF.txt
+firebase-public-config.json – ausschließlich verifizierte öffentliche Web-/Android-Konfiguration
+privacy-review.txt – technische Fakten, konkrete Betreiberentscheidung und offene Rechts-/Geräteangaben
+
+Originale Konfiguration/Privacy außerhalb von Git unter /home/dennis/.local/share/schulpilot-firebase/,
+Kopien unter /home/dennis/schulpilot/artifacts/firebase-handoff/ (0700, Dateien 0600).
+Private Dienstkontodatei, OAuth-Webclient-JSON, Testpasswörter und Google-CLI-Zugang bleiben ausschließlich
+auf dem geschützten Rechner/Server und werden NICHT als Chat-Download bereitgestellt.

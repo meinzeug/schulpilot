@@ -76,3 +76,5 @@ OpenRouter Free ist der Standard für Bild, Lerneinheiten und Tagespakete: `dots
 
 
 Download-Verifikation im echten Browser: `cd qa && node download.mjs`. Android-Gerätetest: `.venv/bin/python qa/android_smoke.py` gegen den eigens angelegten Emulator `emulator-5580` / AVD `schulpilot-qa-api36`, API 36. Das Skript löscht ausschließlich die Daten dieser Testinstallation, prüft eigene Eltern-/Kinderzugänge, Neustart, Hinweis/Antwort und Widerruf. Es verwendet eine private temporäre Datei unter `artifacts/` zur Fortsetzung; nach Erfolg wird die Testfamilie samt Datei gelöscht. Kein Test gegen ein fremdes Gerät oder echte Kinderdaten.
+
+Der optionale [Google-Elternzugang](docs/GOOGLE_LOGIN.md) verwendet OpenID Connect über unsere eigene API, keine Firebase Authentication. Kinder bleiben unabhängig mit eigenem Benutzernamen und Passwort angemeldet. Firebase ist ausschließlich für freiwilliges Push mit zusätzlicher Elternfreigabe zuständig. Der konkrete aktuelle Abnahme- und Bereitstellungsstand steht in [STATUS.md](docs/STATUS.md).

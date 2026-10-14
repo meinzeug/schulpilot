@@ -30,3 +30,5 @@ Primärquellen, geprüft gegen google-auth 2.62.0 und die fixierte Flutter-Versi
 - https://developers.google.com/identity/branding-guidelines
 - https://developers.google.com/terms/api-services-user-data-policy
 - https://docs.flutter.dev/cookbook/navigation/set-up-app-links
+
+Abnahme inzwischen bestätigt: echter Google-Web-Consent mit ausschließlich E-Mail-Freigabe, Elternregistrierung und zweiter Google-Login in denselben Haushalt. Eigene Kinderanlage/Kindersitzung und Rollensperren gegen öffentliche HTTPS geprüft. Den vollständigen eigenen künstlichen Google-Haushalt anschließend gelöscht. HTML-Inhaberschaft für ausschließlich die SCHULPILOT-Subdomain wurde erfolgreich bestätigt; Datei dauerhaft erhalten. Google empfiehlt bis zu 24 Stunden Aktualisierung vor der Branding-Wiederprüfung. Android-App-Links sind tatsächlich verified, ungültige kalte/warme Rücksprünge sicher abgefangen; vollständige Google-Systembrowser-Anmeldung unter Android bleibt als separate Beobachtung offen.

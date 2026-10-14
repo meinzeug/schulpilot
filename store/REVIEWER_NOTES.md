@@ -1,6 +1,6 @@
 # Interne Play-Abnahme
 
-Paket `de.dorfspy.schulpilot`. Eigener Eltern-/Kinderlogin, kein Google-Login. Test-APK öffentlich vor/nach Login herunterladbar; AAB ausschließlich für berechtigte Console-Uploads. Kein Checkout und keine externen Kaufaufforderungen im Android-Client.
+Paket `de.dorfspy.schulpilot`. Eigener Eltern-/Kinderlogin, optionaler Google-Elternlogin über eigene API (kein Firebase Authentication). Reguläre signierte APK öffentlich vor/nach Login herunterladbar; AAB ausschließlich für berechtigte Console-Uploads. Kein Checkout und keine externen Kaufaufforderungen im Android-Client.
 
 `de-DE/` enthält vorbereitete Texte, keine bereits veröffentlichte Storebeschreibung. Vor öffentlicher Freigabe den tatsächlichen Funktionsumfang, Betreiberangaben und die aktuelle Testphase prüfen. Vorhandene native Icons verwenden; Screenshots ausschließlich aus dem tatsächlichen Build mit künstlichen Daten erstellen.
 
@@ -22,7 +22,12 @@ Dies sind technische Bestandsangaben, keine automatisch ausgefüllte rechtliche 
 | Kinder-Anzeigename, Klasse, gewählte Fächer | Familienzuordnung und Lernbegleitung; keine Kinder-E-Mail erforderlich |
 | Private Fotos, bestätigter Stoff, Antworten | Private Lernbegleitung und berechtigter Elternüberblick; bei aktivierter geeigneter KI Weiterleitung über Backend an ausdrücklich konfigurierten Anbieter |
 | Aktive Lernereignisse / ungefähre Zeit | Fortschritt, Wiederholung und Elternübersicht; keine Erfassung außerhalb von SCHULPILOT |
+| Optionale Google-Kontokennung / bestätigte Eltern-E-Mail | Ausdrücklich gestartete Elternanmeldung und passwortbestätigte Verknüpfung über eigene API; keine Google-Access-/Refresh-Tokens gespeichert |
 | Optionales FCM-Gerätetoken | Freiwillige Push-Zustellung; verschlüsselt, sitzungsgebunden, neutraler Nachrichtentext |
 | Betriebs-/Verbrauchsmetadaten | Sicherheit, Kontingente und Kosten; keine vollständigen Fotos oder Antworten in technischen Logs |
 
 Zielalter/Families, Inhaltsbewertung, Datenweitergabe an konkrete Dienstleister, Löschung und erforderliche Angaben zu KI-Inhalten in der Console korrekt beantworten. Fehlende echte Geräte-/Firebase-Zustelltests oder Google-Prüfungen nicht als bestanden markieren.
+
+Aktuell tatsächlich geprüft am 14.10.2026: Google-Elternregistrierung und wiederholter Google-Weblogin mit eigenem anschließend gelöschtem künstlichem Haushalt; unabhängiger Kinderlogin und Backend-Rollensperren. Web-FCM-Registrierung/Vordergrundhinweis sowie native Android-Registrierung, Vordergrundhinweis, echte Hintergrundbenachrichtigung und Öffnen ins richtige Kinderkonto beobachtet. Im beobachteten Browser keine Google-/Firebase-Anmeldeanfrage vor bewusstem Start/Opt-in. Die native Firebase-Initialisierung ist ebenfalls im Code an Opt-in gebunden; sonstiger Google-Play-Services-Verkehr des Geräts wurde dadurch nicht als Appverkehr bewertet. Vollständiger Google-Login im Android-Systembrowser mit angemeldetem Google-Konto und eine physische Gerätebeobachtung bleiben gesonderte Tests.
+
+Die Play Console des autorisierten Kontos bietet die erstmalige Entwicklerkonto-Erstellung an; keine vorhandene Entwicklerberechtigung zugänglich. Keine Registrierung mit Gebühren ausgelöst. Storetexte sind vorbereitet, keine behauptete Veröffentlichung. Google-Branding wartet nach bestätigter HTML-Inhaberschaft und lesbarer Datenschutzerklärung auf die spätere Wiederprüfung (Google nennt bis zu 24 Stunden Aktualisierung). Datenzugriffsprüfung für openid/email ist laut Konsole nicht zusätzlich erforderlich. Bei Play App Signing den tatsächlichen von Google verwendeten App-Signing-Fingerprint ergänzen; Upload-Zertifikat allein reicht für den Play-App-Link nicht.

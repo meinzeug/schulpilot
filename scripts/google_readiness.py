@@ -30,7 +30,7 @@ def main():
         ),
         "play_upload_performed": False,
         "physical_device_test": "not_recorded",
-        "live_push_delivery": "not_recorded",
+        "live_push_delivery": "see_separate_delivery_observation_reports",
     }
     if args.bundletool and report["aab_built"]:
         result = subprocess.run(

@@ -6,4 +6,6 @@ Eltern legen Lernziele, Lerntage, Zeitrahmen und Termine fest. Sie sehen nachvol
 
 Es gibt keine Werbung, öffentliche Kinderchats oder Überwachung anderer Apps. Push-Erinnerungen sind freiwillig und enthalten keine Lerninhalte auf dem Sperrbildschirm.
 
-Aktueller Stand: technischer Pilot mit einem deutlich gekennzeichneten synthetischen Testraum. Echte KI-Verarbeitung hängt von der Verfügbarkeit des freigegebenen Anbieters ab. Diese Beschreibung ist für die interne Testvorbereitung bestimmt; eine öffentliche Store-Veröffentlichung wurde noch nicht vorgenommen.
+SCHULPILOT bietet eigene Eltern- und Kinderzugänge. Eltern können sich optional mit Google anmelden; Kinder benötigen weder ein Google-Konto noch eine eigene E-Mail-Adresse. Benachrichtigungen sind freiwillig und beachten eure Ruhezeiten. Für Kinder geben sie die Eltern zusätzlich frei.
+
+Zum Kennenlernen gibt es einen deutlich gekennzeichneten Beispiel-Lernraum. Im eigenen Zugang übt ihr mit eurem Unterrichtsmaterial. KI kann sich irren; unklare Heftstellen werden vor dem Lernen bestätigt. Eine einzelne richtige Antwort beweist noch kein sicheres Verständnis. Die KI-Unterstützung benötigt eine Internetverbindung und einen verfügbaren freigegebenen Dienst.
