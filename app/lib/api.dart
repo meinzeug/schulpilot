@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'push_client.dart';
+
 import 'transport.dart' if (dart.library.js_interop) 'transport_web.dart';
 
 typedef Json = Map<String, dynamic>;
@@ -157,6 +159,7 @@ class Api {
 class AppState extends ChangeNotifier {
   final Api api;
   final FlutterSecureStorage storage;
+  late final PushClient push = PushClient(api);
   Json? user;
   String? familyId;
   int revision = 0;
@@ -165,6 +168,7 @@ class AppState extends ChangeNotifier {
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
     this.api.onUnauthorized = () => Future<void>.microtask(clear);
+    push.onActivity = refreshState;
   }
   bool get isParent => user?['role'] == 'parent';
   bool get isChild => user?['role'] == 'child';
@@ -194,6 +198,7 @@ class AppState extends ChangeNotifier {
       if (!kIsWeb) api.token = await storage.read(key: 'session');
       user = await api.get('/auth/me');
       _family();
+      if (!isAdmin) await push.restore();
     } on ApiError catch (e) {
       if (e.status == 401) {
         api.token = null;
@@ -255,6 +260,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> clear() async {
+    await push.forget();
     api.token = null;
     user = null;
     familyId = null;

@@ -106,6 +106,35 @@ class Token(Base):
     used = Column(Boolean, default=False, nullable=False)
 
 
+class PushDevice(Base):
+    __tablename__ = "push_devices"
+    id = Column(String(32), primary_key=True, default=uid)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False)
+    encrypted_token = Column(Text, nullable=False)
+    platform = Column(String(16), nullable=False)
+    timezone = Column(String(64), nullable=False)
+    quiet_start = Column(Integer, nullable=False)
+    quiet_end = Column(Integer, nullable=False)
+    reminders = Column(Boolean, default=True, nullable=False)
+    help_requests = Column(Boolean, default=True, nullable=False)
+    summaries = Column(Boolean, default=False, nullable=False)
+    updated = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class PushDelivery(Base):
+    __tablename__ = "push_deliveries"
+    id = Column(String(32), primary_key=True, default=uid)
+    device_id = Column(ForeignKey("push_devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    dedup_key = Column(String(160), unique=True, nullable=False)
+    kind = Column(String(24), nullable=False)
+    status = Column(String(24), default="queued", nullable=False)
+    error_code = Column(String(80))
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    sent = Column(Integer)
+
+
 class Material(Base):
     __tablename__ = "materials"
     id = Column(String(32), primary_key=True, default=uid)
@@ -121,6 +150,9 @@ class Material(Base):
     homework = Column(JSON, default=list, nullable=False)
     confirmed = Column(Boolean, default=False, nullable=False)
     synthetic = Column(Boolean, default=False, nullable=False)
+    fixture_id = Column(String(40))
+    extraction_provider = Column(String(20), default="", server_default="", nullable=False)
+    extraction_model = Column(String(160), default="", server_default="", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
 
 
@@ -153,6 +185,7 @@ class LearningUnit(Base):
     status = Column(String(20), default="not_started", nullable=False)
     synthetic = Column(Boolean, default=False, nullable=False)
     provider = Column(String(20), nullable=False)
+    model = Column(String(160), default="", server_default="", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
     completed = Column(Integer)
     active_seconds = Column(Integer, default=0, nullable=False)
@@ -217,6 +250,8 @@ class ProviderConfig(Base):
     revision = Column(Integer, default=1, server_default="1", nullable=False)
     provider = Column(String(20), default="disabled", nullable=False)
     model = Column(String(160), default="", nullable=False)
+    extraction_model = Column(String(160), default="", server_default="", nullable=False)
+    extraction_capability_evidence = Column(String(500), default="", server_default="", nullable=False)
     encrypted_key = Column(Text)
     emergency_stop = Column(Boolean, default=True, nullable=False)
     image_capable = Column(Boolean, default=False, nullable=False)

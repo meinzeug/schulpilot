@@ -129,6 +129,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ],
           ),
           const SizedBox(height: 22),
+          if ((u['model'] as String? ?? '').isNotEmpty &&
+              u['provider'] != 'synthetic')
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Erstellt mit ${u['provider']} · ${u['model']}',
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
+            ),
           Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

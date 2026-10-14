@@ -37,6 +37,9 @@ def material_data(material):
             "homework",
             "confirmed",
             "synthetic",
+            "fixture_id",
+            "extraction_provider",
+            "extraction_model",
             "created",
         )
     }
@@ -106,6 +109,7 @@ def unit_data(db, unit, include_answers=False):
         "created": unit.created,
         "completed": unit.completed,
         "provider": unit.provider,
+        "model": unit.model,
     }
 
 

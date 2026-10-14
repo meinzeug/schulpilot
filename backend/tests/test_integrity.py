@@ -181,4 +181,5 @@ INSERT INTO materials(id,child_id,title,status,subject,topic,content,uncertainti
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0002"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0003"
+        assert db.execute("select extraction_model,fixture_id from materials where id='m'").fetchone() == ("", None)

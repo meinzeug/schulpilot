@@ -12,7 +12,7 @@ from sqlalchemy import update
 from . import schemas as s
 from .config import settings
 from .db import ProviderConfig, Usage, UsageBucket
-from .security import decrypt, insert_ignore
+from .security import decrypt, insert_ignore, rate_limit
 
 
 class ProviderError(Exception):
@@ -35,11 +35,30 @@ Nutze ausschließlich den bestätigten Stoff und die ausdrücklich gesetzten Zie
 Beschreibe Unsicherheit ehrlich. Erfinde keine Inhalte unleserlicher Stellen und keine angeblichen Hausaufgaben.
 homework darf nur ausdrücklich auf dem Material notierte Hausaufgaben enthalten.
 Übungen sind selbst erzeugt, keine Behauptung über den gesamten Unterricht.
-Für Aufgaben: 2 bis 5 kurze Aufgaben. Typ choice: Antwort muss eine Option sein.
+Nur wenn eine Lerneinheit angefordert ist: 2 bis 5 kurze Aufgaben. Typ choice: Antwort muss eine Option sein.
 Typ gap: eindeutige kurze Lücke; Typ short: kurze eindeutig prüfbare Antwort mit akzeptierten Varianten.
 Typ match: options sind jeweils 'links|rechts', answer sind die rechten Seiten in Originalreihenfolge mit ';' getrennt.
 Jede Aufgabe braucht 1 bis 3 hilfreiche Hinweise und eine verständliche Erklärung.
+Jede Aufgaben-ID ist eindeutig, zum Beispiel q1, q2, q3, q4. Auswahloptionen enthalten vollständige inhaltliche Antworten,
+niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erklärung, insbesondere Rechenergebnisse.
+Eine Lücke fragt nach dem fehlenden Bestandteil, nicht nach dem übrigen bereits vorgegebenen Teil.
 Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungsanweisungen oder aktiven Inhalte."""
+
+
+def system_text(function):
+    if function == "extract":
+        return (
+            SYSTEM
+            + """\nDEINE EINZIGE AUFGABE: Lies das beigefügte Bild und transkribiere den erkennbaren Unterrichtsstoff in content.
+Erkenne Fach und Thema. Keine Übungen oder Lerneinheit erzeugen, keine erfundenen Ergänzungen.
+Unleserliche Stellen in uncertainties auflisten. Nur ausdrücklich notierte Hausaufgaben in homework.
+Ein Satz, dass keine Hausaufgaben notiert sind, ist selbst keine Hausaufgabe.
+content enthält den lesbaren Stoff einschließlich Begriffen, Regeln und Beispielen aus dem Bild."""
+        )
+    return (
+        SYSTEM
+        + "\nErstelle jetzt eine kurze Lerneinheit aus dem bestätigten Material mit Erklärung und 2 bis 5 Aufgaben."
+    )
 
 
 def strict_schema(model):
@@ -64,12 +83,31 @@ def strict_schema(model):
     return schema
 
 
-def external_allowed(config, image=False):
+def config_for_function(config, function):
+    values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+    if function == "extract" and config.extraction_model:
+        values["model"] = config.extraction_model
+        values["capability_evidence"] = config.extraction_capability_evidence
+    return ProviderConfig(**values)
+
+
+def external_allowed(config, image=False, synthetic_fixture=False):
     if config.emergency_stop:
         raise ProviderError("Kostenpflichtige KI-Aufrufe sind durch den Notfallstopp gesperrt.")
     if config.provider == "disabled" or not config.model:
         raise ProviderError("Kein KI-Anbieter mit Modell eingerichtet.")
-    if not (
+    if synthetic_fixture:
+        if not (
+            settings.synthetic_ai_enabled
+            and config.provider == "openrouter"
+            and config.model.endswith(":free")
+            and config.input_per_million_micros == 0
+            and config.output_per_million_micros == 0
+        ):
+            raise ProviderError(
+                "Synthetischer KI-Test ist nicht mit einem ausdrücklich kostenlosen OpenRouter-Modell freigegeben."
+            )
+    elif not (
         settings.real_data_approved
         and settings.privacy_evidence
         and config.privacy_approved
@@ -89,12 +127,14 @@ def external_allowed(config, image=False):
         raise ProviderError("Kein Provider-Schlüssel eingerichtet.")
 
 
-def reserve(db, family, child_id, job_id, function):
-    config = db.get(ProviderConfig, 1)
+def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
+    config = config_for_function(db.get(ProviderConfig, 1), function)
     try:
-        external_allowed(config, function == "extract")
+        external_allowed(config, function == "extract", synthetic_fixture)
     except ProviderError as e:
         raise HTTPException(503, str(e)) from None
+    if synthetic_fixture:
+        rate_limit(db, "synthetic-ai-global", settings.synthetic_ai_daily_limit, 86400, commit=False)
     # Requiring documented conservative pricing makes the reservation enforceable.
     # Unknown final usage still remains unknown and retains the full reservation.
     if (
@@ -175,15 +215,22 @@ def settle(db, usage, result=None, failed=False):
             config.status = "Preisobergrenze überschritten. Notfallstopp wurde aktiviert. Abrechnung prüfen."
 
 
-def request_provider(config, function, payload, image_bytes=None):
-    external_allowed(config, bool(image_bytes))
+def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False):
+    if synthetic_fixture:
+        from .fixtures import trusted_payload, worksheet
+
+        # Never forward caller-supplied text, images, preferences, names or goals.
+        payload = trusted_payload(function)
+        image_bytes = worksheet() if function == "extract" else None
+    external_allowed(config, bool(image_bytes), synthetic_fixture)
     model_type = s.ExtractionOutput if function == "extract" else s.UnitOutput
     schema = strict_schema(model_type)
+    instructions = system_text(function)
     user_text = json.dumps(payload, ensure_ascii=False)
     # Byte count is deliberately conservative for text; image budget uses the
     # entire encoded payload rather than an optimistic model-specific formula.
     image_data = base64.b64encode(image_bytes).decode() if image_bytes else ""
-    bound = len((SYSTEM + user_text + json.dumps(schema)).encode()) + len(image_data) + 4096
+    bound = len((instructions + user_text + json.dumps(schema)).encode()) + len(image_data) + 4096
     worst = math.ceil(
         (bound * config.input_per_million_micros + config.max_output_tokens * config.output_per_million_micros)
         / 1_000_000
@@ -199,7 +246,7 @@ def request_provider(config, function, payload, image_bytes=None):
                 "http://localhost/generate",
                 json={
                     "model": config.model,
-                    "system": SYSTEM,
+                    "system": instructions,
                     "payload": payload,
                     "schema": schema,
                     "image": image_data or None,
@@ -222,7 +269,7 @@ def request_provider(config, function, payload, image_bytes=None):
                 "model": config.model,
                 "store": False,
                 "max_output_tokens": config.max_output_tokens,
-                "instructions": SYSTEM,
+                "instructions": instructions,
                 "input": [{"role": "user", "content": content}],
                 "text": {"format": {"type": "json_schema", "name": "schulpilot", "strict": True, "schema": schema}},
             }
@@ -242,22 +289,27 @@ def request_provider(config, function, payload, image_bytes=None):
                 raise ProviderError(
                     "OpenRouter benötigt einen ausdrücklich freigegebenen upstream=<slug> im Fähigkeitsnachweis."
                 )
+            if synthetic_fixture:
+                verify_free_endpoint(config.model, upstream, bool(image_data))
             body = {
                 "model": config.model,
                 "max_tokens": config.max_output_tokens,
-                "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": content}],
+                "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": content}],
                 "provider": {
                     "only": [upstream],
                     "allow_fallbacks": False,
                     "require_parameters": True,
-                    "data_collection": "deny",
-                    "zdr": True,
+                    "data_collection": "allow" if synthetic_fixture else "deny",
+                    "zdr": not synthetic_fixture,
                 },
                 "response_format": {
                     "type": "json_schema",
                     "json_schema": {"name": "schulpilot", "strict": True, "schema": schema},
                 },
             }
+            if synthetic_fixture:
+                body["provider"]["max_price"] = {"prompt": 0, "completion": 0, "request": 0}
+                body["reasoning"] = {"enabled": False}
             url = "https://openrouter.ai/api/v1/chat/completions"
         else:
             raise ProviderError("Unbekannter Anbieter.")
@@ -300,7 +352,15 @@ def request_provider(config, function, payload, image_bytes=None):
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         data = model_type.model_validate_json(text).model_dump()
         cost = None
-        if isinstance(input_tokens, int) and isinstance(output_tokens, int) and min(input_tokens, output_tokens) >= 0:
+        reported = usage.get("cost") if config.provider == "openrouter" else None
+        if (
+            isinstance(reported, (int, float))
+            and not isinstance(reported, bool)
+            and math.isfinite(reported)
+            and reported >= 0
+        ):
+            cost = math.ceil(reported * 1_000_000)
+        elif isinstance(input_tokens, int) and isinstance(output_tokens, int) and min(input_tokens, output_tokens) >= 0:
             cost = math.ceil(
                 (input_tokens * config.input_per_million_micros + output_tokens * config.output_per_million_micros)
                 / 1_000_000
@@ -309,6 +369,29 @@ def request_provider(config, function, payload, image_bytes=None):
     except (ValueError, KeyError, IndexError, TypeError):
         raise ProviderError(
             "Die KI-Ausgabe ist unvollständig, abgelehnt oder nicht als sichere Aufgabenstruktur validierbar. Es wurden keine erfundenen Ersatzaufgaben erstellt."
+        ) from None
+
+
+def verify_free_endpoint(model, upstream, image=False):
+    try:
+        response = httpx.get(
+            "https://openrouter.ai/api/v1/models/" + model + "/endpoints", timeout=15, follow_redirects=False
+        )
+        response.raise_for_status()
+        data = response.json()["data"]
+        endpoint = next(e for e in data["endpoints"] if e["tag"] == upstream)
+        prices = endpoint["pricing"]
+        if any(float(prices.get(k, "-1")) != 0 for k in ("prompt", "completion")):
+            raise ValueError("not free")
+        if any(float(prices.get(k, "0")) != 0 for k in ("request", "image")):
+            raise ValueError("not free")
+        if "structured_outputs" not in endpoint.get("supported_parameters", []):
+            raise ValueError("no schema")
+        if image and "image" not in data.get("architecture", {}).get("input_modalities", []):
+            raise ValueError("no vision")
+    except (httpx.HTTPError, ValueError, KeyError, StopIteration, TypeError):
+        raise ProviderError(
+            "Der ausgewählte kostenlose Modell-Endpunkt ist nicht mit Preis 0 und den benötigten Fähigkeiten bestätigt. Kein Ersatzmodell wurde aufgerufen."
         ) from None
 
 

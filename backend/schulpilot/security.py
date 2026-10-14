@@ -58,14 +58,15 @@ def insert_ignore(db, model, values, key="id"):
     db.execute(insert(model).values(**values).on_conflict_do_nothing(index_elements=[key]))
 
 
-def rate_limit(db, key, maximum, seconds=60):
+def rate_limit(db, key, maximum, seconds=60, *, commit=True):
     tick = int(time.time()) // seconds
     name = f"{key}:{tick}"
     insert_ignore(db, RateBucket, {"id": name, "count": 0, "expires": (tick + 1) * seconds})
     result = db.execute(
         update(RateBucket).where(RateBucket.id == name, RateBucket.count < maximum).values(count=RateBucket.count + 1)
     )
-    db.commit()
+    if commit:
+        db.commit()
     if not result.rowcount:
         raise HTTPException(429, "Zu viele Anfragen. Bitte später erneut versuchen.")
 

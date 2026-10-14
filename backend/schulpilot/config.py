@@ -20,6 +20,12 @@ class Settings:
     real_data_approved: bool = os.getenv("REAL_DATA_APPROVED", "false") == "true"
     privacy_evidence: str = os.getenv("PRIVACY_EVIDENCE", "")
     synthetic_demo: bool = os.getenv("SYNTHETIC_DEMO", "true") == "true"
+    synthetic_ai_enabled: bool = os.getenv("SYNTHETIC_AI_ENABLED", "false") == "true"
+    synthetic_ai_daily_limit: int = int(os.getenv("SYNTHETIC_AI_DAILY_LIMIT", "40"))
+    fcm_service_account_file: str = os.getenv("FCM_SERVICE_ACCOUNT_FILE", "")
+    fcm_public_config: str = os.getenv("FCM_PUBLIC_CONFIG", "")
+    push_approved: bool = os.getenv("PUSH_APPROVED", "false") == "true"
+    push_privacy_evidence: str = os.getenv("PUSH_PRIVACY_EVIDENCE", "")
     codex_socket: str = os.getenv("CODEX_SOCKET", "")
     codex_approved: bool = os.getenv("CODEX_APPROVED", "false") == "true"
 

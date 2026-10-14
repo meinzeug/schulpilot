@@ -3,6 +3,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'account_deletion_screen.dart';
 import 'auth_screens.dart';
 import 'dashboard.dart';
 import 'material_screen.dart';
@@ -26,6 +27,21 @@ class SchulpilotApp extends StatefulWidget {
 }
 
 class _SchulpilotAppState extends State<SchulpilotApp> {
+  @override
+  void initState() {
+    super.initState();
+    widget.state.push.onOpen = () {
+      widget.state.push.openPending = false;
+      router.go('/app');
+    };
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.state.push.openPending) {
+        widget.state.push.openPending = false;
+        router.go('/app');
+      }
+    });
+  }
+
   late final GoRouter router = GoRouter(
     refreshListenable: widget.state,
     redirect: (context, route) {
@@ -90,6 +106,10 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/about',
         builder: (context, s) => const InformationScreen('about'),
       ),
+      GoRoute(
+        path: '/account-deletion',
+        builder: (context, s) => AccountDeletionScreen(widget.state),
+      ),
     ],
     errorBuilder: (context, s) => Scaffold(
       body: Center(
@@ -102,6 +122,7 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
   );
   @override
   void dispose() {
+    widget.state.push.onOpen = null;
     router.dispose();
     super.dispose();
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'api.dart';
 import 'dashboard.dart';
+import 'notification_panel.dart';
 import 'ui.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -55,6 +56,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 24),
+        if (!state.isAdmin) ...[
+          NotificationPanel(state),
+          const SizedBox(height: 24),
+        ],
         heading('Angemeldete Geräte'),
         LoadView<List<dynamic>>(
           key: ValueKey('sessions-$version'),
@@ -770,6 +775,8 @@ class _ProviderFormState extends State<ProviderForm> {
   late final Map<String, TextEditingController> fields = {
     for (final field in [
       'capability_evidence',
+      'extraction_model',
+      'extraction_capability_evidence',
       'privacy_evidence',
       'reserve_micros',
       'input_per_million_micros',
@@ -822,7 +829,7 @@ class _ProviderFormState extends State<ProviderForm> {
         TextField(
           controller: model,
           decoration: const InputDecoration(
-            labelText: 'Exakte Modell-ID laut Anbieter-Dokumentation',
+            labelText: 'Modell-ID für Lerneinheiten (laut Anbieter)',
           ),
         ),
         const SizedBox(height: 16),
@@ -859,6 +866,14 @@ class _ProviderFormState extends State<ProviderForm> {
           ),
         const SizedBox(height: 16),
         for (final field in [
+          (
+            'extraction_model',
+            'Abweichendes Bildmodell (optional, sonst Modell für Lerneinheiten)',
+          ),
+          (
+            'extraction_capability_evidence',
+            'Nachweis Bildmodell (OpenRouter upstream=<slug>)',
+          ),
           (
             'capability_evidence',
             'Nachweis Modellfähigkeiten (OpenRouter zusätzlich upstream=<slug>)',
@@ -909,6 +924,8 @@ class _ProviderFormState extends State<ProviderForm> {
                     field.key:
                         [
                           'capability_evidence',
+                          'extraction_model',
+                          'extraction_capability_evidence',
                           'privacy_evidence',
                           'pricing_evidence',
                         ].contains(field.key)

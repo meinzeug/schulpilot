@@ -49,6 +49,7 @@ def user_data(db, user):
         "display_name": user.display_name,
         "username": user.username,
         "email": user.email,
+        "real_data_enabled": bool(settings.real_data_approved and settings.privacy_evidence),
     }
     if user.role == "parent":
         result["families"] = [

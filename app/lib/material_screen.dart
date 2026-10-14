@@ -15,9 +15,18 @@ Future<void> importMaterial(
   String childId,
 ) async {
   if (state.isDemo) {
-    throw ApiError(
-      'Der synthetische Testraum enthält ein festes Beispiel. Bitte keine echten Fotos oder Kinderdaten hochladen.',
+    if (!await confirmDialog(
+      context,
+      'Künstliches Testblatt mit echter KI erkennen?',
+      'Der Server erstellt ein festes Bild ohne persönliche Daten. Dieses Bild wird an das konfigurierte kostenlose OpenRouter-Modell gesendet. Keine eigenen Fotos oder Texte werden verwendet.',
+    )) {
+      return;
+    }
+    final material = await state.api.post(
+      '/children/$childId/materials/synthetic-fixture',
     );
+    if (context.mounted) openRoute(context, '/material/${material['id']}');
+    return;
   }
   final status = await state.api.get('/status');
   if (status['real_data_enabled'] != true) {
@@ -300,7 +309,10 @@ class _MaterialFormState extends State<_MaterialForm> {
   Widget build(BuildContext context) {
     final d = widget.data;
     final synthetic = d['synthetic'] == true;
+    final liveFixture = d['fixture_id'] != null;
     final readonly = widget.state.isParent && !widget.state.canManage;
+    final canConfirm =
+        !readonly && !(widget.state.isChild && d['confirmed'] == true);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,12 +333,22 @@ class _MaterialFormState extends State<_MaterialForm> {
           ],
         ),
         const SizedBox(height: 22),
-        if (synthetic)
+        if ((d['extraction_model'] as String? ?? '').isNotEmpty)
+          Text(
+            'Erkannt mit ${d['extraction_provider']} · ${d['extraction_model']}',
+            style: const TextStyle(color: muted, fontSize: 12),
+          ),
+        if (liveFixture)
+          const Notice(
+            'Künstliches Testblatt ohne Kinderdaten. Erkennung und Lerneinheit nutzen tatsächlich das konfigurierte kostenlose OpenRouter-Modell. Der Stoff bleibt für diesen begrenzten KI-Test unveränderlich.',
+            icon: Icons.science_outlined,
+          ),
+        if (synthetic && !liveFixture)
           const Notice(
             'Dieses Beispiel wurde vorbereitet. Es wurde kein Foto erkannt und kein KI-Anbieter aufgerufen. Die Demo-Übungen basieren ausschließlich auf diesem festen Text.',
             icon: Icons.science_outlined,
-          )
-        else
+          ),
+        if (!synthetic || liveFixture)
           Panel(
             child: LoadView<Uint8List>(
               load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
@@ -368,7 +390,7 @@ class _MaterialFormState extends State<_MaterialForm> {
                   padding: const EdgeInsets.only(bottom: 18),
                   child: TextField(
                     controller: item.$1,
-                    readOnly: synthetic || readonly,
+                    readOnly: synthetic || !canConfirm,
                     maxLines: item.$3,
                     decoration: InputDecoration(
                       labelText: item.$2,
@@ -381,7 +403,7 @@ class _MaterialFormState extends State<_MaterialForm> {
                   'Keine ausdrücklich notierten Hausaufgaben in diesem Material erfasst.',
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
-              if (!readonly) ...[
+              if (canConfirm) ...[
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text(

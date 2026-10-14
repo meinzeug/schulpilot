@@ -11,6 +11,10 @@ __pycache__/
 *.key
 *.jks
 *.keystore
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
 key.properties
 data/
 artifacts/*

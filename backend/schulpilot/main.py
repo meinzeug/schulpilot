@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
 
-from . import __version__, admin, auth, families, learning, materials, synthetic
+from . import __version__, admin, auth, families, learning, materials, notifications, releases, synthetic
 from .config import settings
 from .db import DB, ProviderConfig, init_db
 
@@ -93,13 +93,28 @@ def status():
         "registration_available": settings.mail_ready,
         "email_available": settings.mail_ready,
         "synthetic_demo_available": settings.synthetic_demo,
+        "synthetic_ai_available": bool(
+            settings.synthetic_ai_enabled
+            and not config.emergency_stop
+            and config.provider == "openrouter"
+            and config.model.endswith(":free")
+        ),
         "real_data_enabled": bool(settings.real_data_approved and settings.privacy_evidence),
         "ai_available": ai,
         "notice": "Entwicklungsstand mit synthetischem Testraum. Externe Verarbeitung echter Kinderdaten bleibt bis zur dokumentierten Freigabe gesperrt.",
     }
 
 
-for router in (auth.router, families.router, learning.router, materials.router, synthetic.router, admin.router):
+for router in (
+    auth.router,
+    families.router,
+    learning.router,
+    materials.router,
+    synthetic.router,
+    admin.router,
+    notifications.router,
+    releases.router,
+):
     app.include_router(router, prefix="/api")
 
 if settings.web_dir and settings.environment != "production":

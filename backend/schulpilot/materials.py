@@ -7,13 +7,43 @@ from sqlalchemy import select, update
 
 from . import schemas as s
 from .config import settings
-from .db import Assignment, Child, Family, Job, LearningUnit, Material, get_db, uid
+from .db import Assignment, Child, Family, Job, LearningUnit, Material, ProviderConfig, get_db, uid
+from .fixtures import FIXTURE_ID, worksheet
 from .learning import material_data, record
-from .providers import reserve
+from .providers import ProviderError, config_for_function, external_allowed, reserve
 from .security import authenticated, child_access, rate_limit
 
 router = APIRouter(tags=["Materialien und KI-Aufträge"])
 Image.MAX_IMAGE_PIXELS = 16_000_000
+
+
+@router.post("/children/{child_id}/materials/synthetic-fixture", status_code=201)
+def synthetic_fixture(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    if not db.get(Family, child.family_id).synthetic:
+        raise HTTPException(403, "Der externe KI-Test ist ausschließlich im synthetischen Testraum verfügbar.")
+    try:
+        external_allowed(config_for_function(db.get(ProviderConfig, 1), "extract"), image=True, synthetic_fixture=True)
+    except ProviderError as error:
+        raise HTTPException(503, str(error)) from None
+    rate_limit(db, "fixture:" + p.user.id, 3, 3600)
+    directory = settings.data_dir / "uploads"
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path = uid() + ".jpg"
+    destination = directory / path
+    destination.write_bytes(worksheet())
+    destination.chmod(0o600)
+    material = Material(
+        child_id=child.id, title="Synthetisches KI-Testblatt: Brüche", path=path, synthetic=True, fixture_id=FIXTURE_ID
+    )
+    db.add(material)
+    record(db, child.id, "material_uploaded", {"synthetic_fixture": FIXTURE_ID})
+    try:
+        db.commit()
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+    return material_data(material)
 
 
 @router.post("/children/{child_id}/materials", status_code=201)
@@ -92,9 +122,20 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
 @router.put("/materials/{material_id}/confirm")
 def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated), db=Depends(get_db)):
     material, _ = get_material(db, p, material_id, True)
+    if p.user.role == "child" and material.confirmed:
+        raise HTTPException(
+            403,
+            "Bereits bestätigten Lernstoff und notierte Hausaufgaben passen deine Eltern an. Du kannst eine Änderung im Familienbereich vorschlagen.",
+        )
     if material.status not in ("review", "confirmed"):
         raise HTTPException(409, "Bitte zuerst die Materialerkennung abschließen.")
-    if material.synthetic:
+    if material.fixture_id:
+        if any(getattr(data, k) != getattr(material, k) for k in ("subject", "topic", "content", "homework")):
+            raise HTTPException(
+                422,
+                "Das feste KI-Testblatt erlaubt keine freien Texteingaben. Bitte den erkannten Beispielstoff bestätigen oder den Test abbrechen.",
+            )
+    elif material.synthetic:
         from .synthetic import CONTENT
 
         if data.subject != "Mathematik" or data.topic != "Brüche" or data.content != CONTENT or data.homework:
@@ -175,14 +216,21 @@ def enqueue(db, p, child, kind, payload, idempotency):
     db.flush()
     material = db.get(Material, payload.get("material_id")) if payload.get("material_id") else None
     synthetic = bool(material and material.synthetic)
-    if synthetic:
+    if synthetic and not material.fixture_id:
         if kind == "extract":
             raise HTTPException(
                 409, "Das Beispiel wurde bereits synthetisch vorbereitet. Es wurde keine Bilderkennung ausgeführt."
             )
     else:
         family = db.get(Family, child.family_id)
-        reserve(db, family, child.id, job.id, kind)
+        reserve(
+            db,
+            family,
+            child.id,
+            job.id,
+            kind,
+            synthetic_fixture=bool(material and material.fixture_id == FIXTURE_ID and family.synthetic),
+        )
     db.commit()
     return {"id": job.id, "status": job.status}
 
@@ -227,6 +275,11 @@ def create_unit(
             raise HTTPException(404, "Material nicht gefunden.")
         if not material.confirmed:
             raise HTTPException(409, "Bitte den erkannten Stoff und unsichere Stellen zuerst bestätigen.")
+        if material.fixture_id and data.assignment_id:
+            raise HTTPException(
+                422,
+                "Der feste KI-Test verarbeitet keine frei eingegebenen Elternaufträge. Bitte die Testeinheit ohne zusätzlichen Auftrag starten.",
+            )
         if material.synthetic and data.assignment_id:
             assignment = db.get(Assignment, data.assignment_id)
             if assignment.subject != "Mathematik" or "br" not in assignment.topic.lower():

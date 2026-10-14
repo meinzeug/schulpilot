@@ -41,3 +41,14 @@ Geprüft wurden Verschlüsselung/Entschlüsselung sowie `pg_restore` in `schulpi
 ## DNS
 
 Autoritative Server: hydrogen.ns.hetzner.com, oxygen.ns.hetzner.com, helium.ns.hetzner.de. Zuständig war die Hetzner-Cloud-API `api.hetzner.cloud/v1`, Zone `dorfspy.de` (Primary). Ein eigener A-RRset `schulpilot` fehlte trotz bereits passender öffentlicher Auflösung. Angelegt wurde ausschließlich `schulpilot/A` → `91.99.217.84`, TTL 300. Kein CNAME-Konflikt, keine Nameserver- oder sonstigen DNS-Änderungen. Autoritativer Server und öffentlicher Resolver wurden nachher geprüft.
+
+
+## APK, SMTP und kostenlose KI-Tests
+
+Deployment erfordert nun neben dem fertigen Web-Build eine signierte APK unter `artifacts/schulpilot-0.1.0-test.apk`. Das Skript prüft die APK-Signatur und liest Paket/Version/Mindest-SDK mit dem fixierten Android Build Tools 36.0.0; SHA-256 und Größe stammen direkt aus der Datei. Nur APK und öffentliches Manifest werden ins Release kopiert, keine Signierdaten. Caddy liefert `/downloads/*` als Datei ohne SPA-Fallback aus.
+
+Gmail-SMTP wurde nach ausdrücklichem Auftrag aus dem vorhandenen verschlüsselten Merchagent-Mailtresor in die separate geschützte SCHULPILOT-Umgebung übernommen. TLS-Zertifikate werden geprüft. Der Read-only-IMAP-Test suchte nur die zufälligen eigenen Testaliase und las mit BODY.PEEK; er änderte keine anderen Nachrichten oder Merchagent-Einstellungen. `scripts/mail_smoke.py` prüft echte Zustellung, Registrierung, Einladung, Wiederherstellung, Rechteentzug und Bereinigung. Zugangsdaten und Mail-Links werden nicht ausgegeben. Erfordert explizit autorisierte TEST_IMAP_USER/PASSWORD nur in der Prozessumgebung.
+
+Für das gesonderte konstante KI-Testblatt sind `SYNTHETIC_AI_ENABLED=true` und `SYNTHETIC_AI_DAILY_LIMIT=40` gesetzt. Der lokale Operator-Import `deploy/admin.py configure-free-tests` liest den ausdrücklich freigegebenen OpenRouter-Schlüssel nur von stdin. Normale Kinderdaten bleiben durch REAL_DATA_APPROVED=false und nicht gesetzte Anbieterfreigabe gesperrt. Ein globaler Notfallstopp sperrt auch diese Testaufrufe.
+
+Google-Play-/Push-Konfiguration: [GOOGLE_PLAY_PUSH.md](GOOGLE_PLAY_PUSH.md). Dienstkonten nie ins Web oder AAB einbetten. Nach Änderungen an geschützten Umgebungsdateien die private Wiederherstellungskopie aktualisieren und verschlüsselt außerhalb des Hosts sichern.

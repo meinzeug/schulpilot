@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'download_panel.dart';
 
 const ink = Color(0xFF173B40);
 const teal = Color(0xFF19766D);
@@ -470,6 +471,16 @@ class PageFrame extends StatelessWidget {
                               icon: Icons.science_outlined,
                             ),
                           ),
+                        if (!state.isDemo &&
+                            !state.isAdmin &&
+                            state.user?['real_data_enabled'] == false)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 22),
+                            child: Notice(
+                              'Testbetrieb · Bitte ausschließlich synthetische Kinderprofile und Lernangaben verwenden. Die Verarbeitung echter Kinderdaten ist noch nicht freigegeben.',
+                              icon: Icons.science_outlined,
+                            ),
+                          ),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -512,6 +523,10 @@ class PageFrame extends StatelessWidget {
                         const SizedBox(height: 28),
                         child,
                         const SizedBox(height: 34),
+                        if (kIsWeb) ...[
+                          AndroidDownload(state.api),
+                          const SizedBox(height: 24),
+                        ],
                         Wrap(
                           spacing: 18,
                           children: [

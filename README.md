@@ -36,7 +36,7 @@ flutter build web --release --no-web-resources-cdn --csp
 flutter build apk --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
-Die APK ist mit einem **lokalen Android-Testschlüssel** signiert, kein Play-Store-Release. Der Schlüssel liegt außerhalb des Repositorys. Vor einer Store-Veröffentlichung ist eine eigene verwaltete Produktionssignierung einzurichten. Ein tatsächlicher Test auf einem physischen Android-Gerät steht aus.
+Die öffentliche Test-APK und das AAB verwenden einen eigenen **Upload-Schlüssel außerhalb von Git**. Einrichtung und Store-Voraussetzungen: [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md). Ein tatsächlicher Test auf einem physischen Android-Gerät steht aus. Die APK ist auf der Startseite und nach Web-Login herunterladbar; `/api/app-release` liefert die aus dem echten APK berechneten Metadaten.
 
 Öffentlicher synthetischer API-Test: `.venv/bin/python scripts/public_smoke.py`. Browser: `cd qa && npm ci --ignore-scripts && node smoke.mjs`; vorhandenes Chrome wird verwendet, alternativ `CHROME_PATH` setzen. Der Browsertest verwendet vorübergehend eine private Datei unter `artifacts/`, um einen unterbrochenen Test fortzusetzen; sie wird nach erfolgreichem Test gelöscht. Keine echten Kinderdaten verwenden.
 
@@ -56,4 +56,6 @@ Interaktiv eigenen Benutzernamen, starkes Passwort und TOTP einrichten und den a
 - [Geprüfte Quellen und Versionsstände](docs/SOURCES.md)
 - [Projektstand und offene Voraussetzungen](docs/STATUS.md)
 
-SMTP ist noch nicht eingerichtet. Registrierung, E-Mail-Verifikation, Einladungen und Wiederherstellung sind implementiert und mit einem abgefangenen Mailtransport getestet, öffentlich aber ausdrücklich gesperrt. Keine Versand-Erfolgsmeldung ohne SMTP-Übergabe. OpenAI/OpenRouter benötigen separate Schlüssel, dokumentierte Modell-/Preisnachweise sowie Datenschutzfreigaben. Für echte Kinderdaten bleibt die Verarbeitung serverseitig deaktiviert. Codex ist experimentell und nicht auf dem App-Server installiert oder aktiviert.
+Gmail-SMTP ist serverseitig eingerichtet. Registrierung, Verifikation, Einladung und Wiederherstellung wurden über HTTPS mit tatsächlichem Eingang im autorisierten Testpostfach geprüft. Die Zugangsdaten wurden ausschließlich aus dem ausdrücklich freigegebenen Merchagent-Mailtresor übernommen; Merchagent wurde nicht verändert.
+
+Kostenlose OpenRouter-Bild- und Schemaaufrufe wurden tatsächlich mit festen synthetischen Inhalten getestet. Im Testraum führt „Material fotografieren / importieren“ zum gesonderten KI-Testblatt. Die normale feste Demo bleibt ohne KI nutzbar. Freie Kinderdaten sind weiterhin serverseitig gesperrt. OpenAI und der experimentelle Codex-Worker benötigen eigene Betriebsfreigaben; Codex ist nicht auf dem App-Server aktiviert.

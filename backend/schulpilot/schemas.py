@@ -135,6 +135,10 @@ class Question(Strict):
 
     @model_validator(mode="after")
     def consistent(self):
+        from .checks import fraction_result
+
+        if self.type in ("choice", "gap", "short"):
+            fraction_result(self.prompt, self.answer, self.accepted)
         if self.type == "choice" and (len(self.options) < 2 or self.answer not in self.options):
             raise ValueError("Auswahlaufgabe ohne gültige Antwort.")
         if len(set(self.options)) != len(self.options):
@@ -194,6 +198,8 @@ class MessageRequest(Strict):
 class ProviderUpdate(Strict):
     provider: Literal["disabled", "openai", "openrouter", "codex"]
     model: str = Field(max_length=160)
+    extraction_model: str = Field(default="", max_length=160)
+    extraction_capability_evidence: str = Field(default="", max_length=500)
     api_key: str | None = Field(default=None, max_length=1024)
     emergency_stop: bool
     image_capable: bool

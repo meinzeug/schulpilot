@@ -14,14 +14,24 @@ schulpilot.dorfspy.de {
     Referrer-Policy "no-referrer"
     X-Frame-Options "DENY"
     Permissions-Policy "camera=(self), microphone=(), geolocation=()"
-    Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     Cache-Control "no-cache"
   }
   @api path /api /api/*
+  handle /firebase-messaging-sw.js {
+    rewrite * /api/notifications/service-worker.js
+    reverse_proxy 127.0.0.1:3240
+  }
   handle @api {
     reverse_proxy 127.0.0.1:3240 {
       header_up X-Forwarded-For {remote_host}
     }
+  }
+  handle_path /downloads/* {
+    root * /opt/schulpilot/current/downloads
+    header Content-Disposition "attachment"
+    header Cache-Control "public, max-age=3600"
+    file_server
   }
   handle {
     root * /opt/schulpilot/current/web

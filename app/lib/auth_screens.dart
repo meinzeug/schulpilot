@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'download_panel.dart';
 import 'ui.dart';
 
 class LandingScreen extends StatelessWidget {
@@ -206,8 +207,10 @@ class LandingScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 55),
                     const Notice(
-                      'Der öffentliche Stand arbeitet mit isolierten synthetischen Testräumen. E-Mail-Versand und externe KI für echte Kinderdaten sind noch nicht freigeschaltet. Die Demo erzeugt keine echten Fotoerkennungen.',
+                      'Der öffentliche Teststand verwendet synthetische Daten. Der feste Beispielraum funktioniert ohne KI; der gesonderte KI-Test erkennt ein künstliches Testblatt über einen ausdrücklich kostenlosen Anbieter. Echte Kinderdaten bleiben bis zur Datenschutzfreigabe gesperrt.',
                     ),
+                    const SizedBox(height: 28),
+                    AndroidDownload(state.api),
                     const SizedBox(height: 28),
                     Wrap(
                       spacing: 32,
@@ -581,7 +584,7 @@ class InformationScreen extends StatelessWidget {
                     kind == 'privacy'
                         ? '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SCHULPILOT und das übrige Gerät werden nicht überwacht.
 
-Im öffentlichen Testraum werden ausschließlich mitgelieferte synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die Demo hat keinen externen KI-Aufruf und keine echte Fotoerkennung.
+Im öffentlichen Testraum werden ausschließlich synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die feste Demo benötigt keine KI. Der ausdrücklich gekennzeichnete KI-Test sendet ausschließlich ein vom Server erzeugtes künstliches Testblatt bzw. festen Beispielstoff an die konfigurierten kostenlosen OpenRouter-Modelle. Freie Kontoeingaben werden dabei nicht übertragen.
 
 Externe Verarbeitung echter Kinderdaten ist serverseitig gesperrt. Ein Betreiber muss zunächst Datenschutzgrundlagen, Auftragsverarbeitung, Minderjährigenschutz, konkrete Anbieter, Modellfähigkeiten und erforderliche Aufbewahrungsfreigaben dokumentieren. „store:false“ allein ist kein Nachweis.
 
@@ -596,11 +599,11 @@ Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame In
 
 SCHULPILOT verbindet einen Flutter-Client für Web und Android mit einer eigenen Backend-API. Die öffentliche Umgebung dient derzeit ausschließlich Tests mit synthetischen Daten.
 
-Registrierung, Verifikation, Einladungen und Wiederherstellung benötigen einen eingerichteten SMTP-Dienst. Solange dieser fehlt, sind diese Abläufe mit einer ausdrücklichen Fehlermeldung gesperrt.
+Registrierung, Verifikation, Einladungen und Wiederherstellung nutzen den eingerichteten verschlüsselten Gmail-SMTP-Versand. Diese Abläufe wurden über die öffentliche HTTPS-Adresse mit synthetischen Testkonten und tatsächlichem E-Mail-Eingang geprüft.
 
-OpenAI und OpenRouter sind als serverseitige Adapter vorbereitet. Zugangsdaten, dokumentierte Freigaben und echte Anbietertests stehen aus. Codex CLI bleibt experimentell und benötigt einen separat isolierten Worker sowie eine Nutzungsfreigabe.
+OpenAI und OpenRouter sind als serverseitige Adapter implementiert. Für das feste künstliche KI-Testblatt wurden kostenlose OpenRouter-Bild- und Schemaaufrufe tatsächlich durchgeführt. Die Namen der verwendeten Modelle werden angezeigt. Freie Kinderdaten benötigen weiterhin dokumentierte Datenschutz- und Minderjährigenfreigaben. Codex CLI bleibt experimentell und benötigt einen separat isolierten Worker sowie eine Nutzungsfreigabe.
 
-Erinnerungen erscheinen gebündelt innerhalb der App und beachten die eingestellte Ruhezeit. Es gibt in diesem Stand keinen Push-Versand, keinen Zahlungscheckout und keine Veröffentlichung im Play Store.
+Erinnerungen erscheinen gebündelt innerhalb der App. Push für Android und Web ist mit Geräte-Opt-in, Sitzungswiderruf, neutralen Nachrichtentexten und Ruhezeiten implementiert. Ohne freigegebenes Firebase-Projekt und Dienstkonto bleibt der Versand gesperrt; eine echte Push-Zustellung wurde noch nicht nachgewiesen. Eine signierte Android-App-Bundle-Datei und die Store-Einrichtung werden vorbereitet. Eine Play-Veröffentlichung und ein Zahlungscheckout sind noch nicht erfolgt.
 
 Vor einem kommerziellen Start mit echten Daten fehlen außerdem die veröffentlichten Angaben zum verantwortlichen Betreiber, Kontakt, Impressum, rechtliche Datenschutzhinweise und Betriebsfreigaben. Diese Testseite enthält keine erfundenen Betreiberangaben.
 

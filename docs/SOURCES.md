@@ -20,3 +20,16 @@ Implementierte Schnittstellen wurden gegen diese offiziellen Dokumentationen gep
 | Caddy | https://caddyserver.com/docs/caddyfile/directives/tls ; vorhandenes Caddy 2.6.2, ACME-Issuer `dir`, lokale Validierung, öffentlich geprüfter Let’s-Encrypt-Aussteller. |
 
 Flutter-/Python-Abhängigkeiten müssen bei Aktualisierungen erneut auf Sicherheit, API-Kompatibilität und Lizenzpflichten geprüft werden. `docs/python-dependencies.json` enthält aus den installierten Distributionsmetadaten ermittelte Lizenzangaben einschließlich Entwicklungswerkzeugen; fehlende Angaben bleiben unbekannt. Flutter-Lizenzhinweise sind in der App erreichbar. Es wurde keine pauschale juristische Freigabe aller kommerziellen Betriebsbedingungen behauptet.
+
+
+Zusätzliche offizielle Quellen, geprüft am 14.10.2026:
+
+- OpenRouter aktueller Modellkatalog: https://openrouter.ai/api/v1/models ; konkrete Endpunkte über `/api/v1/models/{author}/{slug}/endpoints`, für die oben dokumentierten kostenlosen Modelle tatsächlich abgerufen.
+- Kosten- und Providerbindung: https://openrouter.ai/docs/guides/routing/provider-selection (max_price, only, allow_fallbacks, data_collection, zdr).
+- FlutterFire: https://firebase.google.com/docs/cloud-messaging/flutter/client und https://firebase.google.com/docs/cloud-messaging/flutter/receive-messages ; tatsächlich aufgelöste Pakete `firebase_core 4.15.0`, `firebase_messaging 16.7.0`, `firebase_core_web 3.12.0`, JS SDK `12.19.0`. Dieses fixierte Messaging-Paket stellt `getToken/onTokenRefresh` bereit; neuere FID-Methoden der Dokumentation wurden nicht erfunden oder vorausgesetzt.
+- FCM HTTP v1 / Dienstkonto: https://firebase.google.com/docs/cloud-messaging/send/v1-api ; Payload-Schema einschließlich `PRIVATE`: https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages .
+- Token-Lebenszyklus: https://firebase.google.com/docs/cloud-messaging/manage-tokens .
+- Android-Signierung und AAB: https://docs.flutter.dev/deployment/android .
+- Google Play Familien: https://support.google.com/googleplay/android-developer/answer/9893335 ; Kontolöschung: https://support.google.com/googleplay/android-developer/answer/13327111 .
+
+Bei echten Google-Projektzugängen sind die dann geltenden SDK-/Families-/Data-Safety-Vorgaben erneut zu prüfen. Ein gebautes AAB ersetzt keine Play-Prüfung.

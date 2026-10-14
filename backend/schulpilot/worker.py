@@ -30,8 +30,11 @@ from .db import (
     now,
 )
 from .families import remove_family, unlink_uploads
+from .fixtures import FIXTURE_ID
 from .learning import record
-from .providers import ProviderError, request_provider, settle
+from .notifications import deliver_one
+from .notifications import prepare as prepare_notifications
+from .providers import ProviderError, config_for_function, request_provider, settle
 from .synthetic import sample_unit
 
 log = logging.getLogger("schulpilot.worker")
@@ -84,7 +87,7 @@ def process(job_id):
                 )
             if job.kind == "unit" and ((material and not material.confirmed) or (not material and not assignment)):
                 raise ProviderError("Bestätigtes Material oder Elternauftrag ist nicht mehr vorhanden.")
-            config = db.get(ProviderConfig, 1)
+            config = config_for_function(db.get(ProviderConfig, 1), job.kind)
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage and (
                 usage.provider != config.provider
@@ -149,15 +152,17 @@ def process(job_id):
                 else None
             )
             synthetic = bool(material and material.synthetic)
+            fixture = bool(synthetic and material.fixture_id == FIXTURE_ID and family.synthetic)
             variant = len(previous)
             config_values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            function = job.kind
             # Release the DB transaction before the bounded external request.
             db.rollback()
-        if synthetic:
+        if synthetic and not fixture:
             data = sample_unit(variant, feedback[0] if feedback else "normal")
         else:
             result = request_provider(
-                ProviderConfig(**config_values), "extract" if image_bytes else "unit", payload, image_bytes
+                ProviderConfig(**config_values), function, payload, image_bytes, synthetic_fixture=fixture
             )
             data = result.data
         with DB.begin() as db:
@@ -184,6 +189,8 @@ def process(job_id):
                 for key in ("subject", "topic", "content", "uncertainties", "homework"):
                     setattr(material, key, data[key])
                 material.status = "review"
+                material.extraction_provider = config_values["provider"]
+                material.extraction_model = config_values["model"]
                 job.result = {"material_id": material.id}
                 record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
             else:
@@ -204,7 +211,8 @@ def process(job_id):
                     explanation=data["explanation"],
                     questions=data["questions"],
                     synthetic=synthetic,
-                    provider="synthetic" if synthetic else config_values["provider"],
+                    provider="synthetic" if synthetic and not fixture else config_values["provider"],
+                    model="fixed-fractions-v1" if synthetic and not fixture else config_values["model"],
                 )
                 db.add(unit)
                 db.flush()
@@ -311,6 +319,8 @@ def maintenance():
                     )
                 )
     unlink_uploads(paths)
+    with DB.begin() as db:
+        prepare_notifications(db)
 
 
 def stop(*_):
@@ -326,6 +336,7 @@ def main():
     last_maintenance = 0
     while running:
         try:
+            deliver_one(DB)
             if now() - last_maintenance > 60:
                 maintenance()
                 last_maintenance = now()
