@@ -2,8 +2,9 @@
 // scripts/prepare_normal_ai_smoke.py. Run from qa/; interruption keeps the private
 // account/checkpoints for resume. This driver never creates another family.
 // --keep-for-native retains the successful household for native APK checks.
-// --retry-failed-coaching permits one explicit UI retry per failed unit; no other
-// provider request is retried by this driver and no replacement model is used.
+// --retry-failed-package permits one explicit UI retry of this day's failed
+// package. --retry-failed-coaching permits one explicit UI retry per failed unit.
+// OCR is never retried by this driver and no replacement model is used.
 import {chromium} from 'playwright';
 import {chmod, readFile, realpath, rename, unlink, writeFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -12,7 +13,7 @@ import {fileURLToPath} from 'node:url';
 const base = 'https://schulpilot.dorfspy.de';
 const artifacts = fileURLToPath(new URL('../artifacts/', import.meta.url));
 const accountFile = path.join(artifacts, '.school-day-qa-account.json');
-const allowedFlags = new Set(['--keep-for-native', '--retry-failed-coaching']);
+const allowedFlags = new Set(['--keep-for-native', '--retry-failed-package', '--retry-failed-coaching', '--diagnose-package-once']);
 const flags = new Set(process.argv.slice(2));
 const headers = {'X-Schulpilot-Request': '1'};
 const errors = [];
@@ -100,11 +101,18 @@ async function tap(page, locator, options) {
   await page.waitForTimeout(180);
 }
 async function typeField(page, locator, value) {
-  await tap(page, locator);
+  const field = await reveal(page, locator);
+  // Flutter's textarea semantics also encloses its counter. Click in the
+  // actual input area and verify that keyboard input reached the editor.
+  await field.click({position: {x: 20, y: 20}});
   await page.waitForTimeout(250);
-  await page.keyboard.press('Control+A');
+  if (await field.inputValue()) {
+    await page.keyboard.press('Control+A');
+    await page.keyboard.press('Backspace');
+  }
   await page.keyboard.type(value, {delay: 15});
   await page.waitForTimeout(150);
+  check(await field.inputValue() === value, 'native_web_input_did_not_receive_keyboard_text');
 }
 async function tapResponse(page, locator, route, method, status) {
   const pending = page.waitForResponse(response => apiPath(response) === '/api' + route && response.request().method() === method, {timeout: 45000});
@@ -161,7 +169,15 @@ async function waitDay(predicate, code, polls = 165) {
 }
 async function uploadAndConfirm(day) {
   check(day.pages.length <= 2, 'unexpected_pages_in_owned_qa_day');
-  if (day.active_job) day = await waitDay(value => !value.active_job, 'resume_existing_job');
+  if (day.active_job?.kind === 'package') day = await waitPackageJob(day.active_job.id);
+  else if (day.active_job) day = await waitDay(value => !value.active_job, 'resume_existing_job');
+  // Once every page is confirmed, day.last_error can describe the previous
+  // package job. Its single operator-requested retry is handled separately;
+  // never repeat the already successful image recognition or confirmations.
+  if (day.last_error && day.stage === 'review' && day.units.length === 0 && day.pages.length === 2 && day.pages.every(page => page.confirmed)) {
+    check(flags.has('--retry-failed-package'), 'existing_package_failed_requires_explicit_retry_flag');
+    return day;
+  }
   check(!day.last_error, 'existing_photo_job_failed_no_automatic_retry');
   if (day.stage === 'ready') return day;
   if (day.stage === 'collecting') {
@@ -217,11 +233,38 @@ async function uploadAndConfirm(day) {
 }
 async function ensurePackage(day) {
   await checkpoint('create_or_resume_saved_package');
-  if (day.active_job) day = await waitDay(value => !value.active_job, 'resume_package_job');
-  check(!day.last_error, 'existing_package_job_failed_no_automatic_retry');
+  if (day.active_job?.kind === 'package') day = await waitPackageJob(day.active_job.id);
+  else if (day.active_job) day = await waitDay(value => !value.active_job, 'resume_package_job');
+  let retry = false;
+  let diagnostic = false;
+  if (day.last_error && day.units.length === 0) {
+    const retried = account.package_retry_day_ids ?? [];
+    check(day.stage === 'review' && day.pages.length === 2 && day.pages.every(page => page.confirmed), 'package_retry_cannot_repeat_or_skip_page_review');
+    const consumed = await usage();
+    check(consumed.records.some(record => record.function === 'package' && record.status.startsWith('failed')), 'failed_package_reservation_missing_from_ledger');
+    if (flags.has('--retry-failed-package') && !retried.includes(day.id)) {
+      account.package_retry_day_ids = [...retried, day.id];
+      await checkpoint('one_explicit_package_retry');
+    } else {
+      // A separately requested diagnosis after a server correction must never
+      // erase the first failed attempt or its already consumed retry marker.
+      const attempts = account.package_diagnostic_attempts ?? [];
+      check(flags.has('--diagnose-package-once') && retried.includes(day.id) && attempts.length === 0, 'saved_package_failed_no_further_authorized_retry');
+      const health = await jsonGet(child, '/health');
+      account.package_diagnostic_attempts = [{day_id: day.id, source_commit: health.source_commit}];
+      diagnostic = true;
+      await checkpoint('one_explicit_package_diagnosis');
+    }
+    retry = true;
+  }
   if (day.units.length === 0) {
-    await tapResponse(childPage, button(childPage, 'Jetzt lernen'), '/school-days/' + day.id + '/package', 'POST', 202);
-    day = await waitDay(value => value.stage === 'ready' && value.units.length > 0, 'real_ai_package');
+    const queued = await tapResponse(childPage, button(childPage, 'Jetzt lernen'), '/school-days/' + day.id + '/package', 'POST', 202);
+    check(queued.id, 'package_job_identifier_missing');
+    if (retry) {
+      account.browser_qa.package_retry_job_id = queued.id;
+      await checkpoint(diagnostic ? 'explicit_package_diagnosis_accepted' : 'explicit_package_retry_accepted');
+    }
+    day = await waitPackageJob(queued.id);
     // Keep the IDs before navigation assertions, so an interrupted browser can
     // resume this exact package instead of creating another family or package.
     account.package_unit_id = day.units[0].id;
@@ -233,6 +276,20 @@ async function ensurePackage(day) {
   check(account.package_unit_id === day.units[0].id && day.units[0].synthetic === false && day.units[0].provider === 'openrouter', 'saved_package_identity_or_real_provider_mismatch');
   await checkpoint('saved_package_identity_checked');
   return day;
+}
+async function waitPackageJob(jobId) {
+  for (let poll = 0; poll < 100; poll++) {
+    const job = await jsonGet(child, '/jobs/' + jobId);
+    if (job.status === 'failed') throw new QaFailure('saved_package_job_failed_no_further_retry');
+    if (job.status === 'completed') {
+      const day = await dayState();
+      check(day.stage === 'ready' && day.units.length > 0, 'finished_package_job_has_no_saved_unit');
+      return day;
+    }
+    check(['queued', 'running'].includes(job.status), 'unexpected_package_job_status');
+    await childPage.waitForTimeout(2000);
+  }
+  throw new QaFailure('package_bounded_wait_expired');
 }
 async function waitCoaching(unitId, page) {
   for (let poll = 0; poll < 100; poll++) {
@@ -303,7 +360,7 @@ async function fillAnswer(page, question) {
       check(left && right, 'invalid_authoritative_matching_pair');
       const dropdown = page.getByRole('combobox', {name: left}).or(button(page, left)).or(page.getByLabel(left, {exact: true})).first();
       await tap(page, dropdown);
-      const option = page.getByRole('option', {name: right, exact: true}).or(page.getByText(right, {exact: true})).last();
+      const option = page.getByRole('menuitem', {name: right, exact: true}).or(page.getByRole('option', {name: right, exact: true})).or(page.getByLabel(right, {exact: true})).last();
       await tap(page, option, {modal: true});
     }
   } else throw new QaFailure('unsupported_structured_task_type');
@@ -422,12 +479,16 @@ async function checkParentAndUsage(units) {
   }
   const consumed = await usage();
   const retries = account.coaching_retry_unit_ids ?? [];
+  const packageRetries = account.package_retry_day_ids ?? [];
+  const diagnostics = account.package_diagnostic_attempts ?? [];
   check(new Set(retries).size === retries.length && retries.length <= 3, 'explicit_retry_limit_exceeded');
-  check(consumed.calls_used === 3 + units.length + retries.length, 'unexpected_or_unaccounted_ai_reservations');
+  check(new Set(packageRetries).size === packageRetries.length && packageRetries.length <= 1, 'explicit_package_retry_limit_exceeded');
+  check(diagnostics.length <= 1, 'explicit_diagnosis_limit_exceeded');
+  check(consumed.calls_used === 3 + units.length + retries.length + packageRetries.length + diagnostics.length, 'unexpected_or_unaccounted_ai_reservations');
   check(consumed.records.length === consumed.calls_used, 'usage_ledger_does_not_match_reservations');
   check(consumed.records.every(record => record.provider === 'openrouter' && record.model === units[0].model && (record.cost_micros_usd === 0 || record.cost_micros_usd === null)), 'provider_or_cost_did_not_stay_free_or_explicitly_unknown');
   check(consumed.unknown_cost_calls === consumed.records.filter(record => record.cost_micros_usd === null).length, 'unknown_costs_were_reported_as_zero');
-  return {answerCount, consumed, retryCount: retries.length};
+  return {answerCount, consumed, retryCount: retries.length, packageRetryCount: packageRetries.length};
 }
 
 try {
@@ -471,12 +532,12 @@ try {
   check(resumed.coaching.status === 'ready', 'completed_coaching_was_not_persistent');
   const after = await usage();
   check(before.calls_used === after.calls_used && before.records.length === after.records.length, 'reopening_saved_review_reserved_another_ai_call');
-  const {answerCount, consumed, retryCount} = await checkParentAndUsage(units);
+  const {answerCount, consumed, retryCount, packageRetryCount} = await checkParentAndUsage(units);
   check(errors.length === 0, 'browser_runtime_errors_detected');
   account.browser_qa.evidence.completed = true;
   await checkpoint('passed');
   passed = true;
-  console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, mobile_viewport: 390, learning_rounds: units.length, completed_questions: answerCount, actual_free_ai_calls: consumed.calls_used, known_cost_micros_usd: consumed.known_cost_micros_usd, unknown_cost_calls: consumed.unknown_cost_calls, explicit_retries: retryCount, saved_package_resume_without_ai: true, feedback_waited_for_continue: true, parent_sees_saved_answers_hints_and_reviews: true, runtime_errors: errors}));
+  console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, mobile_viewport: 390, learning_rounds: units.length, completed_questions: answerCount, actual_free_ai_calls: consumed.calls_used, known_cost_micros_usd: consumed.known_cost_micros_usd, unknown_cost_calls: consumed.unknown_cost_calls, explicit_coaching_retries: retryCount, explicit_package_retries: packageRetryCount, saved_package_resume_without_ai: true, feedback_waited_for_continue: true, parent_sees_saved_answers_hints_and_reviews: true, runtime_errors: errors}));
 } catch (error) {
   process.exitCode = 1;
   // Playwright's detailed errors may quote the selected answer or typed value.
@@ -485,6 +546,10 @@ try {
   console.error(JSON.stringify({qa_passed: false, stopped_at: phase, reason: error instanceof QaFailure ? error.message : 'browser_or_io_operation_failed', private_account_kept_for_resume: Boolean(account)}));
 } finally {
   if (!passed && childPage) await childPage.screenshot({path: path.join(artifacts, 'school-day-browser-debug.png')}).catch(() => {});
+  if (!passed && parent && account?.user?.families?.length === 1) {
+    const consumed = await usage().catch(() => null);
+    if (consumed) console.log(JSON.stringify({failed_run_usage: {calls_used: consumed.calls_used, known_cost_micros_usd: consumed.known_cost_micros_usd, unknown_cost_calls: consumed.unknown_cost_calls, explicit_package_retries: (account.package_retry_day_ids ?? []).length, explicit_coaching_retries: (account.coaching_retry_unit_ids ?? []).length}}));
+  }
   if (passed && !flags.has('--keep-for-native')) {
     try {
       const deleted = await parent.request.delete(base + '/api/account', {headers, data: {password: account.credentials.parent_password}});

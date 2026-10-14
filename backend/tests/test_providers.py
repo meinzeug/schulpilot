@@ -300,3 +300,72 @@ def test_openrouter_is_bound_to_model_upstream_and_has_safe_errors(api, househol
         assert "HTTP 500" in str(error) and "PRIVATE_SYNTHETIC_PROVIDER_ECHO" not in str(error)
     else:
         raise AssertionError("Provider error was hidden")
+
+
+def test_openrouter_http_200_errors_and_empty_envelopes_never_become_units(api, household, monkeypatch):
+    import json
+
+    import httpx
+    import pytest
+    from schulpilot import providers
+
+    user, _ = household
+    configured(user["families"][0]["id"])
+    with DB.begin() as db:
+        config = db.get(ProviderConfig, 1)
+        config.provider = "openrouter"
+        config.openrouter_free_only = False
+        config.capability_evidence = "synthetic upstream=fixture-upstream"
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+    private_echo = "PRIVATE_SYNTHETIC_PROVIDER_ECHO"
+    bodies = [
+        (
+            {
+                "error": {
+                    "code": 429,
+                    "message": private_echo,
+                    "metadata": {"error_type": "rate_limit_exceeded", "raw": private_echo},
+                }
+            },
+            "ausgelastet",
+        ),
+        (
+            {
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": json.dumps(sample_unit())},
+                        "error": {"code": 502, "message": private_echo},
+                    }
+                ]
+            },
+            "abgebrochen",
+        ),
+        ({"choices": []}, "keine Lernantwort"),
+        ({"choices": [{"finish_reason": "stop", "message": {"content": ""}}]}, "ohne Inhalt"),
+    ]
+    calls = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, *args, **kwargs):
+            calls.append(1)
+            return httpx.Response(200, json=body)
+
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    for body, expected in bodies:
+        before = len(calls)
+        with pytest.raises(ProviderError) as failure:
+            request_provider(config, "unit", {})
+        assert expected in str(failure.value)
+        assert private_echo not in str(failure.value)
+        assert len(calls) == before + 1  # No hidden repeat or provider fallback.

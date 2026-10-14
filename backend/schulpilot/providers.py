@@ -20,6 +20,19 @@ class ProviderError(Exception):
     pass
 
 
+def openrouter_failure(error):
+    """Map only documented error categories; never echo upstream details."""
+    metadata = error.get("metadata", {}) if isinstance(error, dict) else {}
+    category = metadata.get("error_type") if isinstance(metadata, dict) else None
+    if category in ("rate_limit_exceeded", "provider_overloaded"):
+        return "Die KI ist gerade ausgelastet. Bitte später erneut versuchen."
+    if category in ("authentication", "permission_denied", "payment_required", "invalid_request"):
+        return "Die KI-Verbindung muss vom Betreiber geprüft werden. Deine Fotos bleiben gespeichert."
+    if category == "timeout":
+        return "Die KI hat zu lange gebraucht und abgebrochen. Bitte später erneut versuchen."
+    return "Der KI-Anbieter hat die Antwort abgebrochen. Bitte später erneut versuchen."
+
+
 @dataclass
 class Result:
     data: dict
@@ -451,7 +464,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     try:
         if len(response.content) > 500_000:
             raise ValueError("oversize")
-        raw = response.json()
+        try:
+            raw = response.json()
+        except ValueError:
+            raise ProviderError(
+                "Die Antwort des KI-Anbieters war nicht lesbar. Bitte später erneut versuchen."
+            ) from None
+        if not isinstance(raw, dict):
+            raise ValueError("invalid envelope")
+        # OpenRouter can return HTTP 200 with only an error after generation
+        # has started. An HTTP success is not a completed learning response.
+        if config.provider == "openrouter" and raw.get("error") is not None:
+            raise ProviderError(openrouter_failure(raw["error"]))
         usage = raw.get("usage", {})
         if config.provider == "openai":
             if raw.get("status") != "completed":
@@ -465,7 +489,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             )
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         elif config.provider == "openrouter":
-            choice = raw["choices"][0]
+            choices = raw.get("choices")
+            if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                raise ProviderError("Die KI hat keine Lernantwort geliefert. Bitte später erneut versuchen.")
+            choice = choices[0]
+            if choice.get("error") is not None:
+                raise ProviderError(openrouter_failure(choice["error"]))
             if choice.get("finish_reason") != "stop":
                 if choice.get("finish_reason") == "length":
                     raise ProviderError(
@@ -474,7 +503,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 raise ProviderError(
                     "Die KI hat keine abgeschlossene Antwort geliefert. Die Ausgabe wurde verworfen; kein automatischer Wiederholungsversuch."
                 )
-            text = choice["message"]["content"]
+            message = choice.get("message")
+            if (
+                not isinstance(message, dict)
+                or not isinstance(message.get("content"), str)
+                or not message["content"].strip()
+            ):
+                raise ProviderError("Die KI hat eine Antwort ohne Inhalt geliefert. Bitte später erneut versuchen.")
+            text = message["content"]
             input_tokens, output_tokens = usage.get("prompt_tokens"), usage.get("completion_tokens")
         else:
             text = json.dumps(raw["data"])

@@ -237,20 +237,31 @@ def photo_tiles():
 
 
 def choose_two_in_system_picker():
-    deadline = time.monotonic() + 25
+    deadline = time.monotonic() + 12
     while time.monotonic() < deadline:
         album = find_system_label(r"\bSchulpilotQA\b")
-        if album:
+        if album is not None:
             tap_node(album)
             break
         tab = find_system_label(r"\b(Albums|Alben|Collections|Sammlungen)\b")
-        if tab:
+        if tab is not None:
             tap_node(tab)
         time.sleep(0.6)
     else:
-        raise QaError(
-            "Expected Android system-picker Albums/Collections → SchulpilotQA. Picker layout may require interactive inspection; no photos were guessed."
-        )
+        # Some API36 picker versions expose only system albums. Selecting
+        # Recent is safe ONLY when the entire dedicated emulator library is
+        # proven to contain exactly these two original artificial fixtures.
+        output = adb(
+            "shell",
+            "content query --uri content://media/external/images/media --projection _display_name:relative_path",
+        ).decode(errors="replace")
+        names = re.findall(r"(?:^|[ ,])_display_name=([^,\r\n]+)", output)
+        if len(names) != 2 or set(names) != set(FILENAMES) or output.count(RELATIVE) != 2:
+            raise QaError("The picker hides custom albums and the dedicated library has other images; no photos were guessed.")
+        photos = find_system_label(r"^(Photos|Fotos)$")
+        if photos is None:
+            raise QaError("The verified two-fixture photo library has no accessible Photos tab.")
+        tap_node(photos)
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         tiles = photo_tiles()
@@ -279,7 +290,7 @@ def choose_two_in_system_picker():
         raise QaError("The system picker did not confirm exactly two selected photos; no result was submitted.")
     screenshot("android-photo-import-picker.png")
     confirm = find_system_label(r"^(?:Add|Hinzufügen|Auswählen|Select|Done|Fertig)(?:\b|\s|\()")
-    if not confirm:
+    if confirm is None:
         raise QaError("Expected the system picker's Add(2)/Done confirmation. Selection remains open for inspection.")
     tap_node(confirm)
 
