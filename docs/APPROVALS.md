@@ -5,6 +5,10 @@ Diese Betreiberentscheidung wird für SCHULPILOT dokumentiert und bei der Konfig
 
 Die Entscheidung umfasst die beauftragte serverseitige KI-Verarbeitung. Die Google-/Push-Anbindung ist technisch beauftragt; der spätere ausdrückliche Firebase-Übergabeauftrag verlangt jedoch eine eigene konkrete Prüfung und Betreiberentscheidung vor allgemeinem Push-Versand. `PUSH_APPROVED` bleibt deshalb ausgeschaltet. Ein vorhandener Schlüssel oder eine erfolgreiche FCM-Validierung ersetzt diese Entscheidung nicht. Technische Schutzvorgaben bleiben bestehen: keine Trainingsfreigabe für echte Inhalte, geschützte Providerroute, keine privaten Inhalte in Push, keine Analytics, keine Weitergabe von Schlüsseln.
 
+## Nachfolgender Auftrag zum Produktionsstart
+
+Nach der Übergabe mit ausdrücklich ausgewiesener ausgeschalteter Push-Freigabe hat der Betreiber am 14.10.2026 angewiesen: „warum test apk? das muss alles endlich in production übergehen“. Dieser nachfolgende Auftrag wird als Betreiberentscheidung zum regulären Betrieb einschließlich freiwilliger Firebase-Benachrichtigungen umgesetzt. Das ersetzt die vorherige vorläufige Push-Sperre für diese Installation; neue Installationen und reine Cloud-Prüfwerkzeuge dürfen weiterhin keine automatische Freigabe erteilen. Die tatsächliche Aktivierung wird auditierbar mit dem vorhandenen technischen App-/API-/Key-Nachweis und Verweis auf die Datenschutzprüfung gespeichert. [Konkrete Bedingungen und Grenzen](PRODUCTION.md). Keine unabhängige Rechtsprüfung, unbekannte Vertragspartei oder physische Geräteabnahme wird dadurch erfunden.
+
 ## Historische Endpunktprüfung mit zusätzlicher ZDR-Pflicht
 
 Zwei ausdrückliche synthetische Prüfaufrufe am 14.10.2026:

@@ -369,7 +369,7 @@ def main():
     report = {
         "project_id": PROJECT,
         "checked_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "production_push_approved": False,
+        "production_push_approved": "not_checked_by_cloud_inspection",
         "service_account_oauth": False,
         "fcm_validate_only": "not_performed",
         "visible_delivery": "not_observed",

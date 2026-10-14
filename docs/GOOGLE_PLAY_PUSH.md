@@ -4,9 +4,9 @@ Google wird ausschließlich für Play und freiwilliges Push verwendet. Eigene An
 
 ## Android-Dateien und Signierung
 
-- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, aktueller Version-Code `13`, Android 7.0 / API 24 bis Ziel-API 36. Den tatsächlich bereitgestellten Versionscode aus `/api/app-release` und [STATUS.md](STATUS.md) übernehmen.
-- Test-APK: `artifacts/schulpilot-0.1.0-test.apk`. Wird bei Deployment unter `/downloads/schulpilot-android.apk` veröffentlicht und vor/nach Web-Login verlinkt. `/api/app-release` enthält die tatsächliche Größe, Version und SHA-256.
-- Upload-AAB: `artifacts/schulpilot-0.1.0-upload.aab`. Nicht öffentlich und nicht in Git. Google Play verteilt daraus mit Play App Signing signierte APKs.
+- Paket: `de.dorfspy.schulpilot`, Version `1.0.0`, aktueller Version-Code `14`, Android 7.0 / API 24 bis Ziel-API 36. Den tatsächlich bereitgestellten Versionscode aus `/api/app-release` und [STATUS.md](STATUS.md) übernehmen.
+- Reguläre Direct-APK: `artifacts/schulpilot-android.apk`. Wird bei Deployment unter `/downloads/schulpilot-android.apk` veröffentlicht und vor/nach Web-Login verlinkt. `/api/app-release` enthält die tatsächliche Größe, Version, SHA-256 und den Kanal `stable`.
+- Upload-AAB: `artifacts/schulpilot-play.aab`. Nicht öffentlich und nicht in Git. Google Play verteilt daraus mit Play App Signing signierte APKs.
 - Eigener RSA-4096-Upload-Schlüssel und Passwörter: `~/.local/share/schulpilot-signing/`, Verzeichnis 0700, Dateien 0600. Unbedingt separat verschlüsselt sichern. Der private Schlüssel wird weder auf den App-Server noch zu GitHub kopiert. Der Google-App-Signing-Schlüssel ist davon getrennt.
 
 Reproduzierbarer Build mit der fixierten Flutter-Version aus `toolchain.json`:
@@ -20,7 +20,7 @@ flutter build apk --flavor direct --release --dart-define=API_URL=https://schulp
 flutter build appbundle --flavor play --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
-`SCHULPILOT_STORE_BUILD=true` verweigert einen Build ohne externen Upload-Schlüssel. Ohne dieses Flag können Entwickler weiterhin ausdrücklich mit einem lokalen Debugschlüssel testen. Der erste öffentlich bereitgestellte Stand war debugsigniert; ein Wechsel auf den Upload-Schlüssel erfordert gegebenenfalls einmalige Deinstallation der alten Test-APK. Vor weiteren Play-Uploads den Version-Code erhöhen.
+`bash scripts/build_release.sh` setzt die erforderliche Signierung und baut alle drei Artefakte. Release-Aufträge ohne externen Schlüssel werden abgewiesen; normale Debug-Builds bleiben für lokale Entwicklung verfügbar. Der erste historische Stand war debugsigniert; der Wechsel auf den Upload-Schlüssel erforderte gegebenenfalls eine einmalige Deinstallation. Aktuelle signierte Direct-Versionen behalten Paket und Signierer und werden regulär aktualisiert. Vor weiteren Play-Uploads den Version-Code erhöhen.
 
 `firebase_core 4.15.0` meldet im Android-Build einen Hinweis zu künftigem Built-in Kotlin. Die hier fixierte Kombination mit Flutter 3.47.7/AGP 9.1.0 baut erfolgreich. Vor einem Flutter-/Gradle-Upgrade das Plugin und den Hinweis erneut prüfen.
 

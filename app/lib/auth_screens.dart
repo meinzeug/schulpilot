@@ -668,7 +668,7 @@ Fotos werden vor dem Upload zum Drehen und Zuschneiden angezeigt. Ausstehende zu
 
 Sitzungen sind widerrufbar. Eltern können Kinderkonten und ihr eigenes Konto löschen sowie einen Familienexport mit Materialien und Lernverlauf herunterladen. Beim Löschen des Familieninhabers wird dessen gesamte Familie gelöscht; eingeladene Eltern verlieren den Zugriff.
 
-Aufbewahrung im Pilot: Materialien, Einheiten, Antworten, Aktivitäten und Nachrichten höchstens 365 Tage; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere 7 Tage; tägliche Backups 14 Tage. Backups müssen vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen werden. Abrechnung und Betriebsprotokolle enthalten keine Fotos oder vollständigen Kinderantworten.
+Aufbewahrung: Materialien, Einheiten, Antworten, Aktivitäten und Nachrichten höchstens 365 Tage; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere 7 Tage; tägliche Backups 14 Tage. Backups müssen vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen werden. Abrechnung und Betriebsprotokolle enthalten keine Fotos oder vollständigen Kinderantworten.
 
 Benachrichtigungen sind freiwillig. Erst beim Einschalten auf einem angemeldeten Gerät wird Google Firebase Cloud Messaging initialisiert. Für Kinder ist vorher zusätzlich eine Freigabe durch die Eltern erforderlich. Firebase erhält dabei Installations- und Gerätetokens sowie technische Verbindungsdaten; Namen, Lerninhalte, Noten und Familienkennungen werden nicht mitgesendet. Die Verarbeitung ist nicht auf Deutschland oder die EU beschränkt. Analytics, Werbung und Firebase Authentication werden nicht verwendet. Ohne geeignete Google Play Services ist Android-Push nicht zugesichert. Ausschalten, Abmelden und Rechteentzug sperren den weiteren Versand im Backend. Gerätetokens werden verschlüsselt gespeichert, bei Abmeldung oder Entzug entfernt und nach 60 Tagen ohne Aktualisierung bereinigt; Versandstatus nach 14 Tagen. Das Löschen eines Push-Tokens ist keine Zusage einer sofortigen Löschung sämtlicher Firebase-Installationsdaten oder Google-Backups. Die allgemeinen Push-Freigaben und die tatsächlich beobachtete Zustellung werden getrennt geprüft.
 
@@ -681,7 +681,7 @@ Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und k�
 
 Die Demo enthält vorbereitete Beispiele. In deinem eigenen Konto übst du mit deinem Unterrichtsmaterial und KI-Unterstützung.
 
-Version 0.1.0''',
+Version 1.0.0''',
                     style: const TextStyle(fontSize: 15, height: 1.8),
                   ),
                 ],

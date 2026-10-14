@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape><solid android:color="#F5F7FC" /></shape></item>
-    <item android:width="72dp" android:height="72dp" android:gravity="center" android:drawable="@drawable/schulpilot_icon" />
+    <item android:drawable="@color/schulpilot_icon_background" />
+    <item android:width="96dp" android:height="96dp" android:gravity="center" android:drawable="@drawable/schulpilot_logo" />
 </layer-list>

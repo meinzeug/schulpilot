@@ -147,10 +147,15 @@ Widget brand({bool light = false}) => FittedBox(
       Container(
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: light ? Colors.white.withValues(alpha: .12) : teal,
+          color: const Color(0xFFEAF8FF),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(Icons.near_me_rounded, color: Colors.white, size: 25),
+        child: Image.asset(
+          'assets/brand/schulpilot-mark.png',
+          width: 30,
+          height: 30,
+          excludeFromSemantics: true,
+        ),
       ),
       const SizedBox(width: 11),
       Text(

@@ -1,0 +1,23 @@
+# Regulärer Betrieb
+
+Der Betreiber hat nach dem Firebase-Handoff vom 14.10.2026 den Produktionsstart ausdrücklich beauftragt. Der reguläre Release verwendet Version `1.0.0+14`, Kanal `stable`, die bestehende HTTPS-API, dieselbe Paketkennung und denselben privaten Upload-Schlüssel wie die vorherige signierte Direct-Version. „Test-APK“ war die bisherige Artefakt-/Kanalbezeichnung; Android wurde bereits als native Flutter-Release-App gebaut. Der optionale Beispielraum bleibt als Demo markiert und ändert reguläre Eltern-/Kinderkonten nicht.
+
+## Reproduzierbare Bereitstellung
+
+Nach den passenden Tests `bash scripts/build_release.sh` ausführen. Das Werkzeug prüft die fixierte Flutter-Revision, verwendet externe Signierdateien und baut Web, `artifacts/schulpilot-android.apk` und `artifacts/schulpilot-play.aab`. `scripts/android_manifest.py` verweigert eine debuggable APK, einen anderen Signierer, falsches Paket und Abweichungen von der aktuellen App-/Backendversion. Die stabile Manifestdatei entsteht aus der tatsächlichen APK einschließlich Signaturprüfung und 16-KB-Zipausrichtung. `bash scripts/deploy.sh` sichert und aktualisiert ausschließlich SCHULPILOT. HTTPS-Healthcheck, Web-Direktlinks, Download-Prüfsumme und eigener Android-Updateweg anschließend tatsächlich prüfen. [Sicherungen und Rückweg](OPERATIONS.md).
+
+Die neue Direct-APK akzeptiert nur den Kanal `stable`. Ein Versionscode höher als 13 erhält den normalen Updateweg aus den bisherigen signierten Installationen; Paket und Signierer bleiben erhalten. Google Play verwendet den separaten Play-Flavor und In-App-Updates. Ein gebautes AAB ist keine Play-Veröffentlichung.
+
+## Freiwillige Firebase-Benachrichtigungen
+
+Die konkrete Betreiberentscheidung ist der Produktionsauftrag nach der technischen Abnahme. Vor Aktivierung werden Sender-OAuth und FCM-Validierung erneut auf dem zeitlich synchronisierten Server geprüft. Der frühere tatsächliche Browsernachweis umfasst Opt-in, Installations-/Registrierungs-HTTP-200, eigenes Geräte-Mapping, erfolgreiche Gerätevalidierung und eine sichtbar beobachtete neutrale Vordergrundnachricht. Eine Message-ID wird weiterhin nicht als Anzeige am Gerät gewertet.
+
+Die offizielle Firebase-Zuordnung nennt für FCM die Google APIs Terms und Firebase Data Processing and Security Terms. Firebase beschreibt Google grundsätzlich als Auftragsverarbeiter und den Kunden als Verantwortlichen. Internationale Verarbeitung ist möglich; kein EU-exklusiver Datenstandort wird behauptet. Diese Anbieterunterlagen wurden am 14.10.2026 erneut gelesen; sie ersetzen nicht die korrekte Betreiber-/Vertragsidentität. [Nutzungsbedingungen](https://firebase.google.com/terms), [Datenschutz](https://firebase.google.com/support/privacy), [Datenverarbeitung](https://firebase.google.com/terms/data-processing-terms).
+
+Nur ausdrückliches Geräte-Opt-in startet Firebase. Kinder benötigen vorher die zusätzliche Elternfreigabe; Entzug und Sitzungswiderruf sperren weitere Backend-Sendungen. Ruhezeiten gelten auch für Tests, kurze TTL bleibt erhalten, keine privaten Lerninhalte in Meldungen. Tokenlöschung wird nicht als sofortige Löschung sämtlicher Installations-/Google-Backupdaten ausgegeben. Keine Analytics, Firebase Authentication oder automatische Fremdproviderwahl. Die allgemeine Freigabe wird in den verschlüsselten Betriebseinstellungen gespeichert; diese haben Vorrang vor Umgebungsdefaults. Ein Schlüssel allein erteilt weiterhin keine Freigabe. [Technische Regeln](FIREBASE_OPERATIONS.md).
+
+## Tatsächliche offene Voraussetzungen
+
+Für öffentlichen Verkauf fehlen vollständige echte Betreiberanschrift, Supportkontakt, Bankdaten und Steuerstatus. Sie wurden angefragt und werden nicht erfunden. Zahlungsverbindliche Bestellungen bleiben ohne diese Pflichtangaben serverseitig gesperrt. Die zugrunde liegende Software einschließlich Eltern-/Kinderzugängen, KI, Überweisungsbestellung und manueller Freischaltung ist unabhängig davon implementiert. Vorlagen und Tarife sind im Adminbereich vorbereitet.
+
+Sichtbare Hintergrund-/Android-Zustellung und Play-Veröffentlichung bleiben ausdrücklich von Release-Kanal und Serverbetrieb getrennte Nachweise. Die autorisierte Google-Cloud-/Firebase-Anmeldung ist vorhanden. Play-Console-Berechtigung und eine vorhandene Entwicklerregistrierung müssen separat tatsächlich geprüft werden; daraus wird kein fehlender Google-Zugang abgeleitet. Der tatsächliche letzte Test-/Deploymentstand steht in [STATUS.md](STATUS.md) und `CHATGPT_HANDOFF.txt`. Die schon bestätigte GitHub-Abrechnungssperre startet keine CI-Jobs; lokale Prüfungen bleiben maßgeblich dokumentiert.

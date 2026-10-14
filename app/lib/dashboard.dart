@@ -148,12 +148,13 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                     if (MediaQuery.sizeOf(context).width > 650)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 30),
-                        child: Icon(
-                          Icons.near_me_rounded,
-                          size: 80,
-                          color: teal,
+                      Padding(
+                        padding: const EdgeInsets.only(left: 30),
+                        child: Image.asset(
+                          'assets/brand/schulpilot-mark.png',
+                          width: 96,
+                          height: 80,
+                          excludeFromSemantics: true,
                         ),
                       ),
                   ],

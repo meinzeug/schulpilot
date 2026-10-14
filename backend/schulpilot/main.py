@@ -170,9 +170,11 @@ def status():
             else reason
         ),
         "notice": (
-            "Technischer Pilot. Betreiberfreigabe liegt vor; die Verfügbarkeit externer KI wird zusätzlich geprüft."
+            "SCHULPILOT ist bereit."
+            if site.real_data_approved and site.privacy_evidence and ai
+            else "Der KI-Dienst ist vorübergehend nicht verfügbar. Gespeicherte Lerninhalte bleiben nutzbar."
             if site.real_data_approved and site.privacy_evidence
-            else "Entwicklungsstand mit synthetischem Testraum. Externe Verarbeitung echter Kinderdaten bleibt bis zur dokumentierten Freigabe gesperrt."
+            else "Eigene Unterrichtsmaterialien können noch nicht verarbeitet werden."
         ),
     }
 

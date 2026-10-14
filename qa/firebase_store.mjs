@@ -49,9 +49,9 @@ try {
   await open(settings,'/settings');
   await settings.getByText('Künstliches Testkonto',{exact:true}).waitFor();
   const config = await (await owner.request.get(base+'/api/notifications/config')).json();
-  assert.equal(config.available,true);assert.equal(config.test_mode,true);assert.equal(config.test_access,true);
+  assert.equal(config.available,true);assert.equal(config.test_mode,false);assert.equal(config.test_access,true);
   assert.notEqual(config.firebase.apiKey,config.firebase.androidApiKey);
-  assert.equal(await (await publicContext.request.get(base+'/api/notifications/config')).json().then(x=>x.available),false);
+  assert.equal(await (await publicContext.request.get(base+'/api/notifications/config')).json().then(x=>x.available),true);
   assert.equal((await owner.request.get(base+'/api/admin/orders')).status(),403);
   checks.push('scoped_synthetic_push_and_parent_role');
   const admin = await context({width:1440,height:1000});
@@ -59,10 +59,10 @@ try {
   assert.equal((await admin.request.post(base+'/api/auth/login',{headers,data:{username:'admin',password}})).status(),200);
   const adminPage = await admin.newPage();
   await open(adminPage,'/admin/push');
-  await adminPage.getByText('Allgemeiner Push-Versand ist gesperrt',{exact:true}).waitFor();
+  await adminPage.getByText('Push ist freigegeben',{exact:true}).waitFor();
   const status = await (await admin.request.get(base+'/api/notifications/admin/status')).json();
   assert.equal(status.sender_identity,'schulpilot-fcm-sender@schulpilot-f6bf3.iam.gserviceaccount.com');
-  assert.equal(status.production_approved,false);assert.equal(status.test_available,true);
+  assert.equal(status.production_approved,true);assert.equal(status.production_available,true);assert.equal(status.test_available,true);
   assert.equal(status.private_key,undefined);
   checks.push('protected_push_status_and_private_credentials_absent');
   await open(adminPage,'/admin/verkauf');

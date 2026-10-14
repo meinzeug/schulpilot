@@ -13,7 +13,10 @@ if (!signingPath.isNullOrBlank()) {
 }
 val hasUploadKey = uploadProperties.getProperty("storeFile") != null
 if (System.getenv("SCHULPILOT_STORE_BUILD") == "true" && !hasUploadKey) {
-    throw GradleException("Play builds require an external SCHULPILOT_SIGNING_PROPERTIES file")
+    throw GradleException("Public builds require an external SCHULPILOT_SIGNING_PROPERTIES file")
+}
+if (!hasUploadKey && gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) {
+    throw GradleException("Release builds require an external SCHULPILOT_SIGNING_PROPERTIES file")
 }
 
 android {
@@ -56,7 +59,7 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName(if (hasUploadKey) "upload" else "debug")
+            signingConfig = if (hasUploadKey) signingConfigs.getByName("upload") else null
         }
     }
 }

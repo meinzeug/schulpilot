@@ -1,0 +1,5 @@
+{
+  "channel": "stable",
+  "application_id": "de.dorfspy.schulpilot",
+  "android_signer_sha256": "f7ddf9216c6cc789d642414f11960d04f2091d51c16f25aaf1ba05fe693de47c"
+}

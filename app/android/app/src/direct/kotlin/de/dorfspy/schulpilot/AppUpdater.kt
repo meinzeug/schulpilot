@@ -58,6 +58,7 @@ class AppUpdater(private val activity: Activity) {
                 val installed = installedInfo()
                 if (!manifest.optBoolean("available")) return@execute
                 require(manifest.getString("application_id") == activity.packageName)
+                require(manifest.getString("channel") == "stable")
                 val release = Release(
                     manifest.getLong("version_code"), manifest.getString("version").take(60),
                     manifest.getLong("size_bytes"), manifest.getString("sha256"), manifest.getString("download_url")

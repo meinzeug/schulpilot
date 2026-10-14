@@ -133,7 +133,7 @@ def main():
             family_id = demo["user"]["families"][0]["id"]
             before_calls = check(parent.get("/families/" + family_id + "/usage"))["calls_used"]
             if not args.already_installed:
-                adb("install", "-r", str(private.parent / "schulpilot-0.1.0-test.apk"))
+                adb("install", "-r", str(private.parent / "schulpilot-android.apk"))
             adb("shell", "pm", "clear", PACKAGE)
             adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
             login(demo["credentials"]["child_username"], demo["credentials"]["child_password"])

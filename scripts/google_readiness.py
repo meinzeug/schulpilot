@@ -23,7 +23,7 @@ def main():
         "operator_data_approval": legal["operator_data_approval"],
         "public_apk_available": release.get("available", False),
         "public_version_code": release.get("version_code"),
-        "aab_built": (root / "artifacts/schulpilot-0.1.0-upload.aab").is_file(),
+        "aab_built": (root / "artifacts/schulpilot-play.aab").is_file(),
         "store_texts_prepared": all(
             (root / ("store/de-DE/" + name + ".txt")).is_file()
             for name in ("title", "short_description", "full_description")
@@ -39,7 +39,7 @@ def main():
                 "-jar",
                 str(args.bundletool),
                 "validate",
-                "--bundle=" + str(root / "artifacts/schulpilot-0.1.0-upload.aab"),
+                "--bundle=" + str(root / "artifacts/schulpilot-play.aab"),
             ],
             capture_output=True,
             timeout=60,

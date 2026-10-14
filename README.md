@@ -4,7 +4,7 @@ Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen Fast
 
 Die Android-App startet eine `FlutterActivity` und rendert die Dart-Oberfläche auf dem Gerät. Sie ist keine Website in einer WebView. Web und Android teilen Lernansichten und Theme; Android ergänzt Kamera, sichere Sitzungsablage und den nativen Updater. Die Oberfläche wird für kleine Touchscreens und breite Webfenster angepasst.
 
-Web: https://schulpilot.dorfspy.de · API: `/api` · Test-APK: `artifacts/schulpilot-0.1.0-test.apk` (lokal, absichtlich nicht in Git).
+Web: https://schulpilot.dorfspy.de · API: `/api` · Android: `artifacts/schulpilot-android.apk` (signierter regulärer Release, absichtlich nicht in Git). Versions- und Freigabestand: [Produktionsbetrieb](docs/PRODUCTION.md).
 
 ## Ausprobieren
 
@@ -44,7 +44,7 @@ flutter build web --release --no-web-resources-cdn --csp
 flutter build apk --flavor direct --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
-Die öffentliche Test-APK und das AAB verwenden einen eigenen **Upload-Schlüssel außerhalb von Git**. Einrichtung und Store-Voraussetzungen: [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md). Die APK ist auf der Startseite und nach Web-Login herunterladbar; `/api/app-release` liefert die aus dem echten APK berechneten Metadaten. Physische Geräteprüfungen, Play-Veröffentlichung und echte Firebase-Zustellung sind weitere Abnahmen, kein Ersatz für die regulären Lernfunktionstests.
+`bash scripts/build_release.sh` baut Web, Direct-APK und Play-AAB mit fixierter Toolchain und dem eigenen **Upload-Schlüssel außerhalb von Git**. Release-Builds verwenden niemals einen Debugschlüssel als Ersatz. Vor Deployment prüfen wir tatsächliche Signatur, Paket, Versionscode, Versionsname, fehlendes Debug-Flag und 16-KB-Zipausrichtung gegen `release-policy.json` und die Quellversion. Ein veraltetes oder anders signiertes APK wird abgewiesen. Das Web zeigt die reguläre APK vor und nach Login; `/api/app-release` veröffentlicht ihre tatsächlichen Metadaten mit Kanal `stable`. [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md).
 
 Für den Ausbau des Einrichtungsassistenten und der Passwort-Administration nachgewiesen: **152 Backendtests in PostgreSQL**, zusätzlich **33 gezielte SQLite-Tests** einschließlich Migration und Datenerhalt. Der endgültige Web-/Android-Buildstand und die öffentlichen Abnahmen stehen getrennt in [STATUS.md](docs/STATUS.md).
 

@@ -98,7 +98,7 @@ def test_operator_approval_is_distinct_from_an_unavailable_private_route(api):
         config.production_block_reason = "Synthetic technical routing failure"
     result = api.get("/api/status").json()
     assert result["real_data_enabled"] is True and result["ai_available"] is False
-    assert result["ai_block_reason"] and "liegt vor" in result["notice"]
+    assert result["ai_block_reason"] and "nicht verfügbar" in result["notice"]
     assert api.get("/api/legal").json()["operator_data_approval"] is True
 
 
