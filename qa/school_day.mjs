@@ -24,28 +24,43 @@ async function login(context, role) {
   const r = await context.request.post(url + '/api/auth/login', {headers, data: {username: demo.credentials[role + '_username'], password: demo.credentials[role + '_password']}});
   assert.equal(r.status(), 200);
 }
+async function reveal(page, locator) {
+  const target = locator.first();
+  for (let i = 0; i < 10; i++) {
+    const box = await target.count() ? await target.boundingBox({timeout: 500}).catch(() => null) : null;
+    const viewport = page.viewportSize();
+    if (box && box.y >= 0 && box.y + box.height <= viewport.height) return target;
+    await page.mouse.move(viewport.width - 60, viewport.height - 120);
+    await page.mouse.wheel(0, box && box.y < 0 ? -550 : 550);
+    await page.waitForTimeout(300);
+  }
+  throw new Error('Expected wizard control was not visible after scrolling');
+}
 try {
   await login(child, 'child');
   await login(parent, 'parent');
   const c = await child.newPage();
+  const startButton = () => c.getByRole('button', {name: /Jetzt lernen & festigen|Weiterlernen/});
   await open(c, '/app');
   await c.getByRole('button', {name: 'Nach der Schule starten', exact: true}).click();
   await c.getByText('Dein Lernpaket ist bereit', {exact: true}).waitFor();
-  await c.getByText(/2 Heftseite(n)/).waitFor();
+  await reveal(c, startButton());
   await c.screenshot({path: '../artifacts/school-day-child-desktop.png'});
   // Direct links, fresh Flutter process, same saved day: no second package.
   await open(c, '/after-school/' + demo.child_id);
   await c.getByText('Dein Lernpaket ist bereit', {exact: true}).waitFor();
   await c.setViewportSize({width: 390, height: 844});
+  await reveal(c, startButton());
   await c.screenshot({path: '../artifacts/school-day-child-mobile.png'});
   const unitResponse = await parent.request.get(url + '/api/units/' + demo.package_unit_id);
   assert.equal(unitResponse.status(), 200);
   const unit = await unitResponse.json();
-  await c.getByRole('button', {name: 'Jetzt lernen & festigen', exact: true}).click();
-  await c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}).waitFor();
+  await startButton().click();
+  await reveal(c, c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}));
   await c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}).click();
-  const q = unit.questions[0];
-  if (q.type === 'choice') await c.getByRole('button', {name: q.answer, exact: true}).click();
+  const q = unit.questions.find(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));
+  assert(q, 'An unanswered question must remain in this isolated test package');
+  if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
   if (q.type === 'gap' || q.type === 'short') {
     await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: true}).click();
     await c.keyboard.type(q.answer, {delay: 30});
@@ -73,6 +88,10 @@ try {
   passed = true;
   console.log(JSON.stringify({checks: ['child_wizard_entry', 'persisted_multi_page_package', 'direct_link_resume_without_duplicate_job', 'mobile_390px', 'real_interactive_hint_and_answer', 'parent_package_and_saved_assistance'], runtime_errors: errors}));
 } finally {
+  if (!passed) {
+    const pages = child.pages();
+    if (pages.length) await pages.at(-1).screenshot({path: '../artifacts/school-day-browser-debug.png'}).catch(() => {});
+  }
   if (passed) {
     const deleted = await parent.request.delete(url + '/api/account', {headers, data: {password: demo.credentials.parent_password}});
     assert.equal(deleted.status(), 200);

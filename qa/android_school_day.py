@@ -8,7 +8,18 @@ which deletes it after the browser check. No credentials are printed.
 import json
 from pathlib import Path
 
-from android_smoke import PACKAGE, adb, login, press, screenshot, wait
+from android_smoke import PACKAGE, adb, login, nodes, press, screenshot, tap_node, wait
+
+
+def expand_sources():
+    # Android appends the expanded/collapsed accessibility state to the label.
+    for _ in range(10):
+        found = [n for n in nodes() if n.get("content-desc", "").startswith("Heftseiten dieses Tages (2)")]
+        if found:
+            tap_node(found[0])
+            return
+        adb("shell", "input", "swipe", "900", "1850", "900", "750", "250")
+    raise RuntimeError("Native source-page expander was not visible")
 
 
 def main():
@@ -21,8 +32,9 @@ def main():
     login(demo["credentials"]["child_username"], demo["credentials"]["child_password"])
     press("Nach der Schule starten", scroll=True)
     wait("Dein Lernpaket ist bereit")
-    press("Heftseiten dieses Tages (2)", scroll=True)
+    expand_sources()
     wait("Seite 1 · Mathematik")
+    adb("shell", "input", "swipe", "900", "1700", "900", "950", "250")
     wait("Seite 2 · Mathematik")
     screenshot("android-school-day-pages.png")
     adb("shell", "am", "force-stop", PACKAGE)

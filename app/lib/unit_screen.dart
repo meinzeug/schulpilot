@@ -331,8 +331,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 24),
             if (u['synthetic'])
-              const Notice(
-                'Synthetische Beispielübung. Keine externe KI beteiligt.',
+              Notice(
+                u['provider'] == 'synthetic'
+                    ? 'Synthetische Beispielübung. Keine externe KI beteiligt.'
+                    : 'Künstlicher Teststoff. Diese Übungen wurden tatsächlich mit KI erstellt: ${u['provider']} · ${u['model']}.',
                 icon: Icons.science_outlined,
               ),
             if (feedback != null)
