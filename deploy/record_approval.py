@@ -82,7 +82,7 @@ result = subprocess.run(
     input=json.dumps(data),
     text=True,
     cwd="/opt/schulpilot/current/backend",
-    env={**values, "PATH": "/usr/bin:/bin"},
+    env={**values, "PATH": "/usr/sbin:/usr/bin:/sbin:/bin"},
     capture_output=True,
 )
 if result.returncode:

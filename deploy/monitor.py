@@ -113,7 +113,7 @@ def main():
                 "schulpilot.operations",
             ],
             cwd="/opt/schulpilot/current/backend",
-            env={**config, "PATH": "/usr/bin:/bin"},
+            env={**config, "PATH": "/usr/sbin:/usr/bin:/sbin:/bin"},
             timeout=20,
             capture_output=True,
             check=True,

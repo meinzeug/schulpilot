@@ -110,7 +110,7 @@ print(json.dumps({'schema':version,'before':before,'after':after,'paths':paths,'
             result = command(
                 ["runuser", "-u", "schulpilot", "--", "/opt/schulpilot/current/venv/bin/python", "-c", code],
                 cwd="/opt/schulpilot/current/backend",
-                env={**config, "PATH": "/usr/bin:/bin"},
+                env={**config, "PATH": "/usr/sbin:/usr/bin:/sbin:/bin"},
                 input=contents.encode(),
             )
             data = json.loads(result.stdout)
