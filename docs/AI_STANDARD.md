@@ -29,6 +29,8 @@ Migration 0006 erhält auf bestehenden Installationen zunächst die bisherige ZD
 
 Kosten- und Familienkontingente, Rate Limits, atomare Reservierung und Notfallstopp bleiben wirksam. Nicht ermittelbare Kosten bleiben unbekannt. Providerseitige Free-Kontingente können zusätzliche Begrenzungen verursachen; es werden keine Credits oder Ressourcen bestellt.
 
+Ausdrücklich beschriftete Auswahlantworten werden deterministisch gelesen: Meldet das Modell `B` und enthält seine Optionsliste eindeutig `B: 3/4`, speichert die App die vorhandene vollständige Antwort `B: 3/4`. Die Optionen und dazugehörigen Hinweise bleiben erhalten. Unbeschriftete, doppelte oder mehrdeutige Buchstaben werden nicht erraten; mathematisch falsche Lösungen und falsche Alternativen bleiben abgelehnt. Es entstehen dadurch keine erfundenen Ersatzaufgaben und keine zusätzlichen KI-Aufrufe. `temperature=0` reduziert die Zufälligkeit, garantiert aber keine identischen oder fachlich immer richtigen Ausgaben.
+
 ## Regulärer End-to-End-Test
 
 ```bash

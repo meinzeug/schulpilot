@@ -138,7 +138,7 @@ def status():
         "ai_data_collection": "deny" if config.provider == "openrouter" else None,
         "ai_requires_zdr": bool(config.provider == "openrouter" and config.openrouter_require_zdr),
         "ai_block_reason": (
-            "Der eingerichtete KI-Endpunkt erfüllt die erforderlichen Datenschutzeinstellungen derzeit nicht. Deine Materialien werden nicht an diesen Endpunkt gesendet."
+            "Der eingerichtete KI-Dienst hat die technische Bild- und Aufgabenprüfung noch nicht bestanden. Gespeicherte Lerninhalte bleiben nutzbar."
             if config.production_block_reason
             else reason
         ),

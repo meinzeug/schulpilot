@@ -32,7 +32,8 @@ def main():
     if args.command == "probe-private-route":
         from .provider_probe import run
 
-        run()
+        if not run():
+            raise SystemExit(1)
         return
     if args.command == "configure-free-tests":
         from .free_test_setup import configure

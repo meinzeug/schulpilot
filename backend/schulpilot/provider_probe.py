@@ -1,6 +1,7 @@
 """Local, explicit, free-only private-routing check with fixed synthetic data."""
 
 import json
+from datetime import datetime, timezone
 
 from sqlalchemy import update
 
@@ -36,7 +37,19 @@ def run():
         if config.revision != revision:
             raise SystemExit("Configuration changed during probe; result was not activated.")
         config.production_block_reason = reason
-        config.status = "Geschützte Route mit festen künstlichen Bild-/Textdaten geprüft." if ready else reason
+        if ready:
+            stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            for field in ("capability_evidence", "extraction_capability_evidence"):
+                base = getattr(config, field).split("; actual-probe=", 1)[0]
+                base = base.replace("actual schema/image probes required", "schema/image/package verified")
+                setattr(config, field, base[:400] + "; actual-probe=" + stamp)
+            config.status = (
+                "OpenRouter Free: Bild-, Aufgaben- und Tagespaketprüfung erfolgreich. Datensammlung gesperrt; ZDR-Zusatzfilter="
+                + str(bool(config.openrouter_require_zdr))
+                + "."
+            )
+        else:
+            config.status = reason
         db.execute(update(ProviderConfig).where(ProviderConfig.id == 1).values(revision=ProviderConfig.revision + 1))
         audit(db, "local-cli", "provider.private_route_probe", "ready" if ready else "unavailable")
     print(
@@ -50,7 +63,9 @@ def run():
             }
         )
     )
+    return ready
 
 
 if __name__ == "__main__":
-    run()
+    if not run():
+        raise SystemExit(1)

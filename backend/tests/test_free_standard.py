@@ -142,9 +142,9 @@ def test_operator_standard_reuses_key_and_waits_for_complete_probe(api, househol
         return Result({}, cost_micros=0)
 
     monkeypatch.setattr(provider_probe, "request_provider", request)
-    provider_probe.run()
+    assert provider_probe.run() is False
     assert calls == ["extract", "unit", "package"]
     assert api.get("/api/status").json()["ai_available"] is False
     monkeypatch.setattr(provider_probe, "request_provider", lambda *args, **kwargs: Result({}, cost_micros=0))
-    provider_probe.run()
+    assert provider_probe.run() is True
     assert api.get("/api/status").json()["ai_available"] is True

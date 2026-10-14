@@ -131,6 +131,13 @@ class MaterialConfirm(Strict):
 
 
 class Question(Strict):
+    @model_validator(mode="before")
+    @classmethod
+    def decode_choice_labels(cls, value):
+        from .checks import canonical_choice
+
+        return canonical_choice(value)
+
     id: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9_-]+$")
     type: Literal["choice", "gap", "match", "short"]
     prompt: str = Field(min_length=1, max_length=1000)
