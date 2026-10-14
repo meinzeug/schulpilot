@@ -625,6 +625,14 @@ def normalized(text):
 
 
 def evaluate(q, answer):
+    from .checks import expanded_fraction, fraction_parts
+
+    expected_form = expanded_fraction(q["prompt"]) if q["type"] in ("choice", "gap", "short") else None
+    if expected_form:
+        parts = fraction_parts(answer)
+        if parts is not None:
+            return "correct" if parts == expected_form else "incorrect"
+        return "uncertain" if q["type"] == "short" else "incorrect"
     valid = {normalized(v) for v in [q["answer"], *q["accepted"]]}
     if normalized(answer) in valid:
         return "correct"

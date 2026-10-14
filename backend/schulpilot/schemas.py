@@ -159,10 +159,17 @@ class Question(Strict):
 
     @model_validator(mode="after")
     def consistent(self):
-        from .checks import fraction_result
+        from .checks import expanded_fraction, fraction_parts, fraction_result
 
         if self.type in ("choice", "gap", "short"):
             fraction_result(self.prompt, self.answer, self.accepted)
+            expected_form = expanded_fraction(self.prompt)
+            if expected_form:
+                if fraction_parts(self.answer) != expected_form:
+                    raise ValueError("Die Bruchdarstellung entspricht nicht dem verlangten Erweiterungsfaktor.")
+                # The main answer is already correct. Remove only unsuitable
+                # aliases, never replace an answer or generate another task.
+                self.accepted = [v for v in self.accepted if fraction_parts(v) == expected_form]
         if self.type == "choice" and (len(self.options) < 2 or self.answer not in self.options):
             raise ValueError("Auswahlaufgabe ohne gültige Antwort.")
         if len(set(self.options)) != len(self.options):

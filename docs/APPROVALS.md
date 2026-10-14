@@ -32,6 +32,6 @@ Erneute kostenlose technische Prüfung nach einer Konfigurationsänderung:
 ssh dorfspy 'python3 /opt/schulpilot/current/deploy/admin.py probe-private-route'
 ```
 
-Dieser lokale Befehl führt höchstens zwei feste synthetische kostenlose Anfragen aus und speichert den technischen Befund. Er erteilt keine neue rechtliche Freigabe und aktiviert keine kostenpflichtigen Modelle.
+Dieser lokale Befehl führt genau drei feste synthetische kostenlose Anfragen für Bild, Einheit und Tagespaket aus und speichert den technischen Befund. Er erteilt keine neue rechtliche Freigabe und aktiviert keine kostenpflichtigen Modelle.
 
 Fehlende Firebase-/Play-Projektzugänge und vollständige Betreiberangaben sind eigenständige Voraussetzungen. Eine Betreiberfreigabe ersetzt keine Zugangsdaten oder noch unbekannte Anschrift.

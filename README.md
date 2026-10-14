@@ -8,6 +8,8 @@ Web: https://schulpilot.dorfspy.de · API: `/api` · Test-APK: `artifacts/schulp
 
 Der Kinderbereich enthält den geführten **„Nach der Schule“-Assistenten**: mehrere Heftseiten aufnehmen, jede Erkennung bestätigen und daraus ein gemeinsames, zeitlich begrenztes Tagespaket mit Erklärungen und interaktiven Übungen erstellen. Mehrfachauswahl, Drehen, Sortieren, begrenzte lokale Upload-Warteschlange, ergänzbare Paketversionen und eine Tageshistorie sind implementiert. Der Lernweg beginnt mit der Erklärung. [Ablauf, Grenzen und Tests](docs/AFTER_SCHOOL.md). Reguläre Kinder verwenden eigene Zugänge und den normalen Fotoimport. Die zusätzlich verfügbare synthetische Demo ist ausdrücklich getrennt.
 
+Für den regulären Betrieb ein Elternkonto registrieren, die E-Mail bestätigen und im Familienbereich einen Kinderzugang mit eigenem Benutzernamen und sicherem Passwort anlegen. Das Kind meldet sich damit direkt im Web oder in der APK an und öffnet „Nach der Schule starten“. Eltern erhalten die gespeicherten Aufgaben, Antworten und genutzten Hinweise im eigenen Dashboard.
+
 „Synthetisch ausprobieren“ legt eine eigene isolierte Testfamilie für 24 Stunden an. Die einmalig angezeigten Eltern- und Kinderzugänge funktionieren auch auf einem zweiten Gerät. Den Beispielstoff bestätigen, eine Einheit vorbereiten und mit dem Kinderzugang lernen. Eltern sehen anschließend tatsächliche Aufgaben, Antworten, Hinweise und Aktivitäten. Die Demo führt **keine Fotoerkennung und keinen externen KI-Aufruf** aus; freie Foto-Uploads sind darin gesperrt.
 
 ## Lokal starten

@@ -1,7 +1,29 @@
 """Small deterministic checks for the arithmetic we can verify unambiguously."""
 
 import re
+import unicodedata
 from fractions import Fraction
+
+
+def expanded_fraction(prompt):
+    """Only recognize an explicit fraction and a positive expansion factor."""
+    match = re.search(
+        r"\berweitere\s+(?:den\s+bruch\s+)?(\d{1,4})\s*/\s*([1-9]\d{0,3})"
+        r"\s+mit\s+(?:(?:dem\s+)?faktor\s+)?([1-9]\d{0,3})\s*[.!?]?\s*$",
+        prompt,
+        re.I,
+    )
+    if match:
+        numerator, denominator, factor = map(int, match.groups())
+        return numerator * factor, denominator * factor
+    return None
+
+
+def fraction_parts(answer):
+    value = unicodedata.normalize("NFKC", answer)
+    value = re.sub(r"^\s*(?:\([A-H]\)|[A-H][).:])\s*", "", value, flags=re.I)
+    match = re.fullmatch(r"\s*(-?\d{1,9})\s*/\s*([1-9]\d{0,8})\s*", value)
+    return tuple(map(int, match.groups())) if match else None
 
 
 def canonical_choice(value):

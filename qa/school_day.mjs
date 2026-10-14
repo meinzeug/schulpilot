@@ -36,6 +36,14 @@ async function reveal(page, locator) {
   }
   throw new Error('Expected wizard control was not visible after scrolling');
 }
+async function tapDialogControl(page, locator) {
+  // Flutter's modal semantics barrier overlaps descendant DOM nodes. Send a
+  // physical pointer at the rendered button, as a user does; no DOM dispatch
+  // or application-state bypass. Later API assertions still verify the action.
+  const box = await locator.boundingBox();
+  assert(box && box.width > 0 && box.height > 0);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
 try {
   await login(child, 'child');
   await login(parent, 'parent');
@@ -61,7 +69,7 @@ try {
       for (let index = 0; index < 2; index++) {
         const crop = c.getByRole('button', {name: 'Zuschnitt übernehmen', exact: true});
         await crop.waitFor({timeout: 30000});
-        await crop.click();
+        await tapDialogControl(c, crop);
         await c.waitForTimeout(800);
       }
     }
