@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 import httpx  # noqa: E402
 from schulpilot.fixtures import trusted_payload, worksheet  # noqa: E402
 from schulpilot.providers import strict_schema, system_text  # noqa: E402
-from schulpilot.schemas import ExtractionOutput, UnitOutput  # noqa: E402
+from schulpilot.schemas import ExtractionOutput, PackageOutput, UnitOutput  # noqa: E402
 
 
 def main():
@@ -22,11 +22,11 @@ def main():
     parser.add_argument("--model", required=True)
     parser.add_argument("--upstream", required=True)
     parser.add_argument("--key-file", type=Path, default=Path.home() / "or.txt")
-    parser.add_argument("--function", choices=["extract", "unit"], default="extract")
+    parser.add_argument("--function", choices=["extract", "unit", "package"], default="extract")
     args = parser.parse_args()
     if not args.model.endswith(":free"):
         raise SystemExit("Only an explicitly selected :free model is permitted")
-    model_type = ExtractionOutput if args.function == "extract" else UnitOutput
+    model_type = {"extract": ExtractionOutput, "package": PackageOutput}.get(args.function, UnitOutput)
     with httpx.Client(timeout=150, follow_redirects=False) as client:
         metadata = client.get("https://openrouter.ai/api/v1/models/" + args.model + "/endpoints")
         metadata.raise_for_status()

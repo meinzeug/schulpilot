@@ -384,7 +384,8 @@ def test_unconfirmed_page_can_be_replaced_but_confirmed_homework_cannot_be_remov
     assert not path.exists()
 
 
-def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatch):
+@pytest.mark.parametrize("invalid_output", [False, True])
+def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatch, invalid_output):
     import httpx
     from schulpilot import providers
     from schulpilot.fixtures import PACKAGE_FIXTURE_ID
@@ -406,6 +407,8 @@ def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatc
         def post(self, url, headers, json):
             captured.append(json)
             data = {"units": [{**sample_unit(), "group_id": "g1"}]}
+            if invalid_output:
+                data["units"][0]["PRIVATE-FIELD"] = "PRIVATE-ANSWER"
             return httpx.Response(
                 200,
                 json={
@@ -418,14 +421,23 @@ def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatc
     monkeypatch.setattr(providers.httpx, "Client", Client)
     with DB() as db:
         config = db.get(ProviderConfig, 1)
-    result = providers.request_provider(
-        config,
-        "package",
-        {"materials": ["PRIVATE-CONTENT"], "name": "PRIVATE-NAME"},
-        b"PRIVATE-IMAGE",
-        synthetic_fixture=PACKAGE_FIXTURE_ID,
-    )
+
+    def invoke():
+        return providers.request_provider(
+            config,
+            "package",
+            {"materials": ["PRIVATE-CONTENT"], "name": "PRIVATE-NAME"},
+            b"PRIVATE-IMAGE",
+            synthetic_fixture=PACKAGE_FIXTURE_ID,
+        )
+
+    if invalid_output:
+        with pytest.raises(providers.ProviderError) as error:
+            invoke()
+        assert "PRIVATE-" not in str(error.value) and "units.0.field" in str(error.value)
+    else:
+        result = invoke()
+        assert result.cost_micros == 0 and len(result.data["units"]) == 1
     body = json.dumps(captured[0])
     assert "PRIVATE-" not in body
     assert "page_number" in body and "Kürzen" in json.dumps(captured[0], ensure_ascii=False)
-    assert result.cost_micros == 0 and len(result.data["units"]) == 1

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import httpx
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import update
 
 from . import schemas as s
@@ -38,6 +39,9 @@ homework darf nur ausdrücklich auf dem Material notierte Hausaufgaben enthalten
 Nur wenn eine Lerneinheit angefordert ist: 2 bis 5 kurze Aufgaben. Typ choice: Antwort muss eine Option sein.
 Typ gap: eindeutige kurze Lücke; Typ short: kurze eindeutig prüfbare Antwort mit akzeptierten Varianten.
 Typ match: options sind jeweils 'links|rechts', answer sind die rechten Seiten in Originalreihenfolge mit ';' getrennt.
+Zuordnungen müssen eins zu eins eindeutig sein: jede linke UND jede rechte Seite kommt genau einmal vor.
+Verschiedene Brüche mit derselben gekürzten Form sind dafür ungeeignet. Verwende dann choice oder short.
+Typ gap enthält genau EINE Lücke mit genau einer Ergänzung, keine Kombination mehrerer Werte mit Trennzeichen.
 Jede Aufgabe braucht 1 bis 3 hilfreiche Hinweise und eine verständliche Erklärung.
 Jede Aufgaben-ID ist eindeutig, zum Beispiel q1, q2, q3, q4. Auswahloptionen enthalten vollständige inhaltliche Antworten,
 niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erklärung, insbesondere Rechenergebnisse.
@@ -379,6 +383,35 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 / 1_000_000
             )
         return Result(data, input_tokens, output_tokens, cost)
+    except ValidationError as error:
+        # Only known schema field names and numeric positions, never input,
+        # unknown extra keys, validator context or echoed provider content.
+        fields = {
+            "units",
+            "questions",
+            "id",
+            "type",
+            "prompt",
+            "options",
+            "answer",
+            "accepted",
+            "hints",
+            "explanation",
+            "group_id",
+            "subject",
+            "topic",
+            "content",
+            "uncertainties",
+            "homework",
+        }
+        locations = [
+            ".".join(str(part) if isinstance(part, int) or part in fields else "field" for part in item["loc"])
+            for item in error.errors(include_input=False, include_context=False)[:3]
+        ]
+        raise ProviderError(
+            "Die KI-Ausgabe erfüllt die Aufgabenprüfung nicht. Es wurden keine Ersatzaufgaben erstellt. Prüfstellen: "
+            + ", ".join(locations)
+        ) from None
     except (ValueError, KeyError, IndexError, TypeError):
         raise ProviderError(
             "Die KI-Ausgabe ist unvollständig, abgelehnt oder nicht als sichere Aufgabenstruktur validierbar. Es wurden keine erfundenen Ersatzaufgaben erstellt."

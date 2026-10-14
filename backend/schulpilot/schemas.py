@@ -127,8 +127,15 @@ class Question(Strict):
     id: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9_-]+$")
     type: Literal["choice", "gap", "match", "short"]
     prompt: str = Field(min_length=1, max_length=1000)
-    options: list[Annotated[str, Field(max_length=200)]] = Field(max_length=8)
-    answer: str = Field(min_length=1, max_length=600)
+    options: list[Annotated[str, Field(max_length=200)]] = Field(
+        max_length=8,
+        description="choice: vollständige unterschiedliche Antworten. match: links|rechts-Paare; ALLE linken und ALLE rechten Werte jeweils verschieden, eindeutig eins zu eins. Sonst leere Liste.",
+    )
+    answer: str = Field(
+        min_length=1,
+        max_length=600,
+        description="choice: exakt eine vorhandene Option. gap/short: eine eindeutig prüfbare Antwort. match: rechte Werte der Paare in Originalreihenfolge mit Semikolon verbunden, ohne zusätzliche Trenn-Leerzeichen.",
+    )
     accepted: list[Annotated[str, Field(max_length=200)]] = Field(max_length=10)
     hints: list[Annotated[str, Field(max_length=500)]] = Field(min_length=1, max_length=3)
     explanation: str = Field(min_length=1, max_length=1500)

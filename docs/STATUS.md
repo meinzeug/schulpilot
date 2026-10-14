@@ -21,7 +21,7 @@ Zusätzlich: freiwilliges gerätebezogenes FCM-Push für Android/Web mit verschl
 | Prüfung | Ergebnis |
 | --- | --- |
 | Backend mit SQLite | Gesamtlauf mit 61 Tests bestanden; zusätzlicher Mehrseiten-Wiederholungstest ebenfalls bestanden (62 Testfälle) |
-| Backend auf separater PostgreSQL-Testdatenbank des Zielservers | Gesamtlauf mit 62 Tests bestanden, einschließlich Mehrseiten-Wiederholung, Elternzeit, atomarem Paketabbruch und Parallelität |
+| Backend auf separater PostgreSQL-Testdatenbank des Zielservers | Gesamtlauf mit 63 Tests bestanden, einschließlich Mehrseiten-Wiederholung, Elternzeit, atomarem Paketabbruch, Parallelität und Geheimnisschutz bei ungültigen Providerfeldern |
 | Flutter-Analyse | Keine Befunde |
 | Fluttertests | 8 bestanden, einschließlich Kinderstart und seitenweiser Assistent auf 390/1280 Pixel sowie Wiederaufnahme laufender Aufträge |
 | Flutter-Web Release | Erfolgreich gebaut, Ressourcen vom eigenen Server |
@@ -53,3 +53,5 @@ Abschließende öffentliche Prüfungen des bereitgestellten Anwendungscodes durc
 Öffentliche APK: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk . Version 0.1.0+3, 59.713.568 Bytes, SHA-256 `db1ddc5dd30ef377943ca3130b04e20f6f95a7a65db0d44a9df01cd92608d21c`. APK-Signatur, `zipalign -P 16`, ELF-Ausrichtung und finales AAB mit offiziellem bundletool geprüft. Physische Geräte- und tatsächliche Firebase-/Play-Console-Prüfung bleiben offen.
 
 Tagesassistent: Migration 0003 → 0004 mit erhaltenem synthetischem Bestandsdatensatz auf SQLite und PostgreSQL geprüft; Alembic meldet keine weiteren Schemaänderungen. Unmittelbar vor öffentlicher Aktivierung aktuelle verschlüsselte Datenbanksicherung erfolgreich erstellt (systemd Result=success). Echte öffentliche Mehrseiten-KI-, Browser- und Android-Prüfung werden nach Aktivierung dokumentiert.
+
+Bei den ersten beiden öffentlichen Tagespaketversuchen wurde die KI-Ausgabe verworfen. Eine gezielte synthetische Serverdiagnose zeigte doppelte rechte Werte einer Zuordnungsaufgabe. Prompt und Schema-Beschreibungen präzisieren nun eindeutige Eins-zu-eins-Paare und einzelne Lücken; die Validatoren bleiben unverändert streng. Sichere Fehlerdiagnosen nennen ausschließlich bekannte Feldnamen/Positionen, keine Eingaben oder unbekannten Providerfeldnamen. Drei separate Operator-Diagnoseaufrufe nutzten ausschließlich feste Inhalte, Preisgrenze 0 und den fest gewählten kostenlosen Endpunkt; zwei lokal gültig, die Serverdiagnose verworfen, jeweils vom Provider mit Kosten 0 gemeldet. Keine automatischen Wiederholungen oder Providerwechsel.
