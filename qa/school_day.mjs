@@ -1,5 +1,5 @@
-// Real browser check of the exact package made by public_school_day_smoke.py.
-// That preceding script performs the three actual, free, fixed-fixture AI calls.
+// Real browser check: a prepared regular family exercises the entire photo
+// wizard; a fixed-fixture family can also resume its already generated package.
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {readFile, unlink, writeFile} from 'node:fs/promises';
@@ -71,10 +71,17 @@ try {
     const recognize = c.getByRole('button', {name: 'Heftseiten mit KI erkennen', exact: true});
     await reveal(c, recognize);
     await recognize.click();
+    let recognized = false;
+    for (let poll = 0; poll < 75; poll++) {
+      day = await today();
+      if (day.last_error) throw new Error('Normal OCR job failed; it was not retried');
+      if (day.pages.length === 2 && day.pages.every(page => page.status === 'review')) { recognized = true; break; }
+      await c.waitForTimeout(2000);
+    }
+    assert(recognized, 'Both normal OCR jobs must finish');
     const confirm = c.getByRole('button', {name: 'Stoff bestätigen', exact: true});
     for (let index = 0; index < 2; index++) {
       const consent = c.getByRole('checkbox', {name: /Ich habe den Stoff geprüft/});
-      await consent.waitFor({timeout: 150000});
       await reveal(c, consent);
       if (await consent.getAttribute('aria-checked') !== 'true') await consent.click();
       await reveal(c, confirm);
@@ -123,23 +130,23 @@ try {
   const pending = unit.questions.filter(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));
   assert(pending.length, 'An unanswered question must remain in this isolated test package');
   for (const q of demo.normal_account ? pending : pending.slice(0, 1)) {
-  await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).waitFor();
-  if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
-  if (q.type === 'gap' || q.type === 'short') {
-    await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
-    await c.keyboard.type(q.answer, {delay: 30});
-  }
-  if (q.type === 'match') {
-    for (const pair of q.options) {
-      const [left, right] = pair.split('|');
-      await c.getByRole('button', {name: left}).or(c.getByRole('combobox', {name: left})).or(c.getByLabel(left)).first().click();
-      await c.getByText(right, {exact: true}).or(c.getByLabel(right, {exact: true})).last().click();
+    await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).waitFor();
+    if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
+    if (q.type === 'gap' || q.type === 'short') {
+      await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
+      await c.keyboard.type(q.answer, {delay: 30});
     }
-  }
-  const saved = c.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
-  await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).click();
-  assert.equal((await (await saved).json()).outcome, 'correct');
-  await c.waitForTimeout(500);
+    if (q.type === 'match') {
+      for (const pair of q.options) {
+        const [left, right] = pair.split('|');
+        await c.getByRole('button', {name: left}).or(c.getByRole('combobox', {name: left})).or(c.getByLabel(left)).first().click();
+        await c.getByText(right, {exact: true}).or(c.getByLabel(right, {exact: true})).last().click();
+      }
+    }
+    const saved = c.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
+    await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).click();
+    assert.equal((await (await saved).json()).outcome, 'correct');
+    await c.waitForTimeout(500);
   }
   const p = await parent.newPage();
   await open(p, '/child/' + demo.child_id);
@@ -168,7 +175,7 @@ try {
     const pages = child.pages();
     if (pages.length) await pages.at(-1).screenshot({path: '../artifacts/school-day-browser-debug.png'}).catch(() => {});
   }
-  if (passed) {
+  if (passed && !process.argv.includes('--keep-for-native')) {
     const deleted = await parent.request.delete(url + '/api/account', {headers, data: {password: demo.credentials.parent_password}});
     assert.equal(deleted.status(), 200);
     await unlink(accountFile);

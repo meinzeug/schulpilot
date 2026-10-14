@@ -143,7 +143,10 @@ class Question(Strict):
         max_length=600,
         description="choice: exakt eine vorhandene Option. gap/short: eine eindeutig prüfbare Antwort. match: rechte Werte der Paare in Originalreihenfolge mit Semikolon verbunden, ohne zusätzliche Trenn-Leerzeichen.",
     )
-    accepted: list[Annotated[str, Field(max_length=200)]] = Field(max_length=10)
+    accepted: list[Annotated[str, Field(max_length=200)]] = Field(
+        max_length=10,
+        description="Zusätzliche gleichwertige Schreibweisen der exakten Antwort. Bei choice und match leer. Keine Teilwerte, Zähler/Nenner oder Rechenschritte als Varianten einer Bruchlösung.",
+    )
     hints: list[Annotated[str, Field(max_length=500)]] = Field(min_length=1, max_length=3)
     explanation: str = Field(min_length=1, max_length=1500)
 

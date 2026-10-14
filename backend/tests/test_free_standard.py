@@ -66,6 +66,7 @@ def test_real_free_route_keeps_deny_fixed_endpoint_and_zero_price(api, household
         config.openrouter_require_zdr = require_zdr
         result = request_provider(config, "unit", {"material": {"content": "Arbitrary synthetic school material"}})
     route = calls[0]["provider"]
+    assert calls[0]["temperature"] == 0
     assert route == {
         "only": ["fixture-endpoint"],
         "allow_fallbacks": False,

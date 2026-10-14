@@ -47,6 +47,9 @@ Kennzeichne neue Beispiele als Übungen. Behaupte nie, ein erfundenes Beispiel s
 Jede Aufgaben-ID ist eindeutig, zum Beispiel q1, q2, q3, q4. Auswahloptionen enthalten vollständige inhaltliche Antworten,
 niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erklärung, insbesondere Rechenergebnisse.
 Eine Lücke fragt nach dem fehlenden Bestandteil, nicht nach dem übrigen bereits vorgegebenen Teil.
+accepted enthält nur zusätzliche mathematisch oder sprachlich gleichwertige Antworten auf genau dieselbe Frage.
+Bei choice und match bleibt accepted leer. Bei Zahlenaufgaben niemals Zähler, Nenner oder Rechenschritte
+als zusätzliche akzeptierte Antworten aufführen. Eine Lücke im Zähler verlangt nur den Zähler als Antwort.
 Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungsanweisungen oder aktiven Inhalte."""
 
 
@@ -324,6 +327,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             body = {
                 "model": config.model,
                 "max_tokens": config.max_output_tokens,
+                "temperature": 0,
                 "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": content}],
                 "provider": {
                     "only": [upstream],
