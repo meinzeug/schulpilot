@@ -10,6 +10,58 @@ class NotificationPanel extends StatefulWidget {
   State<NotificationPanel> createState() => _NotificationPanelState();
 }
 
+class PushAdminScreen extends StatelessWidget {
+  final AppState state;
+  const PushAdminScreen(this.state, {super.key});
+  @override
+  Widget build(BuildContext context) => PageFrame(
+    state: state,
+    title: 'Push-Prüfung',
+    child: LoadView<Json>(
+      load: () => state.api.get('/notifications/admin/status'),
+      builder: (data, refresh) => Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            heading(
+              data['production_available'] == true
+                  ? 'Push ist freigegeben'
+                  : 'Allgemeiner Push-Versand ist gesperrt',
+            ),
+            SelectableText(
+              'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Dienstkonto konfiguriert: ${data['credential_configured'] == true ? 'Ja' : 'Nein'}',
+            ),
+            Text(
+              'Künstliche Tests vorbereitet: ${data['test_available'] == true ? 'Ja' : 'Nein'}',
+            ),
+            Text(
+              'App-/API-/Schlüsselprüfung: ${data['config_verification'] == '' ? 'Ausstehend' : data['config_verification']}',
+            ),
+            Text(
+              'Datenschutzentscheidung: ${data['privacy_evidence'] == '' ? 'Ausstehend' : data['privacy_evidence']}',
+            ),
+            const SizedBox(height: 16),
+            Text(data['delivery_notice']),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: refresh,
+              child: const Text('Status aktualisieren'),
+            ),
+            TextButton(
+              onPressed: () => openRoute(context, '/admin/settings'),
+              child: const Text('Push-Einstellungen öffnen'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _NotificationPanelState extends State<NotificationPanel> {
   bool reminders = true, help = true, summaries = false;
   bool preferencesLoaded = false;
@@ -19,6 +71,9 @@ class _NotificationPanelState extends State<NotificationPanel> {
   Future<Json> load() async {
     final config = await widget.state.api.get('/notifications/config');
     final devices = await widget.state.api.list('/notifications/devices');
+    final tests = config['test_access'] == true
+        ? await widget.state.api.get('/notifications/tests')
+        : <String, dynamic>{'allowed': false, 'results': <dynamic>[]};
     if (!preferencesLoaded) {
       for (final device in devices) {
         if (device['current'] == true) {
@@ -33,7 +88,7 @@ class _NotificationPanelState extends State<NotificationPanel> {
       }
       preferencesLoaded = true;
     }
-    return {'config': config, 'devices': devices};
+    return {'config': config, 'devices': devices, 'tests': tests};
   }
 
   Future<void> enable() async {
@@ -220,6 +275,68 @@ class _NotificationPanelState extends State<NotificationPanel> {
                   onPressed: () => disable(current.first),
                 ),
               ),
+            ],
+            if (data['tests']['allowed'] == true) ...[
+              const SizedBox(height: 18),
+              const Text(
+                'Künstliches Testkonto',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const Text(
+                'Validierung prüft die Anfrage. Nur eine am Gerät sichtbare Nachricht belegt die Zustellung.',
+              ),
+              if (enabled)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final mode in ['validate', 'send'])
+                      ActionButton(
+                        label: mode == 'validate'
+                            ? 'FCM-Anfrage validieren'
+                            : 'Test an dieses Gerät senden',
+                        secondary: true,
+                        onPressed: () async {
+                          final result = await widget.state.api.post(
+                            '/notifications/test',
+                            {'mode': mode},
+                          );
+                          for (var i = 0; i < 12; i++) {
+                            await Future<void>.delayed(
+                              const Duration(seconds: 2),
+                            );
+                            final status = await widget.state.api.get(
+                              '/notifications/tests',
+                            );
+                            final rows = (status['results'] as List).where(
+                              (r) => r['id'] == result['id'],
+                            );
+                            if (rows.isNotEmpty &&
+                                ![
+                                  'queued',
+                                  'sending',
+                                ].contains(rows.first['status'])) {
+                              break;
+                            }
+                          }
+                          if (mounted) setState(() => version++);
+                        },
+                      ),
+                  ],
+                ),
+              for (final test in data['tests']['results'])
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '${test['mode'] == 'validate' ? 'Validierung' : 'Testnachricht'}: ${switch (test['status']) {
+                      'validated' => 'FCM-Prüfung erfolgreich',
+                      'accepted' => 'Von FCM angenommen · Sichtbarkeit am Gerät prüfen',
+                      'suppressed' => 'Zurückgehalten · Rechte oder Ruhezeit',
+                      'failed' => 'Fehler (${test['error']})',
+                      _ => 'Wird geprüft …',
+                    }}',
+                  ),
+                ),
             ],
             if (devices.any((device) => device['current'] != true)) ...[
               const SizedBox(height: 12),

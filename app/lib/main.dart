@@ -15,6 +15,8 @@ import 'school_day_screen.dart';
 import 'school_day_history.dart';
 import 'ui.dart';
 import 'unit_screen.dart';
+import 'store_screens.dart';
+import 'notification_panel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,12 +63,25 @@ class SchulpilotApp extends StatefulWidget {
 }
 
 class _SchulpilotAppState extends State<SchulpilotApp> {
+  final messenger = GlobalKey<ScaffoldMessengerState>();
   @override
   void initState() {
     super.initState();
     widget.state.push.onOpen = () {
       widget.state.push.openPending = false;
       router.go('/app');
+    };
+    widget.state.push.onForeground = () {
+      if (!mounted || widget.state.user == null) return;
+      messenger.currentState?.showSnackBar(
+        SnackBar(
+          content: const Text('Es gibt Neuigkeiten in SCHULPILOT.'),
+          action: SnackBarAction(
+            label: 'Öffnen',
+            onPressed: () => router.go('/app'),
+          ),
+        ),
+      );
     };
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.state.push.openPending) {
@@ -88,12 +103,22 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       final protected =
           path == '/app' ||
           path == '/settings' ||
+          path == '/bestellungen' ||
+          path.startsWith('/bestellen/') ||
           path.startsWith('/admin') ||
           path.startsWith('/child/') ||
           path.startsWith('/after-school/') ||
           path.startsWith('/material/') ||
           path.startsWith('/unit/');
-      if (protected && widget.state.user == null) return '/login';
+      if (protected && widget.state.user == null) {
+        return path.startsWith('/bestell')
+            ? '/login?next=${Uri.encodeComponent(path)}'
+            : '/login';
+      }
+      if ((path.startsWith('/bestell') || path == '/angebote') &&
+          (!kIsWeb || widget.state.isChild)) {
+        return '/app';
+      }
       if (path == '/' && widget.state.user != null) return '/app';
       if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
       return null;
@@ -109,6 +134,31 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
             InstallationScreen(widget.state, initial: false),
       ),
       GoRoute(path: '/', builder: (context, s) => LandingScreen(widget.state)),
+      GoRoute(
+        path: '/angebote',
+        builder: (context, s) => OffersScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/bedingungen',
+        builder: (context, s) => OffersScreen(widget.state, terms: true),
+      ),
+      GoRoute(
+        path: '/bestellen/:id',
+        builder: (context, s) =>
+            CheckoutScreen(widget.state, planId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/bestellungen',
+        builder: (context, s) => OrdersScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/admin/verkauf',
+        builder: (context, s) => StoreAdminScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/admin/push',
+        builder: (context, s) => PushAdminScreen(widget.state),
+      ),
       for (final mode in [
         'login',
         'register',
@@ -190,12 +240,14 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
   @override
   void dispose() {
     widget.state.push.onOpen = null;
+    widget.state.push.onForeground = null;
     router.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => MaterialApp.router(
+    scaffoldMessengerKey: messenger,
     title: 'SCHULPILOT',
     debugShowCheckedModeBanner: false,
     theme: appTheme(),

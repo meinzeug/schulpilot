@@ -53,8 +53,6 @@ for line in original.splitlines():
 updates = {
     "REAL_DATA_APPROVED": "true",
     "PRIVACY_EVIDENCE": data["evidence"],
-    "PUSH_APPROVED": "true",
-    "PUSH_PRIVACY_EVIDENCE": data["evidence"],
 }
 # Alerts go to the already authorized operator mailbox, never another recipient.
 if values.get("SMTP_USER") and not values.get("OPERATIONS_ALERT_EMAIL"):

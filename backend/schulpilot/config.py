@@ -28,6 +28,7 @@ class Settings:
     fcm_public_config: str = os.getenv("FCM_PUBLIC_CONFIG", "")
     push_approved: bool = os.getenv("PUSH_APPROVED", "false") == "true"
     push_privacy_evidence: str = os.getenv("PUSH_PRIVACY_EVIDENCE", "")
+    fcm_config_verification: str = os.getenv("FCM_CONFIG_VERIFICATION", "")
     operator_name: str = os.getenv("OPERATOR_NAME", "")
     operator_address: str = os.getenv("OPERATOR_ADDRESS", "")
     operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")
@@ -66,6 +67,7 @@ RUNTIME_FIELDS = frozenset(
         "fcm_service_account_json",
         "push_approved",
         "push_privacy_evidence",
+        "fcm_config_verification",
         "default_plan",
         "default_child_limit",
         "default_call_limit",

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'api.dart';
 import 'download_panel.dart';
 import 'ui.dart';
+import 'store_screens.dart';
 
 class LandingScreen extends StatelessWidget {
   final AppState state;
@@ -41,9 +42,12 @@ class LandingScreen extends StatelessWidget {
                 runSpacing: 12,
                 children: [
                   FilledButton.icon(
-                    onPressed: () => context.go('/register'),
+                    onPressed: () =>
+                        context.go(kIsWeb ? '/angebote' : '/register'),
                     icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('Elternkonto erstellen'),
+                    label: Text(
+                      kIsWeb ? 'Tarife ansehen' : 'Elternkonto erstellen',
+                    ),
                   ),
                   ActionButton(
                     label: 'Demo ausprobieren',
@@ -253,6 +257,10 @@ class LandingScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 30),
+                      if (kIsWeb) ...[
+                        StoreSection(state),
+                        const SizedBox(height: 32),
+                      ],
                       if (kIsWeb) AndroidDownload(state.api),
                       const SizedBox(height: 24),
                       Wrap(
@@ -266,6 +274,13 @@ class LandingScreen extends StatelessWidget {
                             onPressed: () => openRoute(context, '/about'),
                             child: const Text('Über SCHULPILOT'),
                           ),
+                          if (kIsWeb)
+                            TextButton(
+                              onPressed: () => context.go('/bedingungen'),
+                              child: const Text(
+                                'Vertragsbedingungen & Widerruf',
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -498,7 +513,18 @@ class _AuthScreenState extends State<AuthScreen> {
                             username.text.trim(),
                             password.text,
                           );
-                          if (context.mounted) context.go('/app');
+                          if (context.mounted) {
+                            final next =
+                                widget.linkUri.queryParameters['next'] ?? '';
+                            context.go(
+                              widget.state.isParent &&
+                                      RegExp(
+                                        r'^/bestellen/[a-z][a-z0-9-]{1,29}$',
+                                      ).hasMatch(next)
+                                  ? next
+                                  : '/app',
+                            );
+                          }
                           return;
                         }
                         if (mode == 'register' && !consent) {
@@ -551,14 +577,24 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: const Text('Passwort vergessen'),
                         ),
                         TextButton(
-                          onPressed: () => context.go('/register'),
+                          onPressed: () => context.go(
+                            Uri(
+                              path: '/register',
+                              queryParameters: widget.linkUri.queryParameters,
+                            ).toString(),
+                          ),
                           child: const Text('Elternkonto erstellen'),
                         ),
                       ],
                     )
                   else
                     TextButton(
-                      onPressed: () => context.go('/login'),
+                      onPressed: () => context.go(
+                        Uri(
+                          path: '/login',
+                          queryParameters: widget.linkUri.queryParameters,
+                        ).toString(),
+                      ),
                       child: const Text('Zur Anmeldung'),
                     ),
                 ],
@@ -633,6 +669,10 @@ Fotos werden vor dem Upload zum Drehen und Zuschneiden angezeigt. Ausstehende zu
 Sitzungen sind widerrufbar. Eltern können Kinderkonten und ihr eigenes Konto löschen sowie einen Familienexport mit Materialien und Lernverlauf herunterladen. Beim Löschen des Familieninhabers wird dessen gesamte Familie gelöscht; eingeladene Eltern verlieren den Zugriff.
 
 Aufbewahrung im Pilot: Materialien, Einheiten, Antworten, Aktivitäten und Nachrichten höchstens 365 Tage; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere 7 Tage; tägliche Backups 14 Tage. Backups müssen vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen werden. Abrechnung und Betriebsprotokolle enthalten keine Fotos oder vollständigen Kinderantworten.
+
+Benachrichtigungen sind freiwillig. Erst beim Einschalten auf einem angemeldeten Gerät wird Google Firebase Cloud Messaging initialisiert. Für Kinder ist vorher zusätzlich eine Freigabe durch die Eltern erforderlich. Firebase erhält dabei Installations- und Gerätetokens sowie technische Verbindungsdaten; Namen, Lerninhalte, Noten und Familienkennungen werden nicht mitgesendet. Die Verarbeitung ist nicht auf Deutschland oder die EU beschränkt. Analytics, Werbung und Firebase Authentication werden nicht verwendet. Ohne geeignete Google Play Services ist Android-Push nicht zugesichert. Ausschalten, Abmelden und Rechteentzug sperren den weiteren Versand im Backend. Gerätetokens werden verschlüsselt gespeichert, bei Abmeldung oder Entzug entfernt und nach 60 Tagen ohne Aktualisierung bereinigt; Versandstatus nach 14 Tagen. Das Löschen eines Push-Tokens ist keine Zusage einer sofortigen Löschung sämtlicher Firebase-Installationsdaten oder Google-Backups. Die allgemeinen Push-Freigaben und die tatsächlich beobachtete Zustellung werden getrennt geprüft.
+
+Bei einer Bestellung speichern wir Tarif, Gesamtpreis, Vertragsfassung und Zahlungszuordnung. Zahlungsbelege bleiben für die gesetzliche Aufbewahrung acht Jahre nach Ende des Buchungsjahres erhalten; beim Löschen der Familie wird ihre Kontozuordnung entfernt. Diese Belege enthalten keine Kinderantworten oder Lernmaterialien. Die App liest keine Bankkonten aus; ein Administrator prüft Überweisungen im tatsächlichen Bankkonto.
 
 Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Lernmaterialien. Aktive Lernzeit bleibt eine Näherung. Eine einzelne richtige Antwort begründet keine sichere Beherrschung; fehlende Nutzung keine Aussage über Verständnis.'''
                         : '''Schulpilot begleitet deinen Lernalltag: vom Foto deiner Heftseiten über Erklärungen und Übungen bis zur passenden Wiederholung.

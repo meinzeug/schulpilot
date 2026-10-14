@@ -1015,6 +1015,10 @@ def process(job_id):
             payload["next_action"] = job.payload["next_action"]
             payload["focus_goal_ids"] = focus_ids(db, unit, payload["next_action"])
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            from .commerce import usage_terms
+
+            child = db.get(Child, job.child_id)
+            usage_terms(db, db.get(Family, child.family_id), enforce=True)
             db.rollback()
         result = request_provider(ProviderConfig(**values), "coach", payload)
         with DB.begin() as db:

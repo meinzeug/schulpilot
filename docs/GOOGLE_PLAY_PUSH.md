@@ -1,6 +1,6 @@
 # Google Play und Push
 
-Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keinen Google-Login. Anmeldung, Familien und Inhalte bleiben in der eigenen API. Ein Firebase-/Play-Zugang wurde bisher nicht bereitgestellt; es wurde kein Konto und keine kostenpflichtige Ressource bestellt. Reguläre Lernfunktionen benötigen diese optionalen Dienste nicht. Aktueller Schwerpunkt sind funktionierende Lernabläufe und die Flutter-Oberfläche für Mobilgeräte und Web.
+Google wird ausschließlich für Play und freiwilliges Push verwendet. Eigene Anmeldung, Familien und Inhalte bleiben in unserer API. Das vorhandene Firebase-Projekt ist `schulpilot-f6bf3` (460657028995), mit bereits angelegter Android- und Web-App. Keine zweiten Projekte, Apps oder VAPID-Schlüssel erzeugen. Der tatsächliche Cloud-/Build-/Zustellstand steht in `CHATGPT_HANDOFF.txt`; die sichere Fortsetzung beschreibt [FIREBASE_OPERATIONS.md](FIREBASE_OPERATIONS.md). Lernen funktioniert unabhängig von Firebase.
 
 ## Android-Dateien und Signierung
 
@@ -28,21 +28,22 @@ flutter build appbundle --flavor play --release --dart-define=API_URL=https://sc
 
 Der Einrichtungsassistent beziehungsweise der Adminbereich kann öffentliche Firebase-App-Konfiguration, Dienstkonto-JSON und dokumentierte Push-Freigabe verschlüsselt speichern. Die Projekt-IDs werden abgeglichen; Geheimnisse werden nicht zurückgegeben. Damit gelten Änderungen ohne Dienstneustart. Der folgende lokale Dateipfad bleibt als Alternative für Betreiber verfügbar; gespeicherte Einstellungen haben Vorrang.
 
-1. Im autorisierten Firebase-Projekt eine Android-App mit obigem Paketnamen und eine Web-App anlegen. Firebase Cloud Messaging HTTP v1 aktivieren, öffentlichen Web-VAPID-Schlüssel erstellen. Kein Analytics benötigt.
+1. Bestehende Apps verwenden: Android `1:460657028995:android:9475b4497b0c9de08590b6`, Web `1:460657028995:web:67373b18092ab46f8590b6`. FCM-, Registration- und Installations-APIs sowie die tatsächlichen API-Key-Einschränkungen prüfen. Vorhandenen VAPID-Schlüssel erhalten. Keine weiteren Firebase-Dienste aktivieren.
 2. Ein eigenes Dienstkonto mit minimaler Berechtigung zum Senden von FCM-Nachrichten verwenden. Dienstkontodatei ausschließlich unter `/etc/schulpilot/fcm-service-account.json` ablegen, root:schulpilot, 0640. Nicht die Entwicklungsidentität oder fremde OAuth-/Google-Ads-Zugänge verwenden.
 3. In `/etc/schulpilot/environment` ergänzen (Werte sicher quotieren; Datei ist keine ausführbare Shell):
 
 ```dotenv
 FCM_SERVICE_ACCOUNT_FILE=/etc/schulpilot/fcm-service-account.json
-FCM_PUBLIC_CONFIG='{"apiKey":"PUBLIC_FIREBASE_WEB_API_KEY","appId":"WEB_APP_ID","androidAppId":"ANDROID_APP_ID","messagingSenderId":"SENDER_ID","projectId":"PROJECT_ID","authDomain":"PROJECT_ID.firebaseapp.com","vapidKey":"PUBLIC_WEB_VAPID_KEY"}'
-PUSH_APPROVED=true
+FCM_PUBLIC_CONFIG='{"apiKey":"PUBLIC_FIREBASE_WEB_API_KEY","androidApiKey":"PUBLIC_FIREBASE_ANDROID_API_KEY","appId":"WEB_APP_ID","androidAppId":"ANDROID_APP_ID","messagingSenderId":"SENDER_ID","projectId":"PROJECT_ID","authDomain":"PROJECT_ID.firebaseapp.com","vapidKey":"PUBLIC_WEB_VAPID_KEY"}'
+FCM_CONFIG_VERIFICATION='Nachweis tatsächlich geprüfter Apps, APIs und Schlüsselrestriktionen'
+PUSH_APPROVED=false
 PUSH_PRIVACY_EVIDENCE='Verweis auf dokumentierte Firebase-/Minderjährigenprüfung'
 ```
 
 Das sind ausdrücklich Platzhalter. Das Dienstkonto enthält einen privaten Schlüssel; `FCM_PUBLIC_CONFIG` enthält ausschließlich öffentliche Client-Kennungen. Der Dienstkonto-Projektname muss mit der öffentlichen Projekt-ID übereinstimmen; der OAuth-Token-Endpunkt ist fest auf Google beschränkt. Keine automatische Suche nach anderen Google-Zugängen.
 
-4. Nur SCHULPILOT-API/-Worker neu starten. `/api/notifications/config` muss `available:true` liefern; es werden niemals Dienstkonto, OAuth-Token oder private Schlüssel zurückgegeben.
-5. Angemeldet unter „Zugänge & Einstellungen → Benachrichtigungen“ freiwillig je Gerät aktivieren. Erst dann initialisiert Flutter Firebase und fragt die Betriebssystem-/Browser-Erlaubnis ab. Ohne gültige Sitzung/Opt-in keine Firebase-Registrierung. Der serverseitig erzeugte `/firebase-messaging-sw.js` initialisiert die fixierte JS-Version 12.19.0 synchron mit ausschließlich öffentlichen Kennungen.
+4. Ein Schlüssel allein erlaubt keine produktive Push-Freigabe. Allgemeine Freigabe und Testfreigaben sind getrennt; allgemeines `available:true` setzt dokumentierte technische Prüfung und Betreiberentscheidung voraus. Nur SCHULPILOT-API/-Worker neu starten. Keine Dienstkontoinhalte oder OAuth-Tokens zurückgeben. Betriebsprüfung unter `/admin/push`.
+5. Unter `/settings` freiwillig je Gerät einschalten. Kinder benötigen vorher die zusätzliche Elternfreigabe in den Lernvorgaben. Erst dann initialisiert Flutter Firebase und fragt die Geräteerlaubnis ab. `/push/firebase-messaging-sw.js` verwendet den eigenen Bereich `/push/` und JS 12.19.0; der frühere Rootpfad bleibt für ältere Clients erreichbar. Das fixierte Messaging-SDK 16.7.0 verwendet weiterhin seine tatsächlich vorhandenen `getToken`-/`onTokenRefresh`-APIs; keine Migration nur aufgrund einer neueren Anleitung.
 6. Tatsächliche Zustellung auf Android und Web im Vordergrund, Hintergrund und nach Neustart testen. Registrierung allein ist kein Zustellnachweis. Bei HTTP-/Authentifizierungsfehlern bleibt ein inhaltsfreier Fehlercode in der geschützten Outbox. `accepted` bedeutet Annahme durch FCM, nicht nachgewiesene Anzeige auf dem Gerät.
 
 Push-Gerätetokens liegen verschlüsselt in der DB und sind an eine widerrufbare SCHULPILOT-Sitzung gebunden. Konto-/Gerätewechsel ersetzt alte Registrierungen. Abmeldung, Ablauf, Rechteentzug und Kontolöschung verhindern weitere Sendungen; Rechte werden unmittelbar vor dem Aufruf erneut geprüft. Ungültige FCM-Tokens werden entfernt. Höchstens ein Tagesbündel pro Kategorie/Gerät, aktuelle Elternvorgaben und Ruhezeiten gelten zusätzlich zu Geräteinstellungen. TTL höchstens 60 Sekunden und spätestens bis zur nächsten Ruhezeit. Timeouts werden nicht automatisch wiederholt.

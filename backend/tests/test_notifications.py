@@ -20,6 +20,7 @@ def enable(tmp_path):
     for name, value in {
         "push_approved": True,
         "push_privacy_evidence": "synthetic test fixture",
+        "fcm_config_verification": "synthetic fixture: Android/Web app keys and APIs checked",
         "fcm_service_account_file": str(credential),
         "fcm_public_config": json.dumps(
             {
@@ -120,12 +121,19 @@ def test_removed_membership_is_rechecked_before_push(api, household, tmp_path, m
 def test_child_cannot_override_parent_quiet_or_reminder_preferences(api, household, tmp_path):
     enable(tmp_path)
     _, child = household
+    with DB.begin() as db:
+        db.get(Child, child["id"]).preferences = {"push_consent": True}
     with TestClient(app, headers=HEADERS) as kid:
         login = kid.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"}).json()
         kid.headers["Authorization"] = "Bearer " + login["token"]
         d = device(kid)
     with DB.begin() as db:
-        db.get(Child, child["id"]).preferences = {"reminders": False, "quiet_start": 0, "quiet_end": 0}
+        db.get(Child, child["id"]).preferences = {
+            "push_consent": True,
+            "reminders": False,
+            "quiet_start": 0,
+            "quiet_end": 0,
+        }
     with DB() as db:
         assert n.due_kinds(db, db.get(PushDevice, d["id"]), int(now())) == []
 

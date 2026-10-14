@@ -93,6 +93,7 @@ class Preferences(Strict):
     quiet_end: int = Field(default=8, ge=0, le=23)
     reminders: bool = False
     notify_help: bool = True
+    push_consent: bool = False
     timezone: str = Field(default="Europe/Berlin", max_length=64)
 
     @model_validator(mode="after")

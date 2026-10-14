@@ -253,6 +253,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> accept(Json response) async {
     if (user != null && user!['id'] != response['user']['id']) {
+      await push.forget();
       await pendingUploads.clear();
     }
     user = Map<String, dynamic>.from(response['user']);

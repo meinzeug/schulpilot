@@ -13,14 +13,24 @@ class PushClient {
   PushClient(this.api);
   StreamSubscription<String>? _refresh;
   bool _initialized = false;
+  int _generation = 0;
   Json? _preferences;
   VoidCallback? onOpen;
   VoidCallback? onActivity;
+  VoidCallback? onForeground;
   bool openPending = false;
   StreamSubscription<RemoteMessage>? _opened, _messages;
 
   Future<void> enable(Json preferences) async {
+    final generation = ++_generation;
+    void stillActive() {
+      if (generation != _generation) {
+        throw ApiError('Die Anmeldung wurde inzwischen beendet.');
+      }
+    }
+
     final config = await api.get('/notifications/config');
+    stillActive();
     if (config['available'] != true) throw ApiError(config['notice']);
     if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
       throw ApiError(
@@ -37,7 +47,7 @@ class PushClient {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(
           options: FirebaseOptions(
-            apiKey: f['apiKey'],
+            apiKey: kIsWeb ? f['apiKey'] : (f['androidApiKey'] ?? f['apiKey']),
             appId: kIsWeb ? f['appId'] : f['androidAppId'],
             messagingSenderId: f['messagingSenderId'],
             projectId: f['projectId'],
@@ -46,12 +56,17 @@ class PushClient {
         );
       }
       _initialized = true;
+      stillActive();
       final messaging = FirebaseMessaging.instance;
+      if (kIsWeb && !await messaging.isSupported()) {
+        throw ApiError('Dieser Browser unterstützt keine Benachrichtigungen.');
+      }
       final permission = await messaging.requestPermission(
         alert: true,
         badge: false,
         sound: false,
       );
+      stillActive();
       if (permission.authorizationStatus != AuthorizationStatus.authorized) {
         throw ApiError(
           'Benachrichtigungen sind auf diesem Gerät nicht erlaubt. Du kannst sie in den Geräte- oder Browser-Einstellungen freigeben.',
@@ -61,20 +76,31 @@ class PushClient {
       // No inherited Google account or application-default credential is used.
       final token = await messaging.getToken(
         vapidKey: kIsWeb ? f['vapidKey'] : null,
+        serviceWorkerScriptPath: kIsWeb
+            ? '/push/firebase-messaging-sw.js'
+            : null,
       );
+      stillActive();
       if (token == null) {
         throw ApiError('Das Gerät hat noch keine Push-Registrierung erhalten.');
       }
       _preferences = preferences;
       await _save(token);
+      stillActive();
       await _refresh?.cancel();
       await _opened?.cancel();
       await _messages?.cancel();
       _opened = FirebaseMessaging.onMessageOpenedApp.listen(_open);
-      _messages = FirebaseMessaging.onMessage.listen((_) => onActivity?.call());
+      _messages = FirebaseMessaging.onMessage.listen((_) {
+        if (_preferences == null || generation != _generation) return;
+        onActivity?.call();
+        onForeground?.call();
+      });
       final initial = await messaging.getInitialMessage();
+      stillActive();
       if (initial != null) _open(initial);
       _refresh = messaging.onTokenRefresh.listen((token) async {
+        if (generation != _generation) return;
         try {
           await _save(token);
         } catch (_) {
@@ -131,6 +157,7 @@ class PushClient {
   }
 
   Future<void> forget() async {
+    _generation++;
     _preferences = null;
     await _refresh?.cancel();
     await _opened?.cancel();

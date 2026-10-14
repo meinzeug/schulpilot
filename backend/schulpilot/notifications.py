@@ -8,27 +8,50 @@ from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import Field, model_validator
 from sqlalchemy import delete, select, update
 
 from . import schemas as s
 from .config import runtime_settings
-from .db import Activity, Child, Membership, Message, PushDelivery, PushDevice, Session, User, get_db, now, uid
-from .security import authenticated, decrypt, digest, encrypt, insert_ignore, rate_limit
+from .db import (
+    Activity,
+    Child,
+    Family,
+    Membership,
+    Message,
+    PushDelivery,
+    PushDevice,
+    PushTestGrant,
+    Session,
+    User,
+    get_db,
+    now,
+    uid,
+)
+from .security import admin, audit, authenticated, decrypt, digest, encrypt, insert_ignore, rate_limit
 
 router = APIRouter(prefix="/notifications", tags=["Benachrichtigungen"])
 log = logging.getLogger("schulpilot.push")
 
 
-def public_config():
+def public_config(*, testing=False):
     site = runtime_settings()
     try:
         raw = json.loads(site.fcm_public_config or "{}")
         allowed = {
             k: raw[k]
-            for k in ("apiKey", "appId", "messagingSenderId", "projectId", "authDomain", "vapidKey", "androidAppId")
+            for k in (
+                "apiKey",
+                "appId",
+                "messagingSenderId",
+                "projectId",
+                "authDomain",
+                "vapidKey",
+                "androidAppId",
+                "androidApiKey",
+            )
             if isinstance(raw.get(k), str)
         }
         valid = all(allowed.get(k) for k in ("apiKey", "appId", "messagingSenderId", "projectId", "androidAppId"))
@@ -36,8 +59,8 @@ def public_config():
         allowed, valid = {}, False
     ready = bool(
         valid
-        and site.push_approved
-        and site.push_privacy_evidence
+        and site.fcm_config_verification
+        and ((site.push_approved and site.push_privacy_evidence) or (testing and site.fcm_config_verification))
         and (
             site.fcm_service_account_json
             or (site.fcm_service_account_file and Path(site.fcm_service_account_file).is_file())
@@ -45,6 +68,7 @@ def public_config():
     )
     return {
         "available": ready,
+        "test_mode": bool(ready and not site.push_approved),
         "firebase": allowed if ready else {},
         "notice": "Push enthält nur neutrale Hinweise. Inhalte öffnest du nach Anmeldung in SCHULPILOT."
         if ready
@@ -53,14 +77,29 @@ def public_config():
 
 
 @router.get("/config")
-def config():
+def config(request: Request, db=Depends(get_db)):
     # Firebase client identifiers are public, never service account credentials.
+    # An isolated synthetic test grant cannot turn production delivery on.
+    try:
+        p = authenticated(request, db)
+        if p.user.role == "child":
+            child = db.scalar(select(Child).where(Child.user_id == p.user.id))
+            if not child or not s.Preferences(**child.preferences).push_consent:
+                return {
+                    "available": False,
+                    "firebase": {},
+                    "notice": "Deine Eltern können Benachrichtigungen für deinen Zugang erlauben.",
+                }
+        if test_allowed(db, p.user.id):
+            return {**public_config(testing=True), "test_access": True}
+    except HTTPException:
+        pass
     return public_config()
 
 
 @router.get("/service-worker.js")
 def service_worker():
-    config = public_config()
+    config = public_config(testing=True)
     if not config["available"]:
         raise HTTPException(503, config["notice"])
     firebase = {
@@ -140,9 +179,19 @@ def devices(p=Depends(authenticated), db=Depends(get_db)):
 def register(data: DeviceRequest, p=Depends(authenticated), db=Depends(get_db)):
     if p.user.role not in ("child", "parent"):
         raise HTTPException(403, "Familienbenachrichtigungen sind für Eltern und Kinder verfügbar.")
-    if not public_config()["available"]:
-        raise HTTPException(503, public_config()["notice"])
+    if p.user.role == "child":
+        child = db.scalar(select(Child).where(Child.user_id == p.user.id))
+        if not child or not s.Preferences(**child.preferences).push_consent:
+            raise HTTPException(403, "Deine Eltern müssen Benachrichtigungen für deinen Zugang zuerst erlauben.")
+    config = public_config(testing=test_allowed(db, p.user.id))
+    if not config["available"]:
+        raise HTTPException(503, config["notice"])
     rate_limit(db, "push-register:" + p.user.id, 20, 3600)
+    if p.user.role == "child":
+        db.execute(update(Child).where(Child.user_id == p.user.id).values(grade=Child.grade))
+        db.refresh(child)
+        if not s.Preferences(**child.preferences).push_consent:
+            raise HTTPException(403, "Deine Eltern haben Benachrichtigungen für deinen Zugang nicht freigegeben.")
     token_hash = digest(data.token)
     # One token can belong to one session only. Moving accounts on a shared
     # device destroys all queued deliveries for its former registration.
@@ -206,6 +255,119 @@ def children_for(db, user):
     return []
 
 
+def test_allowed(db, user_id):
+    grant = db.get(PushTestGrant, user_id)
+    user = db.get(User, user_id)
+    if not grant or grant.expires <= now() or not user or user.disabled or not user.verified:
+        return False
+    if user.role == "parent":
+        families = list(
+            db.scalars(
+                select(Family).join(Membership, Membership.family_id == Family.id).where(Membership.user_id == user_id)
+            )
+        )
+    elif user.role == "child":
+        families = list(
+            db.scalars(select(Family).join(Child, Child.family_id == Family.id).where(Child.user_id == user_id))
+        )
+    else:
+        return False
+    return bool(families and all(f.synthetic and (not f.expires or f.expires > now()) for f in families))
+
+
+def test_device_allowed(db, device, current):
+    session = db.get(Session, device.session_id)
+    if not session or session.revoked or session.expires <= current or current - session.seen > 7 * 86400:
+        return False
+    if not test_allowed(db, device.user_id) or not public_config(testing=True)["available"]:
+        return False
+    if quiet(datetime.fromtimestamp(current, ZoneInfo(device.timezone)), device.quiet_start, device.quiet_end):
+        return False
+    for child in children_for(db, db.get(User, device.user_id)):
+        prefs = s.Preferences(**child.preferences)
+        if db.get(User, device.user_id).role == "child" and not prefs.push_consent:
+            return False
+        if quiet(datetime.fromtimestamp(current, ZoneInfo(prefs.timezone)), prefs.quiet_start, prefs.quiet_end):
+            return False
+    return True
+
+
+@router.get("/admin/status")
+def operator_status(p=Depends(admin), db=Depends(get_db)):
+    site = runtime_settings(db)
+    identity, project, valid = None, None, False
+    try:
+        raw = json.loads(site.fcm_service_account_json or Path(site.fcm_service_account_file).read_text())
+        identity, project = raw.get("client_email"), raw.get("project_id")
+        valid = (
+            raw.get("type") == "service_account"
+            and raw.get("token_uri") == "https://oauth2.googleapis.com/token"
+            and bool(raw.get("private_key"))
+        )
+    except (ValueError, OSError):
+        pass
+    audit(db, p.user.id, "push.operational_status", "firebase")
+    db.commit()
+    return {
+        "production_approved": site.push_approved,
+        "production_available": public_config()["available"],
+        "test_available": public_config(testing=True)["available"],
+        "project_id": project,
+        "sender_identity": identity,
+        "credential_configured": valid,
+        "config_verification": site.fcm_config_verification,
+        "privacy_evidence": site.push_privacy_evidence,
+        "delivery_notice": "Konfiguration und Annahme durch FCM beweisen keine am Gerät sichtbare Zustellung.",
+    }
+
+
+class OwnTest(s.Strict):
+    mode: Literal["validate", "send"]
+
+
+@router.post("/test", status_code=202)
+def own_test(data: OwnTest, p=Depends(authenticated), db=Depends(get_db)):
+    if not test_allowed(db, p.user.id):
+        raise HTTPException(403, "Push-Tests sind nur für eigens freigegebene künstliche Testkonten verfügbar.")
+    device = db.scalar(select(PushDevice).where(PushDevice.session_id == p.session.id, PushDevice.user_id == p.user.id))
+    if not device:
+        raise HTTPException(409, "Zuerst Benachrichtigungen auf diesem Gerät einschalten.")
+    if not test_device_allowed(db, device, int(now())):
+        raise HTTPException(409, "Der Test ist derzeit gesperrt. Freigabe, Sitzung und Ruhezeiten prüfen.")
+    rate_limit(db, "push-test:" + p.user.id, 6, 86400)
+    delivery = PushDelivery(device_id=device.id, dedup_key="test:" + uid(), kind="test_" + data.mode)
+    db.add(delivery)
+    db.commit()
+    return {"id": delivery.id, "status": "queued"}
+
+
+@router.get("/tests")
+def own_tests(p=Depends(authenticated), db=Depends(get_db)):
+    return {
+        "allowed": test_allowed(db, p.user.id),
+        "results": [
+            {
+                "id": d.id,
+                "mode": d.kind.removeprefix("test_"),
+                "status": d.status,
+                "error": d.error_code,
+                "created": d.created,
+            }
+            for d in db.scalars(
+                select(PushDelivery)
+                .join(PushDevice, PushDevice.id == PushDelivery.device_id)
+                .where(
+                    PushDevice.user_id == p.user.id,
+                    PushDevice.session_id == p.session.id,
+                    PushDelivery.kind.in_(["test_validate", "test_send"]),
+                )
+                .order_by(PushDelivery.created.desc())
+                .limit(12)
+            )
+        ],
+    }
+
+
 def due_kinds(db, device, current):
     """Re-evaluated immediately before send, including current membership."""
     user = db.get(User, device.user_id)
@@ -226,6 +388,8 @@ def due_kinds(db, device, current):
     result = set()
     for child in children_for(db, user):
         prefs = s.Preferences(**child.preferences)
+        if user.role == "child" and not prefs.push_consent:
+            continue
         local = datetime.fromtimestamp(current, ZoneInfo(prefs.timezone))
         if quiet(local, prefs.quiet_start, prefs.quiet_end):
             continue
@@ -312,16 +476,17 @@ class FcmError(Exception):
         self.code, self.unregistered = code, unregistered
 
 
-def send_fcm(token, kind, ttl=60):
+def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False):
     site = runtime_settings()
-    if not public_config()["available"]:
+    config = public_config(testing=testing)
+    if not config["available"]:
         raise FcmError("NOT_CONFIGURED")
     from google.auth.transport.requests import Request
     from google.oauth2 import service_account
 
     try:
         info = json.loads(site.fcm_service_account_json or Path(site.fcm_service_account_file).read_text())
-        project = public_config()["firebase"]["projectId"]
+        project = config["firebase"]["projectId"]
         if (
             info.get("type") != "service_account"
             or info.get("project_id") != project
@@ -362,7 +527,7 @@ def send_fcm(token, kind, ttl=60):
             response = client.post(
                 "https://fcm.googleapis.com/v1/projects/" + project + "/messages:send",
                 headers={"Authorization": "Bearer " + credentials.token},
-                json={"message": message},
+                json={"message": message, **({"validate_only": True} if validate_only else {})},
             )
         if response.status_code != 200:
             raw = response.json().get("error", {})
@@ -395,7 +560,11 @@ def deliver_one(DB):
         delivery_id, device_id, kind = delivery.id, delivery.device_id, delivery.kind
         db.commit()
         device = db.get(PushDevice, device_id)
-        if not device or kind not in due_kinds(db, device, int(now())):
+        testing = kind in ("test_validate", "test_send")
+        allowed = device and (
+            test_device_allowed(db, device, int(now())) if testing else kind in due_kinds(db, device, int(now()))
+        )
+        if not allowed:
             delivery.status = "suppressed"
             db.commit()
             return True
@@ -414,13 +583,16 @@ def deliver_one(DB):
         db.rollback()
     code, unregistered = None, False
     try:
-        send_fcm(token, kind, ttl)
+        if testing:
+            send_fcm(token, kind, ttl, testing=True, validate_only=kind == "test_validate")
+        else:
+            send_fcm(token, kind, ttl)
     except FcmError as error:
         code, unregistered = error.code, error.unregistered
     with DB.begin() as db:
         delivery = db.get(PushDelivery, delivery_id)
         if delivery:
-            delivery.status = "failed" if code else "accepted"
+            delivery.status = "failed" if code else "validated" if kind == "test_validate" else "accepted"
             delivery.error_code, delivery.sent = code, int(now())
         if unregistered:
             db.execute(delete(PushDevice).where(PushDevice.id == device_id))

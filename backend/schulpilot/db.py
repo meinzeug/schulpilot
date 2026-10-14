@@ -45,6 +45,51 @@ class Family(Base):
     call_limit = Column(Integer, default=100, nullable=False)
     budget_micros = Column(Integer, default=2_000_000, nullable=False)
     plan = Column(String(40), default="Pilot", nullable=False)
+    commerce_required = Column(Boolean, default=False, server_default=false(), nullable=False)
+
+
+class StoreConfiguration(Base):
+    __tablename__ = "store_configuration"
+    id = Column(Integer, primary_key=True)
+    encrypted_config = Column(Text, nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+    ever_enabled = Column(Boolean, nullable=False, default=False, server_default=false())
+
+
+class BankOrder(Base):
+    __tablename__ = "bank_orders"
+    id = Column(String(32), primary_key=True, default=uid)
+    family_id = Column(ForeignKey("families.id", ondelete="SET NULL"), index=True)
+    buyer_id = Column(ForeignKey("users.id", ondelete="SET NULL"))
+    idempotency = Column(String(100), unique=True, nullable=False)
+    payment_reference = Column(String(24), unique=True, nullable=False)
+    status = Column(String(24), default="awaiting_payment", nullable=False)
+    # NULL permits history; the unique family slot permits one open order.
+    pending_slot = Column(String(32), unique=True)
+    amount_cents = Column(Integer, nullable=False)
+    offer = Column(JSON, nullable=False)
+    seller = Column(JSON, nullable=False)
+    bank = Column(JSON, nullable=False)
+    terms = Column(Text, nullable=False)
+    terms_version = Column(String(32), default="2026-10-14.1", nullable=False)
+    early_start = Column(Boolean, default=False, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    starts = Column(Integer)
+    ends = Column(Integer)
+    checked_at = Column(Integer)
+    checked_by = Column(String(32))
+    booking_digest = Column(String(64), unique=True)
+    booking_date = Column(String(10))
+    revoked_at = Column(Integer)
+    refund_digest = Column(String(64), unique=True)
+    refund_date = Column(String(10))
+    mail_status = Column(String(16), default="pending", nullable=False)
+
+
+class PushTestGrant(Base):
+    __tablename__ = "push_test_grants"
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    expires = Column(Integer, nullable=False)
 
 
 class User(Base):

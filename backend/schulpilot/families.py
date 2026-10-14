@@ -138,6 +138,10 @@ def preferences(child_id: str, data: s.Preferences, p=Depends(parent), db=Depend
     child = child_access(db, p, child_id, write=True)
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     child.preferences = data.model_dump(mode="json")
+    if not data.push_consent:
+        from .db import PushDevice
+
+        db.execute(delete(PushDevice).where(PushDevice.user_id == child.user_id))
     # Persist explicit repetition goals as visible, binding parent assignments.
     marker = "Wiederholungsziel aus den Lernvorgaben."
     previous = list(db.scalars(select(Assignment).where(Assignment.child_id == child.id, Assignment.note == marker)))
@@ -342,6 +346,9 @@ def remove_child(db, child):
 
 
 def remove_family(db, family):
+    from .commerce import erase_family_orders
+
+    erase_family_orders(db, family.id)
     from .erasure import request
 
     request(db, "family", family.id)
@@ -395,7 +402,7 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
     db.commit()
     unlink_uploads(paths)
     flush_journal()
-    return {"message": "Konto und eigene Familien gelöscht. Backups verfallen spätestens nach 14 Tagen."}
+    return {"message": "Konto und eigene Familien gelöscht. Backups verfallen spätestens nach 14 Tagen. Gesetzlich erforderliche Zahlungsbelege bleiben ohne Kontozuordnung aufbewahrt."}
 
 
 def export_child(db, child):
@@ -421,6 +428,8 @@ def export_child(db, child):
 
 @router.get("/families/{family_id}/export")
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
+    from .commerce import orders_export
+
     family, _ = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
     directory = settings.data_dir / "exports"
@@ -441,6 +450,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                         "role": p.user.role,
                     },
                     "children": [export_child(db, c) for c in children],
+                    "orders": orders_export(db, family.id),
                     "usage": [
                         {column.name: getattr(record, column.name) for column in Usage.__table__.columns}
                         for record in db.scalars(select(Usage).where(Usage.family_id == family.id))

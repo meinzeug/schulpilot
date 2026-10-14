@@ -127,6 +127,14 @@ def register(data: s.Register, request: Request, db=Depends(get_db)):
         call_limit=site.default_call_limit,
         budget_micros=site.default_budget_micros,
     )
+    from .db import StoreConfiguration
+
+    shop = db.get(StoreConfiguration, 1)
+    if shop and shop.ever_enabled:
+        family.commerce_required = True
+        family.call_limit = 0
+        family.child_limit = 1
+        family.plan = "Noch kein Tarif"
     db.add_all([user, family])
     db.flush()
     db.add(Membership(family_id=family.id, user_id=user.id, permission="owner"))
@@ -178,6 +186,19 @@ def login(data: s.Login, request: Request, response: Response, db=Depends(get_db
         raise HTTPException(403, "Bitte zuerst die E-Mail-Adresse bestätigen.")
     if user.role == "admin":
         audit(db, user.id, "admin.login", user.id)
+    # Successful account switches on a shared browser/device terminate the
+    # previous session before any new push registration can be associated.
+    header = request.headers.get("authorization", "")
+    previous_token = header[7:] if header.startswith("Bearer ") else request.cookies.get("sp_session", "")
+    if previous_token:
+        previous = db.scalar(select(Session).where(Session.token_hash == digest(previous_token)))
+        if previous:
+            previous.revoked = True
+            from sqlalchemy import delete
+
+            from .db import PushDevice
+
+            db.execute(delete(PushDevice).where(PushDevice.session_id == previous.id))
     return create_session(db, user, response, request, data.device)
 
 

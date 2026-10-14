@@ -52,6 +52,10 @@ class _InstallationScreenState extends State<InstallationScreen> {
       ('fcm_public_config', 'Firebase-App-Konfiguration (JSON)'),
       ('fcm_service_account_json', 'Firebase-Dienstkonto (JSON)'),
       ('push_privacy_evidence', 'Nachweis der Push-Freigabe'),
+      (
+        'fcm_config_verification',
+        'Prüfung von Firebase-Apps, APIs und Schlüsselrestriktionen',
+      ),
     ],
   ];
   static const numbers = {
@@ -146,6 +150,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
             'fcm_public_config',
             'privacy_evidence',
             'push_privacy_evidence',
+            'fcm_config_verification',
           ].contains(key)
           ? 3
           : 1,

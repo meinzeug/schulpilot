@@ -47,6 +47,7 @@ class SiteUpdate(s.Strict):
     clear_fcm_service_account_json: bool = False
     push_approved: bool = False
     push_privacy_evidence: str = Field(default="", max_length=500)
+    fcm_config_verification: str = Field(default="", max_length=1000)
 
     @model_validator(mode="after")
     def validate_config(self):
@@ -60,9 +61,11 @@ class SiteUpdate(s.Strict):
             raise ValueError("Bitte die Datenschutzfreigabe nachvollziehbar dokumentieren.")
         if self.push_approved and len(self.push_privacy_evidence) < 20:
             raise ValueError("Bitte die Push-Freigabe nachvollziehbar dokumentieren.")
+        if self.push_approved and len(self.fcm_config_verification) < 20:
+            raise ValueError("Die Firebase-Apps, APIs und API-Key-Einschränkungen müssen zuvor geprüft sein.")
         if self.fcm_public_config:
             raw = json.loads(self.fcm_public_config)
-            allowed = {"apiKey", "appId", "messagingSenderId", "projectId", "authDomain", "vapidKey", "androidAppId"}
+            allowed = {"apiKey", "appId", "messagingSenderId", "projectId", "authDomain", "vapidKey", "androidAppId", "androidApiKey"}
             if not isinstance(raw, dict) or set(raw) - allowed or not all(isinstance(v, str) for v in raw.values()):
                 raise ValueError("Firebase-App-Konfiguration enthält unbekannte Felder.")
             if raw.get("projectId") and not re.fullmatch(r"[a-z][a-z0-9-]{4,62}", raw["projectId"]):

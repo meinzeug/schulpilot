@@ -13,6 +13,7 @@ from . import (
     admin,
     auth,
     coaching,
+    commerce,
     families,
     installation,
     learning,
@@ -185,7 +186,8 @@ def legal():
         "support_email": site.operator_support_email,
         "complete": bool(site.operator_name and site.operator_address and site.operator_support_email),
         "operator_data_approval": bool(site.real_data_approved and site.privacy_evidence),
-        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24},
+        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24, "push_devices_inactive": 60, "push_delivery_status": 14},
+        "accounting_retention": "Zahlungsbelege acht Jahre nach Ende des Buchungsjahres; bei Kontolöschung ohne Kontozuordnung.",
     }
 
 
@@ -200,6 +202,7 @@ for router in (
     synthetic.router,
     admin.router,
     notifications.router,
+    commerce.router,
     releases.router,
     school_day.router,
 ):

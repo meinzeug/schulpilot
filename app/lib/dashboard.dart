@@ -1963,6 +1963,17 @@ Future<void> preferencesDialog(
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text(
+                    'Benachrichtigungen am Kindergerät erlauben',
+                  ),
+                  subtitle: const Text(
+                    'Dein Kind entscheidet anschließend auf seinem Gerät, ob es sie einschaltet.',
+                  ),
+                  value: p['push_consent'] == true,
+                  onChanged: (v) => set(() => p['push_consent'] = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
                     'Hilfewünsche im Elternüberblick hervorheben',
                   ),
                   value: p['notify_help'],

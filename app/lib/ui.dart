@@ -555,6 +555,8 @@ class PageFrame extends StatelessWidget {
           '/after-school/${state.user!['child_id']}',
         ),
       if (state.isAdmin) (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
+      if (kIsWeb && state.isOwner && !state.isDemo)
+        (Icons.receipt_long_outlined, 'Tarif', '/bestellungen'),
       (Icons.person_outline_rounded, 'Konto', '/settings'),
     ];
     var selected = entries.indexWhere(

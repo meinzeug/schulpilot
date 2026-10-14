@@ -210,6 +210,9 @@ def external_allowed(config, image=False, synthetic_fixture=False):
 
 
 def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
+    from .commerce import usage_terms
+
+    family_bucket, family_calls, family_budget = usage_terms(db, family, enforce=True)
     config = config_for_function(db.get(ProviderConfig, 1), function)
     try:
         external_allowed(config, function == "extract", synthetic_fixture)
@@ -229,10 +232,10 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
             "Dokumentierte Preisobergrenzen fehlen. Kosten sind unbekannt; der kostenpflichtige Aufruf bleibt gesperrt.",
         )
     period = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m")
-    ids = [f"global:{period}", f"{family.id}:{period}"]
+    ids = [f"global:{period}", family_bucket]
     for name, calls, budget in [
         (ids[0], 1_000_000, config.global_limit_micros),
-        (ids[1], family.call_limit, family.budget_micros),
+        (ids[1], family_calls, family_budget),
     ]:
         insert_ignore(
             db,
@@ -625,16 +628,21 @@ def verify_free_endpoint(model, upstream, image=False):
 def usage_summary(db, family):
     from datetime import datetime, timezone
 
+    from .commerce import access, usage_terms
+
     period = datetime.now(timezone.utc).strftime("%Y-%m")
-    bucket = db.get(UsageBucket, f"{family.id}:{period}")
+    bucket_id, calls_limit, budget = usage_terms(db, family)
+    entitlement = access(db, family)
+    bucket = db.get(UsageBucket, bucket_id)
     return {
-        "period": period,
+        "period": period if not family.commerce_required else "bezahlte Laufzeit",
         "plan": family.plan,
         "calls_used": bucket.calls if bucket else 0,
-        "calls_limit": family.call_limit,
-        "calls_remaining": max(0, family.call_limit - (bucket.calls if bucket else 0)),
-        "budget_micros_usd": family.budget_micros,
-        "budget_remaining_micros_usd": max(0, family.budget_micros - (bucket.encumbered_micros if bucket else 0)),
+        "calls_limit": calls_limit,
+        "calls_remaining": max(0, calls_limit - (bucket.calls if bucket else 0)),
+        "access": entitlement,
+        "budget_micros_usd": budget,
+        "budget_remaining_micros_usd": max(0, budget - (bucket.encumbered_micros if bucket else 0)),
         "encumbered_micros_usd": bucket.encumbered_micros if bucket else 0,
         "known_cost_micros_usd": bucket.known_cost_micros if bucket else 0,
         "unknown_cost_calls": bucket.unknown_calls if bucket else 0,

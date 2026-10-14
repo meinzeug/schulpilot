@@ -698,6 +698,17 @@ class _AdminScreenState extends State<AdminScreen> {
           label: const Text('Betriebseinstellungen'),
         ),
         const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => openRoute(context, '/admin/verkauf'),
+          icon: const Icon(Icons.account_balance_outlined),
+          label: const Text('Verkauf & Zahlungseingänge'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => openRoute(context, '/admin/push'),
+          icon: const Icon(Icons.notifications_outlined),
+          label: const Text('Push-Prüfung'),
+        ),
         ActionButton(
           label: 'KI-Aufrufe sofort stoppen',
           icon: Icons.stop_circle_outlined,

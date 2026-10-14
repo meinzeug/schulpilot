@@ -230,6 +230,10 @@ def process(job_id):
             variant = len(previous)
             config_values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             function = job.kind
+            if not synthetic or fixture:
+                from .commerce import usage_terms
+
+                usage_terms(db, family, enforce=True)
             # Release the DB transaction before the bounded external request.
             db.rollback()
         if synthetic and not fixture:
@@ -355,6 +359,9 @@ def process(job_id):
 def maintenance():
     paths = []
     with DB.begin() as db:
+        from .commerce import maintenance as commerce_maintenance
+
+        commerce_maintenance(db)
         stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240)))
         for job in stale:
             job.status = "failed"

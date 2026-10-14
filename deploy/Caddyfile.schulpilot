@@ -18,6 +18,10 @@ schulpilot.dorfspy.de {
     Cache-Control "no-cache"
   }
   @api path /api /api/*
+  handle /push/firebase-messaging-sw.js {
+    rewrite * /api/notifications/service-worker.js
+    reverse_proxy 127.0.0.1:3240
+  }
   handle /firebase-messaging-sw.js {
     rewrite * /api/notifications/service-worker.js
     reverse_proxy 127.0.0.1:3240
