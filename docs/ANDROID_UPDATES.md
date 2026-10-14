@@ -30,4 +30,4 @@ Artefakte: `app/build/app/outputs/flutter-apk/app-direct-release.apk` und `app/b
 
 ## Tatsächliche Prüfung
 
-Der native Prüftreiber `qa/android_update.py` verwendet ausschließlich den eigenen Emulator und zwei tatsächlich signierte Versionen. Er prüft neue Startabrufe und den echten Installationsdialog samt Versionswechsel. Ergebnis und verbleibende Grenzen in [STATUS.md](STATUS.md).
+Der native Prüftreiber `qa/android_update.py` verwendet ausschließlich den eigenen Emulator und zwei tatsächlich signierte Versionen. Er prüft neue Startabrufe und den echten Installationsdialog samt Versionswechsel. `--check-starts` prüft auf der installierten aktuellen Version Kaltstart, Hintergrundrückkehr und einen weiteren Launcher-Aufruf. Ergebnis und verbleibende Grenzen in [STATUS.md](STATUS.md).

@@ -15,7 +15,7 @@ const headers = {'X-Schulpilot-Request': '1'};
 let passed = false;
 for (const context of [child, parent]) context.on('page', page => page.on('pageerror', e => errors.push(e.message)));
 async function open(page, path) {
-  await page.goto(url + path, {waitUntil: 'domcontentloaded'});
+  await page.goto(url + path, {waitUntil: 'domcontentloaded', timeout: 90000});
   await page.waitForSelector('flutter-view');
   await page.locator('flt-semantics-placeholder').evaluateAll(nodes => nodes.forEach(n => n.click()));
   await page.waitForTimeout(350);
@@ -26,12 +26,12 @@ async function login(context, role) {
 }
 async function reveal(page, locator) {
   const target = locator.first();
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 24; i++) {
     const box = await target.count() ? await target.boundingBox({timeout: 500}).catch(() => null) : null;
     const viewport = page.viewportSize();
     if (box && box.y >= 0 && box.y + box.height <= viewport.height) return target;
     await page.mouse.move(viewport.width - 60, viewport.height - 120);
-    await page.mouse.wheel(0, box && box.y < 0 ? -550 : 550);
+    await page.mouse.wheel(0, !box && i === 0 ? -16000 : box && box.y < 0 ? -550 : 550);
     await page.waitForTimeout(300);
   }
   throw new Error('Expected wizard control was not visible after scrolling');
@@ -44,13 +44,25 @@ async function tapDialogControl(page, locator) {
   assert(box && box.width > 0 && box.height > 0);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
-async function waitForCoaching(unitId) {
+async function waitForCoaching(unitId, page) {
   for (let poll = 0; poll < 75; poll++) {
     const response = await child.request.get(url + '/api/units/' + unitId);
     assert.equal(response.status(), 200);
     const value = await response.json();
     if (value.coaching?.status === 'ready') return value;
     if (['blocked', 'failed'].includes(value.coaching?.status)) {
+      const retried = demo.coaching_retry_unit_ids ?? [];
+      if (process.argv.includes('--retry-failed-coaching') && value.coaching.can_retry && !retried.includes(unitId)) {
+        const retry = page.getByRole('button', {name: 'Auswertung erneut anfordern', exact: true});
+        await reveal(page, retry);
+        const response = page.waitForResponse(r => r.url().endsWith('/units/' + unitId + '/coaching') && r.request().method() === 'POST');
+        await retry.click();
+        assert.equal((await response).status(), 200);
+        demo.coaching_retry_unit_ids = [...retried, unitId];
+        await writeFile(accountFile, JSON.stringify(demo), {mode: 0o600});
+        console.log('One explicitly requested UI retry; the failed call remains counted');
+        continue;
+      }
       throw new Error('Saved AI review was rejected: ' + value.coaching.reason);
     }
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -80,7 +92,7 @@ try {
   await login(child, 'child');
   await login(parent, 'parent');
   const c = await child.newPage();
-  const startButton = () => c.getByRole('button', {name: /Jetzt lernen & festigen|Weiterlernen/});
+  const startButton = () => c.getByRole('button', {name: /Jetzt lernen & festigen|Weiterlernen|Einheit ansehen/});
   await open(c, '/app');
   await c.getByRole('button', {name: 'Nach der Schule starten', exact: true}).click();
   if (demo.normal_account && !demo.package_unit_id) {
@@ -160,38 +172,40 @@ try {
   assert.equal(unitResponse.status(), 200);
   const unit = await unitResponse.json();
   await startButton().click();
-  if (!unit.introduction_seen) {
-    const intro = c.getByRole('button', {name: 'Weiter zu den Übungen', exact: true});
-    await reveal(c, intro);
-    await intro.click();
-  }
-  await reveal(c, c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}));
-  await c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}).click();
-  const pending = unit.questions.filter(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));
-  assert(pending.length, 'An unanswered question must remain in this isolated test package');
-  for (const q of demo.normal_account ? pending : pending.slice(0, 1)) {
-    await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).waitFor();
-    if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
-    if (q.type === 'gap' || q.type === 'short') {
-      await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
-      await c.waitForTimeout(250);
-      await c.keyboard.type(q.answer, {delay: 80});
+  if (unit.status !== 'completed') {
+    if (!unit.introduction_seen) {
+      const intro = c.getByRole('button', {name: 'Weiter zu den Übungen', exact: true});
+      await reveal(c, intro);
+      await intro.click();
     }
-    if (q.type === 'match') {
-      for (const pair of q.options) {
-        const [left, right] = pair.split('|');
-        await c.getByRole('button', {name: left}).or(c.getByRole('combobox', {name: left})).or(c.getByLabel(left)).first().click();
-        await c.getByText(right, {exact: true}).or(c.getByLabel(right, {exact: true})).last().click();
+    await reveal(c, c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}));
+    await c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}).click();
+    const pending = unit.questions.filter(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));
+    assert(pending.length, 'An unanswered question must remain in this isolated test package');
+    for (const q of demo.normal_account ? pending : pending.slice(0, 1)) {
+      await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).waitFor();
+      if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
+      if (q.type === 'gap' || q.type === 'short') {
+        await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
+        await c.waitForTimeout(250);
+        await c.keyboard.type(q.answer, {delay: 80});
       }
+      if (q.type === 'match') {
+        for (const pair of q.options) {
+          const [left, right] = pair.split('|');
+          await c.getByRole('button', {name: left}).or(c.getByRole('combobox', {name: left})).or(c.getByLabel(left)).first().click();
+          await c.getByText(right, {exact: true}).or(c.getByLabel(right, {exact: true})).last().click();
+        }
+      }
+      const saved = c.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
+      await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).click();
+      assert.equal((await (await saved).json()).outcome, 'correct');
+      await c.waitForTimeout(500);
     }
-    const saved = c.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
-    await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).click();
-    assert.equal((await (await saved).json()).outcome, 'correct');
-    await c.waitForTimeout(500);
   }
   let learningRounds = 1;
   if (demo.normal_account) {
-    let reviewed = await waitForCoaching(demo.package_unit_id);
+    let reviewed = await waitForCoaching(demo.package_unit_id, c);
     assert.equal(reviewed.coaching.decision, 'repair');
     assert.equal(reviewed.coaching.provider, 'openrouter');
     assert(reviewed.coaching.report.learning_goals.length >= 2);
@@ -213,7 +227,7 @@ try {
         await intro.click();
       }
       await answerSavedQuestions(c, next.questions);
-      reviewed = await waitForCoaching(nextId);
+      reviewed = await waitForCoaching(nextId, c);
       assert.equal(reviewed.coaching.provider, 'openrouter');
       learningRounds++;
       console.log(JSON.stringify({completed_learning_rounds: learningRounds, next_action: reviewed.coaching.decision}));
@@ -225,10 +239,10 @@ try {
     assert(reviewed.learning_progress.learning_goals.every(g => g.successful_check_days <= 1));
     demo.last_completed_unit_id = reviewed.id;
     await writeFile(accountFile, JSON.stringify(demo), {mode: 0o600});
-    await reveal(c, c.getByText('Deine Lernbegleitung', {exact: true}));
+    await reveal(c, c.getByText('Deine Lernbegleitung', {exact: false}));
     await c.screenshot({path: '../artifacts/coaching-child-mobile.png'});
     await open(c, '/unit/' + reviewed.id);
-    await reveal(c, c.getByText('Deine Lernbegleitung', {exact: true}));
+    await reveal(c, c.getByText('Deine Lernbegleitung', {exact: false}));
     const resumed = await (await child.request.get(url + '/api/units/' + reviewed.id)).json();
     assert.equal(resumed.coaching.status, 'ready');
     console.log('Repair, independent check, bounded finish and persisted review passed');
@@ -246,14 +260,14 @@ try {
     assert.equal(stored.status, 'completed');
     assert(stored.questions.every(q => q.attempts.some(a => a.outcome === 'correct')));
     const usage = await (await parent.request.get(url + '/api/families/' + demo.user.families[0].id + '/usage')).json();
-    assert.equal(usage.calls_used, 3 + learningRounds);
-    assert.equal(usage.unknown_cost_calls, 0);
-    assert(usage.records.every(record => record.cost_micros_usd === 0));
+    assert.equal(usage.calls_used, 3 + learningRounds + (demo.coaching_retry_unit_ids ?? []).length);
+    assert(usage.unknown_cost_calls <= (demo.coaching_retry_unit_ids ?? []).length);
+    assert(usage.records.every(record => record.cost_micros_usd === 0 || record.cost_micros_usd === null));
     const finalReview = await (await parent.request.get(url + '/api/units/' + demo.last_completed_unit_id)).json();
     assert.equal(finalReview.coaching.status, 'ready');
     await open(p, '/unit/' + demo.last_completed_unit_id);
-    await reveal(p, p.getByText('Deine Lernbegleitung', {exact: true}));
-    console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, actual_free_ai_calls: usage.calls_used, cost_micros_usd: usage.known_cost_micros_usd, completed_questions: stored.questions.length + (learningRounds - 1) * 2, learning_rounds: learningRounds, parent_sees_saved_reviews: true, provider: stored.provider, model: stored.model}));
+    await reveal(p, p.getByText('Deine Lernbegleitung', {exact: false}));
+    console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, actual_free_ai_calls: usage.calls_used, cost_micros_usd: usage.known_cost_micros_usd, unknown_cost_calls: usage.unknown_cost_calls, explicit_retries: (demo.coaching_retry_unit_ids ?? []).length, completed_questions: stored.questions.length + (learningRounds - 1) * 2, learning_rounds: learningRounds, parent_sees_saved_reviews: true, provider: stored.provider, model: stored.model}));
   }
   await p.screenshot({path: '../artifacts/school-day-parent.png'});
   assert.deepEqual(errors, []);

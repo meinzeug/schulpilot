@@ -62,3 +62,5 @@ Tatsächliche Validierung vom 14.10.2026: endgültige APK installiert und in ein
 Aktueller Ausbau: Die Betreiberfreigabe wurde ausdrücklich erteilt und in [APPROVALS.md](APPROVALS.md) protokolliert. Fehlende Google-Projektkennungen und Zugangsdaten bleiben davon getrennte technische Voraussetzungen. Vorbereitete deutsche Storetexte und ein technisches Data-Safety-/Review-Arbeitsblatt stehen in `store/`. `scripts/google_readiness.py --bundletool /pfad/bundletool.jar` prüft den öffentlichen APK-Stand, Betreiberangaben, Textlängen und das tatsächliche AAB, führt aber keinen Console-Upload aus. Physische Geräteprüfung und echte FCM-Zustellung bleiben ohne entsprechendes Gerät/Projekt offen.
 
 Android prüft jetzt bei jedem Start auf Updates. Direkter Download und Google Play verwenden getrennte Build-Flavors; siehe [ANDROID_UPDATES.md](ANDROID_UPDATES.md). Ein Play-AAB darf keine direkte APK-Installationsberechtigung enthalten.
+
+Vor einer Console-Einreichung auch das ausschließlich im Play-Flavor enthaltene In-App-Update-SDK in den Datensicherheitsangaben prüfen. Die direkte APK verwendet dieses SDK nicht.

@@ -29,7 +29,19 @@ def log():
 
 
 def launch():
-    adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
+    adb(
+        "shell",
+        "am",
+        "start",
+        "-a",
+        "android.intent.action.MAIN",
+        "-c",
+        "android.intent.category.LAUNCHER",
+        "-f",
+        "0x10200000",
+        "-n",
+        PACKAGE + "/.MainActivity",
+    )
 
 
 def wait_until(condition, seconds=45):
@@ -48,24 +60,31 @@ def ui_texts():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prepare", type=Path)
+    parser.add_argument("--check-starts", action="store_true")
     parser.add_argument("--upgrade", action="store_true")
     args = parser.parse_args()
     release = httpx.get("https://schulpilot.dorfspy.de/api/app-release", timeout=20).raise_for_status().json()
-    if args.prepare:
-        adb("install", "-r", str(args.prepare.resolve()))
+    if args.prepare or args.check_starts:
+        if args.prepare:
+            adb("install", "-r", str(args.prepare.resolve()))
         before = log().count("Checking release manifest on app start")
+        current_before = log().count("Installed version is current")
         adb("shell", "am", "force-stop", PACKAGE)
         launch()
-        wait_until(lambda: log().count("Installed version is current") >= 1)
+        wait_until(lambda: log().count("Installed version is current") >= current_before + 1)
         adb("shell", "input", "keyevent", "3")
         time.sleep(1.5)  # Let the launcher transition really stop the Activity.
         launch()
         wait_until(lambda: log().count("Checking release manifest on app start") >= before + 2)
+        wait_until(lambda: log().count("Installed version is current") >= current_before + 2)
+        if args.check_starts:
+            launch()  # An additional launcher intent while already visible.
+            wait_until(lambda: log().count("Installed version is current") >= current_before + 3)
         assert installed_code() >= release["version_code"]
         print(
             json.dumps(
                 {
-                    "start_checks": 2,
+                    "start_checks": 3 if args.check_starts else 2,
                     "cold_and_foreground_checked": True,
                     "installed_code": installed_code(),
                     "no_downgrade": True,
@@ -74,7 +93,7 @@ def main():
         )
         return
     if not args.upgrade:
-        parser.error("Use --prepare SEED.apk or --upgrade")
+        parser.error("Use --prepare SEED.apk, --check-starts or --upgrade")
     old = installed_code()
     target = release["version_code"]
     assert target > old, "Deploy the higher signed release before testing the update"
@@ -98,8 +117,15 @@ def main():
     screenshot("android-update-system-confirmation.png")
     press("Update" if "Update" in ui_texts() else "Aktualisieren")
     wait_until(lambda: installed_code() == target, seconds=90)
+    # Android's success sheet belongs to the installer, not to our app task.
+    names = ui_texts()
+    if "Open" in names or "Öffnen" in names:
+        press("Open" if "Open" in names else "Öffnen")
+    elif "Done" in names or "Fertig" in names:
+        press("Done" if "Done" in names else "Fertig")
+    current_before = log().count("Installed version is current")
     launch()
-    wait_until(lambda: "Installed version is current" in log())
+    wait_until(lambda: log().count("Installed version is current") > current_before)
     screenshot("android-updated-current-version.png")
     print(
         json.dumps(
