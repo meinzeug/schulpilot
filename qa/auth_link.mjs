@@ -27,6 +27,10 @@ try {
   const code = page.getByLabel('Sicherer Link-Code', {exact: false});
   await code.waitFor();
   step = 'prefill';
+  // Flutter's unfocused secure semantics input has an empty DOM value.
+  // Focusing attaches the real editor without entering or changing its text.
+  await code.click();
+  await page.waitForTimeout(200);
   if (await code.inputValue() !== data.token) {
     throw new Error('prefill');
   }
@@ -36,6 +40,8 @@ try {
   await page.waitForSelector('flutter-view');
   await page.locator('flt-semantics-placeholder').evaluateAll(nodes => nodes.forEach(node => node.click()));
   await code.waitFor();
+  await code.click();
+  await page.waitForTimeout(200);
   if (await code.inputValue() !== data.token) throw new Error('reload');
   step = 'fields';
   const type = async (label, value) => {

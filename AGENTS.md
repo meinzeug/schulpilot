@@ -4,6 +4,7 @@
 - Flutter/Dart für Web und Android; modulares Python/FastAPI-Backend; PostgreSQL im Betrieb, SQLite für isolierte Tests. Keine zusätzlichen Microservices ohne belegten Bedarf.
 - Autorisierung immer im Backend: Familienmitgliedschaften aus der Sitzung, niemals aus Client-IDs ableiten. Administratoren erhalten keinen privaten Inhaltszugriff.
 - Kinder haben eigene widerrufbare Sitzungen. Argon2id-Passwörter, keine Standardpasswörter, Admin ausschließlich per lokalem CLI mit TOTP.
+- Einmalige E-Mail-Codes bleiben im URL-Fragment. Flutter-Pfadrouter mit `includeHash=true` betreiben und die vollständige Router-URI an Bestätigungs-/Einladungs-/Resetformulare übergeben. Kaltstart, Neuladen und neuer Link dürfen keinen Code verlieren oder einen alten wiederverwenden.
 - Kinderinhalte, Fotos, Passwörter, Tokens und Provider-Schlüssel niemals protokollieren oder committen. Private Uploads ausschließlich authentifiziert ausliefern.
 - Externe Verarbeitung echter Kinderdaten bleibt gesperrt, bis dokumentierte Anbieter-/Datenschutzfreigaben vorliegen. Synthetische Demo ausdrücklich kennzeichnen; niemals KI-Erfolg vortäuschen.
 - Betreiberfreigabe vom 14.10.2026 ist erteilt und in docs/APPROVALS.md festgehalten; nicht erneut danach fragen. Davon getrennt konkrete technische Routingblocker beachten. Data-Collection-Deny/ZDR, Kosten- und Zugangsgrenzen niemals stillschweigend lockern.

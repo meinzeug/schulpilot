@@ -54,7 +54,12 @@ def main():
             timeout=100,
         )
         if result.returncode:
-            raise RuntimeError("Actual email link was not accepted by the web form")
+            try:
+                step = json.loads(result.stderr).get("step")
+            except (ValueError, AttributeError):
+                step = None
+            allowed = {"input", "launch", "open", "form", "prefill", "reload", "fields", "submit"}
+            raise RuntimeError("Email-link browser check failed at " + (step if step in allowed else "unknown step"))
         report = json.loads(result.stdout)
         if not report.get("prefill") or not report.get("reload") or not report.get("form_submitted"):
             raise RuntimeError("Incomplete email-link browser check")
@@ -97,6 +102,7 @@ def main():
         httpx.Client(headers=headers, timeout=30) as child,
     ):
         parent_created = guest_created = False
+        verify_token = None
         try:
             checked(
                 parent,
@@ -180,6 +186,10 @@ def main():
             parent.headers["Authorization"] = "Bearer " + logged["token"]
             checks.append("recovery_mail_received_password_changed_sessions_revoked")
         finally:
+            if parent_created and verify_token:
+                # A browser assertion can fail before submission. Verify only
+                # this run's account so its cleanup remains possible.
+                parent.post(public + "/api/auth/verify", json={"token": verify_token})
             # Delete only accounts whose unique aliases were created in this run.
             for client, address, secret, created in [
                 (guest, guest_email, guest_password, guest_created),
