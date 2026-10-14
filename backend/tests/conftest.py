@@ -20,7 +20,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from schulpilot import auth, families  # noqa: E402
 from schulpilot.config import settings  # noqa: E402
-from schulpilot.db import Base, engine, init_db  # noqa: E402
+from schulpilot.db import DB, Base, Installation, engine, init_db  # noqa: E402
 from schulpilot.main import app  # noqa: E402
 
 HEADERS = {"X-Schulpilot-Request": "1", "X-Client-Platform": "native"}
@@ -31,6 +31,8 @@ def clean_database():
     old = dict(settings.__dict__)
     Base.metadata.drop_all(engine)
     init_db()
+    with DB.begin() as db:
+        db.get(Installation, 1).completed = True
     yield
     for key, value in old.items():
         object.__setattr__(settings, key, value)

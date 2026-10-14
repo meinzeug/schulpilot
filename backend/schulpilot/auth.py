@@ -1,16 +1,14 @@
 import secrets
-import time
 
-import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from . import schemas as s
-from .config import settings
+from .config import runtime_settings, settings
 from .db import Child, Family, Membership, Session, Token, User, get_db, now
 from .mail import require_mail, send_link
-from .security import authenticated, decrypt, digest, password_hash, rate_limit, verify_password
+from .security import audit, authenticated, digest, password_hash, rate_limit, verify_password
 
 router = APIRouter(prefix="/auth", tags=["Accounts"])
 
@@ -43,13 +41,14 @@ def consume_token(db, value, purpose):
 
 
 def user_data(db, user):
+    site = runtime_settings(db)
     result = {
         "id": user.id,
         "role": user.role,
         "display_name": user.display_name,
         "username": user.username,
         "email": user.email,
-        "real_data_enabled": bool(settings.real_data_approved and settings.privacy_evidence),
+        "real_data_enabled": bool(site.real_data_approved and site.privacy_evidence),
     }
     if user.role == "parent":
         result["families"] = [
@@ -96,7 +95,7 @@ def create_session(db, user, response, request, device):
         secure=settings.environment == "production",
         samesite="strict",
         path="/api",
-        max_age=30 * 86400,
+        max_age=86400 if user.role == "admin" else 30 * 86400,
     )
     result = {"user": user_data(db, user)}
     if request.headers.get("x-client-platform") == "native":
@@ -120,7 +119,14 @@ def register(data: s.Register, request: Request, db=Depends(get_db)):
         role="parent",
         verified=False,
     )
-    family = Family(name=data.family_name)
+    site = runtime_settings(db)
+    family = Family(
+        name=data.family_name,
+        plan=site.default_plan,
+        child_limit=site.default_child_limit,
+        call_limit=site.default_call_limit,
+        budget_micros=site.default_budget_micros,
+    )
     db.add_all([user, family])
     db.flush()
     db.add(Membership(family_id=family.id, user_id=user.id, permission="owner"))
@@ -171,19 +177,7 @@ def login(data: s.Login, request: Request, response: Response, db=Depends(get_db
     if not user.verified:
         raise HTTPException(403, "Bitte zuerst die E-Mail-Adresse bestätigen.")
     if user.role == "admin":
-        if not user.totp_secret:
-            raise HTTPException(403, "Admin-Zweitfaktor fehlt.")
-        totp = pyotp.TOTP(decrypt(user.totp_secret))
-        current_step = int(time.time()) // 30
-        if not totp.verify(data.totp, valid_window=0):
-            raise HTTPException(401, "Gültiger Admin-Zweitfaktor erforderlich.")
-        updated = db.execute(
-            update(User)
-            .where(User.id == user.id, User.totp_last_step < current_step)
-            .values(totp_last_step=current_step)
-        )
-        if not updated.rowcount:
-            raise HTTPException(401, "Zweitfaktor wurde bereits verwendet.")
+        audit(db, user.id, "admin.login", user.id)
     return create_session(db, user, response, request, data.device)
 
 

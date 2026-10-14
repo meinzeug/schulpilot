@@ -20,8 +20,7 @@ class DashboardScreen extends StatelessWidget {
       return PageFrame(
         state: state,
         title: 'Plattform verwalten',
-        subtitle:
-            'Betrieb und Anbieter ohne Einblick in private Kinderinhalte.',
+        subtitle: 'Anbieter und Plattform verwalten.',
         child: FilledButton.icon(
           onPressed: () => context.go('/admin'),
           icon: const Icon(Icons.shield_outlined),
@@ -49,9 +48,8 @@ class DashboardScreen extends StatelessWidget {
     }
     return PageFrame(
       state: state,
-      title: 'Deine Familie im Blick.',
-      subtitle:
-          'Kleine Lernschritte. Ein klarer Überblick. Gemeinsam weiterkommen.',
+      title: 'Deine Familie',
+      subtitle: 'Heute gelernt. Morgen sicherer.',
       actions: [
         if (state.canManage)
           OutlinedButton.icon(
@@ -142,8 +140,8 @@ class DashboardScreen extends StatelessWidget {
                           const SizedBox(height: 10),
                           Text(
                             highlightHelp
-                                ? 'Ein Kind wünscht sich Unterstützung. Schaut gemeinsam auf die offene Frage.'
-                                : 'Hier siehst du, was innerhalb von SCHULPILOT gelernt wurde und welcher nächste Schritt passt.',
+                                ? 'Dein Kind hat eine Frage. Schau in die Familiennachrichten.'
+                                : 'Alle Lernräume. Die nächsten Schritte. Alles an einem Ort.',
                             style: const TextStyle(color: muted, height: 1.6),
                           ),
                         ],
@@ -162,27 +160,56 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Wrap(
-                spacing: 14,
-                runSpacing: 14,
-                children: [
-                  stat('$completed', 'Einheiten heute', Icons.task_alt_rounded),
-                  stat(
-                    '$answerCount',
-                    'Gespeicherte Antworten · heute',
-                    Icons.edit_note_rounded,
-                  ),
-                  stat(
-                    '$help',
-                    'Offene Hilfewünsche',
-                    Icons.volunteer_activism_outlined,
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final item in [
+                      ('$completed', 'Einheiten', Icons.task_alt_rounded),
+                      ('$answerCount', 'Antworten', Icons.edit_note_rounded),
+                      (
+                        '$help',
+                        'Hilfewünsche',
+                        Icons.volunteer_activism_outlined,
+                      ),
+                    ])
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Panel(
+                            padding: EdgeInsets.all(
+                              constraints.maxWidth < 500 ? 12 : 20,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(item.$3, size: 20, color: teal),
+                                const SizedBox(height: 12),
+                                Text(
+                                  item.$1,
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  item.$2,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
               heading(
-                'Die Lernräume deiner Kinder',
-                subtitle: 'Jedes Kind hat einen eigenen Zugang und einen eigenen Lernplan.',
+                'Deine Kinder',
                 trailing: IconButton(
                   tooltip: 'Aktualisieren',
                   onPressed: refresh,
@@ -228,7 +255,8 @@ class DashboardScreen extends StatelessWidget {
                                       backgroundColor: mint,
                                       child: Text(
                                         (c['display_name'] as String)
-                                            .substring(0, 1)
+                                            .characters
+                                            .first
                                             .toUpperCase(),
                                         style: const TextStyle(
                                           color: teal,
@@ -251,7 +279,7 @@ class DashboardScreen extends StatelessWidget {
                                             ),
                                           ),
                                           Text(
-                                            'Klasse ${c['grade']} · eigener Kinderzugang',
+                                            'Klasse ${c['grade']}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                               color: muted,
@@ -311,9 +339,6 @@ class DashboardScreen extends StatelessWidget {
                 ),
               const SizedBox(height: 28),
               if (state.demoCredentials != null) demoAccess(context, state),
-              const Notice(
-                'Einzelne richtige Antworten sind erste Beobachtungen. Eine spätere Wiederholung zeigt mehr; fehlende Nutzung sagt nichts über das Verständnis aus.',
-              ),
             ],
           );
         },
@@ -328,8 +353,8 @@ Widget demoAccess(BuildContext context, AppState state) => Panel(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       heading(
-        'Zwei echte Zugänge zum Testen',
-        subtitle: 'Die Zugangsdaten werden nur in dieser Sitzung angezeigt. Den Kinderzugang kannst du auf einem zweiten Gerät verwenden.',
+        'Eure Demo-Zugänge',
+        subtitle: 'Nur hier sichtbar. Auch auf einem anderen Gerät nutzbar.',
       ),
       SelectableText(
         'Eltern: ${state.demoCredentials!['parent_username']}\nPasswort: ${state.demoCredentials!['parent_password']}\n\nKind: ${state.demoCredentials!['child_username']}\nPasswort: ${state.demoCredentials!['child_password']}',
@@ -377,7 +402,7 @@ Future<void> showChildDialog(BuildContext context, AppState state) async {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Notice(
-                'Ein Anzeigename genügt. Keine eigene E-Mail des Kindes erforderlich. Das Passwort wird sicher gespeichert und kann später erneuert werden.',
+                'Dein Kind meldet sich mit Benutzername und Passwort an.',
               ),
               for (final item in [
                 (name, 'Anzeigename'),
@@ -452,25 +477,31 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
   Widget build(BuildContext context) => PageFrame(
     state: state,
     title: state.isChild
-        ? 'Dein nächster kleiner Schritt.'
-        : 'Der Lernweg deines Kindes.',
-    subtitle: state.isChild
-        ? 'Du lernst in deinem Tempo. Wenn etwas unklar ist, darfst du fragen.'
-        : 'Was wurde geübt, was war schwierig und wobei braucht es Unterstützung?',
+        ? 'Hallo, ${state.user?['display_name'] ?? 'du'}!'
+        : 'Lernüberblick',
     actions: [
-      OutlinedButton.icon(
-        onPressed: refresh,
-        icon: const Icon(Icons.refresh, size: 18),
-        label: const Text('Aktualisieren'),
-      ),
+      if (state.isChild)
+        IconButton(
+          onPressed: refresh,
+          tooltip: 'Aktualisieren',
+          icon: const Icon(Icons.refresh_rounded),
+        )
+      else
+        OutlinedButton.icon(
+          onPressed: refresh,
+          icon: const Icon(Icons.refresh, size: 18),
+          label: const Text('Aktualisieren'),
+        ),
     ],
     child: LoadView<Json>(
       key: ValueKey('${widget.childId}-$version'),
       load: () => state.api.get('/children/${widget.childId}/overview'),
       builder: (data, reload) {
+        if (state.isChild) {
+          return _ChildHomeContent(state: state, data: data, refresh: refresh);
+        }
         final child = data['child'] as Json;
         final plan = data['plan'] as Json;
-        final parent = !state.isChild;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -480,7 +511,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                   radius: 25,
                   backgroundColor: mint,
                   child: Text(
-                    (child['display_name'] as String).substring(0, 1),
+                    (child['display_name'] as String).characters.firstOrNull ??
+                        'S',
                     style: const TextStyle(color: teal, fontSize: 22),
                   ),
                 ),
@@ -490,7 +522,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${parent ? 'Lernraum von' : 'Hallo,'} ${child['display_name']}',
+                        'Lernraum von ${child['display_name']}',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
@@ -506,138 +538,78 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            if (parent)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final t in [
-                      'Überblick',
-                      'Plan & Vorgaben',
-                      'Materialien',
-                      'Lernverlauf',
-                      'Familiennachrichten',
-                    ])
-                      ChoiceChip(
-                        label: Text(t),
-                        selected:
-                            tab ==
-                            [
-                              'Überblick',
-                              'Plan & Vorgaben',
-                              'Materialien',
-                              'Lernverlauf',
-                              'Familiennachrichten',
-                            ].indexOf(t),
-                        onSelected: (_) => setState(
-                          () => tab = [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final t in [
+                    'Überblick',
+                    'Plan & Vorgaben',
+                    'Materialien',
+                    'Lernverlauf',
+                    'Familiennachrichten',
+                  ])
+                    ChoiceChip(
+                      label: Text(t),
+                      selected:
+                          tab ==
+                          [
                             'Überblick',
                             'Plan & Vorgaben',
                             'Materialien',
                             'Lernverlauf',
                             'Familiennachrichten',
                           ].indexOf(t),
-                        ),
+                      onSelected: (_) => setState(
+                        () => tab = [
+                          'Überblick',
+                          'Plan & Vorgaben',
+                          'Materialien',
+                          'Lernverlauf',
+                          'Familiennachrichten',
+                        ].indexOf(t),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            if (!parent || tab == 0) ...[
-              Panel(
-                color: mint,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    heading(
-                      'Nach der Schule',
-                      subtitle: parent
-                          ? 'Heftseiten, geprüfter Tagesstoff und das daraus erstellte Lernpaket.'
-                          : 'Alle Heftseiten von heute fotografieren. Gemeinsam prüfen. In kleinen Schritten lernen und festigen.',
-                    ),
-                    if (state.recoveredPhoto != null && !parent)
-                      const Notice(
-                        'Ein Foto wurde nach einem Neustart wiedergefunden. Du kannst es im Assistenten prüfen und übernehmen.',
-                      ),
-                    if ((data['school_days'] as List? ?? []).isNotEmpty)
-                      Text(
-                        'Zuletzt: ${data['school_days'][0]['date']} · ${data['school_days'][0]['page_count']} Seite(n) · ${data['school_days'][0]['stage'] == 'ready' ? 'Lernpaket erstellt' : 'Noch in Vorbereitung'}',
-                      ),
-                    const SizedBox(height: 16),
-                    ActionButton(
-                      label: parent
-                          ? 'Heutiges Tagespaket ansehen'
-                          : 'Nach der Schule starten',
-                      icon: Icons.auto_stories_outlined,
-                      onPressed: () async =>
-                          openRoute(context, '/after-school/${child['id']}'),
-                    ),
-                  ],
+            ),
+            if (tab == 0) ...[
+              FocusCard(
+                eyebrow: 'Tagespaket',
+                title: 'Der Stoff von heute',
+                subtitle: 'Heftseiten und Lernpaket im Überblick.',
+                action: ActionButton(
+                  label: 'Heutiges Tagespaket ansehen',
+                  icon: Icons.document_scanner_rounded,
+                  onPressed: () async =>
+                      openRoute(context, '/after-school/${child['id']}'),
                 ),
               ),
               const SizedBox(height: 24),
-              if (parent)
-                Panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      heading(
-                        'Muss ich unterstützen?',
-                        subtitle: 'Aus den heute gespeicherten Aktivitäten.',
-                      ),
-                      Text(
-                        data['day_summary']['support'],
-                        style: const TextStyle(fontSize: 16, height: 1.6),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Letzte 7 Tage: ${data['week_summary']['completed_units']} abgeschlossene Einheiten · ${data['week_summary']['hints_used']} Hinweise · ca. ${data['week_summary']['active_minutes_approx']} aktive Minuten.',
-                        style: const TextStyle(color: muted, fontSize: 13),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        data['week_summary']['support'],
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(26),
-                  decoration: BoxDecoration(
-                    color: mint,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Tag('DEIN LERNTAG'),
-                      const SizedBox(height: 14),
-                      Text(
-                        plan['completed_today'] > 0
-                            ? 'Du hast schon ${plan['completed_today']} Einheit(en) geschafft.'
-                            : 'Heute reicht ein guter Anfang.',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Bis zu ${plan['session_minutes']} Minuten am Stück. Danach ${plan['break_minutes']} Minuten Pause.',
-                        style: const TextStyle(color: muted),
-                      ),
-                      const SizedBox(height: 20),
-                      ActionButton(
-                        label: 'Jetzt lernen',
-                        icon: Icons.play_arrow_rounded,
-                        onPressed: () async => startNext(context, state, data),
-                      ),
-                    ],
-                  ),
+              Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    heading('Muss ich unterstützen?'),
+                    Text(
+                      data['day_summary']['support'],
+                      style: const TextStyle(fontSize: 16, height: 1.6),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Letzte 7 Tage: ${data['week_summary']['completed_units']} abgeschlossene Einheiten · ${data['week_summary']['hints_used']} Hinweise · ca. ${data['week_summary']['active_minutes_approx']} aktive Minuten.',
+                      style: const TextStyle(color: muted, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      data['week_summary']['support'],
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
                 ),
+              ),
               const SizedBox(height: 28),
               heading(
                 'Was steht heute an?',
@@ -650,13 +622,10 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                   'Heute ist nichts fest eingeplant. Du kannst bestätigtes Material auswählen oder später wiederkommen.',
                 ),
               for (final item in plan['today'] as List)
-                planTile(context, state, data, item, parent: parent),
+                planTile(context, state, data, item, parent: true),
               const SizedBox(height: 24),
               if ((data['learning_paths'] as List? ?? []).isNotEmpty) ...[
-                heading(
-                  'Betreut weiterlernen',
-                  subtitle: 'Gespeicherte Rückmeldungen, passende Anschlussübungen und spätere Abrufproben.',
-                ),
+                heading('Betreut weiterlernen'),
                 for (final path in data['learning_paths'] as List)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
@@ -666,33 +635,19 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                         LearningProgressPanel(Map<String, dynamic>.from(path)),
                         const SizedBox(height: 8),
                         ActionButton(
-                          label: parent
-                              ? 'Lernbegleitung und Antworten ansehen'
-                              : path['next_unit_id'] != null
-                              ? 'Passende Lernrunde fortsetzen'
-                              : 'Lernbegleitung ansehen',
+                          label: 'Lernbegleitung und Antworten ansehen',
                           secondary: true,
-                          onPressed: () async {
-                            final id = !parent && path['next_unit_id'] != null
-                                ? path['next_unit_id']
-                                : path['latest_unit_id'];
-                            if (!parent && path['next_unit_id'] != null) {
-                              await state.api.post('/units/$id/start');
-                            }
-                            if (context.mounted) {
-                              openRoute(context, '/unit/$id');
-                            }
-                          },
+                          onPressed: () async => openRoute(
+                            context,
+                            '/unit/${path['latest_unit_id']}',
+                          ),
                         ),
                       ],
                     ),
                   ),
                 const SizedBox(height: 16),
               ],
-              heading(
-                'Später noch einmal',
-                subtitle: 'Wiederholungen bleiben überschaubar und werden nicht als täglicher Aufgabenberg aufaddiert.',
-              ),
+              heading('Später noch einmal'),
               for (final mastery in data['mastery'] as List)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -727,27 +682,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                   ),
                 ),
               for (final item in plan['later'] as List)
-                planTile(context, state, data, item, parent: parent),
+                planTile(context, state, data, item, parent: true),
               if ((data['mastery'] as List).isEmpty &&
                   (plan['later'] as List).isEmpty)
                 const Text(
                   'Nach der ersten Einheit planen wir die passende Wiederholung.',
                   style: TextStyle(color: muted),
                 ),
-              if (!parent) ...[
-                const SizedBox(height: 28),
-                heading('Dein Unterrichtsmaterial'),
-                materialList(context, state, data, refresh),
-                const SizedBox(height: 24),
-                messages(context, state, data, refresh),
-                const Notice(
-                  'Deine Eltern können hier deine Materialien, Aufgaben, Antworten, Hinweise und Hilfewünsche sehen. Die Lernzeit ist ungefähr. Andere Apps oder Webseiten werden nicht beobachtet.',
-                  icon: Icons.visibility_outlined,
-                ),
-                if (state.demoCredentials != null) demoAccess(context, state),
-              ],
             ],
-            if (parent && tab == 1) ...[
+            if (tab == 1) ...[
               heading('Lernen, das in euren Alltag passt'),
               Panel(
                 child: Column(
@@ -779,10 +722,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                 ),
               ),
               const SizedBox(height: 26),
-              heading(
-                'Lernaufträge & Klassenarbeiten',
-                subtitle: 'Verbindliche Elternziele bleiben von freiwilligen Übungen unterscheidbar.',
-              ),
+              heading('Lernaufträge & Klassenarbeiten'),
               if (state.canManage)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20),
@@ -881,12 +821,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                   ),
                 ),
             ],
-            if (parent && tab == 2) materialList(context, state, data, refresh),
-            if (parent && tab == 3) ...[
-              heading(
-                'Aufgaben, Antworten & Unterstützung',
-                subtitle: 'Nur tatsächlich gespeicherte Aktivitäten innerhalb von SCHULPILOT.',
-              ),
+            if (tab == 2) materialList(context, state, data, refresh),
+            if (tab == 3) ...[
+              heading('Aufgaben, Antworten & Unterstützung'),
               for (final unit in data['units'] as List)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -992,13 +929,355 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                 ),
               ),
             ],
-            if (parent && tab == 4) messages(context, state, data, refresh),
+            if (tab == 4) messages(context, state, data, refresh),
           ],
         );
       },
     ),
   );
 }
+
+class _ChildHomeContent extends StatelessWidget {
+  final AppState state;
+  final Json data;
+  final VoidCallback refresh;
+  const _ChildHomeContent({
+    required this.state,
+    required this.data,
+    required this.refresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final child = data['child'] as Json;
+    final plan = data['plan'] as Json;
+    final today = plan['today'] as List? ?? [];
+    final later = plan['later'] as List? ?? [];
+    final eligibleLater = later.where(
+      (item) =>
+          item['scheduled_for'] == null ||
+          item['scheduled_for'].toString().compareTo(plan['date']) <= 0,
+    );
+    final pending = _pendingMaterials(data);
+    final photosWaiting = pending.isNotEmpty || state.recoveredPhoto != null;
+    final pendingReview = (data['units'] as List? ?? [])
+        .where(
+          (unit) =>
+              unit['status'] == 'completed' &&
+              unit['coaching']?['status'] == 'pending',
+        )
+        .firstOrNull;
+    final reviewWaiting = !photosWaiting && pendingReview != null;
+    final paused = plan['paused'] == true;
+    final next = today.firstOrNull ?? eligibleLater.firstOrNull;
+    final canLearn = !paused && next != null;
+    final continuing =
+        canLearn && (next['status'] == 'active' || next['status'] == 'paused');
+    final completed = (plan['completed_today'] as num? ?? 0).toInt();
+    final paths = data['learning_paths'] as List? ?? [];
+    final mastery = data['mastery'] as List? ?? [];
+    final familyMessages = data['messages'] as List? ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FocusCard(
+          eyebrow:
+              !photosWaiting &&
+                  !reviewWaiting &&
+                  canLearn &&
+                  next['mandatory'] == true
+              ? next['assignment_kind'] == 'homework'
+                    ? 'Notierte Hausaufgabe'
+                    : 'Dein Elternauftrag'
+              : 'Dein nächster Schritt',
+          title: photosWaiting
+              ? 'Deine Heftfotos warten.'
+              : reviewWaiting
+              ? 'Dein Rückblick wird vorbereitet.'
+              : canLearn
+              ? '${next['topic']}'
+              : paused
+              ? 'Heute ist Lernpause.'
+              : 'Was war heute dran?',
+          subtitle: photosWaiting
+              ? 'Mach dort weiter, wo du aufgehört hast.'
+              : reviewWaiting
+              ? 'Hier geht es nach deiner Lernrunde weiter.'
+              : canLearn
+              ? '${next['subject']} · etwa ${plan['session_minutes']} Minuten'
+              : paused
+              ? 'Du kannst deine Seiten für später sammeln.'
+              : 'Fotografiere die Heftseiten von heute.',
+          icon: photosWaiting || !canLearn
+              ? Icons.document_scanner_rounded
+              : Icons.auto_stories_rounded,
+          action: SizedBox(
+            width: double.infinity,
+            child: ActionButton(
+              label: photosWaiting
+                  ? 'Heftfotos fortsetzen'
+                  : reviewWaiting
+                  ? 'Rückblick ansehen'
+                  : canLearn
+                  ? continuing
+                        ? 'Weiterlernen'
+                        : today.isNotEmpty
+                        ? 'Jetzt lernen'
+                        : 'Freiwillig üben'
+                  : paused
+                  ? 'Heftfotos sammeln'
+                  : 'Nach der Schule starten',
+              icon: photosWaiting || !canLearn
+                  ? Icons.add_a_photo_outlined
+                  : Icons.play_arrow_rounded,
+              onPressed: () async {
+                if (photosWaiting && pending.isNotEmpty) {
+                  await startNext(context, state, data);
+                } else if (reviewWaiting) {
+                  openRoute(context, '/unit/${pendingReview['id']}');
+                } else if (photosWaiting || !canLearn) {
+                  openRoute(context, '/after-school/${child['id']}');
+                } else {
+                  await startNext(context, state, data);
+                }
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        if ((canLearn || reviewWaiting) && !photosWaiting)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: OutlinedButton.icon(
+              onPressed: () =>
+                  openRoute(context, '/after-school/${child['id']}'),
+              icon: const Icon(Icons.add_a_photo_outlined, size: 20),
+              label: const Text('Neue Heftfotos'),
+            ),
+          ),
+        TextButton.icon(
+          onPressed: () => showLearningMessage(
+            context,
+            state,
+            childId: child['id'],
+            kind: 'help',
+            title: 'Ich brauche Hilfe',
+            refresh: refresh,
+          ),
+          icon: const Icon(Icons.volunteer_activism_outlined, size: 21),
+          label: const Text('Ich brauche Hilfe'),
+        ),
+        if (completed > 0)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: teal, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${completed == 1 ? 'Eine Runde' : '$completed Runden'} heute geschafft.',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 12),
+        _ChildHomeDisclosure(
+          icon: Icons.checklist_rounded,
+          title: 'Mein Plan',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (today.isEmpty)
+                Text(
+                  paused
+                      ? 'Deine Eltern haben eine Lernpause eingestellt.'
+                      : 'Heute ist nichts fest eingeplant.',
+                  style: const TextStyle(color: muted),
+                ),
+              for (final item in today)
+                _ChildPlanRow(state: state, data: data, item: item),
+              for (final notice in plan['notices'] as List? ?? [])
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(notice, style: const TextStyle(color: muted)),
+                ),
+            ],
+          ),
+        ),
+        if (later.isNotEmpty || mastery.isNotEmpty || paths.isNotEmpty)
+          _ChildHomeDisclosure(
+            icon: Icons.event_repeat_rounded,
+            title: 'Das übe ich später',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final path in paths)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LearningProgressPanel(Json.from(path)),
+                        TextButton(
+                          onPressed: () => openRoute(
+                            context,
+                            '/unit/${path['latest_unit_id']}',
+                          ),
+                          child: const Text('Letzte Lernrunde ansehen'),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (paths.isEmpty)
+                  for (final item in mastery)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item['topic']),
+                      subtitle: Text(
+                        '${item['subject']} · ${_shortDate(item['next_review'])}',
+                      ),
+                    ),
+                for (final item in later)
+                  _ChildPlanRow(state: state, data: data, item: item),
+              ],
+            ),
+          ),
+        _ChildHomeDisclosure(
+          icon: Icons.folder_open_rounded,
+          title: 'Meine Heftseiten',
+          child: materialList(context, state, data, refresh),
+        ),
+        _ChildHomeDisclosure(
+          icon: Icons.chat_bubble_outline_rounded,
+          title: familyMessages.isEmpty
+              ? 'Nachrichten & Wünsche'
+              : 'Nachrichten & Wünsche (${familyMessages.length})',
+          child: messages(context, state, data, refresh),
+        ),
+        ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+          leading: const Icon(
+            Icons.visibility_outlined,
+            size: 20,
+            color: muted,
+          ),
+          title: const Text(
+            'Was sehen meine Eltern?',
+            style: TextStyle(fontSize: 13, color: muted),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+          children: const [
+            Text(
+              'Deine Heftseiten, Aufgaben, Antworten und Hilfewünsche in Schulpilot.',
+              style: TextStyle(color: muted, fontSize: 13),
+            ),
+          ],
+        ),
+        if (state.demoCredentials != null) demoAccess(context, state),
+      ],
+    );
+  }
+}
+
+class _ChildHomeDisclosure extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget child;
+  const _ChildHomeDisclosure({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Panel(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        leading: Icon(icon, color: teal, size: 22),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        childrenPadding: const EdgeInsets.only(bottom: 16),
+        children: [child],
+      ),
+    ),
+  );
+}
+
+class _ChildPlanRow extends StatelessWidget {
+  final AppState state;
+  final Json data;
+  final dynamic item;
+  const _ChildPlanRow({
+    required this.state,
+    required this.data,
+    required this.item,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = data['plan'] as Json;
+    final scheduled = item['scheduled_for'];
+    final available =
+        plan['paused'] != true &&
+        (scheduled == null ||
+            scheduled.toString().compareTo(plan['date']) <= 0);
+    final obligation = item['assignment_kind'] == 'homework'
+        ? 'Notierte Hausaufgabe'
+        : item['mandatory'] == true
+        ? 'Elternauftrag'
+        : 'Freiwillig';
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        item['topic'],
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}',
+      ),
+      isThreeLine: true,
+      trailing: available
+          ? IconButton(
+              tooltip: 'Lernen starten',
+              icon: const Icon(Icons.play_arrow_rounded, color: teal),
+              onPressed: () async {
+                try {
+                  await openPlanItem(context, state, data, item);
+                } catch (e) {
+                  if (context.mounted) showError(context, e);
+                }
+              },
+            )
+          : null,
+    );
+  }
+}
+
+String _shortDate(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+  return date == null
+      ? value?.toString() ?? ''
+      : DateFormat('dd.MM.').format(date);
+}
+
+List<dynamic> _pendingMaterials(Json data) => (data['materials'] as List? ?? [])
+    .where(
+      (m) =>
+          m['confirmed'] != true &&
+          (m['school_day_id'] == null ||
+              (data['school_days'] as List? ?? []).any(
+                (d) =>
+                    d['id'] == m['school_day_id'] &&
+                    d['date'] == data['plan']['date'],
+              )),
+    )
+    .toList();
 
 String activityLabel(String kind) => switch (kind) {
   'unit_started' => 'Einheit begonnen oder fortgesetzt',
@@ -1108,18 +1387,7 @@ Widget planTile(
 );
 
 Future<void> startNext(BuildContext context, AppState state, Json data) async {
-  final pending = (data['materials'] as List)
-      .where(
-        (m) =>
-            m['confirmed'] != true &&
-            (m['school_day_id'] == null ||
-                (data['school_days'] as List? ?? []).any(
-                  (d) =>
-                      d['id'] == m['school_day_id'] &&
-                      d['date'] == data['plan']['date'],
-                )),
-      )
-      .toList();
+  final pending = _pendingMaterials(data);
   if (pending.isNotEmpty) {
     if (pending.first['school_day_id'] != null) {
       openRoute(context, '/after-school/${data['child']['id']}');
@@ -1208,10 +1476,7 @@ Widget materialList(
 ) => Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    heading(
-      'Stoff aus dem Unterricht',
-      subtitle: 'Ein Foto zeigt einen Ausschnitt des Schulstoffs. Notierte Hausaufgaben werden getrennt von erzeugten Übungen gespeichert.',
-    ),
+    heading('Stoff aus dem Unterricht'),
     ActionButton(
       label: 'Material als Bild importieren',
       icon: Icons.add_a_photo_outlined,
@@ -1238,7 +1503,7 @@ Widget materialList(
                         : m['subject'],
                   ),
                   Tag(m['confirmed'] ? 'Bestätigt' : 'Bitte prüfen'),
-                  if (m['synthetic']) const Tag('Synthetisches Beispiel'),
+                  if (m['synthetic']) const Tag('Beispiel'),
                 ],
               ),
               const SizedBox(height: 12),
@@ -1275,10 +1540,7 @@ Widget messages(
 ) => Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    heading(
-      state.isChild ? 'Hilfe und Ideen' : 'Familiennachrichten',
-      subtitle: 'Lernbezogene Kommunikation bleibt auf die berechtigte Familie beschränkt.',
-    ),
+    heading(state.isChild ? 'Hilfe und Ideen' : 'Familiennachrichten'),
     if (state.isChild || state.canManage)
       Wrap(
         spacing: 10,
@@ -1298,44 +1560,14 @@ Widget messages(
               icon: item.$1 == 'help'
                   ? Icons.volunteer_activism_outlined
                   : Icons.chat_bubble_outline,
-              onPressed: () async {
-                final controller = TextEditingController();
-                await showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(item.$2),
-                    content: SizedBox(
-                      width: 420,
-                      child: TextField(
-                        controller: controller,
-                        maxLines: 4,
-                        maxLength: 1000,
-                        decoration: const InputDecoration(
-                          labelText: 'Worum geht es beim Lernen?',
-                        ),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Abbrechen'),
-                      ),
-                      ActionButton(
-                        label: 'Senden',
-                        onPressed: () async {
-                          await state.api.post(
-                            '/children/${data['child']['id']}/messages',
-                            {'kind': item.$1, 'body': controller.text},
-                          );
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          refresh();
-                        },
-                      ),
-                    ],
-                  ),
-                );
-                controller.dispose();
-              },
+              onPressed: () => showLearningMessage(
+                context,
+                state,
+                childId: data['child']['id'],
+                kind: item.$1,
+                title: item.$2,
+                refresh: refresh,
+              ),
             ),
         ],
       ),
@@ -1354,8 +1586,10 @@ Widget messages(
                       m['kind'] == 'reminder'
                           ? 'Dein Lernplan'
                           : m['sender_role'] == 'child'
-                          ? 'Vom Kinderzugang'
-                          : 'Vom Elternzugang',
+                          ? (state.isChild ? 'Von dir' : 'Von deinem Kind')
+                          : (state.isChild
+                                ? 'Von deinen Eltern'
+                                : 'Von einem Elternteil'),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -1393,6 +1627,68 @@ Widget messages(
       ),
   ],
 );
+
+Future<void> showLearningMessage(
+  BuildContext context,
+  AppState state, {
+  required String childId,
+  required String kind,
+  required String title,
+  required VoidCallback refresh,
+}) async {
+  final controller = TextEditingController();
+  final help = kind == 'help';
+  await showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(help ? 'Hilfe von deinen Eltern' : title),
+      content: SizedBox(
+        width: 420,
+        child: TextField(
+          controller: controller,
+          maxLines: 3,
+          maxLength: 1000,
+          decoration: InputDecoration(
+            labelText: help
+                ? 'Deine Frage (freiwillig)'
+                : 'Was möchtest du sagen?',
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Abbrechen'),
+        ),
+        ActionButton(
+          label: help ? 'Um Hilfe bitten' : 'Senden',
+          icon: help ? Icons.volunteer_activism_outlined : Icons.send_rounded,
+          onPressed: () async {
+            final body = controller.text.trim();
+            await state.api.post('/children/$childId/messages', {
+              'kind': kind,
+              'body': help && body.isEmpty
+                  ? 'Ich brauche Unterstützung beim Lernen.'
+                  : body,
+            });
+            if (ctx.mounted) Navigator.pop(ctx);
+            refresh();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    help ? 'Hilfewunsch gesendet.' : 'Nachricht gesendet.',
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+}
 
 Future<void> assignmentDialog(
   BuildContext context,

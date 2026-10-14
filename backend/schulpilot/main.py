@@ -14,6 +14,7 @@ from . import (
     auth,
     coaching,
     families,
+    installation,
     learning,
     materials,
     notifications,
@@ -21,7 +22,7 @@ from . import (
     school_day,
     synthetic,
 )
-from .config import settings
+from .config import runtime_settings, settings
 from .db import DB, ProviderConfig, init_db
 from .operations import router as operations_router
 from .providers import ProviderError, config_for_function, external_allowed
@@ -87,6 +88,18 @@ async def security_headers(request: Request, call_next):
         length = request.headers.get("content-length", "0")
         if not length.isdigit() or int(length) > maximum:
             return JSONResponse({"detail": "Anfrage ist zu groß."}, status_code=413)
+    if (
+        request.url.path.startswith("/api/")
+        and request.url.path not in ("/api/health", "/api/status", "/api/app-release", "/api/legal")
+        and not request.url.path.startswith("/api/setup/")
+    ):
+        with DB() as db:
+            if installation.required(db):
+                return JSONResponse(
+                    {"detail": "Bitte zuerst die Installation abschließen.", "setup_required": True},
+                    status_code=503,
+                    headers={"Cache-Control": "no-store"},
+                )
     try:
         response = await call_next(request)
     except Exception as exc:
@@ -124,6 +137,7 @@ def health():
 
 @app.get("/api/status")
 def status():
+    site = runtime_settings()
     with DB() as db:
         config = db.get(ProviderConfig, 1)
         ai, reason = True, None
@@ -134,16 +148,16 @@ def status():
             ai, reason = False, str(error)
     return {
         "version": __version__,
-        "registration_available": settings.mail_ready,
-        "email_available": settings.mail_ready,
-        "synthetic_demo_available": settings.synthetic_demo,
+        "registration_available": site.mail_ready,
+        "email_available": site.mail_ready,
+        "synthetic_demo_available": site.synthetic_demo,
         "synthetic_ai_available": bool(
-            settings.synthetic_ai_enabled
+            site.synthetic_ai_enabled
             and not config.emergency_stop
             and config.provider == "openrouter"
             and config.model.endswith(":free")
         ),
-        "real_data_enabled": bool(settings.real_data_approved and settings.privacy_evidence),
+        "real_data_enabled": bool(site.real_data_approved and site.privacy_evidence),
         "ai_available": ai,
         "ai_provider": config.provider,
         "ai_free_only": bool(config.provider == "openrouter" and config.openrouter_free_only),
@@ -156,7 +170,7 @@ def status():
         ),
         "notice": (
             "Technischer Pilot. Betreiberfreigabe liegt vor; die Verfügbarkeit externer KI wird zusätzlich geprüft."
-            if settings.real_data_approved and settings.privacy_evidence
+            if site.real_data_approved and site.privacy_evidence
             else "Entwicklungsstand mit synthetischem Testraum. Externe Verarbeitung echter Kinderdaten bleibt bis zur dokumentierten Freigabe gesperrt."
         ),
     }
@@ -164,12 +178,13 @@ def status():
 
 @app.get("/api/legal")
 def legal():
+    site = runtime_settings()
     return {
-        "operator": settings.operator_name,
-        "address": settings.operator_address,
-        "support_email": settings.operator_support_email,
-        "complete": bool(settings.operator_name and settings.operator_address and settings.operator_support_email),
-        "operator_data_approval": bool(settings.real_data_approved and settings.privacy_evidence),
+        "operator": site.operator_name,
+        "address": site.operator_address,
+        "support_email": site.operator_support_email,
+        "complete": bool(site.operator_name and site.operator_address and site.operator_support_email),
+        "operator_data_approval": bool(site.real_data_approved and site.privacy_evidence),
         "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24},
     }
 
@@ -177,6 +192,7 @@ def legal():
 for router in (
     operations_router,
     auth.router,
+    installation.router,
     families.router,
     learning.router,
     coaching.router,

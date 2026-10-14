@@ -35,8 +35,6 @@ void main() {
         };
       await tester.pumpWidget(SchulpilotApp(state));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Mein Lernraum'));
-      await tester.pumpAndSettle();
       expect(find.text('Jetzt lernen'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

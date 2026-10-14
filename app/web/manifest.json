@@ -3,9 +3,9 @@
   "short_name": "SCHULPILOT",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#F7F8F2",
-  "theme_color": "#173B40",
-  "description": "Gemeinsam lernen, den Überblick behalten. Synthetischer Pilot.",
+  "background_color": "#F5F7FC",
+  "theme_color": "#7047EB",
+  "description": "Heftseiten sammeln, Stoff verstehen, Wissen festigen.",
   "orientation": "any",
   "prefer_related_applications": false,
   "icons": [

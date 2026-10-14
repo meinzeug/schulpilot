@@ -135,6 +135,7 @@ def test_real_upload_cannot_be_smuggled_into_demo(api):
 def test_upload_metadata_removed_and_private(api, household):
     _, child = household
     object.__setattr__(settings, "real_data_approved", True)
+    object.__setattr__(settings, "privacy_evidence", "Isolated image metadata test using an artificial blank image")
     image = Image.new("RGB", (32, 32), "blue")
     exif = Image.Exif()
     exif[270] = "PRIVATE_SYNTHETIC_TEST"

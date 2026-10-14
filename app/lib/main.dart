@@ -10,6 +10,7 @@ import 'auth_screens.dart';
 import 'dashboard.dart';
 import 'material_screen.dart';
 import 'settings_screen.dart';
+import 'installation_screen.dart';
 import 'school_day_screen.dart';
 import 'school_day_history.dart';
 import 'ui.dart';
@@ -48,12 +49,13 @@ Future<void> main() async {
       // A failed camera recovery must not prevent login or opening saved pages.
     }
   }
-  runApp(SchulpilotApp(state));
+  runApp(SchulpilotApp(state, initialLocation: kIsWeb ? null : '/app'));
 }
 
 class SchulpilotApp extends StatefulWidget {
   final AppState state;
-  const SchulpilotApp(this.state, {super.key});
+  final String? initialLocation;
+  const SchulpilotApp(this.state, {super.key, this.initialLocation});
   @override
   State<SchulpilotApp> createState() => _SchulpilotAppState();
 }
@@ -75,22 +77,37 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
   }
 
   late final GoRouter router = GoRouter(
+    initialLocation: widget.initialLocation,
     refreshListenable: widget.state,
     redirect: (context, route) {
       final path = route.uri.path;
+      if (widget.state.needsSetup && path != '/setup') return '/setup';
+      if (!widget.state.needsSetup && path == '/setup') {
+        return widget.state.isAdmin ? '/admin' : '/login';
+      }
       final protected =
           path == '/app' ||
           path == '/settings' ||
-          path == '/admin' ||
+          path.startsWith('/admin') ||
           path.startsWith('/child/') ||
           path.startsWith('/after-school/') ||
           path.startsWith('/material/') ||
           path.startsWith('/unit/');
       if (protected && widget.state.user == null) return '/login';
-      if (path == '/admin' && !widget.state.isAdmin) return '/app';
+      if (path == '/' && widget.state.user != null) return '/app';
+      if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/setup',
+        builder: (context, s) => InstallationScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/admin/settings',
+        builder: (context, s) =>
+            InstallationScreen(widget.state, initial: false),
+      ),
       GoRoute(path: '/', builder: (context, s) => LandingScreen(widget.state)),
       for (final mode in [
         'login',
@@ -118,6 +135,9 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/after-school/:id',
         builder: (context, s) => SchoolDayScreen(
           widget.state,
+          key: ValueKey(
+            '${s.pathParameters['id']}:${s.uri.queryParameters['day'] ?? 'today'}',
+          ),
           childId: s.pathParameters['id']!,
           dayId: s.uri.queryParameters['day'],
         ),

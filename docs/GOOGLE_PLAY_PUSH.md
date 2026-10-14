@@ -1,10 +1,10 @@
 # Google Play und Push
 
-Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keinen Google-Login. Anmeldung, Familien und Inhalte bleiben in der eigenen API. Ein Firebase-/Play-Zugang wurde bisher nicht bereitgestellt; es wurde kein Konto und keine kostenpflichtige Ressource bestellt.
+Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keinen Google-Login. Anmeldung, Familien und Inhalte bleiben in der eigenen API. Ein Firebase-/Play-Zugang wurde bisher nicht bereitgestellt; es wurde kein Konto und keine kostenpflichtige Ressource bestellt. Reguläre Lernfunktionen benötigen diese optionalen Dienste nicht. Aktueller Schwerpunkt sind funktionierende Lernabläufe und die Flutter-Oberfläche für Mobilgeräte und Web.
 
 ## Android-Dateien und Signierung
 
-- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, Version-Code `10`, Android 7.0 / API 24 bis Ziel-API 36.
+- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, zuletzt vor dem aktuellen UI-Ausbau geprüfter Version-Code `10`, Android 7.0 / API 24 bis Ziel-API 36. Den tatsächlich bereitgestellten Versionscode aus `/api/app-release` und [STATUS.md](STATUS.md) übernehmen.
 - Test-APK: `artifacts/schulpilot-0.1.0-test.apk`. Wird bei Deployment unter `/downloads/schulpilot-android.apk` veröffentlicht und vor/nach Web-Login verlinkt. `/api/app-release` enthält die tatsächliche Größe, Version und SHA-256.
 - Upload-AAB: `artifacts/schulpilot-0.1.0-upload.aab`. Nicht öffentlich und nicht in Git. Google Play verteilt daraus mit Play App Signing signierte APKs.
 - Eigener RSA-4096-Upload-Schlüssel und Passwörter: `~/.local/share/schulpilot-signing/`, Verzeichnis 0700, Dateien 0600. Unbedingt separat verschlüsselt sichern. Der private Schlüssel wird weder auf den App-Server noch zu GitHub kopiert. Der Google-App-Signing-Schlüssel ist davon getrennt.
@@ -25,6 +25,8 @@ flutter build appbundle --flavor play --release --dart-define=API_URL=https://sc
 `firebase_core 4.15.0` meldet im Android-Build einen Hinweis zu künftigem Built-in Kotlin. Die hier fixierte Kombination mit Flutter 3.47.7/AGP 9.1.0 baut erfolgreich. Vor einem Flutter-/Gradle-Upgrade das Plugin und den Hinweis erneut prüfen.
 
 ## Push konfigurieren
+
+Der Einrichtungsassistent beziehungsweise der Adminbereich kann öffentliche Firebase-App-Konfiguration, Dienstkonto-JSON und dokumentierte Push-Freigabe verschlüsselt speichern. Die Projekt-IDs werden abgeglichen; Geheimnisse werden nicht zurückgegeben. Damit gelten Änderungen ohne Dienstneustart. Der folgende lokale Dateipfad bleibt als Alternative für Betreiber verfügbar; gespeicherte Einstellungen haben Vorrang.
 
 1. Im autorisierten Firebase-Projekt eine Android-App mit obigem Paketnamen und eine Web-App anlegen. Firebase Cloud Messaging HTTP v1 aktivieren, öffentlichen Web-VAPID-Schlüssel erstellen. Kein Analytics benötigt.
 2. Ein eigenes Dienstkonto mit minimaler Berechtigung zum Senden von FCM-Nachrichten verwenden. Dienstkontodatei ausschließlich unter `/etc/schulpilot/fcm-service-account.json` ablegen, root:schulpilot, 0640. Nicht die Entwicklungsidentität oder fremde OAuth-/Google-Ads-Zugänge verwenden.

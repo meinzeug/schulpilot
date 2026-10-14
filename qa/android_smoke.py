@@ -23,7 +23,11 @@ HEADERS = {"X-Schulpilot-Request": "1", "X-Client-Platform": "native"}
 
 
 def adb(*args):
-    return subprocess.check_output([*ADB, *args], stderr=subprocess.PIPE)
+    try:
+        return subprocess.check_output([*ADB, *args], stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError:
+        # A failing input command must not echo synthetic login credentials.
+        raise RuntimeError("Dedicated emulator command failed") from None
 
 
 def nodes():
@@ -32,7 +36,15 @@ def nodes():
 
 
 def matching(name):
-    return [n for n in nodes() if name in (n.get("content-desc", "").splitlines() + [n.get("text", "")])]
+    return [
+        node
+        for node in nodes()
+        if name
+        in (
+            [node.get("content-desc", ""), node.get("text", "")]
+            + node.get("content-desc", "").splitlines()
+        )
+    ]
 
 
 def wait(name, seconds=35):
@@ -70,8 +82,35 @@ def press(name, scroll=False):
     tap_node((clickable or found)[-1])
 
 
+def wait_any(names, seconds=35):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        tree = nodes()
+        for name in names:
+            found = [
+                node
+                for node in tree
+                if name
+                in (
+                    [node.get("content-desc", ""), node.get("text", "")]
+                    + node.get("content-desc", "").splitlines()
+                )
+            ]
+            if found:
+                return name, found
+        time.sleep(0.5)
+    raise RuntimeError("Expected native UI state was not visible")
+
+
 def login(username, password):
-    wait("Willkommen zurück.")
+    # Native cold starts now open the login form directly. Keep the fallback
+    # only for an older seed APK, and never tap the submit button prematurely.
+    label, _ = wait_any(("Willkommen zurück", "Anmelden"))
+    if label != "Willkommen zurück" and not any(
+        node.get("class") == "android.widget.EditText" for node in nodes()
+    ):
+        press("Anmelden")
+    wait("Willkommen zurück")
     for index, value in enumerate((username, password)):
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
             raise RuntimeError("ADB test input must be generated safe synthetic text")
@@ -136,26 +175,22 @@ def main():
         credentials = demo["credentials"]
         adb("shell", "pm", "clear", PACKAGE)
         adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-        wait("Anmelden")
-        press("Anmelden")
         login(credentials["parent_username"], credentials["parent_password"])
-        wait("Deine Familie im Blick.")
+        wait("Deine Familie")
         screenshot("android-parent.png")
         checks.append("native_parent_login_over_public_https")
         adb("shell", "am", "force-stop", PACKAGE)
         adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-        # Cold-start opens landing with the restored account and its CTA.
-        wait("Mein Lernraum")
-        press("Mein Lernraum")
-        wait("Deine Familie im Blick.")
+        # A restored native session must open its dashboard directly.
+        wait("Deine Familie")
         checks.append("secure_session_restored_after_process_restart")
-        press("Einstellungen")
+        press("Konto")
         press("Abmelden", scroll=True)
         login(credentials["child_username"], credentials["child_password"])
-        wait("Dein nächster kleiner Schritt.")
+        action, _ = wait_any(("Jetzt lernen", "Weiterlernen", "Freiwillig üben"))
         screenshot("android-child.png")
         checks.append("separate_native_child_login")
-        press("Jetzt lernen", scroll=True)
+        press(action, scroll=True)
         current_unit = check(parent.get("/units/" + demo["unit_id"]))
         if not current_unit["introduction_seen"]:
             press("Weiter zu den Übungen", scroll=True)
@@ -171,14 +206,19 @@ def main():
             time.sleep(1)
         assert updated["attempts"][-1]["outcome"] == "correct" and updated["attempts"][-1]["assisted"] is True
         assert updated["hints_used"] >= 1
+        wait("Richtig!")
+        screenshot("android-answer-feedback.png")
+        next_action, _ = wait_any(("Weiter", "Zum Rückblick"))
+        press(next_action, scroll=True)
         screenshot("android-exercise.png")
         checks.append("native_hint_and_answer_persist_in_parent_history")
+        checks.append("explicit_answer_feedback_before_next_question")
         sessions = check(parent.get("/children/" + demo["child_id"] + "/sessions"))
         for session in sessions:
             check(parent.delete("/children/" + demo["child_id"] + "/sessions/" + session["id"]))
         adb("shell", "am", "force-stop", PACKAGE)
         adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-        wait("Anmelden")
+        wait("Willkommen zurück")
         checks.append("parent_revocation_blocks_restoration_of_child_session")
         check(parent.request("DELETE", "/account", json={"password": credentials["parent_password"]}))
         PRIVATE.unlink()

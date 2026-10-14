@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import 'api.dart';
 import 'coaching_panel.dart';
-import 'dashboard.dart';
 import 'ui.dart';
 
 class UnitScreen extends StatefulWidget {
@@ -28,9 +27,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? choice;
   Map<String, String> matches = {};
   String? questionId;
-  String? feedback;
   String? explanation;
   String? hint;
+  Json? answeredQuestion;
+  String? answerOutcome;
+  bool answerAssisted = false;
+  bool awaitingContinue = false;
   AppState get state => widget.state;
   @override
   void initState() {
@@ -49,8 +51,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       unit = null;
       error = null;
       loading = false;
-      feedback = explanation = hint = questionId = choice = null;
+      explanation = hint = questionId = choice = null;
       matches = {};
+      answeredQuestion = null;
+      answerOutcome = null;
+      awaitingContinue = false;
       text.clear();
       load();
     }
@@ -98,7 +103,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     try {
       final data = await state.api.get('/units/$requestedId');
       if (mounted && requestedId == widget.unitId) {
-        setState(() => unit = data);
+        setState(() {
+          unit = data;
+          error = null;
+        });
         watchCoaching();
       }
     } catch (e) {
@@ -133,14 +141,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     onPointerSignal: (_) => lastInteraction = DateTime.now(),
     child: PageFrame(
       state: state,
-      title: state.isChild
-          ? 'Ein Schritt nach dem anderen.'
-          : 'Einblick in die Lerneinheit',
-      subtitle: state.isChild
-          ? 'Du kannst Hinweise nutzen und jederzeit um Hilfe bitten.'
-          : 'Aufgaben, Antworten und Erklärungen aus dem gespeicherten Lernverlauf.',
+      title: state.isChild ? 'Lernen' : 'Einblick in die Lerneinheit',
+      subtitle: state.isChild ? null : 'Aufgaben, Antworten und Hilfen.',
       child: error != null
-          ? Notice(error.toString(), warning: true)
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Notice(error.toString(), warning: true),
+                ActionButton(
+                  label: 'Erneut versuchen',
+                  icon: Icons.refresh_rounded,
+                  onPressed: load,
+                ),
+              ],
+            )
           : unit == null
           ? const Center(child: CircularProgressIndicator())
           : body(context),
@@ -164,19 +178,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ? 'Spätere Wiederholung'
                     : 'Selbst erzeugte Übung',
               ),
-              if (u['synthetic']) const Tag('Synthetisch'),
+              if (u['synthetic']) const Tag('Beispiel'),
             ],
           ),
           const SizedBox(height: 22),
-          if ((u['model'] as String? ?? '').isNotEmpty &&
-              u['provider'] != 'synthetic')
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Erstellt mit ${u['provider']} · ${u['model']}',
-                style: const TextStyle(color: muted, fontSize: 12),
-              ),
-            ),
           Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,97 +238,126 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          const Notice(
-            'Eine abgeschlossene Übung bedeutet noch keine sichere Beherrschung. Erst spätere Wiederholungen ergeben zusätzliche Beobachtungen.',
-          ),
         ],
       );
     }
+    if (awaitingContinue && answeredQuestion != null) {
+      return answerFeedback(context, u);
+    }
     if (u['status'] == 'completed') {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Panel(
-            color: mint,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.task_alt_rounded, color: teal, size: 48),
-                const SizedBox(height: 18),
-                const Text(
-                  'Ein guter Schritt ist geschafft.',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: mint,
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Deine Antworten und genutzten Hinweise sind gespeichert. Schulpilot begleitet dich beim nächsten Lernschritt.',
+                child: const Icon(
+                  Icons.task_alt_rounded,
+                  color: teal,
+                  size: 30,
                 ),
-                const SizedBox(height: 22),
-                FilledButton.icon(
-                  onPressed: () => context.go('/app'),
-                  icon: const Icon(Icons.home_outlined),
-                  label: const Text('Zu meinem Tag'),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text(
+                  'Runde geschafft!',
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           CoachingPanel(state: state, unit: u, refresh: load),
-          const SizedBox(height: 20),
-          if (feedback != null) Notice(feedback!),
-          if (explanation != null) Panel(child: Text(explanation!)),
-          const SizedBox(height: 20),
-          const Notice(
-            'Pausen gehören zum Lernen. Deine Lernfolge bleibt gespeichert, wenn du später weitermachst.',
-            icon: Icons.wb_sunny_outlined,
-          ),
-          messages(context, state, {
-            'child': {'id': state.user!['child_id']},
-            'messages': <dynamic>[],
-          }, () {}),
-          for (final q in questions)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      q['prompt'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    for (final a in q['attempts'] as List)
-                      Text(
-                        '${a['answer']} · ${outcomeLabel(a['outcome'])}${a['assisted'] ? ' · mit Unterstützung' : ''}',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                  ],
-                ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              TextButton.icon(
+                onPressed: () => context.go('/app'),
+                icon: const Icon(Icons.home_outlined),
+                label: const Text('Zu meinem Tag'),
               ),
+              helpButton(context, u),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Panel(
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 8),
+              title: const Text('Meine Antworten'),
+              leading: const Icon(Icons.fact_check_outlined, color: teal),
+              children: [
+                for (final q in questions)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          q['prompt'],
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 6),
+                        for (final a in q['attempts'] as List)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              '${a['answer']} · ${outcomeLabel(a['outcome'])}${a['assisted'] == true ? ' · mit Hilfe' : ''}',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       );
     }
     if (u['status'] != 'active') {
       return Panel(
+        color: mint,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            heading('${u['subject']} · ${u['topic']}'),
+            Icon(
+              u['status'] == 'paused'
+                  ? Icons.pause_circle_outline_rounded
+                  : Icons.play_circle_outline_rounded,
+              color: teal,
+              size: 48,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              u['topic'],
+              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
             Text(
               u['status'] == 'paused'
-                  ? 'Deine Antworten sind gespeichert. Du kannst hier weitermachen.'
-                  : 'Diese kleine Einheit ist bereit für dich.',
+                  ? 'Alles gespeichert. Bereit für die nächste Aufgabe?'
+                  : '${questions.length} Aufgaben${u['estimated_minutes'] != null ? ' · etwa ${u['estimated_minutes']} Minuten' : ''}',
+              style: const TextStyle(fontSize: 16),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             ActionButton(
               label: u['status'] == 'paused'
                   ? 'Lernen fortsetzen'
                   : 'Einheit starten',
               icon: Icons.play_arrow_rounded,
               onPressed: () async {
-                final data = await state.api.post('/units/${u['id']}/start');
-                if (mounted) setState(() => unit = data);
+                final id = u['id'];
+                final data = await state.api.post('/units/$id/start');
+                if (mounted && widget.unitId == id) {
+                  setState(() => unit = data);
+                }
               },
             ),
           ],
@@ -331,59 +365,78 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       );
     }
     if (u['introduction_seen'] == false) {
-      return Panel(
-        color: mint,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Tag('1 · Verstehen'),
-            if (u['synthetic'] == true)
-              Notice(
-                u['provider'] == 'synthetic'
-                    ? 'Synthetische Beispielübung. Keine externe KI beteiligt.'
-                    : 'Künstlicher Teststoff. Erklärung und Übungen wurden tatsächlich mit KI erstellt: ${u['provider']} · ${u['model']}.',
-              ),
-            const SizedBox(height: 16),
-            heading('${u['subject']} · ${u['topic']}'),
-            Text(
-              u['explanation'],
-              style: const TextStyle(fontSize: 18, height: 1.6),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Lies die Erklärung in deinem Tempo. Danach übst du und versuchst zum Schluss, dich selbstständig zu erinnern. Hinweise bleiben jederzeit möglich.',
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Tag('1 · Verstehen'),
+                ),
+                if (u['synthetic'] == true) ...[
+                  const SizedBox(height: 12),
+                  sampleNotice(u),
+                ],
+                const SizedBox(height: 18),
+                Text(
+                  u['topic'],
+                  style: const TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  u['explanation'],
+                  style: const TextStyle(fontSize: 18, height: 1.6),
+                ),
+                const SizedBox(height: 26),
                 ActionButton(
                   label: 'Weiter zu den Übungen',
-                  icon: Icons.arrow_forward,
+                  icon: Icons.arrow_forward_rounded,
                   onPressed: () async {
+                    final id = u['id'];
                     final data = await state.api.post(
-                      '/units/${u['id']}/introduction',
+                      '/units/$id/introduction',
                     );
-                    if (mounted) setState(() => unit = data);
+                    if (mounted && widget.unitId == id) {
+                      setState(() => unit = data);
+                    }
                   },
-                ),
-                TextButton(
-                  onPressed: () async {
-                    final data = await state.api.post(
-                      '/units/${u['id']}/pause',
-                    );
-                    if (mounted) setState(() => unit = data);
-                  },
-                  child: const Text('Pause machen'),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [pauseButton(u), helpButton(context, u)],
+          ),
+        ],
+      );
+    }
+    final unfinished = questions.where((question) => !done(question));
+    if (unfinished.isEmpty) {
+      return Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Deine Antworten sind gespeichert.'),
+            const SizedBox(height: 16),
+            ActionButton(
+              label: 'Rückblick laden',
+              icon: Icons.refresh_rounded,
+              onPressed: load,
             ),
           ],
         ),
       );
     }
-    final q = questions.firstWhere((q) => !done(q));
+    final q = unfinished.first;
     if (questionId != q['id']) {
       questionId = q['id'];
       choice = null;
@@ -393,86 +446,49 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 840),
+        constraints: const BoxConstraints(maxWidth: 740),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Tag(
-              ['check', 'spaced_review'].contains(u['round_kind'])
-                  ? 'Selbstständig abrufen · neue Aufgaben'
-                  : completed == questions.length - 1
-                  ? '3 · Zum Schluss selbst erinnern'
-                  : '2 · Üben',
-            ),
-            const SizedBox(height: 12),
             Row(
               children: [
-                Tag('${u['subject']} · ${u['topic']}'),
-                const Spacer(),
-                Text(
-                  '${completed + 1} von ${questions.length}',
-                  style: const TextStyle(fontSize: 13, color: muted),
+                Expanded(
+                  child: Text(
+                    '${u['subject']} · ${u['topic']}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-                TextButton.icon(
-                  onPressed: () async {
-                    try {
-                      final data = await state.api.post(
-                        '/units/${u['id']}/pause',
-                      );
-                      if (mounted) setState(() => unit = data);
-                    } catch (e) {
-                      if (context.mounted) showError(context, e);
-                    }
-                  },
-                  icon: const Icon(Icons.pause_rounded, size: 18),
-                  label: const Text('Pause'),
-                ),
+                const SizedBox(width: 8),
+                pauseButton(u),
               ],
             ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: completed / questions.length,
-                minHeight: 7,
-                backgroundColor: const Color(0xFFE4E9DF),
-                color: teal,
-              ),
+            const SizedBox(height: 14),
+            LinearProgressIndicator(value: completed / questions.length),
+            const SizedBox(height: 10),
+            Text(
+              'Aufgabe ${completed + 1} von ${questions.length}',
+              style: const TextStyle(fontWeight: FontWeight.w600, color: muted),
             ),
-            const SizedBox(height: 24),
-            if (u['synthetic'])
-              Notice(
-                u['provider'] == 'synthetic'
-                    ? 'Synthetische Beispielübung. Keine externe KI beteiligt.'
-                    : 'Künstlicher Teststoff. Diese Übungen wurden tatsächlich mit KI erstellt: ${u['provider']} · ${u['model']}.',
-                icon: Icons.science_outlined,
-              ),
-            if (feedback != null)
-              Notice(feedback!, warning: feedback!.contains('noch nicht')),
-            if (explanation != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 18),
-                child: Panel(color: mint, child: Text(explanation!)),
-              ),
+            const SizedBox(height: 20),
+            if (u['synthetic'] == true) sampleNotice(u),
             Panel(
-              padding: const EdgeInsets.all(30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Tag(typeLabel(q['type'])),
-                  ),
-                  const SizedBox(height: 20),
                   Text(
                     q['prompt'],
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      height: 1.4,
+                      height: 1.35,
                     ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 22),
                   if (q['type'] == 'choice')
                     for (final option in q['options'] as List)
                       Padding(
@@ -483,25 +499,26 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           label: option,
                           child: InkWell(
                             onTap: () => setState(() => choice = option),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             child: Container(
-                              padding: const EdgeInsets.all(18),
+                              constraints: const BoxConstraints(minHeight: 60),
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: choice == option ? mint : Colors.white,
                                 border: Border.all(
                                   color: choice == option
                                       ? teal
-                                      : const Color(0xFFDDE5DD),
+                                      : const Color(0xFFE1E7F2),
                                   width: choice == option ? 2 : 1,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
                                     choice == option
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
+                                        ? Icons.radio_button_checked_rounded
+                                        : Icons.radio_button_off_rounded,
                                     color: choice == option ? teal : muted,
                                   ),
                                   const SizedBox(width: 14),
@@ -532,7 +549,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                   value: p,
                                   child: Text(
                                     p,
-                                    style: const TextStyle(fontSize: 13),
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -545,137 +562,355 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     TextField(
                       controller: text,
                       maxLength: q['type'] == 'short' ? 500 : 200,
-                      decoration: InputDecoration(
-                        labelText: q['type'] == 'gap'
-                            ? 'Deine Ergänzung'
-                            : 'Deine kurze Antwort',
+                      minLines: 1,
+                      maxLines: q['type'] == 'short' ? 4 : 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Deine Antwort',
                       ),
                       onChanged: (_) => lastInteraction = DateTime.now(),
                     ),
                   if (hint != null)
-                    Notice(hint!, icon: Icons.lightbulb_outline_rounded),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      ActionButton(
-                        label: 'Ein Hinweis bitte',
-                        secondary: true,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Notice(
+                        hint!,
                         icon: Icons.lightbulb_outline_rounded,
-                        onPressed: () async {
-                          final data = await state.api.post(
-                            '/units/${u['id']}/questions/${q['id']}/hint',
-                          );
-                          if (mounted) setState(() => hint = data['hint']);
-                        },
                       ),
-                      ActionButton(
-                        label: 'Antwort prüfen',
-                        icon: Icons.check_rounded,
-                        onPressed: () async {
-                          final answer = q['type'] == 'choice'
-                              ? choice
-                              : q['type'] == 'match'
-                              ? (q['options'] as List)
-                                    .map((p) => matches[p] ?? '')
-                                    .join(';')
-                              : text.text;
-                          if (answer == null || answer.trim().isEmpty) {
-                            throw ApiError(
-                              'Bitte zuerst eine Antwort eingeben oder auswählen.',
-                            );
-                          }
-                          if (q['type'] == 'match' &&
-                              matches.length != (q['options'] as List).length) {
-                            throw ApiError('Bitte jeden Begriff zuordnen.');
-                          }
-                          final data = await state.api.post(
-                            '/units/${u['id']}/questions/${q['id']}/answer',
-                            {'answer': answer},
-                          );
-                          lastInteraction = DateTime.now();
-                          if (mounted) {
-                            setState(() {
-                              unit = Map<String, dynamic>.from(data['unit']);
-                              feedback = data['feedback'];
-                              explanation = data['explanation'];
-                            });
-                            if (data['unit']['status'] == 'completed') {
-                              watchCoaching();
-                              state.refreshState();
-                            }
-                          }
-                        },
-                      ),
-                    ],
+                    ),
+                  ActionButton(
+                    label: 'Antwort prüfen',
+                    icon: Icons.check_rounded,
+                    onPressed: () => submitAnswer(u, q),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    child: ActionButton(
+                      label: 'Ein Hinweis bitte',
+                      secondary: true,
+                      icon: Icons.lightbulb_outline_rounded,
+                      onPressed: () => requestHint(u, q),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 12,
-              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 6,
               children: [
                 ActionButton(
-                  label: 'Erklärung noch einmal ansehen',
+                  label: 'Erklärung',
                   secondary: true,
                   icon: Icons.auto_stories_outlined,
-                  onPressed: () async {
-                    final data = await state.api.post(
-                      '/units/${u['id']}/explanation',
-                    );
-                    if (context.mounted) {
-                      await showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('In Ruhe erklärt'),
-                          content: SingleChildScrollView(
-                            child: Text(data['explanation']),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Weiter üben'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  },
+                  onPressed: () => showExplanation(context, u),
                 ),
-                for (final f in [
-                  ('too_easy', 'Zu leicht'),
-                  ('too_hard', 'Zu schwer'),
-                  ('unclear', 'Unverständlich'),
-                ])
-                  TextButton(
-                    onPressed: () async {
-                      try {
-                        await state.api.post('/units/${u['id']}/feedback', {
-                          'kind': f.$1,
-                        });
-                        if (context.mounted) {
-                          toast(
-                            context,
-                            'Danke. Deine Rückmeldung ist für die nächste Einheit gespeichert.',
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) showError(context, e);
-                      }
-                    },
-                    child: Text(f.$2),
-                  ),
+                helpButton(context, u),
+                TextButton(
+                  onPressed: () => showTaskFeedback(context, u),
+                  child: const Text('Passt die Aufgabe?'),
+                ),
               ],
             ),
-            const SizedBox(height: 22),
-            messages(context, state, {
-              'child': {'id': state.user!['child_id']},
-              'messages': <dynamic>[],
-            }, () {}),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget sampleNotice(Json u) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Text(
+      u['provider'] == 'synthetic'
+          ? 'Beispielübung · ohne KI erstellt.'
+          : 'Beispielstoff · mit KI erstellte Übungen.',
+      style: const TextStyle(fontSize: 12, color: muted),
+    ),
+  );
+
+  Future<void> requestHint(Json u, dynamic q) async {
+    final id = u['id'];
+    final data = await state.api.post('/units/$id/questions/${q['id']}/hint');
+    if (mounted && widget.unitId == id) {
+      setState(() => hint = data['hint']);
+    }
+  }
+
+  Future<void> submitAnswer(Json u, dynamic q) async {
+    final answer = q['type'] == 'choice'
+        ? choice
+        : q['type'] == 'match'
+        ? (q['options'] as List).map((p) => matches[p] ?? '').join(';')
+        : text.text;
+    if (answer == null || answer.trim().isEmpty) {
+      throw ApiError('Wähle eine Antwort aus oder gib sie ein.');
+    }
+    if (q['type'] == 'match' &&
+        matches.length != (q['options'] as List).length) {
+      throw ApiError('Ordne noch alle Begriffe zu.');
+    }
+    final id = u['id'];
+    final data = await state.api.post(
+      '/units/$id/questions/${q['id']}/answer',
+      {'answer': answer},
+    );
+    if (!mounted || widget.unitId != id) return;
+    lastInteraction = DateTime.now();
+    setState(() {
+      unit = Map<String, dynamic>.from(data['unit']);
+      answeredQuestion = Map<String, dynamic>.from(
+        (unit!['questions'] as List).firstWhere(
+          (question) => question['id'] == q['id'],
+        ),
+      );
+      answerOutcome = data['outcome'];
+      answerAssisted = data['assisted'] == true;
+      explanation = data['explanation'];
+      awaitingContinue = true;
+    });
+    if (unit!['status'] == 'completed') {
+      watchCoaching();
+      state.refreshState();
+    }
+  }
+
+  Widget answerFeedback(BuildContext context, Json u) {
+    final closed = done(answeredQuestion);
+    final correct = answerOutcome == 'correct';
+    final uncertain = answerOutcome == 'uncertain';
+    final title = correct
+        ? 'Richtig!'
+        : uncertain
+        ? 'Schauen wir gemeinsam drauf'
+        : closed
+        ? 'Das üben wir noch'
+        : 'Noch nicht ganz';
+    return Panel(
+      color: correct ? mint : const Color(0xFFFFF6E8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Icon(
+              correct
+                  ? Icons.check_circle_rounded
+                  : Icons.lightbulb_outline_rounded,
+              color: correct ? teal : const Color(0xFF92621A),
+              size: 46,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          if (uncertain)
+            const Text(
+              'Ich kann deine Antwort nicht sicher bewerten. Sie ist gespeichert.',
+              style: TextStyle(fontSize: 16),
+            )
+          else if (!correct)
+            Text(
+              closed ? 'Wir schauen später noch einmal auf diese Aufgabe.' : 'Ein Hinweis kann dir helfen. Versuch es in Ruhe noch einmal.',
+              style: const TextStyle(fontSize: 16),
+            )
+          else if (answerAssisted)
+            const Text(
+              'Mit Hilfe gelöst. Gut, dass du drangeblieben bist.',
+              style: TextStyle(fontSize: 16),
+            ),
+          if (explanation?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 18),
+            Text(
+              explanation!,
+              style: const TextStyle(fontSize: 17, height: 1.5),
+            ),
+          ],
+          if (hint != null && !closed) ...[
+            const SizedBox(height: 16),
+            Notice(hint!, icon: Icons.lightbulb_outline_rounded),
+          ],
+          const SizedBox(height: 26),
+          ActionButton(
+            label: !closed
+                ? 'Noch einmal versuchen'
+                : u['status'] == 'completed'
+                ? 'Zum Rückblick'
+                : 'Weiter',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: () async {
+              setState(() {
+                awaitingContinue = false;
+                explanation = null;
+              });
+              lastInteraction = DateTime.now();
+            },
+          ),
+          if (!closed) ...[
+            const SizedBox(height: 10),
+            Align(
+              child: ActionButton(
+                label: 'Ein Hinweis bitte',
+                secondary: true,
+                icon: Icons.lightbulb_outline_rounded,
+                onPressed: () => requestHint(u, answeredQuestion),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Align(child: helpButton(context, u)),
+        ],
+      ),
+    );
+  }
+
+  Widget pauseButton(Json u) => ActionButton(
+    label: 'Pause',
+    secondary: true,
+    icon: Icons.pause_rounded,
+    onPressed: () async {
+      final id = u['id'];
+      final data = await state.api.post('/units/$id/pause');
+      if (mounted && widget.unitId == id) {
+        setState(() => unit = data);
+      }
+    },
+  );
+
+  Future<void> showExplanation(BuildContext context, Json u) async {
+    final data = await state.api.post('/units/${u['id']}/explanation');
+    if (!context.mounted || widget.unitId != u['id']) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kurz erklärt'),
+        content: SingleChildScrollView(
+          child: Text(
+            data['explanation'],
+            style: const TextStyle(fontSize: 17, height: 1.5),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Weiter üben'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget helpButton(BuildContext context, Json u) => ActionButton(
+    label: 'Ich brauche Hilfe',
+    secondary: true,
+    icon: Icons.volunteer_activism_outlined,
+    onPressed: () async {
+      final note = TextEditingController();
+      try {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Deine Eltern um Hilfe bitten?'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Es geht um ${u['topic']}.'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: note,
+                    minLines: 1,
+                    maxLines: 3,
+                    maxLength: 600,
+                    decoration: const InputDecoration(
+                      labelText: 'Möchtest du etwas dazuschreiben?',
+                      hintText: 'Du kannst das Feld leer lassen.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Abbrechen'),
+              ),
+              ActionButton(
+                label: 'Hilfe anfragen',
+                icon: Icons.send_rounded,
+                onPressed: () async {
+                  final body =
+                      'Ich brauche Hilfe bei ${u['subject']}: ${u['topic']}.${note.text.trim().isEmpty ? '' : ' ${note.text.trim()}'}';
+                  await state.api.post(
+                    '/children/${state.user!['child_id']}/messages',
+                    {'kind': 'help', 'body': body},
+                  );
+                  state.refreshState();
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    toast(context, 'Deine Eltern wissen Bescheid.');
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      } finally {
+        note.dispose();
+      }
+    },
+  );
+
+  Future<void> showTaskFeedback(BuildContext context, Json u) async {
+    await showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'Wie ist die Aufgabe für dich?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final item in [
+              (
+                'too_easy',
+                'Zu leicht',
+                Icons.sentiment_very_satisfied_outlined,
+              ),
+              ('too_hard', 'Zu schwer', Icons.sentiment_dissatisfied_outlined),
+              ('unclear', 'Ich verstehe sie nicht', Icons.help_outline_rounded),
+            ])
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
+                leading: Icon(item.$3, color: teal),
+                title: Text(item.$2),
+                onTap: () async {
+                  try {
+                    await state.api.post('/units/${u['id']}/feedback', {
+                      'kind': item.$1,
+                    });
+                    if (sheet.mounted) Navigator.pop(sheet);
+                    if (context.mounted) {
+                      toast(context, 'Danke, das ist gespeichert.');
+                    }
+                  } catch (e) {
+                    if (context.mounted) showError(context, e);
+                  }
+                },
+              ),
+            const SizedBox(height: 12),
           ],
         ),
       ),

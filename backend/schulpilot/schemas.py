@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
 Short = Annotated[str, Field(min_length=1, max_length=160)]
 
@@ -20,9 +20,17 @@ class Register(Strict):
 
 class Login(Strict):
     username: str = Field(min_length=1, max_length=254)
-    password: str = Field(min_length=1, max_length=128)
+    password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
     device: str = Field(default="Browser", max_length=100)
-    totp: str = Field(default="", max_length=8)
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_totp(cls, value):
+        # Existing APKs sent this obsolete field for every family login.
+        # It never participates in authentication; the new clients omit it.
+        if isinstance(value, dict) and "totp" in value:
+            return {key: item for key, item in value.items() if key != "totp"}
+        return value
 
 
 class EmailRequest(Strict):

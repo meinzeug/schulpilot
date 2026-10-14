@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 
 from . import schemas as s
-from .config import settings
+from .config import runtime_settings, settings
 from .db import Audit, Family, ProviderConfig, Usage, get_db
 from .providers import usage_summary
 from .security import admin, audit, decrypt, encrypt, family_access, parent
@@ -18,7 +18,8 @@ def config_data(config):
         if c.name not in ("encrypted_key", "id")
     }
     result["has_key"] = bool(config.encrypted_key)
-    result["real_data_gate"] = bool(settings.real_data_approved and settings.privacy_evidence)
+    site = runtime_settings()
+    result["real_data_gate"] = bool(site.real_data_approved and site.privacy_evidence)
     result["codex_isolated_worker"] = bool(settings.codex_socket and settings.codex_approved)
     return result
 
@@ -32,6 +33,10 @@ def provider(p=Depends(admin), db=Depends(get_db)):
 
 @router.put("/admin/provider")
 def update_provider(data: s.ProviderUpdate, p=Depends(admin), db=Depends(get_db)):
+    return save_provider(data, p.user.id, db)
+
+
+def save_provider(data, actor, db):
     config = db.get(ProviderConfig, 1)
     values = data.model_dump(exclude={"api_key"})
     for field in ("openrouter_free_only", "openrouter_require_zdr"):
@@ -69,7 +74,7 @@ def update_provider(data: s.ProviderUpdate, p=Depends(admin), db=Depends(get_db)
     db.execute(update(ProviderConfig).where(ProviderConfig.id == 1).values(revision=ProviderConfig.revision + 1))
     db.refresh(config)
     config.status = "Konfiguration gespeichert. Verbindung noch nicht geprüft."
-    audit(db, p.user.id, "admin.provider_update", data.provider)
+    audit(db, actor, "admin.provider_update", data.provider)
     db.commit()
     return config_data(config)
 
@@ -87,6 +92,10 @@ def emergency(p=Depends(admin), db=Depends(get_db)):
 
 @router.post("/admin/provider/check")
 def check(p=Depends(admin), db=Depends(get_db)):
+    return provider_check(p.user.id, db)
+
+
+def provider_check(actor, db):
     config = db.get(ProviderConfig, 1)
     if config.provider == "codex":
         status = "Experimentell. Isolierter Worker und separate Authentifizierung müssen lokal eingerichtet und geprüft werden."
@@ -121,7 +130,7 @@ def check(p=Depends(admin), db=Depends(get_db)):
     else:
         status = "Provider, Modell oder Schlüssel fehlen."
     config.status = status
-    audit(db, p.user.id, "admin.provider_check", config.provider)
+    audit(db, actor, "admin.provider_check", config.provider)
     db.commit()
     return {"status": status}
 

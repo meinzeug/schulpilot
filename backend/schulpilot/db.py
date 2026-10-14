@@ -57,9 +57,31 @@ class User(Base):
     role = Column(String(16), nullable=False)
     verified = Column(Boolean, default=False, nullable=False)
     disabled = Column(Boolean, default=False, nullable=False)
-    totp_secret = Column(Text)
-    totp_last_step = Column(Integer, default=0, nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class Installation(Base):
+    __tablename__ = "installation"
+    id = Column(Integer, primary_key=True)
+    completed = Column(Boolean, default=False, nullable=False)
+    bootstrap_digest = Column(String(64))
+    bootstrap_expires = Column(Integer)
+    encrypted_settings = Column(Text)
+    revision = Column(Integer, default=1, nullable=False)
+    completed_at = Column(Integer)
+
+
+class OperatorJob(Base):
+    __tablename__ = "operator_jobs"
+    id = Column(String(32), primary_key=True, default=uid)
+    actor = Column(String(32), nullable=False)
+    config_revision = Column(Integer, nullable=False)
+    status = Column(String(20), default="queued", nullable=False)
+    report = Column(JSON, default=list, nullable=False)
+    error = Column(String(500))
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    started = Column(Integer)
+    finished = Column(Integer)
 
 
 class Membership(Base):
@@ -427,9 +449,13 @@ def init_db():
             raise RuntimeError("Database migrations must be applied before production startup")
     else:
         Base.metadata.create_all(engine)
+    from .security import insert_ignore
+
     with DB.begin() as db:
-        if not db.get(ProviderConfig, 1):
-            db.add(ProviderConfig(id=1))
+        insert_ignore(db, ProviderConfig, {"id": 1})
+    from .installation import initialize
+
+    initialize()
 
 
 def get_db():

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import update
 
-from .config import settings
+from .config import runtime_settings
 from .db import DB, ProviderConfig
 from .providers import verify_free_endpoint
 from .security import audit
@@ -24,7 +24,7 @@ def configure():
     evidence = data.get("evidence")
     if not isinstance(evidence, str) or not 20 <= len(evidence) <= 500:
         raise SystemExit("A documented operator approval must be supplied through stdin")
-    if not settings.real_data_approved or not settings.privacy_evidence:
+    if not runtime_settings().real_data_approved or not runtime_settings().privacy_evidence:
         raise SystemExit("The existing global operator approval must be recorded first")
     verify_free_endpoint(FREE_MODEL, FREE_UPSTREAM, image=True)
     today = datetime.now(timezone.utc).date().isoformat()

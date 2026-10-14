@@ -14,7 +14,7 @@ from pydantic import Field, model_validator
 from sqlalchemy import delete, select, update
 
 from . import schemas as s
-from .config import settings
+from .config import runtime_settings
 from .db import Activity, Child, Membership, Message, PushDelivery, PushDevice, Session, User, get_db, now, uid
 from .security import authenticated, decrypt, digest, encrypt, insert_ignore, rate_limit
 
@@ -23,8 +23,9 @@ log = logging.getLogger("schulpilot.push")
 
 
 def public_config():
+    site = runtime_settings()
     try:
-        raw = json.loads(settings.fcm_public_config or "{}")
+        raw = json.loads(site.fcm_public_config or "{}")
         allowed = {
             k: raw[k]
             for k in ("apiKey", "appId", "messagingSenderId", "projectId", "authDomain", "vapidKey", "androidAppId")
@@ -35,10 +36,12 @@ def public_config():
         allowed, valid = {}, False
     ready = bool(
         valid
-        and settings.push_approved
-        and settings.push_privacy_evidence
-        and settings.fcm_service_account_file
-        and Path(settings.fcm_service_account_file).is_file()
+        and site.push_approved
+        and site.push_privacy_evidence
+        and (
+            site.fcm_service_account_json
+            or (site.fcm_service_account_file and Path(site.fcm_service_account_file).is_file())
+        )
     )
     return {
         "available": ready,
@@ -310,14 +313,14 @@ class FcmError(Exception):
 
 
 def send_fcm(token, kind, ttl=60):
+    site = runtime_settings()
     if not public_config()["available"]:
         raise FcmError("NOT_CONFIGURED")
     from google.auth.transport.requests import Request
     from google.oauth2 import service_account
 
     try:
-        credential_file = Path(settings.fcm_service_account_file)
-        info = json.loads(credential_file.read_text())
+        info = json.loads(site.fcm_service_account_json or Path(site.fcm_service_account_file).read_text())
         project = public_config()["firebase"]["projectId"]
         if (
             info.get("type") != "service_account"
@@ -352,7 +355,7 @@ def send_fcm(token, kind, ttl=60):
             },
             "webpush": {
                 "headers": {"TTL": str(ttl), "Urgency": "normal"},
-                "fcm_options": {"link": settings.public_url + "/app"},
+                "fcm_options": {"link": site.public_url + "/app"},
             },
         }
         with httpx.Client(timeout=20, follow_redirects=False) as client:

@@ -8,13 +8,11 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/main.dart';
 
 void main() {
-  testWidgets('Landing discloses synthetic mode and separate login', (
-    tester,
-  ) async {
+  testWidgets('Landing offers the demo and a separate login', (tester) async {
     await tester.pumpWidget(SchulpilotApp(AppState()));
     await tester.pumpAndSettle();
     expect(find.text('SCHULPILOT'), findsOneWidget);
-    expect(find.text('Synthetisch ausprobieren'), findsOneWidget);
+    expect(find.text('Demo ausprobieren'), findsOneWidget);
     expect(find.text('Anmelden'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -22,6 +22,7 @@ from .db import (
     LearningUnit,
     Material,
     Message,
+    OperatorJob,
     ProviderConfig,
     RateBucket,
     SchoolDay,
@@ -362,6 +363,15 @@ def maintenance():
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
                 settle(db, usage, failed=True)
+        for operation in db.scalars(
+            select(OperatorJob).where(OperatorJob.status == "running", OperatorJob.started < int(now()) - 600)
+        ):
+            operation.status, operation.finished, operation.error = (
+                "failed",
+                int(now()),
+                "Prüfung wurde unterbrochen. Keine automatische Wiederholung.",
+            )
+        db.execute(delete(OperatorJob).where(OperatorJob.created < int(now()) - 90 * 86400))
         for family in list(db.scalars(select(Family).where(Family.expires.is_not(None), Family.expires < int(now())))):
             # Demo owner users are not attached to other families.
             from .db import Membership, User
@@ -471,6 +481,10 @@ def main():
                     else:
                         db.add(ServiceState(name="worker", updated=int(now())))
                 last_heartbeat = now()
+            from .operator_probe import work_one
+
+            if work_one(lambda: running):
+                continue
             deliver_one(DB)
             if now() - last_maintenance > 60:
                 maintenance()

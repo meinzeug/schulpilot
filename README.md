@@ -1,6 +1,8 @@
 # SCHULPILOT
 
-Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen FastAPI-API. Persistente Familien, getrennte Kinderzugänge, bestätigter Schulstoff, strukturierte Aufgaben und nachvollziehbare Elternansichten. **Technischer Pilot mit ausdrücklich freigegebenem OpenRouter-Free-Standard.** [Konfiguration und Datenregeln](docs/AI_STANDARD.md), [Betreiberfreigabe](docs/APPROVALS.md).
+Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen FastAPI-API. Persistente Familien, getrennte Kinderzugänge, bestätigter Schulstoff, strukturierte Aufgaben und nachvollziehbare Elternansichten. Der reguläre Lernablauf verwendet den ausdrücklich freigegebenen OpenRouter-Free-Standard. [Konfiguration und Datenregeln](docs/AI_STANDARD.md), [Betreiberfreigabe](docs/APPROVALS.md).
+
+Die Android-App startet eine `FlutterActivity` und rendert die Dart-Oberfläche auf dem Gerät. Sie ist keine Website in einer WebView. Web und Android teilen Lernansichten und Theme; Android ergänzt Kamera, sichere Sitzungsablage und den nativen Updater. Die Oberfläche wird für kleine Touchscreens und breite Webfenster angepasst.
 
 Web: https://schulpilot.dorfspy.de · API: `/api` · Test-APK: `artifacts/schulpilot-0.1.0-test.apk` (lokal, absichtlich nicht in Git).
 
@@ -12,7 +14,7 @@ Nach jeder abgeschlossenen Einheit folgt ein gespeicherter KI-Rückblick auf die
 
 Für den regulären Betrieb ein Elternkonto registrieren, die E-Mail bestätigen und im Familienbereich einen Kinderzugang mit eigenem Benutzernamen und sicherem Passwort anlegen. Das Kind meldet sich damit direkt im Web oder in der APK an und öffnet „Nach der Schule starten“. Eltern erhalten die gespeicherten Aufgaben, Antworten und genutzten Hinweise im eigenen Dashboard.
 
-„Synthetisch ausprobieren“ legt eine eigene isolierte Testfamilie für 24 Stunden an. Die einmalig angezeigten Eltern- und Kinderzugänge funktionieren auch auf einem zweiten Gerät. Den Beispielstoff bestätigen, eine Einheit vorbereiten und mit dem Kinderzugang lernen. Eltern sehen anschließend tatsächliche Aufgaben, Antworten, Hinweise und Aktivitäten. Die Demo führt **keine Fotoerkennung und keinen externen KI-Aufruf** aus; freie Foto-Uploads sind darin gesperrt.
+Der optionale Beispiel-Lernraum legt eine eigene isolierte Testfamilie für 24 Stunden an. Die einmalig angezeigten Eltern- und Kinderzugänge funktionieren auch auf einem zweiten Gerät. Den Beispielstoff bestätigen, eine Einheit vorbereiten und mit dem Kinderzugang lernen. Eltern sehen anschließend tatsächliche Aufgaben, Antworten, Hinweise und Aktivitäten. Die feste Demo führt **keine Fotoerkennung und keinen externen KI-Aufruf** aus; freie Foto-Uploads sind darin gesperrt. Der zusätzliche ausdrücklich gestartete Live-KI-Testpfad bleibt davon getrennt.
 
 ## Lokal starten
 
@@ -28,7 +30,7 @@ cd ..
 bash scripts/run-local.sh
 ```
 
-Dann http://localhost:8080 öffnen. API und Flutter liegen unter demselben Ursprung; direkte Weblinks funktionieren. SQLite/WAL dient lokal und in Tests, PostgreSQL im Betrieb. `.env.example` dokumentiert die Konfiguration; Einstellungen werden aus der Prozessumgebung gelesen. Eine lokale `.env` wird nicht automatisch ausgeführt oder geladen. Vorhandene Umgebungsvariablen passend über einen lokalen Prozessmanager setzen. Einen `MASTER_KEY` nur außerhalb von Git generieren und sicher verwahren.
+Dann http://localhost:8080 öffnen. Bei einer leeren Installation erscheint zuerst der [Einrichtungsassistent](docs/INSTALLATION.md). API und Flutter liegen unter demselben Ursprung; direkte Weblinks funktionieren. SQLite/WAL dient lokal und in Tests, PostgreSQL im Betrieb. `.env.example` dokumentiert die lokale Grundkonfiguration. Eine `.env` wird nicht automatisch ausgeführt oder geladen; Umgebungsvariablen passend über einen lokalen Prozessmanager setzen. Einen `MASTER_KEY` nur außerhalb von Git generieren und sicher verwahren. Im Assistenten beziehungsweise Adminbereich gespeicherte Betriebswerte überschreiben die entsprechenden Umgebungsdefaults verschlüsselt in der Datenbank.
 
 ## Tests und Builds
 
@@ -42,17 +44,23 @@ flutter build web --release --no-web-resources-cdn --csp
 flutter build apk --flavor direct --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
-Die öffentliche Test-APK und das AAB verwenden einen eigenen **Upload-Schlüssel außerhalb von Git**. Einrichtung und Store-Voraussetzungen: [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md). Ein tatsächlicher Test auf einem physischen Android-Gerät steht aus. Die APK ist auf der Startseite und nach Web-Login herunterladbar; `/api/app-release` liefert die aus dem echten APK berechneten Metadaten.
+Die öffentliche Test-APK und das AAB verwenden einen eigenen **Upload-Schlüssel außerhalb von Git**. Einrichtung und Store-Voraussetzungen: [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md). Die APK ist auf der Startseite und nach Web-Login herunterladbar; `/api/app-release` liefert die aus dem echten APK berechneten Metadaten. Physische Geräteprüfungen, Play-Veröffentlichung und echte Firebase-Zustellung sind weitere Abnahmen, kein Ersatz für die regulären Lernfunktionstests.
+
+Für den Ausbau des Einrichtungsassistenten und der Passwort-Administration nachgewiesen: **140 Backendtests in PostgreSQL**, zusätzlich **33 gezielte SQLite-Tests** einschließlich Migration und Datenerhalt. Der endgültige Web-/Android-Buildstand und die öffentlichen Abnahmen stehen getrennt in [STATUS.md](docs/STATUS.md).
 
 Öffentlicher synthetischer API-Test: `.venv/bin/python scripts/public_smoke.py`. Echte kostenlose KI mit ausschließlich serverseitigen Testinhalten: `.venv/bin/python scripts/public_live_ai_smoke.py` (zwei mitgezählte Anfragen, Freigabe erforderlich). Browser: `cd qa && npm ci --ignore-scripts && node smoke.mjs`; vorhandenes Chrome wird verwendet, alternativ `CHROME_PATH` setzen. Der Browsertest verwendet vorübergehend eine private Datei unter `artifacts/`, um einen unterbrochenen Test fortzusetzen; sie wird nach erfolgreichem Test gelöscht. Keine echten Kinderdaten verwenden.
 
-## Sicherer Erstadmin
+## Einrichtung und Administration
+
+Neue Installationen führen durch Adminzugang, Mailversand, Betreiberangaben, KI-Provider und Kontingente sowie optionale Push-Einstellungen. Der Betreiber öffnet die Einrichtung mit dem lokal gespeicherten Installationscode; ein Besucher kann die Installation nicht übernehmen. Nach Abschluss bleibt dieser Zugang dauerhaft geschlossen. [Einrichtung und lokale Wiederherstellung](docs/INSTALLATION.md).
+
+Bestehende Installationen und die lokale Wiederherstellung verwenden weiterhin:
 
 ```bash
 ssh -t dorfspy 'python3 /opt/schulpilot/current/deploy/admin.py create-admin'
 ```
 
-Interaktiv eigenen Benutzernamen, starkes Passwort und TOTP einrichten und den aktuellen Authenticator-Code bestätigen. Es gibt keinen Standardadmin und kein öffentliches Rollenwahlfeld. Wiederherstellung nur über denselben lokalen Prozess mit `reset-admin`. Administratoren erhalten über die API keinen privaten Kinderinhaltszugriff.
+Interaktiv eigenen Benutzernamen und starkes Passwort einrichten. Die Anmeldung erfolgt ausdrücklich ohne TOTP. Es gibt kein Standardpasswort und kein öffentliches Rollenwahlfeld. Wiederherstellung über denselben lokalen Prozess mit `reset-admin`; für autorisierte Automation ist `--password-stdin --username <name>` vorgesehen. Administratoren erhalten über die API keinen privaten Kinderinhaltszugriff.
 
 ## Betrieb und Freigaben
 

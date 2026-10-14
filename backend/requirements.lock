@@ -29,7 +29,6 @@ pyasn1_modules==0.4.2
 pycparser==3.11
 pydantic==2.14.1
 pydantic_core==2.50.1
-PyOTP==2.10.0
 python-multipart==0.0.32
 requests==2.34.2
 SQLAlchemy==2.1.4

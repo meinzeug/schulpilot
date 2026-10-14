@@ -6,7 +6,7 @@ from fractions import Fraction
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from .auth import create_session
-from .config import settings
+from .config import runtime_settings
 from .db import Child, Family, Material, Membership, User, get_db, now
 from .schemas import UnitOutput
 from .security import digest, password_hash, rate_limit
@@ -95,7 +95,7 @@ def sample_unit(variant=0, difficulty="normal"):
 
 @router.post("/demo", status_code=201)
 def demo(request: Request, response: Response, db=Depends(get_db)):
-    if not settings.synthetic_demo:
+    if not runtime_settings().synthetic_demo:
         raise HTTPException(404, "Testraum deaktiviert.")
     rate_limit(db, "demo:" + digest(request.client.host), 5, 3600)
     rate_limit(db, "demo-global", 100, 3600)

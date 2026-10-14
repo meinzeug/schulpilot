@@ -8,7 +8,7 @@ from PIL import Image, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
 from sqlalchemy import select, update
 
 from . import schemas as s
-from .config import settings
+from .config import runtime_settings, settings
 from .db import Assignment, Child, Family, Job, LearningUnit, Material, ProviderConfig, UnitSource, get_db, uid
 from .fixtures import FIXTURE_ID, LIVE_FIXTURE_IDS, worksheet
 from .learning import material_data, record
@@ -64,7 +64,8 @@ def upload(
             403,
             "Der synthetische Testraum verwendet nur das mitgelieferte Beispiel. Bitte hier keine echten Kinderfotos hochladen.",
         )
-    if not settings.real_data_approved:
+    site = runtime_settings(db)
+    if not (site.real_data_approved and site.privacy_evidence):
         raise HTTPException(503, "Materialimport echter Daten ist bis zur dokumentierten Datenschutzfreigabe gesperrt.")
     if idempotency_key is not None and not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", idempotency_key):
         raise HTTPException(422, "Bitte einen gültigen Upload-Schlüssel verwenden.")

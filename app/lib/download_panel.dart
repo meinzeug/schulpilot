@@ -14,22 +14,34 @@ class AndroidDownload extends StatelessWidget {
     builder: (release, _) {
       if (release['available'] != true) return const SizedBox.shrink();
       return Panel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(22),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 24,
+          runSpacing: 16,
           children: [
-            heading('SCHULPILOT für Android'),
-            Text(
-              'Version ${release['version']} · ${((release['size_bytes'] as num) / 1048576).toStringAsFixed(1)} MB · Android ${release['min_android']}+',
-              style: const TextStyle(color: muted),
+            const SizedBox(
+              width: 230,
+              child: Row(
+                children: [
+                  Icon(Icons.android_rounded, color: teal, size: 28),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Schulpilot für Android',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Installierbare Testversion mit derselben HTTPS-API und denselben Zugängen wie im Web.',
-            ),
-            const SizedBox(height: 16),
             ActionButton(
-              label: 'Android-APK herunterladen',
-              icon: Icons.android_rounded,
+              label: 'Android-App herunterladen',
+              icon: Icons.download_rounded,
               onPressed: () async {
                 final uri = Uri.parse(release['download_url'] as String);
                 if (!await launchUrl(
@@ -39,11 +51,6 @@ class AndroidDownload extends StatelessWidget {
                   throw ApiError('Der Download konnte nicht geöffnet werden.');
                 }
               },
-            ),
-            const SizedBox(height: 12),
-            SelectableText(
-              'SHA-256: ${release['sha256']}',
-              style: const TextStyle(fontSize: 11, color: muted),
             ),
           ],
         ),

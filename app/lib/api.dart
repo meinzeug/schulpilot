@@ -178,6 +178,13 @@ class AppState extends ChangeNotifier {
   late final PendingUploads pendingUploads = PendingUploads(storage);
   late final PushClient push = PushClient(api);
   Json? user;
+  bool needsSetup = false;
+
+  Future<void> checkInstallation() async {
+    needsSetup = (await api.get('/setup/status'))['required'] == true;
+    notifyListeners();
+  }
+
   String? familyId;
   int revision = 0;
   Json? demoCredentials;
@@ -213,6 +220,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> restore() async {
+    try {
+      await checkInstallation();
+      if (needsSetup) return;
+    } catch (_) {}
     try {
       await pendingUploads.purgeExpired();
     } catch (_) {
@@ -262,16 +273,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(
-    String username,
-    String password, {
-    String totp = '',
-  }) async {
+  Future<void> login(String username, String password) async {
     await accept(
       await api.post('/auth/login', {
         'username': username,
         'password': password,
-        'totp': totp,
         'device': kIsWeb ? 'Web-Browser' : 'Android',
       }),
     );

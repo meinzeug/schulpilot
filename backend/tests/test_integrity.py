@@ -187,6 +187,9 @@ def test_migration_preserves_existing_rows(tmp_path):
         db.executescript("""
 INSERT INTO families(id,name,synthetic,created,child_limit,call_limit,budget_micros,plan) VALUES('f','F',1,0,4,100,2000000,'Pilot');
 INSERT INTO users(id,username,display_name,password_hash,role,verified,disabled,totp_last_step,created) VALUES('u','u','U','synthetic-hash','child',1,0,0,0);
+INSERT INTO users(id,username,display_name,password_hash,role,verified,disabled,totp_secret,totp_last_step,created) VALUES('a','admin','A','synthetic-admin-hash','admin',1,0,'old-encrypted-totp',42,0);
+INSERT INTO sessions(id,user_id,token_hash,device,created,seen,expires,revoked) VALUES('sc','u','synthetic-child-hash','child-device',0,0,9999999999,0);
+INSERT INTO sessions(id,user_id,token_hash,device,created,seen,expires,revoked) VALUES('sa','a','synthetic-admin-hash','admin-device',0,0,9999999999,0);
 INSERT INTO children(id,family_id,user_id,grade,subjects,school_type,region,preferences) VALUES('c','f','u',6,'[]','','','{}');
 INSERT INTO materials(id,child_id,title,status,subject,topic,content,uncertainties,homework,confirmed,synthetic,created) VALUES('m','c','Fixture','review','Math','X','x','[]','[]',0,1,0);
 """)
@@ -201,7 +204,13 @@ INSERT INTO provider_config(id,revision,provider,model,emergency_stop,image_capa
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0007"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0008"
+        assert db.execute("select completed,bootstrap_digest from installation").fetchone() == (1, None)
+        assert db.execute("select id,revoked from sessions order by id").fetchall() == [("sa", 1), ("sc", 0)]
+        assert not {"totp_secret", "totp_last_step"} & {
+            row[1] for row in db.execute("pragma table_info(users)").fetchall()
+        }
+        assert db.execute("select password_hash from users where id='a'").fetchone()[0] == "synthetic-admin-hash"
         assert db.execute("select openrouter_free_only,openrouter_require_zdr from provider_config").fetchone() == (
             1,
             1,

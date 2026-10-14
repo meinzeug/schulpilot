@@ -22,7 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) => PageFrame(
     state: state,
     title: 'Zugänge & Einstellungen',
-    subtitle: 'Du entscheidest, wer zu eurer Familie gehört und welche Geräte angemeldet bleiben.',
+    subtitle: 'Zugänge, Geräte und Benachrichtigungen.',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -114,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         if (state.isParent && state.familyId != null) ...[
           const SizedBox(height: 28),
-          heading('Berechtigte Eltern'),
+          heading('Elternzugänge'),
           LoadView<List<dynamic>>(
             key: ValueKey('members-$version'),
             load: () => state.api.list('/families/${state.familyId}/members'),
@@ -337,28 +337,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${usage['plan']} · ${usage['calls_remaining']} von ${usage['calls_limit']} Aufrufen im Kontingent übrig',
+                    '${usage['calls_remaining']} von ${usage['calls_limit']} KI-Schritten übrig',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  LinearProgressIndicator(
+                    value:
+                        ((usage['calls_remaining'] as num) /
+                                ((usage['calls_limit'] as num).clamp(
+                                  1,
+                                  1000000,
+                                )))
+                            .clamp(0, 1),
+                  ),
                   const SizedBox(height: 10),
                   Text(
-                    'Verbleibendes Kosten-Schutzbudget: ${((usage['budget_remaining_micros_usd'] ?? 0) / 1000000).toStringAsFixed(2)} USD. Kein Abopreis; auch dieses Limit begrenzt neue Aufrufe.',
-                    style: const TextStyle(fontSize: 12, color: muted),
+                    '${usage['plan']} · ${usage['period']}',
+                    style: const TextStyle(color: muted, fontSize: 12),
                   ),
-                  Text(
-                    'Zeitraum: ${usage['period']} · ${usage['unknown_cost_calls']} Aufruf(e) mit unbekannten Kosten.',
-                    style: const TextStyle(color: muted),
-                  ),
-                  if (usage['synthetic'] == true)
-                    const Notice(
-                      'Synthetische Beispielübungen rufen keinen kostenpflichtigen KI-Anbieter auf. Sie sind keine Aussage über spätere Abopreise.',
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Nutzung im Detail',
+                      style: TextStyle(fontSize: 13),
                     ),
-                  Text(
-                    usage['cost_notice'],
-                    style: const TextStyle(fontSize: 12, color: muted),
+                    children: [
+                      Text(
+                        'Kostenlimit: ${((usage['budget_remaining_micros_usd'] ?? 0) / 1000000).toStringAsFixed(2)} USD übrig. Dieses Limit begrenzt neue KI-Schritte zusätzlich.',
+                        style: const TextStyle(fontSize: 12, color: muted),
+                      ),
+                      Text(
+                        '${usage['unknown_cost_calls']} Aufruf(e) mit unbekannten Kosten.',
+                        style: const TextStyle(fontSize: 12, color: muted),
+                      ),
+                      Text(
+                        usage['cost_notice'],
+                        style: const TextStyle(fontSize: 12, color: muted),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -673,8 +692,14 @@ class _AdminScreenState extends State<AdminScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        FilledButton.icon(
+          onPressed: () => openRoute(context, '/admin/settings'),
+          icon: const Icon(Icons.tune_rounded),
+          label: const Text('Betriebseinstellungen'),
+        ),
+        const SizedBox(height: 16),
         ActionButton(
-          label: 'Kostenpflichtige KI sofort stoppen',
+          label: 'KI-Aufrufe sofort stoppen',
           icon: Icons.stop_circle_outlined,
           onPressed: () async {
             await widget.state.api.post('/admin/emergency-stop');
@@ -785,11 +810,13 @@ class ProviderForm extends StatefulWidget {
   final AppState state;
   final Json config;
   final VoidCallback onRefresh;
+  final String endpoint;
   const ProviderForm(
     this.state,
     this.config, {
     super.key,
     required this.onRefresh,
+    this.endpoint = '/admin/provider',
   });
   @override
   State<ProviderForm> createState() => _ProviderFormState();
@@ -829,13 +856,45 @@ class _ProviderFormState extends State<ProviderForm> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        heading('Serverseitige Providerkonfiguration'),
+        heading('KI-Anbieter'),
+        OutlinedButton.icon(
+          onPressed: () {
+            setState(() {
+              values.addAll({
+                'provider': 'openrouter',
+                'openrouter_free_only': true,
+                'openrouter_require_zdr': false,
+                'emergency_stop': false,
+                'image_capable': true,
+                'structured_capable': true,
+              });
+              model.text = 'dots-studio/dots-3-note-preview:free';
+              for (final k in [
+                'capability_evidence',
+                'extraction_capability_evidence',
+              ]) {
+                fields[k]!.text =
+                    'upstream=atlas-cloud/fp8 Bild-/Schema-Prüfung ausstehend';
+              }
+              fields['extraction_model']!.text = model.text;
+              fields['reserve_micros']!.text = '1000';
+              fields['max_output_tokens']!.text = '7000';
+              fields['input_per_million_micros']!.text = '0';
+              fields['output_per_million_micros']!.text = '0';
+              fields['pricing_evidence']!.text = 'OpenRouter Free; exakter Endpunkt wird vor jedem Aufruf auf Preis 0 geprüft.';
+            });
+          },
+          icon: const Icon(Icons.auto_awesome_rounded),
+          label: const Text('Kostenlosen OpenRouter-Standard wählen'),
+        ),
+        const SizedBox(height: 16),
         Notice(values['status']),
         const Notice(
-          'Echte Kinderdaten benötigen zusätzlich eine lokale Betriebsfreigabe mit Nachweisen. store:false ist kein vollständiger Datenschutzbeleg. Preise werden ausdrücklich eingetragen; unbekannte Preise sperren kostenpflichtige Aufrufe.',
+          'Datenschutzfreigaben legst du in den Betriebseinstellungen fest. Unbekannte Preise sperren kostenpflichtige Aufrufe.',
           warning: true,
         ),
         DropdownButtonFormField<String>(
+          key: ValueKey(values['provider']),
           initialValue: values['provider'],
           decoration: const InputDecoration(labelText: 'Provider'),
           items: const [
@@ -987,7 +1046,7 @@ class _ProviderFormState extends State<ProviderForm> {
                         ? null
                         : int.tryParse(field.value.text),
                 };
-                await widget.state.api.put('/admin/provider', body);
+                await widget.state.api.put(widget.endpoint, body);
                 keyField.clear();
                 widget.onRefresh();
               },
@@ -997,7 +1056,7 @@ class _ProviderFormState extends State<ProviderForm> {
               secondary: true,
               onPressed: () async {
                 final result = await widget.state.api.post(
-                  '/admin/provider/check',
+                  '${widget.endpoint}/check',
                 );
                 if (context.mounted) toast(context, result['status']);
                 widget.onRefresh();

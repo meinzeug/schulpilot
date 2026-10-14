@@ -127,14 +127,18 @@ void main() {
         await tester.ensureVisible(checkbox);
         await tester.tap(checkbox);
         await tester.pumpAndSettle();
-        final button = find.text('Stoff bestätigen');
+        final button = find.text('Stimmt, weiter');
         await tester.ensureVisible(button);
         await tester.tap(button);
         await tester.pumpAndSettle();
         if (number == 1) expect(find.text('Seite 2 prüfen'), findsOneWidget);
       }
       expect(confirmations, ['page1', 'page2']);
-      expect(find.text('Lernpaket für heute erstellen'), findsOneWidget);
+      expect(find.text('Jetzt lernen'), findsOneWidget);
+      final details = find.text('Mehr zu diesem Tag');
+      await tester.ensureVisible(details);
+      await tester.tap(details);
+      await tester.pumpAndSettle();
       expect(find.textContaining('2 geprüft'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -193,7 +197,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(
-        find.textContaining('Dein Auftrag wird verarbeitet'),
+        find.textContaining('Dein Stoff wird vorbereitet'),
         findsOneWidget,
       );
       expect(find.text('Heftseiten mit KI erkennen'), findsNothing);

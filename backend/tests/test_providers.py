@@ -227,27 +227,24 @@ def test_admin_no_private_access_and_keys_never_returned(api, household):
         assert any(x["action"] == "admin.emergency_stop" for x in audit)
 
 
-def test_admin_login_requires_totp_and_rejects_replay(api):
-    import pyotp
-
-    secret = pyotp.random_base32()
+def test_admin_login_uses_password_without_totp_and_remains_revocable(api):
     with DB.begin() as db:
         db.add(
             User(
-                username="second-factor-admin",
+                username="password-admin",
                 display_name="Admin",
                 role="admin",
                 verified=True,
                 password_hash=password_hash("synthetic-admin-pass-123"),
-                totp_secret=encrypt(secret),
             )
         )
-    payload = {"username": "second-factor-admin", "password": "synthetic-admin-pass-123"}
-    assert api.post("/api/auth/login", json=payload).status_code == 401
-    payload["totp"] = pyotp.TOTP(secret).now()
+    payload = {"username": "password-admin", "password": "synthetic-admin-pass-123"}
     response = api.post("/api/auth/login", json=payload)
     assert response.status_code == 200 and response.json()["user"]["role"] == "admin"
-    assert api.post("/api/auth/login", json=payload).status_code == 401
+    api.headers["Authorization"] = "Bearer " + response.json()["token"]
+    assert api.post("/api/auth/logout").status_code == 200
+    assert api.get("/api/admin/provider").status_code == 401
+    assert api.post("/api/auth/login", json={**payload, "password": "wrong-password"}).status_code == 401
 
 
 def test_openrouter_is_bound_to_model_upstream_and_has_safe_errors(api, household, monkeypatch):

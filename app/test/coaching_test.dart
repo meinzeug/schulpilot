@@ -143,15 +143,11 @@ void main() {
       expect(posts, isEmpty);
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
-      final next = find.text('Jetzt selbstständig ausprobieren');
+      final next = find.text('Selbst ausprobieren');
       await tester.ensureVisible(next);
       await tester.tap(next);
       await tester.pumpAndSettle();
       expect(find.text('Eine wirklich neue Aufgabe'), findsOneWidget);
-      expect(
-        find.text('Selbstständig abrufen · neue Aufgaben'),
-        findsOneWidget,
-      );
       expect(posts, ['/api/units/next/start']);
       await tester.pumpWidget(const SizedBox());
       router.dispose();
@@ -183,14 +179,12 @@ void main() {
       await tester.ensureVisible(expansion);
       await tester.tap(expansion);
       await tester.pumpAndSettle();
-      expect(
-        find.text('KI-Einschätzung · ursprüngliche Bewertung bleibt unklar'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Bisher beim am wenigsten geprüften Ziel: 0.'),
-        findsOneWidget,
-      );
+      expect(find.text('KI-Vorschlag · Antwort bleibt unklar'), findsOneWidget);
+      final progress = find.text('Mein Lernstand');
+      await tester.ensureVisible(progress);
+      await tester.tap(progress);
+      await tester.pumpAndSettle();
+      expect(find.text('0 von 3 Prüftagen'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -218,7 +212,7 @@ void main() {
         ),
       );
       expect(find.text('Auswertung erneut anfordern'), findsNothing);
-      expect(find.text('Jetzt selbstständig ausprobieren'), findsNothing);
+      expect(find.text('Selbst ausprobieren'), findsNothing);
       expect(
         find.text(
           'Deine Antworten und bisherigen Fortschritte bleiben gespeichert.',

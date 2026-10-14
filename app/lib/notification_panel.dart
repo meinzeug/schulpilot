@@ -12,124 +12,258 @@ class NotificationPanel extends StatefulWidget {
 
 class _NotificationPanelState extends State<NotificationPanel> {
   bool reminders = true, help = true, summaries = false;
+  bool preferencesLoaded = false;
   int start = 20, end = 8, version = 0;
+  String timezone = 'Europe/Berlin';
+
+  Future<Json> load() async {
+    final config = await widget.state.api.get('/notifications/config');
+    final devices = await widget.state.api.list('/notifications/devices');
+    if (!preferencesLoaded) {
+      for (final device in devices) {
+        if (device['current'] == true) {
+          reminders = device['reminders'] == true;
+          help = device['help_requests'] == true;
+          summaries = device['summaries'] == true;
+          start = device['quiet_start'];
+          end = device['quiet_end'];
+          timezone = device['timezone'];
+          break;
+        }
+      }
+      preferencesLoaded = true;
+    }
+    return {'config': config, 'devices': devices};
+  }
+
+  Future<void> enable() async {
+    try {
+      await widget.state.push.enable({
+        'timezone': timezone,
+        'quiet_start': start,
+        'quiet_end': end,
+        'reminders': reminders,
+        'help_requests': help,
+        'summaries': summaries,
+      });
+    } on ApiError catch (error) {
+      if (error.message.contains('Firebase') ||
+          error.message.contains('VAPID') ||
+          error.message.contains('Push-Registrierung')) {
+        throw ApiError(
+          'Benachrichtigungen konnten nicht eingeschaltet werden. Bitte versuche es später noch einmal.',
+        );
+      }
+      rethrow;
+    }
+    if (mounted) {
+      setState(() => version++);
+      toast(context, 'Deine Benachrichtigungen sind gespeichert.');
+    }
+  }
+
+  Future<void> disable(dynamic device) async {
+    await widget.state.api.delete('/notifications/devices/${device['id']}');
+    if (device['current'] == true) {
+      await widget.state.push.forget();
+    }
+    if (mounted) setState(() => version++);
+  }
+
+  String hour(dynamic value) => '${value.toString().padLeft(2, '0')}:00';
+
   @override
   Widget build(BuildContext context) => LoadView<Json>(
     key: ValueKey(version),
-    load: () async => {
-      'config': await widget.state.api.get('/notifications/config'),
-      'devices': await widget.state.api.list('/notifications/devices'),
-    },
-    builder: (data, _) => Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          heading('Benachrichtigungen'),
-          Text(data['config']['notice']),
-          const SizedBox(height: 10),
-          const Text(
-            'Freiwillig je Gerät. Gebündelte Hinweise, keine Lerninhalte auf dem Sperrbildschirm. Elterliche Ruhezeiten und Lernpausen gelten zusätzlich.',
-            style: TextStyle(color: muted, fontSize: 13),
-          ),
-          for (final device in data['devices'] as List)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                '${device['platform']} · ${device['current'] ? 'dieses Gerät' : 'weiteres Gerät'}',
-              ),
-              subtitle: Text(
-                'Ruhezeit ${device['quiet_start']}:00–${device['quiet_end']}:00 (${device['timezone']})',
-              ),
-              trailing: ActionButton(
-                label: 'Ausschalten',
-                secondary: true,
-                onPressed: () async {
-                  await widget.state.api.delete(
-                    '/notifications/devices/${device['id']}',
-                  );
-                  if (device['current'] == true) {
-                    await widget.state.push.forget();
-                  }
-                  if (mounted) setState(() => version++);
-                },
-              ),
-            ),
-          if (data['config']['available'] == true) ...[
-            if (widget.state.isChild)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Lern-Erinnerung'),
-                value: reminders,
-                onChanged: (v) => setState(() => reminders = v),
-              ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                widget.state.isParent
-                    ? 'Gebündelte Hilfewünsche'
-                    : 'Antworten meiner Eltern',
-              ),
-              value: help,
-              onChanged: (v) => setState(() => help = v),
-            ),
-            if (widget.state.isParent)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Hinweis auf gespeicherte Tagesaktivitäten'),
-                value: summaries,
-                onChanged: (v) => setState(() => summaries = v),
-              ),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
+    load: load,
+    builder: (data, _) {
+      final devices = data['devices'] as List;
+      final current = devices.where((device) => device['current'] == true);
+      final enabled = current.isNotEmpty;
+      final available = data['config']['available'] == true;
+      return Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                SizedBox(
-                  width: 180,
-                  child: DropdownButtonFormField<int>(
-                    initialValue: start,
-                    decoration: const InputDecoration(labelText: 'Ruhezeit ab'),
-                    items: [
-                      for (var i = 0; i < 24; i++)
-                        DropdownMenuItem(value: i, child: Text('$i:00')),
-                    ],
-                    onChanged: (v) => setState(() => start = v!),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: mint,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    enabled
+                        ? Icons.notifications_active_outlined
+                        : Icons.notifications_none_rounded,
+                    color: teal,
+                    size: 26,
                   ),
                 ),
-                SizedBox(
-                  width: 180,
-                  child: DropdownButtonFormField<int>(
-                    initialValue: end,
-                    decoration: const InputDecoration(
-                      labelText: 'Ruhezeit bis',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.state.isChild
+                        ? 'Erinnerungen'
+                        : 'Benachrichtigungen',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
                     ),
-                    items: [
-                      for (var i = 0; i < 24; i++)
-                        DropdownMenuItem(value: i, child: Text('$i:00')),
-                    ],
-                    onChanged: (v) => setState(() => end = v!),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            ActionButton(
-              label: 'Push auf diesem Gerät aktivieren / speichern',
-              icon: Icons.notifications_outlined,
-              onPressed: () async {
-                await widget.state.push.enable({
-                  'timezone': 'Europe/Berlin',
-                  'quiet_start': start,
-                  'quiet_end': end,
-                  'reminders': reminders,
-                  'help_requests': help,
-                  'summaries': summaries,
-                });
-                if (mounted) setState(() => version++);
-              },
-            ),
+            if (!available)
+              const Text(
+                'Benachrichtigungen sind noch nicht verfügbar.',
+                style: TextStyle(color: muted),
+              )
+            else ...[
+              Text(
+                enabled
+                    ? 'Für dieses Gerät eingeschaltet.'
+                    : widget.state.isChild
+                    ? 'Möchtest du an deine Lernzeit erinnert werden?'
+                    : 'Erinnerungen und neue Familiennachrichten auf diesem Gerät.',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Persönliche Inhalte bleiben in der App.',
+                style: TextStyle(fontSize: 13, color: muted),
+              ),
+              const SizedBox(height: 16),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 16),
+                title: const Text('Zeiten & Auswahl'),
+                subtitle: Text('Ruhezeit: ${hour(start)}–${hour(end)}'),
+                children: [
+                  if (widget.state.isChild)
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('An meine Lernzeit erinnern'),
+                      value: reminders,
+                      onChanged: (value) => setState(() => reminders = value),
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      widget.state.isParent
+                          ? 'Wenn mein Kind Hilfe braucht'
+                          : 'Wenn meine Eltern antworten',
+                    ),
+                    value: help,
+                    onChanged: (value) => setState(() => help = value),
+                  ),
+                  if (widget.state.isParent)
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Tagesüberblick'),
+                      value: summaries,
+                      onChanged: (value) => setState(() => summaries = value),
+                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: start,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Ruhe ab',
+                          ),
+                          items: [
+                            for (var i = 0; i < 24; i++)
+                              DropdownMenuItem(value: i, child: Text(hour(i))),
+                          ],
+                          onChanged: (value) => setState(() => start = value!),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: end,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Ruhe bis',
+                          ),
+                          items: [
+                            for (var i = 0; i < 24; i++)
+                              DropdownMenuItem(value: i, child: Text(hour(i))),
+                          ],
+                          onChanged: (value) => setState(() => end = value!),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ActionButton(
+                label: enabled
+                    ? 'Änderungen speichern'
+                    : 'Auf diesem Gerät einschalten',
+                icon: Icons.notifications_outlined,
+                onPressed: enable,
+              ),
+            ],
+            if (enabled) ...[
+              const SizedBox(height: 8),
+              Align(
+                child: ActionButton(
+                  label: 'Auf diesem Gerät ausschalten',
+                  secondary: true,
+                  onPressed: () => disable(current.first),
+                ),
+              ),
+            ],
+            if (devices.any((device) => device['current'] != true)) ...[
+              const SizedBox(height: 12),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('Weitere Geräte'),
+                children: [
+                  for (final device in devices.where(
+                    (device) => device['current'] != true,
+                  ))
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        device['platform'] == 'android'
+                            ? Icons.phone_android_rounded
+                            : Icons.web_rounded,
+                        color: muted,
+                      ),
+                      title: Text(
+                        device['platform'] == 'android'
+                            ? 'Android-Handy'
+                            : 'Browser',
+                      ),
+                      subtitle: Text(
+                        'Ruhezeit ${hour(device['quiet_start'])}–${hour(device['quiet_end'])}',
+                      ),
+                      trailing: IconButton(
+                        tooltip: 'Benachrichtigungen ausschalten',
+                        icon: const Icon(Icons.notifications_off_outlined),
+                        onPressed: () async {
+                          try {
+                            await disable(device);
+                          } catch (error) {
+                            if (context.mounted) showError(context, error);
+                          }
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ],
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 }

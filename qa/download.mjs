@@ -20,7 +20,7 @@ async function open(route) {
 }
 
 async function download(label) {
-  const button = page.getByRole('button', {name: 'Android-APK herunterladen', exact: true});
+  const button = page.getByRole('button', {name: 'Android-App herunterladen', exact: true});
   await page.mouse.move(920, 700);
   for (let i = 0; i < 12 && !(await button.isVisible()); i++) {
     await page.mouse.wheel(0, 750);

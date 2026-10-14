@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy import update
 
 from . import schemas as s
-from .config import settings
+from .config import runtime_settings, settings
 from .db import ProviderConfig, Usage, UsageBucket
 from .security import decrypt, insert_ignore, rate_limit
 
@@ -162,7 +162,7 @@ def external_allowed(config, image=False, synthetic_fixture=False):
             raise ProviderError("Kostenloser OpenRouter-Betrieb benötigt bestätigte Preisobergrenzen von null.")
     if synthetic_fixture:
         if not (
-            settings.synthetic_ai_enabled
+            runtime_settings().synthetic_ai_enabled
             and config.provider == "openrouter"
             and config.model.endswith(":free")
             and config.input_per_million_micros == 0
@@ -172,8 +172,8 @@ def external_allowed(config, image=False, synthetic_fixture=False):
                 "Synthetischer KI-Test ist nicht mit einem ausdrücklich kostenlosen OpenRouter-Modell freigegeben."
             )
     elif not (
-        settings.real_data_approved
-        and settings.privacy_evidence
+        runtime_settings().real_data_approved
+        and runtime_settings().privacy_evidence
         and config.privacy_approved
         and config.privacy_evidence
     ):
@@ -200,7 +200,7 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
     except ProviderError as e:
         raise HTTPException(503, str(e)) from None
     if synthetic_fixture:
-        rate_limit(db, "synthetic-ai-global", settings.synthetic_ai_daily_limit, 86400, commit=False)
+        rate_limit(db, "synthetic-ai-global", runtime_settings().synthetic_ai_daily_limit, 86400, commit=False)
     # Requiring documented conservative pricing makes the reservation enforceable.
     # Unknown final usage still remains unknown and retains the full reservation.
     if (

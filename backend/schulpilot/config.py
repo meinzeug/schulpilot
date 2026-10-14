@@ -1,5 +1,6 @@
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
@@ -23,6 +24,7 @@ class Settings:
     synthetic_ai_enabled: bool = os.getenv("SYNTHETIC_AI_ENABLED", "false") == "true"
     synthetic_ai_daily_limit: int = int(os.getenv("SYNTHETIC_AI_DAILY_LIMIT", "40"))
     fcm_service_account_file: str = os.getenv("FCM_SERVICE_ACCOUNT_FILE", "")
+    fcm_service_account_json: str = ""
     fcm_public_config: str = os.getenv("FCM_PUBLIC_CONFIG", "")
     push_approved: bool = os.getenv("PUSH_APPROVED", "false") == "true"
     push_privacy_evidence: str = os.getenv("PUSH_PRIVACY_EVIDENCE", "")
@@ -31,6 +33,10 @@ class Settings:
     operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")
     codex_socket: str = os.getenv("CODEX_SOCKET", "")
     codex_approved: bool = os.getenv("CODEX_APPROVED", "false") == "true"
+    default_plan: str = "Pilot"
+    default_child_limit: int = 4
+    default_call_limit: int = 100
+    default_budget_micros: int = 2_000_000
 
     @property
     def mail_ready(self):
@@ -38,3 +44,46 @@ class Settings:
 
 
 settings = Settings()
+
+# Paths, database credentials, encryption key and worker privileges stay local.
+RUNTIME_FIELDS = frozenset(
+    {
+        "smtp_host",
+        "smtp_port",
+        "smtp_user",
+        "smtp_password",
+        "smtp_from",
+        "smtp_mode",
+        "real_data_approved",
+        "privacy_evidence",
+        "synthetic_demo",
+        "synthetic_ai_enabled",
+        "synthetic_ai_daily_limit",
+        "operator_name",
+        "operator_address",
+        "operator_support_email",
+        "fcm_public_config",
+        "fcm_service_account_json",
+        "push_approved",
+        "push_privacy_evidence",
+        "default_plan",
+        "default_child_limit",
+        "default_call_limit",
+        "default_budget_micros",
+    }
+)
+
+
+def runtime_settings(db=None):
+    """Read persisted operator settings in every process; no restart or secret echo."""
+    from .db import DB, Installation
+    from .security import decrypt
+
+    if db is None:
+        with DB() as session:
+            return runtime_settings(session)
+    row = db.get(Installation, 1)
+    if not row or not row.encrypted_settings:
+        return settings
+    values = json.loads(decrypt(row.encrypted_settings))
+    return replace(settings, **{k: v for k, v in values.items() if k in RUNTIME_FIELDS})

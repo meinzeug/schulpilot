@@ -59,20 +59,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       if (provider == 'synthetic') {
-        expect(
-          find.textContaining('Keine externe KI beteiligt'),
-          findsOneWidget,
-        );
-        expect(
-          find.textContaining('tatsächlich mit KI erstellt'),
-          findsNothing,
-        );
+        expect(find.textContaining('ohne KI erstellt'), findsOneWidget);
+        expect(find.textContaining('mit KI erstellte Übungen'), findsNothing);
       } else {
-        expect(
-          find.textContaining('tatsächlich mit KI erstellt'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('Keine externe KI beteiligt'), findsNothing);
+        expect(find.textContaining('mit KI erstellte Übungen'), findsOneWidget);
+        expect(find.textContaining('ohne KI erstellt'), findsNothing);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

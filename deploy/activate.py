@@ -25,6 +25,31 @@ shutil.copy2(caddy, backup)
 before = caddy.read_text()
 fragment = Path("/etc/caddy/schulpilot.caddy")
 fragment_before = fragment.read_text() if fragment.exists() else None
+migration_started = False
+schema_before = None
+environment = None
+
+
+def database_revision():
+    """Read only the schema marker, never database credentials or private data."""
+    script = (
+        "from sqlalchemy import create_engine, inspect, text; import os; "
+        "e=create_engine(os.environ['DATABASE_URL']); "
+        "c=e.connect(); "
+        "print(','.join(sorted(c.execute(text('SELECT version_num FROM alembic_version')).scalars())) "
+        "if inspect(e).has_table('alembic_version') else '<empty>')"
+    )
+    result = subprocess.run(
+        ["runuser", "-u", "schulpilot", "--", str(release / "venv/bin/python"), "-c", script],
+        cwd=release / "backend",
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
 try:
     if not (release / "venv/bin/pip").exists():
         subprocess.run(["python3", "-m", "venv", str(release / "venv")], check=True)
@@ -44,6 +69,16 @@ try:
             raise RuntimeError("Existing SCHULPILOT host block needs manual reconciliation")
         caddy.write_text(before.rstrip() + "\n\nimport /etc/caddy/schulpilot.caddy\n")
     subprocess.run(["caddy", "validate", "--config", str(caddy), "--adapter", "caddyfile"], check=True)
+    if previous:
+        subprocess.run(["systemctl", "start", "schulpilot-backup.service"], check=True)
+        backup_result = subprocess.run(
+            ["systemctl", "show", "schulpilot-backup.service", "-p", "Result", "--value"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if backup_result != "success":
+            raise RuntimeError("Pre-deployment database backup failed")
     temporary = base / ".current-new"
     temporary.unlink(missing_ok=True)
     temporary.symlink_to(release)
@@ -80,6 +115,13 @@ try:
             key, value = line.split("=", 1)
             environment[key] = " ".join(shlex.split(value)) if value else ""
     if "--rollback-compatible" not in sys.argv[2:]:
+        schema_before = database_revision()
+        # Drain this application's workers before changing their database schema.
+        subprocess.run(["systemctl", "stop", "schulpilot-api", "schulpilot-worker"], check=True)
+        if previous:
+            # Capture answers/jobs completed while the old worker was draining.
+            subprocess.run(["systemctl", "start", "schulpilot-backup.service"], check=True)
+        migration_started = True
         subprocess.run(
             ["runuser", "-u", "schulpilot", "--", str(release / "venv/bin/python"), "-m", "schulpilot.migrate"],
             cwd=release / "backend",
@@ -112,11 +154,22 @@ except Exception:
         fragment.write_text(fragment_before)
     elif fragment.exists():
         fragment.unlink()
-    if previous:
+    compatible = not migration_started
+    if migration_started:
+        try:
+            compatible = database_revision() == schema_before
+        except Exception:
+            compatible = False
+    if previous and compatible:
         current.unlink(missing_ok=True)
         current.symlink_to(previous)
         subprocess.run(["systemctl", "restart", "schulpilot-api", "schulpilot-worker"], check=False)
     else:
         subprocess.run(["systemctl", "stop", "schulpilot-api", "schulpilot-worker"], check=False)
+        if migration_started and not compatible:
+            print(
+                "Schema changed: services stopped. Restore the verified pre-deployment database backup before activating the previous release.",
+                file=sys.stderr,
+            )
     subprocess.run(["systemctl", "reload", "caddy"], check=False)
     raise

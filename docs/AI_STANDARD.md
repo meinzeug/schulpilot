@@ -14,6 +14,8 @@ OpenRouter veröffentlicht Datenregeln, Providerregeln, Nutzungsbedingungen und 
 
 ## Einrichtung und Prüfung
 
+Neue Installationen konfigurieren Provider und Schlüssel im lokal freigeschalteten [Einrichtungsassistenten](INSTALLATION.md); danach stehen dieselben Betriebswerte im Adminbereich zur Verfügung. Der dortige echte Beispieltest läuft dauerhaft im vorhandenen Worker, verwendet feste künstliche Bild-/Text-/Paketdaten und reserviert seine Aufrufe im globalen Kontingent. Nur die tatsächlich getestete unveränderte Free-Konfiguration wird aktiviert. Die Anmeldung des Administrators verwendet Benutzername und Passwort ohne TOTP.
+
 Schlüssel ausschließlich verschlüsselt serverseitig hinterlegen. Bei bestehendem OpenRouter-Schlüssel und global dokumentierter Betreiberfreigabe:
 
 ```bash

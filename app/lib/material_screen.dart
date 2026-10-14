@@ -117,15 +117,16 @@ class _CropDialogState extends State<CropDialog> {
       : Uint8List.fromList(img.encodeJpg(image!, quality: 85));
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Persönliche Angaben abschneiden'),
+    title: const Text('Passt das Foto?'),
     content: SizedBox(
       width: 590,
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Notice(
-              'Schneide Namen, Schule und andere persönliche Angaben ab. Prüfe die Leserichtung. Erst nach deiner Bestätigung wird das zugeschnittene Bild für den Upload übernommen.',
+            const Text(
+              'Namen bitte abschneiden. Der Text soll gut lesbar sein.',
+              style: TextStyle(color: muted, fontSize: 13),
             ),
             TextButton.icon(
               onPressed: image == null
@@ -142,7 +143,7 @@ class _CropDialogState extends State<CropDialog> {
               label: const Text('Um 90° drehen'),
             ),
             SizedBox(
-              height: 250,
+              height: 220,
               child: LayoutBuilder(
                 builder: (context, size) => Center(
                   child: AspectRatio(
@@ -167,52 +168,61 @@ class _CropDialogState extends State<CropDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            for (final item in [
-              (
-                'Linker Rand',
-                left,
-                0.0,
-                right - .1,
-                (double v) => setState(() => left = v),
-              ),
-              (
-                'Oberer Rand',
-                top,
-                0.0,
-                bottom - .1,
-                (double v) => setState(() => top = v),
-              ),
-              (
-                'Rechter Rand',
-                right,
-                left + .1,
-                1.0,
-                (double v) => setState(() => right = v),
-              ),
-              (
-                'Unterer Rand',
-                bottom,
-                top + .1,
-                1.0,
-                (double v) => setState(() => bottom = v),
-              ),
-            ])
-              Row(
-                children: [
-                  SizedBox(
-                    width: 100,
-                    child: Text(item.$1, style: const TextStyle(fontSize: 12)),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Bild zuschneiden'),
+              children: [
+                for (final item in [
+                  (
+                    'Linker Rand',
+                    left,
+                    0.0,
+                    right - .1,
+                    (double v) => setState(() => left = v),
                   ),
-                  Expanded(
-                    child: Slider(
-                      value: item.$2,
-                      min: item.$3,
-                      max: item.$4,
-                      onChanged: item.$5,
-                    ),
+                  (
+                    'Oberer Rand',
+                    top,
+                    0.0,
+                    bottom - .1,
+                    (double v) => setState(() => top = v),
                   ),
-                ],
-              ),
+                  (
+                    'Rechter Rand',
+                    right,
+                    left + .1,
+                    1.0,
+                    (double v) => setState(() => right = v),
+                  ),
+                  (
+                    'Unterer Rand',
+                    bottom,
+                    top + .1,
+                    1.0,
+                    (double v) => setState(() => bottom = v),
+                  ),
+                ])
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        child: Text(
+                          item.$1,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: item.$2,
+                          min: item.$3,
+                          max: item.$4,
+                          onChanged: item.$5,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -299,14 +309,15 @@ class _MaterialScreenState extends State<MaterialScreen> {
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
-    title: 'Erst prüfen. Dann lernen.',
-    subtitle: 'Wir kennen nur dieses Material. Unsicheres wird bestätigt; Übungen bleiben von notierten Hausaufgaben getrennt.',
+    title: 'Dein Lernstoff',
+    subtitle: 'Prüfe den erkannten Text, bevor du loslegst.',
     child: LoadView<Json>(
       key: ValueKey(version),
       load: () => widget.state.api.get('/materials/${widget.materialId}'),
       builder: (data, refresh) => MaterialReview(
         widget.state,
         data,
+        simpleChild: widget.state.isChild,
         onRefresh: () => setState(() => version++),
       ),
     ),
@@ -318,12 +329,14 @@ class MaterialReview extends StatefulWidget {
   final Json data;
   final VoidCallback onRefresh;
   final bool showUnitAction;
+  final bool simpleChild;
   const MaterialReview(
     this.state,
     this.data, {
     super.key,
     required this.onRefresh,
     this.showUnitAction = true,
+    this.simpleChild = false,
   });
   @override
   State<MaterialReview> createState() => _MaterialReviewState();
@@ -337,6 +350,8 @@ class _MaterialReviewState extends State<MaterialReview> {
     text: (widget.data['homework'] as List).join('\n'),
   );
   bool checked = false;
+  bool editing = false, confirmedHere = false;
+  final Set<int> checkedUncertainties = {};
   @override
   void dispose() {
     for (final c in [subject, topic, content, homework]) {
@@ -348,6 +363,7 @@ class _MaterialReviewState extends State<MaterialReview> {
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
+    if (widget.simpleChild && widget.state.isChild) return childReview(context);
     final synthetic = d['synthetic'] == true;
     final liveFixture = d['fixture_id'] != null;
     final readonly = widget.state.isParent && !widget.state.canManage;
@@ -362,11 +378,7 @@ class _MaterialReviewState extends State<MaterialReview> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            Tag(
-              synthetic
-                  ? 'Festes synthetisches Beispiel'
-                  : 'Privates Unterrichtsmaterial',
-            ),
+            Tag(synthetic ? 'Beispielseite' : 'Deine Heftseite'),
             Tag(
               d['confirmed']
                   ? 'Bestätigter Lernstoff'
@@ -375,19 +387,14 @@ class _MaterialReviewState extends State<MaterialReview> {
           ],
         ),
         const SizedBox(height: 22),
-        if ((d['extraction_model'] as String? ?? '').isNotEmpty)
-          Text(
-            'Erkannt mit ${d['extraction_provider']} · ${d['extraction_model']}',
-            style: const TextStyle(color: muted, fontSize: 12),
-          ),
         if (liveFixture)
           const Notice(
-            'Künstliches Testblatt ohne Kinderdaten. Erkennung und Lerneinheit nutzen tatsächlich das konfigurierte kostenlose OpenRouter-Modell. Der Stoff bleibt für diesen begrenzten KI-Test unveränderlich.',
+            'Beispielseite · mit KI erkannt. Der Beispieltext ist unveränderlich.',
             icon: Icons.science_outlined,
           ),
         if (synthetic && !liveFixture)
           const Notice(
-            'Dieses Beispiel wurde vorbereitet. Es wurde kein Foto erkannt und kein KI-Anbieter aufgerufen. Die Demo-Übungen basieren ausschließlich auf diesem festen Text.',
+            'Vorbereitete Beispielseite · ohne KI-Erkennung.',
             icon: Icons.science_outlined,
           ),
         if (!synthetic || liveFixture)
@@ -404,7 +411,7 @@ class _MaterialReviewState extends State<MaterialReview> {
               ),
             ),
           ),
-        if (d['status'] == 'uploaded')
+        if (d['status'] == 'uploaded' && !readonly)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: ActionButton(
@@ -421,7 +428,7 @@ class _MaterialReviewState extends State<MaterialReview> {
         const SizedBox(height: 18),
         if (d['status'] == 'unreadable')
           const Notice(
-            'Dieses Foto ist nicht zuverlässig lesbar. Bitte im Tagesassistenten entfernen und neu aufnehmen. Daraus werden keine Übungen erstellt.',
+            'Das Foto ist nicht lesbar. Bitte im Fotoassistenten neu aufnehmen.',
             warning: true,
           ),
         Panel(
@@ -433,11 +440,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                 (subject, 'Fach', 1),
                 (topic, 'Thema', 1),
                 (content, 'Erkannter Unterrichtsstoff', 8),
-                (
-                  homework,
-                  'Nur ausdrücklich notierte Hausaufgaben – eine pro Zeile',
-                  3,
-                ),
+                (homework, 'Notierte Hausaufgaben (eine pro Zeile)', 3),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 18),
@@ -510,9 +513,7 @@ class _MaterialReviewState extends State<MaterialReview> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 heading('Bereit für eine kleine Lerneinheit?'),
-                const Text(
-                  'Aus dem bestätigten Stoff entstehen strukturierte Übungen. Diese sind keine Behauptung über alle Hausaufgaben oder den gesamten Unterricht.',
-                ),
+                const Text('Übe deinen bestätigten Stoff.'),
                 const SizedBox(height: 20),
                 if (!readonly)
                   ActionButton(
@@ -558,6 +559,238 @@ class _MaterialReviewState extends State<MaterialReview> {
               },
             ),
           ),
+      ],
+    );
+  }
+
+  Future<void> confirmPage() async {
+    final uncertainties = widget.data['uncertainties'] as List? ?? [];
+    if (uncertainties.isEmpty
+        ? !checked
+        : checkedUncertainties.length != uncertainties.length) {
+      throw ApiError('Prüfe bitte zuerst die markierten Stellen.');
+    }
+    await widget.state.api.put('/materials/${widget.data['id']}/confirm', {
+      'subject': subject.text,
+      'topic': topic.text,
+      'content': content.text,
+      'homework': homework.text
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      'uncertainties_resolved': true,
+    });
+    if (!mounted) return;
+    setState(() => confirmedHere = true);
+    widget.onRefresh();
+  }
+
+  Widget childReview(BuildContext context) {
+    final d = widget.data;
+    final synthetic = d['synthetic'] == true;
+    final confirmed = d['confirmed'] == true || confirmedHere;
+    final uncertainties = d['uncertainties'] as List? ?? [];
+    final canConfirm = !confirmed && d['status'] == 'review';
+    final longText =
+        content.text.length > 120 || content.text.split('\n').length > 5;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!synthetic || d['fixture_id'] != null) ...[
+          Panel(
+            padding: const EdgeInsets.all(12),
+            child: LoadView<Uint8List>(
+              load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
+              builder: (bytes, _) => InkWell(
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (ctx) => Dialog(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: InteractiveViewer(
+                            maxScale: 5,
+                            child: Image.memory(bytes),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Schließen'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                child: SizedBox(
+                  height: 150,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.memory(bytes, fit: BoxFit.contain),
+                      const Positioned(
+                        right: 4,
+                        bottom: 4,
+                        child: Icon(Icons.zoom_in_rounded, color: teal),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (d['status'] == 'uploaded')
+          ActionButton(
+            label: 'Text lesen lassen',
+            onPressed: () async {
+              await widget.state.api.job('/materials/${d['id']}/extract');
+              widget.onRefresh();
+            },
+          )
+        else if (d['status'] == 'unreadable')
+          const Notice(
+            'Das Foto ist nicht lesbar. Nimm die Seite bitte noch einmal auf.',
+            warning: true,
+          )
+        else
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${subject.text} · ${topic.text}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (synthetic) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Beispielseite',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Text(
+                  content.text,
+                  style: const TextStyle(fontSize: 15, height: 1.5),
+                  maxLines: longText ? 7 : null,
+                  overflow: longText
+                      ? TextOverflow.ellipsis
+                      : TextOverflow.clip,
+                ),
+                if (longText)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Ganzen Text lesen'),
+                    children: [
+                      Text(content.text, style: const TextStyle(height: 1.5)),
+                    ],
+                  ),
+                if (homework.text.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Notierte Hausaufgaben',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  Text(homework.text),
+                ],
+                if (canConfirm && !synthetic)
+                  TextButton.icon(
+                    onPressed: () => setState(() => editing = !editing),
+                    icon: Icon(
+                      editing ? Icons.close_rounded : Icons.edit_outlined,
+                      size: 18,
+                    ),
+                    label: Text(
+                      editing ? 'Korrektur schließen' : 'Etwas verbessern',
+                    ),
+                  ),
+                if (editing)
+                  for (final field in [
+                    (subject, 'Fach', 1),
+                    (topic, 'Thema', 1),
+                    (content, 'Text auf der Seite', 6),
+                    (homework, 'Notierte Hausaufgaben', 3),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TextField(
+                        controller: field.$1,
+                        maxLines: field.$3,
+                        decoration: InputDecoration(
+                          labelText: field.$2,
+                          alignLabelWithHint: true,
+                        ),
+                      ),
+                    ),
+                if (canConfirm) ...[
+                  const SizedBox(height: 16),
+                  if (uncertainties.isNotEmpty) ...[
+                    const Text(
+                      'Hier bitte genau hinschauen:',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    for (var i = 0; i < uncertainties.length; i++)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(
+                          '${uncertainties[i]}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        value: checkedUncertainties.contains(i),
+                        onChanged: (value) => setState(() {
+                          if (value == true) {
+                            checkedUncertainties.add(i);
+                          } else {
+                            checkedUncertainties.remove(i);
+                          }
+                        }),
+                      ),
+                  ] else
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Ich habe die Seite geprüft.'),
+                      value: checked,
+                      onChanged: (value) =>
+                          setState(() => checked = value ?? false),
+                    ),
+                  const SizedBox(height: 10),
+                  ActionButton(
+                    label: 'Stimmt, weiter',
+                    icon: Icons.check_rounded,
+                    onPressed: confirmPage,
+                  ),
+                ] else if (confirmed) ...[
+                  const SizedBox(height: 14),
+                  const Tag('Seite geprüft'),
+                ],
+              ],
+            ),
+          ),
+        if (confirmed && widget.showUnitAction) ...[
+          const SizedBox(height: 20),
+          ActionButton(
+            label: 'Jetzt lernen',
+            icon: Icons.play_arrow_rounded,
+            onPressed: () async {
+              final result = await widget.state.api.job(
+                '/children/${d['child_id']}/units',
+                {'material_id': d['id']},
+              );
+              await widget.state.api.post('/units/${result['unit_id']}/start');
+              if (context.mounted) {
+                openRoute(context, '/unit/${result['unit_id']}');
+              }
+            },
+          ),
+        ],
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
@@ -9,272 +10,274 @@ class LandingScreen extends StatelessWidget {
   final AppState state;
   const LandingScreen(this.state, {super.key});
   @override
-  Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width > 850;
-    return Scaffold(
-      body: SelectionArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1240),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: wide ? 48 : 22,
-                  vertical: 28,
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 980;
+          final hero = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Tag('LERNEN MIT RÜCKENWIND'),
+              const SizedBox(height: 24),
+              Text(
+                'Nach der Schule.\nMit Plan weiter.',
+                style: TextStyle(
+                  fontSize: wide ? 64 : 42,
+                  color: ink,
+                  height: 1.06,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -2.3,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: brand(),
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => context.go(
-                            state.user == null ? '/login' : '/app',
-                          ),
-                          child: Text(
-                            state.user == null ? 'Anmelden' : 'Mein Lernraum',
-                          ),
-                        ),
-                      ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Heftfotos rein. Stoff verstehen. Mit passenden Übungen dranbleiben.',
+                style: TextStyle(fontSize: 19, height: 1.5, color: muted),
+              ),
+              const SizedBox(height: 30),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => context.go('/register'),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Elternkonto erstellen'),
+                  ),
+                  ActionButton(
+                    label: 'Demo ausprobieren',
+                    secondary: true,
+                    onPressed: () async {
+                      await state.accept(await state.api.post('/demo'));
+                      if (context.mounted) context.go('/app');
+                    },
+                  ),
+                ],
+              ),
+            ],
+          );
+          final flow = Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF111C34), teal],
+              ),
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: electric,
+                  size: 32,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Ein klarer nächster Schritt.',
+                  style: TextStyle(
+                    fontSize: 29,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                for (final item in [
+                  (
+                    Icons.document_scanner_rounded,
+                    '01',
+                    'Stoff sammeln',
+                    'Die Heftseiten von heute.',
+                  ),
+                  (
+                    Icons.lightbulb_outline_rounded,
+                    '02',
+                    'Verstehen & üben',
+                    'Mit Hilfe, wenn es hakt.',
+                  ),
+                  (
+                    Icons.check_circle_outline_rounded,
+                    '03',
+                    'Wissen festigen',
+                    'Neue Aufgaben. Später wiederholen.',
+                  ),
+                ])
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .09),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: .08),
+                      ),
                     ),
-                    SizedBox(height: wide ? 90 : 50),
-                    Wrap(
-                      spacing: 60,
-                      runSpacing: 36,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    child: Row(
                       children: [
-                        SizedBox(
-                          width: wide ? 520 : double.infinity,
+                        Icon(item.$1, color: Colors.white, size: 24),
+                        const SizedBox(width: 16),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Tag('MEHR LEICHTIGKEIT IM FAMILIENALLTAG'),
-                              const SizedBox(height: 24),
                               Text(
-                                'Ein guter Lernweg.\nFür dein Kind.\nFür euch als Familie.',
-                                style: TextStyle(
-                                  fontSize: wide ? 53 : 36,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.12,
-                                  color: ink,
-                                  letterSpacing: -1.2,
+                                item.$3,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 24),
-                              const Text(
-                                'Vom aktuellen Schulstoff zur nächsten kleinen Lerneinheit. Mit verständlichen Erklärungen, passenden Übungen und einem klaren Überblick für Eltern.',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  height: 1.7,
-                                  color: muted,
+                              const SizedBox(height: 4),
+                              Text(
+                                item.$4,
+                                style: const TextStyle(
+                                  color: Color(0xFFC7CBED),
+                                  fontSize: 12,
                                 ),
-                              ),
-                              const SizedBox(height: 28),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                children: [
-                                  ActionButton(
-                                    label: 'Synthetisch ausprobieren',
-                                    icon: Icons.arrow_forward_rounded,
-                                    onPressed: () async {
-                                      await state.accept(
-                                        await state.api.post('/demo'),
-                                      );
-                                      if (context.mounted) context.go('/app');
-                                    },
-                                  ),
-                                  OutlinedButton(
-                                    onPressed: () => context.go('/register'),
-                                    child: const Text('Elternkonto erstellen'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Entwicklungsstand · Demo ohne echte Kinderdaten',
-                                style: TextStyle(fontSize: 12, color: muted),
                               ),
                             ],
                           ),
                         ),
-                        SizedBox(
-                          width: wide ? 440 : double.infinity,
-                          child: Container(
-                            padding: const EdgeInsets.all(28),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE5EEDF),
-                              borderRadius: BorderRadius.circular(34),
+                        Text(
+                          item.$2,
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+          return SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1240),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: wide ? 44 : 22,
+                    vertical: 26,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: brand(),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
+                          ),
+                          TextButton(
+                            onPressed: () => context.go(
+                              state.user == null ? '/login' : '/app',
+                            ),
+                            child: Text(
+                              state.user == null ? 'Anmelden' : 'Mein Lernraum',
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: wide ? 80 : 44),
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(flex: 6, child: hero),
+                            const SizedBox(width: 64),
+                            Expanded(flex: 5, child: flow),
+                          ],
+                        )
+                      else ...[
+                        hero,
+                        const SizedBox(height: 36),
+                        flow,
+                      ],
+                      const SizedBox(height: 42),
+                      Wrap(
+                        spacing: 20,
+                        runSpacing: 20,
+                        children: [
+                          for (final item in [
+                            (
+                              Icons.today_rounded,
+                              'Ein Plan für heute',
+                              'Überschaubare Einheiten statt Aufgabenberge.',
+                            ),
+                            (
+                              Icons.support_agent_rounded,
+                              'Hilfe im richtigen Moment',
+                              'Verständliche Erklärungen und passende Hinweise.',
+                            ),
+                            (
+                              Icons.family_restroom_rounded,
+                              'Eltern bleiben im Bild',
+                              'Was lief gut? Wo braucht dein Kind Unterstützung?',
+                            ),
+                          ])
+                            SizedBox(
+                              width: wide
+                                  ? (constraints.maxWidth.clamp(0, 1240) -
+                                            128) /
+                                        3
+                                  : double.infinity,
+                              child: Panel(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.wb_sunny_outlined, color: teal),
-                                    SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'SO KANN DEIN LERNTAG AUSSEHEN',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 1.1,
-                                        ),
+                                    Icon(item.$1, color: teal),
+                                    const SizedBox(height: 18),
+                                    Text(
+                                      item.$2,
+                                      style: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w700,
                                       ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      item.$3,
+                                      style: const TextStyle(color: muted),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 24),
-                                const Text(
-                                  'Kleine Schritte.\nEin gutes Gefühl.',
-                                  style: TextStyle(
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w800,
-                                    color: ink,
-                                    height: 1.25,
-                                  ),
-                                ),
-                                const SizedBox(height: 25),
-                                for (final item in [
-                                  (
-                                    Icons.document_scanner_outlined,
-                                    'Dein Stoff',
-                                    'Material prüfen & bestätigen',
-                                  ),
-                                  (
-                                    Icons.auto_stories_outlined,
-                                    'Dein nächster Schritt',
-                                    'Eine überschaubare Einheit',
-                                  ),
-                                  (
-                                    Icons.family_restroom_rounded,
-                                    'Gemeinsam dranbleiben',
-                                    'Eltern sehen, wobei Hilfe gut tut',
-                                  ),
-                                ])
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 14),
-                                    child: Panel(
-                                      padding: const EdgeInsets.all(18),
-                                      child: Row(
-                                        children: [
-                                          Icon(item.$1, color: teal),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item.$2,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  item.$3,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: muted,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                const Text(
-                                  'Beispielhafte Darstellung · keine gemessenen Lernergebnisse',
-                                  style: TextStyle(fontSize: 10, color: muted),
-                                ),
-                              ],
+                              ),
                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+                      if (kIsWeb) AndroidDownload(state.api),
+                      const SizedBox(height: 24),
+                      Wrap(
+                        spacing: 12,
+                        children: [
+                          TextButton(
+                            onPressed: () => openRoute(context, '/privacy'),
+                            child: const Text('Datenschutz'),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 55),
-                    const Notice(
-                      'Im Testraum werden künstliche Materialien verwendet. Das feste Beispiel funktioniert ohne KI; der gesonderte KI-Test nutzt einen ausdrücklich kostenlosen Anbieter. Echte Lerninhalte benötigen einen freigegebenen und technisch geeigneten KI-Dienst. Ist dieser nicht verfügbar, wird die Verarbeitung angehalten.',
-                    ),
-                    const SizedBox(height: 28),
-                    AndroidDownload(state.api),
-                    const SizedBox(height: 28),
-                    Wrap(
-                      spacing: 32,
-                      runSpacing: 22,
-                      children: [
-                        for (final item in [
-                          (
-                            'Eigene Zugänge',
-                            'Eltern und Kinder melden sich unabhängig voneinander an.',
+                          TextButton(
+                            onPressed: () => openRoute(context, '/about'),
+                            child: const Text('Über SCHULPILOT'),
                           ),
-                          (
-                            'Klarer Lernablauf',
-                            'Stoff bestätigen, verstehen, üben und gezielt wiederholen.',
-                          ),
-                          (
-                            'Nachvollziehbarer Einblick',
-                            'Antworten, Hinweise und Hilfewünsche bleiben in der Familie.',
-                          ),
-                        ])
-                          SizedBox(
-                            width: wide ? 330 : double.infinity,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.$1,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  item.$2,
-                                  style: const TextStyle(color: muted),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 44),
-                    Wrap(
-                      spacing: 16,
-                      children: [
-                        TextButton(
-                          onPressed: () => openRoute(context, '/privacy'),
-                          child: const Text('Datenschutz & Transparenz'),
-                        ),
-                        TextButton(
-                          onPressed: () => openRoute(context, '/about'),
-                          child: const Text('Projektstatus & Kontakt'),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
 }
 
 class AuthScreen extends StatefulWidget {
@@ -296,9 +299,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final password = TextEditingController();
   final name = TextEditingController();
   final family = TextEditingController();
-  final code = TextEditingController();
   final token = TextEditingController();
-  bool consent = false;
+  bool consent = false, passwordVisible = false;
   String? result;
   String? error;
   @override
@@ -333,7 +335,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
-    for (final c in [username, password, name, family, code, token]) {
+    for (final c in [username, password, name, family, token]) {
       c.dispose();
     }
     super.dispose();
@@ -343,12 +345,12 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final mode = widget.mode;
     final title = switch (mode) {
-      'register' => 'Ein Elternkonto für eure Familie',
+      'register' => 'Euer Start mit Schulpilot',
       'recovery' => 'Passwort vergessen?',
       'reset' => 'Neues Elternpasswort',
       'verify' => 'E-Mail bestätigen',
       'invite' => 'Zur Familie dazukommen',
-      _ => 'Willkommen zurück.',
+      _ => 'Willkommen zurück',
     };
     return Scaffold(
       appBar: AppBar(
@@ -371,10 +373,10 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 12),
                   Text(
                     mode == 'login'
-                        ? 'Eltern: E-Mail-Adresse. Kinder: eigener Benutzername.'
+                        ? 'Mit deinem Benutzernamen und Passwort.'
                         : mode == 'register'
-                        ? 'Die öffentliche Registrierung erstellt ausschließlich ein Elternkonto. Kinderzugänge werden später von berechtigten Eltern angelegt.'
-                        : 'Links sind zeitlich begrenzt und nur einmal verwendbar.',
+                        ? 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.'
+                        : 'Übernimm den Code aus deiner E-Mail.',
                     style: const TextStyle(color: muted),
                   ),
                   const SizedBox(height: 24),
@@ -392,7 +394,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           : TextInputType.emailAddress,
                       decoration: InputDecoration(
                         labelText: mode == 'login'
-                            ? 'E-Mail oder Kinder-Benutzername'
+                            ? 'E-Mail oder Benutzername'
                             : 'E-Mail-Adresse',
                       ),
                     ),
@@ -424,11 +426,26 @@ class _AuthScreenState extends State<AuthScreen> {
                   ].contains(mode)) ...[
                     TextField(
                       controller: password,
-                      obscureText: true,
+                      obscureText: !passwordVisible,
+                      enableSuggestions: false,
+                      autocorrect: false,
                       autofillHints: mode == 'login'
                           ? [AutofillHints.password]
                           : [AutofillHints.newPassword],
                       decoration: InputDecoration(
+                        suffixIcon: IconButton(
+                          tooltip: passwordVisible
+                              ? 'Passwort verbergen'
+                              : 'Passwort anzeigen',
+                          icon: Icon(
+                            passwordVisible
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () => setState(
+                            () => passwordVisible = !passwordVisible,
+                          ),
+                        ),
                         labelText: mode == 'invite'
                             ? 'Bestehendes oder neues Elternpasswort'
                             : mode == 'login'
@@ -437,25 +454,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                  ],
-                  if (mode == 'login') ...[
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      title: const Text(
-                        'Administrator-Zweitfaktor',
-                        style: TextStyle(fontSize: 12, color: muted),
-                      ),
-                      children: [
-                        TextField(
-                          controller: code,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'TOTP-Code',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
                   ],
                   if (['reset', 'verify', 'invite'].contains(mode)) ...[
                     TextField(
@@ -499,7 +497,6 @@ class _AuthScreenState extends State<AuthScreen> {
                           await widget.state.login(
                             username.text.trim(),
                             password.text,
-                            totp: code.text.trim(),
                           );
                           if (context.mounted) context.go('/app');
                           return;
@@ -564,10 +561,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       onPressed: () => context.go('/login'),
                       child: const Text('Zur Anmeldung'),
                     ),
-                  if (mode == 'register' || mode == 'recovery')
-                    const Notice(
-                      'Solange kein E-Mail-Dienst eingerichtet ist, meldet der Server die fehlende Voraussetzung ausdrücklich. Es wird kein Versand vorgetäuscht.',
-                    ),
                 ],
               ),
             ),
@@ -603,7 +596,7 @@ class InformationScreen extends StatelessWidget {
                   Text(
                     kind == 'privacy'
                         ? 'Datenschutz & Transparenz'
-                        : 'SCHULPILOT · Entwicklungsstand',
+                        : 'Über Schulpilot',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   FutureBuilder<Json>(
@@ -619,13 +612,7 @@ class InformationScreen extends StatelessWidget {
                             Text(
                               data['complete'] == true
                                   ? 'Verantwortlicher Betreiber\n${data['operator']}\n${data['address']}\nSupport: ${data['support_email']}'
-                                  : 'Die vollständigen Betreiber- und Kontaktangaben für den kommerziellen Start sind noch nicht hinterlegt.',
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              data['operator_data_approval'] == true
-                                  ? 'Die Anbieter- und Datenschutzfreigabe des Betreibers liegt vor. Ob ein KI-Dienst tatsächlich verfügbar ist, hängt zusätzlich von seiner technischen Konfiguration ab.'
-                                  : 'Echte Unterrichtsmaterialien benötigen eine dokumentierte Betreiberfreigabe.',
+                                  : 'Betreiber- und Kontaktangaben werden ergänzt.',
                             ),
                           ],
                         ),
@@ -648,19 +635,13 @@ Sitzungen sind widerrufbar. Eltern können Kinderkonten und ihr eigenes Konto l�
 Aufbewahrung im Pilot: Materialien, Einheiten, Antworten, Aktivitäten und Nachrichten höchstens 365 Tage; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere 7 Tage; tägliche Backups 14 Tage. Backups müssen vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen werden. Abrechnung und Betriebsprotokolle enthalten keine Fotos oder vollständigen Kinderantworten.
 
 Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Lernmaterialien. Aktive Lernzeit bleibt eine Näherung. Eine einzelne richtige Antwort begründet keine sichere Beherrschung; fehlende Nutzung keine Aussage über Verständnis.'''
-                        : '''Version 0.1.0 · Technischer Pilot
+                        : '''Schulpilot begleitet deinen Lernalltag: vom Foto deiner Heftseiten über Erklärungen und Übungen bis zur passenden Wiederholung.
 
-SCHULPILOT verbindet einen Flutter-Client für Web und Android mit einer eigenen Backend-API. Ein eigener Testraum enthält ausschließlich künstliche Materialien. Die Verfügbarkeit echter KI-Verarbeitung hängt zusätzlich von der freigegebenen Anbieterkonfiguration ab.
+Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und können helfen, wenn es hakt.
 
-Registrierung, Verifikation, Einladungen und Wiederherstellung nutzen den eingerichteten verschlüsselten Gmail-SMTP-Versand. Diese Abläufe wurden über die öffentliche HTTPS-Adresse mit synthetischen Testkonten und tatsächlichem E-Mail-Eingang geprüft.
+Die Demo enthält vorbereitete Beispiele. In deinem eigenen Konto übst du mit deinem Unterrichtsmaterial und KI-Unterstützung.
 
-OpenAI und OpenRouter sind als serverseitige Adapter implementiert. Für das feste künstliche KI-Testblatt wurden kostenlose OpenRouter-Bild- und Schemaaufrufe tatsächlich durchgeführt. Die Namen der verwendeten Modelle werden angezeigt. Für echte Lerninhalte werden die dokumentierte Betreiberfreigabe und die technische Eignung des konkret ausgewählten Endpunkts getrennt geprüft. Codex CLI bleibt experimentell und benötigt einen separat isolierten Worker sowie eine Nutzungsfreigabe.
-
-Erinnerungen erscheinen gebündelt innerhalb der App. Push für Android und Web ist mit Geräte-Opt-in, Sitzungswiderruf, neutralen Nachrichtentexten und Ruhezeiten implementiert. Ohne freigegebenes Firebase-Projekt und Dienstkonto bleibt der Versand gesperrt; eine echte Push-Zustellung wurde noch nicht nachgewiesen. Eine signierte Android-App-Bundle-Datei ist gebaut und geprüft; die Store-Einrichtung ist dokumentiert. Eine Play-Veröffentlichung und ein Zahlungscheckout sind noch nicht erfolgt.
-
-Vor einem kommerziellen Start mit echten Daten fehlen außerdem die veröffentlichten Angaben zum verantwortlichen Betreiber, Kontakt, Impressum, abschließende rechtliche Datenschutzhinweise und die Abnahme des Betriebs. Diese Testseite enthält keine erfundenen Betreiberangaben.
-
-Quellcode und technische Dokumentation: github.com/meinzeug/schulpilot''',
+Version 0.1.0''',
                     style: const TextStyle(fontSize: 15, height: 1.8),
                   ),
                 ],
