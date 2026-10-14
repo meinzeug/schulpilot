@@ -35,6 +35,8 @@ Explizite Brucherweiterungen mit fest genanntem Faktor werden zusätzlich auf di
 
 Der Free-Standard fordert kurze Einheiten mit zwei Aufgaben an. Seine Ausgabeschemas begrenzen Aufgaben-, Hinweis- und Textlängen bereits beim Anbieter. Neue Aufgaben verwenden Auswahl, Lückentext oder kurze Eingabe; der vorhandene Zuordnungsrenderer bleibt für ältere beziehungsweise andere validierte Einheiten erhalten. Der ausführliche Reasoning-Modus blieb in Versuchen mehrfach ohne genügend Budget für die fertige Ausgabe und ist im kompakten Profil abgeschaltet. Die lokalen Versuche des abschließenden Profils validierten einzelne Einheit und Tagespaket jeweils in rund 17 Sekunden. Die ausführbaren End-to-End-Prüfungen bleiben davon getrennt.
 
+Die Lernbegleitung verwendet denselben privaten Free-Endpunkt für echte Antwortkontrolle und Anschlussübungen. Zusammenfassung und Fortschritt werden aus gespeicherten Fakten berechnet. Bereits bekannte Lernziele werden serverseitig erhalten und im Modelloutput nicht erneut erzeugt. Das verkürzt die strukturierte Ausgabe und verhindert geänderte Zielkopien. [Ablauf und Grenzen](COACHING.md).
+
 ## Regulärer End-to-End-Test
 
 ```bash

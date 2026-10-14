@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'coaching_panel.dart';
 import 'dashboard.dart';
 import 'ui.dart';
 
@@ -19,6 +20,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Json? unit;
   Object? error;
   Timer? timer;
+  Timer? coachingPoll;
+  bool loading = false;
   DateTime lastInteraction = DateTime.now();
   bool visible = true;
   final text = TextEditingController();
@@ -38,9 +41,26 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   @override
+  void didUpdateWidget(covariant UnitScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.unitId != widget.unitId) {
+      coachingPoll?.cancel();
+      coachingPoll = null;
+      unit = null;
+      error = null;
+      loading = false;
+      feedback = explanation = hint = questionId = choice = null;
+      matches = {};
+      text.clear();
+      load();
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     timer?.cancel();
+    coachingPoll?.cancel();
     text.dispose();
     super.dispose();
   }
@@ -72,11 +92,30 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> load() async {
+    if (loading) return;
+    loading = true;
+    final requestedId = widget.unitId;
     try {
-      final data = await state.api.get('/units/${widget.unitId}');
-      if (mounted) setState(() => unit = data);
+      final data = await state.api.get('/units/$requestedId');
+      if (mounted && requestedId == widget.unitId) {
+        setState(() => unit = data);
+        watchCoaching();
+      }
     } catch (e) {
-      if (mounted) setState(() => error = e);
+      if (mounted && requestedId == widget.unitId) setState(() => error = e);
+    } finally {
+      if (requestedId == widget.unitId) loading = false;
+    }
+  }
+
+  void watchCoaching() {
+    if (unit?['coaching']?['status'] == 'pending') {
+      coachingPoll ??= Timer.periodic(const Duration(seconds: 3), (_) {
+        if (visible) load();
+      });
+    } else {
+      coachingPoll?.cancel();
+      coachingPoll = null;
     }
   }
 
@@ -148,6 +187,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 20),
+          if (u['status'] == 'completed') ...[
+            CoachingPanel(state: state, unit: u, refresh: load),
+            const SizedBox(height: 20),
+          ],
           for (final q in questions)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
@@ -213,7 +256,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Deine Antworten und genutzten Hinweise sind gespeichert. Eine spätere Wiederholung hilft dir, das Wissen zu festigen.',
+                  'Deine Antworten und genutzten Hinweise sind gespeichert. Schulpilot begleitet dich beim nächsten Lernschritt.',
                 ),
                 const SizedBox(height: 22),
                 FilledButton.icon(
@@ -225,13 +268,19 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
           ),
           const SizedBox(height: 20),
+          CoachingPanel(state: state, unit: u, refresh: load),
+          const SizedBox(height: 20),
           if (feedback != null) Notice(feedback!),
           if (explanation != null) Panel(child: Text(explanation!)),
           const SizedBox(height: 20),
           const Notice(
-            'Zeit für eine Pause. Es gibt keine verlorenen Punkte, wenn du später weitermachst.',
+            'Pausen gehören zum Lernen. Deine Lernfolge bleibt gespeichert, wenn du später weitermachst.',
             icon: Icons.wb_sunny_outlined,
           ),
+          messages(context, state, {
+            'child': {'id': state.user!['child_id']},
+            'messages': <dynamic>[],
+          }, () {}),
           for (final q in questions)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -349,7 +398,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Tag(
-              completed == questions.length - 1
+              ['check', 'spaced_review'].contains(u['round_kind'])
+                  ? 'Selbstständig abrufen · neue Aufgaben'
+                  : completed == questions.length - 1
                   ? '3 · Zum Schluss selbst erinnern'
                   : '2 · Üben',
             ),
@@ -552,6 +603,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                               explanation = data['explanation'];
                             });
                             if (data['unit']['status'] == 'completed') {
+                              watchCoaching();
                               state.refreshState();
                             }
                           }

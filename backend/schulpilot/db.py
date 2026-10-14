@@ -234,6 +234,27 @@ class LearningUnit(Base):
     break_until = Column(Integer)
     heartbeat = Column(Integer)
     review_of = Column(ForeignKey("learning_units.id", ondelete="SET NULL"))
+    learning_root_id = Column(ForeignKey("learning_units.id", ondelete="SET NULL"), index=True)
+    followup_of = Column(ForeignKey("learning_units.id", ondelete="SET NULL"))
+    round_kind = Column(String(20), default="learning", server_default="learning", nullable=False)
+    not_before = Column(String(10))
+    goal_revision = Column(Integer)
+
+
+class UnitCoaching(Base):
+    __tablename__ = "unit_coaching"
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), primary_key=True)
+    job_id = Column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    status = Column(String(20), default="pending", nullable=False)
+    decision = Column(String(24), default="", nullable=False)
+    reason = Column(String(500), default="", nullable=False)
+    report = Column(JSON, default=dict, nullable=False)
+    next_unit_id = Column(ForeignKey("learning_units.id", ondelete="SET NULL"))
+    next_review = Column(String(10))
+    request_count = Column(Integer, default=0, nullable=False)
+    provider = Column(String(20), default="", nullable=False)
+    model = Column(String(160), default="", nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
 
 
 class UnitSource(Base):

@@ -342,6 +342,10 @@ def create_unit(
         previous = db.get(LearningUnit, data.review_of)
         if not previous or previous.child_id != child.id or previous.status != "completed":
             raise HTTPException(404, "Abgeschlossene Lerneinheit nicht gefunden.")
+        from .coaching import root_and_units
+
+        if any(u.status != "completed" for u in root_and_units(db, previous)[1]):
+            raise HTTPException(409, "Für diese Lernfolge steht bereits eine Runde bereit. Bitte dort fortsetzen.")
         material_id = previous.material_id
         for source_id in db.scalars(
             select(UnitSource.material_id)
@@ -392,6 +396,13 @@ def create_unit(
     elif not data.assignment_id:
         raise HTTPException(422, "Bitte bestätigtes Material oder einen Elternauftrag auswählen.")
     payload = {"material_id": material_id, "assignment_id": data.assignment_id, "review_of": data.review_of}
+    if data.review_of:
+        from .coaching import progress
+
+        payload["learning_root_id"] = previous.learning_root_id or previous.id
+        payload["not_before"] = progress(db, previous)["next_review"]
+        # Continue the original binding goal; the child cannot replace it.
+        payload["assignment_id"] = previous.assignment_id
     if review_sources:
         payload["sources"] = review_sources
     return enqueue(db, p, child, "unit", payload, idempotency)

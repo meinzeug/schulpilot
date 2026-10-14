@@ -335,11 +335,33 @@ def test_parallel_package_requests_reserve_only_one_call(api, household, monkeyp
 
 
 def test_review_reuses_all_confirmed_pages_of_the_original_package(api, household, monkeypatch):
+    from schulpilot import coaching, worker
+
     _, child = household
     day, calls = prepare_day(api, child, monkeypatch, subjects=("Mathematik", "Mathematik"))
     result = finish_job(api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "original"}))
     unit_id = result["result"]["unit_ids"][0]
     unit = api.get(f"/api/units/{unit_id}").json()
+    original_provider = worker.request_provider
+
+    def coach_provider(config, function, payload):
+        with DB() as db:
+            item = db.scalar(select(coaching.UnitCoaching).where(coaching.UnitCoaching.status == "pending"))
+            return Result(
+                coaching.synthetic_report(db, db.get(LearningUnit, item.unit_id), payload["next_action"]), cost_micros=0
+            )
+
+    def review_provider(config, function, payload, image_bytes=None, **kwargs):
+        if function == "unit" and payload.get("review"):
+            calls.append((function, payload))
+            with DB() as db:
+                return Result(
+                    coaching.synthetic_report(db, db.get(LearningUnit, unit_id), "check")["next_unit"], cost_micros=0
+                )
+        return original_provider(config, function, payload, image_bytes, **kwargs)
+
+    monkeypatch.setattr(coaching, "request_provider", coach_provider)
+    monkeypatch.setattr(worker, "request_provider", review_provider)
     with TestClient(app, headers=HEADERS) as kid:
         login = kid.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"}).json()
         kid.headers["Authorization"] = "Bearer " + login["token"]
@@ -352,6 +374,20 @@ def test_review_reuses_all_confirmed_pages_of_the_original_package(api, househol
                 == 200
             )
         assert kid.get(f"/api/units/{unit_id}").json()["status"] == "completed"
+        with DB() as db:
+            coaching_job = claim(db)
+        process(coaching_job)
+        check_id = kid.get(f"/api/units/{unit_id}").json()["coaching"]["next_unit_id"]
+        assert kid.post(f"/api/units/{check_id}/start").status_code == 200
+        check = api.get(f"/api/units/{check_id}").json()
+        for q in check["questions"]:
+            assert (
+                kid.post(f"/api/units/{check_id}/questions/{q['id']}/answer", json={"answer": q["answer"]}).status_code
+                == 200
+            )
+        with DB() as db:
+            coaching_job = claim(db)
+        process(coaching_job)
         result = finish_job(
             kid,
             kid.post(

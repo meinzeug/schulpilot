@@ -26,6 +26,7 @@ from .db import (
     SchoolDay,
     Session,
     Token,
+    UnitCoaching,
     UnitSource,
     Usage,
     UsageBucket,
@@ -410,6 +411,10 @@ def export_child(db, child):
     result["unit_sources"] = [
         {c.name: getattr(row, c.name) for c in UnitSource.__table__.columns}
         for row in db.scalars(select(UnitSource).where(UnitSource.unit_id.in_(units)))
+    ]
+    result["unit_coaching"] = [
+        {c.name: getattr(row, c.name) for c in UnitCoaching.__table__.columns}
+        for row in db.scalars(select(UnitCoaching).where(UnitCoaching.unit_id.in_(units)))
     ]
     return result
 

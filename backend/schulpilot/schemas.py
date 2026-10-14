@@ -230,6 +230,37 @@ class PackageOutput(Strict):
     units: list[PackageUnitOutput] = Field(min_length=1, max_length=3)
 
 
+class LearningGoal(Strict):
+    id: Literal["g1", "g2", "g3", "g4"]
+    label: str = Field(min_length=3, max_length=180)
+    source_excerpt: str = Field(min_length=3, max_length=400)
+
+
+class PracticeQuestion(Question):
+    learning_goal_id: Literal["g1", "g2", "g3", "g4"]
+
+
+class PracticeUnitOutput(UnitOutput):
+    questions: list[PracticeQuestion] = Field(min_length=2, max_length=2)
+
+
+class QuestionReview(Strict):
+    question_id: str = Field(min_length=1, max_length=60)
+    learning_goal_id: Literal["g1", "g2", "g3", "g4"]
+    outcome: Literal["correct", "incorrect", "uncertain"]
+    feedback: str = Field(min_length=1, max_length=700)
+
+
+class CoachingReviewOutput(Strict):
+    explanation: str = Field(min_length=1, max_length=1800)
+    question_reviews: list[QuestionReview] = Field(min_length=1, max_length=8)
+    next_unit: PracticeUnitOutput | None
+
+
+class CoachingOutput(CoachingReviewOutput):
+    learning_goals: list[LearningGoal] = Field(min_length=1, max_length=4)
+
+
 class UnitCreate(Strict):
     material_id: str | None = None
     assignment_id: str | None = None

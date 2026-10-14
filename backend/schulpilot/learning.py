@@ -90,7 +90,9 @@ def mastery_data(m):
     }
 
 
-def unit_data(db, unit, include_answers=False):
+def unit_data(db, unit, include_answers=False, *, include_progress=True):
+    from . import coaching
+
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
     questions = []
@@ -115,7 +117,9 @@ def unit_data(db, unit, include_answers=False):
         "id": unit.id,
         "subject": unit.subject,
         "topic": unit.topic,
-        "explanation": unit.explanation,
+        "explanation": unit.explanation
+        if include_answers or unit.round_kind not in coaching.CHECK_KINDS or unit.status == "completed"
+        else "",
         "questions": questions,
         "status": unit.status,
         "synthetic": unit.synthetic,
@@ -130,6 +134,14 @@ def unit_data(db, unit, include_answers=False):
         or ([unit.material_id] if unit.material_id else []),
         "assignment_id": unit.assignment_id,
         "review_of": unit.review_of,
+        "learning_root_id": unit.learning_root_id,
+        "followup_of": unit.followup_of,
+        "round_kind": unit.round_kind,
+        "not_before": unit.not_before,
+        "coaching": coaching.view(db, unit),
+        "learning_progress": coaching.progress(db, unit)
+        if include_progress and (unit.status == "completed" or unit.learning_root_id)
+        else None,
         "created": unit.created,
         "completed": unit.completed,
         "provider": unit.provider,
@@ -137,7 +149,9 @@ def unit_data(db, unit, include_answers=False):
     }
 
 
-def summary(db, child, days):
+def summary(db, child, days, *, learning_paths=None):
+    from .coaching import paths
+
     current = datetime.now(ZoneInfo(s.Preferences(**child.preferences).timezone))
     since = int((current.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)).timestamp())
     units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id)))
@@ -157,8 +171,17 @@ def summary(db, child, days):
     )
     uncertain = sum(a.outcome == "uncertain" for a in attempts)
     topics = list(dict.fromkeys(f"{u.subject}: {u.topic}" for u in recent))
+    coach_support = [
+        p for p in (paths(db, child.id) if learning_paths is None else learning_paths) if p["needs_parent"]
+    ]
     if unresolved:
         support = f"Ja – {len(unresolved)} offener Hilfewunsch. Bitte gemeinsam das Anliegen ansehen."
+    elif coach_support:
+        support = (
+            "Bitte gemeinsam unterstützen bei: "
+            + ", ".join(p["topic"] for p in coach_support[:3])
+            + ". Die gespeicherte Lernbegleitung zeigt den Anlass."
+        )
     elif uncertain:
         support = f"Bitte {uncertain} nicht sicher bewertbare Antwort(en) gemeinsam ansehen."
     elif any(a.outcome == "incorrect" for a in attempts):
@@ -189,12 +212,15 @@ def summary(db, child, days):
         "topics": topics,
         "support": support,
         "help_requests": len(unresolved),
+        "coaching_support_topics": [p["topic"] for p in coach_support],
         "recurring_difficulties": [m.topic for m in difficulties if m.difficulties >= 2],
         "notice": "Zeitmessung ist eine Näherung. Eine richtige Antwort beweist noch keine sichere Beherrschung.",
     }
 
 
-def plan(db, child):
+def plan(db, child, *, learning_paths=None):
+    from .coaching import paths
+
     prefs = s.Preferences(**child.preferences)
     today = local_day(child)
     units = list(
@@ -268,7 +294,26 @@ def plan(db, child):
                 else "not_started",
             }
         )
+    if learning_paths is None:
+        learning_paths = paths(db, child.id)
+    for path in learning_paths:
+        if path["next_unit_id"] or not path["next_review"] or path["next_review"] > today.isoformat():
+            continue
+        candidates.append(
+            {
+                "kind": "review",
+                "id": path["latest_unit_id"],
+                "learning_root_id": path["root_unit_id"],
+                "topic": path["topic"],
+                "subject": path["subject"],
+                "mandatory": False,
+                "status": "not_started",
+                "due": path["next_review"],
+            }
+        )
     for mastery in reviews:
+        if any(p["subject"] == mastery.subject and p["topic"] == mastery.topic for p in learning_paths):
+            continue
         if any(x["topic"] == mastery.topic for x in candidates):
             continue
         old = next((u for u in reversed(units) if u.topic == mastery.topic and u.status == "completed"), None)
@@ -345,7 +390,10 @@ def plan(db, child):
 
 @router.get("/children/{child_id}/overview")
 def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    from .coaching import paths
+
     child = child_access(db, p, child_id)
+    learning_paths = paths(db, child.id)
     days = list(
         db.scalars(
             select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
@@ -362,9 +410,9 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
             }
             for d in days
         ],
-        "plan": plan(db, child),
-        "day_summary": summary(db, child, 1),
-        "week_summary": summary(db, child, 7),
+        "plan": plan(db, child, learning_paths=learning_paths),
+        "day_summary": summary(db, child, 1, learning_paths=learning_paths),
+        "week_summary": summary(db, child, 7, learning_paths=learning_paths),
         "materials": [
             material_data(m)
             for m in db.scalars(select(Material).where(Material.child_id == child.id).order_by(Material.created.desc()))
@@ -376,12 +424,13 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
             )
         ],
         "units": [
-            unit_data(db, u, include_answers=p.user.role == "parent")
+            unit_data(db, u, include_answers=p.user.role == "parent", include_progress=False)
             for u in db.scalars(
                 select(LearningUnit).where(LearningUnit.child_id == child.id).order_by(LearningUnit.created.desc())
             )
         ],
         "mastery": [mastery_data(m) for m in db.scalars(select(Mastery).where(Mastery.child_id == child.id))],
+        "learning_paths": learning_paths,
         "messages": [
             {
                 "id": m.id,
@@ -503,6 +552,8 @@ def start(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
     unit = get_unit(db, p, unit_id, True, True)
     if unit.status == "completed":
         return unit_data(db, unit)
+    if reason := learning_block(db, unit):
+        raise HTTPException(409, reason)
     child = db.get(Child, unit.child_id)
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
     if assignment and assignment.scheduled_for and assignment.scheduled_for > local_day(child).isoformat():
@@ -647,6 +698,13 @@ def learning_block(db, unit):
     prefs = s.Preferences(**child.preferences)
     if prefs.pause_until and today <= prefs.pause_until:
         return "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
+    if unit.not_before and unit.not_before > today.isoformat():
+        return f"Diese spätere Abrufprobe beginnt frühestens am {unit.not_before}."
+    if unit.learning_root_id or unit.followup_of:
+        from .coaching import continuation_block
+
+        if reason := continuation_block(db, unit, child):
+            return reason
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
     if assignment and assignment.scheduled_for and assignment.scheduled_for > today.isoformat():
         return f"Dieser Lernauftrag beginnt am {assignment.scheduled_for}. Deine Eltern können ihn neu planen."
@@ -707,7 +765,9 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     previous = [a for a in existing if a.question_id == question_id]
     if previous and (previous[-1].outcome in ("correct", "uncertain") or len(previous) >= 3):
         raise HTTPException(409, "Diese Aufgabe wurde bereits abgeschlossen.")
-    hinted = any(
+    hinted = bool(
+        db.scalar(select(Activity.id).where(Activity.unit_id == unit.id, Activity.kind == "explanation"))
+    ) or any(
         e.detail.get("question_id") == question_id
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
     )
@@ -735,6 +795,12 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         # binding goal; a single completed unit cannot establish full mastery.
         record(db, unit.child_id, "unit_completed", {"topic": unit.topic}, unit.id)
     db.commit()
+    if done:
+        from .coaching import schedule
+
+        schedule(unit.id, automatic=True)
+        db.expire_all()
+        unit = db.get(LearningUnit, unit_id)
     text = {
         "correct": "Gut gelöst. Wiederholen hilft dir, das Wissen zu festigen.",
         "incorrect": "Das passt noch nicht. Schau dir den Hinweis an und versuche es noch einmal.",

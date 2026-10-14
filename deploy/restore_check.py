@@ -90,13 +90,13 @@ def main():
             config["DATABASE_URL"] = "postgresql+psycopg://schulpilot@/" + name + "?host=/var/run/postgresql"
             code = """import json,sys
 from sqlalchemy import select,func,text,update
-from schulpilot.db import DB,Family,Child,Material,LearningUnit,Attempt,Session,Token,ProviderConfig
+from schulpilot.db import DB,Family,Child,Material,LearningUnit,Attempt,UnitCoaching,Session,Token,ProviderConfig
 from schulpilot.erasure import verify,reconcile
 from schulpilot.config import settings
 from schulpilot.migrate import upgrade
 upgrade()
 records=[verify(line,settings.master_key) for line in sys.stdin.read().splitlines() if line]
-models=(Family,Child,Material,LearningUnit,Attempt)
+models=(Family,Child,Material,LearningUnit,Attempt,UnitCoaching)
 with DB.begin() as db:
  before={m.__tablename__:db.scalar(select(func.count()).select_from(m)) for m in models}
  paths=reconcile(db,records)

@@ -201,7 +201,7 @@ INSERT INTO provider_config(id,revision,provider,model,emergency_stop,image_capa
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0006"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0007"
         assert db.execute("select openrouter_free_only,openrouter_require_zdr from provider_config").fetchone() == (
             1,
             1,

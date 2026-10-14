@@ -44,6 +44,37 @@ async function tapDialogControl(page, locator) {
   assert(box && box.width > 0 && box.height > 0);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
+async function waitForCoaching(unitId) {
+  for (let poll = 0; poll < 75; poll++) {
+    const response = await child.request.get(url + '/api/units/' + unitId);
+    assert.equal(response.status(), 200);
+    const value = await response.json();
+    if (value.coaching?.status === 'ready') return value;
+    if (['blocked', 'failed'].includes(value.coaching?.status)) {
+      throw new Error('Saved AI review was rejected: ' + value.coaching.reason);
+    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  throw new Error('Saved AI review did not finish within the bounded wait');
+}
+async function answerSavedQuestions(page, questions) {
+  for (const q of questions.filter(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'))) {
+    const submit = page.getByRole('button', {name: 'Antwort prüfen', exact: true});
+    await reveal(page, submit);
+    if (q.type === 'choice') await page.getByRole('button', {name: q.answer}).first().click();
+    if (q.type === 'gap' || q.type === 'short') {
+      const input = page.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false});
+      await reveal(page, input);
+      await input.click();
+      await page.keyboard.type(q.answer, {delay: 20});
+    }
+    const saved = page.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
+    await reveal(page, submit);
+    await submit.click();
+    assert.equal((await (await saved).json()).outcome, 'correct');
+    await page.waitForTimeout(500);
+  }
+}
 try {
   await login(child, 'child');
   await login(parent, 'parent');
@@ -156,6 +187,50 @@ try {
     assert.equal((await (await saved).json()).outcome, 'correct');
     await c.waitForTimeout(500);
   }
+  let learningRounds = 1;
+  if (demo.normal_account) {
+    let reviewed = await waitForCoaching(demo.package_unit_id);
+    assert.equal(reviewed.coaching.decision, 'repair');
+    assert.equal(reviewed.coaching.provider, 'openrouter');
+    assert(reviewed.coaching.report.learning_goals.length >= 2);
+    assert.equal(reviewed.learning_progress.secure_observation, false);
+    console.log('Actual answer review and separately sourced learning goals passed');
+    for (let round = 0; round < 2 && reviewed.coaching.next_unit_id; round++) {
+      const nextId = reviewed.coaching.next_unit_id;
+      const next = await (await parent.request.get(url + '/api/units/' + nextId)).json();
+      assert.equal(next.followup_of, reviewed.id);
+      assert.equal(next.learning_root_id, demo.package_unit_id);
+      assert.deepEqual([...next.source_material_ids].sort(), [...reviewed.source_material_ids].sort());
+      const continueButton = c.getByRole('button', {name: reviewed.coaching.decision === 'check' ? 'Jetzt selbstständig ausprobieren' : 'Mit passenden Übungen weiterlernen', exact: true});
+      await reveal(c, continueButton);
+      await continueButton.click();
+      await c.waitForURL(url + '/unit/' + nextId);
+      if (!next.introduction_seen) {
+        const intro = c.getByRole('button', {name: 'Weiter zu den Übungen', exact: true});
+        await reveal(c, intro);
+        await intro.click();
+      }
+      await answerSavedQuestions(c, next.questions);
+      reviewed = await waitForCoaching(nextId);
+      assert.equal(reviewed.coaching.provider, 'openrouter');
+      learningRounds++;
+      console.log(JSON.stringify({completed_learning_rounds: learningRounds, next_action: reviewed.coaching.decision}));
+    }
+    assert.equal(learningRounds, 3);
+    assert.equal(reviewed.coaching.next_unit_id, null);
+    assert(['spaced', 'pause'].includes(reviewed.coaching.decision));
+    assert.equal(reviewed.learning_progress.secure_observation, false);
+    assert(reviewed.learning_progress.learning_goals.every(g => g.successful_check_days <= 1));
+    demo.last_completed_unit_id = reviewed.id;
+    await writeFile(accountFile, JSON.stringify(demo), {mode: 0o600});
+    await reveal(c, c.getByText('Deine Lernbegleitung', {exact: true}));
+    await c.screenshot({path: '../artifacts/coaching-child-mobile.png'});
+    await open(c, '/unit/' + reviewed.id);
+    await reveal(c, c.getByText('Deine Lernbegleitung', {exact: true}));
+    const resumed = await (await child.request.get(url + '/api/units/' + reviewed.id)).json();
+    assert.equal(resumed.coaching.status, 'ready');
+    console.log('Repair, independent check, bounded finish and persisted review passed');
+  }
   const p = await parent.newPage();
   await open(p, '/child/' + demo.child_id);
   await p.getByRole('button', {name: 'Heutiges Tagespaket ansehen', exact: true}).click();
@@ -169,10 +244,14 @@ try {
     assert.equal(stored.status, 'completed');
     assert(stored.questions.every(q => q.attempts.some(a => a.outcome === 'correct')));
     const usage = await (await parent.request.get(url + '/api/families/' + demo.user.families[0].id + '/usage')).json();
-    assert.equal(usage.calls_used, 3);
+    assert.equal(usage.calls_used, 3 + learningRounds);
     assert.equal(usage.unknown_cost_calls, 0);
     assert(usage.records.every(record => record.cost_micros_usd === 0));
-    console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, actual_free_ai_calls: usage.calls_used, cost_micros_usd: usage.known_cost_micros_usd, completed_questions: stored.questions.length, provider: stored.provider, model: stored.model}));
+    const finalReview = await (await parent.request.get(url + '/api/units/' + demo.last_completed_unit_id)).json();
+    assert.equal(finalReview.coaching.status, 'ready');
+    await open(p, '/unit/' + demo.last_completed_unit_id);
+    await reveal(p, p.getByText('Deine Lernbegleitung', {exact: true}));
+    console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, actual_free_ai_calls: usage.calls_used, cost_micros_usd: usage.known_cost_micros_usd, completed_questions: stored.questions.length + (learningRounds - 1) * 2, learning_rounds: learningRounds, parent_sees_saved_reviews: true, provider: stored.provider, model: stored.model}));
   }
   await p.screenshot({path: '../artifacts/school-day-parent.png'});
   assert.deepEqual(errors, []);

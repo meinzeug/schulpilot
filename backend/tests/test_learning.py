@@ -78,7 +78,8 @@ def test_full_flow_saves_answers_hints_and_parent_view(api):
     assert overview["mastery"][0]["assisted_units"] == 1
     assert overview["mastery"][0]["later_review_successes"] == 0
     assert overview["mastery"][0]["next_review"] > overview["plan"]["date"]
-    assert overview["units"][0]["questions"][0]["attempts"][0]["assisted"] is True
+    practiced = next(u for u in overview["units"] if u["id"] == unit_id)
+    assert practiced["questions"][0]["attempts"][0]["assisted"] is True
     activities = api.get(f"/api/children/{demo['child_id']}/activity").json()
     assert {"hint", "explanation", "answer", "unit_completed"}.issubset({a["kind"] for a in activities})
 

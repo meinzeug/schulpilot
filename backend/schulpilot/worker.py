@@ -81,6 +81,14 @@ def claim(db):
 
 
 def process(job_id):
+    with DB() as db:
+        candidate = db.get(Job, job_id)
+        is_coaching = candidate and candidate.kind == "coach"
+    if is_coaching:
+        from .coaching import process as process_coaching
+
+        process_coaching(job_id)
+        return
     result = None
     try:
         with DB() as db:
@@ -194,6 +202,20 @@ def process(job_id):
                 payload["material"]["content"] = "\n\n".join(
                     f"Heftseite {m.page_number or i + 1}:\n{m.content}" for i, m in enumerate(source_pages)
                 )
+            if job.kind == "unit" and job.payload.get("review_of"):
+                from .coaching import focus_ids, goals_for, root_and_units
+
+                previous_unit = db.get(LearningUnit, job.payload["review_of"])
+                if not previous_unit or previous_unit.child_id != child.id:
+                    raise ProviderError("Die ursprüngliche Lernfolge ist nicht mehr vorhanden.")
+                _, chain = root_and_units(db, previous_unit)
+                payload.update(
+                    required_subject=previous_unit.subject,
+                    required_topic=previous_unit.topic,
+                    previous_prompts=[q["prompt"] for u in chain for q in u.questions][-80:],
+                    learning_goals=goals_for(db, previous_unit),
+                    focus_goal_ids=focus_ids(db, previous_unit, "check"),
+                )
             image_bytes = (
                 (settings.data_dir / "uploads" / material.path).read_bytes()
                 if job.kind == "extract" and material and material.path
@@ -211,6 +233,11 @@ def process(job_id):
             db.rollback()
         if synthetic and not fixture:
             data = sample_unit(variant, feedback[0] if feedback else "normal")
+            if payload["review"]:
+                from .coaching import synthetic_report
+
+                with DB() as db:
+                    data = synthetic_report(db, db.get(LearningUnit, job.payload["review_of"]), "check")["next_unit"]
         else:
             result = request_provider(
                 ProviderConfig(**config_values), function, payload, image_bytes, synthetic_fixture=fixture_value
@@ -255,6 +282,12 @@ def process(job_id):
                 record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
             else:
                 source_pages = unit_sources(db, job)
+                if not source_pages and material:
+                    source_pages = [material]
+                if job.payload.get("review_of"):
+                    from .coaching import validate_new_round
+
+                    validate_new_round(db, db.get(LearningUnit, job.payload["review_of"]), data)
                 goal = (
                     db.get(Assignment, job.payload.get("assignment_id")) if job.payload.get("assignment_id") else None
                 )
@@ -266,7 +299,12 @@ def process(job_id):
                     child_id=job.child_id,
                     material_id=material.id if material else None,
                     assignment_id=job.payload.get("assignment_id"),
+                    goal_revision=job.payload.get("assignment_revision"),
                     review_of=job.payload.get("review_of"),
+                    learning_root_id=job.payload.get("learning_root_id"),
+                    round_kind="spaced_review" if job.payload.get("review_of") else "learning",
+                    not_before=job.payload.get("not_before"),
+                    introduction_seen=bool(job.payload.get("review_of")),
                     subject=data["subject"],
                     topic=data["topic"],
                     explanation=data["explanation"],

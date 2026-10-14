@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'coaching_panel.dart';
 import 'material_screen.dart';
 import 'ui.dart';
 
@@ -651,6 +652,43 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
               for (final item in plan['today'] as List)
                 planTile(context, state, data, item, parent: parent),
               const SizedBox(height: 24),
+              if ((data['learning_paths'] as List? ?? []).isNotEmpty) ...[
+                heading(
+                  'Betreut weiterlernen',
+                  subtitle: 'Gespeicherte Rückmeldungen, passende Anschlussübungen und spätere Abrufproben.',
+                ),
+                for (final path in data['learning_paths'] as List)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LearningProgressPanel(Map<String, dynamic>.from(path)),
+                        const SizedBox(height: 8),
+                        ActionButton(
+                          label: parent
+                              ? 'Lernbegleitung und Antworten ansehen'
+                              : path['next_unit_id'] != null
+                              ? 'Passende Lernrunde fortsetzen'
+                              : 'Lernbegleitung ansehen',
+                          secondary: true,
+                          onPressed: () async {
+                            final id = !parent && path['next_unit_id'] != null
+                                ? path['next_unit_id']
+                                : path['latest_unit_id'];
+                            if (!parent && path['next_unit_id'] != null) {
+                              await state.api.post('/units/$id/start');
+                            }
+                            if (context.mounted) {
+                              openRoute(context, '/unit/$id');
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ],
               heading(
                 'Später noch einmal',
                 subtitle: 'Wiederholungen bleiben überschaubar und werden nicht als täglicher Aufgabenberg aufaddiert.',

@@ -57,6 +57,36 @@ Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungs
 
 
 def system_text(function):
+    if function == "coach":
+        return (
+            SYSTEM
+            + """\nDEINE AUFGABE: Begleite das Kind nach einer abgeschlossenen Einheit.
+Prüfe die TATSÄCHLICHEN Antworten in completed_questions einschließlich Fehlversuchen und Hilfen.
+Für jede question_id genau eine kurze, verständliche Rückmeldung in question_reviews.
+Bei deterministic_outcome=correct/incorrect übernimm diesen geprüften Wert unverändert.
+Nur bei uncertain darfst du eine begründete KI-Einschätzung geben; ohne sichere Grundlage bleibt sie uncertain.
+Unterscheide selbstständig gelöst, nach Fehler/Hilfe gelöst und noch unklar. Keine erfundenen Erfolge.
+Der Server berechnet Leistungen, Stärken und Übungsbedarf aus gespeicherten Fakten. Erfinde dazu keine Gesamtbewertung.
+Wenn learning_goals leer ist: zerlege den bestätigten Stoff in ein bis vier konkrete Lernziele g1 bis g4.
+Jedes Ziel braucht ein WÖRTLICHES source_excerpt aus materials.content oder goal.note. Keine fremden Inhalte ergänzen.
+Wenn learning_goals bereits vorliegt: nur diesen Zielen zuordnen. Der Server übernimmt die Ziele unverändert;
+das Ausgabeschema fordert dann keinen erneuten Lernzielvorschlag an.
+Ordne jede Rückmeldung und jede neue Aufgabe mit learning_goal_id einem dieser Ziele zu.
+Für neue Aufgaben zuerst focus_goal_ids bedienen. Ohne vorgegebene IDs: repair übt die Ziele mit Fehlern/Hilfen,
+check deckt bis zu zwei verschiedene Ziele ab. Zwei Aufgaben zu einem einzigen Ziel sind bei nur einem Schwerpunkt erlaubt.
+Erkläre den schwierigen Schritt
+mit einem kleinen neuen Beispiel. Keine Diagnosen und niemals vollständige Beherrschung versprechen.
+Schreibe auf Deutsch. Behaupte nicht, das Kind beherrsche ein Thema, verstehe besonders schnell oder habe stabiles Wissen.
+In question_reviews nur die jeweilige gespeicherte Aufgabe und ihre tatsächlichen Antworten besprechen.
+Neue Beispiele ausschließlich in explanation, ausdrücklich als neues Beispiel kennzeichnen.
+Der Server bestimmt next_action. Bei repair: zwei leichtere Aufgaben zu den erfassten Schwierigkeiten.
+Bei check: zwei NEUE kurze Abruf-/Transferaufgaben zum gleichen bestätigten Stoff, ohne Lösungen vorwegzunehmen.
+Bei allen anderen next_action ist next_unit=null. Jede Anschlussaufgabe braucht eine korrekte Lösung und Hinweise.
+Keine vorhandene Frage aus previous_prompts wiederholen. Keine neue Unterrichtsthematik erfinden.
+next_unit.subject und next_unit.topic exakt aus required_subject und required_topic übernehmen.
+Verbindliche Elternziele erhalten; nächste Termine, Lernzeiten und Pausen bestimmt der Server.
+Die KI-Einschätzung ändert keine zuvor gespeicherten Antworten und ist kein eigener Beherrschungsnachweis."""
+        )
     if function == "extract":
         return (
             SYSTEM
@@ -262,9 +292,34 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         payload = trusted_payload(function, fixture_id)
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture)
-    model_type = {"extract": s.ExtractionOutput, "package": s.PackageOutput}.get(function, s.UnitOutput)
+    model_type = {"extract": s.ExtractionOutput, "package": s.PackageOutput, "coach": s.CoachingOutput}.get(
+        function, s.UnitOutput
+    )
+    if function == "unit" and payload.get("review") and payload.get("learning_goals"):
+        model_type = s.PracticeUnitOutput
+    if function == "coach" and payload.get("learning_goals"):
+        model_type = s.CoachingReviewOutput
     schema = strict_schema(model_type, preserve_limits=config.provider == "openrouter")
+    if function == "coach":
+        ids = [q["question_id"] for q in payload["completed_questions"]]
+        schema["properties"]["question_reviews"].update(minItems=len(ids), maxItems=len(ids))
+        schema["$defs"]["QuestionReview"]["properties"]["question_id"]["enum"] = ids
+        if payload["next_action"] not in ("repair", "check"):
+            schema["properties"]["next_unit"] = {"type": "null"}
+        else:
+            schema["properties"]["next_unit"] = {"$ref": "#/$defs/PracticeUnitOutput"}
+        for field in ("subject", "topic"):
+            schema["$defs"]["PracticeUnitOutput"]["properties"][field]["enum"] = [payload["required_" + field]]
+        if payload.get("focus_goal_ids"):
+            schema["$defs"]["PracticeQuestion"]["properties"]["learning_goal_id"]["enum"] = payload["focus_goal_ids"]
+    elif function == "unit" and payload.get("review") and payload.get("required_topic"):
+        for field in ("subject", "topic"):
+            schema["properties"][field]["enum"] = [payload["required_" + field]]
     instructions = system_text(function)
+    if function == "unit" and payload.get("review"):
+        instructions += "\nSpätere Abrufprobe: Verwende neue Aufgaben, keine Frage aus previous_prompts. Übernimm required_subject und required_topic exakt."
+        if payload.get("learning_goals"):
+            instructions += " Bediene focus_goal_ids aus den gespeicherten learning_goals. Ordne jede Aufgabe dem passenden learning_goal_id zu; Lernziele unverändert erhalten."
     compact_free = config.provider == "openrouter" and config.model.endswith(":free") and function != "extract"
     if compact_free:
         instructions += (
@@ -418,6 +473,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         data = model_type.model_validate_json(text).model_dump()
+        if function == "coach" and payload.get("learning_goals"):
+            data["learning_goals"] = payload["learning_goals"]
         cost = None
         reported = usage.get("cost") if config.provider == "openrouter" else None
         if (
