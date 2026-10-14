@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api.dart';
+import 'firebase_bootstrap.dart'
+    if (dart.library.js_interop) 'firebase_bootstrap_web.dart';
 
 /// Firebase starts only after an authenticated, explicit device opt-in.
 /// No Analytics plugin, child names, answers or family topics are used.
@@ -44,6 +46,8 @@ class PushClient {
       );
     }
     try {
+      await loadFirebaseRuntime().timeout(const Duration(seconds: 15));
+      stillActive();
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(
           options: FirebaseOptions(
@@ -53,7 +57,7 @@ class PushClient {
             projectId: f['projectId'],
             authDomain: f['authDomain'],
           ),
-        );
+        ).timeout(const Duration(seconds: 15));
       }
       _initialized = true;
       stillActive();
@@ -74,12 +78,14 @@ class PushClient {
       }
       // This pinned FlutterFire version exposes getToken/onTokenRefresh.
       // No inherited Google account or application-default credential is used.
-      final token = await messaging.getToken(
-        vapidKey: kIsWeb ? f['vapidKey'] : null,
-        serviceWorkerScriptPath: kIsWeb
-            ? '/push/firebase-messaging-sw.js'
-            : null,
-      );
+      final token = await messaging
+          .getToken(
+            vapidKey: kIsWeb ? f['vapidKey'] : null,
+            serviceWorkerScriptPath: kIsWeb
+                ? '/push/firebase-messaging-sw.js'
+                : null,
+          )
+          .timeout(const Duration(seconds: 30));
       stillActive();
       if (token == null) {
         throw ApiError('Das Gerät hat noch keine Push-Registrierung erhalten.');
@@ -166,8 +172,12 @@ class PushClient {
     _refresh = null;
     if (_initialized) {
       try {
-        await FirebaseMessaging.instance.setAutoInitEnabled(false);
-        await FirebaseMessaging.instance.deleteToken();
+        await FirebaseMessaging.instance
+            .setAutoInitEnabled(false)
+            .timeout(const Duration(seconds: 3));
+        await FirebaseMessaging.instance.deleteToken().timeout(
+          const Duration(seconds: 5),
+        );
       } catch (_) {
         /* Server session revocation is authoritative. */
       }

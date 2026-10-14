@@ -186,7 +186,7 @@ class OffersScreen extends StatelessWidget {
               ? LoadView<Json>(
                   load: () => state.api.get('/store/catalog'),
                   builder: (data, _) =>
-                      Panel(child: SelectableText(data['terms'])),
+                      Panel(child: SelectionArea(child: Text(data['terms']))),
                 )
               : StoreSection(state),
         ),
@@ -261,7 +261,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(16),
-                        child: SelectableText(catalog['terms']),
+                        child: SelectionArea(child: Text(catalog['terms'])),
                       ),
                     ],
                   ),

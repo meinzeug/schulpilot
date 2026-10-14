@@ -1,5 +1,7 @@
 # Firebase-Prüfung und Übergabe
 
+Der aktuelle Web-Loader `app/web/push_bootstrap.js` importiert nur nach ausdrücklichem Opt-in die fixierten Core-/Messaging-Module. Das verhindert das vom fixierten Plugin sonst erzeugte Inline-Skript; die bestehende strenge CSP bleibt erhalten. Ein echter Browser-Test hat die ursprüngliche CSP-Sperre reproduziert. Registrierungs- und Löschaufrufe sind zeitlich begrenzt, sodass eine blockierte Geräteverbindung Anmeldung und Abmeldung nicht unbegrenzt festhält.
+
 Nur Projekt `schulpilot-f6bf3`, Google-Konto `gvhindenburg@gmail.com`. Google-Cloud-CLI 589.0.0 wurde lokal aus dem offiziellen Archiv installiert und dessen veröffentlichte SHA-256 geprüft. Die Google-Anmeldung läuft im normalen Google-Browserdialog. Kein Passwort, OAuth-Code oder Token gehört in Chat, Shellargumente oder Git.
 
 Die isolierte CLI-Konfiguration liegt unter `~/.local/share/schulpilot-firebase/gcloud` (0700); keine fremden Anmeldungen oder Application Default Credentials übernehmen. `scripts/firebase_project.py` liest nur die explizite Identität und das feste Projekt, prüft vorhandene Apps, APIs und die zugeordneten Schlüsselrestriktionen. `--configure` erstellt bei Bedarf das dedizierte Konto `schulpilot-fcm-sender`, eine eigene Senderrolle ausschließlich mit `cloudmessaging.messages.create` und genau dann einen privaten Schlüssel, wenn kein geeigneter lokaler vorhanden ist. Existierende fremde Rollen und Schlüssel werden nicht gelöscht. Richtlinienfehler werden als Blocker protokolliert, nicht umgangen.

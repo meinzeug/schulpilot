@@ -33,7 +33,7 @@ try {
   await page.screenshot({path:'../artifacts/public-offers-desktop.png'});
   checks.push('public_prices_and_disabled_checkout');
   await open(page, '/bedingungen');
-  await page.getByText(/Widerrufsbelehrung:/).waitFor();
+  await page.getByText(/Widerrufsbelehrung:/).first().waitFor();
   checks.push('public_terms_direct_link');
   const mobileContext = await context({width:390,height:844});
   const mobile = await mobileContext.newPage();
