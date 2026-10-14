@@ -67,7 +67,7 @@ try {
   assert(q, 'An unanswered question must remain in this isolated test package');
   if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
   if (q.type === 'gap' || q.type === 'short') {
-    await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: true}).click();
+    await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
     await c.keyboard.type(q.answer, {delay: 30});
   }
   if (q.type === 'match') {

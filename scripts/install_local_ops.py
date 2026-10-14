@@ -24,6 +24,11 @@ if recovery.exists():
 
     values = environment(recovery)
     allowed = {k: v for k, v in values.items() if k.startswith("SMTP_") or k == "OPERATIONS_ALERT_EMAIL"}
+    if allowed.get("SMTP_HOST") == "smtp.gmail.com":
+        # This host permits Gmail STARTTLS/587; direct TLS/465 is unreachable.
+        # Provider and credentials stay identical; certificate checks remain on.
+        allowed["SMTP_PORT"] = "587"
+        allowed["SMTP_MODE"] = "starttls"
     config = base / "monitor.env"
     config.write_text("\n".join(k + "=" + shlex.quote(v) for k, v in allowed.items()) + "\n")
     config.chmod(0o600)

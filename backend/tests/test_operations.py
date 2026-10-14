@@ -137,3 +137,24 @@ def test_operational_metadata_retention_preserves_recent_records(api, household)
         assert db.get(UsageBucket, "global:" + current).encumbered_micros == 2000
         assert db.scalar(select(func.count()).select_from(Usage)) == 1
         assert list(db.scalars(select(Audit.target).where(Audit.action == "retention.test"))) == ["recent"]
+
+
+def test_orphan_cleanup_keeps_owned_and_in_flight_uploads(api, household):
+    import os
+
+    from schulpilot.erasure import prune_orphan_images
+
+    _, child = household
+    directory = settings.data_dir / "uploads"
+    directory.mkdir(exist_ok=True)
+    names = ["1" * 32 + ".jpg", "2" * 32 + ".jpg", "3" * 32 + ".jpg"]
+    for name in names:
+        (directory / name).write_bytes(image_bytes())
+    for name in names[:2]:
+        os.utime(directory / name, (now() - 7200, now() - 7200))
+    with DB.begin() as db:
+        db.add(Material(child_id=child["id"], title="Synthetic owned photo", path=names[0]))
+    with DB() as db:
+        assert prune_orphan_images(db) == 1
+    assert (directory / names[0]).exists() and (directory / names[2]).exists()
+    assert not (directory / names[1]).exists()

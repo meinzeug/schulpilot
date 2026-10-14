@@ -58,11 +58,12 @@ def press(name, scroll=False):
     if not found and scroll:
         for _ in range(3):
             adb("shell", "input", "swipe", "900", "650", "900", "1950", "250")
-        for _ in range(12):
+        for _ in range(32):
             found = matching(name)
             if found:
                 break
-            adb("shell", "input", "swipe", "900", "1900", "900", "750", "250")
+            # Small non-flinging steps keep short buttons from being skipped.
+            adb("shell", "input", "swipe", "900", "1700", "900", "1300", "500")
     if not found:
         found = wait(name)
     clickable = [n for n in found if n.get("clickable") == "true"]
@@ -151,10 +152,10 @@ def main():
         press("Einstellungen")
         press("Abmelden", scroll=True)
         login(credentials["child_username"], credentials["child_password"])
-        wait("Jetzt lernen")
+        wait("Dein nächster kleiner Schritt.")
         screenshot("android-child.png")
         checks.append("separate_native_child_login")
-        press("Jetzt lernen")
+        press("Jetzt lernen", scroll=True)
         current_unit = check(parent.get("/units/" + demo["unit_id"]))
         if not current_unit["introduction_seen"]:
             press("Weiter zu den Übungen", scroll=True)

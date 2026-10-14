@@ -117,3 +117,18 @@ def reconcile(db, records):
             db.delete(row)
         db.flush()
     return paths
+
+
+def prune_orphan_images(db):
+    """Remove interrupted upload writes after a grace period, within our directory."""
+    known = set(db.scalars(select(Material.path).where(Material.path.is_not(None))))
+    removed = 0
+    for path in (settings.data_dir / "uploads").glob("*.jpg"):
+        try:
+            modified = path.lstat().st_mtime
+        except FileNotFoundError:
+            continue
+        if re.fullmatch(r"[a-f0-9]{32}\.jpg", path.name) and path.name not in known and modified < now() - 3600:
+            path.unlink(missing_ok=True)
+            removed += 1
+    return removed

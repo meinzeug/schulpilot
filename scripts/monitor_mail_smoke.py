@@ -20,7 +20,7 @@ from monitor import environment, notify  # noqa: E402
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config-file", type=Path, default=Path.home() / ".local/share/schulpilot-recovery/server-environment"
+        "--config-file", type=Path, default=Path.home() / ".local/share/schulpilot-operations/monitor.env"
     )
     args = parser.parse_args()
     config = environment(args.config_file)

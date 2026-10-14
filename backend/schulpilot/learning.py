@@ -438,7 +438,12 @@ def edit_assignment(child_id: str, assignment_id: str, data: s.AssignmentCreate,
         material = db.get(Material, data.material_id)
         if not material or material.child_id != child_id:
             raise HTTPException(404, "Material nicht gefunden.")
-    for key, value in data.model_dump(mode="json").items():
+    values = data.model_dump(mode="json")
+    if "scheduled_for" not in data.model_fields_set:
+        # Older clients cannot see the new start-date field; preserve the
+        # binding date unless a managing parent explicitly sends a new value.
+        values.pop("scheduled_for")
+    for key, value in values.items():
         setattr(a, key, value)
     a.done = False
     a.revision += 1

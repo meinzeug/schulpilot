@@ -392,10 +392,11 @@ def maintenance():
                     )
                 )
     unlink_uploads(paths)
-    from .erasure import flush_journal, prune_journal
+    from .erasure import flush_journal, prune_journal, prune_orphan_images
 
     flush_journal()
     with DB() as db:
+        prune_orphan_images(db)
         state = db.get(ServiceState, "erasure_compaction")
         compact = not state or now() - state.updated > 86400
     if compact:

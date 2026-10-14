@@ -616,6 +616,10 @@ def test_deferred_parent_goal_starts_on_selected_day_and_reuses_related_pages(ap
         "mandatory": True,
     }
     goal = api.post(f"/api/children/{child['id']}/assignments", json=body).json()
+    legacy_edit = {k: v for k, v in body.items() if k != "scheduled_for"}
+    legacy_edit["note"] = "Zusätzlicher Hinweis aus einem älteren Client"
+    preserved = api.put(f"/api/children/{child['id']}/assignments/{goal['id']}", json=legacy_edit)
+    assert preserved.status_code == 200 and preserved.json()["scheduled_for"] == body["scheduled_for"]
     plan = api.get(f"/api/children/{child['id']}/overview").json()["plan"]
     assert not any(x["id"] == goal["id"] for x in plan["today"])
     assert any(x["id"] == goal["id"] for x in plan["later"])

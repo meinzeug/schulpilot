@@ -105,7 +105,8 @@ with DB.begin() as db:
  db.execute(update(ProviderConfig).values(emergency_stop=True))
  after={m.__tablename__:db.scalar(select(func.count()).select_from(m)) for m in models}
  version=db.scalar(text('SELECT version_num FROM alembic_version'))
-print(json.dumps({'schema':version,'before':before,'after':after,'paths':paths,'verified_erasure_records':len(records)}))
+ retained=list(db.scalars(select(Material.path).where(Material.path.is_not(None))))
+print(json.dumps({'schema':version,'before':before,'after':after,'paths':paths,'retained_images':retained,'verified_erasure_records':len(records)}))
 """
             result = command(
                 ["runuser", "-u", "schulpilot", "--", "/opt/schulpilot/current/venv/bin/python", "-c", code],
@@ -114,10 +115,22 @@ print(json.dumps({'schema':version,'before':before,'after':after,'paths':paths,'
                 input=contents.encode(),
             )
             data = json.loads(result.stdout)
+            retained = set(data.pop("retained_images"))
+            erased_images = 0
             for filename in data.pop("paths"):
                 if not re.fullmatch(r"[a-f0-9]{32}\.jpg", filename):
                     raise RuntimeError("Unexpected private image path")
-                (directory / "unpacked/uploads" / filename).unlink(missing_ok=True)
+                image = directory / "unpacked/uploads" / filename
+                if image.exists():
+                    image.unlink()
+                    erased_images += 1
+            orphans = 0
+            for photo in (directory / "unpacked/uploads").glob("*.jpg"):
+                if photo.name not in retained:
+                    photo.unlink()
+                    orphans += 1
+            data["orphan_images_removed"] = orphans
+            data["erasure_images_removed"] = erased_images
             report.update(data)
             report["authenticated_restore"] = True
             report["sessions_revoked"] = True
