@@ -84,7 +84,10 @@ Wenn learning_goals leer ist: zerlege den bestätigten Stoff in ein bis vier kon
 Jedes Ziel braucht ein WÖRTLICHES source_excerpt aus materials.content oder goal.note. Keine fremden Inhalte ergänzen.
 Wenn learning_goals bereits vorliegt: nur diesen Zielen zuordnen. Der Server übernimmt die Ziele unverändert;
 das Ausgabeschema fordert dann keinen erneuten Lernzielvorschlag an.
-Ordne jede Rückmeldung und jede neue Aufgabe mit learning_goal_id einem dieser Ziele zu.
+Ordne jede neue Aufgabe mit learning_goal_id einem dieser Ziele zu.
+Gespeicherte completed_questions.learning_goal_id übernimmt der Server unverändert für die Rückmeldung.
+Nur wenn das Ausgabeschema learning_goal_id in question_reviews verlangt, ordne unzugeordnete Altaufgaben
+einem belegten Lernziel zu und übernimm bereits gespeicherte Zuordnungen unverändert.
 Für neue Aufgaben zuerst focus_goal_ids bedienen. Ohne vorgegebene IDs: repair übt die Ziele mit Fehlern/Hilfen,
 check deckt bis zu zwei verschiedene Ziele ab. Zwei Aufgaben zu einem einzigen Ziel sind bei nur einem Schwerpunkt erlaubt.
 Erkläre den schwierigen Schritt
@@ -310,13 +313,24 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     )
     if function == "unit" and payload.get("review") and payload.get("learning_goals"):
         model_type = s.PracticeUnitOutput
+    assigned_goals = {}
     if function == "coach" and payload.get("learning_goals"):
         model_type = s.CoachingReviewOutput
+        known_goals = {g["id"] for g in payload["learning_goals"]}
+        for question in payload["completed_questions"]:
+            goal_id = question.get("learning_goal_id")
+            if goal_id is not None:
+                if goal_id not in known_goals:
+                    raise ProviderError("Eine gespeicherte Aufgabe verweist auf ein unbekanntes Lernziel.")
+                assigned_goals[question["question_id"]] = goal_id
+        if assigned_goals and len(assigned_goals) == len(payload["completed_questions"]):
+            model_type = s.AssignedCoachingReviewOutput
     schema = strict_schema(model_type, preserve_limits=config.provider == "openrouter")
     if function == "coach":
         ids = [q["question_id"] for q in payload["completed_questions"]]
         schema["properties"]["question_reviews"].update(minItems=len(ids), maxItems=len(ids))
-        schema["$defs"]["QuestionReview"]["properties"]["question_id"]["enum"] = ids
+        review_type = "QuestionFeedback" if model_type is s.AssignedCoachingReviewOutput else "QuestionReview"
+        schema["$defs"][review_type]["properties"]["question_id"]["enum"] = ids
         if payload["next_action"] not in ("repair", "check"):
             schema["properties"]["next_unit"] = {"type": "null"}
         else:
@@ -329,6 +343,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         for field in ("subject", "topic"):
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     instructions = system_text(function)
+    if model_type is s.AssignedCoachingReviewOutput:
+        instructions += (
+            "\nGib in question_reviews ausschließlich question_id, outcome und feedback aus. "
+            "Die Lernzielzuordnung jeder beantworteten Aufgabe steht bereits fest; "
+            "der Server setzt sie anhand der question_id ein. "
+            "Neue Aufgaben in next_unit benötigen weiterhin ihre passende learning_goal_id."
+        )
     if function == "unit" and payload.get("review"):
         instructions += "\nSpätere Abrufprobe: Verwende neue Aufgaben, keine Frage aus previous_prompts. Übernimm required_subject und required_topic exakt."
         if payload.get("learning_goals"):
@@ -518,6 +539,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         data = model_type.model_validate_json(text).model_dump()
         if function == "coach" and payload.get("learning_goals"):
             data["learning_goals"] = payload["learning_goals"]
+            if model_type is s.AssignedCoachingReviewOutput:
+                review_ids = [r["question_id"] for r in data["question_reviews"]]
+                if len(review_ids) != len(assigned_goals) or set(review_ids) != set(assigned_goals):
+                    raise ProviderError(
+                        "Die KI-Rückmeldung ist nicht vollständig den beantworteten Aufgaben zugeordnet."
+                    )
+            for review in data["question_reviews"]:
+                if review["question_id"] in assigned_goals:
+                    review["learning_goal_id"] = assigned_goals[review["question_id"]]
         cost = None
         reported = usage.get("cost") if config.provider == "openrouter" else None
         if (

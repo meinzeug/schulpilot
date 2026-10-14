@@ -10,7 +10,9 @@ child/materials for the operator's existing whole-QA-family cleanup.
 
 The API-36 image_picker_android implementation uses the system Photo Picker.
 We open its SchulpilotQA album, require exactly our two indexed images, select
-both and confirm two actual crop dialogs. We NEVER press Weiter or start OCR.
+both and confirm two actual crop dialogs. If custom albums are hidden, Photos
+is allowed only after the entire dedicated library is verified to contain
+exactly those two fixtures. We NEVER press Weiter or start OCR.
 If the system picker presents different accessibility labels, stop explicitly
 and leave the picker/screenshot for interactive inspection; never guess photos.
 

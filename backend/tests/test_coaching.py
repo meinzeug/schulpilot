@@ -166,7 +166,9 @@ def test_ai_opinion_does_not_upgrade_an_uncertain_short_answer(normal_unit, monk
         assert mastery.independent == 0 and mastery.uncertain_units == 1
 
 
-@pytest.mark.parametrize("fault", ["contradiction", "repeated_question", "paraphrased_calculation", "invented_source"])
+@pytest.mark.parametrize(
+    "fault", ["contradiction", "repeated_question", "paraphrased_calculation", "invented_source", "legacy_goal"]
+)
 def test_invalid_review_is_rejected_and_only_one_explicit_retry_is_allowed(normal_unit, monkeypatch, fault):
     client, unit_id, _, _, _ = normal_unit
 
@@ -175,6 +177,8 @@ def test_invalid_review_is_rejected_and_only_one_explicit_retry_is_allowed(norma
             data["question_reviews"][0]["outcome"] = "incorrect"
         elif fault == "invented_source":
             data["learning_goals"][0]["source_excerpt"] = "Dieser Inhalt steht in keiner bestätigten Quelle."
+        elif fault == "legacy_goal":
+            data["question_reviews"][0]["learning_goal_id"] = "g1"
         else:
             with DB() as db:
                 data["next_unit"]["questions"][0] = {
@@ -203,6 +207,64 @@ def test_invalid_review_is_rejected_and_only_one_explicit_retry_is_allowed(norma
         assert db.scalar(select(func.count()).select_from(Job)) == 2
         assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
         assert all(u.status == "failed_unknown" and u.cost_micros == 0 for u in db.scalars(select(Usage)))
+
+
+@pytest.mark.parametrize("contradiction", [False, True])
+def test_stored_question_goals_are_authoritative_but_answer_results_are_not_overwritten(
+    normal_unit, monkeypatch, contradiction
+):
+    client, unit_id, material_id, _, _ = normal_unit
+    with DB.begin() as db:
+        db.get(Material, material_id).content = (
+            "Brüche kürzen: Teile Zähler und Nenner durch dieselbe Zahl. "
+            "Brüche erweitern: Multipliziere Zähler und Nenner mit derselben Zahl."
+        )
+        question = sample_unit()["questions"][1]
+        db.get(LearningUnit, unit_id).questions = [
+            {
+                **question,
+                "id": "expand",
+                "learning_goal_id": "g2",
+                "prompt": "Erweitere 2/3 mit dem Faktor 3.",
+                "answer": "6/9",
+                "accepted": [],
+                "explanation": "Multipliziere beide Zahlen mit 3. So entsteht 6/9.",
+            },
+            {
+                **question,
+                "id": "reduce",
+                "learning_goal_id": "g1",
+                "prompt": "Kürze 6/18 mit dem Faktor 3.",
+                "answer": "2/6",
+                "accepted": [],
+                "explanation": "Teile beide Zahlen durch 3. So entsteht 2/6.",
+            },
+        ]
+
+    def model_reassigns_known_goals(data, _):
+        data["question_reviews"][0]["learning_goal_id"] = "g1"
+        data["question_reviews"][1]["learning_goal_id"] = "g2"
+        if contradiction:
+            data["question_reviews"][0]["outcome"] = "incorrect"
+
+    calls = mocked_review(monkeypatch, model_reassigns_known_goals)
+    finish(client, unit_id)
+    process_next()
+    result = client.get(f"/api/units/{unit_id}").json()
+    assert len(calls) == 1
+    assert [q["learning_goal_id"] for q in calls[0]["completed_questions"]] == ["g2", "g1"]
+    assert result["status"] == "completed"
+    assert all(q["attempts"][0]["outcome"] == "correct" for q in result["questions"])
+    if contradiction:
+        assert result["coaching"]["status"] == "failed"
+        assert "widerspricht" in result["coaching"]["reason"]
+        assert result["coaching"]["next_unit_id"] is None
+    else:
+        assert result["coaching"]["status"] == "ready"
+        assert [r["learning_goal_id"] for r in result["coaching"]["report"]["question_reviews"]] == ["g2", "g1"]
+        assert result["coaching"]["next_unit_id"]
+    assert result["learning_progress"]["secure_observation"] is False
+    assert result["learning_progress"]["successful_check_days"] == 0
 
 
 @pytest.mark.parametrize("block", ["quota", "stop"])

@@ -252,17 +252,26 @@ class PracticeUnitOutput(UnitOutput):
     questions: list[PracticeQuestion] = Field(min_length=2, max_length=2)
 
 
-class QuestionReview(Strict):
+class QuestionFeedback(Strict):
     question_id: str = Field(min_length=1, max_length=60)
-    learning_goal_id: Literal["g1", "g2", "g3", "g4"]
     outcome: Literal["correct", "incorrect", "uncertain"]
     feedback: str = Field(min_length=1, max_length=700)
+
+
+class QuestionReview(QuestionFeedback):
+    learning_goal_id: Literal["g1", "g2", "g3", "g4"]
 
 
 class CoachingReviewOutput(Strict):
     explanation: str = Field(min_length=1, max_length=1800)
     question_reviews: list[QuestionReview] = Field(min_length=1, max_length=8)
     next_unit: PracticeUnitOutput | None
+
+
+class AssignedCoachingReviewOutput(CoachingReviewOutput):
+    """Existing question-to-goal assignments belong to the server, not the model."""
+
+    question_reviews: list[QuestionFeedback] = Field(min_length=1, max_length=8)
 
 
 class CoachingOutput(CoachingReviewOutput):

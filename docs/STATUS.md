@@ -16,7 +16,7 @@ Die laufende Arbeitseinheit vereinfacht den Kinderbereich und modernisiert Web s
 ## Bisher ausgeführte Prüfungen dieser Arbeitseinheit
 
 - Vollständige Flutter-Analyse ohne Befunde; **40 Flutter-Tests bestanden**, einschließlich 320/360/390/430px, einfacher Kinderstart, Hilfe ohne Text, alle Unsicherheiten bestätigen, Paket mit einem Start, Rückmeldung vor Folgefrage, unsichere KI-Bewertungen, Verbindungswiederkehr und Wechsel vom Archiv zum heutigen Tag.
-- **141 PostgreSQL-Tests** bestanden, einschließlich gleichzeitigem Erststart. Zusätzlich **33 gezielte SQLite-Tests** bei der Backend-Erweiterung bestanden. Ein vorhandener Starlette/httpx-Hinweis ist eine DeprecationWarning.
+- **152 PostgreSQL-Tests** bestanden, einschließlich gleichzeitigem Erststart. Zusätzlich **33 gezielte SQLite-Tests** bei der Backend-Erweiterung bestanden. Ein vorhandener Starlette/httpx-Hinweis ist eine DeprecationWarning.
 - Frühere öffentliche Version10: reguläre Elternregistrierung mit tatsächlicher Bestätigungsmail, eigener Kinderlogin, echte KI-Lernpakete aus zwei künstlichen Fotos, sechs Antworten und drei gespeicherte KI-Rückblicke geprüft. Keine Aussage, dass diese früheren Prüfungen bereits die neue Kinderoberfläche abnehmen.
 - Signierte Release-Builds für Web, Direct-APK und Play-AAB erfolgreich. APK11: 61.077.524 Bytes, SHA-256 `44ea84d9c2f16ab829c2f9a878e4981867329ff25ef11d62839fab9f8b144200`. APK-Signatur, 16-KB-Ausrichtung aller acht nativen Bibliotheken und AAB-Validierung geprüft; Play-AAB ohne APK-Installerberechtigung. Die öffentliche Browser-/Androidabnahme läuft; bereitgestellter Commit und Bereinigung werden nach Abschluss eingetragen.
 

@@ -50,6 +50,7 @@ def observations(db, unit):
     return [
         {
             "question_id": q["id"],
+            "learning_goal_id": q.get("learning_goal_id"),
             "type": q["type"],
             "prompt": q["prompt"],
             "expected_answer": q["answer"],
@@ -685,9 +686,17 @@ def save_report(db, unit, item, data, sources, *, synthetic=False):
     if len(reviews) != len(observations_by_id) or {r["question_id"] for r in reviews} != set(observations_by_id):
         raise ProviderError("Die KI-Rückmeldung ist nicht vollständig den beantworteten Aufgaben zugeordnet.")
     for review in reviews:
+        original = observations_by_id[review["question_id"]]
+        assigned_goal = original["learning_goal_id"]
+        if assigned_goal is not None:
+            # These assignments were checked when the questions were created.
+            # Keep them authoritative even for legacy/mixed provider schemas.
+            if assigned_goal not in by_goal:
+                raise ProviderError("Eine gespeicherte Aufgabe verweist auf ein unbekanntes Lernziel.")
+            review["learning_goal_id"] = assigned_goal
         if review["learning_goal_id"] not in by_goal:
             raise ProviderError("Die Aufgabenrückmeldung verweist auf ein unbekanntes Lernziel.")
-        goal_id = fraction_task_goal(observations_by_id[review["question_id"]]["prompt"], goals)
+        goal_id = fraction_task_goal(original["prompt"], goals) if assigned_goal is None else None
         if goal_id and goal_id != review["learning_goal_id"]:
             raise ProviderError("Die Aufgabenrückmeldung passt nicht zum erkennbaren Lernziel.")
         known = observations_by_id[review["question_id"]]["deterministic_outcome"]
@@ -698,7 +707,6 @@ def save_report(db, unit, item, data, sources, *, synthetic=False):
         review["assessment_kind"] = "ai_opinion" if known == "uncertain" and not synthetic else "fixed_result"
         # A report about an old answer must not substitute numbers from a new
         # exercise. New worked examples belong in the separate explanation.
-        original = observations_by_id[review["question_id"]]
         numbers = set(re.findall(r"\d+", json.dumps(original, ensure_ascii=False)))
         if not set(re.findall(r"\d+", review["feedback"])).issubset(numbers):
             raise ProviderError("Die Rückmeldung nennt Zahlen, die nicht zur gespeicherten Aufgabe gehören.")

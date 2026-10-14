@@ -4,6 +4,8 @@
 // --keep-for-native retains the successful household for native APK checks.
 // --retry-failed-package permits one explicit UI retry of this day's failed
 // package. --retry-failed-coaching permits one explicit UI retry per failed unit.
+// --diagnose-package-once is a separate operator-requested attempt after a
+// server correction; its marker and previous failed calls are retained.
 // OCR is never retried by this driver and no replacement model is used.
 import {chromium} from 'playwright';
 import {chmod, readFile, realpath, rename, unlink, writeFile} from 'node:fs/promises';
@@ -488,7 +490,7 @@ async function checkParentAndUsage(units) {
   check(consumed.records.length === consumed.calls_used, 'usage_ledger_does_not_match_reservations');
   check(consumed.records.every(record => record.provider === 'openrouter' && record.model === units[0].model && (record.cost_micros_usd === 0 || record.cost_micros_usd === null)), 'provider_or_cost_did_not_stay_free_or_explicitly_unknown');
   check(consumed.unknown_cost_calls === consumed.records.filter(record => record.cost_micros_usd === null).length, 'unknown_costs_were_reported_as_zero');
-  return {answerCount, consumed, retryCount: retries.length, packageRetryCount: packageRetries.length};
+  return {answerCount, consumed, retryCount: retries.length, packageRetryCount: packageRetries.length, diagnosticCount: diagnostics.length};
 }
 
 try {
@@ -532,12 +534,12 @@ try {
   check(resumed.coaching.status === 'ready', 'completed_coaching_was_not_persistent');
   const after = await usage();
   check(before.calls_used === after.calls_used && before.records.length === after.records.length, 'reopening_saved_review_reserved_another_ai_call');
-  const {answerCount, consumed, retryCount, packageRetryCount} = await checkParentAndUsage(units);
+  const {answerCount, consumed, retryCount, packageRetryCount, diagnosticCount} = await checkParentAndUsage(units);
   check(errors.length === 0, 'browser_runtime_errors_detected');
   account.browser_qa.evidence.completed = true;
   await checkpoint('passed');
   passed = true;
-  console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, mobile_viewport: 390, learning_rounds: units.length, completed_questions: answerCount, actual_free_ai_calls: consumed.calls_used, known_cost_micros_usd: consumed.known_cost_micros_usd, unknown_cost_calls: consumed.unknown_cost_calls, explicit_coaching_retries: retryCount, explicit_package_retries: packageRetryCount, saved_package_resume_without_ai: true, feedback_waited_for_continue: true, parent_sees_saved_answers_hints_and_reviews: true, runtime_errors: errors}));
+  console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, mobile_viewport: 390, learning_rounds: units.length, completed_questions: answerCount, actual_free_ai_calls: consumed.calls_used, known_cost_micros_usd: consumed.known_cost_micros_usd, unknown_cost_calls: consumed.unknown_cost_calls, explicit_coaching_retries: retryCount, explicit_package_retries: packageRetryCount, explicit_package_diagnostics: diagnosticCount, saved_package_resume_without_ai: true, feedback_waited_for_continue: true, parent_sees_saved_answers_hints_and_reviews: true, runtime_errors: errors}));
 } catch (error) {
   process.exitCode = 1;
   // Playwright's detailed errors may quote the selected answer or typed value.
