@@ -48,6 +48,11 @@ def canonical_choice(value):
 
 def fraction_result(prompt, answer, accepted):
     lower = prompt.casefold()
+    # A question about a numerator/denominator does not ask for the fraction's
+    # value. In particular, 1/4 + 3/4 may be represented as 4/4 or 1/1; this
+    # narrow whole-value check cannot infer the intended representation.
+    if re.match(r"\s*(?:welche[nr]\s+|wie\s+(?:lautet|heißt)\s+der\s+)(?:zähler|nenner)\b", lower):
+        return
     if not re.search(r"rechne|berechne|ergebnis|wie viel|ergibt", lower):
         return
     expression = re.search(r"(\d{1,4})\s*/\s*([1-9]\d{0,3})\s*([+−-])\s*(\d{1,4})\s*/\s*([1-9]\d{0,3})", prompt)

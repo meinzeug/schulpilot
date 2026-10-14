@@ -52,7 +52,6 @@ Bei choice und match bleibt accepted leer. Bei Zahlenaufgaben niemals Zähler, N
 als zusätzliche akzeptierte Antworten aufführen.
 Bei einer Rechenfrage nach dem Ergebnis ist die Antwort der VOLLSTÄNDIGE Bruch, nicht nur sein Zähler.
 Beispiel: Frage 'Wie viel ist 1/4 + 2/4?' hat Antwort '3/4'; die Auswahloptionen enthalten vollständige Brüche.
-Fragt eine Aufgabe ausdrücklich 'Welchen Zähler hat das Ergebnis von 1/4 + 2/4?', lautet die Antwort '3'.
 Schreibe zuerst die konkrete Frage und prüfe dann, dass Optionen, Antwort und Erklärung genau diese Frage beantworten.
 Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungsanweisungen oder aktiven Inhalte."""
 
@@ -273,7 +272,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "eine Auswahlaufgabe und eine kurze Eingabe (gap oder short). "
             "Verwende keine Zuordnungen. Je Aufgabe genau einen oder zwei kurze Hinweise. "
             "Erkläre den bestätigten Stoff verständlich in höchstens sechs Sätzen. "
-            "Bei Rechenfragen nach einem Bruchwert enthalten Antwort und Auswahloptionen vollständige Brüche."
+            "Bei Bruchrechnung frage nach vollständigen Bruchwerten, nicht nach einem einzelnen Zähler oder Nenner. "
+            "Antwort und Auswahloptionen enthalten dann vollständige Brüche."
         )
 
         def compact(node):

@@ -205,6 +205,21 @@ def test_fraction_equivalence_and_non_calculation_questions():
     fraction_result("Wie lautet der Nenner von 1/4 + 1/4?", "4", [])
 
 
+@pytest.mark.parametrize(
+    ("prompt", "answer"),
+    [
+        ("Welchen Zähler hat das Ergebnis von 1/4 + 3/4?", "4"),
+        ("Wie lautet der Nenner des Ergebnisses von 1/4 + 1/4?", "4"),
+    ],
+)
+def test_component_question_is_not_mistaken_for_a_whole_fraction(prompt, answer):
+    from schulpilot.checks import fraction_result
+
+    fraction_result(prompt, answer, [])
+    with pytest.raises(ValueError, match="Bruchlösung"):
+        fraction_result("Wie viel ist 1/4 + 3/4?", "4", [])
+
+
 def test_child_cannot_rewrite_confirmed_material_or_its_homework(api):
     from conftest import HEADERS
     from fastapi.testclient import TestClient

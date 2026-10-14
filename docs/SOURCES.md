@@ -1,6 +1,6 @@
 # Offizielle Quellen, geprüft am 14.10.2026
 
-Implementierte Schnittstellen wurden gegen diese offiziellen Dokumentationen geprüft. Versionsauflösung zusätzlich über Paketregister und die tatsächlich installierten Werkzeuge. Es wurden keine Modellnamen oder Anbieterpreise vorausgewählt.
+Implementierte Schnittstellen wurden gegen diese offiziellen Dokumentationen geprüft. Versionsauflösung zusätzlich über Paketregister und die tatsächlich installierten Werkzeuge. Modellnamen, Fähigkeiten und Preisobergrenzen wurden für den ausdrücklich beauftragten OpenRouter-Free-Standard im offiziellen Endpunktkatalog überprüft; keine Annahme eines dauerhaft kostenlosen oder verfügbaren Endpunkts.
 
 | Bereich | Primärquelle / Prüfung |
 | --- | --- |
@@ -45,3 +45,5 @@ Ausbau vom 14.10.2026:
 - GitHub Actions: offizielle Repositories/Release-API von https://github.com/actions/checkout/tree/v7.0.1 und https://github.com/actions/setup-python/tree/v7.0.0 ; Release-Tags und vollständige Commit-IDs über Git verifiziert. Beide verwenden Node 24 und benötigen aktuelle Runner. CI nutzt Ubuntu 24.04, Python 3.12.3 und den bereits fixierten offiziellen Flutter-Commit; keine Deploy-/Signierschlüssel in CI.
 - Vorbereiteter späterer Zahlungsbetrieb: https://docs.stripe.com/api/checkout/sessions/create und https://support.google.com/googleplay/android-developer/answer/9858738 ; noch kein Checkout aktiviert, keine erfundenen Tarifpreise und kein fremdes Zahlungs-/Google-Konto verwendet.
 - E-Mail-Direktlinks (14.10.2026): https://api.flutter.dev/flutter/flutter_web_plugins/PathUrlStrategy/PathUrlStrategy.html und https://pub.dev/documentation/go_router/18.0.2/go_router/GoRouterState/uri.html ; `includeHash=true` erhält das Fragment beim Kaltstart. Die Formularseite erhält die vollständige Router-URI, statt den nachträglich veränderten Browserzustand auszulesen. Bestehende Flutter-/Router-Versionen bleiben fixiert.
+
+- OpenRouter-Free-Standard (14.10.2026): https://openrouter.ai/docs/guides/routing/provider-selection und https://openrouter.ai/docs/guides/features/structured-outputs ; feste Endpunktbindung, Preisgrenze 0, Datensammlung gesperrt, keine Fallbacks. https://openrouter.ai/docs/guides/best-practices/reasoning-tokens ; dokumentierte `reasoning.enabled`/`exclude`-Parameter tatsächlich getestet. Der kompakte Free-Standard verwendet `enabled:false`, nachdem längere Reasoning-Ausgaben Ausgabelimits erreichten. https://openrouter.ai/dots-studio/dots-3-note-preview:free ; angekündigtes Ende 31.12.2026 erfordert spätere ausdrückliche Modellmigration. Entscheidung und weitere Datenschutzquellen: [AI_STANDARD.md](AI_STANDARD.md).
