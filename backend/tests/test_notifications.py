@@ -8,7 +8,7 @@ from conftest import HEADERS, register
 from fastapi.testclient import TestClient
 from schulpilot import notifications as n
 from schulpilot.config import settings
-from schulpilot.db import DB, Child, Message, PushDelivery, PushDevice, Session, now
+from schulpilot.db import DB, Child, Membership, Message, PushDelivery, PushDevice, Session, now
 from schulpilot.main import app
 from schulpilot.security import decrypt
 from sqlalchemy import func, select
@@ -137,6 +137,118 @@ def test_service_worker_uses_public_configuration_synchronously(api, tmp_path):
     assert response.status_code == 200 and response.headers["service-worker-allowed"] == "/"
     assert "firebase.initializeApp({" in response.text and "fetch(" not in response.text
     assert "private_key" not in response.text and "12.19.0" in response.text
+
+
+@pytest.mark.parametrize("raw", ["[]", "null", '"not an object"', "123", "{invalid"])
+def test_malformed_environment_firebase_config_remains_unavailable(api, tmp_path, raw):
+    enable(tmp_path)
+    object.__setattr__(settings, "fcm_public_config", raw)
+    response = api.get("/api/notifications/config")
+    assert response.status_code == 200
+    assert response.json()["available"] is False and response.json()["firebase"] == {}
+    assert api.get("/api/notifications/service-worker.js").status_code == 503
+
+
+@pytest.mark.parametrize(
+    "revocation",
+    [
+        "none",
+        "session",
+        "device",
+        "registration",
+        "membership",
+        "device_preference",
+        "quiet_time",
+        "push_approval",
+        "firebase_project",
+    ],
+)
+def test_push_rechecks_opt_in_and_authorization_after_oauth_refresh(
+    api, household, tmp_path, monkeypatch, revocation
+):
+    from pathlib import Path
+
+    from google.oauth2 import service_account
+
+    enable(tmp_path)
+    owner, child = household
+    registration = device(api)
+    Path(settings.fcm_service_account_file).write_text(
+        json.dumps(
+            {
+                "type": "service_account",
+                "project_id": "synthetic-project",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        )
+    )
+    fixed = int(now())
+    monkeypatch.setattr(n, "now", lambda: fixed)
+    with DB.begin() as db:
+        db.get(Child, child["id"]).preferences = {"quiet_start": 0, "quiet_end": 0}
+        db.add(Message(child_id=child["id"], kind="help", body="SYNTHETIC PRIVATE MESSAGE", created=fixed - 1))
+        n.prepare(db, fixed)
+    sent, refreshed = [], []
+
+    class Credential:
+        token = "SYNTHETIC-OAUTH-TOKEN"
+
+        def refresh(self, request):
+            refreshed.append(True)
+            with DB.begin() as db:
+                device = db.get(PushDevice, registration["id"])
+                if revocation == "session":
+                    db.get(Session, device.session_id).revoked = True
+                elif revocation == "device":
+                    db.delete(device)
+                elif revocation == "registration":
+                    device.token_hash = "synthetic-reassigned-registration"
+                elif revocation == "membership":
+                    membership = db.scalar(select(Membership).where(Membership.user_id == owner["id"]))
+                    db.delete(membership)
+                elif revocation == "device_preference":
+                    device.help_requests = False
+                elif revocation == "quiet_time":
+                    hour = datetime.fromtimestamp(fixed, ZoneInfo(device.timezone)).hour
+                    device.quiet_start, device.quiet_end = hour, (hour + 1) % 24
+                elif revocation == "push_approval":
+                    object.__setattr__(settings, "push_approved", False)
+                elif revocation == "firebase_project":
+                    config = json.loads(settings.fcm_public_config)
+                    config["projectId"] = "changed-synthetic-project"
+                    object.__setattr__(settings, "fcm_public_config", json.dumps(config))
+
+    monkeypatch.setattr(service_account.Credentials, "from_service_account_info", lambda *args, **kw: Credential())
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, *args, **kwargs):
+            sent.append(kwargs)
+            return httpx.Response(200, json={"name": "synthetic-message"})
+
+    monkeypatch.setattr(n.httpx, "Client", Client)
+    assert n.deliver_one(DB)
+    assert refreshed == [True]
+    assert len(sent) == (1 if revocation == "none" else 0)
+    with DB() as db:
+        delivery = db.scalar(select(PushDelivery))
+        if revocation == "none":
+            assert delivery.status == "accepted" and delivery.error_code is None
+            message = sent[0]["json"]["message"]
+            assert set(message["data"]) == {"route"}
+            assert "SYNTHETIC PRIVATE MESSAGE" not in json.dumps(message)
+        elif revocation == "device":
+            assert delivery is None  # Device deletion cascades its deliveries.
+        else:
+            assert delivery.status == "suppressed" and delivery.sent is None and delivery.error_code is None
 
 
 def test_fcm_http_v1_neutral_payload_expiry_and_invalid_registration(api, tmp_path, monkeypatch):

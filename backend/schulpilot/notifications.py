@@ -26,6 +26,8 @@ def public_config():
     site = runtime_settings()
     try:
         raw = json.loads(site.fcm_public_config or "{}")
+        if not isinstance(raw, dict):
+            raise ValueError("Firebase configuration must be an object")
         allowed = {
             k: raw[k]
             for k in ("apiKey", "appId", "messagingSenderId", "projectId", "authDomain", "vapidKey", "androidAppId")
@@ -312,7 +314,7 @@ class FcmError(Exception):
         self.code, self.unregistered = code, unregistered
 
 
-def send_fcm(token, kind, ttl=60):
+def send_fcm(token, kind, ttl=60, before_send=None):
     site = runtime_settings()
     if not public_config()["available"]:
         raise FcmError("NOT_CONFIGURED")
@@ -338,6 +340,15 @@ def send_fcm(token, kind, ttl=60):
                 return super().__call__(*args, **kwargs)
 
         credentials.refresh(TimedRequest())
+        latest = public_config()
+        if not latest["available"] or latest["firebase"].get("projectId") != project:
+            raise FcmError("DELIVERY_SUPPRESSED")
+        # OAuth refresh can block for seconds. Recheck the application opt-in,
+        # account/session/family rights after that wait, before transmitting FCM.
+        if before_send is not None:
+            ttl = min(ttl, before_send())
+            if ttl < 1:
+                raise FcmError("DELIVERY_SUPPRESSED")
         body = (
             "Es gibt Neuigkeiten in SCHULPILOT. Öffne deinen Lernraum."
             if kind != "reminder"
@@ -400,6 +411,7 @@ def deliver_one(DB):
             db.commit()
             return True
         token = decrypt(device.encrypted_token)
+        registration = device.user_id, device.session_id, device.token_hash
         ttl = min(60, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
         for child in children_for(db, db.get(User, device.user_id)):
             preferences = s.Preferences(**child.preferences)
@@ -412,16 +424,43 @@ def deliver_one(DB):
             db.commit()
             return True
         db.rollback()
+
+    def before_send():
+        current = int(now())
+        with DB() as db:
+            delivery = db.get(PushDelivery, delivery_id)
+            device = db.get(PushDevice, device_id)
+            if (
+                not delivery
+                or delivery.status != "sending"
+                or delivery.device_id != device_id
+                or not device
+                or (device.user_id, device.session_id, device.token_hash) != registration
+                or not public_config()["available"]
+                or kind not in due_kinds(db, device, current)
+            ):
+                return 0
+            remaining = min(60, seconds_before_quiet(current, device.timezone, device.quiet_start, device.quiet_end))
+            for child in children_for(db, db.get(User, device.user_id)):
+                preferences = s.Preferences(**child.preferences)
+                remaining = min(
+                    remaining,
+                    seconds_before_quiet(current, preferences.timezone, preferences.quiet_start, preferences.quiet_end),
+                )
+            return remaining
+
     code, unregistered = None, False
     try:
-        send_fcm(token, kind, ttl)
+        send_fcm(token, kind, ttl, before_send)
     except FcmError as error:
         code, unregistered = error.code, error.unregistered
     with DB.begin() as db:
         delivery = db.get(PushDelivery, delivery_id)
         if delivery:
-            delivery.status = "failed" if code else "accepted"
-            delivery.error_code, delivery.sent = code, int(now())
+            suppressed = code == "DELIVERY_SUPPRESSED"
+            delivery.status = "suppressed" if suppressed else "failed" if code else "accepted"
+            delivery.error_code = None if suppressed else code
+            delivery.sent = None if suppressed else int(now())
         if unregistered:
             db.execute(delete(PushDevice).where(PushDevice.id == device_id))
     # A timeout is not replayed: it may already have been accepted by FCM.

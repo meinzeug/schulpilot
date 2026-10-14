@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import (
     JSON,
@@ -441,12 +442,31 @@ if settings.database_url.startswith("sqlite"):
 DB = sessionmaker(engine, expire_on_commit=False)
 
 
+def _require_production_schema():
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import inspect, text
+
+    if engine.dialect.name != "postgresql":
+        raise RuntimeError("Production requires PostgreSQL")
+
+    config = Config()
+    config.set_main_option("script_location", str(Path(__file__).resolve().parent.parent / "migrations"))
+    expected_heads = set(ScriptDirectory.from_config(config).get_heads(consider_depends_on=True))
+    if not expected_heads:
+        raise RuntimeError("Production startup requires migration scripts with a current head")
+
+    with engine.connect() as connection:
+        if not inspect(connection).has_table("alembic_version"):
+            raise RuntimeError("Database migrations must be applied before production startup")
+        current_heads = set(connection.execute(text("SELECT version_num FROM alembic_version")).scalars())
+    if current_heads != expected_heads:
+        raise RuntimeError("Database migrations must match the current release before production startup")
+
+
 def init_db():
     if settings.environment == "production":
-        from sqlalchemy import inspect
-
-        if not inspect(engine).has_table("alembic_version"):
-            raise RuntimeError("Database migrations must be applied before production startup")
+        _require_production_schema()
     else:
         Base.metadata.create_all(engine)
     from .security import insert_ignore

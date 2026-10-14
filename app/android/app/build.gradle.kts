@@ -9,11 +9,35 @@ plugins {
 val signingPath = System.getenv("SCHULPILOT_SIGNING_PROPERTIES")
 val uploadProperties = Properties()
 if (!signingPath.isNullOrBlank()) {
-    file(signingPath).inputStream().use { uploadProperties.load(it) }
+    val signingFile = file(signingPath)
+    if (!signingFile.isFile) {
+        throw GradleException("SCHULPILOT_SIGNING_PROPERTIES must name an existing external properties file")
+    }
+    signingFile.inputStream().use { uploadProperties.load(it) }
+    if (listOf("storeFile", "storePassword", "keyAlias", "keyPassword").any {
+            uploadProperties.getProperty(it).isNullOrBlank()
+        } || !file(uploadProperties.getProperty("storeFile", "")).isFile) {
+        throw GradleException("External upload signing requires an existing keystore and all four signing properties")
+    }
 }
-val hasUploadKey = uploadProperties.getProperty("storeFile") != null
+val hasUploadKey = !signingPath.isNullOrBlank()
 if (System.getenv("SCHULPILOT_STORE_BUILD") == "true" && !hasUploadKey) {
-    throw GradleException("Play builds require an external SCHULPILOT_SIGNING_PROPERTIES file")
+    throw GradleException("Store builds require an external SCHULPILOT_SIGNING_PROPERTIES file")
+}
+
+// Always guard Play release packaging, even when SCHULPILOT_STORE_BUILD was omitted.
+// The direct development flavor may keep its existing debug-signed release workflow.
+val verifyPlayUploadSigning by tasks.registering {
+    doLast {
+        if (!hasUploadKey) {
+            throw GradleException("Play release builds require an external SCHULPILOT_SIGNING_PROPERTIES file; use playDebug for local development")
+        }
+    }
+}
+tasks.matching {
+    it.name in setOf("prePlayReleaseBuild", "validateSigningPlayRelease", "packagePlayRelease", "packagePlayReleaseBundle", "signPlayReleaseBundle")
+}.configureEach {
+    dependsOn(verifyPlayUploadSigning)
 }
 
 android {
@@ -40,7 +64,10 @@ android {
 
     flavorDimensions += "distribution"
     productFlavors {
-        create("direct") { dimension = "distribution" }
+        create("direct") {
+            dimension = "distribution"
+            if (!hasUploadKey) signingConfig = signingConfigs.getByName("debug")
+        }
         create("play") { dimension = "distribution" }
     }
 
@@ -56,7 +83,7 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName(if (hasUploadKey) "upload" else "debug")
+            signingConfig = if (hasUploadKey) signingConfigs.getByName("upload") else null
         }
     }
 }

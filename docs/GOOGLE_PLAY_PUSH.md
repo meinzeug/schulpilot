@@ -1,6 +1,6 @@
 # Google Play und Push
 
-Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keinen Google-Login. Anmeldung, Familien und Inhalte bleiben in der eigenen API. Ein Firebase-/Play-Zugang wurde bisher nicht bereitgestellt; es wurde kein Konto und keine kostenpflichtige Ressource bestellt. Reguläre Lernfunktionen benötigen diese optionalen Dienste nicht. Aktueller Schwerpunkt sind funktionierende Lernabläufe und die Flutter-Oberfläche für Mobilgeräte und Web.
+Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keinen Google-Login. Anmeldung, Familien und Inhalte bleiben in der eigenen API. Die Firebase-/Play-Konfiguration wird über den autorisierten Google-Zugang vorbereitet. Ein vorhandenes Firebase-Projekt und öffentliche App-Kennungen belegen weder die Integration des Dienstkontos in das Backend noch eine echte Push-Zustellung oder Play-Veröffentlichung. Reguläre Lernfunktionen benötigen diese optionalen Dienste nicht. Aktueller Schwerpunkt sind funktionierende Lernabläufe und die Flutter-Oberfläche für Mobilgeräte und Web.
 
 ## Android-Dateien und Signierung
 
@@ -20,9 +20,9 @@ flutter build apk --flavor direct --release --dart-define=API_URL=https://schulp
 flutter build appbundle --flavor play --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
-`SCHULPILOT_STORE_BUILD=true` verweigert einen Build ohne externen Upload-Schlüssel. Ohne dieses Flag können Entwickler weiterhin ausdrücklich mit einem lokalen Debugschlüssel testen. Der erste öffentlich bereitgestellte Stand war debugsigniert; ein Wechsel auf den Upload-Schlüssel erfordert gegebenenfalls einmalige Deinstallation der alten Test-APK. Vor weiteren Play-Uploads den Version-Code erhöhen.
+Play-Release-Builds verweigern fehlende Upload-Signierung auch ohne `SCHULPILOT_STORE_BUILD=true`; der Play-Release-Flavour fällt nicht auf den Debugschlüssel zurück. Eine angegebene Properties-Datei benötigt ein vorhandenes Keystore sowie nichtleere Werte für `storeFile`, `storePassword`, `keyAlias` und `keyPassword`. Lokale Entwickler können weiterhin `playDebug` beziehungsweise den Direct-Flavour mit Debugschlüssel testen. `SCHULPILOT_STORE_BUILD=true` verlangt den Upload-Schlüssel zusätzlich bereits bei der Konfiguration des Builds. Der erste öffentlich bereitgestellte Stand war debugsigniert; ein Wechsel auf den Upload-Schlüssel erfordert gegebenenfalls einmalige Deinstallation der alten Test-APK. Vor weiteren Play-Uploads den Version-Code erhöhen.
 
-`firebase_core 4.15.0` meldet im Android-Build einen Hinweis zu künftigem Built-in Kotlin. Die hier fixierte Kombination mit Flutter 3.47.7/AGP 9.1.0 baut erfolgreich. Vor einem Flutter-/Gradle-Upgrade das Plugin und den Hinweis erneut prüfen.
+`firebase_core 4.15.0` meldet im Android-Build einen Hinweis zu künftigem Built-in Kotlin. Die frühere Prüfung des ursprünglichen Releases protokolliert einen erfolgreichen Build mit Flutter 3.47.7/AGP 9.1.0; sie ist kein neuer Android-Build der hier geänderten Signierregel. Vor einem Flutter-/Gradle-Upgrade das Plugin und den Hinweis erneut prüfen.
 
 ## Push konfigurieren
 
@@ -61,8 +61,36 @@ Web-Ressource zur Kontolöschung: https://schulpilot.dorfspy.de/account-deletion
 Tatsächliche Validierung vom 14.10.2026: endgültige APK installiert und in einem API-36-Emulator gegen die öffentliche HTTPS-API bedient (Eltern-/Kinderlogin, Sitzungsneustart, Hinweis/Antwort, Widerruf, Löschung). Alle vier Aufgabenarten zusätzlich im echten Web-Browser geprüft. Das endgültige AAB besteht `bundletool 1.18.3 validate`; APK besteht `apksigner verify` und `zipalign -c -P 16 4`. Alle acht geprüften 64-Bit-ELF-Bibliotheken haben PT_LOAD-Ausrichtungen von mindestens 16 KB. Das ist kein behaupteter Play-Console-Prüferfolg oder Firebase-Zustelltest.
 
 
-Aktueller Ausbau: Die Betreiberfreigabe wurde ausdrücklich erteilt und in [APPROVALS.md](APPROVALS.md) protokolliert. Fehlende Google-Projektkennungen und Zugangsdaten bleiben davon getrennte technische Voraussetzungen. Vorbereitete deutsche Storetexte und ein technisches Data-Safety-/Review-Arbeitsblatt stehen in `store/`. `scripts/google_readiness.py --bundletool /pfad/bundletool.jar` prüft den öffentlichen APK-Stand, Betreiberangaben, Textlängen und das tatsächliche AAB, führt aber keinen Console-Upload aus. Physische Geräteprüfung und echte FCM-Zustellung bleiben ohne entsprechendes Gerät/Projekt offen.
+Aktueller Ausbau: Die Betreiberfreigabe wurde ausdrücklich erteilt und in [APPROVALS.md](APPROVALS.md) protokolliert. Google-Projektkennungen und Zugangsdaten bleiben davon getrennte technische Voraussetzungen. Vorbereitete deutsche Storetexte und ein technisches Data-Safety-/Review-Arbeitsblatt stehen in `store/`. Physische Geräteprüfung und echte FCM-Zustellung bleiben ohne entsprechenden Nachweis offen.
+
+Das Preflight-Skript prüft ausschließlich den vorliegenden Stand; es erstellt weder Google-Ressourcen noch Schlüssel und führt keinen Console-Upload aus:
+
+```bash
+python3 scripts/google_readiness.py \
+  --aab /pfad/zum/tatsaechlichen/app-play-release.aab \
+  --bundletool /pfad/bundletool.jar \
+  --strict
+python3 -m unittest scripts/test_google_readiness.py -v
+```
+
+Fehlende Dateien und nicht erreichbare öffentliche Endpunkte werden als Blocker im JSON-Bericht gesammelt. `--strict` liefert dann einen Fehlerstatus, ohne den Bericht zu verlieren. Das weiter unterstützte Feld `aab_built` bedeutet ausschließlich, dass die ausgewählte Datei existiert (`aab_built_evidence:file_presence_only`). Dateiname, Größe und SHA-256 ordnen den Bericht dem tatsächlich geprüften Bundle zu.
+
+Mit vorhandenem Bundletool prüft das Skript Bundle-Struktur und tatsächliches Base-Manifest: Paketname, mindestens Ziel-API 36, Versionsstand gegenüber `pubspec.yaml`, deaktivierten Debugmodus und fehlende APK-Installerberechtigung im Play-Bundle. Jarsigner prüft die tatsächliche Bundle-Signatur; Keytool erkennt den üblichen Android-Debugsignierer. Die angeforderte 16-KB-ZIP-Ausrichtung aus der Bundle-Konfiguration und die tatsächlichen 64-Bit-ELF-Load-/RELRO-Ausrichtungen sind getrennte Ergebnisse. Diese Prüfungen sind kein Laufzeittest auf einem 16-KB-Gerät und keine Google-Freigabe.
+
+Beim Review dieser Änderung wurde die fixierte Flutter-Toolchain eingerichtet. Android-SDK, Keystore und das ursprüngliche AAB sind in dieser Arbeitsumgebung nicht vorhanden. Die neue Signierregel ist deshalb noch mit der fixierten Toolchain auf dem vorhandenen Build-Rechner zu prüfen: `playDebug` ohne Upload-Schlüssel muss möglich bleiben; `playRelease` ohne Schlüssel muss scheitern; der signierte Play-Release muss mit dem vorhandenen externen Schlüssel neu gebaut und geprüft werden. Der früher protokollierte APK-/AAB-Prüfstand oben wird damit nicht als neuer Build dieser Änderung ausgegeben.
+
+## Aktuelle Google-Vorgaben, Stand 14.10.2026
+
+Für neue Smartphone-Apps und Updates verlangt Google Play seit 31.08.2026 mindestens Android 16 / Ziel-API 36. Die Quellkonfiguration setzt Compile- und Ziel-API bereits auf 36; das endgültige Bundle-Manifest bleibt maßgeblich. [Google: Target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en).
+
+Persönliche Entwicklerkonten, die nach dem 13.11.2023 erstellt wurden, benötigen vor dem Antrag auf Produktionszugang einen geschlossenen Test mit mindestens zwölf Personen, die mindestens 14 Tage ununterbrochen angemeldet bleiben. Das ist keine pauschale Pflicht für jedes Kontomodell und kein interner Test. Kontotyp, Erstellungsdatum und konkrete Console-Anforderung erst im tatsächlichen Konto feststellen; vorhandene Testteilnahme oder Produktionsfreigabe nicht unterstellen. Nach Erfüllung sind echte Testnutzung, Rückmeldungen und Änderungen für den Produktionsantrag zu beschreiben. [Google: App testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en).
+
+Die technischen 16-KB-Prüfschritte und ihre Grenzen richten sich nach [Android: Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes). Ein aktuelles AGP allein beweist weder die Ausrichtung jeder vorcompilierten Flutter-/Plugin-Bibliothek noch das Verhalten der App auf einem tatsächlichen 16-KB-System.
 
 Android prüft jetzt bei jedem Start auf Updates. Direkter Download und Google Play verwenden getrennte Build-Flavors; siehe [ANDROID_UPDATES.md](ANDROID_UPDATES.md). Ein Play-AAB darf keine direkte APK-Installationsberechtigung enthalten.
 
 Vor einer Console-Einreichung auch das ausschließlich im Play-Flavor enthaltene In-App-Update-SDK in den Datensicherheitsangaben prüfen. Die direkte APK verwendet dieses SDK nicht.
+
+## In dieser Sitzung bestätigter Firebase-Bestand
+
+Am 14.10.2026 in der Firebase-Konsole gelesen: Projekt `schulpilot-f6bf3`, Projektnummer `460657028995`; Android-Paket `de.dorfspy.schulpilot`, Android-App-ID `1:460657028995:android:9475b4497b0c9de08590b6` und Web-App-ID `1:460657028995:web:67373b18092ab46f8590b6`. FCM HTTP v1 ist aktiviert und ein öffentliches Web-VAPID-Schlüsselpaar existiert. Ein Dienstkonto wurde in dieser Sitzung nicht erzeugt; ein funktionierender Backend-Versand ist damit nicht nachgewiesen. Aktuelle Google-Sitzung weicht vom gewünschten Eigentümerkonto ab; dessen Zugriff ist noch nicht bestätigt. Persönliche Kontoadressen werden hier nicht veröffentlicht. Unter dem angemeldeten Konto zeigt Google Play die Entwicklerkonto-Erstellung.
