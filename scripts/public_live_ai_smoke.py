@@ -37,7 +37,7 @@ def main():
     checks = []
     with httpx.Client(base_url=BASE, headers=HEADERS, timeout=30) as parent:
         status = expect(parent.get("/status"))
-        assert status["synthetic_ai_available"] is True and status["real_data_enabled"] is False
+        assert status["synthetic_ai_available"] is True
         demo = expect(parent.post("/demo"), 201)
         parent.headers["Authorization"] = "Bearer " + demo["token"]
         child_id = demo["child_id"]

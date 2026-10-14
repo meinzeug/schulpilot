@@ -114,6 +114,13 @@ def external_allowed(config, image=False, synthetic_fixture=False):
         raise ProviderError("Kostenpflichtige KI-Aufrufe sind durch den Notfallstopp gesperrt.")
     if config.provider == "disabled" or not config.model:
         raise ProviderError("Kein KI-Anbieter mit Modell eingerichtet.")
+    if config.provider == "openrouter" and config.openrouter_free_only:
+        if not config.model.endswith(":free"):
+            raise ProviderError(
+                "OpenRouter ist auf kostenlose Modelle begrenzt. Kein kostenpflichtiges Modell wurde aufgerufen."
+            )
+        if config.input_per_million_micros != 0 or config.output_per_million_micros != 0:
+            raise ProviderError("Kostenloser OpenRouter-Betrieb benötigt bestätigte Preisobergrenzen von null.")
     if synthetic_fixture:
         if not (
             settings.synthetic_ai_enabled
@@ -323,7 +330,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     "allow_fallbacks": False,
                     "require_parameters": True,
                     "data_collection": "allow" if synthetic_fixture and not private_probe else "deny",
-                    "zdr": bool(not synthetic_fixture or private_probe),
+                    "zdr": bool(config.openrouter_require_zdr) if not synthetic_fixture or private_probe else False,
                 },
                 "response_format": {
                     "type": "json_schema",

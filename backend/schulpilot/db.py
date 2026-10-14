@@ -15,6 +15,7 @@ from sqlalchemy import (
     create_engine,
     event,
     false,
+    true,
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -295,7 +296,7 @@ class ProviderConfig(Base):
     __tablename__ = "provider_config"
     id = Column(Integer, primary_key=True, default=1)
     revision = Column(Integer, default=1, server_default="1", nullable=False)
-    provider = Column(String(20), default="disabled", nullable=False)
+    provider = Column(String(20), default="openrouter", nullable=False)
     model = Column(String(160), default="", nullable=False)
     extraction_model = Column(String(160), default="", server_default="", nullable=False)
     extraction_capability_evidence = Column(String(500), default="", server_default="", nullable=False)
@@ -307,6 +308,8 @@ class ProviderConfig(Base):
     privacy_approved = Column(Boolean, default=False, nullable=False)
     privacy_evidence = Column(String(500), default="", nullable=False)
     production_block_reason = Column(String(500), default="", server_default="", nullable=False)
+    openrouter_free_only = Column(Boolean, default=True, server_default=true(), nullable=False)
+    openrouter_require_zdr = Column(Boolean, default=False, server_default=true(), nullable=False)
     reserve_micros = Column(Integer, default=250_000, nullable=False)
     input_per_million_micros = Column(Integer)
     output_per_million_micros = Column(Integer)

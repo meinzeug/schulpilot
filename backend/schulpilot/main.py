@@ -12,6 +12,7 @@ from . import __version__, admin, auth, families, learning, materials, notificat
 from .config import settings
 from .db import DB, ProviderConfig, init_db
 from .operations import router as operations_router
+from .providers import ProviderError, config_for_function, external_allowed
 
 log = logging.getLogger("schulpilot.api")
 
@@ -113,14 +114,12 @@ def health():
 def status():
     with DB() as db:
         config = db.get(ProviderConfig, 1)
-        ai = (
-            not config.emergency_stop
-            and config.provider != "disabled"
-            and config.privacy_approved
-            and settings.real_data_approved
-            and settings.privacy_evidence
-            and not config.production_block_reason
-        )
+        ai, reason = True, None
+        try:
+            for function in ("extract", "unit"):
+                external_allowed(config_for_function(config, function), image=function == "extract")
+        except ProviderError as error:
+            ai, reason = False, str(error)
     return {
         "version": __version__,
         "registration_available": settings.mail_ready,
@@ -134,10 +133,14 @@ def status():
         ),
         "real_data_enabled": bool(settings.real_data_approved and settings.privacy_evidence),
         "ai_available": ai,
+        "ai_provider": config.provider,
+        "ai_free_only": bool(config.provider == "openrouter" and config.openrouter_free_only),
+        "ai_data_collection": "deny" if config.provider == "openrouter" else None,
+        "ai_requires_zdr": bool(config.provider == "openrouter" and config.openrouter_require_zdr),
         "ai_block_reason": (
             "Der eingerichtete KI-Endpunkt erfüllt die erforderlichen Datenschutzeinstellungen derzeit nicht. Deine Materialien werden nicht an diesen Endpunkt gesendet."
             if config.production_block_reason
-            else None
+            else reason
         ),
         "notice": (
             "Technischer Pilot. Betreiberfreigabe liegt vor; die Verfügbarkeit externer KI wird zusätzlich geprüft."

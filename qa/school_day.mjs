@@ -2,7 +2,7 @@
 // That preceding script performs the three actual, free, fixed-fixture AI calls.
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
-import {readFile, unlink} from 'node:fs/promises';
+import {readFile, unlink, writeFile} from 'node:fs/promises';
 
 const url = 'https://schulpilot.dorfspy.de';
 const accountFile = '../artifacts/.school-day-qa-account.json';
@@ -43,6 +43,63 @@ try {
   const startButton = () => c.getByRole('button', {name: /Jetzt lernen & festigen|Weiterlernen/});
   await open(c, '/app');
   await c.getByRole('button', {name: 'Nach der Schule starten', exact: true}).click();
+  if (demo.normal_account && !demo.package_unit_id) {
+    const today = async () => {
+      const response = await child.request.get(url + '/api/children/' + demo.child_id + '/school-day/today');
+      assert.equal(response.status(), 200);
+      return (await response.json()).day;
+    };
+    await c.getByText('Alles von heute einsammeln', {exact: true}).waitFor();
+    let day = await today();
+    assert.equal(day.synthetic, false);
+    if (day.pages.length === 0) {
+      const select = c.getByRole('button', {name: 'Mehrere Fotos auswählen', exact: true});
+      await reveal(c, select);
+      const picker = c.waitForEvent('filechooser');
+      await select.click();
+      await (await picker).setFiles(demo.image_paths);
+      for (let index = 0; index < 2; index++) {
+        const crop = c.getByRole('button', {name: 'Zuschnitt übernehmen', exact: true});
+        await crop.waitFor({timeout: 30000});
+        await crop.click();
+        await c.waitForTimeout(800);
+      }
+    }
+    const next = c.getByRole('button', {name: 'Alle Seiten sind da · Weiter', exact: true});
+    await reveal(c, next);
+    await next.click();
+    const recognize = c.getByRole('button', {name: 'Heftseiten mit KI erkennen', exact: true});
+    await reveal(c, recognize);
+    await recognize.click();
+    const confirm = c.getByRole('button', {name: 'Stoff bestätigen', exact: true});
+    for (let index = 0; index < 2; index++) {
+      const consent = c.getByRole('checkbox', {name: /Ich habe den Stoff geprüft/});
+      await consent.waitFor({timeout: 150000});
+      await reveal(c, consent);
+      if (await consent.getAttribute('aria-checked') !== 'true') await consent.click();
+      await reveal(c, confirm);
+      const saved = c.waitForResponse(r => r.url().endsWith('/confirm') && r.request().method() === 'PUT');
+      await confirm.click();
+      assert.equal((await saved).status(), 200);
+      await c.waitForTimeout(500);
+    }
+    const create = c.getByRole('button', {name: 'Lernpaket für heute erstellen', exact: true});
+    await reveal(c, create);
+    await create.click();
+    await c.getByText('Dein Lernpaket ist bereit', {exact: true}).waitFor({timeout: 150000});
+    day = await today();
+    assert.equal(day.synthetic, false);
+    assert.equal(day.pages.length, 2);
+    assert(day.pages.every(page => page.synthetic === false && page.confirmed && page.extraction_provider === 'openrouter'));
+    const content = day.pages.map(page => page.content).join(' ');
+    assert(/3\s*\/\s*9|\\frac\s*\{3\}\s*\{9\}/.test(content), 'Normal OCR must preserve our original non-fixture example');
+    assert.equal(day.units.length, 1);
+    assert.equal(day.units[0].synthetic, false);
+    demo.school_day_id = day.id;
+    demo.package_unit_id = day.units[0].id;
+    await writeFile(accountFile, JSON.stringify(demo), {mode: 0o600});
+    console.log('regular child photo selection, cropping, two OCR calls, confirmations and AI package passed');
+  }
   await c.getByText('Dein Lernpaket ist bereit', {exact: true}).waitFor();
   await reveal(c, startButton());
   await c.screenshot({path: '../artifacts/school-day-child-desktop.png'});
@@ -63,8 +120,10 @@ try {
   }
   await reveal(c, c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}));
   await c.getByRole('button', {name: 'Ein Hinweis bitte', exact: true}).click();
-  const q = unit.questions.find(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));
-  assert(q, 'An unanswered question must remain in this isolated test package');
+  const pending = unit.questions.filter(q => !q.attempts.some(a => a.outcome === 'correct' || a.outcome === 'uncertain'));
+  assert(pending.length, 'An unanswered question must remain in this isolated test package');
+  for (const q of demo.normal_account ? pending : pending.slice(0, 1)) {
+  await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).waitFor();
   if (q.type === 'choice') await c.getByRole('button', {name: q.answer}).first().click();
   if (q.type === 'gap' || q.type === 'short') {
     await c.getByRole('textbox', {name: q.type === 'gap' ? 'Deine Ergänzung' : 'Deine kurze Antwort', exact: false}).click();
@@ -80,6 +139,8 @@ try {
   const saved = c.waitForResponse(r => r.url().endsWith('/questions/' + q.id + '/answer') && r.request().method() === 'POST');
   await c.getByRole('button', {name: 'Antwort prüfen', exact: true}).click();
   assert.equal((await (await saved).json()).outcome, 'correct');
+  await c.waitForTimeout(500);
+  }
   const p = await parent.newPage();
   await open(p, '/child/' + demo.child_id);
   await p.getByRole('button', {name: 'Heutiges Tagespaket ansehen', exact: true}).click();
@@ -88,6 +149,16 @@ try {
   assert.equal(day.units[0].questions[0].attempts[0].assisted, true);
   assert.equal(day.units[0].questions[0].attempts[0].outcome, 'correct');
   assert.equal(day.pages.length, 2);
+  if (demo.normal_account) {
+    const stored = await (await parent.request.get(url + '/api/units/' + demo.package_unit_id)).json();
+    assert.equal(stored.status, 'completed');
+    assert(stored.questions.every(q => q.attempts.some(a => a.outcome === 'correct')));
+    const usage = await (await parent.request.get(url + '/api/families/' + demo.user.families[0].id + '/usage')).json();
+    assert.equal(usage.calls_used, 3);
+    assert.equal(usage.unknown_cost_calls, 0);
+    assert(usage.records.every(record => record.cost_micros_usd === 0));
+    console.log(JSON.stringify({regular_parent_and_child: true, synthetic_demo_used: false, normal_photo_uploads: 2, actual_free_ai_calls: usage.calls_used, cost_micros_usd: usage.known_cost_micros_usd, completed_questions: stored.questions.length, provider: stored.provider, model: stored.model}));
+  }
   await p.screenshot({path: '../artifacts/school-day-parent.png'});
   assert.deepEqual(errors, []);
   passed = true;

@@ -873,6 +873,28 @@ class _ProviderFormState extends State<ProviderForm> {
           ),
         ),
         const SizedBox(height: 18),
+        if (values['provider'] == 'openrouter') ...[
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Nur kostenlose OpenRouter-Modelle'),
+            subtitle: const Text(
+              'Preisgrenze 0 und feste Endpunkte; kein kostenpflichtiger Ersatz.',
+            ),
+            value: values['openrouter_free_only'] ?? true,
+            onChanged: (v) =>
+                setState(() => values['openrouter_free_only'] = v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Zusätzlich Zero Data Retention verlangen'),
+            subtitle: const Text(
+              'Kann kostenlose Endpunkte ausschließen. Datensammlung bleibt für Lerninhalte immer gesperrt.',
+            ),
+            value: values['openrouter_require_zdr'] ?? true,
+            onChanged: (v) =>
+                setState(() => values['openrouter_require_zdr'] = v),
+          ),
+        ],
         for (final field in [
           ('emergency_stop', 'Notfallstopp aktiv'),
           (
@@ -947,6 +969,10 @@ class _ProviderFormState extends State<ProviderForm> {
                     k: values[k],
                   'model': model.text,
                   'api_key': keyField.text.isEmpty ? null : keyField.text,
+                  'openrouter_free_only':
+                      values['openrouter_free_only'] ?? true,
+                  'openrouter_require_zdr':
+                      values['openrouter_require_zdr'] ?? true,
                   for (final field in fields.entries)
                     field.key:
                         [

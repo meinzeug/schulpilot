@@ -196,11 +196,16 @@ INSERT INTO materials(id,child_id,title,status,subject,topic,content,uncertainti
 INSERT INTO school_days(id,child_id,school_date,stage,revision,created) VALUES('day','c','2026-10-14','ready',1,0);
 INSERT INTO learning_units(id,child_id,school_day_id,material_id,subject,topic,explanation,questions,status,synthetic,provider,created,active_seconds,segment_seconds) VALUES('unit','c','day','m','Math','X','Fixture','[]','active',1,'synthetic',0,0,0);
 INSERT INTO attempts(id,unit_id,question_id,answer,outcome,assisted,created) VALUES('attempt','unit','q1','"synthetic"','correct',0,0);
+INSERT INTO provider_config(id,revision,provider,model,emergency_stop,image_capable,structured_capable,capability_evidence,privacy_approved,privacy_evidence,reserve_micros,pricing_evidence,max_output_tokens,global_limit_micros,status) VALUES(1,1,'openrouter','fixture/model:free',1,1,1,'fixture',1,'fixture',1000,'fixture',4000,1000000,'fixture');
 """)
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0005"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0006"
+        assert db.execute("select openrouter_free_only,openrouter_require_zdr from provider_config").fetchone() == (
+            1,
+            1,
+        )
         assert db.execute(
             "select package_version,introduction_seen,status from learning_units where id='unit'"
         ).fetchone() == (1, 1, "active")

@@ -260,6 +260,7 @@ def test_openrouter_is_bound_to_model_upstream_and_has_safe_errors(api, househol
     with DB.begin() as db:
         config = db.get(ProviderConfig, 1)
         config.provider = "openrouter"
+        config.openrouter_free_only = False
         config.capability_evidence = "synthetic upstream=fixture-upstream"
     calls = []
 

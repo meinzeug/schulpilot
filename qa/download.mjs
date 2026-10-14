@@ -10,6 +10,7 @@ const browser = await chromium.launch({executablePath: process.env.CHROME_PATH |
 const context = await browser.newContext({viewport: {width: 1280, height: 1000}, acceptDownloads: true});
 const page = await context.newPage();
 let demo;
+let ownsFamily = false;
 const checks = [];
 
 async function open(route) {
@@ -48,14 +49,22 @@ async function download(label) {
 try {
   await open('/');
   await download('public-apk-before-login');
-  const response = await context.request.post(base + '/api/demo', {headers: {'X-Schulpilot-Request': '1'}});
-  if (response.status() !== 201) throw new Error('Cannot create isolated synthetic account: ' + response.status());
-  demo = await response.json();
+  if (process.argv.includes('--reuse-qa-account')) {
+    demo = JSON.parse(await fs.readFile('../artifacts/.school-day-qa-account.json', 'utf8'));
+    if (!demo.normal_account) throw new Error('Only the prepared regular QA family may be reused');
+    const response = await context.request.post(base + '/api/auth/login', {headers: {'X-Schulpilot-Request': '1'}, data: {username: demo.credentials.parent_username, password: demo.credentials.parent_password}});
+    if (response.status() !== 200) throw new Error('Regular QA parent login failed');
+  } else {
+    const response = await context.request.post(base + '/api/demo', {headers: {'X-Schulpilot-Request': '1'}});
+    if (response.status() !== 201) throw new Error('Cannot create isolated synthetic account: ' + response.status());
+    demo = await response.json();
+    ownsFamily = true;
+  }
   await open('/app');
   await download('public-apk-after-login');
   console.log(JSON.stringify({checks, actual_browser_downloads: 2, checksum_verified: true}));
 } finally {
-  if (demo) {
+  if (demo && ownsFamily) {
     const response = await context.request.delete(base + '/api/account', {headers: {'X-Schulpilot-Request': '1'}, data: {password: demo.credentials.parent_password}});
     if (response.status() !== 200) throw new Error('Own synthetic download-test family could not be deleted');
   }

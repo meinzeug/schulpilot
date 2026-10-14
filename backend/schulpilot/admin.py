@@ -33,13 +33,36 @@ def provider(p=Depends(admin), db=Depends(get_db)):
 @router.put("/admin/provider")
 def update_provider(data: s.ProviderUpdate, p=Depends(admin), db=Depends(get_db)):
     config = db.get(ProviderConfig, 1)
+    values = data.model_dump(exclude={"api_key"})
+    for field in ("openrouter_free_only", "openrouter_require_zdr"):
+        if field not in data.model_fields_set:
+            values.pop(field)
+    free_only = values.get("openrouter_free_only", config.openrouter_free_only)
+    if data.provider == "openrouter" and free_only:
+        if not data.model.endswith(":free") or (data.extraction_model and not data.extraction_model.endswith(":free")):
+            raise HTTPException(
+                422, "Im kostenlosen OpenRouter-Betrieb benötigen Text- und Bildmodell eine :free-Modell-ID."
+            )
+        if data.input_per_million_micros != 0 or data.output_per_million_micros != 0:
+            raise HTTPException(422, "Kostenloser OpenRouter-Betrieb benötigt Preisobergrenzen von null.")
     # An explicit model/provider change invalidates the previous endpoint result.
     # The operator's privacy approval is separate from endpoint availability.
-    if (data.provider, data.model, data.extraction_model) != (config.provider, config.model, config.extraction_model):
+    routing_fields = (
+        "provider",
+        "model",
+        "extraction_model",
+        "capability_evidence",
+        "extraction_capability_evidence",
+        "openrouter_free_only",
+        "openrouter_require_zdr",
+    )
+    if data.api_key or any(
+        values.get(field, getattr(config, field)) != getattr(config, field) for field in routing_fields
+    ):
         config.production_block_reason = "Neue Modellkonfiguration: datenschutzkonformen Endpunkt zuerst mit künstlichen Daten prüfen und lokal freigeben."
     if data.provider != config.provider:
         config.encrypted_key = None
-    for key, value in data.model_dump(exclude={"api_key"}).items():
+    for key, value in values.items():
         setattr(config, key, value)
     if data.api_key:
         config.encrypted_key = encrypt(data.api_key)

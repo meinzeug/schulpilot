@@ -244,6 +244,8 @@ class ProviderUpdate(Strict):
     capability_evidence: str = Field(default="", max_length=500)
     privacy_approved: bool = False
     privacy_evidence: str = Field(default="", max_length=500)
+    openrouter_free_only: bool = True
+    openrouter_require_zdr: bool = False
     reserve_micros: int = Field(ge=1000, le=10_000_000)
     input_per_million_micros: int | None = Field(default=None, ge=0, le=1_000_000_000)
     output_per_million_micros: int | None = Field(default=None, ge=0, le=1_000_000_000)
