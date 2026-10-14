@@ -10,6 +10,7 @@
 - Google-Anbindung bedeutet Google Play und Push, keinen Google-Login. Firebase ausschließlich nach ausdrücklichem Geräte-Opt-in initialisieren; keine Analytics, Familienthemen oder Lerninhalte in Push. Sitzung und Familienrechte vor Versand erneut prüfen.
 - Die signierte Test-APK ist auf der Startseite und nach Web-Login herunterladbar. Öffentliche Manifestwerte aus der tatsächlichen APK berechnen. Upload-Schlüssel und Firebase-Dienstkonto bleiben außerhalb von Git.
 - Anbieteraufrufe: feste serverseitige Adapter, validierte Schemas, atomare Kontingentreservierung, keine automatischen Providerwechsel oder unbegrenzte Wiederholungen.
+- Tagesassistent: alle Seiten vor Paket-Erstellung bestätigen, zusammengehörige Seiten gemeinsam verarbeiten und Quellenrevisionen sowie Elternplanung vor/nach dem KI-Aufruf prüfen. Verbindliche Aufträge und verfügbare Lernzeit erhalten. Keine vorgetäuschte Vollständigkeit oder automatisch wachsenden Nachholberge.
 - Codex-Lernprovider niemals mit Entwicklungszugängen starten. Ausschließlich isolierter Worker ohne Host-/Deployment-/GitHub-/SSH-Zugriff. Experimentell und standardmäßig deaktiviert.
 - Vor Deployment betroffene Konfigurationen sichern; vorhandenes Caddy ergänzen; andere Dienste nicht ändern. Daten/Secrets außerhalb der Releases. Rückweg dokumentieren.
 - Versionsstände und Quellen in docs/SOURCES.md pflegen. Keine erfundenen Modelle, Preise, Messwerte oder Testergebnisse.

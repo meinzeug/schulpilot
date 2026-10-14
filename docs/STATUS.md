@@ -6,6 +6,7 @@ Funktionsfähiger technischer Pilot mit eigenem Backend und Flutter-Clients. Öf
 
 - Echte Elternregistrierung, E-Mail-Verifikation, Wiederherstellung und adressgebundene Einladungen über eingerichtetes Gmail-SMTP; tatsächlicher E-Mail-Eingang geprüft. Fehlender/gestörter Versand wird ausdrücklich als Fehler gemeldet. Argon2id, sichere widerrufbare Web-/Android-Sitzungen, getrennte Kinderzugänge ohne Kinder-E-Mail, Rücksetzen ohne Passwortoffenlegung.
 - Serverseitige Rollen-/Familientrennung, mehrere Kinder, Leserechte oder Verwaltung für eingeladene Eltern, Sitzungs-/Rechteentzug. Lokaler Erstadmin mit TOTP, Wiederverwendungsschutz und protokollierten Betriebszugriffen; keine Adminansicht privater Kinderinhalte.
+- Gespeicherter „Nach der Schule“-Assistent im eigenen Kinderzugang: bis zu 24 Heftseiten, private Vorschauen, seitenweise KI-Erkennung und Bestätigung, gemeinsames Tagespaket nach Fach mit Erklärungen und interaktiven Aufgaben. Elternzeit/Fachvorgaben begrenzen die Auswahl; übrige Themen bleiben sichtbar. Quellenrevisionen, atomare Paketspeicherung und Wiederholungen über alle zugehörigen Seiten. [Details](AFTER_SCHOOL.md).
 - Privater Bildimport mit lokalem Zuschneiden und serverseitiger Metadatenentfernung; serverseitige OpenAI-/OpenRouter-Erkennung und strukturierte Generierung implementiert. Bestätigung unsicherer Stellen und gesonderte notierte Hausaufgaben. Die feste Demo bleibt ohne externe KI; ein gesonderter Testpfad verwendet ein künstliches Bild und feste Texte für echte kostenlose OpenRouter-Aufrufe. Freie Nutzereingaben gelangen nicht in diesen Testpfad.
 - Durchgängiges Lernen mit vier Flutter-Aufgabenkomponenten, Erklärungen, Hinweisen, Pause/Fortsetzung, Rückmeldungen und Familienhilfe. Antworten/Unterstützung werden tatsächlich gespeichert. Unsichere freie Antworten werden weder automatisch falsch noch als Verständnisproblem gewertet.
 - Familienübersicht und Kinderdetail mit Tages-/Wochenüberblick, Aufgaben/Antworten/Hinweisen/Erklärungen, Aktivitätsverlauf, ungefährer aktiver Lernzeit, offenen Zielen, Prüfungsterminen und späteren Wiederholungen. Ein einzelner Erfolg schließt weder Beherrschung noch ein verbindliches Elternziel automatisch ab.
@@ -19,12 +20,12 @@ Zusätzlich: freiwilliges gerätebezogenes FCM-Push für Android/Web mit verschl
 
 | Prüfung | Ergebnis |
 | --- | --- |
-| Backend mit SQLite | Gesamtlauf mit 49 Tests bestanden; zusätzlicher Rechte-Test ebenfalls bestanden (50 Testfälle) |
-| Backend auf separater PostgreSQL-Testdatenbank des Zielservers | Gesamtlauf mit 50 Tests bestanden, einschließlich neuer Fixture-/Push-Sicherheitsfälle |
+| Backend mit SQLite | Gesamtlauf mit 61 Tests bestanden; zusätzlicher Mehrseiten-Wiederholungstest ebenfalls bestanden (62 Testfälle) |
+| Backend auf separater PostgreSQL-Testdatenbank des Zielservers | Gesamtlauf mit 62 Tests bestanden, einschließlich Mehrseiten-Wiederholung, Elternzeit, atomarem Paketabbruch und Parallelität |
 | Flutter-Analyse | Keine Befunde |
-| Fluttertests | 5 bestanden, einschließlich Kinderstart auf 390 und 1280 Pixel |
+| Fluttertests | 8 bestanden, einschließlich Kinderstart und seitenweiser Assistent auf 390/1280 Pixel sowie Wiederaufnahme laufender Aufträge |
 | Flutter-Web Release | Erfolgreich gebaut, Ressourcen vom eigenen Server |
-| Android Release-Test-APK / AAB | Version 0.1.0+2 mit eigenem externem Upload-Schlüssel gebaut; APK/JAR-Signatur und AAB mit offiziellem bundletool 1.18.3 geprüft; 64-Bit-ELF-Ladesegmente mindestens 16 KB ausgerichtet |
+| Android Release-Test-APK / AAB | Version 0.1.0+3 mit eigenem externem Upload-Schlüssel gebaut; APK/JAR-Signatur und AAB mit offiziellem bundletool 1.18.3 geprüft; 64-Bit-ELF-Ladesegmente mindestens 16 KB ausgerichtet |
 | Öffentliche HTTPS-API | Materialbestätigung, verbindlicher Elternplan, persistenter Job, Idempotenz, eigener Kinderlogin, Rollenprüfung, alle vier Aufgabenarten, Hinweise, Pause, Elternverlauf, Export, Sitzungswiderruf und Löschung bestanden |
 | Echter Browser | Getrennte Eltern-/Kinderkontexte, sichere Cookies, Materialfluss, alle vier interaktiven Aufgaben, Elternverlauf und mobile Ansicht geprüft; keine JavaScript-Laufzeitfehler |
 | Sicherung | Aktuelle AES-GCM-Sicherung authentifiziert; Schema 0003 in getrennte PostgreSQL-Testdatenbank wiederhergestellt und Testkopie anschließend entfernt |
@@ -49,4 +50,6 @@ APK: `artifacts/schulpilot-0.1.0-test.apk` auf dem Entwicklungsrechner, absichtl
 
 Abschließende öffentliche Prüfungen des bereitgestellten Anwendungscodes durchgeführt. Reproduzierbar: `scripts/public_smoke.py`, `scripts/public_live_ai_smoke.py`, `qa/smoke.mjs`, `qa/download.mjs`, `qa/android_smoke.py`. Testkonten wurden gelöscht. API/Worker und vorhandene Merchagent-/Artist-/Buddy-/Caddy-Dienste sind aktiv; öffentliche DorfSpy-/Artist-/Buddy-Adressen liefern HTTP 200. API-Port 3240 bindet ausschließlich an 127.0.0.1.
 
-Öffentliche APK: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk . Version 0.1.0+2, 59.631.320 Bytes, SHA-256 `00f1c757622a7a4fb461c95d2289870c75b670b7f0e43b27db9eb478ae5be32b`. APK-Signatur, `zipalign -P 16`, ELF-Ausrichtung und finales AAB mit offiziellem bundletool geprüft. Physische Geräte- und tatsächliche Firebase-/Play-Console-Prüfung bleiben offen.
+Öffentliche APK: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk . Version 0.1.0+3, 59.713.568 Bytes, SHA-256 `db1ddc5dd30ef377943ca3130b04e20f6f95a7a65db0d44a9df01cd92608d21c`. APK-Signatur, `zipalign -P 16`, ELF-Ausrichtung und finales AAB mit offiziellem bundletool geprüft. Physische Geräte- und tatsächliche Firebase-/Play-Console-Prüfung bleiben offen.
+
+Tagesassistent: Migration 0003 → 0004 mit erhaltenem synthetischem Bestandsdatensatz auf SQLite und PostgreSQL geprüft; Alembic meldet keine weiteren Schemaänderungen. Unmittelbar vor öffentlicher Aktivierung aktuelle verschlüsselte Datenbanksicherung erfolgreich erstellt (systemd Result=success). Echte öffentliche Mehrseiten-KI-, Browser- und Android-Prüfung werden nach Aktivierung dokumentiert.

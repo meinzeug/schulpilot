@@ -103,10 +103,18 @@ class Api {
   Future<List<dynamic>> list(String path) async =>
       List<dynamic>.from(await call('GET', path));
 
-  Future<Json> upload(String childId, Uint8List bytes) async {
+  Future<Json> upload(
+    String childId,
+    Uint8List bytes, {
+    String? schoolDayId,
+  }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$base/children/$childId/materials'),
+      Uri.parse('$base/children/$childId/materials').replace(
+        queryParameters: schoolDayId == null
+            ? null
+            : {'school_day_id': schoolDayId},
+      ),
     );
     request.headers.addAll(headers);
     request.files.add(
@@ -164,6 +172,7 @@ class AppState extends ChangeNotifier {
   String? familyId;
   int revision = 0;
   Json? demoCredentials;
+  Uint8List? recoveredPhoto;
   AppState({Api? api, FlutterSecureStorage? storage})
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
@@ -264,7 +273,11 @@ class AppState extends ChangeNotifier {
     api.token = null;
     user = null;
     familyId = null;
-    if (!kIsWeb) await storage.delete(key: 'session');
+    recoveredPhoto = null;
+    if (!kIsWeb) {
+      await storage.delete(key: 'session');
+      await storage.delete(key: 'camera_child');
+    }
     notifyListeners();
   }
 }

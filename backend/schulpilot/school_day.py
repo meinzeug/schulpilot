@@ -1,0 +1,406 @@
+"""Persisted after-school wizard; a package combines confirmed notebook pages."""
+
+import hashlib
+import json
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy import select, update
+
+from . import schemas as s
+from .config import settings
+from .db import (
+    Assignment,
+    Child,
+    Family,
+    Job,
+    LearningUnit,
+    Material,
+    ProviderConfig,
+    SchoolDay,
+    UnitSource,
+    get_db,
+    uid,
+)
+from .fixtures import DAY_FIXTURE_IDS, worksheet
+from .learning import local_day, material_data, plan, record, unit_data
+from .materials import enqueue
+from .providers import ProviderError, config_for_function, external_allowed
+from .security import authenticated, child_access, rate_limit
+
+router = APIRouter(tags=["Nach der Schule"])
+MAX_PAGES = 24
+MAX_CONTENT = 60_000
+
+
+class StageUpdate(s.Strict):
+    stage: Literal["collecting", "review"]
+
+
+def pages(db, day):
+    return list(
+        db.scalars(select(Material).where(Material.school_day_id == day.id).order_by(Material.page_number, Material.id))
+    )
+
+
+def get_day(db, p, day_id, *, write=False):
+    day = db.get(SchoolDay, day_id)
+    if not day:
+        raise HTTPException(404, "Schultag nicht gefunden.")
+    child = child_access(db, p, day.child_id, write=write and p.user.role == "parent")
+    if write:
+        # The same child row serializes upload, stage changes and job creation.
+        db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+        db.refresh(day)
+        if day.school_date != local_day(child).isoformat():
+            raise HTTPException(409, "Dieser Schultag ist gespeichert. Bitte den Assistenten für heute öffnen.")
+    return day, child
+
+
+def idle(db, child_id):
+    if db.scalar(select(Job.id).where(Job.child_id == child_id, Job.status.in_(["queued", "running"]))):
+        raise HTTPException(409, "Eine Verarbeitung läuft noch. Bitte kurz warten und aktualisieren.")
+
+
+def append_page(db, p, child, day_id):
+    day, _ = get_day(db, p, day_id, write=True)
+    if day.child_id != child.id:
+        raise HTTPException(404, "Schultag nicht gefunden.")
+    idle(db, child.id)
+    if day.stage != "collecting":
+        raise HTTPException(409, "Bitte zuerst zum Schritt „Seiten sammeln“ zurückgehen.")
+    existing = pages(db, day)
+    if len(existing) >= MAX_PAGES:
+        raise HTTPException(409, f"Ein Tagespaket kann höchstens {MAX_PAGES} Seiten enthalten.")
+    day.revision += 1
+    return day, max((m.page_number or 0 for m in existing), default=0) + 1
+
+
+def planning_fingerprint(db, child):
+    db.refresh(child)
+    goals = [
+        (a.id, a.revision, a.done)
+        for a in db.scalars(select(Assignment).where(Assignment.child_id == child.id).order_by(Assignment.id))
+    ]
+    return hashlib.sha256(json.dumps([child.grade, child.preferences, goals], sort_keys=True).encode()).hexdigest()
+
+
+def package_plan(db, day, child):
+    current = plan(db, child)
+    available = current["available_minutes"] if day.school_date == local_day(child).isoformat() else 0
+    # Mandatory parent/homework goals keep their existing place in the day.
+    reserved = sum(current["session_minutes"] for x in current["today"] if x.get("mandatory"))
+    remaining = max(0, available - reserved)
+    minutes = min(8, s.Preferences(**child.preferences).session_minutes, max(5, remaining))
+    slots = min(3, remaining // minutes)
+    groups = []
+    for material in pages(db, day):
+        if not material.confirmed:
+            continue
+        group = next((g for g in groups if g["subject"].casefold() == material.subject.casefold()), None)
+        if group is None:
+            group = {
+                "id": f"g{len(groups) + 1}",
+                "subject": material.subject,
+                "topics": [],
+                "material_ids": [],
+                "estimated_minutes": minutes,
+            }
+            groups.append(group)
+        group["material_ids"].append(material.id)
+        if material.topic not in group["topics"]:
+            group["topics"].append(material.topic)
+    prefs = s.Preferences(**child.preferences)
+    ranked = sorted(
+        groups,
+        key=lambda g: (
+            g["subject"] not in prefs.focus_subjects,
+            not any(t in prefs.repeat_topics for t in g["topics"]),
+        ),
+    )
+    eligible = [
+        g
+        for g in ranked
+        if not prefs.subject_days.get(g["subject"]) or local_day(child).weekday() in prefs.subject_days[g["subject"]]
+    ]
+    selected = eligible[:slots]
+    for group in groups:
+        group["selected"] = group in selected
+    notices = []
+    if reserved:
+        notices.append(f"Für bereits eingeplante verbindliche Aufträge bleiben {reserved} Minuten reserviert.")
+    if current["paused"] or current["free_day"]:
+        notices.extend(current["notices"][:1])
+    if len(selected) < len(groups):
+        notices.append(
+            "Nicht alles passt heute in die Lernzeit oder zu den Fach-Lerntagen. Diese Seiten bleiben gespeichert; daraus entsteht kein automatischer Aufgabenberg."
+        )
+    if groups and not selected:
+        notices.append(
+            "Für neue Übungen ist heute keine Zeit eingeplant. Bitte mit deinen Eltern eine passende Lernzeit vereinbaren. Deine Seiten bleiben erhalten."
+        )
+    return {
+        "groups": groups,
+        "estimated_minutes": sum(g["estimated_minutes"] for g in selected),
+        "available_minutes": remaining,
+        "notices": notices,
+    }
+
+
+def day_data(db, day, child, p):
+    material_list = pages(db, day)
+    units = list(
+        db.scalars(
+            select(LearningUnit)
+            .where(LearningUnit.school_day_id == day.id)
+            .order_by(LearningUnit.created, LearningUnit.id)
+        )
+    )
+    jobs = [
+        j
+        for j in db.scalars(select(Job).where(Job.child_id == child.id).order_by(Job.created.desc(), Job.id).limit(200))
+        if j.payload.get("school_day_id") == day.id or j.payload.get("material_id") in {m.id for m in material_list}
+    ]
+    active = next((j for j in jobs if j.status in ("queued", "running")), None)
+    unresolved_pages = {m.id for m in material_list if m.status == "uploaded"}
+    latest_failed = next(
+        (
+            j
+            for j in jobs
+            if j.status == "failed"
+            and (
+                (j.kind == "package" and day.stage != "ready")
+                or (j.kind == "extract" and j.payload.get("material_id") in unresolved_pages)
+            )
+        ),
+        None,
+    )
+    return {
+        "id": day.id,
+        "child_id": child.id,
+        "date": day.school_date,
+        "stage": day.stage,
+        "max_pages": MAX_PAGES,
+        "pages": [material_data(m) for m in material_list],
+        "confirmed_count": sum(m.confirmed for m in material_list),
+        "units": [unit_data(db, u, include_answers=p.user.role == "parent") for u in units],
+        "plan": package_plan(db, day, child),
+        "active_job": {"id": active.id, "kind": active.kind, "status": active.status} if active else None,
+        "last_error": latest_failed.error if latest_failed else None,
+        "synthetic": db.get(Family, child.family_id).synthetic,
+    }
+
+
+@router.get("/children/{child_id}/school-day/today")
+def today(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id)
+    day = db.scalar(
+        select(SchoolDay).where(SchoolDay.child_id == child.id, SchoolDay.school_date == local_day(child).isoformat())
+    )
+    return {"day": day_data(db, day, child, p) if day else None, "date": local_day(child).isoformat()}
+
+
+@router.post("/children/{child_id}/school-day/today", status_code=201)
+def begin(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    day = db.scalar(
+        select(SchoolDay).where(SchoolDay.child_id == child.id, SchoolDay.school_date == local_day(child).isoformat())
+    )
+    if not day:
+        day = SchoolDay(child_id=child.id, school_date=local_day(child).isoformat())
+        db.add(day)
+        record(db, child.id, "school_day_started")
+        db.commit()
+    return day_data(db, day, child, p)
+
+
+@router.get("/school-days/{day_id}")
+def view(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id)
+    return day_data(db, day, child, p)
+
+
+@router.put("/school-days/{day_id}/stage")
+def change_stage(day_id: str, data: StageUpdate, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True)
+    idle(db, child.id)
+    if day.stage == "ready":
+        raise HTTPException(
+            409, "Das fertige Tagespaket bleibt erhalten. Zusätzliche Materialien können einzeln importiert werden."
+        )
+    if data.stage == "review" and not pages(db, day):
+        raise HTTPException(409, "Bitte zuerst mindestens eine Seite hinzufügen.")
+    day.stage = data.stage
+    day.revision += 1
+    db.commit()
+    return day_data(db, day, child, p)
+
+
+@router.post("/school-days/{day_id}/synthetic-pages", status_code=201)
+def synthetic_pages(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True)
+    if not db.get(Family, child.family_id).synthetic:
+        raise HTTPException(403, "Testseiten sind ausschließlich im synthetischen Testraum verfügbar.")
+    if pages(db, day):
+        return day_data(db, day, child, p)
+    if day.stage != "collecting":
+        raise HTTPException(409, "Bitte zuerst Seiten sammeln.")
+    idle(db, child.id)
+    try:
+        external_allowed(config_for_function(db.get(ProviderConfig, 1), "extract"), image=True, synthetic_fixture=True)
+    except ProviderError as error:
+        raise HTTPException(503, str(error)) from None
+    rate_limit(db, "day-fixtures:" + p.user.id, 3, 86400, commit=False)
+    directory = settings.data_dir / "uploads"
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    destinations = []
+    try:
+        for i, fixture_id in enumerate(DAY_FIXTURE_IDS, 1):
+            path = uid() + ".jpg"
+            destination = directory / path
+            destinations.append(destination)
+            destination.write_bytes(worksheet(fixture_id))
+            destination.chmod(0o600)
+            db.add(
+                Material(
+                    child_id=child.id,
+                    school_day_id=day.id,
+                    page_number=i,
+                    title=f"Testheft · Seite {i}",
+                    path=path,
+                    synthetic=True,
+                    fixture_id=fixture_id,
+                )
+            )
+        day.revision += 1
+        record(db, child.id, "school_day_pages", {"count": 2, "synthetic": True})
+        db.commit()
+    except Exception:
+        for destination in destinations:
+            destination.unlink(missing_ok=True)
+        raise
+    return day_data(db, day, child, p)
+
+
+@router.delete("/school-days/{day_id}/pages/{material_id}")
+def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True)
+    idle(db, child.id)
+    material = db.get(Material, material_id)
+    if not material or material.school_day_id != day.id:
+        raise HTTPException(404, "Seite nicht gefunden.")
+    if day.stage != "collecting" or material.confirmed:
+        raise HTTPException(
+            409,
+            "Nur noch unbestätigte Seiten können beim Sammeln entfernt werden. Bestätigte Inhalte verwalten deine Eltern.",
+        )
+    path = material.path
+    db.delete(material)
+    day.revision += 1
+    record(db, child.id, "school_day_page_removed")
+    db.commit()
+    if path:
+        (settings.data_dir / "uploads" / path).unlink(missing_ok=True)
+    return day_data(db, day, child, p)
+
+
+def validate_package_sources(db, job):
+    day = db.get(SchoolDay, job.payload["school_day_id"])
+    child = db.get(Child, job.child_id)
+    source_pages = pages(db, day) if day else []
+    actual = [{"id": m.id, "revision": m.revision} for m in source_pages]
+    if (
+        not day
+        or day.child_id != child.id
+        or day.stage != "review"
+        or day.revision != job.payload["day_revision"]
+        or actual != job.payload["sources"]
+        or not all(m.confirmed for m in source_pages)
+    ):
+        raise ProviderError("Seiten wurden inzwischen geändert oder gelöscht. Bitte das Tagespaket erneut prüfen.")
+    if (
+        local_day(child).isoformat() != day.school_date
+        or planning_fingerprint(db, child) != job.payload["planning_fingerprint"]
+    ):
+        raise ProviderError(
+            "Lerntag oder Elternvorgaben haben sich geändert. Bitte den aktuellen Tagesplan erneut prüfen."
+        )
+    return day, source_pages
+
+
+@router.post("/school-days/{day_id}/package", status_code=202)
+def create_package(
+    day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db)
+):
+    day, child = get_day(db, p, day_id, write=True)
+    if day.stage == "ready":
+        raise HTTPException(409, "Dein Lernpaket ist bereits fertig. Bitte die gespeicherten Einheiten öffnen.")
+    source_pages = pages(db, day)
+    if day.stage != "review" or not source_pages or not all(m.confirmed for m in source_pages):
+        raise HTTPException(409, "Bitte erst alle Seiten erkennen lassen, prüfen und bestätigen.")
+    if sum(len(m.content) for m in source_pages) > MAX_CONTENT:
+        raise HTTPException(
+            422,
+            "Der bestätigte Text ist für ein Tagespaket zu umfangreich (maximal 60.000 Zeichen). Bitte mit deinen Eltern den Stoff eingrenzen.",
+        )
+    if any(m.synthetic for m in source_pages) and [m.fixture_id for m in source_pages] != list(DAY_FIXTURE_IDS):
+        raise HTTPException(409, "Der KI-Tagespakettest benötigt genau die zwei festen Testheftseiten.")
+    preview = package_plan(db, day, child)
+    selected = [g for g in preview["groups"] if g["selected"]]
+    if not selected:
+        raise HTTPException(
+            409,
+            "Heute ist keine Lernzeit für ein neues Paket eingeplant. Deine Seiten bleiben gespeichert; bitte mit deinen Eltern neu planen.",
+        )
+    # No client-provided page IDs, family IDs, goals, durations or provider settings.
+    payload = {
+        "school_day_id": day.id,
+        "day_revision": day.revision,
+        "material_id": source_pages[0].id,
+        "sources": [{"id": m.id, "revision": m.revision} for m in source_pages],
+        "groups": selected,
+        "planning_fingerprint": planning_fingerprint(db, child),
+    }
+    return enqueue(db, p, child, "package", payload, idempotency_key)
+
+
+def save_package(db, job, data, *, synthetic, provider, model):
+    day, source_pages = validate_package_sources(db, job)
+    output = s.PackageOutput.model_validate(data)
+    groups = {g["id"]: g for g in job.payload["groups"]}
+    if len(output.units) != len(groups) or {u.group_id for u in output.units} != set(groups):
+        raise ProviderError(
+            "Die KI hat das Paket nicht vollständig nach der geprüften Fächerauswahl erstellt. Es wurden keine Teilaufgaben gespeichert."
+        )
+    if any(u.subject.casefold() != groups[u.group_id]["subject"].casefold() for u in output.units):
+        raise ProviderError("Das erzeugte Paket weicht von den bestätigten Fächern ab. Es wurde nicht übernommen.")
+    ids = []
+    for value in output.units:
+        group = groups[value.group_id]
+        unit = LearningUnit(
+            child_id=job.child_id,
+            school_day_id=day.id,
+            material_id=group["material_ids"][0],
+            estimated_minutes=group["estimated_minutes"],
+            synthetic=synthetic,
+            provider=provider,
+            model=model,
+            **value.model_dump(exclude={"group_id"}),
+        )
+        db.add(unit)
+        db.flush()
+        for material in source_pages:
+            if material.id in group["material_ids"]:
+                db.add(UnitSource(unit_id=unit.id, material_id=material.id, revision=material.revision))
+        ids.append(unit.id)
+        record(
+            db,
+            job.child_id,
+            "unit_created",
+            {"subject": unit.subject, "topic": unit.topic, "synthetic": synthetic, "school_day_id": day.id},
+            unit.id,
+        )
+    day.stage = "ready"
+    job.result = {"school_day_id": day.id, "unit_ids": ids}
+    record(db, job.child_id, "school_day_ready", {"page_count": len(source_pages), "unit_count": len(ids)})

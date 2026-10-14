@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
 
-from . import __version__, admin, auth, families, learning, materials, notifications, releases, synthetic
+from . import __version__, admin, auth, families, learning, materials, notifications, releases, school_day, synthetic
 from .config import settings
 from .db import DB, ProviderConfig, init_db
 
@@ -114,6 +114,7 @@ for router in (
     admin.router,
     notifications.router,
     releases.router,
+    school_day.router,
 ):
     app.include_router(router, prefix="/api")
 

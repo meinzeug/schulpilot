@@ -6,7 +6,21 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 
 from . import schemas as s
-from .db import Activity, Assignment, Attempt, Child, LearningUnit, Mastery, Material, Message, User, get_db, now
+from .db import (
+    Activity,
+    Assignment,
+    Attempt,
+    Child,
+    LearningUnit,
+    Mastery,
+    Material,
+    Message,
+    SchoolDay,
+    UnitSource,
+    User,
+    get_db,
+    now,
+)
 from .families import child_data
 from .security import authenticated, child_access, child_user, own_child, parent, rate_limit
 
@@ -28,6 +42,8 @@ def material_data(material):
         for k in (
             "id",
             "child_id",
+            "school_day_id",
+            "page_number",
             "title",
             "status",
             "subject",
@@ -104,6 +120,10 @@ def unit_data(db, unit, include_answers=False):
         "active_seconds_approx": unit.active_seconds,
         "break_until": unit.break_until,
         "material_id": unit.material_id,
+        "school_day_id": unit.school_day_id,
+        "estimated_minutes": unit.estimated_minutes,
+        "source_material_ids": list(db.scalars(select(UnitSource.material_id).where(UnitSource.unit_id == unit.id)))
+        or ([unit.material_id] if unit.material_id else []),
         "assignment_id": unit.assignment_id,
         "review_of": unit.review_of,
         "created": unit.created,
@@ -221,6 +241,7 @@ def plan(db, child):
                     "subject": unit.subject,
                     "mandatory": bool(unit.assignment_id),
                     "status": unit.status,
+                    "estimated_minutes": unit.estimated_minutes,
                 }
             )
     for a in sorted(assignments, key=lambda a: (not a.mandatory, a.due or "9999", a.created)):
@@ -257,7 +278,11 @@ def plan(db, child):
                     "due": mastery.next_review,
                 }
             )
-    for m in db.scalars(select(Material).where(Material.child_id == child.id, Material.confirmed.is_(True))):
+    for m in db.scalars(
+        select(Material).where(
+            Material.child_id == child.id, Material.confirmed.is_(True), Material.school_day_id.is_(None)
+        )
+    ):
         if not any(x["topic"] == m.topic for x in candidates) and not any(u.material_id == m.id for u in units):
             candidates.append(
                 {
@@ -278,14 +303,19 @@ def plan(db, child):
         )
     )
     minutes = min(prefs.session_minutes, max(5, available))
-    slots = max(0, available // minutes)
     eligible = [
         x
         for x in candidates
         if x["status"] != "practiced_today"
         and (not prefs.subject_days.get(x["subject"]) or today.weekday() in prefs.subject_days[x["subject"]])
     ]
-    selected = eligible[:slots]
+    selected = []
+    remaining = available
+    for item in eligible:
+        duration = item.get("estimated_minutes") or minutes
+        if duration <= remaining:
+            selected.append(item)
+            remaining -= duration
     later = [x for x in candidates if x not in selected]
     if later:
         notices.append(
@@ -309,8 +339,22 @@ def plan(db, child):
 @router.get("/children/{child_id}/overview")
 def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
     child = child_access(db, p, child_id)
+    days = list(
+        db.scalars(
+            select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
+        )
+    )
     return {
         "child": child_data(db, child),
+        "school_days": [
+            {
+                "id": d.id,
+                "date": d.school_date,
+                "stage": d.stage,
+                "page_count": len(list(db.scalars(select(Material.id).where(Material.school_day_id == d.id)))),
+            }
+            for d in days
+        ],
         "plan": plan(db, child),
         "day_summary": summary(db, child, 1),
         "week_summary": summary(db, child, 7),
@@ -364,6 +408,7 @@ def activity(child_id: str, before: int | None = None, p=Depends(authenticated),
 @router.post("/children/{child_id}/assignments", status_code=201)
 def add_assignment(child_id: str, data: s.AssignmentCreate, p=Depends(parent), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=True)
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     if data.material_id:
         material = db.get(Material, data.material_id)
         if not material or material.child_id != child.id:
@@ -378,6 +423,7 @@ def add_assignment(child_id: str, data: s.AssignmentCreate, p=Depends(parent), d
 @router.put("/children/{child_id}/assignments/{assignment_id}")
 def edit_assignment(child_id: str, assignment_id: str, data: s.AssignmentCreate, p=Depends(parent), db=Depends(get_db)):
     child_access(db, p, child_id, write=True)
+    db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
     a = db.get(Assignment, assignment_id)
     if not a or a.child_id != child_id:
         raise HTTPException(404, "Lernauftrag nicht gefunden.")
@@ -397,6 +443,7 @@ def edit_assignment(child_id: str, assignment_id: str, data: s.AssignmentCreate,
 @router.delete("/children/{child_id}/assignments/{assignment_id}")
 def delete_assignment(child_id: str, assignment_id: str, p=Depends(parent), db=Depends(get_db)):
     child_access(db, p, child_id, write=True)
+    db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
     a = db.get(Assignment, assignment_id)
     if not a or a.child_id != child_id:
         raise HTTPException(404, "Lernauftrag nicht gefunden.")
@@ -409,6 +456,7 @@ def delete_assignment(child_id: str, assignment_id: str, p=Depends(parent), db=D
 @router.post("/children/{child_id}/assignments/{assignment_id}/complete")
 def complete_assignment(child_id: str, assignment_id: str, p=Depends(parent), db=Depends(get_db)):
     child_access(db, p, child_id, write=True)
+    db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
     assignment = db.get(Assignment, assignment_id)
     if not assignment or assignment.child_id != child_id:
         raise HTTPException(404, "Lernauftrag nicht gefunden.")

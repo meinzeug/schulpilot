@@ -23,8 +23,10 @@ from .db import (
     Material,
     Membership,
     Message,
+    SchoolDay,
     Session,
     Token,
+    UnitSource,
     Usage,
     UsageBucket,
     User,
@@ -133,6 +135,7 @@ def update_child(child_id: str, data: s.ChildUpdate, p=Depends(parent), db=Depen
 @router.put("/children/{child_id}/preferences")
 def preferences(child_id: str, data: s.Preferences, p=Depends(parent), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=True)
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     child.preferences = data.model_dump(mode="json")
     # Persist explicit repetition goals as visible, binding parent assignments.
     marker = "Wiederholungsziel aus den Lernvorgaben."
@@ -378,13 +381,17 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 
 def export_child(db, child):
     result = {"child": child_data(db, child)}
-    for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message):
+    for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay):
         rows = list(db.scalars(select(model).where(model.child_id == child.id)))
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns} for row in rows]
     units = [u["id"] for u in result["learning_units"]]
     result["attempts"] = [
         {c.name: getattr(row, c.name) for c in Attempt.__table__.columns}
         for row in db.scalars(select(Attempt).where(Attempt.unit_id.in_(units)))
+    ]
+    result["unit_sources"] = [
+        {c.name: getattr(row, c.name) for c in UnitSource.__table__.columns}
+        for row in db.scalars(select(UnitSource).where(UnitSource.unit_id.in_(units)))
     ]
     return result
 

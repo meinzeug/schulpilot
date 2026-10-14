@@ -7,8 +7,8 @@ from sqlalchemy import select, update
 
 from . import schemas as s
 from .config import settings
-from .db import Assignment, Child, Family, Job, LearningUnit, Material, ProviderConfig, get_db, uid
-from .fixtures import FIXTURE_ID, worksheet
+from .db import Assignment, Child, Family, Job, LearningUnit, Material, ProviderConfig, UnitSource, get_db, uid
+from .fixtures import FIXTURE_ID, LIVE_FIXTURE_IDS, worksheet
 from .learning import material_data, record
 from .providers import ProviderError, config_for_function, external_allowed, reserve
 from .security import authenticated, child_access, rate_limit
@@ -47,7 +47,13 @@ def synthetic_fixture(child_id: str, p=Depends(authenticated), db=Depends(get_db
 
 
 @router.post("/children/{child_id}/materials", status_code=201)
-def upload(child_id: str, file: UploadFile = File(...), p=Depends(authenticated), db=Depends(get_db)):
+def upload(
+    child_id: str,
+    file: UploadFile = File(...),
+    school_day_id: str | None = None,
+    p=Depends(authenticated),
+    db=Depends(get_db),
+):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     family = db.get(Family, child.family_id)
     if family.synthetic:
@@ -57,7 +63,12 @@ def upload(child_id: str, file: UploadFile = File(...), p=Depends(authenticated)
         )
     if not settings.real_data_approved:
         raise HTTPException(503, "Materialimport echter Daten ist bis zur dokumentierten Datenschutzfreigabe gesperrt.")
-    rate_limit(db, "upload:" + p.user.id, 10, 3600)
+    rate_limit(db, "upload:" + p.user.id, 30, 3600)
+    page_number = None
+    if school_day_id:
+        from .school_day import append_page
+
+        _, page_number = append_page(db, p, child, school_day_id)
     raw = file.file.read(10 * 1024 * 1024 + 1)
     if len(raw) > 10 * 1024 * 1024:
         raise HTTPException(413, "Das Bild darf höchstens 10 MB groß sein.")
@@ -81,7 +92,14 @@ def upload(child_id: str, file: UploadFile = File(...), p=Depends(authenticated)
     destination = directory / path
     destination.write_bytes(output.getvalue())
     destination.chmod(0o600)
-    material = Material(child_id=child.id, title="Unterrichtsmaterial", path=path, synthetic=False)
+    material = Material(
+        child_id=child.id,
+        school_day_id=school_day_id,
+        page_number=page_number,
+        title=f"Heftseite {page_number}" if page_number else "Unterrichtsmaterial",
+        path=path,
+        synthetic=False,
+    )
     db.add(material)
     record(db, child.id, "material_uploaded")
     try:
@@ -97,6 +115,9 @@ def get_material(db, p, material_id, write=False):
     if not material:
         raise HTTPException(404, "Material nicht gefunden.")
     child = child_access(db, p, material.child_id, write=write and p.user.role == "parent")
+    if write:
+        db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+        db.refresh(material)
     return material, child
 
 
@@ -196,6 +217,8 @@ def enqueue(db, p, child, kind, payload, idempotency):
     if not idempotency or len(idempotency) > 80:
         raise HTTPException(422, "Ein eindeutiger Idempotency-Key (max. 80 Zeichen) ist erforderlich.")
     key = p.user.id + ":" + idempotency
+    # Use the same lock order as the multi-page wizard and its worker.
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     payload = dict(payload)
     if payload.get("material_id"):
         payload["material_revision"] = db.get(Material, payload["material_id"]).revision
@@ -206,9 +229,8 @@ def enqueue(db, p, child, kind, payload, idempotency):
         if existing.child_id != child.id or existing.kind != kind or existing.payload != payload:
             raise HTTPException(409, "Dieser Anfrageschlüssel wurde bereits für einen anderen Auftrag verwendet.")
         return {"id": existing.id, "status": existing.status}
-    rate_limit(db, "job:" + p.user.id, 10, 60)
+    rate_limit(db, "job:" + p.user.id, 30, 60, commit=False)
     # Atomically limit each child to one pending paid operation.
-    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):
         raise HTTPException(409, "Für dieses Kind wird bereits ein Auftrag verarbeitet.")
     job = Job(id=uid(), child_id=child.id, kind=kind, payload=payload, idempotency=key)
@@ -229,7 +251,7 @@ def enqueue(db, p, child, kind, payload, idempotency):
             child.id,
             job.id,
             kind,
-            synthetic_fixture=bool(material and material.fixture_id == FIXTURE_ID and family.synthetic),
+            synthetic_fixture=bool(material and material.fixture_id in LIVE_FIXTURE_IDS and family.synthetic),
         )
     db.commit()
     return {"id": job.id, "status": job.status}
@@ -258,6 +280,7 @@ def create_unit(
 ):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     material_id = data.material_id
+    review_sources = []
     if data.assignment_id:
         assignment = db.get(Assignment, data.assignment_id)
         if not assignment or assignment.child_id != child.id:
@@ -269,6 +292,18 @@ def create_unit(
         if not previous or previous.child_id != child.id or previous.status != "completed":
             raise HTTPException(404, "Abgeschlossene Lerneinheit nicht gefunden.")
         material_id = previous.material_id
+        for source_id in db.scalars(
+            select(UnitSource.material_id)
+            .join(Material, Material.id == UnitSource.material_id)
+            .where(UnitSource.unit_id == previous.id)
+            .order_by(Material.page_number, Material.id)
+        ):
+            source = db.get(Material, source_id)
+            if not source or source.child_id != child.id or not source.confirmed:
+                raise HTTPException(409, "Bitte die Quellen der Wiederholung zuerst gemeinsam prüfen.")
+            review_sources.append({"id": source.id, "revision": source.revision})
+        if sum(len(db.get(Material, source["id"]).content) for source in review_sources) > 60_000:
+            raise HTTPException(422, "Die Quellen sind für eine gemeinsame Wiederholung zu umfangreich.")
     if material_id:
         material = db.get(Material, material_id)
         if not material or material.child_id != child.id:
@@ -290,6 +325,8 @@ def create_unit(
     elif not data.assignment_id:
         raise HTTPException(422, "Bitte bestätigtes Material oder einen Elternauftrag auswählen.")
     payload = {"material_id": material_id, "assignment_id": data.assignment_id, "review_of": data.review_of}
+    if review_sources:
+        payload["sources"] = review_sources
     return enqueue(db, p, child, "unit", payload, idempotency)
 
 

@@ -55,7 +55,17 @@ Future<void> importMaterial(
       ),
     ),
   );
-  if (source == null) return;
+  if (source == null || !context.mounted) return;
+  final cropped = await pickMaterialPhoto(context, source);
+  if (cropped == null) return;
+  final material = await state.api.upload(childId, cropped);
+  if (context.mounted) openRoute(context, '/material/${material['id']}');
+}
+
+Future<Uint8List?> pickMaterialPhoto(
+  BuildContext context,
+  ImageSource source,
+) async {
   final file = await ImagePicker().pickImage(
     source: source,
     maxWidth: 3200,
@@ -63,19 +73,23 @@ Future<void> importMaterial(
     imageQuality: 90,
     requestFullMetadata: false,
   );
-  if (file == null) return;
+  if (file == null) return null;
   final bytes = await file.readAsBytes();
+  if (!context.mounted) return null;
+  return cropMaterialPhoto(context, bytes);
+}
+
+Future<Uint8List?> cropMaterialPhoto(
+  BuildContext context,
+  Uint8List bytes,
+) async {
   if (bytes.length > 10 * 1024 * 1024) {
     throw ApiError('Das Bild darf höchstens 10 MB groß sein.');
   }
-  if (!context.mounted) return;
-  final cropped = await showDialog<Uint8List>(
+  return showDialog<Uint8List>(
     context: context,
     builder: (ctx) => CropDialog(bytes),
   );
-  if (cropped == null) return;
-  final material = await state.api.upload(childId, cropped);
-  if (context.mounted) openRoute(context, '/material/${material['id']}');
 }
 
 class CropDialog extends StatefulWidget {
@@ -271,7 +285,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
     child: LoadView<Json>(
       key: ValueKey(version),
       load: () => widget.state.api.get('/materials/${widget.materialId}'),
-      builder: (data, refresh) => _MaterialForm(
+      builder: (data, refresh) => MaterialReview(
         widget.state,
         data,
         onRefresh: () => setState(() => version++),
@@ -280,16 +294,23 @@ class _MaterialScreenState extends State<MaterialScreen> {
   );
 }
 
-class _MaterialForm extends StatefulWidget {
+class MaterialReview extends StatefulWidget {
   final AppState state;
   final Json data;
   final VoidCallback onRefresh;
-  const _MaterialForm(this.state, this.data, {required this.onRefresh});
+  final bool showUnitAction;
+  const MaterialReview(
+    this.state,
+    this.data, {
+    super.key,
+    required this.onRefresh,
+    this.showUnitAction = true,
+  });
   @override
-  State<_MaterialForm> createState() => _MaterialFormState();
+  State<MaterialReview> createState() => _MaterialReviewState();
 }
 
-class _MaterialFormState extends State<_MaterialForm> {
+class _MaterialReviewState extends State<MaterialReview> {
   late final subject = TextEditingController(text: widget.data['subject']);
   late final topic = TextEditingController(text: widget.data['topic']);
   late final content = TextEditingController(text: widget.data['content']);
@@ -450,7 +471,7 @@ class _MaterialFormState extends State<_MaterialForm> {
           ),
         ),
         const SizedBox(height: 22),
-        if (d['confirmed'])
+        if (d['confirmed'] && widget.showUnitAction)
           Panel(
             color: mint,
             child: Column(

@@ -6,6 +6,8 @@ Web: https://schulpilot.dorfspy.de · API: `/api` · Test-APK: `artifacts/schulp
 
 ## Ausprobieren
 
+Der Kinderbereich enthält den geführten **„Nach der Schule“-Assistenten**: mehrere Heftseiten aufnehmen, jede Erkennung bestätigen und daraus ein gemeinsames, zeitlich begrenztes Tagespaket mit Erklärungen und interaktiven Übungen erstellen. Der Ablauf ist gespeichert und auf Web/Android fortsetzbar. [Ablauf, Grenzen und Tests](docs/AFTER_SCHOOL.md). Zum KI-Test stehen zwei künstliche Heftseiten bereit; echte Kinderfotos bleiben bis zur dokumentierten Datenschutzfreigabe gesperrt.
+
 „Synthetisch ausprobieren“ legt eine eigene isolierte Testfamilie für 24 Stunden an. Die einmalig angezeigten Eltern- und Kinderzugänge funktionieren auch auf einem zweiten Gerät. Den Beispielstoff bestätigen, eine Einheit vorbereiten und mit dem Kinderzugang lernen. Eltern sehen anschließend tatsächliche Aufgaben, Antworten, Hinweise und Aktivitäten. Die Demo führt **keine Fotoerkennung und keinen externen KI-Aufruf** aus; freie Foto-Uploads sind darin gesperrt.
 
 ## Lokal starten

@@ -24,6 +24,8 @@ Flutter-/Python-Abhängigkeiten müssen bei Aktualisierungen erneut auf Sicherhe
 
 Zusätzliche offizielle Quellen, geprüft am 14.10.2026:
 
+- Mehrseitiger Tagesassistent: https://pub.dev/packages/image_picker (fixiert 1.2.4, Kamera/Galerie und dokumentiertes `retrieveLostData` bei Android-Neustart) sowie https://openrouter.ai/docs/guides/features/structured-outputs (JSON-Schema-Ausgaben; zusätzlicher serverseitiger Paket-/Quellenabgleich). Keine neue Client-Abhängigkeit erforderlich.
+
 - OpenRouter aktueller Modellkatalog: https://openrouter.ai/api/v1/models ; konkrete Endpunkte über `/api/v1/models/{author}/{slug}/endpoints`, für die oben dokumentierten kostenlosen Modelle tatsächlich abgerufen.
 - Kosten- und Providerbindung: https://openrouter.ai/docs/guides/routing/provider-selection (max_price, only, allow_fallbacks, data_collection, zdr).
 - FlutterFire: https://firebase.google.com/docs/cloud-messaging/flutter/client und https://firebase.google.com/docs/cloud-messaging/flutter/receive-messages ; tatsächlich aufgelöste Pakete `firebase_core 4.15.0`, `firebase_messaging 16.7.0`, `firebase_core_web 3.12.0`, JS SDK `12.19.0`. Dieses fixierte Messaging-Paket stellt `getToken/onTokenRefresh` bereit; neuere FID-Methoden der Dokumentation wurden nicht erfunden oder vorausgesetzt.

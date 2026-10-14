@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'account_deletion_screen.dart';
@@ -8,6 +10,7 @@ import 'auth_screens.dart';
 import 'dashboard.dart';
 import 'material_screen.dart';
 import 'settings_screen.dart';
+import 'school_day_screen.dart';
 import 'ui.dart';
 import 'unit_screen.dart';
 
@@ -16,6 +19,21 @@ Future<void> main() async {
   usePathUrlStrategy();
   final state = AppState();
   await state.restore();
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      final lost = await ImagePicker().retrieveLostData();
+      final owner = await state.storage.read(key: 'camera_child');
+      if (state.isChild &&
+          owner == state.user?['child_id'] &&
+          lost.files?.isNotEmpty == true &&
+          await lost.files!.first.length() <= 10 * 1024 * 1024) {
+        state.recoveredPhoto = await lost.files!.first.readAsBytes();
+      }
+      await state.storage.delete(key: 'camera_child');
+    } catch (_) {
+      // A failed camera recovery must not prevent login or opening saved pages.
+    }
+  }
   runApp(SchulpilotApp(state));
 }
 
@@ -51,6 +69,7 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
           path == '/settings' ||
           path == '/admin' ||
           path.startsWith('/child/') ||
+          path.startsWith('/after-school/') ||
           path.startsWith('/material/') ||
           path.startsWith('/unit/');
       if (protected && widget.state.user == null) return '/login';
@@ -79,6 +98,11 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/child/:id',
         builder: (context, s) =>
             ChildDetailScreen(widget.state, childId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/after-school/:id',
+        builder: (context, s) =>
+            SchoolDayScreen(widget.state, childId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/material/:id',

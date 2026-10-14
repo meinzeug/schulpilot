@@ -176,6 +176,15 @@ class ExtractionOutput(Strict):
     homework: list[Annotated[str, Field(max_length=500)]] = Field(max_length=20)
 
 
+class PackageUnitOutput(UnitOutput):
+    group_id: Annotated[str, Field(pattern=r"^g[1-9][0-9]?$", max_length=3)]
+    questions: list[Question] = Field(min_length=2, max_length=5)
+
+
+class PackageOutput(Strict):
+    units: list[PackageUnitOutput] = Field(min_length=1, max_length=3)
+
+
 class UnitCreate(Strict):
     material_id: str | None = None
     assignment_id: str | None = None

@@ -544,6 +544,38 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                 ),
               ),
             if (!parent || tab == 0) ...[
+              Panel(
+                color: mint,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    heading(
+                      'Nach der Schule',
+                      subtitle: parent
+                          ? 'Heftseiten, geprüfter Tagesstoff und das daraus erstellte Lernpaket.'
+                          : 'Alle Heftseiten von heute fotografieren. Gemeinsam prüfen. In kleinen Schritten lernen und festigen.',
+                    ),
+                    if (state.recoveredPhoto != null && !parent)
+                      const Notice(
+                        'Ein Foto wurde nach einem Neustart wiedergefunden. Du kannst es im Assistenten prüfen und übernehmen.',
+                      ),
+                    if ((data['school_days'] as List? ?? []).isNotEmpty)
+                      Text(
+                        'Zuletzt: ${data['school_days'][0]['date']} · ${data['school_days'][0]['page_count']} Seite(n) · ${data['school_days'][0]['stage'] == 'ready' ? 'Lernpaket erstellt' : 'Noch in Vorbereitung'}',
+                      ),
+                    const SizedBox(height: 16),
+                    ActionButton(
+                      label: parent
+                          ? 'Heutiges Tagespaket ansehen'
+                          : 'Nach der Schule starten',
+                      icon: Icons.auto_stories_outlined,
+                      onPressed: () async =>
+                          openRoute(context, '/after-school/${child['id']}'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               if (parent)
                 Panel(
                   child: Column(
@@ -940,6 +972,10 @@ String activityLabel(String kind) => switch (kind) {
   'material_confirmed' => 'Stoff bestätigt',
   'material_uploaded' => 'Bild importiert',
   'material_extracted' => 'Material erkannt',
+  'school_day_started' => 'Tagesassistent begonnen',
+  'school_day_pages' => 'Heftseiten zum Tagespaket hinzugefügt',
+  'school_day_page_removed' => 'Unbestätigte Heftseite entfernt',
+  'school_day_ready' => 'Lernpaket aus Heftseiten erstellt',
   'parent_assignment' => 'Elternauftrag angelegt',
   'unit_created' => 'Übung erstellt',
   'feedback' => 'Schwierigkeitsrückmeldung',
@@ -1026,6 +1062,10 @@ Future<void> startNext(BuildContext context, AppState state, Json data) async {
       .where((m) => m['confirmed'] != true)
       .toList();
   if (pending.isNotEmpty) {
+    if (pending.first['school_day_id'] != null) {
+      openRoute(context, '/after-school/${data['child']['id']}');
+      return;
+    }
     openRoute(context, '/material/${pending.first['id']}');
     return;
   }

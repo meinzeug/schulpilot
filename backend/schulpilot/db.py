@@ -135,11 +135,24 @@ class PushDelivery(Base):
     sent = Column(Integer)
 
 
+class SchoolDay(Base):
+    __tablename__ = "school_days"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    school_date = Column(String(10), nullable=False)
+    stage = Column(String(16), default="collecting", nullable=False)
+    revision = Column(Integer, default=1, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "school_date"),)
+
+
 class Material(Base):
     __tablename__ = "materials"
     id = Column(String(32), primary_key=True, default=uid)
     revision = Column(Integer, default=1, server_default="1", nullable=False)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    school_day_id = Column(ForeignKey("school_days.id", ondelete="SET NULL"), index=True)
+    page_number = Column(Integer)
     title = Column(String(160), nullable=False)
     path = Column(String(80))
     status = Column(String(24), default="uploaded", nullable=False)
@@ -176,6 +189,8 @@ class LearningUnit(Base):
     __tablename__ = "learning_units"
     id = Column(String(32), primary_key=True, default=uid)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    school_day_id = Column(ForeignKey("school_days.id", ondelete="SET NULL"), index=True)
+    estimated_minutes = Column(Integer)
     material_id = Column(ForeignKey("materials.id", ondelete="SET NULL"))
     assignment_id = Column(ForeignKey("assignments.id", ondelete="SET NULL"))
     subject = Column(String(80), nullable=False)
@@ -193,6 +208,13 @@ class LearningUnit(Base):
     break_until = Column(Integer)
     heartbeat = Column(Integer)
     review_of = Column(ForeignKey("learning_units.id", ondelete="SET NULL"))
+
+
+class UnitSource(Base):
+    __tablename__ = "unit_sources"
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), primary_key=True)
+    material_id = Column(ForeignKey("materials.id", ondelete="CASCADE"), primary_key=True)
+    revision = Column(Integer, nullable=False)
 
 
 class Attempt(Base):

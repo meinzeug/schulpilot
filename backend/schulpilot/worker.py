@@ -23,14 +23,16 @@ from .db import (
     Message,
     ProviderConfig,
     RateBucket,
+    SchoolDay,
     Session,
     Token,
+    UnitSource,
     Usage,
     init_db,
     now,
 )
 from .families import remove_family, unlink_uploads
-from .fixtures import FIXTURE_ID
+from .fixtures import FIXTURE_ID, LIVE_FIXTURE_IDS, PACKAGE_FIXTURE_ID
 from .learning import record
 from .notifications import deliver_one
 from .notifications import prepare as prepare_notifications
@@ -39,6 +41,21 @@ from .synthetic import sample_unit
 
 log = logging.getLogger("schulpilot.worker")
 running = True
+
+
+def unit_sources(db, job):
+    sources = []
+    for snapshot in job.payload.get("sources", []):
+        material = db.get(Material, snapshot["id"])
+        if (
+            not material
+            or material.child_id != job.child_id
+            or not material.confirmed
+            or material.revision != snapshot["revision"]
+        ):
+            raise ProviderError("Eine Quelle der Wiederholung wurde geändert oder gelöscht. Bitte neu vorbereiten.")
+        sources.append(material)
+    return sources
 
 
 def claim(db):
@@ -87,6 +104,12 @@ def process(job_id):
                 )
             if job.kind == "unit" and ((material and not material.confirmed) or (not material and not assignment)):
                 raise ProviderError("Bestätigtes Material oder Elternauftrag ist nicht mehr vorhanden.")
+            if job.kind == "package":
+                from .school_day import validate_package_sources
+
+                _, source_pages = validate_package_sources(db, job)
+            elif job.kind == "unit":
+                source_pages = unit_sources(db, job)
             config = config_for_function(db.get(ProviderConfig, 1), job.kind)
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage and (
@@ -146,13 +169,38 @@ def process(job_id):
                 "recent_outcomes": difficulties,
                 "review": bool(job.payload.get("review_of")),
             }
+            if job.kind == "package":
+                payload["material"] = None
+                payload["materials"] = [
+                    {
+                        "page_number": m.page_number,
+                        "group_id": g["id"],
+                        "subject": m.subject,
+                        "topic": m.topic,
+                        "content": m.content,
+                    }
+                    for g in job.payload["groups"]
+                    for m in source_pages
+                    if m.id in g["material_ids"]
+                ]
+                payload["selected_groups"] = [
+                    {"id": g["id"], "subject": g["subject"], "estimated_minutes": g["estimated_minutes"]}
+                    for g in job.payload["groups"]
+                ]
+            elif job.kind == "unit" and source_pages:
+                payload["material"]["content"] = "\n\n".join(
+                    f"Heftseite {m.page_number or i + 1}:\n{m.content}" for i, m in enumerate(source_pages)
+                )
             image_bytes = (
                 (settings.data_dir / "uploads" / material.path).read_bytes()
                 if job.kind == "extract" and material and material.path
                 else None
             )
             synthetic = bool(material and material.synthetic)
-            fixture = bool(synthetic and material.fixture_id == FIXTURE_ID and family.synthetic)
+            fixture = bool(synthetic and material.fixture_id in LIVE_FIXTURE_IDS and family.synthetic)
+            fixture_value = (True if material.fixture_id == FIXTURE_ID else material.fixture_id) if fixture else False
+            if fixture and job.kind == "package":
+                fixture_value = PACKAGE_FIXTURE_ID
             variant = len(previous)
             config_values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             function = job.kind
@@ -162,12 +210,14 @@ def process(job_id):
             data = sample_unit(variant, feedback[0] if feedback else "normal")
         else:
             result = request_provider(
-                ProviderConfig(**config_values), function, payload, image_bytes, synthetic_fixture=fixture
+                ProviderConfig(**config_values), function, payload, image_bytes, synthetic_fixture=fixture_value
             )
             data = result.data
         with DB.begin() as db:
             job = db.get(Job, job_id)
             if not job or job.status != "running":
+                return
+            if not db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade)).rowcount:
                 return
             material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
             assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
@@ -183,7 +233,13 @@ def process(job_id):
                 raise ProviderError(
                     "Das Elternziel wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
                 )
-            if job.kind == "extract":
+            if job.kind == "package":
+                from .school_day import save_package
+
+                save_package(
+                    db, job, data, synthetic=synthetic, provider=config_values["provider"], model=config_values["model"]
+                )
+            elif job.kind == "extract":
                 if not material or material.confirmed:
                     raise ProviderError("Material wurde zwischenzeitlich entfernt oder bereits bestätigt.")
                 for key in ("subject", "topic", "content", "uncertainties", "homework"):
@@ -194,6 +250,7 @@ def process(job_id):
                 job.result = {"material_id": material.id}
                 record(db, job.child_id, "material_extracted", {"uncertainty_count": len(data["uncertainties"])})
             else:
+                source_pages = unit_sources(db, job)
                 goal = (
                     db.get(Assignment, job.payload.get("assignment_id")) if job.payload.get("assignment_id") else None
                 )
@@ -216,6 +273,8 @@ def process(job_id):
                 )
                 db.add(unit)
                 db.flush()
+                for source in source_pages:
+                    db.add(UnitSource(unit_id=unit.id, material_id=source.id, revision=source.revision))
                 job.result = {"unit_id": unit.id}
                 record(
                     db,
@@ -278,6 +337,7 @@ def maintenance():
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
+        db.execute(delete(SchoolDay).where(SchoolDay.created < int(now()) - 365 * 86400))
         db.execute(delete(Job).where(Job.created < int(now()) - 30 * 86400, Job.status.in_(["failed", "completed"])))
         # Also remove interrupted export files. Uploads have independent DB
         # ownership; unfinished writes are never served from the webroot.

@@ -55,6 +55,16 @@ Unleserliche Stellen in uncertainties auflisten. Nur ausdrücklich notierte Haus
 Ein Satz, dass keine Hausaufgaben notiert sind, ist selbst keine Hausaufgabe.
 content enthält den lesbaren Stoff einschließlich Begriffen, Regeln und Beispielen aus dem Bild."""
         )
+    if function == "package":
+        return (
+            SYSTEM
+            + """\nErstelle das heutige Lernpaket: genau eine kurze Einheit für jede selected_groups-ID.
+Übernimm group_id und Fach unverändert. Nutze gemeinsam ALLE bestätigten Seiten der jeweiligen Gruppe.
+Verbinde zusammengehörige Begriffe, Regeln und Beispiele über Seitengrenzen hinweg. Keine Seite als vollständigen Unterricht ausgeben.
+Je Einheit: eine verständliche Erklärung zum Lernen, danach 2 bis 5 abwechslungsreiche Aufgaben zum Festigen.
+Beachte estimated_minutes und Elternvorgaben. Keine zusätzliche Einheit für zurückgestellte Gruppen erzeugen.
+Notierte Hausaufgaben sind separate Aufträge; erfinde keine Hausaufgaben und behaupte nicht, sie damit erledigt zu haben."""
+        )
     return (
         SYSTEM
         + "\nErstelle jetzt eine kurze Lerneinheit aus dem bestätigten Material mit Erklärung und 2 bis 5 Aufgaben."
@@ -217,13 +227,16 @@ def settle(db, usage, result=None, failed=False):
 
 def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False):
     if synthetic_fixture:
-        from .fixtures import trusted_payload, worksheet
+        from .fixtures import FIXTURE_ID, PACKAGE_FIXTURE_ID, trusted_payload, worksheet
 
         # Never forward caller-supplied text, images, preferences, names or goals.
-        payload = trusted_payload(function)
-        image_bytes = worksheet() if function == "extract" else None
+        fixture_id = synthetic_fixture if isinstance(synthetic_fixture, str) else FIXTURE_ID
+        if function == "package":
+            fixture_id = PACKAGE_FIXTURE_ID
+        payload = trusted_payload(function, fixture_id)
+        image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture)
-    model_type = s.ExtractionOutput if function == "extract" else s.UnitOutput
+    model_type = {"extract": s.ExtractionOutput, "package": s.PackageOutput}.get(function, s.UnitOutput)
     schema = strict_schema(model_type)
     instructions = system_text(function)
     user_text = json.dumps(payload, ensure_ascii=False)
