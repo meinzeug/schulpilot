@@ -38,6 +38,12 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("direct") { dimension = "distribution" }
+        create("play") { dimension = "distribution" }
+    }
+
     signingConfigs {
         if (hasUploadKey) {
             create("upload") {
@@ -63,4 +69,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    "playImplementation"("com.google.android.play:app-update:2.1.0")
 }

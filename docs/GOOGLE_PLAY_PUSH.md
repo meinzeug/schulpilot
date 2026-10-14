@@ -4,7 +4,7 @@ Die gewünschte Google-Anbindung betrifft Play-Veröffentlichung und Push, keine
 
 ## Android-Dateien und Signierung
 
-- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, Version-Code `8`, Android 7.0 / API 24 bis Ziel-API 36.
+- Paket: `de.dorfspy.schulpilot`, Version `0.1.0`, Version-Code `10`, Android 7.0 / API 24 bis Ziel-API 36.
 - Test-APK: `artifacts/schulpilot-0.1.0-test.apk`. Wird bei Deployment unter `/downloads/schulpilot-android.apk` veröffentlicht und vor/nach Web-Login verlinkt. `/api/app-release` enthält die tatsächliche Größe, Version und SHA-256.
 - Upload-AAB: `artifacts/schulpilot-0.1.0-upload.aab`. Nicht öffentlich und nicht in Git. Google Play verteilt daraus mit Play App Signing signierte APKs.
 - Eigener RSA-4096-Upload-Schlüssel und Passwörter: `~/.local/share/schulpilot-signing/`, Verzeichnis 0700, Dateien 0600. Unbedingt separat verschlüsselt sichern. Der private Schlüssel wird weder auf den App-Server noch zu GitHub kopiert. Der Google-App-Signing-Schlüssel ist davon getrennt.
@@ -16,8 +16,8 @@ python3 scripts/create_upload_key.py # erhält vorhandene Schlüssel
 cd app
 export SCHULPILOT_SIGNING_PROPERTIES="$HOME/.local/share/schulpilot-signing/signing.properties"
 export SCHULPILOT_STORE_BUILD=true
-flutter build apk --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
-flutter build appbundle --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
+flutter build apk --flavor direct --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
+flutter build appbundle --flavor play --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
 `SCHULPILOT_STORE_BUILD=true` verweigert einen Build ohne externen Upload-Schlüssel. Ohne dieses Flag können Entwickler weiterhin ausdrücklich mit einem lokalen Debugschlüssel testen. Der erste öffentlich bereitgestellte Stand war debugsigniert; ein Wechsel auf den Upload-Schlüssel erfordert gegebenenfalls einmalige Deinstallation der alten Test-APK. Vor weiteren Play-Uploads den Version-Code erhöhen.
@@ -60,3 +60,5 @@ Tatsächliche Validierung vom 14.10.2026: endgültige APK installiert und in ein
 
 
 Aktueller Ausbau: Die Betreiberfreigabe wurde ausdrücklich erteilt und in [APPROVALS.md](APPROVALS.md) protokolliert. Fehlende Google-Projektkennungen und Zugangsdaten bleiben davon getrennte technische Voraussetzungen. Vorbereitete deutsche Storetexte und ein technisches Data-Safety-/Review-Arbeitsblatt stehen in `store/`. `scripts/google_readiness.py --bundletool /pfad/bundletool.jar` prüft den öffentlichen APK-Stand, Betreiberangaben, Textlängen und das tatsächliche AAB, führt aber keinen Console-Upload aus. Physische Geräteprüfung und echte FCM-Zustellung bleiben ohne entsprechendes Gerät/Projekt offen.
+
+Android prüft jetzt bei jedem Start auf Updates. Direkter Download und Google Play verwenden getrennte Build-Flavors; siehe [ANDROID_UPDATES.md](ANDROID_UPDATES.md). Ein Play-AAB darf keine direkte APK-Installationsberechtigung enthalten.

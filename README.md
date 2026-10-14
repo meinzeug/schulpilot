@@ -39,7 +39,7 @@ cd app
 flutter analyze
 flutter test
 flutter build web --release --no-web-resources-cdn --csp
-flutter build apk --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
+flutter build apk --flavor direct --release --dart-define=API_URL=https://schulpilot.dorfspy.de/api
 ```
 
 Die öffentliche Test-APK und das AAB verwenden einen eigenen **Upload-Schlüssel außerhalb von Git**. Einrichtung und Store-Voraussetzungen: [Google Play und Push](docs/GOOGLE_PLAY_PUSH.md). Ein tatsächlicher Test auf einem physischen Android-Gerät steht aus. Die APK ist auf der Startseite und nach Web-Login herunterladbar; `/api/app-release` liefert die aus dem echten APK berechneten Metadaten.

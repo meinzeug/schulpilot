@@ -20,6 +20,7 @@ data/
 artifacts/*
 !artifacts/.gitkeep
 .dart_tool/
+.kotlin/
 .flutter-plugins*
 build/
 local.properties
