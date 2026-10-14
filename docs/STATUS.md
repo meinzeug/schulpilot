@@ -15,6 +15,8 @@ Web und native Direct-APK 13 sind unter https://schulpilot.dorfspy.de aktiv. Imp
 
 APK 13: `artifacts/schulpilot-0.1.0-test.apk`, 61.290.600 Bytes, SHA256 `ab5d002434599a0890a9c5aac97da3e39d151a7b4f2648c40b5d2ad45cb7fd68`. Play-AAB: `artifacts/schulpilot-0.1.0-upload.aab`, 58.734.750 Bytes. Keine Play-Veröffentlichung. Separate konkrete Firebase-Datenschutz-/Betreiberentscheidung und weitere Gerätebeobachtung bleiben offen; vorhandene KI-Freigabe wird nicht dafür umgedeutet.
 
+Push auf main einschließlich `cdc2f8c` am Remote bestätigt. [Tatsächlich geprüfter CI-Lauf](https://github.com/meinzeug/schulpilot/actions/runs/38623272407): beide Jobs ohne ausgeführte Schritte, GitHub-Annotation jeweils „The job was not started because your account is locked due to a billing issue.“ Lokale Tests und Builds sind bestanden; keine erfolgreiche GitHub-CI behauptet. Nachfolgende Dokumentationscommits ändern den bereitgestellten Implementierungsstand nicht.
+
 ## Vorherige Abnahme · 0.1.0+11
 
 Web und native Flutter-APK sind auf https://schulpilot.dorfspy.de bereitgestellt. Die Änderungen dieser Arbeitseinheit vereinfachen den Kinderablauf und modernisieren die gemeinsame Oberfläche. Der vollständige reguläre KI-Lernablauf ist öffentlich geprüft. Auch die native Wiederaufnahme wurde geprüft; keine pauschale Produktionsreife behauptet.

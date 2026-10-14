@@ -228,8 +228,14 @@ Betreiber-/Steuer-/Bankangaben fehlen. Diese trägt der Betreiber unter
 /admin/settings und /admin/verkauf ein und prüft vor Freischaltung die Bedingungen.
 Keine IBAN oder Betreiberidentität wurde erfunden. Play-Veröffentlichung benötigt
 weiterhin ein berechtigtes Play-Console-Konto und tatsächliche Pflichtangaben.
-GitHub-Action-Abrechnungssperre bestand vor dieser Sitzung; den aktuellen
-Push-/CI-Status dem Abschlussbericht entnehmen. Lokale Tests sind davon getrennt.
+Push auf main ist erfolgt; der Remote-Hash für cdc2f8cb6374469bb36dc98b6b63bfe84a0f9d31
+wurde überprüft. Nachfolgende reine Dokumentationscommits sind möglich.
+Aktuell tatsächlich geprüfter CI-Lauf:
+https://github.com/meinzeug/schulpilot/actions/runs/38623272407
+Backend- und Flutter-Jobs wurden beide NICHT gestartet. GitHub meldet:
+The job was not started because your account is locked due to a billing issue.
+Das ist kein fehlgeschlagener Testlauf. Der Kontobetreiber muss bei Bedarf
+die GitHub-Abrechnungssperre beheben; lokale Tests/Builds sind davon getrennt.
 
 Nur diese drei bereinigten Dateien an ChatGPT geben:
 CHATGPT_HANDOFF.txt, firebase-public-config.json, privacy-review.txt.
