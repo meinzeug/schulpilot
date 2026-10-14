@@ -35,6 +35,7 @@ Registrierung mit realer E-Mail, eigene echte Eltern-/Kinderkonten, regulärer F
 - Flutter: 43 Tests bestanden, einschließlich der neuen Login-/Semantik-/Demo-Wechsel-Regressionen und bestehender mobiler Abläufe.
 - Python-Releaseprüfung: 20 Tests bestanden. Ruff und Diff-Prüfung sauber.
 - Flutter-Analyse: abschließend ohne Befund. Web-Release-Build mit CSP, ohne externe Web-Ressourcen-CDN und expliziter öffentlicher API erfolgreich (116,1 s Compilerzeit). Der Build wurde nicht auf dem Server aktiviert.
+- GitHub-Workflowlauf 38620318066 meldet für Backend und Flutter failure; der Connector liefert keine ausgeführten Schritte oder Logs. Die oben genannten Ergebnisse stammen aus den tatsächlich ausgeführten lokalen Prüfläufen. Die ältere STATUS.md nennt eine GitHub-Abrechnungssperre, deren aktueller Zustand hier nicht administrativ geändert wurde. Kein erfolgreicher GitHub-CI-Lauf behauptet.
 - Keine echte Firebase-Zustellung, kein neuer signierter Android-Build, keine Google-Play-Freigabe.
 
 Der ursprüngliche Flutter-Aufruf wurde durch die automatische Sicherheitsprüfung wegen unnötiger Azure-Metadatenerkennung blockiert. Die SDK-Quelle wurde geprüft; das offizielle CI-Signal verhindert diesen Zugriff. Abhängigkeiten, Analyse und Tests wurden anschließend in dieser sicheren Konfiguration ausgeführt.
