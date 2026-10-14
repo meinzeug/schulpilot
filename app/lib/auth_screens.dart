@@ -301,6 +301,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final family = TextEditingController();
   final token = TextEditingController();
   bool consent = false, passwordVisible = false;
+  bool submitting = false;
   String? result;
   String? error;
   @override
@@ -330,6 +331,57 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } on FormatException {
       // A damaged email link must still allow manual code entry.
+    }
+  }
+
+  Future<void> _submit() async {
+    if (submitting || !mounted) return;
+    final mode = widget.mode;
+    setState(() {
+      submitting = true;
+      error = null;
+      result = null;
+    });
+    try {
+      if (mode == 'login') {
+        await widget.state.login(username.text.trim(), password.text);
+        if (mounted) context.go('/app');
+        return;
+      }
+      if (mode == 'register' && !consent) {
+        throw ApiError('Bitte die Volljährigkeit und Berechtigung bestätigen.');
+      }
+      final data = await widget.state.api.post(
+        switch (mode) {
+          'register' => '/auth/register',
+          'recovery' => '/auth/recovery',
+          'reset' => '/auth/reset',
+          'verify' => '/auth/verify',
+          _ => '/invitations/accept',
+        },
+        switch (mode) {
+          'register' => {
+            'email': username.text.trim(),
+            'password': password.text,
+            'display_name': name.text.trim(),
+            'family_name': family.text.trim(),
+            'adult_consent': consent,
+          },
+          'recovery' => {'email': username.text.trim()},
+          'reset' => {'token': token.text, 'password': password.text},
+          'verify' => {'token': token.text},
+          _ => {
+            'token': token.text,
+            'password': password.text,
+            'display_name': name.text.trim(),
+          },
+        },
+      );
+      if (mounted) setState(() => result = data['message']);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => submitting = false);
     }
   }
 
@@ -381,8 +433,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 24),
                   if (result != null)
-                    Notice(result!, icon: Icons.check_circle_outline),
-                  if (error != null) Notice(error!, warning: true),
+                    Notice(
+                      result!,
+                      icon: Icons.check_circle_outline,
+                      liveRegion: true,
+                    ),
+                  if (error != null)
+                    Notice(error!, warning: true, liveRegion: true),
                   if (['login', 'register', 'recovery'].contains(mode)) ...[
                     TextField(
                       controller: username,
@@ -392,6 +449,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       keyboardType: mode == 'login'
                           ? TextInputType.text
                           : TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
                         labelText: mode == 'login'
                             ? 'E-Mail oder Benutzername'
@@ -432,6 +490,10 @@ class _AuthScreenState extends State<AuthScreen> {
                       autofillHints: mode == 'login'
                           ? [AutofillHints.password]
                           : [AutofillHints.newPassword],
+                      textInputAction: mode == 'login'
+                          ? TextInputAction.done
+                          : TextInputAction.next,
+                      onSubmitted: mode == 'login' ? (_) => _submit() : null,
                       decoration: InputDecoration(
                         suffixIcon: IconButton(
                           tooltip: passwordVisible
@@ -479,6 +541,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 12),
                   ],
                   ActionButton(
+                    waiting: submitting,
                     label: switch (mode) {
                       'register' => 'Elternkonto anlegen',
                       'recovery' => 'Wiederherstellungslink anfordern',
@@ -487,59 +550,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       'invite' => 'Einladung annehmen',
                       _ => 'Anmelden',
                     },
-                    onPressed: () async {
-                      setState(() {
-                        error = null;
-                        result = null;
-                      });
-                      try {
-                        if (mode == 'login') {
-                          await widget.state.login(
-                            username.text.trim(),
-                            password.text,
-                          );
-                          if (context.mounted) context.go('/app');
-                          return;
-                        }
-                        if (mode == 'register' && !consent) {
-                          throw ApiError(
-                            'Bitte die Volljährigkeit und Berechtigung bestätigen.',
-                          );
-                        }
-                        final data = await widget.state.api.post(
-                          switch (mode) {
-                            'register' => '/auth/register',
-                            'recovery' => '/auth/recovery',
-                            'reset' => '/auth/reset',
-                            'verify' => '/auth/verify',
-                            _ => '/invitations/accept',
-                          },
-                          switch (mode) {
-                            'register' => {
-                              'email': username.text.trim(),
-                              'password': password.text,
-                              'display_name': name.text.trim(),
-                              'family_name': family.text.trim(),
-                              'adult_consent': consent,
-                            },
-                            'recovery' => {'email': username.text.trim()},
-                            'reset' => {
-                              'token': token.text,
-                              'password': password.text,
-                            },
-                            'verify' => {'token': token.text},
-                            _ => {
-                              'token': token.text,
-                              'password': password.text,
-                              'display_name': name.text.trim(),
-                            },
-                          },
-                        );
-                        if (mounted) setState(() => result = data['message']);
-                      } catch (e) {
-                        if (mounted) setState(() => error = e.toString());
-                      }
-                    },
+                    onPressed: _submit,
                   ),
                   const SizedBox(height: 18),
                   if (mode == 'login')
@@ -579,6 +590,7 @@ class InformationScreen extends StatelessWidget {
     appBar: AppBar(
       title: brand(),
       leading: IconButton(
+        tooltip: 'Zur Startseite',
         icon: const Icon(Icons.arrow_back),
         onPressed: () => context.go('/'),
       ),

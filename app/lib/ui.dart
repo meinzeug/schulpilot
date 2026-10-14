@@ -356,29 +356,37 @@ class Notice extends StatelessWidget {
   final String text;
   final IconData icon;
   final bool warning;
+  final bool liveRegion;
   const Notice(
     this.text, {
     super.key,
     this.icon = Icons.info_outline_rounded,
     this.warning = false,
+    this.liveRegion = false,
   });
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.symmetric(vertical: 8),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: warning ? const Color(0xFFFFF1DE) : mint,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: warning ? const Color(0xFF8B571D) : teal),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 13, height: 1.5)),
-        ),
-      ],
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: liveRegion,
+    child: Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: warning ? const Color(0xFFFFF1DE) : mint,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: warning ? const Color(0xFF8B571D) : teal),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, height: 1.5),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -410,12 +418,14 @@ class ActionButton extends StatefulWidget {
   final Future<void> Function() onPressed;
   final IconData? icon;
   final bool secondary;
+  final bool waiting;
   const ActionButton({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
     this.secondary = false,
+    this.waiting = false,
   });
   @override
   State<ActionButton> createState() => _ActionButtonState();
@@ -425,10 +435,11 @@ class _ActionButtonState extends State<ActionButton> {
   bool busy = false;
   @override
   Widget build(BuildContext context) {
+    final waiting = busy || widget.waiting;
     final child = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (busy)
+        if (waiting)
           const SizedBox(
             width: 18,
             height: 18,
@@ -436,8 +447,8 @@ class _ActionButtonState extends State<ActionButton> {
           )
         else if (widget.icon != null)
           Icon(widget.icon, size: 19),
-        if (busy || widget.icon != null) const SizedBox(width: 9),
-        Flexible(child: Text(busy ? 'Bitte warten …' : widget.label)),
+        if (waiting || widget.icon != null) const SizedBox(width: 9),
+        Flexible(child: Text(waiting ? 'Bitte warten …' : widget.label)),
       ],
     );
     Future<void> pressed() async {
@@ -452,8 +463,8 @@ class _ActionButtonState extends State<ActionButton> {
     }
 
     return widget.secondary
-        ? OutlinedButton(onPressed: busy ? null : pressed, child: child)
-        : FilledButton(onPressed: busy ? null : pressed, child: child);
+        ? OutlinedButton(onPressed: waiting ? null : pressed, child: child)
+        : FilledButton(onPressed: waiting ? null : pressed, child: child);
   }
 }
 

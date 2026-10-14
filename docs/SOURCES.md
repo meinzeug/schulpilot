@@ -59,3 +59,11 @@ Ausbau vom 14.10.2026:
 - Android-Installer, erneut geprüft am 14.10.2026: [FileProvider](https://developer.android.com/reference/androidx/core/content/FileProvider) und [Installationsquellen](https://developer.android.com/reference/android/content/pm/PackageManager#canRequestPackageInstalls()). Der direkte Updater übergibt eine nur vorübergehend lesbare `content:`-URI an Androids Installationsoberfläche; Android verwaltet Quellenfreigabe und Bestätigung. [ACTION_INSTALL_PACKAGE](https://developer.android.com/reference/android/content/Intent#ACTION_INSTALL_PACKAGE) ist seit API 29 veraltet; der vorhandene direkte Adapter verwendet `ACTION_VIEW` mit APK-MIME-Typ. Keine stille Installation behaupten. Direkter und Play-Flavour bleiben getrennt.
 
 - OpenRouter-Fehlerantworten, geprüft am 14.10.2026: [Errors and debugging](https://openrouter.ai/docs/api_reference/errors-and-debugging). Auch nicht gestreamte HTTP-200-Antworten können ein Fehlerobjekt ohne choices enthalten. Wurzel-/Choice-Fehler und leere Antworten werden gesondert erkannt; nur feste Fehlerkategorien anzeigen, keine Upstreamnachrichten oder Metadaten übernehmen. Kein impliziter Wiederholungsversuch.
+
+## Produktionsprüfung 14.10.2026
+
+- Google Play: aktuelle Ziel-API-Anforderung (Smartphone-Neueinreichung/Updates seit 31.08.2026 API 36): https://support.google.com/googleplay/android-developer/answer/11926878
+- Google Play: geschlossener Test nur bei den betroffenen neuen persönlichen Konten, zwölf Personen/14 Tage vor Produktionsantrag: https://support.google.com/googleplay/android-developer/answer/14151465
+- Android: 16-KB-Seitengrößen, ZIP- und ELF-Prüfungen ersetzen keine Geräteprüfung: https://developer.android.com/guide/practices/page-sizes
+- Alembic ScriptDirectory.get_heads(consider_depends_on=True): effektive Migrations-Heads, API in der fixierten Alembic-Version geprüft: https://alembic.sqlalchemy.org/en/latest/api/script.html
+- Flutter: tatsächlich heruntergeladene fixierte Revision abaf9c523780a608bd46686fd5e53740a07077f8; SemanticsNode.flagsCollection und CI-Kennung anhand dieses SDK-Quellcodes geprüft. Das CI-Signal vermeidet die unbenötigte Azure-Metadatenerkennung: https://github.com/flutter/flutter/blob/abaf9c523780a608bd46686fd5e53740a07077f8/packages/flutter_tools/lib/src/base/bot_detector.dart

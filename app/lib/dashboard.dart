@@ -368,6 +368,9 @@ Widget demoAccess(BuildContext context, AppState state) => Panel(
         secondary: true,
         icon: Icons.switch_account_outlined,
         onPressed: () async {
+          // Logout disposes this route before a slower login response arrives.
+          // The app router survives that transition; this page context does not.
+          final router = GoRouter.of(context);
           final child = !state.isChild;
           await state.logout();
           await state.login(
@@ -378,7 +381,7 @@ Widget demoAccess(BuildContext context, AppState state) => Panel(
                 ? 'child_password'
                 : 'parent_password'],
           );
-          if (context.mounted) context.go('/app');
+          router.go('/app');
         },
       ),
     ],
