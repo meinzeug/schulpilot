@@ -33,6 +33,7 @@ for name in ("schulpilot-offsite", "schulpilot-watch-public"):
         content = content.replace("%h/schulpilot/scripts/", "%h/.local/share/schulpilot-operations/scripts/")
         (units / (name + "." + suffix)).write_text(content)
 subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+subprocess.run(["systemctl", "--user", "start", "schulpilot-offsite.service"], check=True)
 subprocess.run(
     ["systemctl", "--user", "enable", "--now", "schulpilot-offsite.timer", "schulpilot-watch-public.timer"], check=True
 )

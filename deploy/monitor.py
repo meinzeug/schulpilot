@@ -71,11 +71,13 @@ def notify(config, failures, previous, path, *, dry_run=False):
                     server.login(config["SMTP_USER"], config["SMTP_PASSWORD"])
                 server.send_message(message)
             state["sent"] = stamp
-        except Exception:
+        except Exception as error:
             # Keep the previous fingerprint so the next scheduled check retries
             # the alert, independently of application mail delivery.
             state["fingerprint"] = previous.get("fingerprint", "")
-            state["alert_error"] = "smtp_delivery_failed"
+            state["alert_error"] = "smtp_" + type(error).__name__
+            if isinstance(getattr(error, "smtp_code", None), int):
+                state["smtp_code"] = error.smtp_code
     if not dry_run:
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         partial = path.with_suffix(".partial")
@@ -132,6 +134,10 @@ def main():
     if not backups or time.time() - max(p.stat().st_mtime for p in backups) > 30 * 3600:
         failures.append("backup_stale")
     restore = Path("/var/backups/schulpilot-monitor/restore-check.json")
+    if Path("/etc/schulpilot/offsite-enabled").exists():
+        marker = Path("/var/backups/schulpilot-monitor/offsite-last-success.json")
+        if not marker.exists() or time.time() - json.loads(marker.read_text())["checked_at"] > 3600:
+            failures.append("offsite_copy_stale")
     if subprocess.run(["systemctl", "is-failed", "--quiet", "schulpilot-restore-check.service"]).returncode == 0:
         failures.append("restore_rehearsal_failed")
     if restore.exists() and time.time() - json.loads(restore.read_text())["checked_at"] > 14 * 86400:

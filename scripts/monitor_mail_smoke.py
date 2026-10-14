@@ -4,6 +4,7 @@ Reads only the explicitly authorized project SMTP settings, searches the unique
 test subject, and never prints credentials, mailbox addresses or message bodies.
 """
 
+import argparse
 import imaplib
 import secrets
 import ssl
@@ -17,7 +18,12 @@ from monitor import environment, notify  # noqa: E402
 
 
 def main():
-    config = environment(Path.home() / ".local/share/schulpilot-recovery/server-environment")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config-file", type=Path, default=Path.home() / ".local/share/schulpilot-recovery/server-environment"
+    )
+    args = parser.parse_args()
+    config = environment(args.config_file)
     if config.get("SMTP_HOST") != "smtp.gmail.com" or not config.get("SMTP_USER"):
         raise RuntimeError("The authorized Gmail transport is required")
     token = secrets.token_hex(12)

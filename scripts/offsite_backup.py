@@ -5,6 +5,7 @@ Only constrained backup filenames are passed to the remote shell.
 """
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -25,6 +26,12 @@ def main():
     os.umask(0o077)
     args.destination.mkdir(parents=True, exist_ok=True, mode=0o700)
     args.destination.chmod(0o700)
+    with (args.destination / ".pull.lock").open("a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        pull(args.destination)
+
+
+def pull(destination):
     ssh = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "dorfspy"]
     inventory_code = """import hashlib,json,time
 from pathlib import Path
@@ -41,7 +48,7 @@ print(json.dumps({'backups':items,'server_now':int(time.time())}))
         name = item["name"]
         if not re.fullmatch(r"\d{8}T\d{6}Z\.tar\.enc", name):
             raise RuntimeError("Unexpected backup filename")
-        target = args.destination / name
+        target = destination / name
         if not target.exists():
             partial = target.with_suffix(".partial")
             try:
@@ -61,7 +68,7 @@ print(json.dumps({'backups':items,'server_now':int(time.time())}))
                     raise RuntimeError("Existing offsite ciphertext checksum mismatch")
     if not inventory["backups"]:
         raise RuntimeError("No server backup available")
-    ledger = args.destination / "erasure-ledger.enc"
+    ledger = destination / "erasure-ledger.enc"
     partial = ledger.with_suffix(".partial")
     try:
         with partial.open("wb") as output:
@@ -77,13 +84,13 @@ print(json.dumps({'backups':items,'server_now':int(time.time())}))
     finally:
         partial.unlink(missing_ok=True)
     # Match the 14-day retention of the server; encryption does not extend it.
-    for path in args.destination.glob("*.tar.enc"):
+    for path in destination.glob("*.tar.enc"):
         from datetime import datetime, timezone
 
         stamp = datetime.strptime(path.name[:16], "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc).timestamp()
         if stamp < inventory["server_now"] - 14 * 86400:
             path.unlink()
-    available = list(args.destination.glob("*.tar.enc"))
+    available = list(destination.glob("*.tar.enc"))
     if not available:
         raise RuntimeError("No retained offsite backup available")
     newest = (
@@ -93,7 +100,11 @@ print(json.dumps({'backups':items,'server_now':int(time.time())}))
     )
     if inventory["server_now"] - newest > 30 * 3600:
         raise RuntimeError("Server backup is stale")
-    (args.destination / "last-success.json").write_text(
+    run(
+        [*ssh, "/opt/schulpilot/current/venv/bin/python /opt/schulpilot/current/deploy/export_ledger.py --ack"],
+        capture_output=True,
+    )
+    (destination / "last-success.json").write_text(
         json.dumps(
             {
                 "checked_at": int(time.time()),
