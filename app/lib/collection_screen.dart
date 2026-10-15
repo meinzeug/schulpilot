@@ -241,15 +241,20 @@ class _PagedCollectionState extends State<PagedCollection> {
     }
   }
 
-  void reset() => change(() {
-    search.clear();
-    subject = null;
-    status = widget.onSelect == null ? 'all' : 'confirmed';
-    dates = null;
-    sort = 'subject';
-  });
+  void reset() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    change(() {
+      search.clear();
+      subject = null;
+      status = widget.onSelect == null ? 'all' : 'confirmed';
+      dates = null;
+      sort = 'subject';
+    });
+  }
 
   Future<void> filters() async {
+    // Do not reopen the search keyboard when returning from the modal.
+    FocusManager.instance.primaryFocus?.unfocus();
     var draftStatus = status, draftSort = sort, draftSize = pageSize;
     var draftDates = dates;
     final accepted = await showModalBottomSheet<bool>(
@@ -482,7 +487,10 @@ class _PagedCollectionState extends State<PagedCollection> {
                   ),
           ),
           onChanged: (_) => change(() {}, delayed: true),
-          onSubmitted: (_) => load(),
+          onSubmitted: (_) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            load();
+          },
         ),
         const SizedBox(height: 12),
         Row(
@@ -508,7 +516,10 @@ class _PagedCollectionState extends State<PagedCollection> {
                       ),
                     ),
                 ],
-                onChanged: (value) => change(() => subject = value),
+                onChanged: (value) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  change(() => subject = value);
+                },
               ),
             ),
             const SizedBox(width: 8),
