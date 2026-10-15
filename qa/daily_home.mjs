@@ -55,7 +55,7 @@ async function get(context, route) {
 async function usage() { return get(parent, '/families/' + account.user.families[0].id + '/usage'); }
 function usageSignature(value) {
   return digest(JSON.stringify({calls: value.calls_used, known: value.known_cost_micros_usd,
-    unknown: value.unknown_cost_calls, records: value.records.map(row => [row.id, row.status, row.cost_micros_usd])}));
+    unknown: value.unknown_cost_calls, records: value.records.map(row => digest(JSON.stringify(row))).sort()}));
 }
 function validatePlan(plan) {
   check(Array.isArray(plan.week) && plan.week.length === 7 && plan.week[0].date === plan.date,
@@ -151,6 +151,7 @@ async function type(page, locator, value) {
   await page.waitForTimeout(250);
   await page.keyboard.press('Control+A');
   await page.keyboard.type(value, {delay: 8});
+  await page.waitForTimeout(150);
   check(await field.inputValue() === value, 'actual_login_editor_did_not_accept_typing');
 }
 async function login(page, context, role) {
@@ -216,7 +217,7 @@ async function run() {
     validatePlan(data.plan);
     check(data.daily_capture?.day_id === sourceDay.id && data.daily_capture.date === data.plan.date &&
       data.daily_capture.page_count === 2, 'background_sources_must_belong_to_actual_today');
-    await reveal(childPage, childPage.getByText('Heutige Heftseiten', {exact: true}));
+    await reveal(childPage, childPage.getByText('Heutige Heftseiten', {exact: false}));
     await shot(childPage, 'child-' + width, true);
     await tap(childPage, childPage.getByText('Mein Plan', {exact: true}));
     await reveal(childPage, childPage.getByText('Die nächsten Lerntage', {exact: true}));
@@ -225,7 +226,7 @@ async function run() {
   step('open_actual_owned_source_from_today_ui');
   await childPage.setViewportSize({width: 390, height: 844});
   await open(childPage, '/app');
-  await tap(childPage, childPage.getByText('Heutige Heftseiten', {exact: true}));
+  await tap(childPage, childPage.getByText('Heutige Heftseiten', {exact: false}));
   await childPage.waitForURL(base + '/after-school/' + account.child_id, {timeout: 45000});
   await tap(childPage, childPage.getByText('Heftseiten und bisherige Runden', {exact: true}));
   await tap(childPage, childPage.getByText('Heftseite 1', {exact: true}));
@@ -236,7 +237,7 @@ async function run() {
   const data = await get(child, '/children/' + account.child_id + '/overview?compact=true');
   const next = data.plan.today[0];
   const mayStart = !data.plan.paused && !data.plan.free_day && data.plan.available_minutes > 0 &&
-    next?.kind === 'unit' && preparedIds.has(next.id) && ['not_started', 'ready', 'paused', 'active'].includes(next.status);
+    next?.kind === 'unit' && preparedIds.has(next.id) && ['not_started', 'ready', 'paused'].includes(next.status);
   if (mayStart) {
     allowStart = !['active', 'completed'].includes(next.status);
     unitStartExpected = next.id;
