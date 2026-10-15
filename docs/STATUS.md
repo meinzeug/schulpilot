@@ -10,6 +10,8 @@ Anmeldung durch den Betreiber: `ssh -t dorfspy 'sudo schulpilot-codex login'`. D
 
 Vor dem Deploy verschlüsselte Datenbanksicherung und projektspezifische Konfigurationssicherung erstellt. Providerwechsel hält zusätzlich eine private Kopie ausschließlich der vorherigen Providerzeile unter `/var/lib/schulpilot/operator-backups/` vor (0600, vorhandener Schlüssel ausschließlich verschlüsselt). Vorheriger Releasepointer: `20261015T140058Z-25f5614`. Nur Providerkonfiguration zurücksetzen, keine später gespeicherten Kinderantworten durch eine alte Gesamtdatenbank ersetzen. Eine bekannte Starlette-Testclient-Abkündigungswarnung bleibt bestehen; keine ungeprüfte SDK-Migration.
 
+GitHub-Push auf `main` erfolgreich. Die GitHub-Actions-Prüfung für `a08f454` (Run `38753290782`) startete in beiden Jobs keinen einzigen Schritt: GitHub meldet eine Kontosperre wegen eines Abrechnungsproblems. Dies ist kein ausgeführter oder bestandener CI-Test; die oben genannten lokalen und öffentlichen Prüfungen wurden tatsächlich durchgeführt. Die Abrechnung muss der GitHub-Kontoinhaber klären.
+
 Der folgende Abschnitt dokumentiert den unveränderten vorherigen Flutter-Client und dessen bereits durchgeführte Geräte-/Browserprüfungen.
 
 # Vorheriger Clientstand · 15.10.2026 · 1.2.0+21
