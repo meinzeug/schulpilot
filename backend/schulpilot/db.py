@@ -241,6 +241,7 @@ class SchoolDay(Base):
     revision = Column(Integer, default=1, nullable=False)
     package_version = Column(Integer, default=0, server_default="0", nullable=False)
     learning_plan = Column(JSON, default=dict, server_default="{}", nullable=False)
+    preparation = Column(JSON, default=dict, server_default="{}", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
     __table_args__ = (UniqueConstraint("child_id", "school_date"),)
 
@@ -477,6 +478,7 @@ class Usage(Base):
     status = Column(String(20), default="reserved", nullable=False)
     input_tokens = Column(Integer)
     output_tokens = Column(Integer)
+    search_calls = Column(Integer)
     cost_micros = Column(Integer)
     reserved_micros = Column(Integer, nullable=False)
     bucket_ids = Column(JSON, nullable=False)

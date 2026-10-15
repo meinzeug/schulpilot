@@ -14,6 +14,17 @@ MODEL = "gpt-6.1-sol"
 CLI_VERSION = "0.162.1"
 
 
+def search_policy_status():
+    if not settings.codex_web_search:
+        return "Websuche aus: Die Lern-KI verwendet nur die bereitgestellten Unterlagen."
+    if settings.codex_auth_mode == "account":
+        return (
+            "Websuche an: Ein Anbieteraufruf je Auftrag, höchstens 145 Sekunden. "
+            "Die Anzahl der Suchen wird nachträglich erfasst; keine feste Obergrenze je Antwort."
+        )
+    return "Websuche an: Höchstens eine Suche je Anbieterantwort."
+
+
 def worker_health():
     unavailable = {"ready": False, "status": "Der isolierte Codex-Lernworker ist nicht erreichbar."}
     if not settings.codex_approved or not settings.codex_socket:
@@ -25,7 +36,10 @@ def worker_health():
         if response.status_code != 200:
             return unavailable
         data = response.json()
-        if not (data.get("isolated") is True and data.get("search") is True and data.get("cli_version") == CLI_VERSION):
+        if not (
+            data.get("isolated") is True and data.get("cli_search") is True
+            and data.get("search") is settings.codex_web_search and data.get("cli_version") == CLI_VERSION
+        ):
             return {"ready": False, "status": "Codex-Isolation, Websuche oder CLI-Version ist nicht bestätigt."}
         if data.get("auth_mode") != settings.codex_auth_mode:
             return {
@@ -34,7 +48,10 @@ def worker_health():
             }
         return {
             "ready": True,
-            "status": "Isolierter Codex-Worker erreichbar, Websuche aktiviert, eigene Anmeldung vorhanden. Ein echter Bild-/Aufgabentest ist separat erforderlich.",
+            "status": "Isolierter Codex-Worker erreichbar, eigene Anmeldung vorhanden. "
+            + search_policy_status() + " Ein echter Bild-/Aufgabentest ist separat erforderlich.",
+            "web_search": settings.codex_web_search,
+            "cli_search": True,
         }
     except (httpx.HTTPError, ValueError, TypeError, AttributeError):
         return unavailable
@@ -61,8 +78,12 @@ def configure():
         config.model = config.extraction_model = MODEL
         config.encrypted_key = None
         config.image_capable = config.structured_capable = True
-        config.capability_evidence = config.extraction_capability_evidence = (
+        config.capability_evidence = (
             "Official Codex docs checked 2026-10-15; CLI 0.162.1; --search; image/schema; actual probe required"
+            + "; web_search=" + str(settings.codex_web_search).lower()
+        )
+        config.extraction_capability_evidence = (
+            "Official Codex docs checked 2026-10-15; CLI 0.162.1; OCR image/schema; actual probe required; web_search=false"
         )
         config.production_block_reason = (
             "Codex ist ausgewählt. Eigene Server-Anmeldung und erfolgreicher künstlicher Bild-/Aufgabentest fehlen."
@@ -81,12 +102,20 @@ def configure():
             config.pricing_evidence = "https://developers.openai.com/api/docs/pricing ; 2026-10-15; gpt-6.1-sol long-context/cache-write ceiling; web search $10/1000 plus model tokens"
         config.revision += 1
         audit(db, "local-operator", "provider.codex_selected", settings.codex_auth_mode)
+        audit(
+            db, "local-operator", "provider.codex_search_policy",
+            "account_web_search_no_preexecution_search_cap" if settings.codex_auth_mode == "account"
+            and settings.codex_web_search else "api_single_search" if settings.codex_web_search else "source_only",
+        )
     print(
         json.dumps(
             {
                 "provider": "codex",
                 "model": MODEL,
-                "search": True,
+                "search": settings.codex_web_search,
+                "cli_search": True,
+                "web_search": settings.codex_web_search,
+                "search_policy": search_policy_status(),
                 "production_ready": False,
                 "next": "schulpilot-codex login",
             }

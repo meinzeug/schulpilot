@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'coaching_panel.dart';
 import 'collection_screen.dart';
+import 'daily_plan_panel.dart';
+import 'preparation_card.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
 import 'ui.dart';
@@ -471,11 +475,92 @@ class ChildDetailScreen extends StatefulWidget {
   State<ChildDetailScreen> createState() => _ChildDetailScreenState();
 }
 
-class _ChildDetailScreenState extends State<ChildDetailScreen> {
+class _ChildDetailScreenState extends State<ChildDetailScreen>
+    with WidgetsBindingObserver {
   int tab = 0;
   int version = 0;
+  Timer? preparationPoll;
+  GoRouter? observedRouter;
+  bool foreground = true,
+      preparing = false,
+      routeVisible = true,
+      reading = false;
   AppState get state => widget.state;
   void refresh() => setState(() => version++);
+  bool get visible {
+    final path = observedRouter?.routeInformationProvider.value.uri.path;
+    return path == '/app' || path == '/child/${widget.childId}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.of(context);
+    if (router != observedRouter) {
+      observedRouter?.routerDelegate.removeListener(routeChanged);
+      observedRouter = router;
+      router.routerDelegate.addListener(routeChanged);
+      routeVisible = visible;
+    }
+  }
+
+  void routeChanged() {
+    final next = visible;
+    if (next && !routeVisible && foreground) {
+      scheduleMicrotask(() {
+        if (mounted) refresh();
+      });
+    }
+    routeVisible = next;
+    if (!next) preparationPoll?.cancel();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    final wasForeground = foreground;
+    foreground = lifecycle == AppLifecycleState.resumed;
+    if (!foreground) {
+      preparationPoll?.cancel();
+      preparationPoll = null;
+    } else if (!wasForeground && visible && state.user != null) {
+      refresh();
+    }
+  }
+
+  void watchPreparation(Json data) {
+    preparing =
+        (data['pending_preparations'] as List? ?? []).any(
+          (p) => p['status'] == 'processing',
+        ) ||
+        data['daily_capture']?['preparation']?['status'] == 'processing';
+    if (!preparing) {
+      preparationPoll?.cancel();
+      preparationPoll = null;
+      return;
+    }
+    if (!foreground || !visible || preparationPoll?.isActive == true) return;
+    preparationPoll = Timer(const Duration(seconds: 5), () {
+      preparationPoll = null;
+      if (mounted && foreground && visible && state.user != null && !reading) {
+        refresh();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    preparationPoll?.cancel();
+    observedRouter?.routerDelegate.removeListener(routeChanged);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: state,
@@ -497,10 +582,20 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
         ),
     ],
     child: LoadView<Json>(
-      key: ValueKey('${widget.childId}-$version'),
-      load: () =>
-          state.api.get('/children/${widget.childId}/overview?compact=true'),
+      key: ValueKey('${widget.childId}-${state.user?['id']}'),
+      revision: '$version-${state.revision}',
+      load: () async {
+        reading = true;
+        try {
+          return await state.api.get(
+            '/children/${widget.childId}/overview?compact=true',
+          );
+        } finally {
+          reading = false;
+        }
+      },
       builder: (data, reload) {
+        watchPreparation(data);
         if (state.isChild) {
           return _ChildHomeContent(state: state, data: data, refresh: refresh);
         }
@@ -591,6 +686,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                       openRoute(context, '/after-school/${child['id']}'),
                 ),
               ),
+              for (final preparation
+                  in (data['pending_preparations'] as List? ?? []).cast<Json>())
+                PreparationCard(childId: child['id'], preparation: preparation),
               const SizedBox(height: 24),
               Panel(
                 child: Column(
@@ -685,8 +783,10 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                     ),
                   ),
                 ),
-              for (final item in plan['later'] as List)
-                planTile(context, state, data, item, parent: true),
+              if ((plan['week'] as List? ?? []).isNotEmpty) ...[
+                heading('Die nächsten sieben Tage'),
+                DailyPlanPanel(plan: plan),
+              ],
               if ((data['mastery'] as List).isEmpty &&
                   (plan['later'] as List).isEmpty)
                 const Text(
@@ -931,14 +1031,32 @@ class _ChildHomeContent extends StatelessWidget {
     final child = data['child'] as Json;
     final plan = data['plan'] as Json;
     final today = plan['today'] as List? ?? [];
-    final later = plan['later'] as List? ?? [];
-    final eligibleLater = later.where(
-      (item) =>
-          item['scheduled_for'] == null ||
-          item['scheduled_for'].toString().compareTo(plan['date']) <= 0,
-    );
+    final capture = data['daily_capture'] as Json? ?? {};
+    final needsCapture = (capture['status'] ?? 'empty') == 'empty';
+    final inbox = (data['pending_preparations'] as List? ?? []).cast<Json>();
+    final currentPreparation = capture['preparation'] as Json?;
+    const pendingStates = [
+      'processing',
+      'needs_review',
+      'needs_photo',
+      'failed',
+      'blocked',
+    ];
+    final focusedPreparation =
+        currentPreparation != null &&
+            pendingStates.contains(currentPreparation['status'])
+        ? <String, dynamic>{
+            ...currentPreparation,
+            'day_id': capture['day_id'],
+            'date': capture['date'],
+          }
+        : !needsCapture
+        ? inbox.firstOrNull
+        : null;
     final pending = _pendingMaterials(data);
-    final photosWaiting = pending.isNotEmpty || state.recoveredPhoto != null;
+    final photosWaiting =
+        focusedPreparation == null &&
+        (pending.isNotEmpty || state.recoveredPhoto != null);
     final pendingReview = (data['units'] as List? ?? [])
         .where(
           (unit) =>
@@ -948,8 +1066,12 @@ class _ChildHomeContent extends StatelessWidget {
         .firstOrNull;
     final reviewWaiting = !photosWaiting && pendingReview != null;
     final paused = plan['paused'] == true;
-    final next = today.firstOrNull ?? eligibleLater.firstOrNull;
-    final canLearn = !paused && next != null;
+    final next = today.firstOrNull;
+    final canLearn =
+        !paused &&
+        plan['free_day'] != true &&
+        (plan['available_minutes'] as num? ?? 0) > 0 &&
+        next != null;
     final continuing =
         canLearn && (next['status'] == 'active' || next['status'] == 'paused');
     final completed = (plan['completed_today'] as num? ?? 0).toInt();
@@ -958,81 +1080,158 @@ class _ChildHomeContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FocusCard(
-          eyebrow:
-              !photosWaiting &&
-                  !reviewWaiting &&
-                  canLearn &&
-                  next['mandatory'] == true
-              ? next['assignment_kind'] == 'homework'
-                    ? 'Notierte Hausaufgabe'
-                    : 'Dein Elternauftrag'
-              : 'Dein nächster Schritt',
-          title: photosWaiting
-              ? 'Deine Heftfotos warten.'
-              : reviewWaiting
-              ? 'Dein Rückblick wird vorbereitet.'
-              : canLearn
-              ? '${next['topic']}'
-              : paused
-              ? 'Heute ist Lernpause.'
-              : 'Was war heute dran?',
-          subtitle: photosWaiting
-              ? 'Mach dort weiter, wo du aufgehört hast.'
-              : reviewWaiting
-              ? 'Hier geht es nach deiner Lernrunde weiter.'
-              : canLearn
-              ? '${next['subject']} · etwa ${plan['session_minutes']} Minuten'
-              : paused
-              ? 'Du kannst deine Seiten für später sammeln.'
-              : 'Fotografiere die Heftseiten von heute.',
-          icon: photosWaiting || !canLearn
-              ? Icons.document_scanner_rounded
-              : Icons.auto_stories_rounded,
-          action: SizedBox(
-            width: double.infinity,
-            child: ActionButton(
-              label: photosWaiting
-                  ? 'Heftfotos fortsetzen'
-                  : reviewWaiting
-                  ? 'Rückblick ansehen'
-                  : canLearn
-                  ? continuing
+        if (focusedPreparation != null)
+          PreparationCard(
+            childId: child['id'],
+            preparation: focusedPreparation,
+            primary: true,
+          )
+        else
+          FocusCard(
+            eyebrow: photosWaiting || needsCapture
+                ? 'Nach der Schule'
+                : reviewWaiting
+                ? 'Dein Rückblick'
+                : 'Deine Lernportion für heute',
+            title: photosWaiting
+                ? 'Deine Heftfotos warten.'
+                : needsCapture
+                ? 'Was war heute dran?'
+                : reviewWaiting
+                ? 'Schau auf deine Lernrunde zurück.'
+                : canLearn
+                ? '${next['topic']}'
+                : paused || plan['free_day'] == true
+                ? 'Heute ist Lernpause.'
+                : completed > 0
+                ? 'Für heute geschafft!'
+                : 'Heute ist nichts eingeplant.',
+            subtitle: photosWaiting
+                ? 'Mach mit deinen Fotos weiter.'
+                : needsCapture
+                ? 'Neue Seiten sammeln. In kleinen Portionen lernen.'
+                : reviewWaiting
+                ? 'Deine Antworten sind gespeichert.'
+                : canLearn
+                ? '${next['subject']} · heute insgesamt ca. ${plan['planned_minutes'] ?? next['estimated_minutes'] ?? plan['session_minutes']} Minuten'
+                : 'Der übrige Stoff wartet auf die nächsten Lerntage.',
+            icon: photosWaiting || needsCapture
+                ? Icons.document_scanner_rounded
+                : canLearn
+                ? Icons.auto_stories_rounded
+                : Icons.check_circle_outline_rounded,
+            action: SizedBox(
+              width: double.infinity,
+              child: ActionButton(
+                label: photosWaiting
+                    ? 'Heftfotos fortsetzen'
+                    : needsCapture
+                    ? 'Heutige Seiten scannen'
+                    : reviewWaiting
+                    ? 'Rückblick ansehen'
+                    : canLearn
+                    ? continuing
+                          ? 'Weiterlernen'
+                          : 'Jetzt lernen'
+                    : 'Zu meinen Heftseiten',
+                icon: photosWaiting || needsCapture
+                    ? Icons.add_a_photo_outlined
+                    : canLearn || reviewWaiting
+                    ? Icons.play_arrow_rounded
+                    : Icons.folder_open_rounded,
+                onPressed: () async {
+                  if (photosWaiting && pending.isNotEmpty) {
+                    await startNext(context, state, data);
+                  } else if (photosWaiting || needsCapture) {
+                    openRoute(context, '/after-school/${child['id']}');
+                  } else if (reviewWaiting) {
+                    openRoute(context, '/unit/${pendingReview['id']}');
+                  } else if (canLearn) {
+                    await startNext(context, state, data);
+                  } else {
+                    openRoute(context, '/library/${child['id']}');
+                  }
+                },
+              ),
+            ),
+          ),
+        if (needsCapture && !photosWaiting)
+          TextButton(
+            onPressed: () async {
+              try {
+                await state.api.post('/children/${child['id']}/day-check-in');
+                refresh();
+              } catch (e) {
+                if (context.mounted) showError(context, e);
+              }
+            },
+            child: const Text('Heute keine neuen Seiten'),
+          ),
+        if ((needsCapture || focusedPreparation != null) &&
+            !photosWaiting &&
+            (canLearn || reviewWaiting)) ...[
+          const SizedBox(height: 12),
+          Panel(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  reviewWaiting
+                      ? 'Dein Rückblick'
+                      : 'Heute lernen · ca. ${plan['planned_minutes'] ?? next['estimated_minutes'] ?? plan['session_minutes']} Min.',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  reviewWaiting
+                      ? 'Deine Antworten sind gespeichert.'
+                      : '${next['subject']} · ${next['topic']}',
+                  style: const TextStyle(color: muted),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    if (reviewWaiting) {
+                      openRoute(context, '/unit/${pendingReview['id']}');
+                    } else {
+                      await openPlanItem(context, state, data, next);
+                    }
+                  },
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: Text(
+                    reviewWaiting
+                        ? 'Rückblick ansehen'
+                        : continuing
                         ? 'Weiterlernen'
-                        : today.isNotEmpty
-                        ? 'Jetzt lernen'
-                        : 'Freiwillig üben'
-                  : paused
-                  ? 'Heftfotos sammeln'
-                  : 'Nach der Schule starten',
-              icon: photosWaiting || !canLearn
-                  ? Icons.add_a_photo_outlined
-                  : Icons.play_arrow_rounded,
-              onPressed: () async {
-                if (photosWaiting && pending.isNotEmpty) {
-                  await startNext(context, state, data);
-                } else if (reviewWaiting) {
-                  openRoute(context, '/unit/${pendingReview['id']}');
-                } else if (photosWaiting || !canLearn) {
-                  openRoute(context, '/after-school/${child['id']}');
-                } else {
-                  await startNext(context, state, data);
-                }
-              },
+                        : 'Jetzt lernen',
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        if ((canLearn || reviewWaiting) && !photosWaiting)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: OutlinedButton.icon(
-              onPressed: () =>
-                  openRoute(context, '/after-school/${child['id']}'),
-              icon: const Icon(Icons.add_a_photo_outlined, size: 20),
-              label: const Text('Neue Heftfotos'),
+        ],
+        if (!needsCapture && !photosWaiting)
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 6,
             ),
+            leading: const Icon(Icons.document_scanner_outlined, color: teal),
+            title: const Text('Heutige Heftseiten'),
+            subtitle: Text(
+              capture['status'] == 'skipped'
+                  ? 'Heute keine neuen Seiten'
+                  : '${capture['page_count'] ?? 0} Seiten gespeichert',
+            ),
+            trailing: const Icon(Icons.add_a_photo_outlined, color: teal),
+            onTap: () => openRoute(context, '/after-school/${child['id']}'),
           ),
+        for (final preparation in inbox.where(
+          (p) => p['day_id'] != focusedPreparation?['day_id'],
+        ))
+          PreparationCard(childId: child['id'], preparation: preparation),
+        const SizedBox(height: 8),
         TextButton.icon(
           onPressed: () => showLearningMessage(
             context,
@@ -1077,6 +1276,15 @@ class _ChildHomeContent extends StatelessWidget {
                 ),
               for (final item in today)
                 _ChildPlanRow(state: state, data: data, item: item),
+              if ((plan['week'] as List? ?? []).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Die nächsten Lerntage',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                DailyPlanPanel(plan: plan, childView: true),
+              ],
               TextButton.icon(
                 onPressed: () {
                   state.collectionViews['learning:${child['id']}'] = {
@@ -1206,6 +1414,8 @@ class _ChildPlanRow extends StatelessWidget {
     final scheduled = item['scheduled_for'];
     final available =
         plan['paused'] != true &&
+        plan['free_day'] != true &&
+        (plan['available_minutes'] as num? ?? 0) > 0 &&
         (scheduled == null ||
             scheduled.toString().compareTo(plan['date']) <= 0);
     final obligation = item['assignment_kind'] == 'homework'
@@ -1278,6 +1488,12 @@ String activityLabel(String kind) => switch (kind) {
   'school_day_pages' => 'Heftseiten zum Tagespaket hinzugefügt',
   'school_day_page_removed' => 'Unbestätigte Heftseite entfernt',
   'school_day_ready' => 'Lernpaket aus Heftseiten erstellt',
+  'school_day_saved' => 'Heftseiten für kommende Lerntage eingeplant',
+  'daily_checkin' => 'Heute keine neuen Heftseiten',
+  'school_day_submitted' => 'Heftseiten zur Vorbereitung abgegeben',
+  'school_day_postponed' => 'Heftseiten für später abgelegt',
+  'preparation_notice' => 'Vorbereitung: neuer Stand',
+  'preparation_started' => 'Heftseiten zur Vorbereitung abgegeben',
   'parent_assignment' => 'Elternauftrag angelegt',
   'unit_created' => 'Übung erstellt',
   'feedback' => 'Schwierigkeitsrückmeldung',
@@ -1382,31 +1598,15 @@ Future<void> startNext(BuildContext context, AppState state, Json data) async {
     return;
   }
   final today = data['plan']['today'] as List;
-  final later = (data['plan']['later'] as List)
-      .where(
-        (item) =>
-            item['scheduled_for'] == null ||
-            item['scheduled_for'].toString().compareTo(data['plan']['date']) <=
-                0,
-      )
-      .toList();
-  if (data['plan']['paused'] == true) {
+  if (data['plan']['paused'] == true ||
+      data['plan']['free_day'] == true ||
+      (data['plan']['available_minutes'] as num? ?? 0) <= 0) {
     throw ApiError(
-      'Gerade ist eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen.',
+      'Für heute ist genug gelernt oder eine Pause eingeplant. Dein Stoff bleibt gespeichert.',
     );
   }
   if (today.isNotEmpty) {
     await openPlanItem(context, state, data, today.first);
-  } else if (later.isNotEmpty) {
-    if (await confirmDialog(
-      context,
-      'Freiwillig lernen?',
-      'Für heute ist nichts mehr fest eingeplant. Möchtest du freiwillig eine kurze Einheit machen?',
-    )) {
-      if (context.mounted) {
-        await openPlanItem(context, state, data, later.first);
-      }
-    }
   } else {
     throw ApiError(
       'Bitte zuerst Unterrichtsmaterial bestätigen oder mit deinen Eltern einen Lernauftrag vereinbaren.',
@@ -1465,7 +1665,9 @@ Widget messages(
                 children: [
                   Expanded(
                     child: Text(
-                      m['kind'] == 'reminder'
+                      m['kind'] == 'preparation'
+                          ? 'Deine Heftseiten'
+                          : m['kind'] == 'reminder'
                           ? 'Dein Lernplan'
                           : m['sender_role'] == 'child'
                           ? (state.isChild ? 'Von dir' : 'Von deinem Kind')

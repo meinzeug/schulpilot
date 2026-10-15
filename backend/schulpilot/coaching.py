@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func, or_, select, update
+from sqlalchemy.orm import load_only
 
 from . import schemas as s
 from .db import (
@@ -403,8 +404,9 @@ def plan_review(db, unit):
         "check": "Eine neue kurze Abrufprobe zeigt, was du schon ohne Hilfe anwenden kannst.",
         "spaced": "Diese Abrufprobe ist selbstständig gelungen. Wir prüfen den Stoff an einem späteren Tag erneut.",
     }[action]
-    start = int(datetime.combine(today, datetime.min.time(), ZoneInfo(prefs.timezone)).timestamp())
-    week = start - today.weekday() * 86400
+    from .daily_planner import period_starts
+
+    start, week = period_starts(today, prefs.timezone)
     allocated_today = allocated_week = 0
     for other in db.scalars(
         select(LearningUnit).where(LearningUnit.child_id == child.id, LearningUnit.created >= week)
@@ -469,14 +471,26 @@ def continuation_block(db, unit, child, *, check_sources=True):
             context(db, unit)
         except ProviderError as error:
             return str(error)
-    start = int(datetime.combine(today, datetime.min.time(), ZoneInfo(prefs.timezone)).timestamp())
+    from .daily_planner import completed_portions, period_starts
+
+    start, week = period_starts(today, prefs.timezone)
+    completed = db.scalars(
+        select(LearningUnit)
+        .options(load_only(LearningUnit.completed, LearningUnit.estimated_minutes))
+        .where(LearningUnit.child_id == child.id, LearningUnit.completed >= week)
+    )
+    day_portions, week_portions = completed_portions(completed, prefs, start, week)
+    if day_portions >= prefs.daily_minutes:
+        return "Deine Lernportion für heute ist geschafft. Am nächsten Lerntag geht es weiter."
+    if week_portions >= prefs.weekly_minutes:
+        return "Deine Lernportionen für diese Woche sind geschafft. Der übrige Stoff bleibt gespeichert."
     events = list(
         db.scalars(
             select(Activity)
             .where(
                 Activity.child_id == child.id,
                 Activity.kind == "active_time",
-                Activity.created >= start - today.weekday() * 86400,
+                Activity.created >= week,
             )
             .order_by(Activity.created)
         )

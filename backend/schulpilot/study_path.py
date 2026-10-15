@@ -209,7 +209,7 @@ def ensure_plan(db, day):
     return day.learning_plan
 
 
-def block_reason(db, child, subject, *, unit_id=None, question_count=2):
+def block_reason(db, child, subject, *, unit_id=None, question_count=2, current_plan=None):
     prefs = s.Preferences(**child.preferences)
     today = local_day(child)
     if prefs.pause_until and today <= prefs.pause_until:
@@ -218,13 +218,16 @@ def block_reason(db, child, subject, *, unit_id=None, question_count=2):
         prefs.subject_days.get(subject) and today.weekday() not in prefs.subject_days[subject]
     ):
         return "Heute ist dafür kein Lerntag. Die nächste Etappe bleibt für später da."
-    current = plan(db, child)
+    current = current_plan if current_plan is not None else plan(db, child)
     reserved = sum(
         (item.get("estimated_minutes") or current["session_minutes"])
         for item in current["today"]
         if item.get("id") != unit_id and item.get("kind") != "study_path"
     )
     needed = min(prefs.session_minutes, max(5, question_count * 2))
+    if unit_id and current["available_minutes"] > 0:
+        # A prepared round may be paused at today's boundary and resumed later.
+        needed = min(needed, current["available_minutes"])
     if current["available_minutes"] - reserved < needed:
         return "Für heute reicht es. Deine nächste Etappe bleibt gespeichert."
     from .coaching import continuation_block
@@ -284,14 +287,39 @@ def path_data(db, day, child):
         result["total_questions"] += count
         result["completed_questions"] += answered
         result["ready_questions"] += count - answered if status == "ready" else 0
-        if status != "completed" and result["next_block_id"] is None:
-            result["next_block_id"] = saved["id"]
-            result["block_reason"] = block_reason(
-                db,
-                child,
-                unit.subject if unit else saved.get("subject", ""),
-                unit_id=unit.id if unit else None,
-                question_count=count,
+    # Different subjects of one school day can follow different parent days.
+    # Keep source order within a subject, without blocking Thursday's English
+    # behind Monday's unfinished mathematics.
+    from .learning import plan
+
+    current = plan(db, child)
+    open_blocks = [b for b in result["blocks"] if b["status"] != "completed"]
+    preferred = next(
+        (
+            b
+            for item in current["today"]
+            for b in open_blocks
+            if (item["kind"] == "study_path" and item["id"] == day.id and item.get("block_id") == b["id"])
+            or (item["kind"] == "unit" and item["id"] == b.get("unit_id"))
+        ),
+        None,
+    )
+    next_block = preferred or next(iter(open_blocks), None)
+    if next_block:
+        saved = next(b for b in value["blocks"] if b["id"] == next_block["id"])
+        unit = db.get(LearningUnit, saved.get("unit_id")) if saved.get("unit_id") else None
+        result["next_block_id"] = saved["id"]
+        result["block_reason"] = block_reason(
+            db,
+            child,
+            unit.subject if unit else saved.get("subject", ""),
+            unit_id=unit.id if unit else None,
+            question_count=next_block["question_count"],
+            current_plan=current,
+        )
+        if preferred is None and not result["block_reason"]:
+            result["block_reason"] = (
+                "Dieser Lernweg ist für einen späteren Lerntag eingeplant. Schau in deinen Tagesplan."
             )
     if result["stale"]:
         result["block_reason"] = (

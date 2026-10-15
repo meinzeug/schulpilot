@@ -11,9 +11,9 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/school_day_screen.dart';
 import 'package:schulpilot/ui.dart';
 
-http.Response _response(Object value) => http.Response(
+http.Response _response(Object value, [int status = 200]) => http.Response(
   jsonEncode(value),
-  200,
+  status,
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
@@ -56,7 +56,7 @@ void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
   testWidgets(
-    'One continue action reads both pages; every uncertainty needs confirmation before learning',
+    'One server submission keeps every uncertainty explicit and never auto opens learning',
     (tester) async {
       _size(tester, 320);
       final photo = image.encodePng(image.Image(width: 2, height: 2));
@@ -86,6 +86,9 @@ void main() {
       );
       var stage = 'collecting';
       var packageCalls = 0;
+      var submissions = 0;
+      Json preparation = {'status': 'idle', 'phase': null};
+      final units = <Json>[];
       final extracted = <String>[];
       final confirmed = <String>[];
       final starts = <String>[];
@@ -99,7 +102,8 @@ void main() {
         'confirmed_count': pages.where((p) => p['confirmed'] == true).length,
         'synthetic': false,
         'pages': pages,
-        'units': <Json>[],
+        'units': units,
+        'preparation': preparation,
         'active_job': null,
         'last_error': null,
         'plan': {
@@ -130,21 +134,55 @@ void main() {
           if (request.method == 'GET' && path == '/api/school-days/day') {
             return _response(day());
           }
-          if (request.method == 'PUT' && path.endsWith('/stage')) {
-            stage = (jsonDecode(request.body) as Json)['stage'];
-            return _response(day());
+          if (request.method == 'POST' && path.endsWith('/prepare')) {
+            expect(request.headers['Idempotency-Key'], isNotEmpty);
+            expect(request.body, isEmpty);
+            submissions++;
+            if (pages.every((page) => page['confirmed'] == true)) {
+              expect(confirmed, ['page1', 'page2']);
+              packageCalls++;
+              stage = 'ready';
+              preparation = {'status': 'ready', 'phase': 'complete'};
+              units.add({
+                'id': 'first-unit',
+                'status': 'not_started',
+                'subject': 'Mathematik',
+                'topic': 'Brüche',
+              });
+            } else {
+              expect(stage, 'collecting');
+              stage = 'review';
+              for (final page in pages) {
+                extracted.add(page['id']);
+                page['status'] = 'review';
+              }
+              preparation = {'status': 'needs_review', 'phase': 'review'};
+            }
+            return _response({'preparation': preparation}, 202);
           }
-          if (request.method == 'POST' && path.endsWith('/extract')) {
-            final id = request.url.pathSegments[2];
-            expect(stage, 'review');
-            extracted.add(id);
-            pages.firstWhere((p) => p['id'] == id)['status'] = 'review';
-            return _response({'id': 'read-$id'});
-          }
-          if (request.method == 'GET' && path.contains('/jobs/read-')) {
+          if (request.method == 'GET' && path.endsWith('/study-path')) {
             return _response({
-              'status': 'completed',
-              'result': <String, dynamic>{},
+              'available': true,
+              'day_id': 'day',
+              'total_questions': 2,
+              'ready_questions': 2,
+              'completed_questions': 0,
+              'can_continue': true,
+              'next_block_id': 'initial',
+              'stale': false,
+              'block_reason': null,
+              'blocks': [
+                {
+                  'id': 'initial',
+                  'status': 'ready',
+                  'unit_id': 'first-unit',
+                  'phase': 'learning',
+                  'title': 'Brüche',
+                  'label': 'Erste Runde',
+                  'question_count': 2,
+                  'job_id': null,
+                },
+              ],
             });
           }
           if (request.method == 'PUT' && path.endsWith('/confirm')) {
@@ -159,19 +197,6 @@ void main() {
             confirmed.add(id);
             return _response(page);
           }
-          if (request.method == 'POST' && path.endsWith('/package')) {
-            expect(confirmed, ['page1', 'page2']);
-            packageCalls++;
-            return _response({'id': 'package-job'});
-          }
-          if (request.method == 'GET' && path == '/api/jobs/package-job') {
-            return _response({
-              'status': 'completed',
-              'result': {
-                'unit_ids': ['first-unit'],
-              },
-            });
-          }
           if (request.method == 'POST' && path.endsWith('/start')) {
             starts.add(path);
             return _response(<String, dynamic>{});
@@ -184,13 +209,14 @@ void main() {
         MaterialApp.router(theme: appTheme(), routerConfig: router),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Weiter'), findsOneWidget);
+      expect(find.text('Fotos abgeben'), findsOneWidget);
       expect(find.text('Heftseiten mit KI erkennen'), findsNothing);
-      final next = find.text('Weiter');
+      final next = find.text('Fotos abgeben');
       await tester.ensureVisible(next);
       await tester.tap(next);
       await tester.pumpAndSettle();
       expect(extracted, ['page1', 'page2']);
+      expect(submissions, 1);
       expect(find.text('Seite 1 prüfen'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
       expect(find.byType(CheckboxListTile), findsNWidgets(2));
@@ -229,14 +255,26 @@ void main() {
       await tester.tap(confirm);
       await tester.pumpAndSettle();
       expect(confirmed, ['page1', 'page2']);
-      expect(find.text('Jetzt lernen'), findsOneWidget);
+      expect(find.text('Im Hintergrund vorbereiten'), findsOneWidget);
       expect(packageCalls, 0);
-      final learn = find.text('Jetzt lernen');
+      expect(starts, isEmpty);
+      final learn = find.text('Im Hintergrund vorbereiten');
       await tester.ensureVisible(learn);
       await tester.tap(learn);
       await tester.pumpAndSettle();
       expect(packageCalls, 1);
-      expect(starts, ['/api/units/first-unit/start']);
+      expect(submissions, 2);
+      expect(starts, isEmpty);
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/after-school/child',
+      );
+      expect(find.text('Die erste Lernrunde ist geöffnet.'), findsNothing);
+      final open = find.text('Etappe öffnen');
+      await tester.ensureVisible(open);
+      await tester.tap(open);
+      await tester.pumpAndSettle();
+      expect(starts, isEmpty);
       expect(find.text('Die erste Lernrunde ist geöffnet.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

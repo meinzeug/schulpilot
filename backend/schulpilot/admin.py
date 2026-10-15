@@ -197,6 +197,7 @@ def usage(family_id: str, p=Depends(parent), db=Depends(get_db)):
             "status": u.status,
             "input_tokens": u.input_tokens,
             "output_tokens": u.output_tokens,
+            "search_calls": u.search_calls,
             "cost_micros_usd": u.cost_micros,
             "reserved_micros_usd": u.reserved_micros,
             "created": u.created,

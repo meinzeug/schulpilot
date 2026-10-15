@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException
 from schulpilot import codex_setup, operator_probe, providers
 from schulpilot.config import settings
-from schulpilot.db import DB, Family, OperatorJob, ProviderConfig, UsageBucket, uid
+from schulpilot.db import DB, Family, OperatorJob, ProviderConfig, Usage, UsageBucket, uid
 from schulpilot.providers import ProviderError, Result, request_provider, reserve, settle
 from schulpilot.synthetic import sample_unit
 from test_providers import configured
@@ -20,6 +20,7 @@ def setup_codex(household, mode="account"):
     object.__setattr__(settings, "codex_approved", True)
     object.__setattr__(settings, "codex_socket", "/synthetic/private-codex.sock")
     object.__setattr__(settings, "codex_auth_mode", mode)
+    object.__setattr__(settings, "codex_web_search", mode == "api_key")
     object.__setattr__(settings, "synthetic_ai_enabled", True)
     with DB.begin() as db:
         config = db.get(ProviderConfig, 1)
@@ -86,7 +87,7 @@ def transport(api, household, monkeypatch):
         if question["type"] == "choice":
             question["answer"] = question["options"].index(question["answer"])
     calls = []
-    response = {"status": 200, "search_calls": 1}
+    response = {"status": 200, "search_calls": 0}
 
     class Client:
         def __init__(self, **kwargs):
@@ -122,6 +123,9 @@ def test_codex_schema_indexes_and_account_usage(transport):
     assert result.cost_micros is None and result.input_tokens == 100 and len(calls) == 1
     body = calls[0]
     assert body["auth_mode"] == "account" and body["input_rate"] is body["output_rate"] is None
+    assert body["web_search"] is False
+    assert "Betreiber-Richtlinie deaktiviert" in body["system"]
+    assert "Websuche ist für eine fachliche Gegenprüfung erlaubt" not in body["system"]
     assert "Webwissen darf nicht" in body["system"] and "unerklärte Fachbegriffe" in body["system"]
     assert body["schema"]["$defs"]["Question"]["anyOf"][0]["properties"]["answer"]["type"] == "integer"
     assert all("key" not in field for field in body)
@@ -139,11 +143,56 @@ def test_worker_errors_never_echo_credentials_or_fallback(transport, status):
 def test_paid_api_includes_search_fees_and_missing_usage_stays_unknown(transport):
     config, _, _, response = transport
     object.__setattr__(settings, "codex_auth_mode", "api_key")
+    object.__setattr__(settings, "codex_web_search", True)
+    response["search_calls"] = 1
     config.input_per_million_micros = config.output_per_million_micros = 1
     result = request_provider(config, "unit", {})
     assert result.cost_micros == 10001
     response["search_calls"] = None
     assert request_provider(config, "unit", {}).cost_micros is None
+
+
+def test_explicit_account_search_policy_is_forwarded_without_invented_pricing(transport):
+    config, _, calls, response = transport
+    object.__setattr__(settings, "codex_web_search", True)
+    response["search_calls"] = 3
+    result = request_provider(config, "unit", {})
+    assert calls[0]["web_search"] is True and result.cost_micros is None
+    assert result.search_calls == 3
+    assert "Websuche ist für eine fachliche Gegenprüfung erlaubt" in calls[0]["system"]
+
+
+@pytest.mark.parametrize("search", [False, True])
+def test_worker_health_requires_matching_actual_search_policy(api, household, monkeypatch, search):
+    setup_codex(household)
+    object.__setattr__(settings, "codex_web_search", search)
+    envelope = {
+        "isolated": True, "auth_mode": "account", "cli_version": "0.162.1",
+        "cli_search": True, "search": search,
+    }
+
+    class Client:
+        def __init__(self, **_):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def get(self, url):
+            assert url == "http://localhost/health"
+            return httpx.Response(200, json=envelope)
+
+    monkeypatch.setattr(codex_setup.httpx, "Client", Client)
+    status = codex_setup.worker_health()
+    assert status["ready"] and status["web_search"] is search
+    assert ("Websuche an" if search else "Websuche aus") in status["status"]
+    if search:
+        assert "keine feste Obergrenze" in status["status"]
+    envelope["search"] = not search
+    assert not codex_setup.worker_health()["ready"]
 
 
 def test_codex_probe_uses_only_server_fixtures_and_counts_each_call(api, household, monkeypatch):
@@ -156,7 +205,7 @@ def test_codex_probe_uses_only_server_fixtures_and_counts_each_call(api, househo
     def request(config, function, payload, **kwargs):
         calls.append((function, copy.deepcopy(payload), kwargs))
         assert kwargs["synthetic_fixture"] is True and kwargs["private_probe"] is True
-        return Result({}, 100, 100, None)
+        return Result({}, 100, 100, None, search_calls=0 if function == "extract" else 2)
 
     monkeypatch.setattr(operator_probe, "request_provider", request)
     with DB() as db:
@@ -165,6 +214,7 @@ def test_codex_probe_uses_only_server_fixtures_and_counts_each_call(api, househo
     with DB() as db:
         report = db.get(OperatorJob, result["id"])
         assert report.status == "completed" and len(report.report) == 3
+        assert [row["search_calls"] for row in report.report] == [0, 2, 2]
         assert not db.get(ProviderConfig, 1).production_block_reason
         bucket = db.query(UsageBucket).filter(UsageBucket.id.like("global:%")).one()
         assert bucket.calls == bucket.unknown_calls == 3 and bucket.encumbered_micros == 3000
@@ -179,3 +229,30 @@ def test_probe_requires_separate_login(api, household, monkeypatch):
         with pytest.raises(HTTPException, match="Anmeldung"):
             operator_probe.enqueue("synthetic-operator", db)
     assert not operator_probe.work_one()
+
+
+def test_public_status_recognizes_approved_codex_fixed_synthetic_route(api, household):
+    setup_codex(household)
+    status = api.get("/api/status").json()
+    assert status["synthetic_ai_available"] is True and status["ai_provider"] == "codex"
+    assert status["ai_free_only"] is False and status["ai_data_collection"] is None
+    with DB.begin() as db:
+        db.get(ProviderConfig, 1).emergency_stop = True
+    assert api.get("/api/status").json()["synthetic_ai_available"] is False
+
+
+@pytest.mark.parametrize("measured", [None, 0, 3])
+def test_measured_search_counts_persist_without_invented_cost_and_only_for_own_parents(api, household, measured):
+    user, child = setup_codex(household)
+    family_id = user["families"][0]["id"]
+    with DB.begin() as db:
+        usage = reserve(db, db.get(Family, family_id), child["id"], uid(), "tutor")
+        usage_id = usage.id
+        settle(db, usage, Result({}, 10, 20, None, search_calls=measured))
+    with DB() as db:
+        row = db.get(Usage, usage_id)
+        assert row.search_calls == measured and row.cost_micros is None
+    response = api.get(f"/api/families/{family_id}/usage")
+    assert response.status_code == 200
+    assert response.json()["records"][0]["search_calls"] == measured
+    assert api.get(f"/api/families/{uid()}/usage").status_code == 404

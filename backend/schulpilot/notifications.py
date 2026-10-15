@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import Field, model_validator
 from sqlalchemy import delete, select, update
+from sqlalchemy.orm import load_only
 
 from . import schemas as s
 from .config import runtime_settings
@@ -24,6 +25,7 @@ from .db import (
     PushDelivery,
     PushDevice,
     PushTestGrant,
+    SchoolDay,
     Session,
     User,
     get_db,
@@ -437,6 +439,24 @@ def due_kinds(db, device, current):
             )
         ):
             result.add("reply")
+        if user.role == "child" and device.reminders:
+            from .school_preparation import notice_allowed
+
+            # One neutral daily bundle. Re-check the submitting session as well
+            # as this device's session before enqueue AND immediately on send.
+            for day in db.scalars(
+                select(SchoolDay)
+                .options(load_only(SchoolDay.id, SchoolDay.child_id, SchoolDay.revision, SchoolDay.preparation))
+                .where(SchoolDay.child_id == child.id)
+            ):
+                state = day.preparation or {}
+                if state.get("status") not in ("needs_review", "needs_photo", "ready") or not (
+                    current - 86400 < state.get("notice_created", 0) <= current
+                ):
+                    continue
+                if not notice_allowed(db, day):
+                    continue
+                result.add("preparation_ready" if state["status"] == "ready" else "preparation_review")
     return sorted(result)
 
 

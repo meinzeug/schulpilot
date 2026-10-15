@@ -134,7 +134,8 @@ void main() {
         if (number == 1) expect(find.text('Seite 2 prüfen'), findsOneWidget);
       }
       expect(confirmations, ['page1', 'page2']);
-      expect(find.text('Jetzt lernen'), findsOneWidget);
+      expect(find.text('Im Hintergrund vorbereiten'), findsOneWidget);
+      expect(find.text('Jetzt lernen'), findsNothing);
       final details = find.text('Mehr zu diesem Tag');
       await tester.ensureVisible(details);
       await tester.tap(details);
@@ -196,12 +197,9 @@ void main() {
       await tester.pumpWidget(app(state));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(
-        find.textContaining('Dein Stoff wird vorbereitet'),
-        findsOneWidget,
-      );
+      expect(find.text('Wir lesen deine Heftseiten'), findsOneWidget);
       expect(find.text('Heftseiten mit KI erkennen'), findsNothing);
-      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 3));
       expect(reads, greaterThan(1));
       await tester.pumpWidget(
         const SizedBox(),

@@ -21,9 +21,10 @@ worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
 
 
-def job(mode="api_key"):
+def job(mode="api_key", web_search=None):
     return {
         "auth_mode": mode,
+        "web_search": (mode == "api_key") if web_search is None else web_search,
         "model": "synthetic-model",
         "system": "Only synthetic learning data.",
         "payload": {"material": "The synthetic cube has six faces."},
@@ -50,6 +51,12 @@ def login(tmp_path, monkeypatch):
     return path
 
 
+@pytest.fixture(autouse=True)
+def isolated_worker_policy(monkeypatch):
+    monkeypatch.delenv("CODEX_WEB_SEARCH", raising=False)
+    monkeypatch.setattr(worker, "last_failure", None)
+
+
 def test_worker_rejects_host_missing_login_mode_mismatch_and_busy(login, monkeypatch):
     with TestClient(worker.app) as client:
         monkeypatch.setattr(worker, "isolated", lambda: False)
@@ -60,6 +67,8 @@ def test_worker_rejects_host_missing_login_mode_mismatch_and_busy(login, monkeyp
             "auth_mode": "api_key",
             "cli_version": "0.162.1",
             "search": True,
+            "cli_search": True,
+            "search_policy": "single_search",
         }
         assert client.post("/generate", json=job("account")).status_code == 503
         worker.slot.acquire()
@@ -81,11 +90,32 @@ def test_worker_rejects_host_missing_login_mode_mismatch_and_busy(login, monkeyp
         {"input_rate": None},
         {"image": "not-base64"},
         {"system": []},
+        {"web_search": "true"},
     ],
 )
 def test_invalid_worker_contract(change):
     with pytest.raises(HTTPException):
         worker.validate_job({**job(), **change})
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (b'{"detail":"Unsupported parameter: max_tool_calls"}', "max_tool_calls"),
+        (b'{"error":{"message":"Unsupported parameter: max_tool_calls","param":"max_tool_calls"}}', "max_tool_calls"),
+        (b'{"detail":{"message":"Unsupported parameter: parallel_tool_calls"}}', "parallel_tool_calls"),
+        (b'"Unsupported parameter: text.format"', "text.format"),
+        (b'Unsupported parameter: search_context_size', "search_context_size"),
+        (b'{"error":"Unsupported parameter: external_web_access"}', "external_web_access"),
+        (b'{"detail":"Private synthetic answer, session secret and credentials"}', "unknown"),
+        (b'{"detail":[{"input":"untrusted input"}]}', "unknown"),
+        (b'{"unrelated":"max_tool_calls"}', "unknown"),
+        (b'{"detail":"upstream input_invented and model_variant"}', "unknown"),
+        (b'null', "unknown"),
+    ],
+)
+def test_rejected_parameter_exposes_only_known_parameter_names(raw, expected):
+    assert worker.rejected_parameter(raw) == expected
 
 
 def test_login_permissions_and_refreshed_auth(login, tmp_path):
@@ -116,7 +146,28 @@ def test_search_allowlist_and_api_reservation():
         worker.upstream_body({**job(), "input_rate": 1_000_000, "reserve_micros": 10_000})
     assert error.value.status_code == 413
     account = worker.upstream_body({**job("account"), "input_rate": None, "output_rate": None})
-    assert "max_output_tokens" not in account and account["max_tool_calls"] == 1
+    assert "max_output_tokens" not in account and "max_tool_calls" not in account
+    assert account["tools"] == [] and account["tool_choice"] == "none"
+
+
+def test_search_policy_defaults_and_explicit_account_choice(login, monkeypatch):
+    assert worker.web_search_enabled("account") is False
+    assert worker.web_search_enabled("api_key") is True
+    monkeypatch.setenv("CODEX_WEB_SEARCH", "false")
+    assert worker.health()["search"] is False and worker.health()["cli_search"] is True
+    assert worker.health()["search_policy"] == "source_only"
+    monkeypatch.setenv("CODEX_WEB_SEARCH", "true")
+    data = worker.upstream_body(job("account", web_search=True))
+    assert data["tools"][0]["type"] == "web_search" and "max_tool_calls" not in data
+    assert "max_output_tokens" not in data
+
+
+def test_denied_web_search_cannot_be_enabled_by_job(login, monkeypatch):
+    monkeypatch.setattr(worker, "isolated", lambda: True)
+    monkeypatch.setenv("CODEX_WEB_SEARCH", "false")
+    with TestClient(worker.app) as client:
+        response = client.post("/generate", json=job(web_search=True))
+    assert response.status_code == 503
 
 
 def events(value, search_calls=0):
@@ -178,6 +229,9 @@ class Upstream:
         self.record.append({"method": method, "url": url, "headers": headers, "body": json})
         return self
 
+    def read(self):
+        return b'{"detail":"Unsupported parameter: max_tool_calls; SYNTHETIC-PRIVATE-ECHO"}'
+
     def iter_lines(self):
         for event in events({"value": "six"}, self.search_calls):
             yield "data: " + json.dumps(event)
@@ -231,8 +285,58 @@ def test_gateway_filters_cli_tools_context_and_keeps_one_call(login, monkeypatch
         "data": {"value": "six"},
         "usage": {"input_tokens": 100, "output_tokens": 30, "total_tokens": 130},
         "search_calls": 1,
+        "web_search": True,
     }
     assert not list(login.parent.glob("lesson-*"))
+
+
+def test_private_failure_health_never_contains_echoed_payload_or_credentials(login, monkeypatch):
+    calls = []
+    monkeypatch.setattr(worker.httpx, "Client", lambda **_: Upstream(calls, status=400))
+
+    def rejected_cli(args, **kwargs):
+        config = __import__("tomllib").loads((Path(kwargs["env"]["CODEX_HOME"]) / "config.toml").read_text())
+        gateway = config["model_providers"]["schulpilot"]
+        request = httpx.Request(
+            "POST", gateway["base_url"] + "/responses",
+            headers={**gateway["http_headers"], "Authorization": "Bearer SYNTHETIC-NOT-A-REAL-KEY"},
+            json={"private": "SYNTHETIC-PRIVATE-ECHO"},
+        )
+        with httpx.HTTPTransport() as transport:
+            response = transport.handle_request(request)
+            assert response.status_code == 400
+            assert b"SYNTHETIC-PRIVATE-ECHO" not in response.read()
+        return SimpleNamespace(returncode=1)
+
+    monkeypatch.setattr(worker.subprocess, "run", rejected_cli)
+    with pytest.raises(HTTPException):
+        worker.run(job())
+    assert len(calls) == 1
+    assert worker.health()["last_failure"] == {
+        "http_status": 400, "upstream_calls": 1, "cli_exit": 1, "parameter": "max_tool_calls",
+    }
+    rendered = json.dumps(worker.health())
+    assert "SYNTHETIC" not in rendered and "Bearer" not in rendered and "PRIVATE" not in rendered
+
+
+@pytest.mark.parametrize("mode, enabled, count, accepted", [
+    ("account", False, 0, True),
+    ("account", False, 1, False),
+    ("account", True, 3, True),
+    ("api_key", True, 2, False),
+])
+def test_actual_tool_policy_and_measured_search_count(login, monkeypatch, mode, enabled, count, accepted):
+    calls = []
+    monkeypatch.setattr(worker.httpx, "Client", lambda **_: Upstream(calls, search_calls=count))
+    monkeypatch.setattr(worker.subprocess, "run", fake_cli)
+    if accepted:
+        result = worker.run(job(mode, web_search=enabled))
+        assert result["search_calls"] == count and result["web_search"] is enabled
+    else:
+        with pytest.raises(HTTPException, match="Suchgrenze"):
+            worker.run(job(mode, web_search=enabled))
+        assert worker.health()["last_failure"] is not None
+    assert len(calls) == 1
 
 
 @pytest.mark.skipif(shutil.which("codex") is None, reason="Pinned CLI is not installed in generic CI")

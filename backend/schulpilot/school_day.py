@@ -48,7 +48,7 @@ def pages(db, day):
     )
 
 
-def get_day(db, p, day_id, *, write=False):
+def get_day(db, p, day_id, *, write=False, allow_archived=False):
     day = db.get(SchoolDay, day_id)
     if not day:
         raise HTTPException(404, "Schultag nicht gefunden.")
@@ -57,7 +57,7 @@ def get_day(db, p, day_id, *, write=False):
         # The same child row serializes upload, stage changes and job creation.
         db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
         db.refresh(day)
-        if day.school_date != local_day(child).isoformat():
+        if not allow_archived and day.school_date != local_day(child).isoformat():
             raise HTTPException(409, "Dieser Schultag ist gespeichert. Bitte den Assistenten für heute öffnen.")
     return day, child
 
@@ -94,7 +94,9 @@ def package_plan(db, day, child):
     current = plan(db, child)
     available = current["available_minutes"] if day.school_date == local_day(child).isoformat() else 0
     # Mandatory parent/homework goals keep their existing place in the day.
-    reserved = sum(x.get("estimated_minutes") or current["session_minutes"] for x in current["today"])
+    reserved = sum(
+        x.get("estimated_minutes") or current["session_minutes"] for x in current["today"] if x["kind"] != "study_path"
+    )
     remaining = max(0, available - reserved)
     minutes = min(8, s.Preferences(**child.preferences).session_minutes, max(5, remaining))
     slots = min(3, remaining // minutes)
@@ -163,6 +165,8 @@ def package_plan(db, day, child):
 
 
 def day_data(db, day, child, p):
+    from .school_preparation import preparation_data
+
     material_list = pages(db, day)
     units = list(
         db.scalars(
@@ -197,6 +201,8 @@ def day_data(db, day, child, p):
         "stage": day.stage,
         "package_version": day.package_version,
         "read_only": day.school_date != local_day(child).isoformat(),
+        "allow_uploads": day.school_date == local_day(child).isoformat(),
+        "preparation": preparation_data(db, day, child),
         "max_pages": MAX_PAGES,
         "pages": [material_data(m) for m in material_list],
         "confirmed_count": sum(m.confirmed for m in material_list),
@@ -310,6 +316,55 @@ def finish_additions(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
     day.stage = "ready"
     day.revision += 1
     record(db, child.id, "day_additions_deferred", {"school_day_id": day.id})
+    from .school_preparation import saved_by_user
+
+    saved_by_user(db, day, p)
+    db.commit()
+    return day_data(db, day, child, p)
+
+
+@router.post("/school-days/{day_id}/save-for-later")
+def save_for_later(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    day, child = get_day(db, p, day_id, write=True, allow_archived=True)
+    idle(db, child.id)
+    source_pages = pages(db, day)
+    if not source_pages or not all(m.confirmed for m in source_pages):
+        raise HTTPException(409, "Bitte zuerst alle Heftseiten prüfen und bestätigen.")
+    from .study_path import ensure_plan
+
+    ensure_plan(db, day)
+    if day.stage != "ready":
+        day.stage = "ready"
+        day.revision += 1
+        record(db, child.id, "school_day_saved", {"school_day_id": day.id, "page_count": len(source_pages)})
+    from .school_preparation import saved_by_user
+
+    saved_by_user(db, day, p)
+    db.commit()
+    return day_data(db, day, child, p)
+
+
+@router.post("/school-days/{day_id}/prepare", status_code=202)
+def prepare(day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db)):
+    from .school_preparation import advance, preparation_data, submit
+
+    day, child = get_day(db, p, day_id, write=True, allow_archived=True)
+    submit(db, p, day, child, idempotency_key)
+    db.commit()
+    # This only reserves one durable job. No external request runs in HTTP.
+    advance(day.id)
+    db.expire_all()
+    day = db.get(SchoolDay, day_id)
+    return {"preparation": preparation_data(db, day, child)}
+
+
+@router.post("/school-days/{day_id}/postpone")
+def postpone(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    from .school_preparation import postpone_preparation
+
+    day, child = get_day(db, p, day_id, write=True, allow_archived=True)
+    idle(db, child.id)
+    postpone_preparation(db, day)
     db.commit()
     return day_data(db, day, child, p)
 
@@ -419,9 +474,8 @@ def validate_package_sources(db, job):
     ):
         raise ProviderError("Seiten wurden inzwischen geändert oder gelöscht. Bitte das Tagespaket erneut prüfen.")
     if (
-        local_day(child).isoformat() != day.school_date
-        or planning_fingerprint(db, child) != job.payload["planning_fingerprint"]
-    ):
+        not job.payload.get("preparation_id") and local_day(child).isoformat() != day.school_date
+    ) or planning_fingerprint(db, child) != job.payload["planning_fingerprint"]:
         raise ProviderError(
             "Lerntag oder Elternvorgaben haben sich geändert. Bitte den aktuellen Tagesplan erneut prüfen."
         )

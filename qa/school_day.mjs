@@ -143,7 +143,7 @@ async function loginChild() {
 }
 async function enterWizard() {
   await checkpoint('child_home_to_photo_wizard');
-  const homeAction = childPage.getByRole('button', {name: /^(Nach der Schule starten|Neue Heftfotos|Heftfotos fortsetzen|Heftfotos sammeln)$/}).first();
+  const homeAction = childPage.getByRole('button', {name: /^(Heutige Seiten scannen|Heftfotos fortsetzen|Heftfotos sammeln)$/}).first();
   await tap(childPage, homeAction);
   await childPage.waitForURL(new RegExp('/after-school/' + account.child_id + '(?:\\?|$)'), {timeout: 30000});
   let day;

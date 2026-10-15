@@ -7,6 +7,7 @@ import http.client
 import json
 import os
 import pwd
+import shlex
 import shutil
 import socket
 import subprocess
@@ -16,6 +17,20 @@ from pathlib import Path
 ROOT = Path("/opt/schulpilot-codex")
 HOME = Path("/var/lib/schulpilot-codex")
 BINARY_HASH = "628e35487d888a28f0427fc37501da529dd3d81fcbad7a2c3421c1e8670d92e1"
+
+
+def worker_policy(environment=Path("/etc/schulpilot/environment")):
+    """Read only two non-secret operator values, never inherit app secrets."""
+    values = {}
+    for line in environment.read_text().splitlines():
+        key, separator, raw = line.partition("=")
+        if separator and key in ("CODEX_AUTH_MODE", "CODEX_WEB_SEARCH"):
+            values[key] = " ".join(shlex.split(raw))
+    mode = values.get("CODEX_AUTH_MODE", "api_key")
+    search = values.get("CODEX_WEB_SEARCH", "false" if mode == "account" else "true")
+    if mode not in ("account", "api_key") or search not in ("true", "false"):
+        raise SystemExit("Invalid local Codex search policy; refusing to start worker.")
+    return {"auth_mode": mode, "web_search": search == "true"}
 
 
 def main():
@@ -123,6 +138,13 @@ def main():
         (ROOT / "build-fingerprint").write_text(fingerprint + "\n")
     shutil.copyfile(source / "workers/codex/run.py", ROOT / "run.py")
     (ROOT / "run.py").chmod(0o755)
+    policy = worker_policy()
+    # This file contains no credential and is the only App configuration
+    # readable by the rootless launcher. The complete environment stays private.
+    temporary_policy = ROOT / "search-policy.new"
+    temporary_policy.write_text(json.dumps(policy))
+    temporary_policy.chmod(0o644)
+    temporary_policy.replace(ROOT / "search-policy.json")
     shutil.copyfile(source / "deploy/codex_login.py", "/usr/local/sbin/schulpilot-codex")
     Path("/usr/local/sbin/schulpilot-codex").chmod(0o755)
     shutil.copyfile(source / "deploy/schulpilot-codex.service", "/etc/systemd/system/schulpilot-codex.service")
@@ -140,7 +162,8 @@ def main():
                 health = json.loads(response.read(2000))
             if (
                 health.get("isolated") is True
-                and health.get("search") is True
+                and health.get("cli_search") is True
+                and health.get("search") is policy["web_search"]
                 and health.get("cli_version") == "0.162.1"
             ):
                 break

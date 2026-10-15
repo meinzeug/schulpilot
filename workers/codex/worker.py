@@ -28,6 +28,7 @@ SEARCH_FEE_MICROS = 10_000  # Official API pricing, checked 2026-10-15.
 SEARCH_CONTEXT_TOKENS = 128_000  # Conservative hosted search context ceiling.
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 slot = threading.Lock()
+last_failure = None
 
 
 def auth_mode(path=None):
@@ -50,15 +51,60 @@ def isolated():
     return os.getenv("ISOLATED_SCHULPILOT_WORKER") == "1" and Path("/run/.containerenv").is_file()
 
 
+def web_search_enabled(mode=None):
+    """Operator policy, independent of the CLI's fixed --search launch flag."""
+    configured = os.getenv("CODEX_WEB_SEARCH")
+    return configured == "true" if configured is not None else (mode or auth_mode()) == "api_key"
+
+
 @app.get("/health")
 def health():
     # Credential presence is not an authenticated upstream connection test.
-    return {"isolated": isolated(), "auth_mode": auth_mode(), "cli_version": CLI_VERSION, "search": True}
+    mode = auth_mode()
+    search = web_search_enabled(mode)
+    result = {
+        "isolated": isolated(), "auth_mode": mode, "cli_version": CLI_VERSION,
+        "search": search, "cli_search": True,
+        "search_policy": "account_bounded" if mode == "account" and search
+        else "single_search" if search else "source_only",
+    }
+    if last_failure is not None:
+        result["last_failure"] = last_failure
+    return result
+
+
+def rejected_parameter(raw):
+    """Return only an allowlisted parameter, never an upstream error quotation."""
+    try:
+        value = json.loads(raw)
+    except (ValueError, TypeError):
+        value = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
+    # Account responses may use {"detail": "..."}; API responses normally
+    # use {"error": {"message": "...", "param": "..."}}. Inspect only these
+    # known error fields in memory. No arbitrary value or quotation escapes.
+    messages = []
+    candidates = [value]
+    if isinstance(value, dict):
+        candidates.extend(value.get(name) for name in ("error", "detail"))
+    for candidate in candidates:
+        if isinstance(candidate, str):
+            messages.append(candidate)
+        elif isinstance(candidate, dict):
+            messages.extend(candidate.get(name) for name in ("message", "param", "detail"))
+    for name in (
+        "max_tool_calls", "parallel_tool_calls", "max_output_tokens", "search_context_size",
+        "external_web_access", "text.format", "model", "tools", "reasoning", "input", "store", "stream",
+    ):
+        if any(isinstance(message, str) and re.search(r"(?<![\w.])" + re.escape(name) + r"(?![\w.])", message)
+               for message in messages):
+            return name
+    return "unknown"
 
 
 def validate_job(body):
     if set(body) != {
         "auth_mode",
+        "web_search",
         "model",
         "system",
         "payload",
@@ -72,6 +118,8 @@ def validate_job(body):
         raise HTTPException(422, "Ungültiger Providerauftrag.")
     if body["auth_mode"] not in ("api_key", "account"):
         raise HTTPException(422, "Ungültige Codex-Anmeldeart.")
+    if type(body["web_search"]) is not bool:
+        raise HTTPException(422, "Ungültige Suchrichtlinie.")
     if not isinstance(body["model"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,159}", body["model"]):
         raise HTTPException(422, "Ungültige Modell-ID.")
     if type(body["max_output_tokens"]) is not int or not 1000 <= body["max_output_tokens"] <= 8000:
@@ -108,6 +156,8 @@ def generate(body: dict):
     mode = auth_mode()
     if mode != body["auth_mode"]:
         raise HTTPException(503, "Separate Codex-Anmeldung fehlt oder passt nicht zum freigegebenen Abrechnungsweg.")
+    if body["web_search"] and not web_search_enabled(mode):
+        raise HTTPException(503, "Websuche ist für diesen Worker nicht freigegeben.")
     if not slot.acquire(blocking=False):
         raise HTTPException(429, "Isolierter Worker ist belegt.")
     try:
@@ -129,21 +179,24 @@ def upstream_body(body):
         "input": [{"role": "user", "content": content}],
         "store": False,
         "stream": True,
-        "tools": [{"type": "web_search", "external_web_access": True, "search_context_size": "low"}],
-        "tool_choice": "auto",
-        "max_tool_calls": 1,
+        "tools": ([{"type": "web_search", "external_web_access": True, "search_context_size": "low"}]
+                  if body["web_search"] else []),
+        "tool_choice": "auto" if body["web_search"] else "none",
         "parallel_tool_calls": False,
         "reasoning": {"effort": "medium"},
         "text": {"format": {"type": "json_schema", "name": "lesson", "strict": True, "schema": body["schema"]}},
     }
-    # ChatGPT-managed Codex does not document an API max_output_tokens contract.
-    # Its monetary cost stays unknown; one response, one search, timeout and
-    # final JSON size are bounded. Never silently charge the API instead.
+    # ChatGPT-managed Responses explicitly rejects max_tool_calls and
+    # max_output_tokens. Source-only is the default account policy. Account
+    # search needs an explicit operator decision: one upstream response and
+    # timeout remain bounded; counting searches afterwards is not a hard cap.
     if body["auth_mode"] == "api_key":
         data["max_output_tokens"] = body["max_output_tokens"]
+        if body["web_search"]:
+            data["max_tool_calls"] = 1
         bound = len(json.dumps(data).encode()) + 4096 + SEARCH_CONTEXT_TOKENS
         upper = math.ceil((bound * body["input_rate"] + body["max_output_tokens"] * body["output_rate"]) / 1_000_000)
-        if upper + SEARCH_FEE_MICROS > body["reserve_micros"]:
+        if upper + (SEARCH_FEE_MICROS if body["web_search"] else 0) > body["reserve_micros"]:
             raise HTTPException(413, "Kostenreservierung einschließlich Websuche reicht nicht aus.")
     return data
 
@@ -198,6 +251,7 @@ def persist_refreshed_auth(home, original):
 
 
 def run(body):
+    global last_failure
     data = upstream_body(body)
     gateway_token = secrets.token_urlsafe(32)
     state = {"calls": 0, "usage": None, "search_calls": None, "completed": False, "http_status": None}
@@ -248,6 +302,7 @@ def run(body):
                         self.send_header("Connection", "close")
                         self.end_headers()
                         if response.status_code != 200:
+                            state["parameter"] = rejected_parameter(response.read()[:8000])
                             # Never send echoed input or credentials into CLI diagnostics.
                             self.wfile.write(b'data: {"type":"error","message":"Codex provider unavailable"}\n\n')
                             return
@@ -328,6 +383,7 @@ def run(body):
                     timeout=145,
                     check=False,
                 )
+                state["cli_exit"] = completed.returncode
                 if state["http_status"] in (401, 403):
                     raise HTTPException(503, "Codex-Anmeldung oder Modellberechtigung bitte auf dem Server erneuern.")
                 if (
@@ -339,18 +395,32 @@ def run(body):
                     raise HTTPException(
                         502, "Codex lieferte keine abgeschlossene gültige Ausgabe. Keine automatische Wiederholung."
                     )
-                if state["search_calls"] is None or state["search_calls"] > 1:
+                if (
+                    type(state["search_calls"]) is not int
+                    or state["search_calls"] < 0
+                    or (not body["web_search"] and state["search_calls"] != 0)
+                    or (body["auth_mode"] == "api_key" and state["search_calls"] > 1)
+                ):
                     raise HTTPException(502, "Codex hat die freigegebene Suchgrenze nicht eingehalten.")
+                data = json.loads(output.read_text())
+                state["success"] = True
                 return {
-                    "data": json.loads(output.read_text()),
+                    "data": data,
                     "usage": state["usage"] or {},
                     "search_calls": state["search_calls"],
+                    "web_search": body["web_search"],
                 }
             except (subprocess.TimeoutExpired, ValueError, OSError):
                 raise HTTPException(502, "Isolierter Codex-Aufruf fehlgeschlagen.") from None
             finally:
                 persist_refreshed_auth(home, original)
     finally:
+        last_failure = None if state.get("success") else {
+            "http_status": state["http_status"],
+            "upstream_calls": state["calls"],
+            "cli_exit": state.get("cli_exit"),
+            "parameter": state.get("parameter", "unknown"),
+        }
         gateway.shutdown()
         gateway.server_close()
         thread.join(timeout=2)

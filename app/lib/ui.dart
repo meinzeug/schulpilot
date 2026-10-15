@@ -491,7 +491,13 @@ void toast(BuildContext context, String text) => ScaffoldMessenger.of(context)
 class LoadView<T> extends StatefulWidget {
   final Future<T> Function() load;
   final Widget Function(T, VoidCallback) builder;
-  const LoadView({super.key, required this.load, required this.builder});
+  final Object? revision;
+  const LoadView({
+    super.key,
+    required this.load,
+    required this.builder,
+    this.revision,
+  });
   @override
   State<LoadView<T>> createState() => _LoadViewState<T>();
 }
@@ -502,6 +508,12 @@ class _LoadViewState<T> extends State<LoadView<T>> {
   void initState() {
     super.initState();
     future = widget.load();
+  }
+
+  @override
+  void didUpdateWidget(covariant LoadView<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.revision != oldWidget.revision) future = widget.load();
   }
 
   void refresh() => setState(() => future = widget.load());

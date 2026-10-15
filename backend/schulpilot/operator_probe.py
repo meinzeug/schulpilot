@@ -128,6 +128,7 @@ def work_one(should_continue=lambda: True):
                     "cost_micros_usd": result.cost_micros if result else None,
                     "input_tokens": result.input_tokens if result else None,
                     "output_tokens": result.output_tokens if result else None,
+                    "search_calls": result.search_calls if result else None,
                 }
                 if error:
                     report["error"] = error[:500]
@@ -146,6 +147,10 @@ def work_one(should_continue=lambda: True):
             config.status = (
                 "Bild-, Aufgaben- und Tagespaketprüfung erfolgreich." if ready else config.production_block_reason
             )
+            if config.provider == "codex":
+                from .codex_setup import search_policy_status
+
+                config.status += " " + search_policy_status()
             config.revision += 1
             job.status, job.finished = "completed" if ready else "failed", int(now())
             audit(db, job.actor, "provider.probe_completed", "ready" if ready else "failed")

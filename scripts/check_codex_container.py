@@ -34,8 +34,12 @@ class ArtificialUpstream:
         pass
 
     def stream(self, method, url, headers, json):
-        assert json["max_tool_calls"] == 1
-        assert json["tools"][0]["type"] == "web_search"
+        if url.startswith("https://api.openai.com/"):
+            assert json["max_tool_calls"] == 1
+            assert json["tools"][0]["type"] == "web_search"
+        else:
+            assert "max_tool_calls" not in json
+            assert json["tools"] == [] and json["tool_choice"] == "none"
         calls.append(url)
         return self
 
@@ -97,6 +101,7 @@ with tempfile.TemporaryDirectory(prefix="synthetic-cli-check-", dir="/tmp") as r
         auth.chmod(0o600)
         body = {
             "auth_mode": mode,
+            "web_search": mode == "api_key",
             "model": "synthetic-model",
             "system": "Synthetic test only.",
             "payload": {"material": "The synthetic cube has six faces."},

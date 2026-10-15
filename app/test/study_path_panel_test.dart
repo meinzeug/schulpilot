@@ -194,7 +194,10 @@ void main() {
       await _tap(tester, 'Lernweg planen');
       expect(posts.length, 1);
       expect(find.text('0 von 12 Aufgaben bearbeitet'), findsOneWidget);
-      expect(find.text('0 bereit · 12 im Lernweg geplant'), findsOneWidget);
+      expect(
+        find.text('0 bereit · verteilt auf mehrere Lerntage'),
+        findsOneWidget,
+      );
       await _tap(tester, 'Alle Etappen');
       expect(find.textContaining('4 Aufgaben · Geplant'), findsNWidgets(3));
       expect(find.text('Brüche second'), findsOneWidget);
@@ -243,7 +246,10 @@ void main() {
       );
       final router = await _open(tester, state);
       expect(find.text('4 von 12 Aufgaben bearbeitet'), findsOneWidget);
-      expect(find.text('4 bereit · 12 im Lernweg geplant'), findsOneWidget);
+      expect(
+        find.text('4 bereit · verteilt auf mehrere Lerntage'),
+        findsOneWidget,
+      );
       expect(find.text('Lernweg planen'), findsNothing);
       expect(find.text('Erste Etappe starten'), findsNothing);
       expect(find.text('Etappe öffnen'), findsNothing);
@@ -296,7 +302,10 @@ void main() {
       expect(reads, 3);
       expect(router.routeInformationProvider.value.uri.path, '/');
       expect(find.text('Etappe öffnen'), findsOneWidget);
-      expect(find.text('4 bereit · 4 im Lernweg geplant'), findsOneWidget);
+      expect(
+        find.text('4 bereit · verteilt auf mehrere Lerntage'),
+        findsOneWidget,
+      );
       await tester.pump(const Duration(seconds: 9));
       expect(reads, 3);
       expect(methods.every((method) => method == 'GET'), isTrue);

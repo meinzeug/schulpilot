@@ -152,17 +152,19 @@ def status():
                 external_allowed(config_for_function(config, function), image=function == "extract")
         except ProviderError as error:
             ai, reason = False, str(error)
+        synthetic_ai = bool(site.synthetic_ai_enabled)
+        if synthetic_ai:
+            try:
+                for function in ("extract", "unit"):
+                    external_allowed(config_for_function(config, function), image=function == "extract", synthetic_fixture=True)
+            except ProviderError:
+                synthetic_ai = False
     return {
         "version": __version__,
         "registration_available": site.mail_ready,
         "email_available": site.mail_ready,
         "synthetic_demo_available": site.synthetic_demo,
-        "synthetic_ai_available": bool(
-            site.synthetic_ai_enabled
-            and not config.emergency_stop
-            and config.provider == "openrouter"
-            and config.model.endswith(":free")
-        ),
+        "synthetic_ai_available": synthetic_ai,
         "real_data_enabled": bool(site.real_data_approved and site.privacy_evidence),
         "ai_available": ai,
         "ai_provider": config.provider,

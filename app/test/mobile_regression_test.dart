@@ -270,12 +270,15 @@ void main() {
             as GoRouter;
     router.go('/after-school/child?day=archive');
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Mehr zu diesem Tag'));
+    await tester.tap(find.text('Mehr zu diesem Tag'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('2026-10-13'), findsOneWidget);
     expect(find.text('Erste Seite fotografieren'), findsNothing);
 
     await tester.tap(find.text('Heute'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Nach der Schule starten'));
+    await tester.tap(find.text('Heutige Seiten scannen'));
     await tester.pumpAndSettle();
     final details = find.text('Mehr zu diesem Tag');
     await tester.ensureVisible(details);

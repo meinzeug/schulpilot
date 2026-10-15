@@ -19,6 +19,8 @@ Future<GoRouter> _openHome(
   WidgetTester tester,
   Json data, {
   List<http.Request>? requests,
+  bool settle = true,
+  void Function(AppState)? onState,
 }) async {
   tester.view.physicalSize = const Size(360, 780);
   tester.view.devicePixelRatio = 1;
@@ -30,6 +32,10 @@ Future<GoRouter> _openHome(
             base: 'https://example.invalid/api',
             client: MockClient((request) async {
               requests?.add(request);
+              if (request.method == 'POST' &&
+                  request.url.path.endsWith('/day-check-in')) {
+                data['daily_capture'] = {'status': 'skipped', 'page_count': 0};
+              }
               return http.Response(
                 jsonEncode(request.method == 'GET' ? data : {'id': 'saved'}),
                 200,
@@ -44,6 +50,7 @@ Future<GoRouter> _openHome(
           'role': 'child',
           'child_id': data['child']['id'],
         };
+  onState?.call(state);
   final router = GoRouter(
     initialLocation: '/app',
     routes: [
@@ -69,7 +76,12 @@ Future<GoRouter> _openHome(
   await tester.pumpWidget(
     MaterialApp.router(theme: appTheme(), routerConfig: router),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+  }
   addTearDown(router.dispose);
   return router;
 }
@@ -84,10 +96,13 @@ void main() {
 
       expect(find.byType(FocusCard), findsOneWidget);
       expect(find.text('Jetzt lernen'), findsOneWidget);
-      expect(find.text('Nach der Schule starten'), findsNothing);
+      expect(find.text('Heutige Seiten scannen'), findsOneWidget);
       expect(find.text('Synthetischer Hefteintrag · Brüche'), findsNothing);
       expect(find.text('Was steht heute an?'), findsNothing);
-      expect(tester.getRect(find.text('Jetzt lernen')).bottom, lessThan(650));
+      expect(
+        tester.getRect(find.text('Heutige Seiten scannen')).bottom,
+        lessThan(650),
+      );
       expect(tester.takeException(), isNull);
 
       await tester.ensureVisible(find.text('Meine Heftseiten'));
@@ -111,7 +126,7 @@ void main() {
       await _openHome(tester, data, requests: requests);
 
       expect(find.text('Jetzt lernen'), findsNothing);
-      await tester.tap(find.text('Nach der Schule starten'));
+      await tester.tap(find.text('Heutige Seiten scannen'));
       await tester.pumpAndSettle();
       expect(
         GoRouterState.of(tester.element(find.text('Heftfotos-Ziel')))
@@ -125,12 +140,133 @@ void main() {
     },
   );
 
+  testWidgets('An old active package keeps the daily photo entry visible', (
+    tester,
+  ) async {
+    final data = _overview();
+    data['plan']['today'][0]['status'] = 'active';
+    await _openHome(tester, data);
+    expect(find.text('Heutige Seiten scannen'), findsOneWidget);
+    expect(find.text('Weiterlernen'), findsOneWidget);
+    await tester.tap(find.text('Heutige Seiten scannen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Heftfotos-Ziel'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('No new pages today switches to the bounded learning portion', (
+    tester,
+  ) async {
+    final data = _overview();
+    final requests = <http.Request>[];
+    await _openHome(tester, data, requests: requests);
+    await tester.tap(find.text('Heute keine neuen Seiten'));
+    await tester.pumpAndSettle();
+    expect(find.text('Heutige Seiten scannen'), findsNothing);
+    expect(find.text('Jetzt lernen'), findsOneWidget);
+    expect(find.text('Heutige Heftseiten'), findsOneWidget);
+    expect(requests.where((r) => r.method == 'POST').map((r) => r.url.path), [
+      '/api/children/${data['child']['id']}/day-check-in',
+    ]);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final freeDay in [true, false]) {
+    testWidgets(
+      'Deferred work is not promoted after a free or exhausted day ($freeDay)',
+      (tester) async {
+        final data = _overview();
+        data['daily_capture'] = {'status': 'skipped'};
+        data['plan']['later'] = data['plan']['today'];
+        data['plan']['today'] = [];
+        data['plan']['available_minutes'] = freeDay ? 20 : 0;
+        data['plan']['free_day'] = freeDay;
+        final requests = <http.Request>[];
+        await _openHome(tester, data, requests: requests);
+        expect(find.text('Jetzt lernen'), findsNothing);
+        expect(find.text('Weiterlernen'), findsNothing);
+        expect(find.text('Freiwillig üben'), findsNothing);
+        expect(find.text('Heutige Heftseiten'), findsOneWidget);
+        expect(requests.where((r) => r.method == 'POST'), isEmpty);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'A notification opens an older pending source review without starting learning',
+    (tester) async {
+      final data = _overview();
+      data['daily_capture'] = {'status': 'skipped'};
+      data['pending_preparations'] = [
+        {'day_id': 'old-day', 'date': '2026-10-13', 'status': 'needs_review'},
+      ];
+      final requests = <http.Request>[];
+      await _openHome(tester, data, requests: requests);
+      await tester.tap(find.text('Heftseiten prüfen'));
+      await tester.pumpAndSettle();
+      final route = GoRouterState.of(
+        tester.element(find.text('Heftfotos-Ziel')),
+      );
+      expect(route.uri.queryParameters['day'], 'old-day');
+      expect(requests.where((r) => r.method == 'POST'), isEmpty);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Push activity refreshes the same open home without another login',
+    (tester) async {
+      final data = _overview();
+      late AppState state;
+      await _openHome(tester, data, onState: (s) => state = s);
+      data['daily_capture'] = {
+        'status': 'review',
+        'day_id': 'today-day',
+        'preparation': {'status': 'needs_review'},
+      };
+      state.refreshState();
+      await tester.pumpAndSettle();
+      expect(find.text('Heftseiten prüfen'), findsOneWidget);
+      expect(find.text('Heutige Seiten scannen'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Home observes background preparation only while visible and refreshes on resume',
+    (tester) async {
+      final data = _overview();
+      data['daily_capture'] = {
+        'status': 'review',
+        'day_id': 'today-day',
+        'preparation': {'status': 'processing'},
+      };
+      final requests = <http.Request>[];
+      await _openHome(tester, data, requests: requests, settle: false);
+      expect(find.text('Deine Fotos sind abgegeben.'), findsOneWidget);
+      final before = requests.length;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(const Duration(seconds: 8));
+      expect(requests.length, before);
+      data['daily_capture']['preparation']['status'] = 'needs_review';
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text('Heftseiten prüfen'), findsOneWidget);
+      expect(requests.length, greaterThan(before));
+      expect(requests.where((r) => r.method == 'POST'), isEmpty);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('Independent child help does not require typing a message', (
     tester,
   ) async {
     final requests = <http.Request>[];
     final data = _overview();
     await _openHome(tester, data, requests: requests);
+    await tester.ensureVisible(find.text('Ich brauche Hilfe'));
     await tester.tap(find.text('Ich brauche Hilfe'));
     await tester.pumpAndSettle();
     expect(find.text('Deine Frage (freiwillig)'), findsOneWidget);
@@ -161,6 +297,7 @@ void main() {
     data['units'][0]['status'] = 'completed';
     data['units'][0]['coaching'] = {'status': 'pending'};
     await _openHome(tester, data, requests: requests);
+    await tester.ensureVisible(find.text('Rückblick ansehen'));
     await tester.tap(find.text('Rückblick ansehen'));
     await tester.pumpAndSettle();
     expect(

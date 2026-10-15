@@ -49,6 +49,10 @@ Ein Schema-Downgrade auf 0007 erzeugt nur leere TOTP-Spalten und stellt entfernt
 
 ## Sicherungen und Wiederherstellung
 
+### Rückweg über die Hintergrundvorbereitung (0012)
+
+Migration 0012 ergänzt `school_days.preparation` additiv. Kein gewöhnliches Schema-Downgrade durchführen: Die gespeicherten Bearbeitungsstände gehören zu den privaten Familienverläufen. Vor einem Code-Rückweg auf 0011 zuerst die eigene API für neue Vorbereitungen sperren, den neuen Worker seine aktuellen Anbieteraufrufe beenden lassen und eine aktuelle verschlüsselte Sicherung erstellen. Offene `jobs` mit `payload.preparation_id` dürfen nicht von einem alten Worker bearbeitet werden, weil dieser die zusätzliche Auftragssitzungsprüfung nicht kennt. Diese Aufträge unter dem neuen Code kontrolliert beenden oder vor einem Rückweg ausdrücklich sicher abbrechen; Kosten/Reservierungen dabei erhalten. Ebenso laufende `school_days.preparation.status=processing` prüfen und ihren Zwischenstand dokumentieren. Erst wenn kein solcher Auftrag mehr offen ist, den vorherigen kompatiblen Code aktivieren. Die zusätzliche JSON-Spalte und inzwischen gespeicherte Seiten/Antworten erhalten; nie die ganze Datenbank auf einen älteren Sicherungsstand überschreiben.
+
 Täglich ca. 02:40 UTC mit bis zu fünf Minuten Zufallsverzögerung: PostgreSQL-Custom-Dump plus private Uploads, authentifiziert mit AES-256-GCM verschlüsselt, nur root-lesbar unter `/var/backups/schulpilot`, Rotation nach 14 Tagen. `systemctl start schulpilot-backup.service` löst eine Sicherung aus. Erfolgreiche One-shot-Dienste stehen anschließend regulär auf `inactive (dead)`; `Result=success` und `ExecMainStatus=0` prüfen.
 
 ```bash

@@ -7,11 +7,13 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import defer, load_only
 
 from . import schemas as s
+from .daily_planner import completed_portions, distribute, period_starts
 from .db import (
     Activity,
     Assignment,
     Attempt,
     Child,
+    Family,
     LearningUnit,
     Mastery,
     Material,
@@ -246,9 +248,7 @@ def plan(db, child, *, learning_paths=None):
     reviews = list(
         db.scalars(select(Mastery).where(Mastery.child_id == child.id, Mastery.next_review <= today.isoformat()))
     )
-    zone = ZoneInfo(prefs.timezone)
-    start = datetime.combine(today, datetime.min.time(), tzinfo=zone).timestamp()
-    week = start - today.weekday() * 86400
+    start, week = period_starts(today, prefs.timezone)
     timed = list(
         db.scalars(
             select(Activity).where(
@@ -256,9 +256,13 @@ def plan(db, child, *, learning_paths=None):
             )
         )
     )
-    daily_used = sum(e.detail.get("seconds", 0) for e in timed if e.created >= start) // 60
-    weekly_used = sum(e.detail.get("seconds", 0) for e in timed) // 60
-    available = max(0, min(prefs.daily_minutes - daily_used, prefs.weekly_minutes - weekly_used))
+    daily_seconds = sum(e.detail.get("seconds", 0) for e in timed if e.created >= start)
+    weekly_seconds = sum(e.detail.get("seconds", 0) for e in timed)
+    daily_used = (daily_seconds + 59) // 60
+    weekly_used = (weekly_seconds + 59) // 60
+    completed_daily, completed_weekly = completed_portions(units, prefs, start, week)
+    daily_load, weekly_load = max(daily_used, completed_daily), max(weekly_used, completed_weekly)
+    available = max(0, min(prefs.daily_minutes - daily_load, prefs.weekly_minutes - weekly_load))
     notices = []
     paused = bool(prefs.pause_until and today <= prefs.pause_until)
     free_day = today.weekday() not in prefs.weekdays
@@ -266,7 +270,7 @@ def plan(db, child, *, learning_paths=None):
         notices.append(f"Lernpause bis {prefs.pause_until.isoformat()}. Offene Ziele bleiben erhalten.")
         available = 0
     elif free_day:
-        notices.append("Heute ist ein lernfreier Tag. Freiwillige Übungen sind möglich.")
+        notices.append("Heute ist ein lernfreier Tag. Neue Heftseiten kannst du trotzdem speichern.")
         available = 0
     if prefs.session_minutes > prefs.daily_minutes:
         notices.append("Die Einheit wird auf das Tagesziel gekürzt.")
@@ -274,19 +278,49 @@ def plan(db, child, *, learning_paths=None):
         notices.append(
             "Das Wochenziel passt nicht in die gewählten Lerntage. Vorschlag: Wochenziel reduzieren oder einen weiteren Lerntag wählen."
         )
+    days = list(db.scalars(select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date)))
+    source_dates = {d.id: d.school_date for d in days}
+    practiced = {}
+    for unit in units:
+        if unit.completed and unit.school_day_id:
+            practiced[unit.school_day_id] = max(practiced.get(unit.school_day_id, 0), unit.completed)
+    chains = {
+        block["unit_id"]: (f"{day.id}:{block.get('subject', '')}", index)
+        for day in days
+        for index, block in enumerate((day.learning_plan or {}).get("blocks", []))
+        if block.get("unit_id")
+    }
+    units_by_id = {u.id: u for u in units}
+    synthetic_family = db.get(Family, child.family_id).synthetic
+    synthetic_days = set(
+        db.scalars(
+            select(Material.school_day_id).where(
+                Material.child_id == child.id, Material.synthetic.is_(True), Material.school_day_id.is_not(None)
+            )
+        )
+    )
+    assignments_by_id = {a.id: a for a in assignments}
+    minutes = min(prefs.session_minutes, max(5, available))
     candidates = []
     for unit in units:
         if unit.status != "completed":
+            goal = assignments_by_id.get(unit.assignment_id)
+            chain = chains.get(unit.id)
             candidates.append(
                 {
                     "kind": "unit",
                     "id": unit.id,
                     "topic": unit.topic,
                     "subject": unit.subject,
-                    "mandatory": bool(unit.assignment_id),
+                    "mandatory": bool(goal and goal.mandatory),
                     "status": unit.status,
-                    "estimated_minutes": unit.estimated_minutes,
-                    "scheduled_for": next((a.scheduled_for for a in assignments if a.id == unit.assignment_id), None),
+                    "estimated_minutes": max(1, (unit.estimated_minutes or minutes) - unit.active_seconds // 60),
+                    "scheduled_for": goal.scheduled_for if goal else None,
+                    "due": goal.due if goal else None,
+                    "not_before": unit.not_before,
+                    "source_date": source_dates.get(unit.school_day_id),
+                    "_chain": chain[0] if chain else None,
+                    "_sequence": chain[1] if chain else 0,
                 }
             )
     for a in sorted(assignments, key=lambda a: (not a.mandatory, a.due or "9999", a.created)):
@@ -303,6 +337,7 @@ def plan(db, child, *, learning_paths=None):
                 "scheduled_for": a.scheduled_for,
                 "assignment_kind": a.kind,
                 "material_id": a.material_id,
+                "estimated_minutes": min(prefs.session_minutes, prefs.daily_minutes, max(5, available)),
                 "status": "practiced_today"
                 if any(u.assignment_id == a.id and u.completed and u.completed >= start for u in units)
                 else "not_started",
@@ -311,7 +346,7 @@ def plan(db, child, *, learning_paths=None):
     if learning_paths is None:
         learning_paths = paths(db, child.id)
     for path in learning_paths:
-        if path["next_unit_id"] or not path["next_review"] or path["next_review"] > today.isoformat():
+        if path["next_unit_id"] or not path["next_review"]:
             continue
         candidates.append(
             {
@@ -323,6 +358,8 @@ def plan(db, child, *, learning_paths=None):
                 "mandatory": False,
                 "status": "not_started",
                 "due": path["next_review"],
+                "not_before": path["next_review"],
+                "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes),
             }
         )
     for mastery in reviews:
@@ -341,6 +378,8 @@ def plan(db, child, *, learning_paths=None):
                     "mandatory": False,
                     "status": "not_started",
                     "due": mastery.next_review,
+                    "not_before": mastery.next_review,
+                    "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes),
                 }
             )
     for m in db.scalars(
@@ -357,69 +396,124 @@ def plan(db, child, *, learning_paths=None):
                     "subject": m.subject,
                     "mandatory": False,
                     "status": "not_started",
+                    "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes),
                 }
             )
-    for school_day in db.scalars(
-        select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
-    ):
-        for block in (school_day.learning_plan or {}).get("blocks", []):
-            saved_unit = next((u for u in units if u.id == block.get("unit_id")), None)
+    for school_day in days:
+        for index, block in enumerate((school_day.learning_plan or {}).get("blocks", [])):
+            saved_unit = units_by_id.get(block.get("unit_id"))
             if saved_unit and saved_unit.status == "completed":
                 continue
-            if not saved_unit:
+            if not saved_unit and school_day.id not in synthetic_days and not synthetic_family:
                 candidates.append(
                     {
                         "kind": "study_path",
                         "id": school_day.id,
+                        "block_id": block["id"],
                         "topic": block["title"],
                         "subject": block.get("subject", "Lernreise"),
                         "mandatory": False,
                         "status": "planned",
                         "estimated_minutes": min(prefs.session_minutes, max(5, block["question_count"] * 2)),
+                        "source_date": school_day.school_date,
+                        "not_before": school_day.school_date,
+                        "_chain": f"{school_day.id}:{block.get('subject', '')}",
+                        "_sequence": index,
+                        "_last_practiced": (
+                            datetime.fromtimestamp(practiced[school_day.id], ZoneInfo(prefs.timezone))
+                            .date()
+                            .isoformat()
+                            if school_day.id in practiced
+                            else None
+                        ),
                     }
                 )
-            break
-    candidates.sort(
-        key=lambda x: (
-            not x.get("mandatory", False),
-            x.get("due") or "9999",
-            x["subject"] not in prefs.focus_subjects,
-            x["topic"] not in prefs.repeat_topics,
-        )
+    completed_chains = {}
+    for unit in units:
+        if unit.completed and unit.completed >= start and unit.school_day_id:
+            key = f"{unit.school_day_id}:{unit.subject}"
+            completed_chains[key] = completed_chains.get(key, 0) + 1
+    proposal = distribute(
+        candidates,
+        prefs,
+        today,
+        daily_seconds=daily_load * 60,
+        weekly_seconds=weekly_load * 60,
+        completed_chains=completed_chains,
     )
-    minutes = min(prefs.session_minutes, max(5, available))
-    eligible = [
-        x
-        for x in candidates
-        if x["status"] != "practiced_today"
-        and (not x.get("scheduled_for") or x["scheduled_for"] <= today.isoformat())
-        and (not prefs.subject_days.get(x["subject"]) or today.weekday() in prefs.subject_days[x["subject"]])
-    ]
-    selected = []
-    remaining = available
-    for item in eligible:
-        duration = item.get("estimated_minutes") or minutes
-        if duration <= remaining:
-            selected.append(item)
-            remaining -= duration
-    later = [x for x in candidates if x not in selected]
-    if later:
+    if proposal["later"]:
+        notices.append("Weiterer Stoff wird auf die nächsten Lerntage verteilt. Das Tagesziel bleibt gleich.")
+    if proposal["beyond_week_steps"]:
         notices.append(
-            f"{len(later)} Thema/Themen passen heute nicht in die Zeit. Vorschlag: später einplanen; verbindliche Ziele werden nicht automatisch geändert."
+            "Nicht der ganze gespeicherte Stoff passt in die nächsten sieben Tage. Bitte bei Bedarf gemeinsam Schwerpunkte setzen."
+        )
+    if proposal["conflicts"]:
+        notices.append(
+            "Ein Elterntermin passt voraussichtlich nicht in die Lernzeit. Bitte Termin oder Schwerpunkte gemeinsam prüfen."
         )
     return {
+        **proposal,
         "date": today.isoformat(),
         "available_minutes": available,
         "session_minutes": minutes,
         "break_minutes": prefs.break_minutes,
-        "today": selected,
-        "later": later,
+        "daily_limit_minutes": prefs.daily_minutes,
+        "weekly_limit_minutes": prefs.weekly_minutes,
+        "daily_used_minutes_approx": round(daily_seconds / 60, 1),
+        "weekly_used_minutes_approx": round(weekly_seconds / 60, 1),
+        "weekly_remaining_minutes": max(0, prefs.weekly_minutes - weekly_load),
+        "completed_portion_minutes": completed_daily,
+        "weekly_portion_minutes": completed_weekly,
         "notices": notices,
         "completed_today": sum(bool(u.completed and u.completed >= start) for u in units),
         "free_day": free_day,
         "paused": paused,
+        "forecast_notice": "Vorschlag für sieben Tage: Neue Seiten, Antworten und Elternvorgaben passen ihn an. Zeiten sind Schätzungen; weitere Hilfen und Wiederholungen kommen nach Bedarf hinzu.",
         "notice": "Versäumte Tage vergrößern das Tagesziel nicht. Eltern sehen ausschließlich Aktivitäten innerhalb von SCHULPILOT.",
     }
+
+
+def capture_status(db, child, current_plan):
+    from .school_preparation import preparation_data
+
+    day = db.scalar(
+        select(SchoolDay).where(SchoolDay.child_id == child.id, SchoolDay.school_date == current_plan["date"])
+    )
+    count = db.scalar(select(func.count()).select_from(Material).where(Material.school_day_id == day.id)) if day else 0
+    skipped = db.scalar(
+        select(Activity.id)
+        .where(
+            Activity.child_id == child.id,
+            Activity.kind == "daily_checkin",
+            Activity.detail["date"].as_string() == current_plan["date"],
+        )
+        .limit(1)
+    )
+    return {
+        "date": current_plan["date"],
+        "day_id": day.id if day else None,
+        "page_count": count,
+        "status": day.stage if count else "skipped" if skipped else "empty",
+        "preparation": preparation_data(db, day, child) if day and day.preparation else None,
+    }
+
+
+@router.post("/children/{child_id}/day-check-in")
+def no_new_pages(child_id: str, p=Depends(child_user), db=Depends(get_db)):
+    child = child_access(db, p, child_id)
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    day = local_day(child).isoformat()
+    existing = db.scalar(
+        select(Activity.id)
+        .where(
+            Activity.child_id == child.id, Activity.kind == "daily_checkin", Activity.detail["date"].as_string() == day
+        )
+        .limit(1)
+    )
+    if not existing:
+        record(db, child.id, "daily_checkin", {"date": day, "new_pages": False})
+    db.commit()
+    return {"date": day, "status": "skipped"}
 
 
 @router.get("/children/{child_id}/overview")
@@ -434,6 +528,23 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         )
     )
     current_plan = plan(db, child, learning_paths=learning_paths)
+    capture = capture_status(db, child, current_plan)
+    from .school_preparation import preparation_data
+
+    preparations = [
+        {"day_id": day.id, "date": day.school_date, **preparation_data(db, day, child)}
+        for day in db.scalars(
+            select(SchoolDay)
+            .where(
+                SchoolDay.child_id == child.id,
+                SchoolDay.preparation["status"]
+                .as_string()
+                .in_(["processing", "needs_review", "needs_photo", "failed", "blocked"]),
+            )
+            .order_by(SchoolDay.school_date.desc())
+            .limit(3)
+        )
+    ]
     if compact:
         from .library import MATERIAL_FIELDS, material_summary, unit_summaries
 
@@ -476,6 +587,9 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
             "later": [
                 item for item in later if not item.get("scheduled_for") or item["scheduled_for"] <= current_plan["date"]
             ][:1],
+            "week": [
+                day | {"item_count": len(day["items"]), "items": day["items"][:3]} for day in current_plan["week"]
+            ],
         }
     else:
         material_count = None
@@ -491,6 +605,8 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
             for d in days
         ],
         "plan": current_plan,
+        "daily_capture": capture,
+        "pending_preparations": preparations,
         "day_summary": summary(db, child, 1, learning_paths=learning_paths),
         "week_summary": summary(db, child, 7, learning_paths=learning_paths),
         "material_count": material_count,
@@ -696,7 +812,20 @@ def heartbeat(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
             }
         elapsed = stamp - (unit.heartbeat or stamp)
         if 0 < elapsed <= 45:
-            seconds = min(min(elapsed, 25), max(0, prefs.session_minutes * 60 - unit.segment_seconds))
+            child = db.get(Child, unit.child_id)
+            start, week = period_starts(local_day(child), prefs.timezone)
+            events = list(
+                db.scalars(
+                    select(Activity).where(
+                        Activity.child_id == child.id, Activity.kind == "active_time", Activity.created >= week
+                    )
+                )
+            )
+            day_left = max(
+                0, prefs.daily_minutes * 60 - sum(e.detail.get("seconds", 0) for e in events if e.created >= start)
+            )
+            week_left = max(0, prefs.weekly_minutes * 60 - sum(e.detail.get("seconds", 0) for e in events))
+            seconds = min(elapsed, 25, day_left, week_left, max(0, prefs.session_minutes * 60 - unit.segment_seconds))
             unit.active_seconds += seconds
             unit.segment_seconds += seconds
             if seconds:
@@ -788,6 +917,10 @@ def learning_block(db, unit):
         return "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
     if unit.not_before and unit.not_before > today.isoformat():
         return f"Diese spätere Abrufprobe beginnt frühestens am {unit.not_before}."
+    from .coaching import continuation_block
+
+    if reason := continuation_block(db, unit, child, check_sources=False):
+        return reason
     if unit.round_kind in ("study_block", "study_recall"):
         from .coaching import context
         from .study_path import block_reason

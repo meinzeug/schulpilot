@@ -378,7 +378,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               ],
               const SizedBox(height: 7),
               Text(
-                '$ready bereit · $total im Lernweg geplant',
+                '$ready bereit · verteilt auf mehrere Lerntage',
                 style: const TextStyle(color: muted, fontSize: 12),
               ),
               const SizedBox(height: 20),

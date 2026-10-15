@@ -119,8 +119,13 @@ def main():
         if PRIVATE.exists():
             raise RuntimeError("Resume or clean up the existing private QA account first")
         status = expect(parent.get("/status"))
-        if not status["real_data_enabled"] or not status["ai_free_only"] or status["ai_data_collection"] != "deny":
-            raise RuntimeError("The approved, free, data-collection-denied AI route must be configured")
+        if not status["real_data_enabled"] or not status["ai_available"]:
+            raise RuntimeError("The approved AI route must have passed its actual operator probe")
+        if status["ai_provider"] == "openrouter":
+            if not status["ai_free_only"] or status["ai_data_collection"] != "deny":
+                raise RuntimeError("The OpenRouter test requires its approved free, data-collection-denied route")
+        elif status["ai_provider"] != "codex":
+            raise RuntimeError("Only the explicitly configured Codex or OpenRouter Free route may be tested")
         config = mail_config()
         local, domain = config["SMTP_USER"].split("@", 1)
         if domain.lower() not in ("gmail.com", "googlemail.com"):

@@ -400,7 +400,7 @@ async function prepareDay() {
     journey.day_id ??= account.school_day_id;
     await open(page, wizardRoute());
   } else {
-    await tap(page, page.getByRole('button', {name: /^(Nach der Schule starten|Neue Heftfotos|Heftfotos sammeln|Heftfotos fortsetzen)$/}).first());
+    await tap(page, page.getByRole('button', {name: /^(Heutige Seiten scannen|Heftfotos sammeln|Heftfotos fortsetzen)$/}).first());
     await page.waitForURL(new RegExp('/after-school/' + account.child_id + '(?:\\?|$)'), {timeout: 30000});
   }
   let day;
@@ -555,7 +555,7 @@ async function ensurePath() {
   check(route.blocks.some(value => value.unit_id === journey.initial_unit_id),
     'initial_package_not_linked_to_saved_learning_path');
   await reveal(page, page.getByText('Dein Lernweg', {exact: true}));
-  await reveal(page, page.getByText(route.ready_questions + ' bereit · ' + route.total_questions + ' im Lernweg geplant', {exact: true}));
+  await reveal(page, page.getByText(route.ready_questions + ' bereit · verteilt auf mehrere Lerntage', {exact: true}));
   await tap(page, page.getByText('Alle Etappen', {exact: true}));
   for (const block of route.blocks) {
     const label = {planned: 'Geplant', ready: 'Bereit', completed: 'Bearbeitet', generating: 'Wird vorbereitet'}[block.status];

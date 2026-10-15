@@ -1,6 +1,6 @@
 # SCHULPILOT
 
-Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen FastAPI-API. Persistente Familien, getrennte Kinderzugänge, bestätigter Schulstoff, strukturierte Aufgaben und nachvollziehbare Elternansichten. Der reguläre Lernablauf verwendet den ausdrücklich freigegebenen OpenRouter-Free-Standard. [Konfiguration und Datenregeln](docs/AI_STANDARD.md), [Betreiberfreigabe](docs/APPROVALS.md).
+Eigenständige Lernplattform mit Flutter für Android/Web und einer eigenen FastAPI-API. Persistente Familien, getrennte Kinderzugänge, bestätigter Schulstoff, strukturierte Aufgaben und nachvollziehbare Elternansichten. Für diese Installation ist der ausdrücklich beauftragte Codex-CLI-Provider mit eigener isolierter Serveranmeldung ausgewählt; der jeweilige tatsächliche Abnahmestand steht in [STATUS.md](docs/STATUS.md). [Konfiguration und Datenregeln](docs/AI_STANDARD.md), [Betreiberfreigabe](docs/APPROVALS.md).
 
 Die Android-App startet eine `FlutterActivity` und rendert die Dart-Oberfläche auf dem Gerät. Sie ist keine Website in einer WebView. Web und Android teilen Lernansichten und Theme; Android ergänzt Kamera, sichere Sitzungsablage und den nativen Updater. Die Oberfläche wird für kleine Touchscreens und breite Webfenster angepasst.
 
@@ -12,7 +12,7 @@ Der Kinderbereich enthält den geführten **„Nach der Schule“-Assistenten**:
 
 Nach jeder abgeschlossenen Einheit folgt ein gespeicherter KI-Rückblick auf die tatsächlichen Antworten. Schulpilot bereitet gezieltes Nachlernen, neue selbstständige Abrufproben und spätere Wiederholungen vor. Fortschritt zählt je Lernziel; Lernzeiten, Pausen und Elternhilfe begrenzen die Runden. [Betreutes Weiterlernen](docs/COACHING.md).
 
-Die Kinderstartseite zeigt die nächste Aktion. **Hefte** öffnet eine eigene Bibliothek mit Suche, Fach-/Datumsfiltern und begrenzten Seiten. **Lernen** trennt offene Runden, spätere Aufträge und abgeschlossene Einheiten. Rückblick und gespeicherte Antworten sind einzelne Ansichten; Eltern nutzen dieselben berechtigten Sammlungen. [Bibliothek und Lernraum](docs/LIBRARY.md).
+Die Kinderstartseite behält heutige Fotos, die begrenzte Lernportion und den Status abgegebener Seiten im Blick. Ein Siebentagevorschlag verteilt bekannte Etappen innerhalb der Elternvorgaben; er ist keine tägliche Pflicht, den ganzen Hefter abzuarbeiten. [Täglicher Ablauf](docs/DAILY_ROUTINE.md). **Hefte** öffnet eine eigene Bibliothek mit Suche, Fach-/Datumsfiltern und begrenzten Seiten. **Lernen** trennt offene Runden, spätere Aufträge und abgeschlossene Einheiten. Rückblick und gespeicherte Antworten sind einzelne Ansichten; Eltern nutzen dieselben berechtigten Sammlungen. [Bibliothek und Lernraum](docs/LIBRARY.md).
 
 Für den regulären Betrieb ein Elternkonto registrieren, die E-Mail bestätigen und im Familienbereich einen Kinderzugang mit eigenem Benutzernamen und sicherem Passwort anlegen. Das Kind meldet sich damit direkt im Web oder in der APK an und öffnet „Nach der Schule starten“. Eltern erhalten die gespeicherten Aufgaben, Antworten und genutzten Hinweise im eigenen Dashboard.
 

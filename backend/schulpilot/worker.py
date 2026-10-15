@@ -103,6 +103,9 @@ def process(job_id):
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
+            from .school_preparation import defer_package, validate_job
+
+            validate_job(db, job)
             child = db.get(Child, job.child_id)
             family = db.get(Family, child.family_id)
             if family.expires and family.expires < now():
@@ -127,6 +130,9 @@ def process(job_id):
                 from .school_day import validate_package_sources
 
                 _, source_pages = validate_package_sources(db, job)
+                if defer_package(db, job, before_call=True):
+                    db.commit()
+                    return
             elif job.kind == "unit":
                 source_pages = unit_sources(db, job)
             config = config_for_function(db.get(ProviderConfig, 1), job.kind)
@@ -265,6 +271,7 @@ def process(job_id):
                 return
             if not db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade)).rowcount:
                 return
+            validate_job(db, job)
             material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
             assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
             if job.payload.get("material_id") and (
@@ -280,11 +287,20 @@ def process(job_id):
                     "Das Elternziel wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
                 )
             if job.kind == "package":
-                from .school_day import save_package
+                # Sources/parent goals remain strict; midnight/time exhaustion
+                # retains a learning path instead of creating extra obligations.
+                from .school_day import save_package, validate_package_sources
 
-                save_package(
-                    db, job, data, synthetic=synthetic, provider=config_values["provider"], model=config_values["model"]
-                )
+                validate_package_sources(db, job)
+                if not defer_package(db, job):
+                    save_package(
+                        db,
+                        job,
+                        data,
+                        synthetic=synthetic,
+                        provider=config_values["provider"],
+                        model=config_values["model"],
+                    )
             elif job.kind == "extract":
                 if not material or material.confirmed:
                     raise ProviderError("Material wurde zwischenzeitlich entfernt oder bereits bestätigt.")
@@ -514,6 +530,9 @@ def main():
             if work_one(lambda: running):
                 continue
             deliver_one(DB)
+            from .school_preparation import advance_one
+
+            advance_one()
             if now() - last_maintenance > 60:
                 maintenance()
                 last_maintenance = now()
