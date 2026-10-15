@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import 'api.dart';
 import 'coaching_panel.dart';
@@ -36,6 +35,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? answerOutcome;
   bool answerAssisted = false;
   bool awaitingContinue = false;
+  String reviewSection = 'review';
   final stepTop = GlobalKey();
   AppState get state => widget.state;
   @override
@@ -60,6 +60,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       answeredQuestion = null;
       answerOutcome = null;
       awaitingContinue = false;
+      reviewSection = 'review';
       text.clear();
       load();
     }
@@ -171,6 +172,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     onPointerSignal: (_) => lastInteraction = DateTime.now(),
     child: PageFrame(
       state: state,
+      showTitle: !state.isChild,
       title: state.isChild ? 'Lernen' : 'Einblick in die Lerneinheit',
       subtitle: state.isChild ? null : 'Aufgaben, Antworten und Hilfen.',
       child: error != null
@@ -303,8 +305,34 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ],
           ),
           const SizedBox(height: 20),
-          CoachingPanel(state: state, unit: u, refresh: load),
-          if (u['school_day_id'] != null && u['synthetic'] != true) ...[
+          Text(
+            '${u['subject']} · ${u['topic']}',
+            style: const TextStyle(color: muted),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final section in [
+                ('review', 'Rückblick'),
+                if (u['school_day_id'] != null && u['synthetic'] != true)
+                  ('path', 'Lernweg'),
+                ('answers', 'Antworten'),
+              ])
+                ChoiceChip(
+                  label: Text(section.$2),
+                  selected: reviewSection == section.$1,
+                  onSelected: (_) => setState(() => reviewSection = section.$1),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (reviewSection == 'review')
+            CoachingPanel(state: state, unit: u, refresh: load),
+          if (reviewSection == 'path' &&
+              u['school_day_id'] != null &&
+              u['synthetic'] != true) ...[
             const SizedBox(height: 20),
             StudyPathPanel(
               state,
@@ -319,11 +347,6 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             spacing: 10,
             runSpacing: 10,
             children: [
-              TextButton.icon(
-                onPressed: () => context.go('/app'),
-                icon: const Icon(Icons.home_outlined),
-                label: const Text('Zu meinem Tag'),
-              ),
               helpButton(context, u),
               if (u['source_material_ids']?.isNotEmpty == true &&
                   u['synthetic'] != true)
@@ -331,41 +354,39 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ],
           ),
           const SizedBox(height: 12),
-          Panel(
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(bottom: 8),
-              title: const Text('Meine Antworten'),
-              leading: const Icon(Icons.fact_check_outlined, color: teal),
-              children: [
-                for (final q in questions)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          q['prompt'],
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 6),
-                        for (final a in q['attempts'] as List)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              '${a['answer']} · ${outcomeLabel(a['outcome'])}${a['assisted'] == true ? ' · mit Hilfe' : ''}',
-                            ),
+          if (reviewSection == 'answers')
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final q in questions)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            q['prompt'],
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                        if (q['feedback_explanation'] != null) ...[
-                          Text(q['feedback_explanation']),
-                          ReadAloudButton(text: q['feedback_explanation']),
+                          const SizedBox(height: 6),
+                          for (final a in q['attempts'] as List)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                '${a['answer']} · ${outcomeLabel(a['outcome'])}${a['assisted'] == true ? ' · mit Hilfe' : ''}',
+                              ),
+                            ),
+                          if (q['feedback_explanation'] != null) ...[
+                            Text(q['feedback_explanation']),
+                            ReadAloudButton(text: q['feedback_explanation']),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       );
     }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -223,7 +224,7 @@ void main() {
     },
   );
 
-  testWidgets('Heftfotos navigation leaves an archived day for today', (
+  testWidgets('Today navigation opens new photos outside the archived day', (
     tester,
   ) async {
     _viewport(tester, 390);
@@ -233,6 +234,16 @@ void main() {
         expect(request.method, 'GET');
         paths.add(request.url.path);
         switch (request.url.path) {
+          case '/api/children/child/overview':
+            final home = jsonDecode(
+              File('test/fixtures/child_home.json').readAsStringSync(),
+            ) as Json;
+            home['child']['id'] = 'child';
+            home['plan']['today'] = [];
+            home['plan']['later'] = [];
+            home['units'] = [];
+            home['materials'] = [];
+            return _json(home);
           case '/api/school-days/archive':
             return _json(
               _day(id: 'archive', date: '2026-10-13', readOnly: true),
@@ -262,7 +273,9 @@ void main() {
     expect(find.textContaining('2026-10-13'), findsOneWidget);
     expect(find.text('Erste Seite fotografieren'), findsNothing);
 
-    await tester.tap(find.text('Heftfotos'));
+    await tester.tap(find.text('Heute'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nach der Schule starten'));
     await tester.pumpAndSettle();
     final details = find.text('Mehr zu diesem Tag');
     await tester.ensureVisible(details);

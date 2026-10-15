@@ -254,7 +254,7 @@ void main() {
         find.text('Gespeicherter Rückblick zur künstlichen Aufgabe.'),
         findsOneWidget,
       );
-      await _tap(tester, 'Meine Antworten');
+      await _tap(tester, 'Antworten');
       expect(find.text('Was bedeutet cat?'), findsOneWidget);
       expect(find.text('Katze · Richtig'), findsOneWidget);
       expect(answers, 1);

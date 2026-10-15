@@ -531,6 +531,7 @@ class PageFrame extends StatelessWidget {
   final String? subtitle;
   final Widget child;
   final List<Widget> actions;
+  final bool showTitle;
   const PageFrame({
     super.key,
     required this.state,
@@ -538,6 +539,7 @@ class PageFrame extends StatelessWidget {
     this.subtitle,
     required this.child,
     this.actions = const [],
+    this.showTitle = true,
   });
   @override
   Widget build(BuildContext context) {
@@ -555,9 +557,15 @@ class PageFrame extends StatelessWidget {
       ),
       if (state.isChild)
         (
-          Icons.document_scanner_rounded,
-          'Heftfotos',
-          '/after-school/${state.user!['child_id']}',
+          Icons.auto_stories_rounded,
+          'Lernen',
+          '/learn/${state.user!['child_id']}',
+        ),
+      if (state.isChild)
+        (
+          Icons.folder_open_rounded,
+          'Hefte',
+          '/library/${state.user!['child_id']}',
         ),
       if (state.isAdmin) (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
       if (kIsWeb && state.isOwner && !state.isDemo)
@@ -570,6 +578,8 @@ class PageFrame extends StatelessWidget {
           (e.$3.contains('after-school') && uri.startsWith(e.$3)),
     );
     if (selected < 0) selected = 0;
+    if (state.isChild && uri.startsWith('/unit/')) selected = 1;
+    if (state.isChild && uri.startsWith('/material/')) selected = 2;
     Widget sidebar() => Container(
       width: 252,
       padding: const EdgeInsets.fromLTRB(24, 34, 20, 24),
@@ -698,33 +708,35 @@ class PageFrame extends StatelessWidget {
                           const Notice(
                             'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
                           ),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium,
-                                  ),
-                                  if (subtitle != null && subtitle!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Text(
-                                        subtitle!,
-                                        style: const TextStyle(color: muted),
-                                      ),
+                        if (showTitle)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium,
                                     ),
-                                ],
+                                    if (subtitle != null &&
+                                        subtitle!.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          subtitle!,
+                                          style: const TextStyle(color: muted),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            if (wide) ...actions,
-                          ],
-                        ),
+                              if (wide) ...actions,
+                            ],
+                          ),
                         if (!wide && actions.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
@@ -734,7 +746,7 @@ class PageFrame extends StatelessWidget {
                               children: actions,
                             ),
                           ),
-                        const SizedBox(height: 26),
+                        if (showTitle) const SizedBox(height: 26),
                         child,
                         if (kIsWeb && uri == '/app') ...[
                           const SizedBox(height: 28),

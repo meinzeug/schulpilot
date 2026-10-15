@@ -8,6 +8,7 @@ import 'api.dart';
 import 'account_deletion_screen.dart';
 import 'auth_screens.dart';
 import 'dashboard.dart';
+import 'collection_screen.dart';
 import 'material_screen.dart';
 import 'settings_screen.dart';
 import 'installation_screen.dart';
@@ -122,6 +123,8 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
           path.startsWith('/child/') ||
           path.startsWith('/after-school/') ||
           path.startsWith('/material/') ||
+          path.startsWith('/library/') ||
+          path.startsWith('/learn/') ||
           path.startsWith('/unit/');
       if (protected && widget.state.user == null) {
         return path.startsWith('/bestell')
@@ -219,6 +222,19 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/after-school/:id/history',
         builder: (context, s) =>
             SchoolDayHistory(widget.state, childId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/library/:id',
+        builder: (context, s) =>
+            CollectionScreen(widget.state, childId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/learn/:id',
+        builder: (context, s) => CollectionScreen(
+          widget.state,
+          childId: s.pathParameters['id']!,
+          learning: true,
+        ),
       ),
       GoRoute(
         path: '/material/:id',

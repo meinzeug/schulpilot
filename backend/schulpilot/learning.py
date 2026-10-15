@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
+from sqlalchemy.orm import defer, load_only
 
 from . import schemas as s
 from .db import (
@@ -16,6 +17,7 @@ from .db import (
     Material,
     Message,
     SchoolDay,
+    UnitCoaching,
     UnitSource,
     User,
     get_db,
@@ -231,7 +233,12 @@ def plan(db, child, *, learning_paths=None):
     prefs = s.Preferences(**child.preferences)
     today = local_day(child)
     units = list(
-        db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id).order_by(LearningUnit.created))
+        db.scalars(
+            select(LearningUnit)
+            .options(defer(LearningUnit.questions), defer(LearningUnit.explanation))
+            .where(LearningUnit.child_id == child.id)
+            .order_by(LearningUnit.created)
+        )
     )
     assignments = list(
         db.scalars(select(Assignment).where(Assignment.child_id == child.id, Assignment.done.is_(False)))
@@ -337,9 +344,9 @@ def plan(db, child, *, learning_paths=None):
                 }
             )
     for m in db.scalars(
-        select(Material).where(
-            Material.child_id == child.id, Material.confirmed.is_(True), Material.school_day_id.is_(None)
-        )
+        select(Material)
+        .where(Material.child_id == child.id, Material.confirmed.is_(True), Material.school_day_id.is_(None))
+        .options(defer(Material.content), defer(Material.homework), defer(Material.uncertainties))
     ):
         if not any(x["topic"] == m.topic for x in candidates) and not any(u.material_id == m.id for u in units):
             candidates.append(
@@ -416,7 +423,7 @@ def plan(db, child, *, learning_paths=None):
 
 
 @router.get("/children/{child_id}/overview")
-def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
+def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, compact: bool = False):
     from .coaching import paths
 
     child = child_access(db, p, child_id)
@@ -426,6 +433,52 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
             select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
         )
     )
+    current_plan = plan(db, child, learning_paths=learning_paths)
+    if compact:
+        from .library import MATERIAL_FIELDS, material_summary, unit_summaries
+
+        material_count = db.scalar(select(func.count()).select_from(Material).where(Material.child_id == child.id))
+        pending = list(
+            db.scalars(
+                select(Material)
+                .outerjoin(SchoolDay, SchoolDay.id == Material.school_day_id)
+                .options(load_only(*MATERIAL_FIELDS))
+                .where(
+                    Material.child_id == child.id,
+                    Material.confirmed.is_(False),
+                    or_(Material.school_day_id.is_(None), SchoolDay.school_date == current_plan["date"]),
+                )
+                .order_by(Material.created.desc(), Material.id.desc())
+                .limit(24)
+            )
+        )
+        pending_review_ids = list(
+            db.scalars(
+                select(LearningUnit.id)
+                .join(UnitCoaching, UnitCoaching.unit_id == LearningUnit.id)
+                .where(
+                    LearningUnit.child_id == child.id,
+                    LearningUnit.status == "completed",
+                    UnitCoaching.status == "pending",
+                )
+                .order_by(LearningUnit.created.desc(), LearningUnit.id.desc())
+                .limit(3)
+            )
+        )
+        unit_previews = list(unit_summaries(db, pending_review_ids).values())
+        for preview in unit_previews:
+            preview["coaching"] = {"status": preview["review_status"]}
+        later = current_plan["later"]
+        current_plan = current_plan | {
+            "today_count": len(current_plan["today"]),
+            "later_count": len(later),
+            "today": current_plan["today"][:3],
+            "later": [
+                item for item in later if not item.get("scheduled_for") or item["scheduled_for"] <= current_plan["date"]
+            ][:1],
+        }
+    else:
+        material_count = None
     return {
         "child": child_data(db, child),
         "school_days": [
@@ -437,10 +490,13 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
             }
             for d in days
         ],
-        "plan": plan(db, child, learning_paths=learning_paths),
+        "plan": current_plan,
         "day_summary": summary(db, child, 1, learning_paths=learning_paths),
         "week_summary": summary(db, child, 7, learning_paths=learning_paths),
-        "materials": [
+        "material_count": material_count,
+        "materials": [material_summary(m) for m in pending]
+        if compact
+        else [
             material_data(m)
             for m in db.scalars(select(Material).where(Material.child_id == child.id).order_by(Material.created.desc()))
         ],
@@ -450,14 +506,19 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
                 select(Assignment).where(Assignment.child_id == child.id).order_by(Assignment.created.desc())
             )
         ],
-        "units": [
+        "units": unit_previews
+        if compact
+        else [
             unit_data(db, u, include_answers=p.user.role == "parent", include_progress=False)
             for u in db.scalars(
                 select(LearningUnit).where(LearningUnit.child_id == child.id).order_by(LearningUnit.created.desc())
             )
         ],
-        "mastery": [mastery_data(m) for m in db.scalars(select(Mastery).where(Mastery.child_id == child.id))],
-        "learning_paths": learning_paths,
+        "mastery": [
+            mastery_data(m)
+            for m in db.scalars(select(Mastery).where(Mastery.child_id == child.id).limit(3 if compact else None))
+        ],
+        "learning_paths": learning_paths[:3] if compact else learning_paths,
         "messages": [
             {
                 "id": m.id,

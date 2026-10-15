@@ -57,6 +57,10 @@ Future<GoRouter> _openHome(
         builder: (_, _) => const Scaffold(body: Text('Lernrunde-Ziel')),
       ),
       GoRoute(
+        path: '/library/:id',
+        builder: (_, _) => const Scaffold(body: Text('Heftbibliothek')),
+      ),
+      GoRoute(
         path: '/material/:id',
         builder: (_, _) => const Scaffold(body: Text('Heftseite prüfen')),
       ),
@@ -72,7 +76,7 @@ Future<GoRouter> _openHome(
 
 void main() {
   testWidgets(
-    'Child sees one clear learning action; saved content opens on demand',
+    'Child sees one learning action and opens a separate private library',
     (tester) async {
       final requests = <http.Request>[];
       final data = _overview();
@@ -89,7 +93,8 @@ void main() {
       await tester.ensureVisible(find.text('Meine Heftseiten'));
       await tester.tap(find.text('Meine Heftseiten'));
       await tester.pumpAndSettle();
-      expect(find.text('Synthetischer Hefteintrag · Brüche'), findsOneWidget);
+      expect(find.text('Heftbibliothek'), findsOneWidget);
+      expect(find.text('Synthetischer Hefteintrag · Brüche'), findsNothing);
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
       await tester.pumpWidget(const SizedBox());
     },

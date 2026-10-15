@@ -190,6 +190,8 @@ class AppState extends ChangeNotifier {
   Json? demoCredentials;
   Uint8List? recoveredPhoto;
   final List<Uint8List> recoveredPhotos = [];
+  // Only view preferences; never persisted, and cleared on account changes.
+  final Map<String, Json> collectionViews = {};
   AppState({Api? api, FlutterSecureStorage? storage})
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
@@ -253,6 +255,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> accept(Json response) async {
     if (user != null && user!['id'] != response['user']['id']) {
+      collectionViews.clear();
       await push.forget();
       await pendingUploads.clear();
     }
@@ -296,6 +299,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> clear() async {
+    collectionViews.clear();
     await push.forget();
     api.token = null;
     user = null;

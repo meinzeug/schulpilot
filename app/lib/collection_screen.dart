@@ -1,0 +1,831 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import 'api.dart';
+import 'learning_navigation.dart';
+import 'material_screen.dart';
+import 'ui.dart';
+
+class CollectionScreen extends StatelessWidget {
+  final AppState state;
+  final String childId;
+  final bool learning;
+  const CollectionScreen(
+    this.state, {
+    super.key,
+    required this.childId,
+    this.learning = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => PageFrame(
+    state: state,
+    title: learning
+        ? 'Dein Lernen'
+        : state.isChild
+        ? 'Meine Hefte'
+        : 'Heftseiten',
+    actions: [
+      if (!learning && (state.isChild || state.canManage))
+        OutlinedButton.icon(
+          onPressed: () async {
+            if (state.isChild) {
+              openRoute(context, '/after-school/$childId');
+            } else {
+              await importMaterial(context, state, childId);
+            }
+          },
+          icon: const Icon(Icons.add_a_photo_outlined),
+          label: const Text('Neue Heftfotos'),
+        ),
+      if (!state.isChild)
+        TextButton.icon(
+          onPressed: () => openRoute(context, '/child/$childId'),
+          icon: const Icon(Icons.arrow_back_rounded),
+          label: const Text('Zum Lernüberblick'),
+        ),
+    ],
+    child: PagedCollection(
+      state,
+      key: ValueKey('${state.user?['id']}:$childId:$learning'),
+      childId: childId,
+      learning: learning,
+    ),
+  );
+}
+
+/// Both lists use server pagination, metadata only, and the same mobile controls.
+class PagedCollection extends StatefulWidget {
+  final AppState state;
+  final String childId;
+  final bool learning;
+  final ValueChanged<Json>? onSelect;
+  final String initialSection;
+  const PagedCollection(
+    this.state, {
+    super.key,
+    required this.childId,
+    this.learning = false,
+    this.onSelect,
+    this.initialSection = 'ready',
+  });
+  @override
+  State<PagedCollection> createState() => _PagedCollectionState();
+}
+
+class _PagedCollectionState extends State<PagedCollection> {
+  final search = TextEditingController();
+  final top = GlobalKey();
+  Timer? debounce;
+  Json? data;
+  String? error, subject, opening;
+  String status = 'all', sort = 'subject', section = 'ready';
+  DateTimeRange? dates;
+  int page = 1, pageSize = 20, generation = 0;
+  bool loading = true;
+  late String owner;
+  String get cacheKey =>
+      '${widget.learning ? 'learning' : 'materials'}:${widget.childId}';
+  bool get active => mounted && widget.state.user?['id'] == owner;
+  bool get filtered =>
+      search.text.trim().isNotEmpty ||
+      subject != null ||
+      status != (widget.onSelect == null ? 'all' : 'confirmed') ||
+      dates != null;
+
+  @override
+  void initState() {
+    super.initState();
+    owner = widget.state.user?['id'] ?? '';
+    widget.state.addListener(identityChanged);
+    section = widget.initialSection;
+    final saved = widget.onSelect == null
+        ? widget.state.collectionViews[cacheKey]
+        : null;
+    if (saved != null) {
+      search.text = saved['q'] ?? '';
+      subject = saved['subject'];
+      status = saved['status'] ?? 'all';
+      sort = saved['sort'] ?? 'subject';
+      section = saved['section'] ?? 'ready';
+      page = saved['page'] ?? 1;
+      pageSize = saved['page_size'] ?? 20;
+      if (saved['since'] != null && saved['until'] != null) {
+        dates = DateTimeRange(
+          start: DateTime.parse(saved['since']),
+          end: DateTime.parse(saved['until']),
+        );
+      }
+    }
+    if (widget.onSelect != null) status = 'confirmed';
+    load();
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(identityChanged);
+    debounce?.cancel();
+    search.dispose();
+    super.dispose();
+  }
+
+  void identityChanged() {
+    if (mounted && widget.state.user?['id'] != owner) {
+      generation++;
+      debounce?.cancel();
+      setState(() {
+        data = null;
+        search.clear();
+      });
+    }
+  }
+
+  Json query() => {
+    'q': search.text.trim(),
+    'subject': subject,
+    'status': status,
+    'sort': sort,
+    'section': section,
+    'page': page,
+    'page_size': pageSize,
+    'since': dates == null
+        ? null
+        : DateFormat('yyyy-MM-dd').format(dates!.start),
+    'until': dates == null ? null : DateFormat('yyyy-MM-dd').format(dates!.end),
+  };
+
+  void remember() {
+    if (active && widget.onSelect == null) {
+      widget.state.collectionViews[cacheKey] = query();
+    }
+  }
+
+  Future<void> load({bool scroll = false}) async {
+    final request = ++generation;
+    if (!active) return;
+    debounce?.cancel();
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    remember();
+    final params = <String, String>{
+      'q': search.text.trim(),
+      'sort': sort,
+      'page': '$page',
+      'page_size': '$pageSize',
+      'subject': ?subject,
+      if (widget.learning) 'section': section else 'status': status,
+      if (!widget.learning && dates != null)
+        'since': DateFormat('yyyy-MM-dd').format(dates!.start),
+      if (!widget.learning && dates != null)
+        'until': DateFormat('yyyy-MM-dd').format(dates!.end),
+    };
+    final path = Uri(
+      path:
+          '/children/${widget.childId}/${widget.learning ? 'learning' : 'materials'}',
+      queryParameters: params,
+    );
+    try {
+      final result = await widget.state.api.get(path.toString());
+      if (!active || request != generation) return;
+      setState(() {
+        data = result;
+        page = result['page'];
+        loading = false;
+      });
+      remember();
+      if (scroll) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final context = top.currentContext;
+          if (active && context != null) {
+            Scrollable.ensureVisible(
+              context,
+              alignment: 0,
+              duration: const Duration(milliseconds: 180),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      if (active && request == generation) {
+        setState(() {
+          error = e is ApiError
+              ? e.message
+              : 'Gerade nicht erreichbar. Bitte erneut laden.';
+          loading = false;
+        });
+      }
+    }
+  }
+
+  void change(VoidCallback edit, {bool delayed = false, bool scroll = false}) {
+    debounce?.cancel();
+    generation++;
+    setState(() {
+      edit();
+      page = 1;
+      data = null;
+      loading = true;
+      error = null;
+    });
+    remember();
+    if (delayed) {
+      debounce = Timer(const Duration(milliseconds: 350), load);
+    } else {
+      load(scroll: scroll);
+    }
+  }
+
+  void reset() => change(() {
+    search.clear();
+    subject = null;
+    status = widget.onSelect == null ? 'all' : 'confirmed';
+    dates = null;
+    sort = 'subject';
+  });
+
+  Future<void> filters() async {
+    var draftStatus = status, draftSort = sort, draftSize = pageSize;
+    var draftDates = dates;
+    final accepted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Ansicht anpassen',
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 20),
+                if (!widget.learning && widget.onSelect == null) ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: draftStatus,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Seiten'),
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('Alle')),
+                      DropdownMenuItem(
+                        value: 'review',
+                        child: Text('Bitte prüfen'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'confirmed',
+                        child: Text('Bestätigt'),
+                      ),
+                    ],
+                    onChanged: (value) => set(() => draftStatus = value!),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                DropdownButtonFormField<String>(
+                  initialValue: draftSort,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Sortierung'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'subject',
+                      child: Text('Nach Fach'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'newest',
+                      child: Text('Neueste zuerst'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'oldest',
+                      child: Text('Älteste zuerst'),
+                    ),
+                  ],
+                  onChanged: (value) => set(() => draftSort = value!),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  initialValue: draftSize,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Ergebnisse pro Seite',
+                  ),
+                  items: [
+                    for (final size in [10, 20, 50])
+                      DropdownMenuItem(value: size, child: Text('$size')),
+                  ],
+                  onChanged: (value) => set(() => draftSize = value!),
+                ),
+                if (!widget.learning) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final selected = await showDateRangePicker(
+                        context: ctx,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now().add(const Duration(days: 366)),
+                        initialDateRange: draftDates,
+                        helpText: 'Zeitraum wählen',
+                        saveText: 'Übernehmen',
+                      );
+                      if (selected != null && ctx.mounted) {
+                        set(() => draftDates = selected);
+                      }
+                    },
+                    icon: const Icon(Icons.date_range_rounded),
+                    label: Text(
+                      draftDates == null
+                          ? 'Alle Tage'
+                          : '${DateFormat('dd.MM.yy').format(draftDates!.start)} – ${DateFormat('dd.MM.yy').format(draftDates!.end)}',
+                    ),
+                  ),
+                  if (draftDates != null)
+                    TextButton(
+                      onPressed: () => set(() => draftDates = null),
+                      child: const Text('Zeitraum entfernen'),
+                    ),
+                ],
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Anwenden'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Abbrechen'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (accepted == true && active) {
+      change(() {
+        status = draftStatus;
+        sort = draftSort;
+        pageSize = draftSize;
+        dates = draftDates;
+      });
+    }
+  }
+
+  Future<void> open(Json item) async {
+    if (opening != null || !active) return;
+    if (widget.onSelect != null) {
+      widget.onSelect!(item);
+      return;
+    }
+    final kind = item['kind'];
+    String? route;
+    if (!widget.learning || kind == 'material') {
+      route = '/material/${item['id']}';
+    } else if (kind == 'unit' || !widget.state.isChild && kind == 'review') {
+      route = '/unit/${item['id']}';
+    } else if (kind == 'study_path') {
+      route = '/after-school/${widget.childId}?day=${item['id']}';
+    }
+    if (route != null) {
+      FocusManager.instance.primaryFocus?.unfocus();
+      if (kIsWeb) {
+        context.go(route);
+      } else {
+        await context.push(route);
+        if (active) await load();
+      }
+      return;
+    }
+    if (!widget.state.isChild) return;
+    setState(() => opening = item['id']);
+    try {
+      await openPlanItem(context, widget.state, {
+        'child': {'id': widget.childId},
+      }, item);
+    } catch (e) {
+      if (mounted && active) showError(context, e);
+    } finally {
+      if (active) setState(() => opening = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.state.user?['id'] != owner) {
+      return const Notice('Bitte melde dich erneut an.');
+    }
+    final items = (data?['items'] as List? ?? []).cast<Json>();
+    final subjects = (data?['subjects'] as List? ?? []).cast<Json>();
+    final choices = {
+      ...subjects.map((s) => s['value'] as String),
+      ?subject,
+    }.toList();
+    final total = (data?['total'] as num? ?? 0).toInt(),
+        pages = (data?['pages'] as num? ?? 1).toInt();
+    final first = total == 0 ? 0 : (page - 1) * pageSize + 1,
+        last = total == 0 ? 0 : first + items.length - 1;
+    return Column(
+      key: top,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.learning) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tab in [
+                ('ready', 'Offen'),
+                ('later', 'Später'),
+                ('completed', 'Erledigt'),
+              ])
+                ChoiceChip(
+                  label: Text(tab.$2),
+                  selected: section == tab.$1,
+                  onSelected: (_) => change(() {
+                    section = tab.$1;
+                    subject = null;
+                    search.clear();
+                  }, scroll: true),
+                ),
+            ],
+          ),
+          if (data?['paused'] == true)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Heute ist Lernpause. Dein Stoff bleibt gespeichert.',
+              ),
+            ),
+          const SizedBox(height: 16),
+        ],
+        TextField(
+          controller: search,
+          maxLength: 120,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            labelText: widget.learning
+                ? 'Thema suchen'
+                : 'Heftseiten durchsuchen',
+            counterText: '',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Suche löschen',
+                    onPressed: () => change(search.clear),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+          ),
+          onChanged: (_) => change(() {}, delayed: true),
+          onSubmitted: (_) => load(),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                key: ValueKey(subject),
+                initialValue: subject,
+                isExpanded: true,
+                hint: const Text('Alle Fächer'),
+                decoration: const InputDecoration(labelText: 'Fach'),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Alle Fächer'),
+                  ),
+                  for (final value in choices)
+                    DropdownMenuItem(
+                      value: value,
+                      child: Text(
+                        value.isEmpty ? 'Fach noch offen' : value,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) => change(() => subject = value),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: 'Filter und Sortierung',
+              onPressed: filters,
+              icon: Badge(
+                isLabelVisible:
+                    status != 'all' || dates != null || sort != 'subject',
+                smallSize: 7,
+                child: const Icon(Icons.tune_rounded),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Liste aktualisieren',
+              onPressed: loading ? null : load,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (filtered)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: reset,
+              icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+              label: const Text('Filter zurücksetzen'),
+            ),
+          ),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.all(28),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (error != null) ...[
+          Notice(error!, warning: true),
+          OutlinedButton(onPressed: load, child: const Text('Erneut laden')),
+        ] else ...[
+          Text(
+            total == 0
+                ? 'Keine Ergebnisse'
+                : '$first–$last von $total ${widget.learning ? 'Einträgen' : 'Seiten'}',
+            style: const TextStyle(color: muted, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          if (items.isEmpty)
+            Panel(
+              child: Column(
+                children: [
+                  Icon(
+                    widget.learning
+                        ? Icons.auto_stories_outlined
+                        : Icons.folder_open_rounded,
+                    size: 36,
+                    color: teal,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    filtered
+                        ? 'Nichts gefunden. Probiere einen anderen Filter.'
+                        : widget.learning
+                        ? section == 'completed'
+                              ? 'Hier erscheinen deine abgeschlossenen Runden.'
+                              : section == 'later'
+                              ? 'Für später ist gerade nichts offen.'
+                              : 'Gerade ist keine Lernrunde eingeplant.'
+                        : widget.onSelect != null
+                        ? 'Bestätige zuerst eine Heftseite. Danach kannst du sie hier auswählen.'
+                        : 'Hier sammeln sich deine Heftseiten.',
+                  ),
+                ],
+              ),
+            ),
+          ...rows(items),
+          if (pages > 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton.filledTonal(
+                    tooltip: 'Vorherige Seite',
+                    onPressed: page <= 1
+                        ? null
+                        : () {
+                            setState(() => page--);
+                            load(scroll: true);
+                          },
+                    icon: const Icon(Icons.chevron_left_rounded),
+                  ),
+                  Flexible(
+                    child: Text(
+                      'Seite $page von $pages',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: 'Nächste Seite',
+                    onPressed: page >= pages
+                        ? null
+                        : () {
+                            setState(() => page++);
+                            load(scroll: true);
+                          },
+                    icon: const Icon(Icons.chevron_right_rounded),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> rows(List<Json> items) {
+    final widgets = <Widget>[];
+    String? previousSubject;
+    for (final item in items) {
+      final subject = item['subject']?.toString().trim() ?? '';
+      if (sort == 'subject' && subject != previousSubject) {
+        previousSubject = subject;
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 12, 2, 10),
+            child: Text(
+              subject.isEmpty ? 'Fach noch offen' : subject,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: ink,
+              ),
+            ),
+          ),
+        );
+      }
+      widgets.add(_tile(item));
+    }
+    return widgets;
+  }
+
+  Widget _tile(Json item) {
+    final topic = (item['topic'] as String? ?? '').trim(),
+        title = topic.isEmpty ? item['title'] ?? 'Heftseite' : topic;
+    final closed = (item['closed_questions'] as num? ?? 0).toInt(),
+        count = (item['question_count'] as num? ?? 0).toInt();
+    final timestamp = widget.learning
+        ? item['completed'] ?? item['created']
+        : item['created'];
+    final stamp =
+        item['school_date'] ??
+        (timestamp == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(
+                (timestamp as num).toInt() * 1000,
+              ).toLocal().toIso8601String());
+    final date = DateTime.tryParse(stamp ?? '');
+    final scheduled = DateTime.tryParse(item['scheduled_for'] ?? '');
+    final later =
+        scheduled != null &&
+        scheduled.isAfter(DateTime.parse(data?['date'] ?? '9999-01-01'));
+    final actionable =
+        !widget.learning ||
+        item['kind'] == 'unit' ||
+        widget.state.isChild && data?['paused'] != true && !later ||
+        !widget.state.isChild &&
+            ['review', 'study_path', 'material'].contains(item['kind']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Panel(
+        padding: const EdgeInsets.all(14),
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: mint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              widget.learning
+                  ? item['status'] == 'completed'
+                        ? Icons.task_alt_rounded
+                        : Icons.auto_stories_outlined
+                  : Icons.description_outlined,
+              color: teal,
+              size: 23,
+            ),
+          ),
+          title: Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (sort != 'subject')
+                  Text(
+                    item['subject']?.toString().trim().isEmpty == false
+                        ? item['subject']
+                        : 'Fach noch offen',
+                  ),
+                if (!widget.learning)
+                  Text(
+                    [
+                      if (date != null) DateFormat('dd.MM.yyyy').format(date),
+                      if (item['page_number'] != null)
+                        'Seite ${item['page_number']}',
+                      if (item['confirmed'] != true) 'Bitte prüfen',
+                    ].join(' · '),
+                  ),
+                if (widget.learning) ...[
+                  Text(
+                    [
+                      if (count > 0)
+                        '$closed von $count Aufgaben'
+                      else
+                        item['assignment_kind'] == 'homework'
+                            ? 'Notierte Hausaufgabe'
+                            : item['mandatory'] == true
+                            ? 'Elternauftrag'
+                            : item['kind'] == 'review'
+                            ? 'Wiederholung'
+                            : 'Geplant',
+                      if (scheduled != null)
+                        'Ab ${DateFormat('dd.MM.').format(scheduled)}'
+                      else if (item['status'] != null)
+                        statusLabel(item['status']),
+                    ].join(' · '),
+                  ),
+                  if (date != null)
+                    Text(
+                      DateFormat('dd.MM.yyyy').format(date),
+                      style: const TextStyle(fontSize: 12, color: muted),
+                    ),
+                  if (item['review_status'] == 'pending')
+                    const Text(
+                      'Rückblick wird vorbereitet',
+                      style: TextStyle(fontSize: 12, color: muted),
+                    ),
+                  if (count > 0 && item['status'] != 'completed')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: LinearProgressIndicator(
+                        value: (closed / count).clamp(0, 1),
+                        minHeight: 3,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+          trailing: opening == item['id']
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  actionable
+                      ? Icons.chevron_right_rounded
+                      : Icons.schedule_rounded,
+                  color: muted,
+                ),
+          onTap: actionable ? () => open(item) : null,
+        ),
+      ),
+    );
+  }
+}
+
+Future<Json?> pickLibraryMaterial(
+  BuildContext context,
+  AppState state,
+  String childId,
+) => showDialog<Json>(
+  context: context,
+  builder: (ctx) => Dialog(
+    insetPadding: const EdgeInsets.all(12),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 650, maxHeight: 680),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Bestätigte Heftseite wählen',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Schließen',
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: SingleChildScrollView(
+                child: PagedCollection(
+                  state,
+                  childId: childId,
+                  onSelect: (item) => Navigator.pop(ctx, item),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+);

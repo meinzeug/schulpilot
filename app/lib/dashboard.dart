@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'coaching_panel.dart';
+import 'collection_screen.dart';
+import 'learning_navigation.dart';
 import 'material_screen.dart';
 import 'ui.dart';
 
@@ -496,7 +498,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
     ],
     child: LoadView<Json>(
       key: ValueKey('${widget.childId}-$version'),
-      load: () => state.api.get('/children/${widget.childId}/overview'),
+      load: () =>
+          state.api.get('/children/${widget.childId}/overview?compact=true'),
       builder: (data, reload) {
         if (state.isChild) {
           return _ChildHomeContent(state: state, data: data, refresh: refresh);
@@ -822,70 +825,45 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                   ),
                 ),
             ],
-            if (tab == 2) materialList(context, state, data, refresh),
+            if (tab == 2) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        openRoute(context, '/library/${child['id']}'),
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('Bibliothek öffnen'),
+                  ),
+                  if (state.canManage)
+                    TextButton.icon(
+                      onPressed: () async {
+                        await importMaterial(context, state, child['id']);
+                        refresh();
+                      },
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                      label: const Text('Heftfoto hinzufügen'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              PagedCollection(
+                state,
+                key: ValueKey('parent-materials-${child['id']}'),
+                childId: child['id'],
+              ),
+            ],
             if (tab == 3) ...[
               heading('Aufgaben, Antworten & Unterstützung'),
-              for (final unit in data['units'] as List)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Panel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${unit['subject']} · ${unit['topic']}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Tag(statusLabel(unit['status'])),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Ca. ${(unit['active_seconds_approx'] / 60).toStringAsFixed(1)} aktive Min. · ${unit['review_of'] != null ? 'Wiederholung' : 'Selbst erzeugte Übung'}',
-                          style: const TextStyle(color: muted, fontSize: 12),
-                        ),
-                        for (final q in unit['questions'] as List) ...[
-                          const Divider(height: 28),
-                          Text(
-                            q['prompt'],
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          if ((q['attempts'] as List).isEmpty)
-                            const Text(
-                              'Nicht begonnen',
-                              style: TextStyle(color: muted),
-                            ),
-                          for (final a in q['attempts'] as List)
-                            Text(
-                              '„${a['answer']}“ → ${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung' : 'selbstständig'}' : ''}',
-                              style: const TextStyle(fontSize: 13, height: 1.8),
-                            ),
-                          if (q['hints_used'] > 0)
-                            Text(
-                              '${q['hints_used']} Hinweise aufgerufen',
-                              style: const TextStyle(
-                                color: muted,
-                                fontSize: 12,
-                              ),
-                            ),
-                        ],
-                        TextButton.icon(
-                          onPressed: () =>
-                              openRoute(context, '/unit/${unit['id']}'),
-                          icon: const Icon(Icons.open_in_new, size: 16),
-                          label: const Text('Erklärungen & Details ansehen'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              PagedCollection(
+                state,
+                key: ValueKey('parent-learning-${child['id']}'),
+                childId: child['id'],
+                learning: true,
+                initialSection: 'completed',
+              ),
+              const SizedBox(height: 20),
               LoadView<List<dynamic>>(
                 load: () => state.api.list('/children/${child['id']}/activity'),
                 builder: (activities, _) => Panel(
@@ -975,8 +953,6 @@ class _ChildHomeContent extends StatelessWidget {
     final continuing =
         canLearn && (next['status'] == 'active' || next['status'] == 'paused');
     final completed = (plan['completed_today'] as num? ?? 0).toInt();
-    final paths = data['learning_paths'] as List? ?? [];
-    final mastery = data['mastery'] as List? ?? [];
     final familyMessages = data['messages'] as List? ?? [];
 
     return Column(
@@ -1101,6 +1077,16 @@ class _ChildHomeContent extends StatelessWidget {
                 ),
               for (final item in today)
                 _ChildPlanRow(state: state, data: data, item: item),
+              TextButton.icon(
+                onPressed: () {
+                  state.collectionViews['learning:${child['id']}'] = {
+                    'section': 'ready',
+                  };
+                  openRoute(context, '/learn/${child['id']}');
+                },
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: const Text('Gesamten Lernplan öffnen'),
+              ),
               for (final notice in plan['notices'] as List? ?? [])
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -1109,48 +1095,21 @@ class _ChildHomeContent extends StatelessWidget {
             ],
           ),
         ),
-        if (later.isNotEmpty || mastery.isNotEmpty || paths.isNotEmpty)
-          _ChildHomeDisclosure(
-            icon: Icons.event_repeat_rounded,
-            title: 'Das übe ich später',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final path in paths)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        LearningProgressPanel(Json.from(path)),
-                        TextButton(
-                          onPressed: () => openRoute(
-                            context,
-                            '/unit/${path['latest_unit_id']}',
-                          ),
-                          child: const Text('Letzte Lernrunde ansehen'),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (paths.isEmpty)
-                  for (final item in mastery)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(item['topic']),
-                      subtitle: Text(
-                        '${item['subject']} · ${_shortDate(item['next_review'])}',
-                      ),
-                    ),
-                for (final item in later)
-                  _ChildPlanRow(state: state, data: data, item: item),
-              ],
-            ),
-          ),
-        _ChildHomeDisclosure(
-          icon: Icons.folder_open_rounded,
-          title: 'Meine Heftseiten',
-          child: materialList(context, state, data, refresh),
+        _collectionLink(
+          context,
+          Icons.auto_stories_rounded,
+          'Mein Lernen',
+          'Offene Runden und Wiederholungen',
+          '/learn/${child['id']}',
+        ),
+        _collectionLink(
+          context,
+          Icons.folder_open_rounded,
+          'Meine Heftseiten',
+          data['material_count'] == null
+              ? 'Deine Bibliothek'
+              : '${data['material_count']} Seiten in deiner Bibliothek',
+          '/library/${child['id']}',
         ),
         _ChildHomeDisclosure(
           icon: Icons.chat_bubble_outline_rounded,
@@ -1183,6 +1142,27 @@ class _ChildHomeContent extends StatelessWidget {
     );
   }
 }
+
+Widget _collectionLink(
+  BuildContext context,
+  IconData icon,
+  String title,
+  String subtitle,
+  String route,
+) => Padding(
+  padding: const EdgeInsets.only(bottom: 10),
+  child: Panel(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    child: ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: teal),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: () => openRoute(context, route),
+    ),
+  ),
+);
 
 class _ChildHomeDisclosure extends StatelessWidget {
   final IconData icon;
@@ -1434,116 +1414,6 @@ Future<void> startNext(BuildContext context, AppState state, Json data) async {
   }
 }
 
-Future<void> openPlanItem(
-  BuildContext context,
-  AppState state,
-  Json data,
-  dynamic item,
-) async {
-  if (item['kind'] == 'study_path') {
-    openRoute(
-      context,
-      '/after-school/${data['child']['id']}?day=${item['id']}',
-    );
-    return;
-  }
-  String? unitId;
-  if (item['kind'] == 'unit') {
-    unitId = item['id'];
-  } else {
-    String? materialId = item['material_id'];
-    if (item['kind'] == 'material') materialId = item['id'];
-    if (item['kind'] == 'assignment' && materialId == null) {
-      final matches = (data['materials'] as List)
-          .where(
-            (m) =>
-                m['confirmed'] == true &&
-                m['subject'] == item['subject'] &&
-                m['topic'] == item['topic'],
-          )
-          .toList();
-      if (matches.isNotEmpty) materialId = matches.first['id'];
-    }
-    final result = await state.api.job(
-      '/children/${data['child']['id']}/units',
-      {
-        'material_id': materialId,
-        'assignment_id': item['kind'] == 'assignment' ? item['id'] : null,
-        'review_of': item['kind'] == 'review' ? item['id'] : null,
-      },
-    );
-    unitId = result['unit_id'];
-  }
-  if (unitId != null) {
-    await state.api.post('/units/$unitId/start');
-    if (context.mounted) openRoute(context, '/unit/$unitId');
-  }
-}
-
-Widget materialList(
-  BuildContext context,
-  AppState state,
-  Json data,
-  VoidCallback refresh,
-) => Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    heading('Stoff aus dem Unterricht'),
-    ActionButton(
-      label: 'Material als Bild importieren',
-      icon: Icons.add_a_photo_outlined,
-      onPressed: () async {
-        await importMaterial(context, state, data['child']['id']);
-        refresh();
-      },
-    ),
-    const SizedBox(height: 20),
-    for (final m in data['materials'] as List)
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  Tag(
-                    m['subject'].toString().isEmpty
-                        ? 'Fach noch offen'
-                        : m['subject'],
-                  ),
-                  Tag(m['confirmed'] ? 'Bestätigt' : 'Bitte prüfen'),
-                  if (m['synthetic']) const Tag('Beispiel'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                m['title'],
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(m['topic'], style: const TextStyle(color: muted)),
-              TextButton.icon(
-                onPressed: () => openRoute(context, '/material/${m['id']}'),
-                icon: const Icon(Icons.arrow_forward, size: 17),
-                label: Text(
-                  m['confirmed']
-                      ? 'Stoff ansehen'
-                      : 'Stoff & Unsicherheiten bestätigen',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-  ],
-);
-
 Widget messages(
   BuildContext context,
   AppState state,
@@ -1725,6 +1595,12 @@ Future<void> assignmentDialog(
   String kind = existing?['kind'] == 'exam' ? 'exam' : 'parent';
   String? materialId = existing?['material_id'] ?? source?['id'];
   bool mandatory = existing?['mandatory'] ?? true;
+  String? selectedMaterialTitle =
+      source?['title'] ??
+      materials
+          .where((m) => m['id'] == materialId)
+          .map((m) => m['title'] as String)
+          .firstOrNull;
   await showDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -1768,28 +1644,41 @@ Future<void> assignmentDialog(
                       decoration: InputDecoration(labelText: item.$2),
                     ),
                   ),
-                DropdownButtonFormField<String>(
-                  initialValue: materialId ?? '',
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Material (optional)',
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final selected = await pickLibraryMaterial(
+                      ctx,
+                      state,
+                      child['id'],
+                    );
+                    if (selected != null && ctx.mounted) {
+                      set(() {
+                        materialId = selected['id'];
+                        selectedMaterialTitle =
+                            selected['topic']?.toString().isNotEmpty == true
+                            ? selected['topic']
+                            : selected['title'];
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.folder_open_rounded),
+                  label: Text(
+                    materialId == null
+                        ? 'Heftseite auswählen (optional)'
+                        : selectedMaterialTitle ??
+                              'Verknüpfte Heftseite ändern',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: '',
-                      child: Text('Ohne Material'),
-                    ),
-                    for (final m in materials)
-                      DropdownMenuItem<String>(
-                        value: m['id'],
-                        child: Text(
-                          m['title'],
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: (v) => set(() => materialId = v == '' ? null : v),
                 ),
+                if (materialId != null)
+                  TextButton(
+                    onPressed: () => set(() {
+                      materialId = null;
+                      selectedMaterialTitle = null;
+                    }),
+                    child: const Text('Ohne Heftseite fortfahren'),
+                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Verbindlicher Elternauftrag'),
