@@ -15,7 +15,21 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func, select, update
 
 from . import schemas as s
-from .db import DB, Child, Family, Job, LearningUnit, ProviderConfig, SchoolDay, UnitSource, Usage, get_db, now, uid
+from .db import (
+    DB,
+    Attempt,
+    Child,
+    Family,
+    Job,
+    LearningUnit,
+    ProviderConfig,
+    SchoolDay,
+    UnitSource,
+    Usage,
+    get_db,
+    now,
+    uid,
+)
 from .learning import local_day, plan, record
 from .providers import ProviderError, config_for_function, request_provider, reserve, settle
 from .school_day import get_day, pages, planning_fingerprint
@@ -95,6 +109,22 @@ def ensure_plan(db, day):
     for material, extent in zip(items, extents, strict=True):
         count = min(remaining, max(0, extent["target_questions"] - credits[material.id]))
         while count:
+            if count == remaining == 1:
+                previous = next(
+                    (
+                        b
+                        for b in reversed(blocks)
+                        if not b.get("unit_id") and b.get("subject") == material.subject and b["question_count"] < 5
+                    ),
+                    None,
+                )
+                if previous:
+                    previous["question_count"] += 1
+                    if material.id not in previous["material_ids"]:
+                        previous["material_ids"].append(material.id)
+                        previous["title"] = (previous["title"] + " · " + material.topic)[:160]
+                remaining = count = 0
+                break
             take = min(5, count)
             if count - take == 1:
                 take -= 1
@@ -178,12 +208,23 @@ def path_data(db, day, child):
             else "planned"
         )
         count = len(unit.questions) if unit else saved["question_count"]
+        answered = 0
+        if unit:
+            attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id)))
+            for question in unit.questions:
+                responses = [a for a in attempts if a.question_id == question["id"]]
+                answered += int(len(responses) >= 3 or any(a.outcome in ("correct", "uncertain") for a in responses))
         block = {key: saved.get(key) for key in ("id", "title", "phase", "label", "unit_id", "job_id")}
-        block.update(status=status, question_count=count, error=job.error if job and job.status == "failed" else None)
+        block.update(
+            status=status,
+            question_count=count,
+            completed_questions=answered,
+            error=job.error if job and job.status == "failed" else None,
+        )
         result["blocks"].append(block)
         result["total_questions"] += count
-        result["completed_questions"] += count if status == "completed" else 0
-        result["ready_questions"] += count if status == "ready" else 0
+        result["completed_questions"] += answered
+        result["ready_questions"] += count - answered if status == "ready" else 0
         if status != "completed" and result["next_block_id"] is None:
             result["next_block_id"] = saved["id"]
             result["block_reason"] = block_reason(

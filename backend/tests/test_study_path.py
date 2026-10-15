@@ -42,6 +42,43 @@ def test_large_dense_batches_keep_every_page_inside_the_total_cap():
     assert all(e["target_questions"] == 5 for e in extents)
 
 
+def test_existing_five_question_intro_leaves_one_three_question_stage_for_two_pages(study):
+    from schulpilot.synthetic import sample_unit
+
+    with DB.begin() as db:
+        for material_id in study["materials"][2:]:
+            db.delete(db.get(Material, material_id))
+        data = sample_unit()
+        extra = {
+            **data["questions"][-1],
+            "id": "intro-extra",
+            "prompt": "Welche Zahl steht bei 1/4 im Nenner?",
+            "answer": "4",
+            "accepted": [],
+            "explanation": "Beim Bruch 1/4 steht die Vier unter dem Bruchstrich.",
+        }
+        unit = LearningUnit(
+            child_id=study["child"]["id"],
+            school_day_id=study["day_id"],
+            subject="Sachunterricht",
+            topic="Erste Runde",
+            explanation=data["explanation"],
+            questions=[*data["questions"], extra],
+            synthetic=False,
+            provider="fixture",
+        )
+        db.add(unit)
+        db.flush()
+        assert len(unit.questions) == 5
+        for material_id in study["materials"][:2]:
+            material = db.get(Material, material_id)
+            db.add(UnitSource(unit_id=unit.id, material_id=material.id, revision=material.revision))
+    result = create(study)
+    assert result["total_questions"] == 8
+    assert [b["question_count"] for b in result["blocks"]] == [5, 3]
+    assert result["completed_questions"] == 0 and result["ready_questions"] == 5
+
+
 @pytest.fixture
 def study(api, household):
     parent, kid = household
@@ -223,6 +260,11 @@ def test_one_small_stage_is_persisted_and_progress_comes_from_saved_answers(api,
             f"/api/units/{unit_id}/questions/q{index + 1}/answer", json={"answer": "Ein Stern"}
         )
         assert response.status_code == 200, response.text
+        if index == 0:
+            partial = api.get(path(study)).json()
+            assert partial["completed_questions"] == 1
+            assert partial["ready_questions"] == 3
+            assert partial["blocks"][0]["status"] == "ready"
     complete = api.get(path(study)).json()
     assert complete["completed_questions"] == 4 and complete["ready_questions"] == 0
     assert complete["blocks"][0]["status"] == "completed" and complete["next_block_id"] == planned["blocks"][1]["id"]

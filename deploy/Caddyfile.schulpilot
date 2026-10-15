@@ -13,7 +13,7 @@ schulpilot.dorfspy.de {
     X-Content-Type-Options "nosniff"
     Referrer-Policy "no-referrer"
     X-Frame-Options "DENY"
-    Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+    Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
     Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' blob: https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     Cache-Control "no-cache"
   }

@@ -194,6 +194,50 @@ def strict_schema(model, *, preserve_limits=False):
     return schema
 
 
+def source_excerpt_candidates(payload):
+    """Bound literal evidence, sharing space across pages and their full text."""
+    texts = [material.get("content") for material in payload.get("materials", [])]
+    goal = payload.get("goal") or {}
+    # A parent can set a topic without writing a note or supplying a photo.
+    # It is an explicit goal, not a fabricated quotation from a notebook.
+    texts.append(goal.get("note") or goal.get("topic"))
+    sources = []
+    for text in texts:
+        if not isinstance(text, str):
+            continue
+        excerpts = []
+        for passage in re.split(r"(?<=[.!?])\s+|[\r\n]+", text):
+            passage = passage.strip()
+            while passage:
+                end = min(len(passage), 350)
+                if len(passage) > end:
+                    spaces = list(re.finditer(r"\s", passage[: end + 1]))
+                    if spaces:
+                        end = spaces[-1].start() or end
+                excerpt = passage[:end].strip()
+                if len(excerpt) >= 3:
+                    excerpts.append(excerpt)
+                passage = passage[end:].strip()
+        if excerpts:
+            sources.append(list(dict.fromkeys(excerpts)))
+    # Allocate before sampling, so a long first page cannot crowd out the rest.
+    quotas = [0] * len(sources)
+    while sum(quotas) < 32:
+        advanced = False
+        for index, source in enumerate(sources):
+            if quotas[index] < len(source) and sum(quotas) < 32:
+                quotas[index] += 1
+                advanced = True
+        if not advanced:
+            break
+    candidates = []
+    for source, quota in zip(sources, quotas):
+        for index in range(quota):
+            position = round(index * (len(source) - 1) / (quota - 1)) if quota > 1 else 0
+            candidates.append(source[position])
+    return list(dict.fromkeys(candidates))
+
+
 def prune_schema(schema):
     """Remove unreachable definitions after narrowing a response branch.
 
@@ -553,6 +597,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     }.get(function, s.UnitOutput)
     if function == "unit" and payload.get("review") and payload.get("learning_goals"):
         model_type = s.PracticeUnitOutput
+    excerpt_candidates = None
+    if function == "coach" and not payload.get("learning_goals"):
+        excerpt_candidates = source_excerpt_candidates(payload)
+        if not excerpt_candidates:
+            raise ProviderError("Für den Rückblick fehlt ein wörtlicher Beleg im bestätigten Stoff.")
+        payload = {**payload, "source_excerpt_candidates": excerpt_candidates}
     assigned_goals = {}
     if function == "coach" and payload.get("learning_goals"):
         model_type = s.CoachingReviewOutput
@@ -567,6 +617,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             model_type = s.AssignedCoachingReviewOutput
     schema = strict_schema(model_type, preserve_limits=config.provider == "openrouter")
     if function == "coach":
+        if excerpt_candidates is not None:
+            schema["$defs"]["LearningGoal"]["properties"]["source_excerpt"]["enum"] = excerpt_candidates
         ids = [q["question_id"] for q in payload["completed_questions"]]
         schema["properties"]["question_reviews"].update(minItems=len(ids), maxItems=len(ids))
         review_type = "QuestionFeedback" if model_type is s.AssignedCoachingReviewOutput else "QuestionReview"
@@ -584,6 +636,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     review_only = function == "coach" and bool(payload.get("defer_practice"))
     instructions = system_text(function, review_only=review_only)
+    if excerpt_candidates is not None:
+        instructions += (
+            "\nFür jedes neue Lernziel source_excerpt EXAKT und UNVERÄNDERT aus "
+            "source_excerpt_candidates wählen. Keine Paraphrase, Zusammenfassung, Auslassungszeichen "
+            "oder veränderte Schreibweise. Wähle einen zum konkreten Lernziel passenden Beleg."
+        )
     if function == "coach" and payload.get("defer_practice"):
         instructions += (
             "\nDIESER AUFTRAG IST NUR DER RÜCKBLICK. next_unit ist IMMER null. "
@@ -875,6 +933,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             data = model_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
         else:
             data = model_type.model_validate_json(text).model_dump()
+        if excerpt_candidates is not None and any(
+            goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
+        ):
+            raise ProviderError("Ein vorgeschlagenes Lernziel verwendet keinen der wörtlichen Belege.")
         if review_only and data.get("next_unit") is not None:
             raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
         if block_count:
