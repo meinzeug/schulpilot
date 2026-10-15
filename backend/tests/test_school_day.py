@@ -443,6 +443,7 @@ def test_day_fixture_provider_discards_all_arbitrary_caller_data(api, monkeypatc
         def post(self, url, headers, json):
             captured.append(json)
             data = {"units": [{**sample_unit(), "group_id": "g1"}]}
+            data["units"][0]["questions"] = data["units"][0]["questions"][:2]
             if invalid_output:
                 data["units"][0]["PRIVATE-FIELD"] = "PRIVATE-ANSWER"
             return httpx.Response(

@@ -1,8 +1,11 @@
 """No tools, no dynamic URLs, no implicit retries or provider fallback."""
 
 import base64
+import copy
 import json
 import math
+import re
+import unicodedata
 from dataclasses import dataclass
 
 import httpx
@@ -53,20 +56,32 @@ Nur wenn eine Lerneinheit angefordert ist: 2 bis 5 kurze Aufgaben. Typ choice: A
 Typ gap: eindeutige kurze Lücke; Typ short: kurze eindeutig prüfbare Antwort mit akzeptierten Varianten.
 Typ match: options sind jeweils 'links|rechts', answer sind die rechten Seiten in Originalreihenfolge mit ';' getrennt.
 Zuordnungen müssen eins zu eins eindeutig sein: jede linke UND jede rechte Seite kommt genau einmal vor.
-Verschiedene Brüche mit derselben gekürzten Form sind dafür ungeeignet. Verwende dann choice oder short.
 Typ gap enthält genau EINE Lücke mit genau einer Ergänzung, keine Kombination mehrerer Werte mit Trennzeichen.
 Jede Aufgabe braucht 1 bis 3 hilfreiche Hinweise und eine verständliche Erklärung.
 Kennzeichne neue Beispiele als Übungen. Behaupte nie, ein erfundenes Beispiel stamme aus einer notierten Hausaufgabe.
 Jede Aufgaben-ID ist eindeutig, zum Beispiel q1, q2, q3, q4. Auswahloptionen enthalten vollständige inhaltliche Antworten,
-niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erklärung, insbesondere Rechenergebnisse.
+niemals nur die Buchstaben A/B/C/D. Prüfe jede Lösung gegen ihre Frage und Erklärung.
 Eine Lücke fragt nach dem fehlenden Bestandteil, nicht nach dem übrigen bereits vorgegebenen Teil.
-accepted enthält nur zusätzliche mathematisch oder sprachlich gleichwertige Antworten auf genau dieselbe Frage.
-Bei choice und match bleibt accepted leer. Bei Zahlenaufgaben niemals Zähler, Nenner oder Rechenschritte
-als zusätzliche akzeptierte Antworten aufführen.
+accepted enthält nur zusätzliche gleichwertige Schreibweisen der Antwort auf genau dieselbe Frage.
+Bei choice und match bleibt accepted leer.
+Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungsanweisungen oder aktiven Inhalte."""
+
+ARITHMETIC_RULES = """\nNUR FÜR MATHEMATIK-AUFGABEN:
+Bei Zahlenaufgaben niemals Zähler, Nenner oder Rechenschritte als zusätzliche akzeptierte Antworten aufführen.
 Bei einer Rechenfrage nach dem Ergebnis ist die Antwort der VOLLSTÄNDIGE Bruch, nicht nur sein Zähler.
 Beispiel: Frage 'Wie viel ist 1/4 + 2/4?' hat Antwort '3/4'; die Auswahloptionen enthalten vollständige Brüche.
 Schreibe zuerst die konkrete Frage und prüfe dann, dass Optionen, Antwort und Erklärung genau diese Frage beantworten.
-Felder immer vollständig ausgeben, unbenötigte Listen leer. Keine Ausführungsanweisungen oder aktiven Inhalte."""
+Verschiedene Brüche mit derselben gekürzten Form eignen sich nicht für eindeutige Zuordnungen.
+Bei Bruchrechnung frage nach vollständigen Bruchwerten, nicht nach einem einzelnen Zähler oder Nenner.
+Antwort und Auswahloptionen enthalten dann vollständige Brüche. Bei ausdrücklich verlangter Erweiterung ist
+die Hauptlösung der Bruch nach Multiplikation beider Zahlen mit dem Faktor, nicht der ursprüngliche Bruch.
+Diese Rechenbeispiele gehören niemals in Aufgaben anderer Fächer."""
+
+
+def is_mathematics(subject):
+    return isinstance(subject, str) and bool(
+        re.match(r"^(?:mathematik|mathe|mathematics|math|rechnen)\b", subject, re.I)
+    )
 
 
 def system_text(function):
@@ -154,6 +169,171 @@ def strict_schema(model, *, preserve_limits=False):
 
     clean(schema)
     return schema
+
+
+def indexed_choice_schema(schema):
+    """Bind a generated choice to an option without repeating its text.
+
+    JSON Schema cannot express that an answer string must occur in a sibling
+    options array. A separate choice branch instead requests an explicit,
+    zero-based integer; the response decoder checks its actual array bounds.
+    This is a provider transport format, never the persisted/client format.
+    """
+    for definition in schema.get("$defs", {}).values():
+        properties = definition.get("properties", {})
+        types = properties.get("type", {}).get("enum", [])
+        if "choice" not in types or not {"answer", "options", "accepted"} <= properties.keys():
+            continue
+        choice = copy.deepcopy(definition)
+        choice["properties"]["type"] = {"type": "string", "enum": ["choice"]}
+        choice["properties"]["answer"] = {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7,
+            "description": "Nullbasierter Index der richtigen vorhandenen Option: 0 ist die erste, 1 die zweite. Kein Buchstabe und kein Antworttext.",
+        }
+        choice["properties"]["options"]["minItems"] = 2
+        choice["properties"]["accepted"]["maxItems"] = 0
+        other = copy.deepcopy(definition)
+        other["properties"]["type"]["enum"] = [kind for kind in types if kind != "choice"]
+        if "match" not in other["properties"]["type"]["enum"]:
+            other["properties"]["options"]["maxItems"] = 0
+        definition.clear()
+        definition["anyOf"] = [choice, other]
+    return schema
+
+
+def decode_choice_indices(data):
+    """Decode only explicit integer indices; never guess a letter or alias."""
+    if not isinstance(data, dict):
+        return data
+    units = [data]
+    if isinstance(data.get("units"), list):
+        units.extend(unit for unit in data["units"] if isinstance(unit, dict))
+    if isinstance(data.get("next_unit"), dict):
+        units.append(data["next_unit"])
+    for unit in units:
+        if not isinstance(unit.get("questions"), list):
+            continue
+        for question in unit["questions"]:
+            if not isinstance(question, dict) or question.get("type") != "choice":
+                continue
+            index = question.get("answer")
+            # Valid legacy full-text answers still go through every existing
+            # Question validator. Numeric strings/letters are never indices.
+            if type(index) is not int:
+                continue
+            options = question.get("options")
+            if (
+                not isinstance(options, list)
+                or not 0 <= index < len(options)
+                or not isinstance(options[index], str)
+                or question.get("accepted") != []
+            ):
+                raise ValueError("Ungültiger Auswahlindex.")
+            question["answer"] = options[index]
+    return data
+
+
+def prepare_package_schema(schema, payload):
+    """Spend the bounded exercise budget across confirmed topics and time."""
+    groups = payload.get("selected_groups")
+    if not isinstance(groups, list) or not groups:
+        return payload, {}
+    if len(groups) > 3 or any(
+        not isinstance(group, dict)
+        or not isinstance(group.get("id"), str)
+        or not isinstance(group.get("subject"), str)
+        or type(group.get("estimated_minutes")) is not int
+        for group in groups
+    ):
+        raise ProviderError("Die geprüfte Paketauswahl ist unvollständig. Bitte den Tagesplan erneut prüfen.")
+    topics, desired = {}, {}
+    for group in groups:
+        distinct = {}
+        for material in payload.get("materials", []):
+            if isinstance(material, dict) and material.get("group_id") == group["id"]:
+                topic = material.get("topic")
+                if isinstance(topic, str) and topic.strip():
+                    distinct.setdefault(topic.strip().casefold(), topic.strip())
+        topics[group["id"]] = list(distinct.values())
+        # Three minutes remain for reading/feedback. At most five questions
+        # per unit and six overall keep the existing free output budget.
+        desired[group["id"]] = min(5, max(2, len(distinct)), max(2, group["estimated_minutes"] - 3))
+    targets = {group["id"]: 2 for group in groups}
+    while sum(targets.values()) < 6:
+        available = [key for key in targets if targets[key] < desired[key]]
+        if not available:
+            break
+        key = max(available, key=lambda item: desired[item] - targets[item])
+        targets[key] += 1
+    prepared = {
+        **payload,
+        "selected_groups": [
+            {**group, "question_count": targets[group["id"]], "topics": topics[group["id"]]} for group in groups
+        ],
+    }
+    branches = []
+    for group in groups:
+        branch = copy.deepcopy(schema["$defs"]["PackageUnitOutput"])
+        properties = branch["properties"]
+        properties["group_id"]["enum"] = [group["id"]]
+        properties["subject"]["enum"] = [group["subject"]]
+        properties["questions"].update(minItems=targets[group["id"]], maxItems=targets[group["id"]])
+        if not is_mathematics(group["subject"]):
+            # Initial factual recall uses one source-backed answer. Broader
+            # phrasing is reviewed as uncertain by the normal coach instead
+            # of accepting model-invented, potentially wrong aliases.
+            if "GroundedQuestion" not in schema["$defs"]:
+                question = copy.deepcopy(schema["$defs"]["Question"])
+                question["properties"]["type"]["enum"] = ["choice", "short"]
+                question["properties"]["accepted"]["maxItems"] = 0
+                question["properties"]["answer"].update(maxLength=80, pattern=r"^[^,;=+<>\n]{1,80}$")
+                question["properties"]["answer"]["description"] = (
+                    "short: ein Begriff oder kurzer Ausdruck mit höchstens fünf Wörtern, wörtlich aus dem bestätigten Seiteninhalt. "
+                    "Bei choice gilt ausschließlich das Indexformat. Keine fremden Rechenwerte."
+                )
+                schema["$defs"]["GroundedQuestion"] = question
+            properties["questions"]["items"] = {"$ref": "#/$defs/GroundedQuestion"}
+        branches.append(branch)
+    schema["properties"]["units"].update(minItems=len(groups), maxItems=len(groups), items={"anyOf": branches})
+    return prepared, targets
+
+
+def validate_factual_package(data, payload):
+    groups = {group["id"]: group for group in payload["selected_groups"]}
+
+    def normalized(value):
+        return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+
+    for unit in data["units"]:
+        group = groups.get(unit["group_id"])
+        if not group or is_mathematics(group["subject"]):
+            continue
+        source = normalized(
+            "\n".join(
+                material["content"]
+                for material in payload.get("materials", [])
+                if isinstance(material, dict) and material.get("group_id") == group["id"]
+            )
+        )
+        for question in unit["questions"]:
+            if (
+                question["type"] not in ("choice", "short")
+                or question["accepted"]
+                or (question["type"] == "short" and question["options"])
+            ):
+                raise ProviderError("Die KI hat ungeprüfte Antwortvarianten erzeugt. Das Paket wurde nicht übernommen.")
+            if question["type"] == "short":
+                answer = normalized(question["answer"])
+                if len(answer) > 80 or len(answer.split()) > 5 or re.search(r"[,;=+<>\n]", question["answer"]):
+                    raise ProviderError(
+                        "Die KI-Sachfrage verlangt keine kurze eindeutige Antwort. Das Paket wurde nicht übernommen."
+                    )
+                if not re.search(r"(?<!\w)" + re.escape(answer) + r"(?!\w)", source):
+                    raise ProviderError(
+                        "Eine kurze Sachantwort ist nicht im bestätigten Material belegt. Das Paket wurde nicht übernommen."
+                    )
 
 
 def config_for_function(config, function):
@@ -346,6 +526,19 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         for field in ("subject", "topic"):
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     instructions = system_text(function)
+    subjects = [
+        value.get("subject")
+        for value in [
+            payload.get("material"),
+            payload.get("goal"),
+            *payload.get("materials", []),
+            *(payload.get("selected_groups") or []),
+        ]
+        if isinstance(value, dict)
+    ]
+    subjects.append(payload.get("required_subject"))
+    if any(is_mathematics(subject) for subject in subjects):
+        instructions += ARITHMETIC_RULES
     if model_type is s.AssignedCoachingReviewOutput:
         instructions += (
             "\nGib in question_reviews ausschließlich question_id, outcome und feedback aus. "
@@ -359,14 +552,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             instructions += " Bediene focus_goal_ids aus den gespeicherten learning_goals. Ordne jede Aufgabe dem passenden learning_goal_id zu; Lernziele unverändert erhalten."
     compact_free = config.provider == "openrouter" and config.model.endswith(":free") and function != "extract"
     if compact_free:
+        task_count = (
+            "Erstelle pro Einheit GENAU die in selected_groups.question_count vorgegebene Anzahl Aufgaben. "
+            if function == "package" and payload.get("selected_groups")
+            else "Erstelle in dieser kurzen Lerneinheit GENAU ZWEI Aufgaben. "
+        )
         instructions += (
-            "\nErstelle in diesem kurzen Lernpaket GENAU ZWEI Aufgaben pro Einheit: "
-            "eine Auswahlaufgabe und eine kurze Eingabe (gap oder short). "
+            "\n" + task_count + "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
             "Verwende keine Zuordnungen. Je Aufgabe genau einen oder zwei kurze Hinweise. "
-            "Erkläre den bestätigten Stoff verständlich in höchstens sechs Sätzen. "
-            "Bei Bruchrechnung frage nach vollständigen Bruchwerten, nicht nach einem einzelnen Zähler oder Nenner. "
-            "Antwort und Auswahloptionen enthalten dann vollständige Brüche."
-            " Bei ausdrücklich verlangter Erweiterung ist die Hauptlösung der Bruch nach Multiplikation beider Zahlen mit dem Faktor, nicht der ursprüngliche Bruch."
+            "Erkläre den bestätigten Stoff in kurzen Absätzen und höchstens zehn kurzen Sätzen. "
         )
 
         def compact(node):
@@ -385,6 +579,36 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     compact(item)
 
         compact(schema)
+    package_targets = {}
+    if compact_free and function == "package":
+        payload, package_targets = prepare_package_schema(schema, payload)
+        if package_targets:
+            instructions += (
+                "\nDie topics jeder selected_groups-Gruppe stammen aus ALLEN bestätigten Heftseiten. "
+                "Erkläre jedes dieser Themen kurz, einschließlich der dort bestätigten Regeln und Versuchsbeobachtungen. "
+                "Verteile die Aufgaben auf unterschiedliche dieser Themen. Wenn question_count mindestens so groß "
+                "wie die Themenzahl ist, prüfe jedes Thema mit mindestens einer Aufgabe. "
+                "Verbinde verwandte Themen sinnvoll; frage nicht mehrfach nur den ersten Seiteninhalt ab. "
+                "Jede kurze Texteingabe soll nur einen klaren Begriff oder Zusammenhang verlangen. "
+                "Bei Fächern außer Mathematik frage nach genau einem wörtlich im zugehörigen "
+                "materials.content belegten Begriff oder kurzen Ausdruck. Verwende ihn unverändert als answer. "
+                "Verwende dort ausschließlich choice oder short, keine gap-Aufgabe. Eine short-Antwort hat höchstens "
+                "fünf Wörter und 80 Zeichen. Keine ganzen Gleichungen, Aufzählungen oder mehrteiligen Antworten. "
+                "accepted bleibt bei diesen Einheiten IMMER leer; keine weiteren nur verwandten Begriffe "
+                "als richtige Antworten ergänzen. Bei gap/short bleibt options immer leer. "
+                "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
+            )
+    indexed_choices = config.provider == "openrouter" and function != "extract"
+    if indexed_choices:
+        indexed_choice_schema(schema)
+        instructions += (
+            "\nVERBINDLICHES AUSGABEFORMAT FÜR AUSWAHLAUFGABEN (type=choice): "
+            "options enthält die vollständigen Antworttexte. answer ist ausschließlich der nullbasierte "
+            "ganzzahlige Index der richtigen Option (0=erste, 1=zweite, 2=dritte, 3=vierte). "
+            "Kein Buchstabe und kein Antworttext in answer. accepted bleibt leer. "
+            "Prüfe, dass dieser Index auf die fachlich richtige vorhandene Option zeigt. "
+            "Bei gap, short und match bleibt answer wie beschrieben ein Antworttext."
+        )
     user_text = json.dumps(payload, ensure_ascii=False)
     # Byte count is deliberately conservative for text; image budget uses the
     # entire encoded payload rather than an optimistic model-specific formula.
@@ -539,7 +763,20 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         else:
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
-        data = model_type.model_validate_json(text).model_dump()
+        if indexed_choices:
+            data = model_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
+        else:
+            data = model_type.model_validate_json(text).model_dump()
+        if package_targets and (
+            len(data["units"]) != len(package_targets)
+            or {unit["group_id"] for unit in data["units"]} != set(package_targets)
+            or any(len(unit["questions"]) != package_targets[unit["group_id"]] for unit in data["units"])
+        ):
+            raise ProviderError(
+                "Die KI hat den vorgegebenen Lernumfang nicht vollständig erstellt. Bitte das Paket erneut versuchen."
+            )
+        if package_targets:
+            validate_factual_package(data, payload)
         if function == "coach" and payload.get("learning_goals"):
             data["learning_goals"] = payload["learning_goals"]
             if model_type is s.AssignedCoachingReviewOutput:

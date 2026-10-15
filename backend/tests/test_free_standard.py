@@ -69,10 +69,11 @@ def test_real_free_route_keeps_deny_fixed_endpoint_and_zero_price(api, household
     assert calls[0]["temperature"] == 0
     assert calls[0]["reasoning"] == {"enabled": False, "exclude": True}
     question_schema = calls[0]["response_format"]["json_schema"]["schema"]["$defs"]["Question"]
-    assert question_schema["properties"]["hints"]["maxItems"] == 2
-    assert question_schema["properties"]["type"]["enum"] == ["choice", "gap", "short"]
+    assert all(branch["properties"]["hints"]["maxItems"] == 2 for branch in question_schema["anyOf"])
+    assert question_schema["anyOf"][0]["properties"]["type"]["enum"] == ["choice"]
+    assert question_schema["anyOf"][1]["properties"]["type"]["enum"] == ["gap", "short"]
     assert calls[0]["response_format"]["json_schema"]["schema"]["properties"]["questions"]["maxItems"] == 2
-    assert question_schema["properties"]["prompt"]["maxLength"] == 1000
+    assert all(branch["properties"]["prompt"]["maxLength"] == 1000 for branch in question_schema["anyOf"])
     assert route == {
         "only": ["fixture-endpoint"],
         "allow_fallbacks": False,
