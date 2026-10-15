@@ -37,6 +37,7 @@ class Settings:
     operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")
     codex_socket: str = os.getenv("CODEX_SOCKET", "")
     codex_approved: bool = os.getenv("CODEX_APPROVED", "false") == "true"
+    codex_auth_mode: str = os.getenv("CODEX_AUTH_MODE", "api_key")
     default_plan: str = "Pilot"
     default_child_limit: int = 4
     default_call_limit: int = 100

@@ -17,7 +17,7 @@ def enqueue(actor, db):
     if active:
         return {"id": active.id, "status": active.status}
     config = db.get(ProviderConfig, 1)
-    if (
+    if config.provider != "codex" and (
         config.provider != "openrouter"
         or not config.openrouter_free_only
         or not config.model.endswith(":free")
@@ -25,8 +25,14 @@ def enqueue(actor, db):
     ):
         raise HTTPException(
             422,
-            "Der automatische Bild-/Aufgabentest ist ausschließlich für OpenRouter Free verfügbar. Andere Anbieter zunächst über den Modellkatalog prüfen.",
+            "Der automatische Bild-/Aufgabentest ist für OpenRouter Free und den isolierten Codex-Worker verfügbar.",
         )
+    if config.provider == "codex":
+        from .codex_setup import worker_health
+
+        status = worker_health()
+        if not status["ready"]:
+            raise HTTPException(422, status["status"])
     try:
         for function in ("extract", "unit", "package"):
             external_allowed(config_for_function(config, function), function == "extract", True)

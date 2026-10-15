@@ -20,6 +20,8 @@ def main():
             "configure-free-tests",
             "configure-free-standard",
             "probe-private-route",
+            "configure-codex",
+            "probe-codex",
         ],
     )
     parser.add_argument("--username", default="")
@@ -29,6 +31,16 @@ def main():
         help="Passwort ausschließlich über Standard-Eingabe lesen (lokale Automation)",
     )
     args = parser.parse_args()
+    if args.command == "configure-codex":
+        from .codex_setup import configure
+
+        configure()
+        return
+    if args.command == "probe-codex":
+        from .codex_setup import enqueue_probe
+
+        enqueue_probe()
+        return
     if args.command == "configure-free-standard":
         from .free_standard_setup import configure
 

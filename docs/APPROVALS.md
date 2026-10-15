@@ -39,3 +39,7 @@ ssh dorfspy 'python3 /opt/schulpilot/current/deploy/admin.py probe-private-route
 Dieser lokale Befehl führt genau drei feste synthetische kostenlose Anfragen für Bild, Einheit und Tagespaket aus und speichert den technischen Befund. Er erteilt keine neue rechtliche Freigabe und aktiviert keine kostenpflichtigen Modelle.
 
 Der Firebase-Projektzugang und ein minimal berechtigtes Senderkonto sind inzwischen eingerichtet; tatsächliche Prüfergebnisse stehen in `CHATGPT_HANDOFF.txt`. Play-Console-Zugang und vollständige Betreiberangaben bleiben eigenständige Voraussetzungen. Eine Betreiberfreigabe ersetzt weder Zugangsdaten noch eine unbekannte Anschrift.
+
+## Betreiberentscheidung vom 15.10.2026: Codex mit Websuche
+
+Der Betreiber beauftragt ausdrücklich, den KI-Provider dauerhaft auf Codex CLI umzustellen und Codex mit `--search` auszuführen. Er übernimmt bei Bedarf die manuelle Verbindung auf dem Server. Diese Anbieterauswahl ersetzt die frühere OpenRouter-Free-Auswahl; kein impliziter Fallback. Die technische Aktivierung bleibt bis zur eigenen isolierten Anmeldung und dem gezählten synthetischen Bild-/Aufgaben-/Pakettest gesperrt. Es werden keine Entwicklungszugänge übernommen und keine Konto-/Vertragsrechte aus bloßer Anmeldung behauptet. Siehe [CODEX.md](CODEX.md).

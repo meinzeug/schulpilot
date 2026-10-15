@@ -1,3 +1,7 @@
+# Änderung am 15.10.2026
+
+Der Betreiber hat den dauerhaften Wechsel auf Codex CLI mit `--search` beauftragt. Der folgende Free-Standard dokumentiert den früheren Betrieb und dessen bewusste Konfigurationsentscheidung. Für die aktuelle Codex-Auswahl, eigene Anmeldung und technische Aktivierung gilt [CODEX.md](CODEX.md). Kein automatischer Providerfallback.
+
 # OpenRouter Free als Standard
 
 Auftrag und Anbieter-/Datenschutzfreigabe vom 14.10.2026: „openrouter mit free modellen wird standard. freigabe erteilt.“ Der Lernablauf soll ausdrücklich auch mit regulären Kinderaccounts funktionieren.

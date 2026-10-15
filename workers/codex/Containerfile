@@ -2,7 +2,7 @@ FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3
 # The CLI binary must be supplied from the verified 0.162.1 upstream release.
 # No developer home, credentials, repository, SSH keys or deployment sockets.
 COPY codex /usr/local/bin/codex
-COPY backend/requirements.lock /tmp/requirements.lock
+COPY workers/codex/requirements.lock /tmp/requirements.lock
 RUN pip install --no-cache-dir -r /tmp/requirements.lock && useradd -u 10001 -m worker
 COPY workers/codex/worker.py /app/worker.py
 USER 10001:10001

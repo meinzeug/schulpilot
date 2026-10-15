@@ -1,3 +1,9 @@
+# Codex-Nachtrag · 15.10.2026
+
+Betreiberauftrag: Codex CLI mit `--search` dauerhaft anstelle OpenRouter Free. Getrennter Rootless-Podman-Worker mit CLI 0.162.1 installiert, privater Socket 0660, keine Rootrechte/Capabilities/öffentlichen Ports oder fremden Verzeichnisse. Eigene Anmeldung fehlt noch; kein echter Codex-Anbieteraufruf und keine erfolgreiche Modellberechtigung behauptet. Die neue Route benötigt vor der Aktivierung die manuelle Anmeldung und drei gezählte künstliche Bild-/Einheits-/Paketprüfungen. `ssh -t dorfspy 'sudo schulpilot-codex login'` ist der vorgesehene getrennte Anmeldeweg; Backendauslieferung wird nach den Prüfungen dokumentiert.
+
+**492 PostgreSQL-Backendtests bestanden** in 248,05 s, Ruff bestanden. Die echte CLI wurde sowohl lokal als auch im tatsächlichen Rootless-Container mit künstlichem API- und Kontologin gegen simulierte Antworten geprüft. Containerprüfung: kein Root, effektive Capabilities 0, keine echten Anbieteranfragen. Die frühere Warnung des Starlette-Testclients bleibt bekannt. Web/Android verwenden weiter dieselbe API; keine Änderung am Flutter-Code oder APK-Versionscode erforderlich. Frühere Flutter-/Gerätetests unten gelten dem unveränderten Client, nicht einer neuen Codex-Liveprüfung. Einrichtung und Grenzen: [CODEX.md](CODEX.md).
+
 # Projektstand · 15.10.2026 · 1.2.0+21
 
 Web und signierte native Flutter-APK 21 sind öffentlich aktiv: https://schulpilot.dorfspy.de . Produktcommit `25f5614916f27e3b3f53814ff513464151009069`, Release `20261015T140058Z-25f5614`; über gültiges öffentliches HTTPS geprüft. Nachfolgende reine Prüf-/Dokumentationscommits ändern den bereitgestellten Produktcode nicht. Datenbankschema 0011 unverändert; keine neuen Dienste oder SDK-Abhängigkeiten.

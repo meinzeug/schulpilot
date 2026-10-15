@@ -1,0 +1,27 @@
+[Unit]
+Description=SCHULPILOT isolated Codex learning provider
+After=network-online.target systemd-tmpfiles-setup.service
+Wants=network-online.target
+
+[Service]
+User=schulpilot-codex
+Group=schulpilot-codex
+WorkingDirectory=/var/lib/schulpilot-codex
+Environment=HOME=/var/lib/schulpilot-codex
+Environment=XDG_RUNTIME_DIR=/run/schulpilot-codex-runtime
+RuntimeDirectory=schulpilot-codex-runtime
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+ExecStart=/opt/schulpilot-codex/run.py
+ExecStop=-/usr/bin/podman --cgroup-manager=cgroupfs stop -t 150 schulpilot-codex
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=160
+UMask=0007
+Delegate=yes
+MemoryMax=550M
+CPUQuota=80%
+TasksMax=160
+
+[Install]
+WantedBy=multi-user.target

@@ -98,7 +98,9 @@ def check(p=Depends(admin), db=Depends(get_db)):
 def provider_check(actor, db):
     config = db.get(ProviderConfig, 1)
     if config.provider == "codex":
-        status = "Experimentell. Isolierter Worker und separate Authentifizierung müssen lokal eingerichtet und geprüft werden."
+        from .codex_setup import worker_health
+
+        status = worker_health()["status"]
     elif config.provider in ("openai", "openrouter") and config.encrypted_key:
         url = (
             "https://api.openai.com/v1/models" if config.provider == "openai" else "https://openrouter.ai/api/v1/models"
