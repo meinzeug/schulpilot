@@ -26,6 +26,7 @@ from .db import (
     SchoolDay,
     Session,
     Token,
+    TutorTurn,
     UnitCoaching,
     UnitSource,
     Usage,
@@ -407,7 +408,7 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 
 def export_child(db, child):
     result = {"child": child_data(db, child)}
-    for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay):
+    for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay, TutorTurn):
         rows = list(db.scalars(select(model).where(model.child_id == child.id)))
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns} for row in rows]
     units = [u["id"] for u in result["learning_units"]]

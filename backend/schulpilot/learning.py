@@ -112,9 +112,16 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
             if a.question_id == q["id"]
         ]
         value["hints_used"] = len([e for e in events if e.kind == "hint" and e.detail.get("question_id") == q["id"]])
+        if (
+            unit.status == "completed"
+            or len(value["attempts"]) >= 3
+            or any(a["outcome"] in ("correct", "uncertain") for a in value["attempts"])
+        ):
+            value["feedback_explanation"] = q["explanation"]
         questions.append(value)
     return {
         "id": unit.id,
+        "child_id": unit.child_id,
         "subject": unit.subject,
         "topic": unit.topic,
         "explanation": unit.explanation
@@ -345,6 +352,26 @@ def plan(db, child, *, learning_paths=None):
                     "status": "not_started",
                 }
             )
+    for school_day in db.scalars(
+        select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
+    ):
+        for block in (school_day.learning_plan or {}).get("blocks", []):
+            saved_unit = next((u for u in units if u.id == block.get("unit_id")), None)
+            if saved_unit and saved_unit.status == "completed":
+                continue
+            if not saved_unit:
+                candidates.append(
+                    {
+                        "kind": "study_path",
+                        "id": school_day.id,
+                        "topic": block["title"],
+                        "subject": block.get("subject", "Lernreise"),
+                        "mandatory": False,
+                        "status": "planned",
+                        "estimated_minutes": min(prefs.session_minutes, max(5, block["question_count"] * 2)),
+                    }
+                )
+            break
     candidates.sort(
         key=lambda x: (
             not x.get("mandatory", False),
@@ -700,6 +727,16 @@ def learning_block(db, unit):
         return "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
     if unit.not_before and unit.not_before > today.isoformat():
         return f"Diese spätere Abrufprobe beginnt frühestens am {unit.not_before}."
+    if unit.round_kind == "study_block":
+        from .coaching import context
+        from .study_path import block_reason
+
+        try:
+            context(db, unit)
+        except Exception:
+            return "Eine Heftseite wurde geändert. Bitte die aktuelle Lernreise öffnen."
+        if reason := block_reason(db, child, unit.subject, unit_id=unit.id, question_count=len(unit.questions)):
+            return reason
     if unit.learning_root_id or unit.followup_of:
         from .coaching import continuation_block
 

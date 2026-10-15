@@ -390,7 +390,9 @@ def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depe
         )
     path = material.path
     from .erasure import flush_journal, request
+    from .tutor import purge_source_turns
 
+    purge_source_turns(db, [material.id], child_id=material.child_id)
     request(db, "material", material.id)
     db.delete(material)
     day.revision += 1
@@ -503,4 +505,7 @@ def save_package(db, job, data, *, synthetic, provider, model):
     for unit_id in ids:
         db.get(LearningUnit, unit_id).package_version = day.package_version
     job.result = {"school_day_id": day.id, "unit_ids": ids, "package_version": day.package_version}
+    from .study_path import ensure_plan
+
+    ensure_plan(db, day)
     record(db, job.child_id, "school_day_ready", {"page_count": len(source_pages), "unit_count": len(ids)})

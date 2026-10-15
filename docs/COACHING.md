@@ -2,7 +2,7 @@
 
 Nach einer abgeschlossenen Einheit endet der Lernweg nicht beim Ergebnisbildschirm. Das Backend speichert die letzte Antwort zuerst und bereitet danach genau einen KI-Rückblick vor. Der dauerhafte Worker verwendet die bestätigten Quellen, Aufgaben, tatsächlichen Antworten, Fehlversuche und genutzten Hilfen. Keine Namen, Familienkennungen oder Zugangsdaten gehören in diesen Lernprompt.
 
-Die Gesamtzusammenfassung, der nächste Lernschritt und Fortschrittskriterien werden serverseitig aus gespeicherten Beobachtungen berechnet. Die KI erklärt schwierige Schritte, bespricht jede beantwortete Aufgabe und bereitet bei Bedarf zwei neue Aufgaben vor. Sie kann keine Beherrschung erklären oder verbindliche Elternziele verändern. Bekannte richtige/falsche Bewertungen bleiben maßgeblich. Ihre zusätzliche Einschätzung einer offenen Kurzantwort ist ausdrücklich gekennzeichnet und ändert deren ursprüngliche Bewertung nicht.
+Die Gesamtzusammenfassung, der nächste Lernschritt und Fortschrittskriterien werden serverseitig aus gespeicherten Beobachtungen berechnet. Die KI erklärt schwierige Schritte und bespricht jede beantwortete Aufgabe. Bei Bedarf entsteht auf ausdrückliche Aktion eine getrennt reservierte Anschlussrunde mit zwei neuen Aufgaben. Sie kann keine Beherrschung erklären oder verbindliche Elternziele verändern. Bekannte richtige/falsche Bewertungen bleiben maßgeblich. Ihre zusätzliche Einschätzung einer offenen Kurzantwort ist ausdrücklich gekennzeichnet und ändert deren ursprüngliche Bewertung nicht.
 
 ## Lernfolge
 
@@ -42,3 +42,10 @@ Migration `0007` ergänzt Lernfolgenbezüge, Rundentyp, frühesten Abruftermin u
 - Android: anschließend `.venv/bin/python qa/android_school_day.py` auf dem eigenen Emulator; Aufräumen der eigenen Familie mit `.venv/bin/python scripts/prepare_normal_ai_smoke.py --cleanup`.
 
 Tatsächlich ausgeführte Ergebnisse stehen in [STATUS.md](STATUS.md).
+
+
+## Getrennte Stufen ab 1.1.0
+
+Neue Rückblicke verwenden `defer_practice`: `next_unit` ist im Provider-Schema und nach dem Parsen ausschließlich null. Systemtext enthält keine widersprechenden Generatoranweisungen, unbenutzte Aufgabendefinitionen werden entfernt. Der Rückblick bleibt bereit, auch wenn später neue Aufgaben nicht erstellt werden können. POST `/units/{id}/practice` reserviert den eigenen dauerhaften Auftrag; höchstens zwei bewusste Versuche, keine automatische Wiederholung. Jobstatus/-fehler sind am Rückblick sichtbar. Anbieter- und Modellherkunft des ursprünglichen Berichts bleiben erhalten; reine Übungsvorbereitung zählt nicht als zweiter Rückblick.
+
+Bei alten Einstiegsaufgaben ohne Lernziel-ID verwendet die Schwerpunktwahl ihre geprüfte Zuordnung aus dem Rückblick, ohne die alte Aufgabe oder Antwort umzuschreiben. Elternzeit, Pflichtaufträge, Quellen, Freigaben, Tarif und Anbieterstand werden erneut geprüft. Die Antwortansicht zeigt Rückmeldung bis zur bewussten Fortsetzung, scrollt zur neuen Frage und bietet Vorlesen sowie Fragen zu den eigenen bestätigten Seiten.

@@ -1287,6 +1287,10 @@ String activityLabel(String kind) => switch (kind) {
   'hint' => 'Hinweis angesehen',
   'answer' => 'Antwort gespeichert',
   'explanation' => 'Erklärung erneut angesehen',
+  'tutor_question' => 'Frage zum Lernstoff',
+  'tutor_answer' => 'Erklärung erhalten',
+  'coach_review' => 'Rückblick erhalten',
+  'coach_support' => 'Gemeinsame Hilfe empfohlen',
   'material_confirmed' => 'Stoff bestätigt',
   'material_uploaded' => 'Bild importiert',
   'material_extracted' => 'Material erkannt',
@@ -1436,6 +1440,13 @@ Future<void> openPlanItem(
   Json data,
   dynamic item,
 ) async {
+  if (item['kind'] == 'study_path') {
+    openRoute(
+      context,
+      '/after-school/${data['child']['id']}?day=${item['id']}',
+    );
+    return;
+  }
   String? unitId;
   if (item['kind'] == 'unit') {
     unitId = item['id'];

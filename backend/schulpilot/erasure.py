@@ -112,6 +112,9 @@ def reconcile(db, records):
         elif scope == "membership":
             db.delete(row)
         else:
+            from .tutor import purge_source_turns
+
+            purge_source_turns(db, [row.id], child_id=row.child_id)
             if row.path:
                 paths.append(row.path)
             db.delete(row)

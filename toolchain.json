@@ -16,5 +16,7 @@
   "firebase_js": "12.19.0",
   "bundletool": "1.18.3",
   "android_emulator": "37.2.12",
-  "android_test_image": "7"
+  "android_test_image": "7",
+  "flutter_tts": "4.2.5",
+  "speech_to_text": "7.5.0"
 }

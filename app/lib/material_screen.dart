@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'tutor_sheet.dart';
 import 'ui.dart';
 
 Future<void> importMaterial(
@@ -540,6 +541,17 @@ class _MaterialReviewState extends State<MaterialReview> {
               ],
             ),
           ),
+        if (d['confirmed'] == true && d['synthetic'] != true)
+          TextButton.icon(
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            label: const Text('Fragen zu dieser Heftseite'),
+            onPressed: () => showTutorSheet(
+              context,
+              widget.state,
+              childId: d['child_id'],
+              materialId: d['id'],
+            ),
+          ),
         if (widget.state.isParent && widget.state.canManage)
           Padding(
             padding: const EdgeInsets.only(top: 20),
@@ -789,6 +801,19 @@ class _MaterialReviewState extends State<MaterialReview> {
                 openRoute(context, '/unit/${result['unit_id']}');
               }
             },
+          ),
+        ],
+        if (confirmed && d['synthetic'] != true) ...[
+          const SizedBox(height: 12),
+          TextButton.icon(
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            label: const Text('Frag nach'),
+            onPressed: () => showTutorSheet(
+              context,
+              widget.state,
+              childId: d['child_id'],
+              materialId: d['id'],
+            ),
           ),
         ],
       ],

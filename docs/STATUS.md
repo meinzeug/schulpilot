@@ -1,4 +1,12 @@
-# Projektstand · 15.10.2026 · 1.0.1+15
+# Projektstand · 15.10.2026 · 1.1.0+16
+
+Implementiert: dauerhafter Lernweg nach bestätigtem Seitenumfang/Textdichte mit kleinen Etappen; getrennte KI-Rückblicke/Anschlussübungen; private Heftfragen mit überprüften Quellenzitaten; freiwilliges Vorlesen und bearbeitbare Spracheingabe. Neue native Flutter-APK und Play-AAB sowie Webrelease mit derselben fixierten Toolchain signiert gebaut. Keine bloße WebView.
+
+Aktuelle lokale Abnahme: 277 Backendtests auf isoliertem PostgreSQL bestanden; 66 Fluttertests bestanden; Analyzer, Ruff und Diffprüfung sauber. Die 14 gezielten Lernwegchecks bestehen ebenfalls, einschließlich der großen-Seitenmengen-Regel: Jede Quelle bleibt im Gesamtlimit vertreten. Ein ausdrücklicher echter OpenRouter-Free-Aufruf mit ausschließlich künstlichem Material lieferte einen validierten Rückblick zu fünf Aufgaben/vier Zielen, next_unit null, 1388 Eingabe-/495 Ausgabetokens, gemeldete Kosten0. Keine automatische Wiederholung oder Modelländerung.
+
+Neue Migration0011 ist additiv. Bekannte Kinderantworten und begonnene Runden bleiben unverändert. Die konkrete öffentliche Bereitstellung, Abnahme mit den freigegebenen fünf Seiten und native Updateprüfung werden nach dem Deployment nachgetragen. Einzelheiten: [STUDY_PATH_TUTOR.md](STUDY_PATH_TUTOR.md).
+
+## Vorherige Abnahme · 1.0.1+15
 
 Web und reguläre signierte Direct-APK sind unter https://schulpilot.dorfspy.de aktiv. Implementierungscommit `6c2e434b8d5f177e0d9e0b20c53da1cac47bfecb`, Release `20261015T072218Z-6c2e434`, öffentlich über `/api/health` geprüft. Nachfolgende QA-/Übergabecommits ändern diesen bereitgestellten Produktcode nicht. Branch main wird ohne Force-Push zum bestehenden Remote gepusht.
 

@@ -247,7 +247,9 @@ def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_d
         raise HTTPException(403, "Materialien werden durch Eltern gelöscht.")
     path = material.path
     from .erasure import flush_journal, request
+    from .tutor import purge_source_turns
 
+    purge_source_turns(db, [material.id], child_id=material.child_id)
     request(db, "material", material.id)
     db.delete(material)
     db.commit()

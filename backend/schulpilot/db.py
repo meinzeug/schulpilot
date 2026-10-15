@@ -240,6 +240,7 @@ class SchoolDay(Base):
     stage = Column(String(16), default="collecting", nullable=False)
     revision = Column(Integer, default=1, nullable=False)
     package_version = Column(Integer, default=0, server_default="0", nullable=False)
+    learning_plan = Column(JSON, default=dict, server_default="{}", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
     __table_args__ = (UniqueConstraint("child_id", "school_date"),)
 
@@ -357,6 +358,25 @@ class UnitSource(Base):
     unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), primary_key=True)
     material_id = Column(ForeignKey("materials.id", ondelete="CASCADE"), primary_key=True)
     revision = Column(Integer, nullable=False)
+
+
+class TutorTurn(Base):
+    __tablename__ = "tutor_turns"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    school_day_id = Column(ForeignKey("school_days.id", ondelete="CASCADE"))
+    material_id = Column(ForeignKey("materials.id", ondelete="CASCADE"))
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"))
+    reply_to = Column(ForeignKey("tutor_turns.id", ondelete="CASCADE"))
+    question = Column(Text, nullable=False)
+    status = Column(String(20), default="queued", nullable=False)
+    reply = Column(JSON)
+    error = Column(String(500))
+    source_revisions = Column(JSON, default=list, nullable=False)
+    job_id = Column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    created = Column(Integer, default=lambda: int(now()), nullable=False, index=True)
 
 
 class Attempt(Base):

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'lesson_voice.dart';
 import 'ui.dart';
 
 class LearningProgressPanel extends StatelessWidget {
@@ -335,6 +336,18 @@ class _ChildCoachingPanel extends StatelessWidget {
         ? focus.firstOrNull
         : strengths.firstOrNull;
     final childId = unit['child_id'] ?? state.user?['child_id'];
+    final questions = unit['questions'] as List? ?? [];
+    final correctCount = questions
+        .where(
+          (q) => (q['attempts'] as List? ?? []).any(
+            (a) => a['outcome'] == 'correct',
+          ),
+        )
+        .length;
+    final practicePending = [
+      'queued',
+      'running',
+    ].contains(coach?['practice_status']);
     final headingText = !ready
         ? 'Dein Rückblick'
         : switch (decision) {
@@ -375,6 +388,11 @@ class _ChildCoachingPanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 18),
+              Text(
+                '${questions.length} Aufgaben bearbeitet · $correctCount richtig gelöst',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 14),
               if (coach == null) ...[
                 const Text('Schauen wir gemeinsam auf deine Antworten.'),
                 const SizedBox(height: 18),
@@ -451,6 +469,45 @@ class _ChildCoachingPanel extends StatelessWidget {
                       if (context.mounted) openRoute(context, '/unit/$next');
                     },
                   )
+                else if (coach?['practice_deferred'] == true)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (practicePending) ...[
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 10),
+                        const Text('Deine nächste Übung entsteht …'),
+                      ] else
+                        ActionButton(
+                          label: coach?['practice_status'] == 'failed'
+                              ? 'Übung erneut vorbereiten'
+                              : decision == 'check'
+                              ? 'Ohne Hilfe ausprobieren'
+                              : 'Gezielt weiterüben',
+                          icon: Icons.auto_fix_high_rounded,
+                          secondary: unit['school_day_id'] != null,
+                          onPressed: () async {
+                            await state.api.post(
+                              '/units/${unit['id']}/practice',
+                              null,
+                              {
+                                'Idempotency-Key':
+                                    'practice-${DateTime.now().microsecondsSinceEpoch}',
+                              },
+                            );
+                            await refresh();
+                          },
+                        ),
+                      if (coach?['practice_error'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Text(
+                            coach!['practice_error'],
+                            style: const TextStyle(color: muted, fontSize: 13),
+                          ),
+                        ),
+                    ],
+                  )
                 else if (decision == 'parent_help' && childId != null)
                   ActionButton(
                     label: 'Eltern um Hilfe bitten',
@@ -494,7 +551,10 @@ class _ChildCoachingPanel extends StatelessWidget {
               leading: const Icon(Icons.lightbulb_outline_rounded, color: teal),
               title: const Text('Erklärung ansehen'),
               childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
-              children: [Text(report['explanation'])],
+              children: [
+                Text(report['explanation']),
+                ReadAloudButton(text: report['explanation']),
+              ],
             ),
           ExpansionTile(
             tilePadding: const EdgeInsets.symmetric(horizontal: 8),

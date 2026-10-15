@@ -36,3 +36,8 @@ Senden ist eine sichtbare Aktion. Jede gespeicherte Aufnahme besitzt einen zufä
 „Tagespakete“ öffnet den paginierten Verlauf. Ein bestimmter Tag ist über `/after-school/<Kind-ID>?day=<Schultag-ID>` erreichbar. Vergangene Fotozusammenstellungen sind dort schreibgeschützt; Einheiten bleiben fortsetzbar. Die Backend-Prüfung beschränkt auch Historie, Sortierung und Ergänzung auf berechtigte Accounts.
 
 Migration `0005` ergänzt Paketversionen, Upload-Schlüssel/Prüfsummen, Lesbarkeit, den bestätigten Einführungsschritt, frühesten Auftragsbeginn sowie Betriebs-/Löschprotokolle. Der Bestand einer begonnenen Einheit einschließlich Antwort und Paket bleibt bei Migration erhalten. Betreiberfreigabe und technischer KI-Routingbefund: [APPROVALS.md](APPROVALS.md). Breiterer künstlicher Prüfkatalog: [QUALITY.md](QUALITY.md).
+
+
+## Größere Stoffmengen ab 1.1.0
+
+Die kleine Einstiegsrunde begrenzt den gesamten Lernumfang nicht mehr. Alle bestätigten Seiten ergeben einen dauerhaften Lernweg mit dem Stoffumfang entsprechenden geplanten Aufgaben; weitere 2–5-Fragen-Etappen entstehen auf ausdrückliche Aktion. Elternzeit und Pausen begrenzen den Tag, ohne Stoff zu löschen oder versäumte Tage aufzuhäufen. Geplante, tatsächlich erzeugte und bearbeitete Fragen bleiben getrennt sichtbar. Heftfragen mit Textbelegen und freiwillige Sprachfunktionen: [STUDY_PATH_TUTOR.md](STUDY_PATH_TUTOR.md).

@@ -30,6 +30,7 @@ from .db import (
     ServiceState,
     Session,
     Token,
+    TutorTurn,
     UnitSource,
     Usage,
     UsageBucket,
@@ -85,11 +86,16 @@ def claim(db):
 def process(job_id):
     with DB() as db:
         candidate = db.get(Job, job_id)
-        is_coaching = candidate and candidate.kind == "coach"
-    if is_coaching:
-        from .coaching import process as process_coaching
+        kind = candidate.kind if candidate else None
+    if kind in ("coach", "coach_practice", "study_block", "tutor"):
+        from . import coaching, study_path, tutor
 
-        process_coaching(job_id)
+        {
+            "coach": coaching.process,
+            "coach_practice": coaching.process_practice,
+            "study_block": study_path.process,
+            "tutor": tutor.process,
+        }[kind](job_id)
         return
     result = None
     try:
@@ -407,6 +413,7 @@ def maintenance():
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
+        db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))
         db.execute(delete(SchoolDay).where(SchoolDay.created < int(now()) - 365 * 86400))
         db.execute(delete(Job).where(Job.created < int(now()) - 30 * 86400, Job.status.in_(["failed", "completed"])))
         # Also remove interrupted export files. Uploads have independent DB
@@ -417,6 +424,9 @@ def maintenance():
                 if file.stat().st_mtime < now() - 3600:
                     file.unlink(missing_ok=True)
         for m in list(db.scalars(select(Material).where(Material.created < int(now()) - 365 * 86400))):
+            from .tutor import purge_source_turns
+
+            purge_source_turns(db, [m.id], child_id=m.child_id)
             if m.path:
                 paths.append(m.path)
             db.delete(m)

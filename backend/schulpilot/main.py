@@ -23,7 +23,9 @@ from . import (
     public_privacy,
     releases,
     school_day,
+    study_path,
     synthetic,
+    tutor,
 )
 from .config import runtime_settings, settings
 from .db import DB, ProviderConfig, init_db
@@ -211,6 +213,8 @@ for router in (
     commerce.router,
     releases.router,
     school_day.router,
+    study_path.router,
+    tutor.router,
 ):
     app.include_router(router, prefix="/api")
 

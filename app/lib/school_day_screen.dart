@@ -10,6 +10,8 @@ import 'api.dart';
 import 'material_screen.dart';
 import 'dashboard.dart';
 import 'pending_uploads.dart';
+import 'study_path_panel.dart';
+import 'tutor_sheet.dart';
 import 'ui.dart';
 
 class SchoolDayScreen extends StatefulWidget {
@@ -808,6 +810,49 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
     final canStart = newPackage || remaining.isNotEmpty;
     final allDone =
         units.isNotEmpty && remaining.isEmpty && day!['stage'] == 'ready';
+    if (day!['stage'] == 'ready' && day!['synthetic'] != true) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          StudyPathPanel(state, widget.childId, day!['id'], onChanged: load),
+          const SizedBox(height: 14),
+          TextButton.icon(
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            label: const Text('Fragen zu meinen Heftseiten'),
+            onPressed: () => showTutorSheet(
+              context,
+              state,
+              childId: widget.childId,
+              dayId: day!['id'],
+            ),
+          ),
+          ExpansionTile(
+            title: const Text('Heftseiten und bisherige Runden'),
+            children: [
+              for (final item in units)
+                ListTile(
+                  title: Text(item['topic']),
+                  subtitle: Text(statusLabel(item['status'])),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => openRoute(context, '/unit/${item['id']}'),
+                ),
+              for (final page in pages)
+                ListTile(
+                  title: Text('Heftseite ${page['page_number']}'),
+                  onTap: () => openRoute(context, '/material/${page['id']}'),
+                ),
+            ],
+          ),
+          TextButton.icon(
+            onPressed: () => run(() async {
+              await state.api.post('/school-days/${day!['id']}/extend');
+            }),
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: const Text('Eine Seite nachreichen'),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1395,6 +1440,19 @@ class _SchoolDayScreenState extends State<SchoolDayScreen> {
             ],
             if ((day!['units'] as List).isNotEmpty) ...[
               heading('Dein Lernpaket ist bereit'),
+              if (day!['synthetic'] != true) ...[
+                StudyPathPanel(state, widget.childId, day!['id']),
+                TextButton.icon(
+                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                  label: const Text('Fragen zum Heft ansehen'),
+                  onPressed: () => showTutorSheet(
+                    context,
+                    state,
+                    childId: widget.childId,
+                    dayId: day!['id'],
+                  ),
+                ),
+              ],
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 title: Text('Heftseiten dieses Tages (${pages.length})'),

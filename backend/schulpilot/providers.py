@@ -17,6 +17,7 @@ from . import schemas as s
 from .config import runtime_settings, settings
 from .db import ProviderConfig, Usage, UsageBucket
 from .security import decrypt, insert_ignore, rate_limit
+from .tutor_schemas import TUTOR_SYSTEM, TutorOutput
 
 
 class ProviderError(Exception):
@@ -84,7 +85,29 @@ def is_mathematics(subject):
     )
 
 
-def system_text(function):
+def system_text(function, *, review_only=False):
+    if function == "tutor":
+        return TUTOR_SYSTEM
+    if function == "coach" and review_only:
+        return (
+            SYSTEM.split("Nur wenn eine Lerneinheit angefordert ist:")[0]
+            + """
+DEINE AUFGABE: Ein kurzer Rückblick zu tatsächlich gespeicherten Antworten.
+Für jede question_id in completed_questions genau eine verständliche Rückmeldung in question_reviews.
+Bei deterministic_outcome=correct/incorrect übernimm den geprüften Wert unverändert.
+Nur bei uncertain darfst du eine begründete KI-Einschätzung geben; ohne sichere Grundlage bleibt sie uncertain.
+Unterscheide selbstständig gelöst, mit Hilfe gelöst und noch unklar. Keine erfundenen Erfolge.
+Erzeuge keine neuen Aufgaben. next_unit bleibt IMMER null. Neue Übungen sind ein eigener Auftrag.
+Wenn learning_goals fehlt oder leer ist: ein bis vier konkret prüfbare Ziele g1 bis g4 mit jeweils
+einem WÖRTLICHEN source_excerpt aus materials.content oder goal.note. Keine fremden Inhalte ergänzen.
+Wenn learning_goals vorliegt: diese Ziele unverändert erhalten; der Server setzt sie selbst ein.
+Nur wenn das Schema learning_goal_id in question_reviews verlangt, ordne die Rückmeldung einem belegten Ziel zu.
+Gespeicherte completed_questions.learning_goal_id bleiben verbindlich.
+Jede Rückmeldung höchstens drei kurze Sätze. Die Erklärung höchstens sechs kurze Sätze und ein
+verständliches Beispiel zu einer tatsächlich beobachteten Schwierigkeit. Keine neuen Aufgaben stellen.
+Leistungen und nächste Schritte berechnet der Server; erfinde keine Gesamtbewertung.
+"""
+        )
     if function == "coach":
         return (
             SYSTEM
@@ -168,6 +191,37 @@ def strict_schema(model, *, preserve_limits=False):
                 clean(item)
 
     clean(schema)
+    return schema
+
+
+def prune_schema(schema):
+    """Remove unreachable definitions after narrowing a response branch.
+
+    Some structured-output engines compile even unused definitions. A review
+    must not compile the entire exercise generator merely because both share
+    a Pydantic model.
+    """
+    definitions = schema.get("$defs", {})
+    needed = set()
+
+    def walk(value):
+        if isinstance(value, dict):
+            ref = value.get("$ref", "")
+            if ref.startswith("#/$defs/"):
+                name = ref.rsplit("/", 1)[-1]
+                if name not in needed and name in definitions:
+                    needed.add(name)
+                    walk(definitions[name])
+            for key, item in value.items():
+                if key != "$defs":
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(schema)
+    if definitions:
+        schema["$defs"] = {name: definition for name, definition in definitions.items() if name in needed}
     return schema
 
 
@@ -491,9 +545,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         payload = trusted_payload(function, fixture_id)
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture)
-    model_type = {"extract": s.ExtractionOutput, "package": s.PackageOutput, "coach": s.CoachingOutput}.get(
-        function, s.UnitOutput
-    )
+    model_type = {
+        "extract": s.ExtractionOutput,
+        "package": s.PackageOutput,
+        "coach": s.CoachingOutput,
+        "tutor": TutorOutput,
+    }.get(function, s.UnitOutput)
     if function == "unit" and payload.get("review") and payload.get("learning_goals"):
         model_type = s.PracticeUnitOutput
     assigned_goals = {}
@@ -514,7 +571,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         schema["properties"]["question_reviews"].update(minItems=len(ids), maxItems=len(ids))
         review_type = "QuestionFeedback" if model_type is s.AssignedCoachingReviewOutput else "QuestionReview"
         schema["$defs"][review_type]["properties"]["question_id"]["enum"] = ids
-        if payload["next_action"] not in ("repair", "check"):
+        if payload.get("defer_practice") or payload["next_action"] not in ("repair", "check"):
             schema["properties"]["next_unit"] = {"type": "null"}
         else:
             schema["properties"]["next_unit"] = {"$ref": "#/$defs/PracticeUnitOutput"}
@@ -525,7 +582,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     elif function == "unit" and payload.get("review") and payload.get("required_topic"):
         for field in ("subject", "topic"):
             schema["properties"][field]["enum"] = [payload["required_" + field]]
-    instructions = system_text(function)
+    review_only = function == "coach" and bool(payload.get("defer_practice"))
+    instructions = system_text(function, review_only=review_only)
+    if function == "coach" and payload.get("defer_practice"):
+        instructions += (
+            "\nDIESER AUFTRAG IST NUR DER RÜCKBLICK. next_unit ist IMMER null. "
+            "Erzeuge keine neuen Aufgaben. Jede Rückmeldung höchstens drei kurze Sätze. "
+            "Die Erklärung höchstens sechs kurze Sätze; nur beobachtete Schwierigkeiten erläutern. "
+            "Neue Übungen entstehen später in einem eigenen Auftrag."
+        )
     subjects = [
         value.get("subject")
         for value in [
@@ -537,25 +602,37 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if isinstance(value, dict)
     ]
     subjects.append(payload.get("required_subject"))
-    if any(is_mathematics(subject) for subject in subjects):
+    if not review_only and any(is_mathematics(subject) for subject in subjects):
         instructions += ARITHMETIC_RULES
     if model_type is s.AssignedCoachingReviewOutput:
         instructions += (
             "\nGib in question_reviews ausschließlich question_id, outcome und feedback aus. "
             "Die Lernzielzuordnung jeder beantworteten Aufgabe steht bereits fest; "
             "der Server setzt sie anhand der question_id ein. "
-            "Neue Aufgaben in next_unit benötigen weiterhin ihre passende learning_goal_id."
+            + (
+                "Neue Aufgaben in next_unit benötigen weiterhin ihre passende learning_goal_id."
+                if not review_only
+                else "next_unit bleibt null."
+            )
         )
     if function == "unit" and payload.get("review"):
         instructions += "\nSpätere Abrufprobe: Verwende neue Aufgaben, keine Frage aus previous_prompts. Übernimm required_subject und required_topic exakt."
         if payload.get("learning_goals"):
             instructions += " Bediene focus_goal_ids aus den gespeicherten learning_goals. Ordne jede Aufgabe dem passenden learning_goal_id zu; Lernziele unverändert erhalten."
-    compact_free = config.provider == "openrouter" and config.model.endswith(":free") and function != "extract"
+    compact_free = (
+        config.provider == "openrouter"
+        and config.model.endswith(":free")
+        and function not in ("extract", "tutor")
+        and not review_only
+    )
+    block_count = payload.get("study_block", {}).get("question_count") if function == "unit" else None
+    if block_count is not None and (type(block_count) is not int or not 2 <= block_count <= 5):
+        raise ProviderError("Der Umfang der Lernetappe ist ungültig.")
     if compact_free:
         task_count = (
             "Erstelle pro Einheit GENAU die in selected_groups.question_count vorgegebene Anzahl Aufgaben. "
             if function == "package" and payload.get("selected_groups")
-            else "Erstelle in dieser kurzen Lerneinheit GENAU ZWEI Aufgaben. "
+            else f"Erstelle in dieser kurzen Lerneinheit GENAU {block_count or 2} Aufgaben. "
         )
         instructions += (
             "\n" + task_count + "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
@@ -567,7 +644,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             if isinstance(node, dict):
                 properties = node.get("properties", {})
                 if "questions" in properties:
-                    properties["questions"].update(minItems=2, maxItems=2)
+                    properties["questions"].update(minItems=block_count or 2, maxItems=block_count or 2)
                 if "hints" in properties:
                     properties["hints"]["maxItems"] = 2
                 if "type" in properties and properties["type"].get("enum") == ["choice", "gap", "match", "short"]:
@@ -579,6 +656,27 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     compact(item)
 
         compact(schema)
+    if block_count:
+        schema["properties"]["questions"].update(minItems=block_count, maxItems=block_count)
+        for field in ("subject", "topic"):
+            schema["properties"][field]["enum"] = [payload["required_" + field]]
+        instructions += (
+            "\nDiese Etappe gehört zu einem größeren Lernpfad. Übernimm required_subject und required_topic exakt. "
+            "Übe den Fokus aus study_block; previous_prompts niemals wiederholen. "
+            "Modus understand: erst ein kurzes Beispiel erklären, dann selbst lösen lassen. "
+            "Modus detective: eine fachlich falsche Behauptung als solche markieren und die richtige "
+            "Erklärung auswählen lassen. Modus apply: einen kleinen neuen Alltagsfall mit dem bestätigten "
+            "Wissen lösen. Modus recall: Wissen ohne vorweggenommene Lösung abrufen. "
+            "Außer Mathematik: kurze Antworten sind ein einzelner wörtlich im Material belegter Begriff, "
+            "maximal fünf Wörter und 80 Zeichen; accepted bleibt leer, options bei short leer. "
+            "Erzeuge choice und short; keine mehrteiligen Fragen oder erfundenen Hausaufgaben."
+        )
+        if not is_mathematics(payload.get("required_subject")):
+            for definition in schema.get("$defs", {}).values():
+                props = definition.get("properties", {})
+                if "prompt" in props and "type" in props:
+                    props["type"]["enum"] = ["choice", "short"]
+                    props["accepted"].update(maxItems=0)
     package_targets = {}
     if compact_free and function == "package":
         payload, package_targets = prepare_package_schema(schema, payload)
@@ -598,7 +696,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "als richtige Antworten ergänzen. Bei gap/short bleibt options immer leer. "
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
-    indexed_choices = config.provider == "openrouter" and function != "extract"
+    indexed_choices = config.provider == "openrouter" and function not in ("extract", "tutor") and not review_only
     if indexed_choices:
         indexed_choice_schema(schema)
         instructions += (
@@ -609,6 +707,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Prüfe, dass dieser Index auf die fachlich richtige vorhandene Option zeigt. "
             "Bei gap, short und match bleibt answer wie beschrieben ein Antworttext."
         )
+    prune_schema(schema)
     user_text = json.dumps(payload, ensure_ascii=False)
     # Byte count is deliberately conservative for text; image budget uses the
     # entire encoded payload rather than an optimistic model-specific formula.
@@ -676,7 +775,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 verify_free_endpoint(config.model, upstream, bool(image_data))
             body = {
                 "model": config.model,
-                "max_tokens": config.max_output_tokens,
+                "max_tokens": min(
+                    config.max_output_tokens,
+                    2600
+                    if function == "tutor"
+                    else 4200
+                    if function == "coach" and payload.get("defer_practice")
+                    else 4500
+                    if block_count
+                    else config.max_output_tokens,
+                ),
                 "temperature": 0,
                 "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": content}],
                 "provider": {
@@ -767,6 +875,19 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             data = model_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
         else:
             data = model_type.model_validate_json(text).model_dump()
+        if review_only and data.get("next_unit") is not None:
+            raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
+        if block_count:
+            if len(data["questions"]) != block_count:
+                raise ProviderError("Die KI hat die Lernetappe nicht vollständig erstellt. Bitte erneut versuchen.")
+            if not is_mathematics(payload.get("required_subject")):
+                validate_factual_package(
+                    {"units": [{**data, "group_id": "block"}]},
+                    {
+                        "selected_groups": [{"id": "block", "subject": payload["required_subject"]}],
+                        "materials": [{**payload["material"], "group_id": "block"}],
+                    },
+                )
         if package_targets and (
             len(data["units"]) != len(package_targets)
             or {unit["group_id"] for unit in data["units"]} != set(package_targets)

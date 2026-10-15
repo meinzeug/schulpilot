@@ -71,10 +71,20 @@ PARAGRAPHS = (
         "Speicherung, Sicherheit und Aufbewahrung",
         "Konto-, Lern- und Familiendaten liegen in der eigenen Datenbank auf dem SCHULPILOT-Server bei Hetzner. "
         "Private Materialien und Datenbank sind nicht öffentlich zugänglich. Sitzungen sind widerrufbar und Passwörter "
-        "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten und Nachrichten werden höchstens "
+        "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen und Nachrichten werden höchstens "
         "365 Tage gespeichert; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere sieben Tage; "
         "tägliche Backups 14 Tage. Backups werden vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen. "
         "Technische Betriebsprotokolle enthalten keine Fotos, vollständigen Kinderantworten oder Zugangsdaten.",
+    ),
+    (
+        "Fragen zum Heft und freiwillige Sprachfunktionen",
+        "Heftfragen, Antworten und Quellenbelege gehören zum privaten Lernverlauf und sind für berechtigte Eltern sichtbar. "
+        "Die freigegebene Lern-KI erhält die Frage, bestätigte Hefttexte und bei einer Nachfrage wenige vorherige Antworten. "
+        "Mikrofon und Vorlesen starten ausschließlich auf Wunsch. Spracheingabe verwendet den Sprachdienst des Geräts "
+        "oder Browsers, der Sprache auch online verarbeiten kann. Ein Hinweis erscheint vor der Aufnahme. SCHULPILOT "
+        "speichert keine Audiodateien und lädt selbst keine Audiodateien hoch. Der erkannte Text ist vor dem Senden "
+        "bearbeitbar. Auch Vorlesestimmen können einen Gerätedienst verwenden; eine Offlineverarbeitung ist nicht "
+        "auf jedem Gerät verfügbar. Tippen und Lesen bleiben ohne diese Funktionen möglich.",
     ),
     (
         "Bestellungen und Überweisungen",

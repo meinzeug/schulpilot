@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'api.dart';
 import 'coaching_panel.dart';
+import 'lesson_voice.dart';
+import 'study_path_panel.dart';
+import 'tutor_sheet.dart';
 import 'ui.dart';
 
 class UnitScreen extends StatefulWidget {
@@ -33,6 +36,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? answerOutcome;
   bool answerAssisted = false;
   bool awaitingContinue = false;
+  final stepTop = GlobalKey();
   AppState get state => widget.state;
   @override
   void initState() {
@@ -117,7 +121,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   void watchCoaching() {
-    if (unit?['coaching']?['status'] == 'pending') {
+    if (unit?['coaching']?['status'] == 'pending' ||
+        ['queued', 'running'].contains(unit?['coaching']?['practice_status'])) {
       coachingPoll ??= Timer.periodic(const Duration(seconds: 3), (_) {
         if (visible) load();
       });
@@ -126,6 +131,31 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       coachingPoll = null;
     }
   }
+
+  void revealStep() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = stepTop.currentContext;
+      if (mounted && target != null) {
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 220),
+          alignment: 0,
+        );
+      }
+    });
+  }
+
+  Widget askButton(Json u) => TextButton.icon(
+    icon: const Icon(Icons.chat_bubble_outline_rounded),
+    label: const Text('Frag nach'),
+    onPressed: () => showTutorSheet(
+      context,
+      state,
+      childId: u['child_id'] ?? state.user!['child_id'],
+      unitId: u['id'],
+    ),
+  );
 
   bool done(dynamic q) {
     final attempts = q['attempts'] as List;
@@ -157,7 +187,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             )
           : unit == null
           ? const Center(child: CircularProgressIndicator())
-          : body(context),
+          : KeyedSubtree(key: stepTop, child: body(context)),
     ),
   );
   Widget body(BuildContext context) {
@@ -194,6 +224,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           const SizedBox(height: 20),
           if (u['status'] == 'completed') ...[
             CoachingPanel(state: state, unit: u, refresh: load),
+            askButton(u),
             const SizedBox(height: 20),
           ],
           for (final q in questions)
@@ -273,6 +304,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 20),
           CoachingPanel(state: state, unit: u, refresh: load),
+          if (u['school_day_id'] != null && u['synthetic'] != true) ...[
+            const SizedBox(height: 20),
+            StudyPathPanel(
+              state,
+              u['child_id'],
+              u['school_day_id'],
+              dense: true,
+              onChanged: load,
+            ),
+          ],
           const SizedBox(height: 16),
           Wrap(
             spacing: 10,
@@ -284,6 +325,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 label: const Text('Zu meinem Tag'),
               ),
               helpButton(context, u),
+              if (u['source_material_ids']?.isNotEmpty == true &&
+                  u['synthetic'] != true)
+                askButton(u),
             ],
           ),
           const SizedBox(height: 12),
@@ -312,6 +356,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                               '${a['answer']} · ${outcomeLabel(a['outcome'])}${a['assisted'] == true ? ' · mit Hilfe' : ''}',
                             ),
                           ),
+                        if (q['feedback_explanation'] != null) ...[
+                          Text(q['feedback_explanation']),
+                          ReadAloudButton(text: q['feedback_explanation']),
+                        ],
                       ],
                     ),
                   ),
@@ -393,6 +441,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   u['explanation'],
                   style: const TextStyle(fontSize: 18, height: 1.6),
                 ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ReadAloudButton(text: u['explanation']),
+                    if (u['synthetic'] != true) askButton(u),
+                  ],
+                ),
                 const SizedBox(height: 26),
                 ActionButton(
                   label: 'Weiter zu den Übungen',
@@ -404,6 +460,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     );
                     if (mounted && widget.unitId == id) {
                       setState(() => unit = data);
+                      revealStep();
                     }
                   },
                 ),
@@ -488,6 +545,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       height: 1.35,
                     ),
                   ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ReadAloudButton(text: q['prompt'], iconOnly: true),
+                  ),
                   const SizedBox(height: 22),
                   if (q['type'] == 'choice')
                     for (final option in q['options'] as List)
@@ -569,6 +630,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       ),
                       onChanged: (_) => lastInteraction = DateTime.now(),
                     ),
+                  if (q['type'] == 'short' || q['type'] == 'gap')
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: VoiceInputButton(
+                        controller: text,
+                        maxLength: q['type'] == 'short' ? 500 : 200,
+                      ),
+                    ),
                   if (hint != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
@@ -576,6 +645,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         hint!,
                         icon: Icons.lightbulb_outline_rounded,
                       ),
+                    ),
+                  if (hint != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ReadAloudButton(text: hint!),
                     ),
                   ActionButton(
                     label: 'Antwort prüfen',
@@ -607,6 +681,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   onPressed: () => showExplanation(context, u),
                 ),
                 helpButton(context, u),
+                if (u['synthetic'] != true &&
+                    u['source_material_ids']?.isNotEmpty == true)
+                  askButton(u),
                 TextButton(
                   onPressed: () => showTaskFeedback(context, u),
                   child: const Text('Passt die Aufgabe?'),
@@ -650,6 +727,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         matches.length != (q['options'] as List).length) {
       throw ApiError('Ordne noch alle Begriffe zu.');
     }
+    FocusManager.instance.primaryFocus?.unfocus();
     final id = u['id'];
     final data = await state.api.post(
       '/units/$id/questions/${q['id']}/answer',
@@ -669,6 +747,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       explanation = data['explanation'];
       awaitingContinue = true;
     });
+    revealStep();
     if (unit!['status'] == 'completed') {
       watchCoaching();
       state.refreshState();
@@ -728,6 +807,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               explanation!,
               style: const TextStyle(fontSize: 17, height: 1.5),
             ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ReadAloudButton(text: explanation!),
+            ),
           ],
           if (hint != null && !closed) ...[
             const SizedBox(height: 16),
@@ -747,6 +830,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 explanation = null;
               });
               lastInteraction = DateTime.now();
+              revealStep();
             },
           ),
           if (!closed) ...[
@@ -762,6 +846,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ],
           const SizedBox(height: 10),
           Align(child: helpButton(context, u)),
+          if (u['synthetic'] != true &&
+              u['source_material_ids']?.isNotEmpty == true)
+            Align(child: askButton(u)),
         ],
       ),
     );
@@ -788,9 +875,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       builder: (ctx) => AlertDialog(
         title: const Text('Kurz erklärt'),
         content: SingleChildScrollView(
-          child: Text(
-            data['explanation'],
-            style: const TextStyle(fontSize: 17, height: 1.5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                data['explanation'],
+                style: const TextStyle(fontSize: 17, height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              ReadAloudButton(text: data['explanation']),
+            ],
           ),
         ),
         actions: [

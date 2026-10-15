@@ -249,12 +249,41 @@ void main() {
     (tester) async {
       _size(tester, 430);
       final posts = <String>[];
+      var pathReads = 0;
       final state = _child(
         MockClient((request) async {
           if (request.method == 'POST') {
             posts.add(request.url.path);
-            expect(request.url.path, '/api/units/saved/start');
-            return _response(<String, dynamic>{});
+            fail(
+              'Opening a prepared study stage must not request new AI work.',
+            );
+          }
+          if (request.url.path == '/api/school-days/day/study-path') {
+            pathReads++;
+            return _response({
+              'available': true,
+              'id': 'day',
+              'day_id': 'day',
+              'total_questions': 4,
+              'completed_questions': 0,
+              'ready_questions': 4,
+              'blocks': [
+                {
+                  'id': 'saved-block',
+                  'title': 'Brüche',
+                  'phase': 'understand',
+                  'label': 'Verstehen',
+                  'question_count': 4,
+                  'status': 'ready',
+                  'unit_id': 'saved',
+                  'job_id': null,
+                },
+              ],
+              'next_block_id': 'saved-block',
+              'can_continue': true,
+              'block_reason': null,
+              'stale': false,
+            });
           }
           expect(request.url.path, '/api/children/child/school-day/today');
           return _response({
@@ -292,18 +321,19 @@ void main() {
         MaterialApp.router(theme: appTheme(), routerConfig: router),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Jetzt lernen'), findsOneWidget);
+      expect(find.text('Etappe öffnen'), findsOneWidget);
+      expect(pathReads, 1);
       expect(posts, isEmpty);
       await tester.tap(find.byTooltip('Mehr'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Neu laden'));
       await tester.pumpAndSettle();
       expect(posts, isEmpty);
-      final learn = find.text('Jetzt lernen');
+      final learn = find.text('Etappe öffnen');
       await tester.ensureVisible(learn);
       await tester.tap(learn);
       await tester.pumpAndSettle();
-      expect(posts, ['/api/units/saved/start']);
+      expect(posts, isEmpty);
       expect(find.text('Die erste Lernrunde ist geöffnet.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

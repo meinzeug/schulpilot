@@ -4,6 +4,7 @@ One automatic review per completed unit, one explicit retry, no provider loops.
 An AI opinion never upgrades an uncertain answer to a mastery observation.
 """
 
+import copy
 import hashlib
 import json
 import logging
@@ -12,7 +13,7 @@ import unicodedata
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func, or_, select, update
 
 from . import schemas as s
@@ -34,7 +35,7 @@ from .db import (
     now,
     uid,
 )
-from .providers import ProviderError, config_for_function, request_provider, reserve, settle
+from .providers import ProviderError, config_for_function, external_allowed, request_provider, reserve, settle
 from .security import child_user, rate_limit
 
 router = APIRouter(tags=["Betreutes Lernen"])
@@ -276,7 +277,12 @@ def goal_states(db, unit):
 def focus_ids(db, unit, action):
     states = goal_states(db, unit)
     if action == "repair":
-        by_question = {q["id"]: q.get("learning_goal_id") for q in unit.questions}
+        report = db.get(UnitCoaching, unit.id)
+        reviewed = {
+            r["question_id"]: r["learning_goal_id"]
+            for r in (report.report if report else {}).get("question_reviews", [])
+        }
+        by_question = {q["id"]: q.get("learning_goal_id") or reviewed.get(q["id"]) for q in unit.questions}
         weak = {
             by_question[q["question_id"]]
             for q in observations(db, unit)
@@ -410,8 +416,14 @@ def plan_review(db, unit):
         allocated_week += duration
         if other.created >= start:
             allocated_today += duration
+    current_plan = plan(db, child)
+    reserved_goals = sum(
+        (entry.get("estimated_minutes") or current_plan["session_minutes"])
+        for entry in current_plan["today"]
+        if entry.get("mandatory") and entry.get("kind") != "unit"
+    )
     available = min(
-        plan(db, child)["available_minutes"],
+        current_plan["available_minutes"] - reserved_goals,
         prefs.daily_minutes - allocated_today,
         prefs.weekly_minutes - allocated_week,
     )
@@ -442,7 +454,7 @@ def plan_review(db, unit):
     }
 
 
-def continuation_block(db, unit, child):
+def continuation_block(db, unit, child, *, check_sources=True):
     from .learning import local_day
 
     prefs = s.Preferences(**child.preferences)
@@ -452,10 +464,11 @@ def continuation_block(db, unit, child):
     ):
         return "Heute ist für diese Lernfolge kein Lerntag vorgesehen. Der Stoff bleibt gespeichert."
     # Validate all copied source revisions again when a prepared round starts.
-    try:
-        context(db, unit)
-    except ProviderError as error:
-        return str(error)
+    if check_sources:
+        try:
+            context(db, unit)
+        except ProviderError as error:
+            return str(error)
     start = int(datetime.combine(today, datetime.min.time(), ZoneInfo(prefs.timezone)).timestamp())
     events = list(
         db.scalars(
@@ -573,6 +586,16 @@ def view(db, unit):
             "failed",
             "Die frühere Verarbeitung ist nicht mehr verfügbar. Deine Antworten bleiben gespeichert.",
         )
+    practice_job = db.scalar(
+        select(Job)
+        .where(
+            Job.child_id == unit.child_id,
+            Job.kind == "coach_practice",
+            Job.payload["unit_id"].as_string() == unit.id,
+        )
+        .order_by(Job.payload["practice_number"].as_integer().desc().nullslast(), Job.created.desc(), Job.id.desc())
+        .limit(1)
+    )
     return {
         "status": status,
         "decision": item.decision,
@@ -584,6 +607,10 @@ def view(db, unit):
         "can_retry": status in ("blocked", "failed") and item.request_count < MAX_REQUESTS,
         "provider": item.provider,
         "model": item.model,
+        "practice_deferred": bool((item.report or {}).get("practice_deferred") and not item.next_unit_id),
+        "practice_job_id": practice_job.id if practice_job else None,
+        "practice_status": practice_job.status if practice_job else None,
+        "practice_error": practice_job.error if practice_job else None,
         "assessment_notice": "KI-Einschätzungen ergänzen die feste Prüfung. Unklare Antworten zählen dadurch nicht automatisch als selbstständig richtig gelöst.",
     }
 
@@ -656,7 +683,9 @@ def validate_new_round(db, previous_unit, data, *, desired_ids=None):
                 )
 
 
-def save_report(db, unit, item, data, sources, *, synthetic=False):
+def save_report(
+    db, unit, item, data, sources, *, synthetic=False, defer_practice=False, practice_identity=None, record_review=True
+):
     from .learning import record
 
     data = s.CoachingOutput.model_validate(data).model_dump()
@@ -711,7 +740,8 @@ def save_report(db, unit, item, data, sources, *, synthetic=False):
         if not set(re.findall(r"\d+", review["feedback"])).issubset(numbers):
             raise ProviderError("Die Rückmeldung nennt Zahlen, die nicht zur gespeicherten Aufgabe gehören.")
     next_unit = data.pop("next_unit")
-    wants_next = item.decision in ("repair", "check")
+    deferred = defer_practice and next_unit is None and item.decision in ("repair", "check")
+    wants_next = item.decision in ("repair", "check") and not deferred
     if wants_next != bool(next_unit):
         raise ProviderError("Die Anschlussübungen passen nicht zur gespeicherten Lernplanung.")
     if next_unit:
@@ -757,8 +787,8 @@ def save_report(db, unit, item, data, sources, *, synthetic=False):
             estimated_minutes=5,
             introduction_seen=item.decision == "check",
             synthetic=unit.synthetic,
-            provider=item.provider,
-            model=item.model,
+            provider=practice_identity[0] if practice_identity else item.provider,
+            model=practice_identity[1] if practice_identity else item.model,
         )
         db.add(followup)
         db.flush()
@@ -777,6 +807,7 @@ def save_report(db, unit, item, data, sources, *, synthetic=False):
     supported = [q for q in values if q["deterministic_outcome"] == "correct" and q not in independent]
     unresolved = [q for q in values if q["deterministic_outcome"] != "correct"]
     data.update(
+        practice_deferred=deferred,
         source_revisions=sources,
         summary=f"{len(values)} Aufgaben bearbeitet: {len(independent)} beim ersten Versuch ohne zusätzliche Hilfe richtig, {len(supported)} mit Unterstützung gelöst, {len(unresolved)} noch falsch oder nicht sicher bewertbar. Das sind Beobachtungen aus dieser Runde.",
         strengths=[
@@ -786,13 +817,16 @@ def save_report(db, unit, item, data, sources, *, synthetic=False):
     )
     item.report = data
     item.status = "ready"
-    record(
-        db,
-        unit.child_id,
-        "coach_support" if item.decision == "parent_help" else "coach_review",
-        {"decision": item.decision},
-        unit.id,
-    )
+    if record_review:
+        record(
+            db,
+            unit.child_id,
+            "coach_support" if item.decision == "parent_help" else "coach_review",
+            {"decision": item.decision},
+            unit.id,
+        )
+    elif item.next_unit_id:
+        record(db, unit.child_id, "unit_created", {"subject": unit.subject, "topic": unit.topic}, item.next_unit_id)
 
 
 def synthetic_report(db, unit, action):
@@ -948,6 +982,7 @@ def schedule(unit_id, *, automatic=False):
                     "next_action": item.decision,
                     "next_review": item.next_review,
                     "reason": item.reason,
+                    "defer_practice": True,
                 },
                 idempotency="coach:" + unit.id + ":" + str(item.request_count + 1),
             )
@@ -1014,6 +1049,7 @@ def process(job_id):
                 )
             payload["next_action"] = job.payload["next_action"]
             payload["focus_goal_ids"] = focus_ids(db, unit, payload["next_action"])
+            payload["defer_practice"] = bool(job.payload.get("defer_practice"))
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             from .commerce import usage_terms
 
@@ -1036,7 +1072,8 @@ def process(job_id):
                 raise ProviderError(
                     "Die verfügbare Lernzeit wurde während der Auswertung geändert. Bitte den aktuellen Plan öffnen."
                 )
-            save_report(db, unit, item, result.data, sources)
+            verify_current_provider(db, unit, values, "coach")
+            save_report(db, unit, item, result.data, sources, defer_practice=bool(job.payload.get("defer_practice")))
             settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), result)
             job.status, job.finished, job.result = "completed", int(now()), {"unit_id": unit.id}
     except Exception as error:
@@ -1068,3 +1105,143 @@ def request_coaching(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
     rate_limit(db, "coach-request:" + p.user.id, 10, 600)
     db.rollback()
     return schedule(unit_id)
+
+
+@router.post("/units/{unit_id}/practice", status_code=202)
+def request_practice(
+    unit_id: str,
+    idempotency: str = Header(alias="Idempotency-Key", default=""),
+    p=Depends(child_user),
+    db=Depends(get_db),
+):
+    from .learning import get_unit
+    from .materials import enqueue
+
+    unit = get_unit(db, p, unit_id, True)
+    db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
+    item = db.get(UnitCoaching, unit.id)
+    if not item or item.status != "ready" or not item.report.get("practice_deferred") or item.next_unit_id:
+        raise HTTPException(409, "Bitte den aktuellen Rückblick öffnen.")
+    try:
+        signature, _, _ = context(db, unit)
+    except ProviderError as error:
+        raise HTTPException(409, str(error)) from None
+    payload = {"unit_id": unit.id, "signature": signature, "next_action": item.decision}
+    previous = db.scalar(select(Job).where(Job.idempotency == p.user.id + ":" + idempotency)) if idempotency else None
+    if previous:
+        payload["practice_number"] = previous.payload.get("practice_number", 1)
+        return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
+    if plan_review(db, unit)["next_action"] not in ("repair", "check"):
+        raise HTTPException(409, "Jetzt ist eine Pause oder Elternhilfe dran. Die Übungen bleiben für später möglich.")
+    old_jobs = list(db.scalars(select(Job).where(Job.child_id == unit.child_id, Job.kind == "coach_practice")))
+    if sum(j.payload.get("unit_id") == unit.id for j in old_jobs) >= 2:
+        raise HTTPException(
+            409, "Die Übungsvorbereitung hat zweimal nicht geklappt. Bitte deine Eltern um Hilfe bitten."
+        )
+    payload["practice_number"] = sum(j.payload.get("unit_id") == unit.id for j in old_jobs) + 1
+    return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
+
+
+def process_practice(job_id):
+    """An unavailable generator must never discard an already saved review."""
+    result = None
+    try:
+        with DB() as db:
+            job = db.get(Job, job_id)
+            if not job or job.status != "running":
+                return
+            unit = db.get(LearningUnit, job.payload["unit_id"])
+            item = db.get(UnitCoaching, unit.id) if unit else None
+            if not unit or unit.child_id != job.child_id or not item or item.status != "ready" or item.next_unit_id:
+                raise ProviderError("Diese Lernrunde wurde inzwischen verändert.")
+            signature, payload, sources = context(db, unit)
+            if signature != job.payload["signature"] or plan_review(db, unit)["next_action"] not in ("repair", "check"):
+                raise ProviderError(
+                    "Die Quellen oder deine Lernzeit wurden geändert. Bitte den aktuellen Lernplan öffnen."
+                )
+            config = config_for_function(db.get(ProviderConfig, 1), "unit")
+            usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+            if not usage or (usage.provider, usage.model, usage.config_revision) != (
+                config.provider,
+                config.model,
+                config.revision,
+            ):
+                raise ProviderError("Die KI-Einstellungen wurden geändert. Bitte erneut vorbereiten.")
+            from .commerce import usage_terms
+
+            child = db.get(Child, unit.child_id)
+            usage_terms(db, db.get(Family, child.family_id), enforce=True)
+            payload.update(
+                review=True,
+                focus_goal_ids=focus_ids(db, unit, item.decision),
+                material={
+                    "subject": unit.subject,
+                    "topic": unit.topic,
+                    "content": "\n\n".join(m["content"] for m in payload["materials"]),
+                },
+            )
+            # Review observations belong in the report, not the new exercise request.
+            payload.pop("completed_questions", None)
+            values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            db.rollback()
+        result = request_provider(ProviderConfig(**values), "unit", payload)
+        with DB.begin() as db:
+            job = db.get(Job, job_id)
+            if not job or job.status != "running":
+                return
+            db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
+            unit = db.get(LearningUnit, job.payload["unit_id"])
+            item = db.get(UnitCoaching, unit.id) if unit else None
+            if (
+                not unit
+                or not item
+                or item.next_unit_id
+                or context(db, unit)[0] != job.payload["signature"]
+                or plan_review(db, unit)["next_action"] not in ("repair", "check")
+            ):
+                raise ProviderError(
+                    "Der Lernplan wurde während der Vorbereitung geändert. Bitte den aktuellen Plan öffnen."
+                )
+            data = {key: copy.deepcopy(item.report[key]) for key in s.CoachingOutput.model_fields if key != "next_unit"}
+            for review in data["question_reviews"]:
+                review.pop("assessment_kind", None)
+            data["next_unit"] = result.data
+            verify_current_provider(db, unit, values, "unit")
+            save_report(
+                db,
+                unit,
+                item,
+                data,
+                sources,
+                practice_identity=(values["provider"], values["model"]),
+                record_review=False,
+            )
+            settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), result)
+            job.status, job.finished, job.result = "completed", int(now()), {"unit_id": item.next_unit_id}
+    except Exception as error:
+        reason = (
+            str(error)
+            if isinstance(error, ProviderError)
+            else "Die neue Übung konnte nicht sicher erstellt werden. Dein Rückblick bleibt gespeichert."
+        )
+        with DB.begin() as db:
+            job = db.get(Job, job_id)
+            if job:
+                job.status, job.error, job.finished = "failed", reason[:500], int(now())
+                usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+                if usage:
+                    settle(db, usage, result, failed=True)
+        log.warning("coach_practice_failed type=%s", type(error).__name__)
+
+
+def verify_current_provider(db, unit, values, function):
+    from .commerce import usage_terms
+
+    current = config_for_function(db.get(ProviderConfig, 1), function)
+    if (current.revision, current.provider, current.model) != (values["revision"], values["provider"], values["model"]):
+        raise ProviderError("Die KI-Einstellungen wurden während der Vorbereitung geändert.")
+    external_allowed(current)
+    family = db.get(Family, db.get(Child, unit.child_id).family_id)
+    if family.expires and family.expires < now():
+        raise ProviderError("Dieser Zugang ist abgelaufen. Die Antworten bleiben gespeichert.")
+    usage_terms(db, family, enforce=True)
