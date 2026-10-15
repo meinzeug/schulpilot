@@ -23,6 +23,7 @@ from schulpilot.db import (
     SchoolDay,
     UnitSource,
     Usage,
+    now,
 )
 from schulpilot.learning import local_day
 from schulpilot.main import app
@@ -382,3 +383,128 @@ def test_three_explicit_failures_stop_without_automatic_retries(study, stage_tra
         assert db.scalar(select(func.count()).select_from(Usage)) == 3
         assert db.scalar(select(func.count()).select_from(LearningUnit)) == 0
         assert db.scalar(select(func.count()).select_from(Activity).where(Activity.kind == "unit_created")) == 0
+
+
+@pytest.mark.parametrize("phase", ["understand", "detective", "apply", "recall"])
+def test_task_briefs_prioritize_unasked_literal_passages_and_different_thinking(phase):
+    from types import SimpleNamespace
+
+    old = "Die Sonne ist ein Stern."
+    new = "Das Mondlicht ist zurückgeworfenes Sonnenlicht."
+    material = SimpleNamespace(content=old + "\n" + new)
+    briefs = study_path.task_briefs([material], ["Die Sonne ist ein Stern: Was ist die Sonne?"], phase, 3)
+    assert len(briefs) == 3
+    assert [b["number"] for b in briefs] == [1, 2, 3]
+    assert briefs[0]["source_excerpt"] == new
+    assert {b["source_excerpt"] for b in briefs} == {old, new}
+    assert len({b["action"] for b in briefs}) == 3
+    assert all(b["source_excerpt"] in material.content for b in briefs)
+    assert [b["action"] for b in briefs] == list(study_path.STAGE_ACTIONS[phase])
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_duplicate_questions_are_rejected_without_replacement_or_losing_old_answers(
+    study, stage_transport, monkeypatch, existing
+):
+    block = create(study)["next_block_id"]
+    previous = "Was ist die Sonne?"
+    old_id = None
+    if existing:
+        question = {
+            "id": "old",
+            "type": "choice",
+            "prompt": previous,
+            "options": ["Ein Stern", "Ein Planet"],
+            "answer": "Ein Stern",
+            "accepted": [],
+            "hints": ["Lies den Satz zur Sonne."],
+            "explanation": "Die Sonne ist ein Stern.",
+        }
+        with DB.begin() as db:
+            unit = LearningUnit(
+                child_id=study["child"]["id"],
+                school_day_id=study["day_id"],
+                subject="Sachunterricht",
+                topic="Gespeicherte Runde",
+                explanation="Die Sonne ist ein Stern.",
+                questions=[question],
+                status="completed",
+                completed=int(now()),
+                synthetic=False,
+                provider="fixture",
+            )
+            db.add(unit)
+            db.flush()
+            old_id = unit.id
+            db.add(Attempt(unit_id=unit.id, question_id="old", answer="Ein Stern", outcome="correct", assisted=False))
+    original = study_path.request_provider
+
+    def repeat(config, function, payload):
+        assert len(payload["study_block"]["tasks"]) == payload["study_block"]["question_count"]
+        result = original(config, function, payload)
+        if existing:
+            assert payload["previous_prompts"] == [previous]
+            result.data["questions"][0]["prompt"] = "  WAS ist die Sonne! "
+        else:
+            result.data["questions"][1]["prompt"] = result.data["questions"][0]["prompt"]
+        return result
+
+    monkeypatch.setattr(study_path, "request_provider", repeat)
+    assert generate(study, block).status_code == 202
+    finish()
+    assert len(stage_transport["calls"]) == 1
+    with DB() as db:
+        job = db.scalar(select(Job).where(Job.kind == "study_block"))
+        assert job.status == "failed" and "wiederholt" in job.error
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == int(existing)
+        assert db.scalar(select(Usage)).cost_micros == 0
+        if existing:
+            assert db.get(LearningUnit, old_id).questions == [question]
+            attempt = db.scalar(select(Attempt).where(Attempt.unit_id == old_id))
+            assert attempt.answer == "Ein Stern" and attempt.outcome == "correct" and not attempt.assisted
+
+
+def ready_recall(study):
+    block = create(study)["next_block_id"]
+    with DB.begin() as db:
+        day = db.get(SchoolDay, study["day_id"])
+        value = copy.deepcopy(day.learning_plan)
+        value["blocks"][0].update(phase="recall", label="Erinnern")
+        day.learning_plan = value
+    assert generate(study, block).status_code == 202
+    finish()
+    return study["client"].get(path(study)).json()["blocks"][0]["unit_id"]
+
+
+def test_recall_starts_without_preexposed_solution_and_requested_explanation_counts_as_help(
+    api, study, stage_transport
+):
+    unit_id = ready_recall(study)
+    client = study["client"]
+    before = client.get(f"/api/units/{unit_id}").json()
+    assert before["round_kind"] == "study_recall" and before["introduction_seen"] is True
+    assert before["explanation"] == ""
+    assert api.get(f"/api/units/{unit_id}").json()["explanation"]
+    active = client.post(f"/api/units/{unit_id}/start")
+    assert active.status_code == 200 and active.json()["explanation"] == ""
+    with DB() as db:
+        assert not db.scalar(select(Activity.id).where(Activity.unit_id == unit_id, Activity.kind == "explanation"))
+    help_response = client.post(f"/api/units/{unit_id}/explanation")
+    assert help_response.status_code == 200 and help_response.json()["explanation"]
+    for index in range(4):
+        response = client.post(f"/api/units/{unit_id}/questions/q{index + 1}/answer", json={"answer": "Ein Stern"})
+        assert response.status_code == 200, response.text
+        assert response.json()["assisted"] is True
+    completed = client.get(f"/api/units/{unit_id}").json()
+    assert completed["status"] == "completed" and completed["explanation"]
+
+
+def test_recall_still_rejects_changed_sources_during_learning(study, stage_transport):
+    unit_id = ready_recall(study)
+    assert study["client"].post(f"/api/units/{unit_id}/start").status_code == 200
+    with DB.begin() as db:
+        db.get(Material, study["materials"][0]).revision += 1
+    response = study["client"].post(f"/api/units/{unit_id}/questions/q1/answer", json={"answer": "Ein Stern"})
+    assert response.status_code == 409
+    with DB() as db:
+        assert not db.scalar(select(Attempt.id).where(Attempt.unit_id == unit_id))

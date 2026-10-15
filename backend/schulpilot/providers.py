@@ -142,17 +142,9 @@ Verbindliche Elternziele erhalten; nächste Termine, Lernzeiten und Pausen besti
 Die KI-Einschätzung ändert keine zuvor gespeicherten Antworten und ist kein eigener Beherrschungsnachweis."""
         )
     if function == "extract":
-        return (
-            SYSTEM
-            + """\nDEINE EINZIGE AUFGABE: Lies das beigefügte Bild und transkribiere den erkennbaren Unterrichtsstoff in content.
-Erkenne Fach und Thema. Keine Übungen oder Lerneinheit erzeugen, keine erfundenen Ergänzungen.
-Setze legibility auf readable, partial oder unreadable. Bei vollständig unleserlichem Unterrichtsstoff:
-legibility=unreadable, content leer, keine Hausaufgaben; uncertainties erklärt, dass ein neues Foto benötigt wird.
-Fach und Thema dürfen dann leer sein. Bei partial nur lesbaren Stoff transkribieren und fehlende Stellen benennen.
-Unleserliche Stellen in uncertainties auflisten. Nur ausdrücklich notierte Hausaufgaben in homework.
-Ein Satz, dass keine Hausaufgaben notiert sind, ist selbst keine Hausaufgabe.
-content enthält den lesbaren Stoff einschließlich Begriffen, Regeln und Beispielen aus dem Bild."""
-        )
+        from .extraction import OCR_SYSTEM
+
+        return OCR_SYSTEM
     if function == "package":
         return (
             SYSTEM
@@ -589,12 +581,22 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         payload = trusted_payload(function, fixture_id)
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture)
+    if function == "extract":
+        from .extraction import request_payload
+
+        if not image_bytes:
+            raise ProviderError("Für die Materialerkennung fehlt das Foto.")
+        payload = request_payload()
     model_type = {
         "extract": s.ExtractionOutput,
         "package": s.PackageOutput,
         "coach": s.CoachingOutput,
         "tutor": TutorOutput,
     }.get(function, s.UnitOutput)
+    if function == "extract":
+        from .extraction import TranscriptionOutput
+
+        model_type = TranscriptionOutput
     if function == "unit" and payload.get("review") and payload.get("learning_goals"):
         model_type = s.PracticeUnitOutput
     excerpt_candidates = None
@@ -720,11 +722,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
         instructions += (
             "\nDiese Etappe gehört zu einem größeren Lernpfad. Übernimm required_subject und required_topic exakt. "
-            "Übe den Fokus aus study_block; previous_prompts niemals wiederholen. "
-            "Modus understand: erst ein kurzes Beispiel erklären, dann selbst lösen lassen. "
-            "Modus detective: eine fachlich falsche Behauptung als solche markieren und die richtige "
-            "Erklärung auswählen lassen. Modus apply: einen kleinen neuen Alltagsfall mit dem bestätigten "
-            "Wissen lösen. Modus recall: Wissen ohne vorweggenommene Lösung abrufen. "
+            "Erzeuge pro Eintrag in study_block.tasks genau eine Aufgabe in derselben Reihenfolge. "
+            "Nutze dessen action als Denkhandlung und source_excerpt als wörtlichen fachlichen Anker; "
+            "das gesamte material.content bleibt die Wissensgrundlage. Verteile die Aufgaben auf diese Anker. "
+            "previous_prompts sind BEREITS BEANTWORTETE Fragen, keine Beispiele zum Nachbauen. "
+            "Keine davon wörtlich oder bloß leicht umformuliert erneut stellen. "
+            "Wenn der gleiche Begriff erneut vorkommt, prüfe einen anderen Zusammenhang, eine neue "
+            "Anwendung oder eine Fehlerkorrektur. Ein Zusatz wie 'Erneut:' macht eine alte Frage nicht neu. "
+            "Erkläre den neuen Zusammenhang kurz und lasse das Kind danach selbst denken. "
             "Außer Mathematik: kurze Antworten sind ein einzelner wörtlich im Material belegter Begriff, "
             "maximal fünf Wörter und 80 Zeichen; accepted bleibt leer, options bei short leer. "
             "Erzeuge choice und short; keine mehrteiligen Fragen oder erfundenen Hausaufgaben."
@@ -803,7 +808,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             content = [{"type": "input_text", "text": user_text}]
             if image_data:
                 content.append(
-                    {"type": "input_image", "image_url": "data:image/jpeg;base64," + image_data, "detail": "low"}
+                    {
+                        "type": "input_image",
+                        "image_url": "data:image/jpeg;base64," + image_data,
+                        "detail": "high" if function == "extract" else "low",
+                    }
                 )
             body = {
                 "model": config.model,
@@ -817,7 +826,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         elif config.provider == "openrouter":
             content = [{"type": "text", "text": user_text}]
             if image_data:
-                content.append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + image_data}})
+                image_url = {"url": "data:image/jpeg;base64," + image_data}
+                if function == "extract":
+                    image_url["detail"] = "high"
+                content.append({"type": "image_url", "image_url": image_url})
             # A single explicitly selected model and upstream endpoint. Any
             # routing change must be visible and configured, never implicit.
             upstream = (
@@ -933,6 +945,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             data = model_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
         else:
             data = model_type.model_validate_json(text).model_dump()
+        if function == "extract":
+            data = TranscriptionOutput.model_validate(data).as_material()
         if excerpt_candidates is not None and any(
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):
@@ -1007,6 +1021,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "uncertainties",
             "homework",
             "legibility",
+            "blocks",
+            "kind",
+            "text",
         }
         locations = [
             ".".join(str(part) if isinstance(part, int) or part in fields else "field" for part in item["loc"])

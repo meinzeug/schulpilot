@@ -31,13 +31,72 @@ from .db import (
     uid,
 )
 from .learning import local_day, plan, record
-from .providers import ProviderError, config_for_function, request_provider, reserve, settle
+from .providers import ProviderError, config_for_function, request_provider, reserve, settle, source_excerpt_candidates
 from .school_day import get_day, pages, planning_fingerprint
 from .security import authenticated, child_user, rate_limit
 
 router = APIRouter(tags=["Lernreise"])
 log = logging.getLogger("schulpilot.study_path")
 PHASES = (("understand", "Verstehen"), ("detective", "Fehlerdetektiv"), ("apply", "Anwenden"), ("recall", "Erinnern"))
+STAGE_ACTIONS = {
+    "understand": (
+        "Einen bisher ungeprüften Zusammenhang verstehen und die passende Begründung auswählen.",
+        "Zwei Angaben aus dem Heft vergleichen und den entscheidenden Unterschied erkennen.",
+        "Einen Fachbegriff aus einem bisher ungeprüften Satz gezielt abrufen.",
+    ),
+    "detective": (
+        "Eine ausdrücklich als falsch markierte Aussage mit einer richtigen Begründung korrigieren.",
+        "Zwei Erklärungen vergleichen und den sachlichen Denkfehler finden.",
+        "Den passenden Fachbegriff zur Korrektur eines beschriebenen Irrtums nennen.",
+    ),
+    "apply": (
+        "Das bestätigte Wissen auf einen kleinen neuen, ausdrücklich erfundenen Alltagsfall anwenden.",
+        "Eine passende Beobachtung oder Folge anhand der bestätigten Regel vorhersagen.",
+        "Den passenden Fachbegriff in einer neuen Situation zuordnen.",
+    ),
+    "recall": (
+        "Einen noch nicht geprüften Zusammenhang ohne vorweggenommene Lösung abrufen.",
+        "Eine richtige Begründung für eine bestätigte Beobachtung selbst wiedererkennen.",
+        "Einen Begriff gezielt aus dem Gedächtnis abrufen, ohne die Antwort in der Frage zu nennen.",
+    ),
+}
+
+
+def task_briefs(items, previous_prompts, phase, count):
+    """Literal source anchors distribute practice beyond already asked facts.
+
+    Lexical overlap only prioritizes passages; it is never a claim of semantic
+    coverage or mastery. The model must still create and validate real tasks.
+    """
+    candidates = source_excerpt_candidates({"materials": [{"content": m.content} for m in items]})
+    stopwords = set(
+        "der die das den dem des ein eine einer eines einem einen ist sind im in am an auf und oder zu mit für von als es sie er auch nicht wird werden hat haben bei man sich aus zum zur".split()
+    )
+
+    def words(value):
+        return set(re.findall(r"\w{3,}", value.casefold())) - stopwords
+
+    previous = words(" ".join(previous_prompts))
+    selected = set()
+    available = list(candidates)
+    actions = STAGE_ACTIONS.get(phase, STAGE_ACTIONS["understand"])
+    result = []
+    for index in range(count):
+        if not available:
+            available = list(candidates)
+        if not available:
+            raise ProviderError("Für die Etappe fehlt bestätigter Lernstoff.")
+        excerpt = min(
+            available,
+            key=lambda text: (
+                (len(words(text) & previous) + 0.5 * len(words(text) & selected)) / max(1, len(words(text))),
+                -min(len(words(text)), 25),
+            ),
+        )
+        available.remove(excerpt)
+        selected |= words(excerpt)
+        result.append({"number": index + 1, "action": actions[index % len(actions)], "source_excerpt": excerpt})
+    return result
 
 
 def sources(db, day):
@@ -384,6 +443,11 @@ def process(job_id):
             from .commerce import usage_terms
 
             usage_terms(db, db.get(Family, child.family_id), enforce=True)
+            previous_prompts = [
+                q["prompt"]
+                for u in db.scalars(select(LearningUnit).where(LearningUnit.school_day_id == day.id))
+                for q in u.questions
+            ][-120:]
             payload = {
                 "grade": child.grade,
                 "required_subject": block["subject"],
@@ -393,12 +457,12 @@ def process(job_id):
                     "topic": block["title"],
                     "content": "\n\n".join(m.content for m in items),
                 },
-                "study_block": {"mode": block["phase"], "question_count": block["question_count"]},
-                "previous_prompts": [
-                    q["prompt"]
-                    for u in db.scalars(select(LearningUnit).where(LearningUnit.school_day_id == day.id))
-                    for q in u.questions
-                ][-120:],
+                "study_block": {
+                    "mode": block["phase"],
+                    "question_count": block["question_count"],
+                    "tasks": task_briefs(items, previous_prompts, block["phase"], block["question_count"]),
+                },
+                "previous_prompts": previous_prompts,
             }
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
@@ -412,10 +476,10 @@ def process(job_id):
             or len(data["questions"]) != payload["study_block"]["question_count"]
         ):
             raise ProviderError("Die Etappe passt nicht zum geplanten Stoffumfang.")
-        if any(
-            normalized_prompt(q["prompt"]) in {normalized_prompt(p) for p in payload["previous_prompts"]}
-            for q in data["questions"]
-        ):
+        prompts = [normalized_prompt(q["prompt"]) for q in data["questions"]]
+        if len(set(prompts)) != len(prompts) or set(prompts) & {
+            normalized_prompt(p) for p in payload["previous_prompts"]
+        }:
             raise ProviderError("Die KI hat bereits gestellte Fragen wiederholt. Bitte neu vorbereiten.")
         with DB.begin() as db:
             job = db.get(Job, job_id)
@@ -443,8 +507,8 @@ def process(job_id):
                     s.Preferences(**child.preferences).session_minutes, max(5, block["question_count"] * 2)
                 ),
                 package_version=day.package_version,
-                round_kind="study_block",
-                introduction_seen=False,
+                round_kind="study_recall" if block["phase"] == "recall" else "study_block",
+                introduction_seen=block["phase"] == "recall",
                 synthetic=False,
                 provider=values["provider"],
                 model=values["model"],

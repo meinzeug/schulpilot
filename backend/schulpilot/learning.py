@@ -727,7 +727,7 @@ def learning_block(db, unit):
         return "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
     if unit.not_before and unit.not_before > today.isoformat():
         return f"Diese spätere Abrufprobe beginnt frühestens am {unit.not_before}."
-    if unit.round_kind == "study_block":
+    if unit.round_kind in ("study_block", "study_recall"):
         from .coaching import context
         from .study_path import block_reason
 

@@ -4,6 +4,9 @@
 //   node qa/learning_journey.mjs --prepare-images  (local fixtures only)
 //   node qa/learning_journey.mjs --check-inputs    (local validation only)
 //   node qa/learning_journey.mjs --run            (after the new deployment)
+//   node qa/learning_journey.mjs --run --retry-ocr-after-fix
+//     (only after the operator has deployed/approved the transcription fix;
+//      exactly one normal reserved retry per already uploaded artificial page)
 //
 // Re-run --run to observe/continue saved work. An ambiguously dispatched or
 // failed AI operation stops the run; it is never submitted a second time.
@@ -23,6 +26,7 @@ const base = 'https://schulpilot.dorfspy.de';
 const headers = {'X-Schulpilot-Request': '1'};
 const arguments_ = process.argv.slice(2);
 const mode = arguments_[0];
+const retryOcrAfterFix = arguments_.includes('--retry-ocr-after-fix');
 const allowedModes = new Set(['--prepare-images', '--check-inputs', '--run', '--help']);
 const runtimeErrors = [];
 const blockedRequests = [];
@@ -386,6 +390,9 @@ async function prepareDay() {
     await tap(page, button(page, 'Weiter'));
     day = await waitDay(value => value.pages.every(material => ['review', 'confirmed'].includes(material.status)), 'photo_recognition');
   }
+  if (retryOcrAfterFix && day.pages.some(value => words(value.content) < 130)) {
+    day = await retryShortOcrAfterFix(day);
+  }
   check(day.pages.every(value => value.extraction_provider === 'openrouter' && words(value.content) >= 130),
     'real_ocr_or_original_page_density_missing');
   const content = day.pages.map(value => value.content).join(' ');
@@ -428,6 +435,54 @@ async function prepareDay() {
   check(journey.initial_unit_id === roots[0].id, 'saved_initial_package_changed');
   await persist('initial_package_persisted');
   return day;
+}
+async function retryShortOcrAfterFix(day) {
+  check(retryOcrAfterFix && day.pages.length === 2 && day.pages.every(value => !value.confirmed) &&
+    day.units.length === 0 && day.pages.every(value => value.extraction_provider === 'openrouter'),
+    'ocr_fix_retry_only_for_the_two_unconfirmed_owned_originals');
+  const health = await jsonGet(child, '/health');
+  check(typeof health.source_commit === 'string' && /^[a-f0-9]{7,40}$/.test(health.source_commit) &&
+    !health.source_commit.startsWith('b3dbfa9'), 'ocr_fix_must_be_deployed_before_explicit_retry');
+  journey.ocr_before_fix ??= day.pages.map(value => ({id: value.id, model: value.extraction_model,
+    provider: value.extraction_provider, content_sha256: digest(value.content)}));
+  await persist('explicit_operator_approved_ocr_retry_after_fix');
+  for (const original of day.pages) {
+    if (words(original.content) >= 130) continue;
+    const key = 'extract-fix:' + original.id;
+    const previous = journey.ai_intents[key];
+    if (previous?.job_id) {
+      await waitJob(previous.job_id, 'explicit_ocr_fix_retry');
+    } else {
+      // This saved review has no retry button in the child UI. The operator's
+      // explicit one-off correction uses the same normal child API/session,
+      // reservation and worker; no material/status/answer is patched directly.
+      check(!previous?.dispatches, 'explicit_ocr_fix_retry_already_dispatched_no_more_retries');
+      if (!previous) await intent(key, 'extract');
+      journey.ai_intents[key].dispatches = 1;
+      journey.ai_intents[key].operator_approved_retry = true;
+      journey.ai_intents[key].source_commit = health.source_commit;
+      await persist('one_explicit_ocr_fix_retry_page_' + original.page_number);
+      const response = await child.request.post(base + '/api/materials/' + original.id + '/extract', {
+        headers: {...headers, 'Idempotency-Key': 'qa-transcription-fix-' + original.id}, data: {},
+      });
+      check(response.status() === 202, 'explicit_ocr_fix_retry_not_accepted_no_repeat');
+      const job = await response.json();
+      check(typeof job.id === 'string', 'explicit_ocr_fix_retry_job_missing');
+      journey.ai_intents[key].job_id = job.id;
+      await persist('explicit_ocr_fix_job_saved');
+      await waitJob(job.id, 'explicit_ocr_fix_retry');
+    }
+    const updated = await jsonGet(child, '/materials/' + original.id);
+    const before = journey.ocr_before_fix.find(value => value.id === original.id);
+    check(before && updated.extraction_provider === before.provider && updated.extraction_model === before.model &&
+      words(updated.content) >= 130 && !updated.confirmed, 'corrected_ocr_lost_original_model_or_full_transcript');
+  }
+  journey.evidence.explicit_ocr_fix_retries = Object.values(journey.ai_intents)
+    .filter(value => value.operator_approved_retry).length;
+  check(journey.evidence.explicit_ocr_fix_retries <= 2, 'explicit_ocr_fix_retry_limit_exceeded');
+  await persist('two_original_pages_retranscribed_after_deployed_fix');
+  await open(page, wizardRoute());
+  return dayState();
 }
 async function pathState() {
   return jsonGet(child, '/school-days/' + journey.day_id + '/study-path');
@@ -902,13 +957,16 @@ async function run() {
     completed_units: journey.completed_unit_ids.length, saved_answers: answers,
     teacher_questions: turns.length, ...consumed, runtime_errors: runtimeErrors,
     automatic_audio_starts: unexpectedAudioStarts.length,
-    explicit_ai_retries: 0, household_retained_for_android: true, evidence: journey.evidence};
+    explicit_ai_retries: Object.values(journey.ai_intents).filter(value => value.operator_approved_retry).length,
+    household_retained_for_android: true, evidence: journey.evidence};
 }
 
 try {
-  check(arguments_.length === 1 && allowedModes.has(mode), 'choose_help_prepare_images_check_inputs_or_run');
+  check(allowedModes.has(mode) && (arguments_.length === 1 ||
+    mode === '--run' && retryOcrAfterFix && arguments_.length === 2 && arguments_[1] === '--retry-ocr-after-fix'),
+    'choose_help_prepare_images_check_inputs_or_run');
   if (mode === '--help') {
-    console.log('Local fixtures: node qa/learning_journey.mjs --prepare-images\nLocal check: node qa/learning_journey.mjs --check-inputs\nAfter deployment: node qa/learning_journey.mjs --run\nNo automatic retries or household cleanup.');
+    console.log('Local fixtures: node qa/learning_journey.mjs --prepare-images\nLocal check: node qa/learning_journey.mjs --check-inputs\nAfter deployment: node qa/learning_journey.mjs --run\nOperator-approved OCR correction only after deployed fix: add --retry-ocr-after-fix (one retry per original page).\nNo automatic retries or household cleanup.');
   } else {
     await localInputs();
     if (mode === '--prepare-images') await prepareImages();
@@ -925,7 +983,8 @@ try {
 } catch (error) {
   process.exitCode = 1;
   const report = {qa_passed: false, stopped_at: phase, reason: safeReason(error),
-    explicit_ai_retries: 0, private_account_retained: Boolean(account), runtime_errors: runtimeErrors,
+    explicit_ai_retries: Object.values(journey?.ai_intents ?? {}).filter(value => value.operator_approved_retry).length,
+    private_account_retained: Boolean(account), runtime_errors: runtimeErrors,
     blocked_ai_requests: blockedRequests.length,
     automatic_audio_starts: unexpectedAudioStarts.length,
     usage: lastUsage && {calls_used: lastUsage.calls_used, known_cost_micros_usd: lastUsage.known_cost_micros_usd,

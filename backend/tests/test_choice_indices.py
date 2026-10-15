@@ -182,6 +182,44 @@ def test_provider_cannot_silently_shrink_a_five_topic_package(transport):
     assert len(calls) == 1
 
 
+def test_followup_stage_transports_concrete_new_thinking_and_literal_source_anchors(transport):
+    config, output, _, calls = transport
+    unit = copy.deepcopy(output["units"][0])
+    unit.pop("group_id")
+    output.clear()
+    output.update(unit)
+    tasks = [
+        {"number": 1, "action": "Ein neues Bruchbeispiel begründen.", "source_excerpt": "1/2 = 2/4"},
+        {
+            "number": 2,
+            "action": "Einen ausdrücklich markierten Denkfehler korrigieren.",
+            "source_excerpt": "Beide Zahlen mit 2 multiplizieren.",
+        },
+    ]
+    payload = {
+        "required_subject": unit["subject"],
+        "required_topic": unit["topic"],
+        "material": {"subject": unit["subject"], "content": "1/2 = 2/4. Beide Zahlen mit 2 multiplizieren."},
+        "study_block": {"mode": "detective", "question_count": 2, "tasks": tasks},
+        "previous_prompts": ["Welche Zahl ist der Nenner von 1/2?"],
+    }
+    before = copy.deepcopy(payload)
+    result = request_provider(config, "unit", payload)
+    assert result.data["questions"][0]["answer"] == "2/4"
+    assert len(calls) == 1 and payload == before
+    request = calls[0]
+    submitted = json.loads(request["messages"][1]["content"][0]["text"])
+    assert submitted["study_block"]["tasks"] == tasks
+    assert submitted["previous_prompts"] == payload["previous_prompts"]
+    instructions = request["messages"][0]["content"]
+    assert "pro Eintrag in study_block.tasks genau eine Aufgabe" in instructions
+    assert "bloß leicht umformuliert" in instructions
+    assert "Ein Zusatz wie 'Erneut:' macht eine alte Frage nicht neu" in instructions
+    assert request["response_format"]["json_schema"]["schema"]["properties"]["questions"]["minItems"] == 2
+    assert request["provider"]["allow_fallbacks"] is False
+    assert request["provider"]["max_price"] == {"prompt": 0, "completion": 0, "request": 0}
+
+
 def factual_output(answer="Stern", accepted=None, options=None):
     return {
         "units": [

@@ -188,6 +188,10 @@ def process(job_id):
                 "recent_outcomes": difficulties,
                 "review": bool(job.payload.get("review_of")),
             }
+            if job.kind == "extract":
+                from .extraction import request_payload
+
+                payload = request_payload()
             if job.kind == "package":
                 payload["material"] = None
                 payload["materials"] = [
@@ -284,7 +288,12 @@ def process(job_id):
             elif job.kind == "extract":
                 if not material or material.confirmed:
                     raise ProviderError("Material wurde zwischenzeitlich entfernt oder bereits bestätigt.")
-                data = s.ExtractionOutput.model_validate(data).model_dump()
+                from .extraction import IncompleteTranscription, validate_material
+
+                try:
+                    data = validate_material(data, image_bytes)
+                except IncompleteTranscription as error:
+                    raise ProviderError(str(error)) from None
                 for key in ("subject", "topic", "content", "uncertainties", "homework", "legibility"):
                     setattr(material, key, data[key])
                 material.status = "unreadable" if data["legibility"] == "unreadable" else "review"

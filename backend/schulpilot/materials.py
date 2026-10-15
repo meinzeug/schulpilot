@@ -159,7 +159,9 @@ def get_material(db, p, material_id, write=False):
     child = child_access(db, p, material.child_id, write=write and p.user.role == "parent")
     if write:
         db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
-        db.refresh(material)
+        material = db.get(Material, material_id, populate_existing=True)
+        if not material:
+            raise HTTPException(404, "Material nicht gefunden.")
     return material, child
 
 
@@ -242,9 +244,22 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
 
 @router.delete("/materials/{material_id}")
 def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
-    material, _ = get_material(db, p, material_id, True)
+    material, child = get_material(db, p, material_id)
     if p.user.role != "parent":
         raise HTTPException(403, "Materialien werden durch Eltern gelöscht.")
+    child_access(db, p, child.id, write=True)
+    # Material deletion sets LearningUnit.material_id to null through its FK.
+    # Answers and tutor help lock units before Child: keep that order rather
+    # than holding Child while waiting for an in-flight answer's unit lock.
+    list(
+        db.scalars(
+            select(LearningUnit)
+            .where(LearningUnit.child_id == child.id, LearningUnit.material_id == material_id)
+            .order_by(LearningUnit.id)
+            .with_for_update()
+        )
+    )
+    material, _ = get_material(db, p, material_id, True)
     path = material.path
     from .erasure import flush_journal, request
     from .tutor import purge_source_turns

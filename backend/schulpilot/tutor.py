@@ -353,6 +353,23 @@ def checked_reply(data, payload, revisions):
     return reply
 
 
+def record_tutor_help(db, turn, units, revisions):
+    """Count source-backed help for overlapping active or paused practice."""
+    source_revisions = {source["id"]: source["revision"] for source in revisions}
+    unit_sources = {}
+    for source in db.scalars(select(UnitSource).where(UnitSource.unit_id.in_([unit.id for unit in units]))):
+        unit_sources.setdefault(source.unit_id, []).append(source)
+    for unit in units:
+        sources = unit_sources.get(unit.id, [])
+        shared_source = any(source_revisions.get(source.material_id) == source.revision for source in sources)
+        # Legacy units have only their direct material reference. When explicit
+        # UnitSource rows exist, their stored revisions remain authoritative.
+        if not sources:
+            shared_source = unit.material_id in source_revisions
+        if unit.id == turn.unit_id or shared_source:
+            record(db, turn.child_id, "explanation", {"via": "tutor", "turn_id": turn.id}, unit_id=unit.id)
+
+
 def process(job_id):
     result = None
     try:
@@ -385,6 +402,26 @@ def process(job_id):
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
+            # Answers lock their unit before updating the child's mastery.
+            # Keep that lock order and wait for any simultaneous completion:
+            # completed units must never gain a retrospective help marker.
+            ongoing_units = (
+                list(
+                    db.scalars(
+                        select(LearningUnit)
+                        .where(
+                            LearningUnit.child_id == job.child_id,
+                            LearningUnit.status.in_(["active", "paused"]),
+                            LearningUnit.completed.is_(None),
+                            LearningUnit.synthetic.is_(False),
+                        )
+                        .order_by(LearningUnit.id)
+                        .with_for_update()
+                    )
+                )
+                if reply["kind"] == "answer"
+                else []
+            )
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
             turn = db.get(TutorTurn, job.payload["turn_id"])
             if not turn or turn.job_id != job.id or turn.child_id != job.child_id:
@@ -401,6 +438,8 @@ def process(job_id):
             ):
                 raise ProviderError("Die KI-Einstellung wurde während der Antwort geändert. Bitte frage erneut.")
             external_allowed(config)
+            if reply["kind"] == "answer":
+                record_tutor_help(db, turn, ongoing_units, revisions)
             turn.status, turn.reply, turn.error = "ready", reply, None
             job.status, job.finished, job.result = "completed", int(now()), {"question_id": turn.id}
             settle(db, usage, result)

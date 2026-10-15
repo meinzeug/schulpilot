@@ -40,7 +40,7 @@ from .security import child_user, rate_limit
 
 router = APIRouter(tags=["Betreutes Lernen"])
 log = logging.getLogger("schulpilot.coaching")
-CHECK_KINDS = ("check", "spaced_review")
+CHECK_KINDS = ("check", "spaced_review", "study_recall")
 MAX_DAILY_ROUNDS = 3
 MAX_REQUESTS = 2
 
