@@ -276,6 +276,18 @@ void main() {
         ),
       );
     }, learning: true);
+    for (final label in ['Offen', 'Später', 'Erledigt']) {
+      final foreground = DefaultTextStyle.of(tester.element(find.text(label)))
+          .style
+          .color!;
+      final background = label == 'Offen'
+          ? appTheme().chipTheme.selectedColor!
+          : appTheme().chipTheme.backgroundColor!;
+      final contrast =
+          (background.computeLuminance() + .05) /
+          (foreground.computeLuminance() + .05);
+      expect(contrast, greaterThanOrEqualTo(4.5), reason: label);
+    }
     final tileSemantics = tester
         .getSemantics(find.byType(ListTile).last)
         .getSemanticsData();

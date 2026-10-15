@@ -122,7 +122,17 @@ ThemeData appTheme() {
       backgroundColor: mint,
       selectedColor: const Color(0xFFDFE2FF),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      labelStyle: const TextStyle(
+        color: ink,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      secondaryLabelStyle: const TextStyle(
+        color: ink,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+      checkmarkColor: ink,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
