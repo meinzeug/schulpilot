@@ -1,6 +1,18 @@
-# Projektstand · 14.10.2026 · 1.0.1+15
+# Projektstand · 15.10.2026 · 1.0.1+15
 
-Web und reguläre signierte Direct-APK sind unter https://schulpilot.dorfspy.de aktiv. Implementierungscommit `e6faf722b9c0ef93ae7987d2f45aabdb36da918b`, Release `20261014T230555Z-e6faf72`, öffentlich über `/api/health` geprüft. Nachfolgende QA-/Übergabecommits ändern diesen bereitgestellten Produktcode nicht. Branch main wird ohne Force-Push zum bestehenden Remote gepusht.
+Web und reguläre signierte Direct-APK sind unter https://schulpilot.dorfspy.de aktiv. Implementierungscommit `6c2e434b8d5f177e0d9e0b20c53da1cac47bfecb`, Release `20261015T072218Z-6c2e434`, öffentlich über `/api/health` geprüft. Nachfolgende QA-/Übergabecommits ändern diesen bereitgestellten Produktcode nicht. Branch main wird ohne Force-Push zum bestehenden Remote gepusht.
+
+## Mehrseitige Lernpakete · 15.10.2026
+
+Den gemeldeten Fehler auf dem Server bei einer konkret freigegebenen Sammlung aus fünf bestätigten Seiten reproduziert: erste Auswahlantwort nicht eindeutig mit einer vorhandenen Option verbunden. Das private OpenRouter-Schema fordert nun einen ausdrücklich nullbasierten Integerindex an; vor dem Speichern bleiben alle bestehenden Fach-/Strukturprüfungen wirksam. Client und Datenbank erhalten vollständige Antworttexte.
+
+Paketumfang nach bestätigten Themen und Elternzeit statt pauschal zwei Fragen: 2–5 je Einheit, höchstens sechs insgesamt. Erste Sachfragen verlangen kurze belegte Begriffe, keine unkontrollierten Varianten oder mehrteiligen Formeln. Rechenbeispiele nur in Mathematik. Auch eine strukturell gültige, aber inhaltlich ungeeignete Ausgabe wurde bei der Durchsicht verworfen; endgültiges Paket mit fünf Aufgaben und Erläuterungen geprüft, eine mehrdeutige Frage präzisiert. Alle fünf Quellenrevisionen erhalten, keine Kinderantworten zum Testen eingetragen, keine begonnene Einheit überschrieben. Zugriff und Korrektur auditiert; private Diagnoseinhalte nicht in Git.
+
+Nach Deployment über öffentliche HTTPS unter dem berechtigten Kinderzugang gelesen: Paket ready, fünf Aufgaben, alle fünf privaten Bilder erreichbar, anonyme Bilderanfrage 401, Lösungen vor Bearbeitung verborgen. Reine Bewertung der gespeicherten Musterlösungen korrekt; fremde Aufgabenantworten nicht als richtige Lösung akzeptiert. Temporäre Prüfsitzung abgemeldet und widerrufen. API/Worker/Caddy sowie die drei geprüften fremden DorfSpy-Dienste aktiv; Sicherung vor Aktivierung erfolgreich. Schema weiterhin 0010; kompatibler Code-Rückweg auf den vorherigen Release vorhanden.
+
+Private Diagnosekopien und Hilfsprogramme lokal und am Server nach Abschluss entfernt; originales Material und das geprüfte Lernpaket bleiben erhalten. Quelltext zusätzlich gegen konkrete private Materialausschnitte und Kontokennung geprüft, keine Treffer.
+
+Reine Backendkorrektur, keine Flutter-/SDK-/Datenbankschemaänderung. Bestehende Web-, Direct-APK- und Play-Builds15 unverändert übernommen; Signatur, Hash, Quellversion und 16-KB-Zipausrichtung erneut geprüft. Kein erneuter Android-Build oder neuer Geräte-/Push-Test behauptet. Die Korrektur wirkt auch auf bereits installierte Clients.
 
 ## Aktuell implementiert und tatsächlich geprüft
 
@@ -17,7 +29,7 @@ Web und reguläre signierte Direct-APK sind unter https://schulpilot.dorfspy.de 
 
 ## Tests und Builds
 
-**191 PostgreSQL-Backendtests bestanden** (238,43 s), **43 Fluttertests bestanden**, Flutter-Analyse und Ruff ohne Befund. Migrationsprüfung erhält vorhandene Daten bis 0010; negative Releaseprüfungen und echte Google-Verifikationsbibliothek gegen synthetisch signierte gültige/abgelaufene/falsche Tokens geprüft.
+**221 PostgreSQL-Backendtests bestanden** am 15.10.2026 (146,41 s; isolierter Lauf, Exit 0), Ruff und Python-Kompilierung ohne Befund. Darunter neue Regressionen zu Auswahlindizes, falschen Aliasen, Quellenbezug, kurzen Sachantworten und Zeit-/Aufgabenlimits. Zuvor zwei veraltete Schema-Erwartungen und eine nicht dem angeforderten Umfang entsprechende Mockantwort korrigiert; ein früherer Gesamtlauf wurde vom Ausführungsprozess abgebrochen. Der abschließende vollständige Lauf ist erfolgreich. **43 Fluttertests und Flutter-Analyse zuletzt am 14.10.2026 bestanden**; Flutter blieb unverändert. Migrationsprüfung erhält vorhandene Daten bis 0010; negative Releaseprüfungen und echte Google-Verifikationsbibliothek gegen synthetisch signierte gültige/abgelaufene/falsche Tokens geprüft.
 
 Web, Direct-APK und Play-AAB 15 erfolgreich mit fixierter Toolchain gebaut. APK `apksigner verify` und `zipalign -c -P16 4` erfolgreich; AAB mit bundletool1.18.3 validiert. Bekannte Starlette-/zukünftige Kotlin-Pluginhinweise, keine offenen Buildfehler. Neue Google-Dart-Abhängigkeit `crypto 3.0.7` war bereits in derselben Version transitiv fixiert.
 

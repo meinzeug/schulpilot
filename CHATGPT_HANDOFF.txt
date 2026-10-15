@@ -1,12 +1,13 @@
 SCHULPILOT – sichere Übergabe an ChatGPT
-Stand: 14.10.2026; sämtliche Lern-/Geräteprüfungen ausschließlich mit eigenen künstlichen Haushalten
+Stand: 15.10.2026; Google-/Geräteabnahme mit eigenen künstlichen Haushalten.
+Nachtrag: ausdrücklich beauftragte Materialfehlerprüfung am 15.10.2026 mit genau fünf freigegebenen Seiten; keine echten Kinderantworten zum Testen eingetragen.
 
 1. Tatsächlicher Produkt- und Bereitstellungsstand
 
 Repository /home/dennis/schulpilot; GitHub https://github.com/meinzeug/schulpilot, main.
 Website https://schulpilot.dorfspy.de ; eigene API https://schulpilot.dorfspy.de/api .
-Bereitgestellter Produktcommit e6faf722b9c0ef93ae7987d2f45aabdb36da918b.
-Aktiver Release 20261014T230555Z-e6faf72; Version 1.0.1, öffentlicher /api/health bestätigt.
+Bereitgestellter Produktcommit 6c2e434b8d5f177e0d9e0b20c53da1cac47bfecb.
+Aktiver Release 20261015T072218Z-6c2e434; Version 1.0.1, öffentlicher /api/health bestätigt.
 Nachfolgende QA-/Dokumentationscommits können neuer sein und ändern diesen Produktcode nicht.
 
 Web und reguläre signierte native Flutter-APK 1.0.1+15 sind aktiv, keine WebView.
@@ -29,6 +30,15 @@ Web, direct und play gebaut; APK-Signatur/16-KB-Zipausrichtung und bundletool 1.
 Play enthält keinen direkten APK-Installer; Play-In-App-Updates sind getrennt.
 Direct-Update 13→14 und 14→15 tatsächlich automatisch geprüft, heruntergeladen und über Android bestätigt,
 kein adb install für das Upgrade. Jeweils drei erneute Prüfungen auf 14 und 15 bei Kaltstart, Wiederöffnen und zusätzlichem Launcher-Intent bestanden. Updateprüfung bei jedem Start und Wiederöffnen bleibt aktiv.
+
+Nachtrag Lernpaketkorrektur 15.10.2026: OpenRouter-Auswahlantworten im privaten Schema eindeutig über
+Integerindizes gebunden, vor Speicherung wieder vollständiger Optionstext. Mehrere bestätigte Themen
+bestimmen 2–5 Aufgaben je Einheit, insgesamt höchstens sechs und innerhalb der Elternzeit. Kurze erste
+Sachantworten aus dem jeweiligen bestätigten Gruppeninhalt, keine unkontrollierten Varianten/Formeln.
+Fünfseitiges Paket tatsächlich erstellt und inhaltlich geprüft; eine mehrdeutige Frage präzisiert.
+Seitenrevisionen und Kinderarbeit erhalten, Zugriff/Korrektur auditiert. Nach Deployment echte öffentliche
+HTTPS-Prüfung: fünf Aufgaben, fünf private Bilder nur berechtigt erreichbar, keine Lösungen vorab,
+Prüfsitzung widerrufen. Kein neuer Android-Build nötig: öffentliche API-/Datenformate bleiben kompatibel.
 
 2. Google/Firebase – tatsächlich eingerichtet
 
@@ -136,7 +146,8 @@ auch außerhalb der EU; sofortige Löschung aller Google-Installations-/Backupda
 
 5. Tests, Builds und Grenzen
 
-191 PostgreSQL-Backendtests bestanden (238,43 s), 43 Fluttertests bestanden, Flutter-Analyse/Ruff ohne Befund.
+221 PostgreSQL-Backendtests am 15.10.2026 bestanden (146,41 s, Exit 0), Ruff/Kompilierung ohne Befund.
+43 Fluttertests und Flutter-Analyse zuletzt am 14.10.2026 bestanden; Clients unverändert.
 Migration 0010 erhält vorhandene Daten. Negative Signierer-/Debug-/Versionstests; OIDC-Missbrauch, Signatur,
 Ablauf/Audience/Nonce, native Proof-/Ticketbindung, Cookie-/Plattformtrennung und Drittanbieter-Mailnachweis geprüft.
 Web, direkte APK und Play-AAB15 gebaut und validiert. Öffentliches HTTPS, Datenschutz-HTML, AppLinks und VerifikationsdateiHTTP 200.
@@ -145,7 +156,7 @@ Zwei echte APK-Downloads vor/nach Login mit Manifest-Hash geprüft; zusätzliche
 Private Google-/FCM-Dateien, reale Schlüssel/Passwörter, Web, APK, AAB und Übergabedateien werden auf Geheimnisse geprüft.
 Keine pauschale Aussage von 100% Fehlerfreiheit, vollständiger juristischer Abnahme oder Play-Veröffentlichung.
 
-GitHub-Push main funktioniert. CI-Lauf 38637840266 für den Produktcommit wurde tatsächlich geprüft:
+GitHub-Push main funktioniert. Zuletzt geprüfter CI-Lauf 38637840266 für den vorherigen Commit e6faf72:
 beide Jobs ohne ausgeführte Schritte, Annotation „The job was not started because your account is locked due to a billing issue.“
 Lokale Tests sind ausgeführt; keine erfolgreiche GitHub-CI behauptet.
 
