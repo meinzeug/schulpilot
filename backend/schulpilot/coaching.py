@@ -624,13 +624,16 @@ def fraction_task_signature(prompt):
     parts = re.findall(r"\b(\d{1,4})\s*/\s*([1-9]\d{0,3})\b", lower)
     if not parts:
         return None
-    if "kürz" in lower or "einfachste form" in lower:
-        return "reduce", parts[0]
-    if "erweit" in lower:
-        factor = re.search(r"mit\s+(?:(?:dem\s+)?faktor\s+)?([1-9]\d{0,3})\b", lower)
-        return ("expand", parts[0], factor[1]) if factor else None
     if len(parts) == 2 and "+" in lower:
         return "add", tuple(sorted(parts))
+    # Read the requested operation before supporting instructions. In
+    # particular, "Erweitere ... Kürze das Ergebnis nicht" is expansion.
+    operation = re.search(r"\b(?:kürz\w*|gekürz\w*|einfachste form|erweit\w*)", lower)
+    if operation:
+        if operation[0].startswith("erweit"):
+            factor = re.search(r"mit\s+(?:(?:dem\s+)?faktor\s+)?([1-9]\d{0,3})\b", lower)
+            return ("expand", parts[0], factor[1]) if factor else None
+        return "reduce", parts[0]
     if "zähler" in lower or "nenner" in lower:
         return "component", "zähler" if "zähler" in lower else "nenner", parts[0]
     return None
@@ -643,7 +646,10 @@ def fraction_task_goal(prompt, goals):
         return None
     lower = prompt.casefold()
     label = None
-    if "kürz" in lower or "einfachste form" in lower:
+    signature = fraction_task_signature(prompt)
+    if signature:
+        label = labels[{"component": 0, "add": 1, "reduce": 2, "expand": 3}[signature[0]]]
+    elif "kürz" in lower or "einfachste form" in lower:
         label = labels[2]
     elif "erweit" in lower:
         label = labels[3]
@@ -1173,6 +1179,7 @@ def process_practice(job_id):
             usage_terms(db, db.get(Family, child.family_id), enforce=True)
             payload.update(
                 review=True,
+                practice_kind=item.decision,
                 focus_goal_ids=focus_ids(db, unit, item.decision),
                 material={
                     "subject": unit.subject,
@@ -1180,6 +1187,21 @@ def process_practice(job_id):
                     "content": "\n\n".join(m["content"] for m in payload["materials"]),
                 },
             )
+            if unit.school_day_id:
+                # A day can contain several independent stage chains. New
+                # practice must also avoid questions from those other stages.
+                payload["previous_prompts"] = [
+                    question["prompt"]
+                    for previous in db.scalars(
+                        select(LearningUnit)
+                        .where(
+                            LearningUnit.child_id == unit.child_id,
+                            LearningUnit.school_day_id == unit.school_day_id,
+                        )
+                        .order_by(LearningUnit.created, LearningUnit.id)
+                    )
+                    for question in previous.questions
+                ][-120:]
             # Review observations belong in the report, not the new exercise request.
             payload.pop("completed_questions", None)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}

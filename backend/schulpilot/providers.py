@@ -336,6 +336,30 @@ def bind_practice_tasks(schema, tasks):
     definition["anyOf"] = branches
 
 
+def bind_math_tasks(schema, examples):
+    """Keep planned, checked arithmetic intact; the AI supplies teaching text."""
+    definition = schema["$defs"].get("PracticeQuestion") or schema["$defs"]["Question"]
+    formats = definition.get("anyOf", [copy.deepcopy(definition)])
+    branches = []
+    for example in examples:
+        for variant in formats:
+            props = variant.get("properties", {})
+            if "short" not in props.get("type", {}).get("enum", []):
+                continue
+            if props.get("id", {}).get("enum") and example["id"] not in props["id"]["enum"]:
+                continue
+            branch = copy.deepcopy(variant)
+            properties = branch["properties"]
+            for key in ("id", "type", "prompt", "answer"):
+                properties[key]["enum"] = [example[key]]
+            properties["options"]["maxItems"] = properties["accepted"]["maxItems"] = 0
+            branches.append(branch)
+    if len(branches) != len(examples):
+        raise ProviderError("Die geprüften Rechenvorgaben passen nicht zum Aufgabenformat.")
+    definition.clear()
+    definition["anyOf"] = branches
+
+
 def decode_choice_indices(data):
     """Decode only explicit integer indices; never guess a letter or alias."""
     if not isinstance(data, dict):
@@ -645,6 +669,27 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     tasks = practice_tasks(payload) if model_type is s.PracticeUnitOutput and payload.get("focus_goal_ids") else None
     if tasks:
         payload = {**payload, "practice_tasks": tasks}
+    math_examples = []
+    if function == "unit" and (payload.get("study_block") or tasks):
+        from .math_tasks import fraction_tasks
+
+        material_items = payload.get("materials") or [payload.get("material") or {"content": ""}]
+        phase = payload.get("study_block", {}).get("mode") or (
+            "understand" if payload.get("practice_kind") == "repair" else "recall"
+        )
+        previous = payload.get("previous_prompts") or []
+        math_examples = fraction_tasks(
+            material_items,
+            payload.get("required_subject", ""),
+            payload.get("required_topic", ""),
+            previous,
+            phase,
+            payload.get("study_block", {}).get("question_count") or len(tasks or []),
+            json.dumps([phase, payload.get("required_topic"), previous], ensure_ascii=False),
+            required_labels=[task["label"] for task in tasks] if tasks else None,
+        )
+        if math_examples:
+            payload = {**payload, "math_tasks": math_examples}
     excerpt_candidates = None
     if function == "coach" and not payload.get("learning_goals"):
         excerpt_candidates = source_excerpt_candidates(payload)
@@ -746,9 +791,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             else f"Erstelle in dieser kurzen Lerneinheit GENAU {block_count or 2} Aufgaben. "
         )
         variety = (
-            "Verwende in dieser Etappe ausschließlich Auswahlaufgaben zu Begründungen, Vergleichen oder Fehlerkorrekturen. "
-            if reasoning_stage
-            else "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
+            "Verwende die vorgegebenen kurzen Eingabeaufgaben aus math_tasks. "
+            if math_examples
+            else (
+                "Verwende in dieser Etappe ausschließlich Auswahlaufgaben zu Begründungen, Vergleichen oder Fehlerkorrekturen. "
+                if reasoning_stage
+                else "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
+            )
         )
         instructions += (
             "\n"
@@ -780,10 +829,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
         instructions += (
             "\nDiese Etappe gehört zu einem größeren Lernpfad. Übernimm required_subject und required_topic exakt. "
-            "Erzeuge pro Eintrag in study_block.tasks genau eine Aufgabe in derselben Reihenfolge. "
-            "Nutze dessen action als Denkhandlung und source_excerpt als wörtlichen fachlichen Anker; "
-            "das gesamte material.content bleibt die Wissensgrundlage. Verteile die Aufgaben auf diese Anker. "
-            "previous_prompts sind BEREITS BEANTWORTETE Fragen, keine Beispiele zum Nachbauen. "
+            + (
+                "Die verbindlichen Aufgaben und fachlichen Anker stehen in math_tasks. "
+                "study_block.tasks sind allgemeine Planungsinformationen; math_tasks legt die konkreten Beispiele fest. "
+                if math_examples
+                else (
+                    "Erzeuge pro Eintrag in study_block.tasks genau eine Aufgabe in derselben Reihenfolge. "
+                    "Nutze dessen action als Denkhandlung und source_excerpt als wörtlichen fachlichen Anker; "
+                    "das gesamte material.content bleibt die Wissensgrundlage. Verteile die Aufgaben auf diese Anker. "
+                )
+            )
+            + "previous_prompts sind BEREITS BEANTWORTETE Fragen, keine Beispiele zum Nachbauen. "
             "Keine davon wörtlich oder bloß leicht umformuliert erneut stellen. "
             "Wenn der gleiche Begriff erneut vorkommt, prüfe einen anderen Zusammenhang, eine neue "
             "Anwendung oder eine Fehlerkorrektur. Ein Zusatz wie 'Erneut:' macht eine alte Frage nicht neu. "
@@ -801,7 +857,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Neue Fälle müssen mit dem bestätigten Wissen lösbar sein und als Übungsbeispiel erkennbar bleiben. "
                 "Die kurze freie Begriffsabfrage folgt gezielt in der Etappe recall."
             )
-        else:
+        elif not math_examples:
             instructions += " Erzeuge choice und short."
         if not is_mathematics(payload.get("required_subject")):
             for definition in schema.get("$defs", {}).values():
@@ -848,6 +904,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "keine zweite Frage zum ersten Ziel statt einer Frage zum zweiten Ziel. "
             "Die neue Situation oder Rechnung darf keine bereits gestellte Aufgabe wiederholen. "
             "Übernimm Zuordnungen exakt und erzeuge weiterhin eine fachlich richtige Aufgabe je Eintrag."
+        )
+    if math_examples:
+        bind_math_tasks(schema, math_examples)
+        instructions += (
+            "\nmath_tasks enthält bereits geplante NEUE Rechenbeispiele zum bestätigten Verfahren. "
+            "Zahlen und Lösungen wurden rechnerisch geprüft. Übernimm id, type, prompt, answer, "
+            "options und accepted unverändert, jede id genau einmal. "
+            "Deine Aufgabe ist die passende kurze Einführung sowie hilfreiche Hinweise und eine "
+            "verständliche Erklärung des Rechenwegs je Beispiel. Halte dich dabei an das bestätigte "
+            "Verfahren und die angegebene richtige Lösung. Keine anderen Zahlen oder Ersatzfragen. "
+            "Bei Anschlussübungen bleibt auch die in practice_tasks festgelegte learning_goal_id erhalten."
         )
     prune_schema(schema)
     user_text = json.dumps(payload, ensure_ascii=False)
@@ -1030,6 +1097,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             (task["id"], task["learning_goal_id"]) for task in tasks
         }:
             raise ProviderError("Die neue Runde ordnet Aufgaben nicht den vorgegebenen Lernzielen zu.")
+        if math_examples:
+            by_id = {example["id"]: example for example in math_examples}
+            if (
+                len(data["questions"]) != len(by_id)
+                or {q["id"] for q in data["questions"]} != set(by_id)
+                or any(
+                    any(q[key] != by_id[q["id"]][key] for key in ("type", "prompt", "answer", "options", "accepted"))
+                    for q in data["questions"]
+                )
+            ):
+                raise ProviderError("Die KI hat die geprüften Rechenvorgaben verändert. Die Runde wurde verworfen.")
         if excerpt_candidates is not None and any(
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):

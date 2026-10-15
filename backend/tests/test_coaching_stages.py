@@ -11,7 +11,18 @@ import httpx
 import pytest
 from conftest import create_child
 from schulpilot import coaching, materials, providers
-from schulpilot.db import DB, Activity, Job, LearningUnit, Material, ProviderConfig, UnitCoaching, UnitSource, Usage
+from schulpilot.db import (
+    DB,
+    Activity,
+    Job,
+    LearningUnit,
+    Material,
+    ProviderConfig,
+    SchoolDay,
+    UnitCoaching,
+    UnitSource,
+    Usage,
+)
 from schulpilot.providers import ProviderError, Result
 from schulpilot.synthetic import CONTENT, sample_unit
 from sqlalchemy import func, select
@@ -205,6 +216,51 @@ def test_new_generator_keeps_original_review_provenance_and_source_links(deferre
     with DB() as db:
         assert db.scalar(select(UnitSource).where(UnitSource.unit_id == next_id)).material_id == material_id
         assert db.scalar(select(func.count()).select_from(Usage)) == 2
+
+
+def test_practice_avoids_other_stage_chains_from_the_same_day(deferred_review, monkeypatch):
+    client, unit_id, _, _, _, _, _ = deferred_review
+    extra_prompt = "Kürze den Bruch 20/30 vollständig."
+    unrelated_prompt = "Diese künstliche Frage gehört zu einem anderen Tag."
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        today = SchoolDay(child_id=unit.child_id, school_date="2026-10-15", stage="ready")
+        other_day = SchoolDay(child_id=unit.child_id, school_date="2026-10-14", stage="ready")
+        db.add_all([today, other_day])
+        db.flush()
+        unit.school_day_id = today.id
+        for day, prompt in ((today, extra_prompt), (other_day, unrelated_prompt)):
+            question = copy.deepcopy(unit.questions[0])
+            question["prompt"] = prompt
+            db.add(
+                LearningUnit(
+                    child_id=unit.child_id,
+                    school_day_id=day.id,
+                    subject=unit.subject,
+                    topic=unit.topic,
+                    explanation="Künstliche unabhängige Tagesetappe.",
+                    questions=[question],
+                    provider="openai",
+                    model="synthetic-test-model",
+                    estimated_minutes=2,
+                    status="not_started",
+                )
+            )
+
+    def generate(config, function, payload):
+        assert function == "unit" and payload["practice_kind"] == "repair"
+        assert extra_prompt in payload["previous_prompts"]
+        assert unrelated_prompt not in payload["previous_prompts"]
+        assert len(payload["previous_prompts"]) == 3
+        return Result(practice_output(unit_id), 100, 150, 0)
+
+    monkeypatch.setattr(coaching, "request_provider", generate)
+    with DB() as db:
+        assert coaching.plan_review(db, db.get(LearningUnit, unit_id))["next_action"] == "repair"
+    ask_practice(client, unit_id)
+    process_next()
+    after = client.get(f"/api/units/{unit_id}").json()["coaching"]
+    assert after["practice_status"] == "completed", after["practice_error"]
 
 
 def test_source_change_during_generator_does_not_replace_saved_review(deferred_review, monkeypatch):
