@@ -1,8 +1,40 @@
-# Projektstand · 15.10.2026 · 1.1.1+17
+# Projektstand · 15.10.2026 · 1.2.0+21
+
+Web und signierte native Flutter-APK 21 sind öffentlich aktiv: https://schulpilot.dorfspy.de . Produktcommit `25f5614916f27e3b3f53814ff513464151009069`, Release `20261015T140058Z-25f5614`; über gültiges öffentliches HTTPS geprüft. Nachfolgende reine Prüf-/Dokumentationscommits ändern den bereitgestellten Produktcode nicht. Datenbankschema 0011 unverändert; keine neuen Dienste oder SDK-Abhängigkeiten.
+
+## Bibliothek und übersichtliches Lernen
+
+- „Hefte“ und „Meine Heftseiten“ öffnen eine eigene Bibliothek. Serverseitige Suche in Titel, Thema, Fach und Quelltext; Fach, Bestätigungsstand, Unterrichts-/Uploaddatum und Sortierung kombinierbar. Standard 20, wahlweise 10/50 Metadateneinträge pro Seite. Keine Fotos oder vollständigen Abschriften in Listen.
+- Kleine Startseitenvorschau mit nächster Aktion; das Archiv entfällt dort. Filter und Seite bleiben bei Rücksprüngen erhalten, liegen nur im Arbeitsspeicher und verschwinden bei Kontowechsel/Abmeldung. Verspätete Suchantworten ersetzen keine neueren Ergebnisse. Ältere Clients behalten die bisherige Overview-Antwort ohne compact=true.
+- „Lernen“ trennt Offen, Später und Erledigt. Gespeicherte Antwortversuche bestimmen den angezeigten Bearbeitungsstand; Abschluss bedeutet keine sichere Beherrschung. Elternvorgaben, Zukunftstermine und Pausen bleiben verbindlich. Das Öffnen einer Liste erzeugt keine KI-Aufträge.
+- Fertige Kinderrunden zeigen Rückblick und Antworten einzeln, bei tatsächlichem Tagespaket zusätzlich den Lernweg. Doppelte Überschrift und wiederholte Navigationsknöpfe entfallen. Feedback wartet weiterhin auf „Weiter“. Lernkarten behalten ihren Button für Screenreader; Filter schließen die Such-Tastatur, statt sie über der Navigation erneut zu öffnen. Gewählte und ungewählte Reiter haben dunkle Schrift; der gerenderte Textkontrast ist mit mindestens 4,5:1 geprüft.
+- Eltern erhalten dieselben berechtigten paginierten Sammlungen und einen suchbaren Picker für bestätigte Heftseiten beim Lernauftrag. Private Antworten, Hinweise und Erklärungen stehen in der Detailansicht. Administratoren erhalten dadurch keinen Kinderinhaltszugriff.
+
+Einrichtung, API und reproduzierbare Prüfabläufe: [LIBRARY.md](LIBRARY.md).
+
+## Tatsächliche aktuelle Prüfungen
+
+**468 PostgreSQL-Backendtests bestanden** (281,72 s, isolierter Lauf), **76 Fluttertests**, Flutter-Analyse, Ruff und Format-/Diffprüfung bestanden. Darunter 1.205 Seiten über 25 stabile Datenbankseiten, deutsche Suche/literal gesuchte Prozentzeichen, Datum/Zeitzone, Rechte/Entzug/Logout, kompakte gegenüber bisherigen Antworten, gespeicherte Fortschritte, Zukunftsplanung, verspätete Antworten, Kontowechsel, 320/1280 px und Fokus-/Screenreaderregression. Der Backendcode blieb bei den anschließenden reinen Flutter-Fokuskorrekturen unverändert. Eine bekannte Starlette-Testclient-Abkündigungswarnung; keine ungeprüfte SDK-Migration.
+
+Öffentlicher echter Browser: eigene isolierte Demo mit 601 künstlichen Seiten, unabhängige Anmeldung, Fach-/Such-/Statusfilter, Sortierung, Seitengröße, Detail/Rücksprung, 320 px Filter, 390 px Kind und 1280 px Eltern. Bestätigter Picker, Lernverlauf und getrennte Rückblick-/Antwortenansichten bestanden; null JavaScript-Laufzeitfehler. Vier feste Demoaufgaben wurden zuvor über die UI gelöst; der abschließende Durchlauf liest deren vier tatsächlich gespeicherte korrekte Antworten wieder ein (0 neue Antworten in diesem Wiederaufnahme-Durchlauf). Keine externen KI-Aufrufe und kein neuer KI-Qualitätsnachweis. Die öffentliche API lieferte alle 601 Quellen über 13 Seiten mit je höchstens 50 Einträgen genau einmal, ohne private Volltexte. Echte Kinderhaushalte wurden für diese Bibliotheksprüfung nicht gelesen oder geändert.
+
+Native APK 21 im dedizierten API 36-Emulator tatsächlich bedient: unabhängiger Kinderlogin, 601 Heftseiten, Seitennavigation/Android-Zurück, Fach-/Tastatursuche, Filter schließen ohne erneute Tastatur und Wechsel nach Lernen. Vier gespeicherte Antworten sowie Rückblick/Antworten geprüft; dunkle Reitertexte zusätzlich im installierten APK sichtbar kontrolliert. Installierte APK unabhängig auf denselben SHA256 wie der öffentliche Download geprüft. Kein akustischer TTS-/Mikrofon- oder neuer Push-Nachweis.
+
+Gesamten eigenen Prüfhaushalt anschließend normal gelöscht; frische Eltern-/Kindersitzungen vor Löschung gültig, danach 401. Private Prüfdatei entfernt, Appdaten nur im eigenen Emulator gelöscht; APK 21 bleibt installiert. Keine echten Haushalte oder anderen Geräte bereinigt. Vor Löschung tatsächliche 18 Geheimniswerte gegen Quellen, Web, APK/AAB und Übergabe geprüft: keine Treffer.
+
+Web, signierte Direct-APK und Play-AAB 21 mit fixierter Toolchain gebaut. APK-Signatur, Quellversion, Hash und 16-KB-Zipausrichtung sowie bundletool 1.18.3 geprüft. APK: `artifacts/schulpilot-android.apk`, 62.903.665 Bytes; SHA256 `706bdcf04bf3817ceecb24da0154f861b2e423b834eb47f19bf8febed89d989d`. Play-AAB: `artifacts/schulpilot-play.aab`, 60.190.882 Bytes. Öffentlicher HTTPS-Download auf Größe/Hash geprüft; Bibliothek-/Lernen-Direktlinks 200, private Listen ohne Anmeldung 401. Kein Play-Console-Upload oder neuer Firebase-/Google-Nachweis daraus abgeleitet. Bekannte Warnungen der fixierten Plugins zum zukünftigen Kotlin-/Wasm-Ausbau verhindern diese tatsächlichen JS-/Android-Builds nicht.
+
+Tatsächliches Android-Update 17→18→19→20→21 über den eingebauten Updater mit geprüftem Download und Android-Installationsbestätigung bestanden; kein adb install beim Upgrade. Auf Build 21 drei Prüfungen bei Kaltstart, Wiederöffnen und zusätzlichem Launcher-Intent beobachtet.
+
+GitHub-Push funktioniert. [CI-Lauf des Produktcommits](https://github.com/meinzeug/schulpilot/actions/runs/38731618294): beide Jobs ohne ausgeführte Schritte gesperrt; Annotation „The job was not started because your account is locked due to a billing issue.“ Lokale erfolgreiche Prüfungen sind oben getrennt ausgewiesen.
+
+API, Worker, Caddy und die drei zuvor geprüften anderen DorfSpy-Dienste sind weiterhin systemd-aktiv. Verschlüsselte Sicherungen vor Aktivierung vorhanden, zuletzt `20261015T120228Z.tar.enc`; Daten außerhalb der Releases. Gesicherte Vorversion für den dokumentierten [Rückweg](OPERATIONS.md): `/opt/schulpilot/releases/20261015T134620Z-eeac47c`. Kein Schemawechsel; andere Anwendungen wurden nicht umgestellt.
+
+## Vorheriger Stand · 15.10.2026 · 1.1.1+17
 
 Web und signierte native Flutter-APK 17 sind öffentlich aktiv: https://schulpilot.dorfspy.de . Aktiver Produktcommit `df7c6b69a43722a5c674cdd0fc1fd60cdf9536ab`, Release `20261015T100726Z-df7c6b6`; öffentliche HTTPS-Healthprüfung bestätigt Version 1.1.1 und diesen Commit. Nachfolgende reine Dokumentationscommits ändern den bereitgestellten Produktcode nicht. Migration 0011 ist aktiv. Kein neuer Dienst und keine Änderung anderer DorfSpy-Anwendungen.
 
-## Lernweg, Rückblick und Heftfragen
+### Lernweg, Rückblick und Heftfragen
 
 - Der Lernweg richtet seinen geplanten Gesamtumfang nach bestätigten Seiten und Textdichte. Die erste Runde mit 2–5 Aufgaben ist der Einstieg; weitere kleine Etappen zum Verstehen, Fehlerfinden, Anwenden und späteren Abrufen werden ausdrücklich vorbereitet. Geplant, bereit und bearbeitet bleiben unterscheidbar; Elternzeiten, Lerntage und Pausen gelten weiterhin. Keine automatisch anwachsenden Nachholberge und kein Beherrschungsversprechen nach einer richtigen Antwort.
 - Im ausdrücklich freigegebenen Originalfall mit fünf Seiten: 20 Aufgaben geplant, 5 bisher bearbeitet, KI-Rückblick mit 5 Einzelrückmeldungen bereit und 3 weitere neue Aufgaben tatsächlich vorbereitet. Vorhandene Fragen und alle 6 gespeicherten Antwortversuche unverändert verglichen; keine künstlichen Antworten im echten Kinderkonto. Die übrigen 12 Aufgaben sind geplant, noch nicht erzeugt. Zugang/Korrektur auditiert, temporäre Prüfsitzung widerrufen, private Diagnoseprogramme entfernt.
@@ -13,7 +45,7 @@ Web und signierte native Flutter-APK 17 sind öffentlich aktiv: https://schulpil
 
 Einzelheiten und Quellen: [STUDY_PATH_TUTOR.md](STUDY_PATH_TUTOR.md), [COACHING.md](COACHING.md), [SOURCES.md](SOURCES.md). Die Etappen orientieren sich an Abrufübungen, verteilter Wiederholung und dem Wechsel zwischen Erklärung und eigenem Lösen; keine externe Wirksamkeitszertifizierung behauptet.
 
-## Tatsächliche Abnahme
+### Tatsächliche Abnahme
 
 447 Backendtests auf isoliertem PostgreSQL bestanden (220,91 s, Exit 0) am oben genannten Produktcommit; darunter 50 Prüfungen der Bruchplanung einschließlich unpunktierter Regeln. 68 Fluttertests, Flutter-Analyse, Ruff und Format-/Diffprüfung bestanden. Fixierte Toolchain Flutter 3.47.7/Dart 3.13.5; neue Sprachpakete flutter_tts 4.2.5 und speech_to_text 7.5.0. Keine Anbieter-/Modellmigration oder Lockerung der Kosten-/Datenschutzgrenzen.
 
@@ -29,14 +61,14 @@ Vor Aktivierung verschlüsselte Datenbanksicherung erfolgreich; vorheriger Relea
 
 Google-/Firebase-Login- und Push-Nachweise unten stammen aus der früheren gesonderten Abnahme; keine erneute Zustellung mit APK 17 daraus abgeleitet. Verbleibende externe Voraussetzungen bleiben unverändert: vollständige Betreiber-/Bankangaben für zahlungspflichtige Bestellungen, zugängliches Play-Entwicklerkonto und die tatsächliche GitHub-Actions-Abrechnungssperre. Lokaler Build und GitHub-Push funktionieren; keine erfolgreiche gehostete CI oder 100 % Fehlerfreiheit behauptet.
 
-## Archivierte Abnahme · 1.0.1+15
+### Archivierte Abnahme · 1.0.1+15
 
 Die folgenden Abschnitte dokumentieren den früheren Stand. Insbesondere die damalige Gesamtgrenze von sechs Aufgaben, Build15 und damalige Testzahlen sind durch den oben beschriebenen Lernweg/Build17 ersetzt.
 
 
 Web und reguläre signierte Direct-APK sind unter https://schulpilot.dorfspy.de aktiv. Implementierungscommit `6c2e434b8d5f177e0d9e0b20c53da1cac47bfecb`, Release `20261015T072218Z-6c2e434`, öffentlich über `/api/health` geprüft. Nachfolgende QA-/Übergabecommits ändern diesen bereitgestellten Produktcode nicht. Branch main wird ohne Force-Push zum bestehenden Remote gepusht.
 
-## Mehrseitige Lernpakete · 15.10.2026
+### Mehrseitige Lernpakete · 15.10.2026
 
 Den gemeldeten Fehler auf dem Server bei einer konkret freigegebenen Sammlung aus fünf bestätigten Seiten reproduziert: erste Auswahlantwort nicht eindeutig mit einer vorhandenen Option verbunden. Das private OpenRouter-Schema fordert nun einen ausdrücklich nullbasierten Integerindex an; vor dem Speichern bleiben alle bestehenden Fach-/Strukturprüfungen wirksam. Client und Datenbank erhalten vollständige Antworttexte.
 
@@ -48,7 +80,7 @@ Private Diagnosekopien und Hilfsprogramme lokal und am Server nach Abschluss ent
 
 Reine Backendkorrektur, keine Flutter-/SDK-/Datenbankschemaänderung. Bestehende Web-, Direct-APK- und Play-Builds15 unverändert übernommen; Signatur, Hash, Quellversion und 16-KB-Zipausrichtung erneut geprüft. Kein erneuter Android-Build oder neuer Geräte-/Push-Test behauptet. Die Korrektur wirkt auch auf bereits installierte Clients.
 
-## Damals implementiert und geprüft
+### Damals implementiert und geprüft
 
 - Native Flutter-App, responsive Flutter-Web-App, eigene API und PostgreSQL mit unabhängigen Eltern-/Kinderaccounts. Admin-Passwortlogin ohne TOTP, einmaliger abgesicherter Installationswizard. Rollen, Familientrennung und Sitzungswiderruf im Backend. Vorhandener Lernablauf, Elternplanung, KI-Lernbegleitung und wiederholte Abrufübungen bleiben erhalten.
 - Regulärer Kanal **stable**, semantische Version und Paketmetadaten stimmen überein. Kein „Test-APK“-Name mehr. Release ohne eigenen externen Signierschlüssel scheitert; Manifest-/Deployprüfung verweigert Debug, fremde Signierer und veraltete Versionen. Ein anfänglich veraltetes APK-Artefakt wurde tatsächlich abgefangen; der anschließend vollständige Build15 besteht alle Prüfungen.
@@ -61,7 +93,7 @@ Reine Backendkorrektur, keine Flutter-/SDK-/Datenbankschemaänderung. Bestehende
 - Automatisches Android-Update13→14 und14→15 mit echtem Download/Hashprüfung und Android-Installationsbestätigung bestanden; kein adb install beim Upgrade. Auf Version 14 und 15 jeweils drei tatsächliche Prüfungen bei Kaltstart, Wiederöffnen und zusätzlichem Launcher-Intent. Direkter und Play-Updateweg bleiben getrennt.
 - Web-Verkaufsseite, vorausbezahlte Tarife, Überweisungsaufträge und manuelle atomare Freischaltung implementiert. Echte Betreiber-/Anschrift-/Steuer-/Bankangaben fehlen; zahlungspflichtige Bestellungen deshalb weiterhin serverseitig gesperrt. Keine erfundenen Bank- oder Betreiberangaben. [STORE.md](STORE.md).
 
-## Tests und Builds des damaligen Stands
+### Tests und Builds des damaligen Stands
 
 **221 PostgreSQL-Backendtests bestanden** am 15.10.2026 (146,41 s; isolierter Lauf, Exit 0), Ruff und Python-Kompilierung ohne Befund. Darunter neue Regressionen zu Auswahlindizes, falschen Aliasen, Quellenbezug, kurzen Sachantworten und Zeit-/Aufgabenlimits. Zuvor zwei veraltete Schema-Erwartungen und eine nicht dem angeforderten Umfang entsprechende Mockantwort korrigiert; ein früherer Gesamtlauf wurde vom Ausführungsprozess abgebrochen. Der abschließende vollständige Lauf ist erfolgreich. **43 Fluttertests und Flutter-Analyse zuletzt am 14.10.2026 bestanden**; Flutter blieb unverändert. Migrationsprüfung erhält vorhandene Daten bis 0010; negative Releaseprüfungen und echte Google-Verifikationsbibliothek gegen synthetisch signierte gültige/abgelaufene/falsche Tokens geprüft.
 
@@ -73,7 +105,7 @@ APK: `artifacts/schulpilot-android.apk`, 61.869.521 Bytes; SHA256 `de2a48a357ece
 
 GitHub-Push funktioniert. [Tatsächlich geprüfter CI-Lauf](https://github.com/meinzeug/schulpilot/actions/runs/38637840266) für e6faf72: beide Jobs ohne ausgeführte Schritte abgewiesen, Annotation jeweils „The job was not started because your account is locked due to a billing issue.“ Keine erfolgreiche GitHub-CI behauptet. Die Play Console wurde mit dem autorisierten Google-Konto tatsächlich geöffnet und bietet die erstmalige Entwicklerkonto-Erstellung an; kein vorhandenes Entwicklerkonto zugänglich, keine kostenpflichtige Registrierung oder Veröffentlichung ausgeführt.
 
-## Erhaltene KI-Abnahme
+### Erhaltene KI-Abnahme
 
 Der reguläre KI-Lernablauf wurde zuvor mit normalen unabhängigen Eltern-/Kinderzugängen und ausschließlich künstlichen Heftseiten über öffentliche HTTPS tatsächlich bedient: zwei Fotos importiert/zugeschnitten, erkannt und bestätigt; Tagespaket, Antworten/Hinweise, KI-Rückblick und neue Anschlussübungen; fortgesetztes Paket und Elternverlauf. Gesamter zweiter Durchlauf zwölf gespeicherte externe Free-Aufrufe, alle erfolgreich, feste Modell-/Upstreambindung, erfasste Kosten0 für diese bekannten Gratisaufrufe. Frühere unbekannte Kosten bleiben unbekannt und wurden nicht nachträglich als0 bezeichnet. In der nativen App auf drei Neustarts verteilt wieder aufgenommen; zwei Materialien/ein Paket/zwei Einheiten, keine doppelten Quellen.
 
