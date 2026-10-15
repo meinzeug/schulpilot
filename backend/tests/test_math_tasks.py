@@ -337,6 +337,18 @@ def test_written_number_restrictions_also_override_general_rules(rule, restricti
     assert tasks(materials=list(reversed(materials)) if reverse else materials, count=1, labels=[label]) == []
 
 
+@pytest.mark.parametrize("index,label", [(1, LABELS[1]), (2, LABELS[2]), (3, LABELS[3])])
+def test_notebook_rule_line_without_final_punctuation_remains_a_literal_source(index, label):
+    # Handwritten notes often use a line break instead of a sentence-ending dot.
+    rule = MATERIALS[index]["content"].split(".")[0]
+    materials = [{"content": rule + "\nEine andere Notiz folgt hier."}]
+    planned = tasks(materials=materials, count=2, labels=[label, label])
+    assert len(planned) == 2
+    for task in planned:
+        assert task["source_excerpt"] == rule
+        assert_mathematically_correct(task)
+
+
 def test_numerator_addition_rule_in_one_clause_with_same_denominator_is_sufficient():
     materials = [{"content": "Bei gleichem Nenner addierst du nur die Zähler."}]
     planned = tasks(materials=materials, count=2, labels=["Brüche addieren"] * 2)

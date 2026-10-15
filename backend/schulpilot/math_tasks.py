@@ -47,7 +47,7 @@ def _procedure_quote(sources, label):
         if re.search(restricted, content, re.I):
             return None
     for material in sources:
-        for match in re.finditer(r"[^.!?;\r\n]+(?:[.!?;]+|$)", material["content"]):
+        for match in re.finditer(r"[^.!?;\r\n]+(?:[.!?;\r\n]+|$)", material["content"]):
             quote = match.group().strip()
             lower = quote.casefold()
             if (

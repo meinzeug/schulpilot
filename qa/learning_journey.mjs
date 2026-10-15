@@ -1,5 +1,6 @@
 // Public, real-provider QA for one explicitly owned, wholly artificial family.
-// No account creation, deletion, retry, provider change, or operator API here.
+// No household creation, deletion, automatic retry, provider change, or
+// operator API here. Explicit correction modes preserve the original history.
 //
 //   node qa/learning_journey.mjs --prepare-images  (local fixtures only)
 //   node qa/learning_journey.mjs --check-inputs    (local validation only)
@@ -7,12 +8,26 @@
 //   node qa/learning_journey.mjs --run --retry-ocr-after-fix
 //     (only after the operator has deployed/approved the transcription fix;
 //      exactly one normal reserved retry per already uploaded artificial page)
+//   node qa/learning_journey.mjs --run --continue-valid-initial
+//     (operator-authorized partial continuation: preserve the failed invalid
+//      stage, test two tutor turns and one practice generation from the valid
+//      initial review; no new stage answer, review retry, or practice answer)
+//   node qa/learning_journey.mjs --run --read-saved-results
+//     (existing data only: parent readback and unchanged usage, no inference)
+//   node qa/learning_journey.mjs --run --prepare-fresh-child
+//     (ONLY on a separate explicit operator instruction after the math/focus
+//      fix: one second child, same family/limits, original history archived in
+//      the same protected account file; no AI calls or fixture replacement)
+//   node qa/learning_journey.mjs --run --retry-stage-after-math-fix
+//     (ONLY after a separate explicit instruction and a new backend deployment:
+//      one additional normal UI request for the second child's failed block;
+//      original 16 family calls remain historical, saved retry jobs read only)
 //
 // Re-run --run to observe/continue saved work. An ambiguously dispatched or
 // failed AI operation stops the run; it is never submitted a second time.
 // The household and protected checkpoint always remain available for Android.
 import {chromium} from 'playwright';
-import {createHash} from 'node:crypto';
+import {createHash, randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {chmod, lstat, readFile, realpath, rename, writeFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -27,6 +42,10 @@ const headers = {'X-Schulpilot-Request': '1'};
 const arguments_ = process.argv.slice(2);
 const mode = arguments_[0];
 const retryOcrAfterFix = arguments_.includes('--retry-ocr-after-fix');
+const continueValidInitial = arguments_.includes('--continue-valid-initial');
+const readSavedResults = arguments_.includes('--read-saved-results');
+const prepareFreshChild = arguments_.includes('--prepare-fresh-child');
+const retryStageAfterMathFix = arguments_.includes('--retry-stage-after-math-fix');
 const allowedModes = new Set(['--prepare-images', '--check-inputs', '--run', '--help']);
 const runtimeErrors = [];
 const blockedRequests = [];
@@ -70,6 +89,14 @@ function check(condition, code) {
 }
 function digest(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+function artifactPrefix() {
+  return journey?.artifact_tag === 'fresh-second-child'
+    ? 'learning-journey-fresh-second-child' : 'learning-journey';
+}
+function resultPath() {
+  return journey?.artifact_tag === 'fresh-second-child'
+    ? path.join(artifacts, artifactPrefix() + '-result.json') : reportFile;
 }
 function words(text) {
   return text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
@@ -219,16 +246,34 @@ async function top(target) {
   await target.mouse.wheel(0, -18000);
   await target.waitForTimeout(300);
 }
-async function reveal(target, locator, {modal = false} = {}) {
+async function reveal(target, locator, {modal = false, partial = false, reader = false} = {}) {
   const item = locator.first();
   const viewport = target.viewportSize();
-  const min = modal ? 5 : 75;
-  const max = viewport.height - (modal ? 5 : 100);
+  const min = reader ? 120 : modal ? 5 : 75;
+  let max = viewport.height - (modal ? 5 : 100);
+  if (reader) {
+    // Flutter retains offscreen semantics nodes underneath the fixed tutor
+    // composer. Such a node is not a usable touch target. Scroll the reader
+    // until the control is above its first chip/input, then tap physically.
+    for (const composer of [target.getByText('Erklär es einfacher', {exact: true}),
+      target.getByRole('textbox', {name: 'Deine Frage', exact: true})]) {
+      if (await composer.count()) {
+        const box = await composer.first().boundingBox().catch(() => null);
+        if (box && box.y > min + 70) max = Math.min(max, box.y - 10);
+      }
+    }
+  }
   for (let attempt = 0; attempt < 36; attempt++) {
     const box = await item.count() ? await item.boundingBox({timeout: 500}).catch(() => null) : null;
+    // A tutor answer can exceed the sheet's independently scrollable reading
+    // area. It must be present and visibly intersect that area; requiring its
+    // whole paragraph to fit between the fixed header/composer is impossible.
+    if (partial && box && box.width > 0 && box.height > 0 &&
+      box.y < max && box.y + box.height > min) return item;
     if (box && box.width > 0 && box.height > 0 && box.y >= min &&
       (box.y + box.height <= max || box.height > max - min && box.y < max - 40)) return item;
-    await target.mouse.move(viewport.width - 30, modal ? Math.round(viewport.height * .48) : viewport.height - 160);
+    await target.mouse.move(viewport.width - 30, reader ? Math.round((min + max) / 2)
+      : modal ? Math.round(viewport.height * .48) : viewport.height - 160);
     await target.mouse.wheel(0, !box && attempt === 0 ? -18000 : box && box.y < min ? -430 : 430);
     await target.waitForTimeout(250);
   }
@@ -262,7 +307,7 @@ async function uiResponse(target, locator, route, method = 'POST', status = 200,
 }
 async function screenshot(target, filename, {scroll = true} = {}) {
   if (scroll) await top(target);
-  await privateWrite(path.join(artifacts, 'learning-journey-' + filename + '.png'), await target.screenshot());
+  await privateWrite(path.join(artifacts, artifactPrefix() + '-' + filename + '.png'), await target.screenshot());
 }
 async function intent(key, function_) {
   check(!journey.ai_intents[key], 'saved_ai_intent_must_not_be_repeated');
@@ -290,6 +335,16 @@ async function guardRequest(route) {
     return route.abort('blockedbyclient');
   }
   permits.delete(routePath);
+  if (entry.retry_reason === 'deployed_math_task_fix') {
+    const requestKey = request.headers()['idempotency-key'];
+    // Keep only a fingerprint. The normal Flutter control creates this key;
+    // the driver never injects a request or changes the client's key.
+    if (typeof requestKey !== 'string' || !requestKey || requestKey.length > 80) {
+      blockedRequests.push({reason: 'explicit_stage_retry_missing_ui_idempotency_key', function: 'unit'});
+      return route.abort('blockedbyclient');
+    }
+    entry.idempotency_key_sha256 = digest(requestKey);
+  }
   entry.dispatches = 1;
   await persist(phase, false);
   return route.continue();
@@ -504,7 +559,8 @@ async function ensurePath() {
   await tap(page, page.getByText('Alle Etappen', {exact: true}));
   for (const block of route.blocks) {
     const label = {planned: 'Geplant', ready: 'Bereit', completed: 'Bearbeitet', generating: 'Wird vorbereitet'}[block.status];
-    await reveal(page, page.getByText(block.label + ' · ' + block.question_count + ' Aufgaben · ' + label, {exact: true}));
+    // Flutter merges a ListTile's title and subtitle into one semantics node.
+    await reveal(page, page.getByText(block.label + ' · ' + block.question_count + ' Aufgaben · ' + label, {exact: false}));
   }
   journey.evidence.planned_task_count = route.total_questions;
   if (!journey.evidence.planned_and_ready_distinguished) {
@@ -532,6 +588,52 @@ function closed(question) {
 }
 function escaped(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function independentFractionAudit(question) {
+  // Independent QA arithmetic: do not import the application's validator or
+  // treat its stored answer as proof. These checks cover the finite original
+  // fraction fixtures; natural-language teaching quality is not proven here.
+  const normalize = value => value.normalize('NFC').replace(/\s+/g, '').replaceAll('⁄', '/');
+  const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+  let expected = null;
+  let match = question.prompt.match(/^Kürze den Bruch (\d+)\/(\d+) vollständig\./);
+  if (match) {
+    const numerator = BigInt(match[1]), denominator = BigInt(match[2]);
+    check(numerator > 0n && denominator > 0n, 'qa_fraction_inputs_must_be_positive');
+    const divisor = gcd(numerator, denominator);
+    expected = `${numerator / divisor}/${denominator / divisor}`;
+  } else if ((match = question.prompt.match(/^Erweitere den Bruch (\d+)\/(\d+) mit dem Faktor (\d+)\./))) {
+    expected = `${BigInt(match[1]) * BigInt(match[3])}/${BigInt(match[2]) * BigInt(match[3])}`;
+  } else if ((match = question.prompt.match(/^Wie lautet der (Zähler|Nenner) des Bruchs (\d+)\/(\d+)\?/))) {
+    expected = BigInt(match[match[1] === 'Zähler' ? 2 : 3]).toString();
+  } else if ((match = question.prompt.match(/^Berechne (\d+)\/(\d+) \+ (\d+)\/(\d+)\./))) {
+    check(match[2] === match[4], 'qa_addition_requires_explicit_shared_denominator');
+    expected = `${BigInt(match[1]) + BigInt(match[3])}/${BigInt(match[2])}`;
+  }
+  if (expected !== null) check(normalize(question.answer) === expected,
+    'independent_qa_fraction_answer_disagrees_with_stored_solution');
+  let checkedEqualities = 0;
+  for (const text of [...(question.hints ?? []), question.explanation ?? '']) {
+    // A deliberately false counterexample is not a positive arithmetic claim.
+    // Leave such prose for human review rather than reject it as a true claim.
+    for (const sentence of text.split(/[.!?\n]/)) {
+      if (/\b(?:falsch|fehler|behauptung|nicht)\b/i.test(sentence)) continue;
+      for (const equality of sentence.matchAll(/(?=\b(\d+)\s*\/\s*(\d+)\s*=\s*(\d+)\s*\/\s*(\d+))/g)) {
+        check(BigInt(equality[2]) !== 0n && BigInt(equality[4]) !== 0n &&
+          BigInt(equality[1]) * BigInt(equality[4]) === BigInt(equality[3]) * BigInt(equality[2]),
+          'independent_qa_hint_or_explanation_has_invalid_fraction_equality');
+        checkedEqualities++;
+      }
+      for (const equality of sentence.matchAll(/\b(\d+)\s*(mal|×|·|\*|durch|:|÷)\s*(\d+)\s*(?:=|ist|ergibt)\s*(\d+)(?!\s*[\d/])/gi)) {
+        const left = BigInt(equality[1]), right = BigInt(equality[3]), result = BigInt(equality[4]);
+        check(/^(?:mal|×|·|\*)$/i.test(equality[2]) ? left * right === result
+          : right !== 0n && result * right === left,
+          'independent_qa_hint_or_explanation_has_invalid_integer_equality');
+        checkedEqualities++;
+      }
+    }
+  }
+  return {answer_checked: expected !== null, explicit_equalities_checked: checkedEqualities};
 }
 async function fillAnswer(question) {
   check(typeof question.answer === 'string' && question.answer.length > 0, 'parent_cannot_read_authoritative_qa_answer');
@@ -565,6 +667,15 @@ async function finishUnit(unitId, label, {hint = false} = {}) {
   for (let index = 0; index < unit.questions.length; index++) {
     const question = unit.questions[index];
     if (closed(question)) continue;
+    try {
+      const audit = independentFractionAudit(question);
+      journey.math_audits ??= {};
+      journey.math_audits[unitId + ':' + question.id] = audit;
+    } catch (error) {
+      await privateWrite(path.join(artifacts, '.' + artifactPrefix() + '-math-audit-failed.json'),
+        JSON.stringify({unit_id: unitId, question, reason: safeReason(error)}, null, 2) + '\n');
+      throw error;
+    }
     await reveal(page, page.getByText(question.prompt, {exact: true}));
     if (hint && index === 0 && question.hints_used === 0) {
       const saved = await uiResponse(page, button(page, 'Ein Hinweis bitte'), '/units/' + unitId + '/questions/' + question.id + '/hint');
@@ -634,6 +745,76 @@ async function waitReview(unitId, label) {
   }
   throw new QaFailure('separate_review_bounded_wait_expired');
 }
+function stageFixKey(blockId) {
+  return 'stage-math-fix:' + blockId;
+}
+function validateStageFixCheckpoint(block, entry) {
+  const original = journey.ai_intents['stage:' + block.id];
+  check(journey.artifact_tag === 'fresh-second-child' && account.previous_qa_children?.length === 1 &&
+    journey.usage_baseline?.calls_used === 11 && original?.function === 'unit' &&
+    original.dispatches === 1 && typeof original.job_id === 'string' && !journey.preserved_invalid_stage,
+    'stage_fix_only_for_the_existing_second_child_failed_block');
+  const fixKeys = Object.keys(journey.ai_intents).filter(key => key.startsWith('stage-math-fix:'));
+  check(fixKeys.length <= 1 && fixKeys.every(key => key === stageFixKey(block.id)),
+    'only_one_explicit_stage_fix_is_allowed');
+  if (entry) {
+    check(entry.function === 'unit' && entry.operator_approved_retry === true &&
+      entry.retry_reason === 'deployed_math_task_fix' && entry.previous_job_id === original.job_id &&
+      entry.previous_intent_sha256 === digest(JSON.stringify(original)) &&
+      entry.family_calls_before === 16 && entry.original_family_baseline === 11 &&
+      typeof entry.source_commit === 'string' && /^[a-f0-9]{7,40}$/.test(entry.source_commit) &&
+      !entry.source_commit.startsWith('e37f14a') && [0, 1].includes(entry.dispatches),
+      'stage_fix_checkpoint_or_original_history_changed');
+    check(!entry.job_id || entry.dispatches === 1 && entry.job_id !== original.job_id &&
+      typeof entry.idempotency_key_sha256 === 'string' && /^[a-f0-9]{64}$/.test(entry.idempotency_key_sha256),
+      'stage_fix_job_must_have_a_new_normal_ui_request_key');
+  }
+  return original;
+}
+async function retryFailedStageAfterMathFix(route, block) {
+  const key = stageFixKey(block.id);
+  let entry = journey.ai_intents[key];
+  const original = validateStageFixCheckpoint(block, entry);
+  const oldJob = await jsonGet(child, '/jobs/' + original.job_id);
+  check(oldJob.id === original.job_id && oldJob.status === 'failed',
+    'stage_fix_requires_the_preserved_original_failed_job');
+  if (entry?.job_id) {
+    check(block.job_id === entry.job_id, 'stage_fix_path_job_changed_since_saved_retry');
+    // A restarted driver only observes the already accepted job. In particular,
+    // another deployment or another --run must never create a second retry.
+    await waitJob(entry.job_id, 'explicit_stage_math_fix');
+    return;
+  }
+  check(retryStageAfterMathFix && !entry?.dispatches,
+    'stage_fix_retry_missing_explicit_flag_or_already_dispatched');
+  check(!block.unit_id && block.error && block.job_id === original.job_id &&
+    route.stale === false && route.can_continue && route.next_block_id === block.id,
+    'stage_fix_blocked_by_existing_sources_or_parent_plan');
+  const health = await jsonGet(child, '/health');
+  check(typeof health.source_commit === 'string' && /^[a-f0-9]{7,40}$/.test(health.source_commit) &&
+    !['e37f14a', '55e0904', 'b3dbfa9'].some(old => health.source_commit.startsWith(old)),
+    'new_math_task_fix_must_be_deployed_before_explicit_stage_retry');
+  const consumed = await verifyUsage();
+  check(consumed.calls_used === 16 && consumed.journey_calls === 5,
+    'original_sixteen_calls_must_remain_before_the_single_stage_retry');
+  if (!entry) {
+    entry = journey.ai_intents[key] = {function: 'unit', attempted_at: new Date().toISOString(), dispatches: 0,
+      operator_approved_retry: true, retry_reason: 'deployed_math_task_fix', source_commit: health.source_commit,
+      previous_job_id: original.job_id, previous_intent_sha256: digest(JSON.stringify(original)),
+      family_calls_before: consumed.calls_used, original_family_baseline: journey.usage_baseline.calls_used};
+  } else check(entry.source_commit === health.source_commit,
+    'unsent_stage_fix_checkpoint_requires_the_same_approved_live_commit');
+  await persist('single_explicit_stage_math_fix_prepared');
+  const endpoint = '/school-days/' + journey.day_id + '/blocks/' + block.id;
+  await permitAi(key, 'unit', endpoint);
+  const job = await uiResponse(page, button(page, /^(?:Nächste Etappe|Erneut vorbereiten)$/), endpoint, 'POST', 202);
+  check(typeof job.id === 'string' && job.id !== original.job_id,
+    'stage_fix_did_not_create_a_new_normal_reserved_job');
+  entry.job_id = job.id;
+  await persist('explicit_stage_math_fix_job_saved');
+  validateStageFixCheckpoint(block, entry);
+  await waitJob(job.id, 'explicit_stage_math_fix');
+}
 async function newStage() {
   await persist('explicitly_generate_and_open_one_new_stage');
   await open(page, wizardRoute());
@@ -642,23 +823,35 @@ async function newStage() {
     : route.blocks.find(value => value.id === route.next_block_id);
   check(block && block.phase !== 'learning', 'next_new_planned_stage_missing');
   journey.stage_block_id ??= block.id;
+  const savedFix = journey.ai_intents[stageFixKey(block.id)];
+  if (savedFix) validateStageFixCheckpoint(block, savedFix);
   if (!block.unit_id) {
-    check(!block.error && route.can_continue && route.next_block_id === block.id,
-      'new_stage_failed_or_blocked_by_existing_parent_plan');
-    if (block.status === 'generating') {
-      await waitJob(block.job_id, 'new_stage');
+    if (savedFix || retryStageAfterMathFix && block.error) {
+      await retryFailedStageAfterMathFix(route, block);
     } else {
-      const endpoint = '/school-days/' + journey.day_id + '/blocks/' + block.id;
-      await permitAi('stage:' + block.id, 'unit', endpoint);
-      const job = await uiResponse(page, button(page, 'Nächste Etappe'), endpoint, 'POST', 202);
-      journey.ai_intents['stage:' + block.id].job_id = job.id;
-      await persist('new_stage_job_saved');
-      await waitJob(job.id, 'new_stage');
+      check(!block.error && route.can_continue && route.next_block_id === block.id,
+        'new_stage_failed_or_blocked_by_existing_parent_plan');
+      if (block.status === 'generating') {
+        await waitJob(block.job_id, 'new_stage');
+      } else {
+        const endpoint = '/school-days/' + journey.day_id + '/blocks/' + block.id;
+        await permitAi('stage:' + block.id, 'unit', endpoint);
+        const job = await uiResponse(page, button(page, 'Nächste Etappe'), endpoint, 'POST', 202);
+        journey.ai_intents['stage:' + block.id].job_id = job.id;
+        await persist('new_stage_job_saved');
+        await waitJob(job.id, 'new_stage');
+      }
     }
     route = await pathState();
     block = route.blocks.find(value => value.id === journey.stage_block_id);
   }
   check(block?.unit_id && ['ready', 'completed'].includes(block.status), 'generated_stage_not_saved_as_ready');
+  if (journey.ai_intents[stageFixKey(block.id)]) {
+    const entry = journey.ai_intents[stageFixKey(block.id)];
+    validateStageFixCheckpoint(block, entry);
+    check(entry.job_id === block.job_id, 'ready_stage_does_not_match_the_saved_explicit_fix_job');
+    journey.evidence.explicit_stage_math_fix_retries = 1;
+  }
   journey.stage_unit_id = block.unit_id;
   await persist('new_stage_ready');
   await open(page, wizardRoute());
@@ -673,7 +866,7 @@ async function newStage() {
   await screenshot(page, 'mobile-new-stage');
   await finishUnit(block.unit_id, 'stage');
 }
-async function separatePractice(initial) {
+async function separatePractice(initial, {complete = true} = {}) {
   await persist('explicit_practice_after_preserved_review');
   let unit = await jsonGet(parent, '/units/' + initial.id);
   journey.initial_report_signature ??= reportSignature(unit.coaching);
@@ -686,7 +879,7 @@ async function separatePractice(initial) {
       await waitJob(unit.coaching.practice_job_id, 'separate_practice');
     } else {
       const endpoint = '/units/' + unit.id + '/practice';
-      await permitAi('practice:' + unit.id, 'unit', endpoint);
+      await permitAi('practice:' + unit.id, 'coach_practice', endpoint);
       const job = await uiResponse(page, button(page, unit.coaching.decision === 'check'
         ? 'Ohne Hilfe ausprobieren' : 'Gezielt weiterüben'), endpoint, 'POST', 202);
       journey.ai_intents['practice:' + unit.id].job_id = job.id;
@@ -713,8 +906,34 @@ async function separatePractice(initial) {
       '/units/' + next.id + '/start');
     await page.waitForURL(base + '/unit/' + next.id, {timeout: 30000});
   }
-  await finishUnit(next.id, 'practice');
+  if (complete) {
+    await finishUnit(next.id, 'practice');
+  } else {
+    check(next.questions.every(question => question.attempts.length === 0),
+      'partial_continuation_must_not_modify_existing_practice_answers');
+    await screenshot(page, 'mobile-practice-ready');
+    journey.evidence.practice_generated_and_opened_without_answer = true;
+    await persist('new_practice_opened_without_more_answers_or_coaching');
+  }
   journey.evidence.practice_explicit_and_review_preserved = true;
+}
+async function preserveKnownInvalidStage() {
+  check((continueValidInitial || readSavedResults) && journey.stage_unit_id && journey.initial_unit_id,
+    'targeted_continuation_needs_existing_failed_stage_and_valid_initial');
+  const invalid = await jsonGet(parent, '/units/' + journey.stage_unit_id);
+  check(invalid.child_id === account.child_id && invalid.status === 'completed' &&
+    invalid.coaching?.status === 'failed' && invalid.coaching.request_count === 1,
+    'invalid_stage_must_remain_completed_with_one_failed_review');
+  const signature = digest(JSON.stringify({status: invalid.status, questions: invalid.questions,
+    coaching: invalid.coaching}));
+  journey.preserved_invalid_stage ??= {id: invalid.id, signature,
+    answer_count: invalid.questions.reduce((sum, question) => sum + question.attempts.length, 0)};
+  check(journey.preserved_invalid_stage.id === invalid.id && journey.preserved_invalid_stage.signature === signature,
+    'known_invalid_stage_or_its_answers_were_changed');
+  journey.completed_unit_ids = (journey.completed_unit_ids ?? []).filter(id => id !== invalid.id);
+  journey.evidence.invalid_stage_preserved_and_excluded = true;
+  journey.evidence.completed = false;
+  await persist('known_invalid_stage_preserved_without_retry');
 }
 async function tutorHistory(context) {
   return jsonGet(context, '/children/' + account.child_id + '/tutor/questions?day_id=' + journey.day_id);
@@ -764,7 +983,7 @@ async function teacherQuestions(materials) {
       check(!journey.ai_intents['teacher:' + index]?.dispatches, 'ambiguous_teacher_submission_must_not_be_repeated');
       if (index === 1) {
         const before = await usage();
-        await tap(page, button(page, 'Dazu nachfragen'), {modal: true});
+        await tap(page, button(page, 'Dazu nachfragen'), {modal: true, reader: true});
         await reveal(page, page.getByText('Zu deiner letzten Antwort', {exact: true}), {modal: true});
         const after = await usage();
         check(before.calls_used === after.calls_used, 'selecting_followup_sent_an_automatic_question');
@@ -789,9 +1008,9 @@ async function teacherQuestions(materials) {
     turns.push(turn);
     // The latest turn is rendered; earlier turns are intentionally disclosed.
     if (index === 1 || (await tutorHistory(child)).questions.at(-1)?.id === turn.id) {
-      await reveal(page, page.getByText(turn.reply.answer, {exact: true}), {modal: true});
-      await tap(page, page.getByText('Wo steht das?', {exact: true}), {modal: true});
-      await reveal(page, page.getByText('„' + turn.reply.sources[0].quote + '“', {exact: true}), {modal: true});
+      await reveal(page, page.getByText(turn.reply.answer, {exact: true}), {modal: true, partial: true, reader: true});
+      await tap(page, page.getByText('Wo steht das?', {exact: true}), {modal: true, reader: true});
+      await reveal(page, page.getByText('„' + turn.reply.sources[0].quote + '“', {exact: true}), {modal: true, reader: true, partial: true});
       await screenshot(page, 'mobile-teacher-source-' + (index + 1), {scroll: false});
     }
     await persist('teacher_answer_' + (index + 1) + '_with_verified_citations');
@@ -839,15 +1058,15 @@ async function parentReadback(turns) {
   await tap(parentPage, button(parentPage, 'Fragen zum Heft ansehen'));
   await reveal(parentPage, parentPage.getByText('Fragen zum Stoff', {exact: true}), {modal: true});
   const latest = turns.at(-1);
-  await reveal(parentPage, parentPage.getByText(latest.reply.answer, {exact: true}), {modal: true});
-  await tap(parentPage, parentPage.getByText('Wo steht das?', {exact: true}), {modal: true});
-  await reveal(parentPage, parentPage.getByText('„' + latest.reply.sources[0].quote + '“', {exact: true}), {modal: true});
+  await reveal(parentPage, parentPage.getByText(latest.reply.answer, {exact: true}), {modal: true, partial: true, reader: true});
+  await tap(parentPage, parentPage.getByText('Wo steht das?', {exact: true}), {modal: true, reader: true});
+  await reveal(parentPage, parentPage.getByText('„' + latest.reply.sources[0].quote + '“', {exact: true}), {modal: true, reader: true, partial: true});
   check(await parentPage.getByRole('textbox', {name: 'Deine Frage', exact: true}).count() === 0,
     'parent_teacher_view_unexpectedly_allows_child_question_submission');
   await screenshot(parentPage, 'parent-teacher-history', {scroll: false});
   for (const turn of turns.slice(0, -1)) {
-    await tap(parentPage, parentPage.getByText(turn.question, {exact: true}), {modal: true});
-    await reveal(parentPage, parentPage.getByText(turn.reply.answer, {exact: true}), {modal: true});
+    await tap(parentPage, parentPage.getByText(turn.question, {exact: true}), {modal: true, reader: true});
+    await reveal(parentPage, parentPage.getByText(turn.reply.answer, {exact: true}), {modal: true, partial: true, reader: true});
   }
   journey.evidence.parent_reads_answers_hints_reports_and_teacher_history = true;
   return answerCount;
@@ -857,22 +1076,107 @@ function functionCounts(records) {
   for (const record of records) counts[record.function] = (counts[record.function] ?? 0) + 1;
   return counts;
 }
+async function prepareOneFreshChild() {
+  check(prepareFreshChild && journey.evidence.invalid_stage_preserved_and_excluded &&
+    journey.evidence.parent_reads_answers_hints_reports_and_teacher_history &&
+    journey.evidence.failed_practice_kept_ready_report && !account.previous_qa_children?.length,
+    'fresh_child_requires_completed_historical_diagnosis_no_more_than_one_second_child');
+  const health = await jsonGet(parent, '/health');
+  check(health.version === '1.1.1' && typeof health.source_commit === 'string' &&
+    !health.source_commit.startsWith('55e0904') && !health.source_commit.startsWith('b3dbfa9'),
+    'math_and_focus_fix_must_be_live_before_preparing_second_child');
+  const route = '/families/' + account.user.families[0].id;
+  const family = await jsonGet(parent, route);
+  check(family.synthetic === false && family.children.some(value => value.id === account.child_id),
+    'original_artificial_child_not_in_owned_family');
+  const before = await usage();
+  account.fresh_child_preparation ??= {
+    username: 'normal-child-' + randomBytes(6).toString('hex') + '-2',
+    password: randomBytes(24).toString('base64url'), source_commit: health.source_commit,
+  };
+  const preparation = account.fresh_child_preparation;
+  // persist() deliberately merges the latest private file. Save this one
+  // additional private preparation field explicitly before a possible POST.
+  const oldChild = account.child_id;
+  const latest = JSON.parse(await readFile(accountFile, 'utf8'));
+  check(latest.child_id === oldChild && latest.user.id === account.user.id, 'account_changed_before_child_preparation');
+  latest.fresh_child_preparation ??= preparation;
+  check(latest.fresh_child_preparation.username === preparation.username,
+    'another_second_child_preparation_is_already_pending');
+  const temporary = accountFile + '.learning-journey-' + process.pid + '.tmp';
+  await privateWrite(temporary, JSON.stringify(latest) + '\n');
+  await rename(temporary, accountFile);
+  account = latest;
+  let fresh = family.children.find(value => value.username === preparation.username);
+  if (!fresh) {
+    check(!preparation.dispatched && family.children.length < family.child_limit,
+      'second_child_dispatch_ambiguous_or_existing_child_limit_reached');
+    preparation.dispatched = true;
+    latest.fresh_child_preparation = preparation;
+    await privateWrite(temporary, JSON.stringify(latest) + '\n');
+    await rename(temporary, accountFile);
+    const response = await parent.request.post(base + '/api' + route + '/children', {headers, data: {
+      display_name: 'Künstliches Testkind 2', username: preparation.username,
+      password: preparation.password, grade: 6, subjects: ['Mathematik'],
+    }});
+    check(response.status() === 201, 'second_child_creation_failed_no_repeat_or_limit_increase');
+    fresh = await response.json();
+  }
+  check(fresh.id !== oldChild && fresh.username === preparation.username, 'fresh_child_identity_mismatch');
+  const after = await usage();
+  const afterFamily = await jsonGet(parent, route);
+  check(before.calls_used === after.calls_used && before.records.length === after.records.length &&
+    before.calls_limit === after.calls_limit && before.budget_micros_usd === after.budget_micros_usd &&
+    before.encumbered_micros_usd === after.encumbered_micros_usd &&
+    afterFamily.child_limit === family.child_limit && afterFamily.plan === family.plan,
+    'preparing_second_child_changed_usage_or_family_entitlements');
+  const preserveKeys = new Set(['normal_account', 'verified', 'credentials', 'user', 'image_paths',
+    'previous_qa_children', 'fresh_child_preparation']);
+  const previous = Object.fromEntries(Object.entries(account).filter(([key]) => !preserveKeys.has(key)));
+  previous.credentials = {child_username: account.credentials.child_username, child_password: account.credentials.child_password};
+  const migrated = Object.fromEntries(Object.entries(account).filter(([key]) => preserveKeys.has(key)));
+  migrated.previous_qa_children = [previous];
+  migrated.child_id = fresh.id;
+  migrated.credentials = {...account.credentials, child_username: preparation.username, child_password: preparation.password};
+  migrated.fresh_child_preparation = {...preparation, child_id: fresh.id};
+  migrated.learning_journey_qa = {version: 1, artifact_tag: 'fresh-second-child',
+    source_fixtures: journey.source_fixtures, ai_intents: {}, evidence: {},
+    usage_baseline: {calls_used: after.calls_used, function_counts: functionCounts(after.records)},
+  };
+  await privateWrite(temporary, JSON.stringify(migrated) + '\n');
+  await rename(temporary, accountFile);
+  account = migrated;
+  journey = migrated.learning_journey_qa;
+  await persist('second_artificial_child_prepared_with_original_history_preserved');
+  passed = true;
+  return {fresh_second_child_prepared: true, original_child_and_all_history_retained: true,
+    same_family_and_unchanged_limits: true, family_calls_used: after.calls_used,
+    additional_ai_calls: 0, images_reused_without_changes: 2};
+}
 async function verifyUsage() {
   const consumed = await usage();
   check(consumed.synthetic === false && consumed.records.length < 200,
     'regular_complete_usage_ledger_required');
-  check(consumed.records.every(record => record.child_id === account.child_id &&
+  const ownedChildren = new Set([account.child_id, ...(account.previous_qa_children ?? []).map(value => value.child_id)]);
+  check(consumed.records.every(record => ownedChildren.has(record.child_id) &&
     record.provider === 'openrouter' && record.model.endsWith(':free') &&
     (record.cost_micros_usd === 0 || record.cost_micros_usd === null)),
     'usage_provider_or_cost_not_free_or_explicitly_unknown');
   check(consumed.unknown_cost_calls === consumed.records.filter(record => record.cost_micros_usd === null).length,
     'unknown_costs_falsely_reported_as_zero');
-  const expected = Object.values(journey.ai_intents).filter(value => value.function === 'coach' || value.dispatches === 1);
+  const expected = Object.entries(journey.ai_intents)
+    .filter(([_key, value]) => value.function === 'coach' || value.dispatches === 1);
   check(consumed.calls_used - journey.usage_baseline.calls_used === expected.length,
     'additional_or_unaccounted_ai_reservation');
   const currentCounts = functionCounts(consumed.records);
   const expectedCounts = {};
-  for (const value of expected) expectedCounts[value.function] = (expectedCounts[value.function] ?? 0) + 1;
+  for (const [key, value] of expected) {
+    // The practice generator uses the unit model but is reserved under its
+    // distinct coach_practice feature. Preserve old journal entries that
+    // recorded the model function, and compare the actual ledger category.
+    const feature = key.startsWith('practice:') ? 'coach_practice' : value.function;
+    expectedCounts[feature] = (expectedCounts[feature] ?? 0) + 1;
+  }
   for (const function_ of new Set([...Object.keys(currentCounts), ...Object.keys(journey.usage_baseline.function_counts)])) {
     check((currentCounts[function_] ?? 0) - (journey.usage_baseline.function_counts[function_] ?? 0) === (expectedCounts[function_] ?? 0),
       'ai_function_ledger_does_not_match_explicit_intents');
@@ -929,44 +1233,94 @@ async function run() {
     journey.usage_baseline = {calls_used: baseline.calls_used, function_counts: functionCounts(baseline.records)};
     await persist('regular_family_budget_baseline_saved');
   }
+  if (prepareFreshChild) return prepareOneFreshChild();
   page = await child.newPage();
   await loginChild();
+  if (readSavedResults) {
+    check(journey.day_id && journey.initial_unit_id && journey.tutor_turn_ids?.length === 2 &&
+      journey.preserved_invalid_stage, 'saved_results_mode_requires_existing_private_checkpoints');
+    await preserveKnownInvalidStage();
+    const initial = await jsonGet(parent, '/units/' + journey.initial_unit_id);
+    check(initial.coaching?.status === 'ready' && initial.coaching.practice_status === 'failed' &&
+      initial.coaching.request_count === 1 && initial.coaching.next_unit_id === null &&
+      reportSignature(initial.coaching) === journey.initial_report_signature,
+      'saved_initial_report_did_not_survive_failed_practice');
+    const day = await dayState();
+    const history = await tutorHistory(child);
+    const turns = journey.tutor_turn_ids.map(id => history.questions.find(turn => turn.id === id));
+    for (const turn of turns) { check(turn, 'saved_tutor_turn_missing'); validateCitations(turn, day.pages); }
+    const before = await usage();
+    const answerCount = await parentReadback(turns);
+    const consumed = await verifyUsage();
+    check(consumed.calls_used === before.calls_used && blockedRequests.length === 0 &&
+      runtimeErrors.length === 0 && unexpectedAudioStarts.length === 0,
+      'readback_reserved_ai_or_had_browser_failures');
+    journey.evidence.failed_practice_kept_ready_report = true;
+    await persist('saved_parent_readback_passed_with_known_failures_retained');
+    passed = true;
+    return {qa_passed: false, saved_results_readback_passed: true, known_invalid_stage_preserved: true,
+      preserved_invalid_stage_answers: journey.preserved_invalid_stage.answer_count,
+      original_report_ready_after_failed_practice: true, teacher_questions: turns.length,
+      valid_saved_answers: answerCount, additional_ai_calls_for_readback: 0, ...consumed,
+      runtime_errors: runtimeErrors, automatic_audio_starts: unexpectedAudioStarts.length,
+      household_retained_for_android_and_fresh_test: true};
+  }
   const day = await prepareDay();
   await ensurePath();
   const initial = await finishUnit(journey.initial_unit_id, 'initial', {hint: true});
-  await newStage();
-  await separatePractice(initial);
-  const turns = await teacherQuestions(day.pages);
+  let turns;
+  if (continueValidInitial) {
+    await preserveKnownInvalidStage();
+    turns = await teacherQuestions(day.pages);
+    await separatePractice(initial, {complete: false});
+    await preserveKnownInvalidStage();
+  } else {
+    await newStage();
+    await separatePractice(initial);
+    turns = await teacherQuestions(day.pages);
+  }
   const answers = await parentReadback(turns);
   await persist('saved_feature_reload_without_ai');
   const before = await usage();
   await open(page, '/unit/' + journey.initial_unit_id);
   await open(page, wizardRoute());
   await tap(page, button(page, 'Fragen zu meinen Heftseiten'));
-  await reveal(page, page.getByText(turns.at(-1).reply.answer, {exact: true}), {modal: true});
+  await reveal(page, page.getByText(turns.at(-1).reply.answer, {exact: true}), {modal: true, partial: true, reader: true});
   check((await usage()).calls_used === before.calls_used, 'saved_feature_reload_triggered_another_ai_request');
   const consumed = await verifyUsage();
   check(blockedRequests.length === 0, 'unexpected_or_duplicate_ai_ui_requests_blocked');
   check(unexpectedAudioStarts.length === 0, 'automatic_microphone_start_detected');
   check(runtimeErrors.length === 0, 'browser_runtime_errors_detected');
   journey.evidence.no_automatic_microphone_start = true;
-  journey.evidence.completed = true;
-  await persist('passed');
+  journey.evidence.completed = !continueValidInitial;
+  await persist(continueValidInitial ? 'authorized_partial_continuation_passed' : 'passed');
   passed = true;
-  return {qa_passed: true, mobile_viewport: 390, real_openrouter: true, artificial_original_pages: 2,
+  return {qa_passed: !continueValidInitial, authorized_partial_continuation_passed: continueValidInitial,
+    known_invalid_stage_requires_fresh_test: continueValidInitial,
+    preserved_invalid_stage_answers: continueValidInitial ? journey.preserved_invalid_stage.answer_count : 0,
+    mobile_viewport: 390, real_openrouter: true, artificial_original_pages: 2,
     completed_units: journey.completed_unit_ids.length, saved_answers: answers,
     teacher_questions: turns.length, ...consumed, runtime_errors: runtimeErrors,
+    independent_fraction_answers_checked: Object.values(journey.math_audits ?? {})
+      .filter(value => value.answer_checked).length,
+    explicit_teaching_equalities_checked: Object.values(journey.math_audits ?? {})
+      .reduce((sum, value) => sum + value.explicit_equalities_checked, 0),
+    natural_language_teaching_fully_verified: false,
     automatic_audio_starts: unexpectedAudioStarts.length,
     explicit_ai_retries: Object.values(journey.ai_intents).filter(value => value.operator_approved_retry).length,
+    explicit_stage_math_fix_retries: Object.values(journey.ai_intents)
+      .filter(value => value.retry_reason === 'deployed_math_task_fix' && value.dispatches === 1).length,
     household_retained_for_android: true, evidence: journey.evidence};
 }
 
 try {
   check(allowedModes.has(mode) && (arguments_.length === 1 ||
-    mode === '--run' && retryOcrAfterFix && arguments_.length === 2 && arguments_[1] === '--retry-ocr-after-fix'),
+    mode === '--run' && arguments_.length === 2 &&
+      ['--retry-ocr-after-fix', '--continue-valid-initial', '--read-saved-results', '--prepare-fresh-child',
+        '--retry-stage-after-math-fix'].includes(arguments_[1])),
     'choose_help_prepare_images_check_inputs_or_run');
   if (mode === '--help') {
-    console.log('Local fixtures: node qa/learning_journey.mjs --prepare-images\nLocal check: node qa/learning_journey.mjs --check-inputs\nAfter deployment: node qa/learning_journey.mjs --run\nOperator-approved OCR correction only after deployed fix: add --retry-ocr-after-fix (one retry per original page).\nNo automatic retries or household cleanup.');
+    console.log('Local fixtures: node qa/learning_journey.mjs --prepare-images\nLocal check: node qa/learning_journey.mjs --check-inputs\nAfter deployment: node qa/learning_journey.mjs --run\nOperator-approved OCR correction only after deployed fix: add --retry-ocr-after-fix (one retry per original page).\nTargeted partial continuation from the valid initial review: add --continue-valid-initial (no stage retry or new answers).\nSaved parent views only: add --read-saved-results (no AI requests).\nONLY after a separate explicit instruction, with math/focus fix live: add --prepare-fresh-child (one second child, same family, no AI/limit reset); then --run uses it and retains the original child privately.\nONLY after a separate explicit instruction and a newer backend deployment: add --retry-stage-after-math-fix (one extra UI generation for the existing second-child failed block; original 16 calls retained, saved retry jobs read only).\nNo automatic retries or household cleanup.');
   } else {
     await localInputs();
     if (mode === '--prepare-images') await prepareImages();
@@ -976,7 +1330,7 @@ try {
         word_counts: journey.source_fixtures.word_counts, network_requests: 0}));
     } else {
       const report = await run();
-      await privateWrite(reportFile, JSON.stringify(report, null, 2) + '\n');
+      await privateWrite(resultPath(), JSON.stringify(report, null, 2) + '\n');
       console.log(JSON.stringify(report));
     }
   }
@@ -984,6 +1338,8 @@ try {
   process.exitCode = 1;
   const report = {qa_passed: false, stopped_at: phase, reason: safeReason(error),
     explicit_ai_retries: Object.values(journey?.ai_intents ?? {}).filter(value => value.operator_approved_retry).length,
+    explicit_stage_math_fix_retries: Object.values(journey?.ai_intents ?? {})
+      .filter(value => value.retry_reason === 'deployed_math_task_fix' && value.dispatches === 1).length,
     private_account_retained: Boolean(account), runtime_errors: runtimeErrors,
     blocked_ai_requests: blockedRequests.length,
     automatic_audio_starts: unexpectedAudioStarts.length,
@@ -995,7 +1351,7 @@ try {
       unknown_cost_calls: consumed.unknown_cost_calls};
   }
   if (mode === '--run' && authenticated && page) await screenshot(page, 'debug', {scroll: false}).catch(() => {});
-  if (mode === '--run') await privateWrite(reportFile, JSON.stringify(report, null, 2) + '\n').catch(() => {});
+  if (mode === '--run') await privateWrite(resultPath(), JSON.stringify(report, null, 2) + '\n').catch(() => {});
   console.error(JSON.stringify(report));
 } finally {
   if (browser) await browser.close().catch(() => {});
