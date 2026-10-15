@@ -12,6 +12,8 @@ Der Kinderbereich enthält den geführten **„Nach der Schule“-Assistenten**:
 
 Nach jeder abgeschlossenen Einheit folgt ein gespeicherter KI-Rückblick auf die tatsächlichen Antworten. Schulpilot bereitet gezieltes Nachlernen, neue selbstständige Abrufproben und spätere Wiederholungen vor. Fortschritt zählt je Lernziel; Lernzeiten, Pausen und Elternhilfe begrenzen die Runden. [Betreutes Weiterlernen](docs/COACHING.md).
 
+Die Kinderstartseite zeigt die nächste Aktion. **Hefte** öffnet eine eigene Bibliothek mit Suche, Fach-/Datumsfiltern und begrenzten Seiten. **Lernen** trennt offene Runden, spätere Aufträge und abgeschlossene Einheiten. Rückblick und gespeicherte Antworten sind einzelne Ansichten; Eltern nutzen dieselben berechtigten Sammlungen. [Bibliothek und Lernraum](docs/LIBRARY.md).
+
 Für den regulären Betrieb ein Elternkonto registrieren, die E-Mail bestätigen und im Familienbereich einen Kinderzugang mit eigenem Benutzernamen und sicherem Passwort anlegen. Das Kind meldet sich damit direkt im Web oder in der APK an und öffnet „Nach der Schule starten“. Eltern erhalten die gespeicherten Aufgaben, Antworten und genutzten Hinweise im eigenen Dashboard.
 
 Der optionale Beispiel-Lernraum legt eine eigene isolierte Testfamilie für 24 Stunden an. Die einmalig angezeigten Eltern- und Kinderzugänge funktionieren auch auf einem zweiten Gerät. Den Beispielstoff bestätigen, eine Einheit vorbereiten und mit dem Kinderzugang lernen. Eltern sehen anschließend tatsächliche Aufgaben, Antworten, Hinweise und Aktivitäten. Die feste Demo führt **keine Fotoerkennung und keinen externen KI-Aufruf** aus; freie Foto-Uploads sind darin gesperrt. Der zusätzliche ausdrücklich gestartete Live-KI-Testpfad bleibt davon getrennt.

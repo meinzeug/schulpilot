@@ -756,9 +756,13 @@ class _PagedCollectionState extends State<PagedCollection> {
                   if (count > 0 && item['status'] != 'completed')
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: LinearProgressIndicator(
-                        value: (closed / count).clamp(0, 1),
-                        minHeight: 3,
+                      // The same count is already spoken in the tile subtitle.
+                      // A nested progress role hides the tile's button role.
+                      child: ExcludeSemantics(
+                        child: LinearProgressIndicator(
+                          value: (closed / count).clamp(0, 1),
+                          minHeight: 3,
+                        ),
                       ),
                     ),
                 ],

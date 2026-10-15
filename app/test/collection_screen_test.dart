@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show SemanticsRole;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -262,6 +263,7 @@ void main() {
   testWidgets('Learning sections open saved rounds without AI requests', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     final requests = <http.Request>[];
     await open(tester, (request) async {
       requests.add(request);
@@ -274,6 +276,12 @@ void main() {
         ),
       );
     }, learning: true);
+    final tileSemantics = tester
+        .getSemantics(find.byType(ListTile).last)
+        .getSemanticsData();
+    expect(tileSemantics.flagsCollection.isButton, isTrue);
+    expect(tileSemantics.role, isNot(SemanticsRole.progressBar));
+    semantics.dispose();
     await tap(tester, find.text('Erledigt'));
     expect(requests.last.url.queryParameters['section'], 'completed');
     expect(find.text('4 von 4 Aufgaben · Abgeschlossen'), findsOneWidget);
