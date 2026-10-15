@@ -60,6 +60,9 @@ class _TutorSheet extends StatefulWidget {
 
 class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   final question = TextEditingController();
+  final questionFocus = FocusNode();
+  // Keep the input subtree when the keyboard switches the sheet layout.
+  final composerKey = GlobalKey();
   final List<Json> turns = [];
   Timer? poll;
   String? cursor, replyTo, readError, sendError;
@@ -130,6 +133,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     state.removeListener(identityChanged);
     question.removeListener(draftChanged);
     question.dispose();
+    questionFocus.dispose();
     super.dispose();
   }
 
@@ -378,6 +382,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
             final composer = !editable
                 ? const SizedBox.shrink()
                 : Padding(
+                    key: composerKey,
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -394,6 +399,13 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 'Warum ist das so?',
                               ])
                                 ActionChip(
+                                  backgroundColor: mint,
+                                  disabledColor: cream,
+                                  labelStyle: const TextStyle(
+                                    color: ink,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                   onPressed: blocked
                                       ? null
                                       : () => useStarter(
@@ -446,6 +458,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                             Expanded(
                               child: TextField(
                                 controller: question,
+                                focusNode: questionFocus,
                                 readOnly: blocked,
                                 minLines: 1,
                                 maxLines: 3,

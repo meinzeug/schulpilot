@@ -73,9 +73,13 @@ Bei einer Rechenfrage nach dem Ergebnis ist die Antwort der VOLLSTÄNDIGE Bruch,
 Beispiel: Frage 'Wie viel ist 1/4 + 2/4?' hat Antwort '3/4'; die Auswahloptionen enthalten vollständige Brüche.
 Schreibe zuerst die konkrete Frage und prüfe dann, dass Optionen, Antwort und Erklärung genau diese Frage beantworten.
 Verschiedene Brüche mit derselben gekürzten Form eignen sich nicht für eindeutige Zuordnungen.
-Bei Bruchrechnung frage nach vollständigen Bruchwerten, nicht nach einem einzelnen Zähler oder Nenner.
-Antwort und Auswahloptionen enthalten dann vollständige Brüche. Bei ausdrücklich verlangter Erweiterung ist
+Fragen nach einem Bruchwert oder Rechenergebnis benötigen vollständige Brüche in Antwort und Auswahloptionen.
+Wenn du gezielt nach Zähler, Nenner oder Teiler fragst, benenne genau diesen Bestandteil in der Frage.
+Bei ausdrücklich verlangter Erweiterung ist
 die Hauptlösung der Bruch nach Multiplikation beider Zahlen mit dem Faktor, nicht der ursprüngliche Bruch.
+Bei einem Zwischen- oder ersten Kürzungsschritt nenne den Teiler ausdrücklich in der Frage.
+Ohne vorgegebenen Teiler verlange die vollständig gekürzte Form, keinen unbestimmten ersten Schritt.
+Unterscheide die Frage nach dem Teiler von der Frage nach dem daraus entstehenden vollständigen Bruch.
 Diese Rechenbeispiele gehören niemals in Aufgaben anderer Fächer."""
 
 
@@ -289,8 +293,47 @@ def indexed_choice_schema(schema):
         if "match" not in other["properties"]["type"]["enum"]:
             other["properties"]["options"]["maxItems"] = 0
         definition.clear()
-        definition["anyOf"] = [choice, other]
+        if other["properties"]["type"]["enum"]:
+            definition["anyOf"] = [choice, other]
+        else:
+            definition.update(choice)
     return schema
+
+
+def practice_tasks(payload):
+    """Give each of the two exercises one explicit, existing goal."""
+    goals = {goal["id"]: goal for goal in payload.get("learning_goals", [])}
+    focus = payload.get("focus_goal_ids") or []
+    if not 1 <= len(focus) <= 2 or len(set(focus)) != len(focus) or any(goal not in goals for goal in focus):
+        raise ProviderError("Für die neue Runde fehlen eindeutige bestätigte Lernziele.")
+    return [
+        {
+            "id": f"q{index + 1}",
+            "learning_goal_id": focus[index % len(focus)],
+            "label": goals[focus[index % len(focus)]]["label"],
+            "source_excerpt": goals[focus[index % len(focus)]]["source_excerpt"],
+        }
+        for index in range(2)
+    ]
+
+
+def bind_practice_tasks(schema, tasks):
+    """Two unique IDs plus goal-bound branches enforce actual goal coverage.
+
+    Apply after indexed choices so each transport branch retains its answer
+    type. Never add or rewrite a returned goal assignment.
+    """
+    definition = schema["$defs"]["PracticeQuestion"]
+    formats = definition.get("anyOf", [copy.deepcopy(definition)])
+    branches = []
+    for task in tasks:
+        for variant in formats:
+            branch = copy.deepcopy(variant)
+            branch["properties"]["id"]["enum"] = [task["id"]]
+            branch["properties"]["learning_goal_id"]["enum"] = [task["learning_goal_id"]]
+            branches.append(branch)
+    definition.clear()
+    definition["anyOf"] = branches
 
 
 def decode_choice_indices(data):
@@ -599,6 +642,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         model_type = TranscriptionOutput
     if function == "unit" and payload.get("review") and payload.get("learning_goals"):
         model_type = s.PracticeUnitOutput
+    tasks = practice_tasks(payload) if model_type is s.PracticeUnitOutput and payload.get("focus_goal_ids") else None
+    if tasks:
+        payload = {**payload, "practice_tasks": tasks}
     excerpt_candidates = None
     if function == "coach" and not payload.get("learning_goals"):
         excerpt_candidates = source_excerpt_candidates(payload)
@@ -688,15 +734,27 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     block_count = payload.get("study_block", {}).get("question_count") if function == "unit" else None
     if block_count is not None and (type(block_count) is not int or not 2 <= block_count <= 5):
         raise ProviderError("Der Umfang der Lernetappe ist ungültig.")
+    reasoning_stage = bool(
+        block_count
+        and payload["study_block"].get("mode") in ("understand", "detective", "apply")
+        and not is_mathematics(payload.get("required_subject"))
+    )
     if compact_free:
         task_count = (
             "Erstelle pro Einheit GENAU die in selected_groups.question_count vorgegebene Anzahl Aufgaben. "
             if function == "package" and payload.get("selected_groups")
             else f"Erstelle in dieser kurzen Lerneinheit GENAU {block_count or 2} Aufgaben. "
         )
+        variety = (
+            "Verwende in dieser Etappe ausschließlich Auswahlaufgaben zu Begründungen, Vergleichen oder Fehlerkorrekturen. "
+            if reasoning_stage
+            else "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
+        )
         instructions += (
-            "\n" + task_count + "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
-            "Verwende keine Zuordnungen. Je Aufgabe genau einen oder zwei kurze Hinweise. "
+            "\n"
+            + task_count
+            + variety
+            + "Verwende keine Zuordnungen. Je Aufgabe genau einen oder zwei kurze Hinweise. "
             "Erkläre den bestätigten Stoff in kurzen Absätzen und höchstens zehn kurzen Sätzen. "
         )
 
@@ -732,13 +790,24 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Erkläre den neuen Zusammenhang kurz und lasse das Kind danach selbst denken. "
             "Außer Mathematik: kurze Antworten sind ein einzelner wörtlich im Material belegter Begriff, "
             "maximal fünf Wörter und 80 Zeichen; accepted bleibt leer, options bei short leer. "
-            "Erzeuge choice und short; keine mehrteiligen Fragen oder erfundenen Hausaufgaben."
+            "Keine mehrteiligen Fragen oder erfundenen Hausaufgaben."
         )
+        if reasoning_stage:
+            instructions += (
+                "\nDiese Sach-Etappe verlangt VERSTEHEN statt nochmaliger Begriffsabfrage: nur type=choice. "
+                "Alle Optionen beantworten einen konkreten Zusammenhang, Vergleich oder einen ausdrücklich "
+                "markierten Denkfehler. Frage nicht erneut nur nach einem Namen oder einer Definition. "
+                "Schreibe eine neue verständliche Frage zur Denkhandlung; kein kosmetischer Zusatz zu einer alten Frage. "
+                "Neue Fälle müssen mit dem bestätigten Wissen lösbar sein und als Übungsbeispiel erkennbar bleiben. "
+                "Die kurze freie Begriffsabfrage folgt gezielt in der Etappe recall."
+            )
+        else:
+            instructions += " Erzeuge choice und short."
         if not is_mathematics(payload.get("required_subject")):
             for definition in schema.get("$defs", {}).values():
                 props = definition.get("properties", {})
                 if "prompt" in props and "type" in props:
-                    props["type"]["enum"] = ["choice", "short"]
+                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short"]
                     props["accepted"].update(maxItems=0)
     package_targets = {}
     if compact_free and function == "package":
@@ -769,6 +838,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Kein Buchstabe und kein Antworttext in answer. accepted bleibt leer. "
             "Prüfe, dass dieser Index auf die fachlich richtige vorhandene Option zeigt. "
             "Bei gap, short und match bleibt answer wie beschrieben ein Antworttext."
+        )
+    if tasks:
+        bind_practice_tasks(schema, tasks)
+        instructions += (
+            "\npractice_tasks enthält GENAU die zwei zu erstellenden Aufgaben. "
+            "Jede id genau einmal verwenden, mit der dort festgelegten learning_goal_id. "
+            "Jede Frage prüft das zugehörige label anhand des wörtlichen source_excerpt; "
+            "keine zweite Frage zum ersten Ziel statt einer Frage zum zweiten Ziel. "
+            "Die neue Situation oder Rechnung darf keine bereits gestellte Aufgabe wiederholen. "
+            "Übernimm Zuordnungen exakt und erzeuge weiterhin eine fachlich richtige Aufgabe je Eintrag."
         )
     prune_schema(schema)
     user_text = json.dumps(payload, ensure_ascii=False)
@@ -947,6 +1026,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             data = model_type.model_validate_json(text).model_dump()
         if function == "extract":
             data = TranscriptionOutput.model_validate(data).as_material()
+        if tasks and {(q["id"], q["learning_goal_id"]) for q in data["questions"]} != {
+            (task["id"], task["learning_goal_id"]) for task in tasks
+        }:
+            raise ProviderError("Die neue Runde ordnet Aufgaben nicht den vorgegebenen Lernzielen zu.")
         if excerpt_candidates is not None and any(
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):
@@ -956,6 +1039,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if block_count:
             if len(data["questions"]) != block_count:
                 raise ProviderError("Die KI hat die Lernetappe nicht vollständig erstellt. Bitte erneut versuchen.")
+            if reasoning_stage and any(q["type"] != "choice" for q in data["questions"]):
+                raise ProviderError("Die Etappe enthält keine passenden Verständnisaufgaben. Bitte neu vorbereiten.")
             if not is_mathematics(payload.get("required_subject")):
                 validate_factual_package(
                     {"units": [{**data, "group_id": "block"}]},

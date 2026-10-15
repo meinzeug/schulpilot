@@ -42,7 +42,7 @@ STAGE_ACTIONS = {
     "understand": (
         "Einen bisher ungeprüften Zusammenhang verstehen und die passende Begründung auswählen.",
         "Zwei Angaben aus dem Heft vergleichen und den entscheidenden Unterschied erkennen.",
-        "Einen Fachbegriff aus einem bisher ungeprüften Satz gezielt abrufen.",
+        "Eine ausdrücklich als falsch markierte Behauptung mit dem bestätigten Wissen richtigstellen.",
     ),
     "detective": (
         "Eine ausdrücklich als falsch markierte Aussage mit einer richtigen Begründung korrigieren.",

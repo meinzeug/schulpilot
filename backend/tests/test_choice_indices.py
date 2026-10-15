@@ -220,6 +220,68 @@ def test_followup_stage_transports_concrete_new_thinking_and_literal_source_anch
     assert request["provider"]["max_price"] == {"prompt": 0, "completion": 0, "request": 0}
 
 
+def factual_stage(transport, mode="understand", *, written=False):
+    config, output, _, calls = transport
+    unit = copy.deepcopy(output["units"][0])
+    unit.pop("group_id")
+    unit.update(
+        subject="Sachunterricht", topic="Sonne und Licht", explanation="Die Sonne ist ein Stern. Sie sendet Licht aus."
+    )
+    for index, question in enumerate(unit["questions"]):
+        question.update(
+            type="choice",
+            prompt=f"Welche Begründung passt zu Beobachtung {index + 1}?",
+            options=["Die Sonne sendet Licht aus.", "Die Sonne ist eine Lampe."],
+            answer=0,
+            accepted=[],
+            hints=["Denke an das Licht der Sonne."],
+            explanation="Die Sonne ist ein Stern und sendet Licht aus.",
+        )
+    if written:
+        unit["questions"][-1].update(
+            type="short", prompt="Welcher Begriff bezeichnet die Sonne?", options=[], answer="Stern"
+        )
+    output.clear()
+    output.update(unit)
+    payload = {
+        "required_subject": unit["subject"],
+        "required_topic": unit["topic"],
+        "material": {"subject": unit["subject"], "content": "Die Sonne ist ein Stern. Sie sendet Licht aus."},
+        "study_block": {"mode": mode, "question_count": 2, "tasks": []},
+        "previous_prompts": [],
+    }
+    return config, payload, calls
+
+
+@pytest.mark.parametrize("mode", ["understand", "detective", "apply"])
+def test_factual_reasoning_stage_requests_real_explanations_without_an_impossible_empty_branch(transport, mode):
+    config, payload, calls = factual_stage(transport, mode)
+    result = request_provider(config, "unit", payload)
+    assert len(result.data["questions"]) == 2 and all(q["type"] == "choice" for q in result.data["questions"])
+    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    question = schema["$defs"]["Question"]
+    assert "anyOf" not in question
+    assert question["properties"]["type"]["enum"] == ["choice"]
+    assert question["properties"]["answer"]["type"] == "integer"
+    assert "nur type=choice" in calls[0]["messages"][0]["content"]
+    assert "sowohl Auswahlaufgaben als auch kurze Eingaben" not in calls[0]["messages"][0]["content"]
+
+
+def test_reasoning_stage_rejects_unrequested_definition_instead_of_rewriting_it(transport):
+    config, payload, calls = factual_stage(transport, written=True)
+    with pytest.raises(ProviderError, match="Verständnisaufgaben"):
+        request_provider(config, "unit", payload)
+    assert len(calls) == 1
+
+
+def test_recall_still_accepts_a_source_backed_short_response(transport):
+    config, payload, calls = factual_stage(transport, "recall", written=True)
+    result = request_provider(config, "unit", payload)
+    assert result.data["questions"][-1]["type"] == "short"
+    assert result.data["questions"][-1]["answer"] == "Stern"
+    assert len(calls) == 1
+
+
 def factual_output(answer="Stern", accepted=None, options=None):
     return {
         "units": [
@@ -285,3 +347,69 @@ def test_fact_recall_does_not_mislabel_an_open_question_as_a_gap():
     output["units"][0]["questions"][0]["type"] = "gap"
     with pytest.raises(ProviderError):
         providers.validate_factual_package(output, factual_payload())
+
+
+@pytest.fixture
+def practice_transport(transport):
+    config, output, _, calls = transport
+    unit = copy.deepcopy(output["units"][0])
+    unit.pop("group_id")
+    for index, question in enumerate(unit["questions"]):
+        question.update(id=f"q{index + 1}", learning_goal_id=f"g{index + 1}")
+    output.clear()
+    output.update(unit)
+    payload = {
+        "review": True,
+        "required_subject": unit["subject"],
+        "required_topic": unit["topic"],
+        "learning_goals": [
+            {"id": "g1", "label": "Brüche addieren", "source_excerpt": "Bei gleichem Nenner die Zähler addieren."},
+            {"id": "g2", "label": "Brüche kürzen", "source_excerpt": "Zähler und Nenner durch dieselbe Zahl teilen."},
+        ],
+        "focus_goal_ids": ["g1", "g2"],
+        "previous_prompts": [],
+    }
+    return config, payload, output, calls
+
+
+def test_practice_schema_binds_each_unique_question_to_its_required_goal_without_reassignment(practice_transport):
+    config, payload, output, calls = practice_transport
+    before = copy.deepcopy(payload)
+    result = request_provider(config, "unit", payload)
+    assert len(calls) == 1 and payload == before
+    assert [(q["id"], q["learning_goal_id"]) for q in result.data["questions"]] == [("q1", "g1"), ("q2", "g2")]
+    submitted = json.loads(calls[0]["messages"][1]["content"][0]["text"])
+    assert [(q["id"], q["learning_goal_id"]) for q in submitted["practice_tasks"]] == [("q1", "g1"), ("q2", "g2")]
+    assert [q["source_excerpt"] for q in submitted["practice_tasks"]] == [
+        g["source_excerpt"] for g in payload["learning_goals"]
+    ]
+    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    branches = schema["$defs"]["PracticeQuestion"]["anyOf"]
+    assert len(branches) == 4
+    assert {(b["properties"]["id"]["enum"][0], b["properties"]["learning_goal_id"]["enum"][0]) for b in branches} == {
+        ("q1", "g1"),
+        ("q2", "g2"),
+    }
+    assert {b["properties"]["answer"]["type"] for b in branches} == {"integer", "string"}
+    assert result.data["questions"][0]["answer"] == "2/4"
+    assert output["questions"][0]["answer"] == 2
+
+
+def test_practice_does_not_silently_relabel_two_questions_on_the_same_goal(practice_transport):
+    config, payload, output, calls = practice_transport
+    output["questions"][1]["learning_goal_id"] = "g1"
+    original = copy.deepcopy(output)
+    with pytest.raises(ProviderError, match="vorgegebenen Lernzielen"):
+        request_provider(config, "unit", payload)
+    assert output == original and len(calls) == 1
+
+
+def test_one_repair_goal_gets_two_distinct_tasks_without_inventing_another_goal(practice_transport):
+    config, payload, output, calls = practice_transport
+    payload["focus_goal_ids"] = ["g1"]
+    output["questions"][1]["learning_goal_id"] = "g1"
+    result = request_provider(config, "unit", payload)
+    assert {q["learning_goal_id"] for q in result.data["questions"]} == {"g1"}
+    submitted = json.loads(calls[0]["messages"][1]["content"][0]["text"])
+    assert [q["id"] for q in submitted["practice_tasks"]] == ["q1", "q2"]
+    assert {q["learning_goal_id"] for q in submitted["practice_tasks"]} == {"g1"}

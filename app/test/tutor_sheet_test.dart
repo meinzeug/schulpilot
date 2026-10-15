@@ -104,6 +104,69 @@ void _pause(WidgetTester tester) {
 
 void main() {
   testWidgets(
+    'The first focus and editable input survive keyboard resize and closing at 320px',
+    (tester) async {
+      _viewport(tester);
+      addTearDown(tester.view.resetViewInsets);
+      final requests = <String>[];
+      final state = _state(
+        MockClient((request) async {
+          requests.add(request.method);
+          return _json({'questions': [], 'next_cursor': null});
+        }),
+      );
+      await _open(tester, state);
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      final before = tester.state<EditableTextState>(find.byType(EditableText));
+      final focus = before.widget.focusNode;
+      expect(focus.hasFocus, isTrue);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+      await tester.pump();
+      expect(tester.state(find.byType(EditableText)), same(before));
+      expect(focus.hasFocus, isTrue);
+      // updateEditingValue deliberately does not refocus the field like
+      // tester.enterText would. It catches a real first-tap IME regression.
+      tester.testTextInput.updateEditingValue(
+        const TextEditingValue(
+          text: 'Meine erste Frage',
+          selection: TextSelection.collapsed(offset: 17),
+        ),
+      );
+      await tester.pump();
+      expect(before.widget.controller.text, 'Meine erste Frage');
+      tester.testTextInput.hide();
+      tester.view.viewInsets = const FakeViewPadding();
+      await tester.pump();
+      expect(tester.state(find.byType(EditableText)), same(before));
+      expect(focus.hasFocus, isTrue);
+      expect(before.widget.controller.text, 'Meine erste Frage');
+      expect(requests, ['GET']);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Starter text has readable contrast on its chip background', (
+    tester,
+  ) async {
+    _viewport(tester);
+    final state = _state(
+      MockClient((_) async => _json({'questions': [], 'next_cursor': null})),
+    );
+    await _open(tester, state);
+    for (final chip in tester.widgetList<ActionChip>(find.byType(ActionChip))) {
+      final foreground = chip.labelStyle!.color!.computeLuminance();
+      final background = chip.backgroundColor!.computeLuminance();
+      final lighter = foreground > background ? foreground : background;
+      final darker = foreground > background ? background : foreground;
+      expect((lighter + .05) / (darker + .05), greaterThanOrEqualTo(4.5));
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
     'Starter and follow-up text need an explicit send; only pending questions poll',
     (tester) async {
       _viewport(tester);

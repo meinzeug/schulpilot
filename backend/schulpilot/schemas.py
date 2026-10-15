@@ -171,7 +171,7 @@ class Question(Strict):
         from .checks import expanded_fraction, fraction_parts, fraction_result
 
         if self.type in ("choice", "gap", "short"):
-            fraction_result(self.prompt, self.answer, self.accepted)
+            fraction_result(self.prompt, self.answer, self.accepted, question_type=self.type, options=self.options)
             expected_form = expanded_fraction(self.prompt)
             if expected_form:
                 if fraction_parts(self.answer) != expected_form:

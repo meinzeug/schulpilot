@@ -8,6 +8,8 @@ Jede weitere Etappe erhält wörtliche Abschnitte aus den bestätigten Quellen u
 
 Die Etappe „Erinnern“ startet direkt mit Fragen. Ihre Erklärung wird erst auf ausdrückliche Hilfe oder nach Abschluss sichtbar; angeforderte Erklärung zählt als Unterstützung. Die Quellen- und Elternvorgaben gelten dabei ebenso wie bei den anderen Etappen. So wird eine Abrufübung nicht bereits durch die vorgeschaltete Lösung aufgelöst.
 
+Sach-Etappen zum Verstehen, Fehlerfinden und Anwenden verlangen Auswahlaufgaben zu Zusammenhängen, Vergleichen und markierten Irrtümern. Sie fordern nicht gleichzeitig wieder eine bereits abgefragte Kurzdefinition an. Freier Begriffabruf bleibt für „Erinnern“ möglich; Mathematik behält passende Rechen-/Eingabeformen. Auch diese Formatvorgaben werden nach dem Parsen überprüft.
+
 Elternaufträge, Fachlerntage, verfügbare Tages-/Wochenzeit und Pausen bestimmen die Fortsetzung. Was heute nicht passt, bleibt gespeichert. Versäumte Tage erhöhen die Aufgabenanzahl nicht. Quellenänderungen markieren die Lernreise als veraltet; ausdrückliches Neuplanen erhält vorhandene Antworten. Vergangene Tage dürfen weiter gelernt werden, ihre Fotozusammenstellung bleibt schreibgeschützt.
 
 Die Seitenansicht, eine fertige Einheit und das Tagespaket bieten „Frag nach“. Eine Frage bezieht sich auf genau einen eigenen Schultag, eine eigene Einheit oder eine einzelne bestätigte Seite. Der Worker verwendet nur diesen Stoff und höchstens vier vorherige Rückfragen. Antworten enthalten überprüfte Textbelege; nicht belegte Inhalte oder unklare Fragen werden ausdrücklich gekennzeichnet. Berechtigte Eltern sehen den gespeicherten Verlauf. Fragen sind keine zusätzlichen Leistungsnachweise.
