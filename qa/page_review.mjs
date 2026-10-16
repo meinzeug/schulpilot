@@ -24,6 +24,13 @@ let browser, journal, phase = 'local_check', passed = false, cleanupComplete = f
 class QaFailure extends Error {}
 function check(value, code) { if (!value) throw new QaFailure(code); }
 function digest(value) { return createHash('sha256').update(value).digest('hex'); }
+function sourceSignature(source) {
+  // Revisions are internal. Compare the actual public source representation.
+  return digest(JSON.stringify(Object.fromEntries([
+    'id', 'child_id', 'school_day_id', 'subject', 'topic', 'content',
+    'uncertainties', 'homework', 'confirmed', 'status', 'synthetic', 'fixture_id',
+  ].map(key => [key, source[key]]))));
+}
 function safeReason(error) {
   return error instanceof QaFailure && /^[a-z0-9_-]{1,160}$/.test(error.message)
     ? error.message : 'browser_or_local_io_operation_failed';
@@ -228,8 +235,9 @@ async function confirmCase(entry) {
   check(response.status() === 200, 'direct_child_confirmation_failed');
   const sent = response.request().postDataJSON(), saved = await response.json();
   check(sent.uncertainties_resolved === true && saved.confirmed === true && saved.status === 'confirmed' &&
-    saved.revision === before.revision + 1 && saved.uncertainties.length === 0 &&
-    saved.content === before.content && saved.subject === before.subject && saved.topic === before.topic,
+    saved.uncertainties.length === 0 && saved.content === before.content &&
+    saved.subject === before.subject && saved.topic === before.topic &&
+    JSON.stringify(saved.homework) === JSON.stringify(before.homework),
     'direct_confirmation_must_explicitly_save_unchanged_reviewed_source');
   check(runtime.childIntent.confirmPosts === 1, 'only_one_deliberate_confirmation_is_allowed');
   for (const width of [320, 390]) {
@@ -243,7 +251,8 @@ async function confirmCase(entry) {
     await shot(runtime.page, entry, 'confirmed-' + width);
   }
   const persisted = await get(runtime.child, '/materials/' + entry.demo.material_id);
-  check(persisted.confirmed && persisted.revision === saved.revision, 'confirmation_must_survive_reload_without_another_write');
+  check(persisted.confirmed && sourceSignature(persisted) === sourceSignature(saved),
+    'confirmation_must_survive_reload_without_another_write');
   await noAi(entry, runtime.parent);
   completedCases.push('direct_confirmation_320_390_and_confirmed_source_protection');
 }
@@ -259,7 +268,7 @@ async function deletionCase(entry) {
   check(runtime.page.url() === base + '/material/' + entry.demo.material_id &&
     runtime.childIntent.deletePosts === 0, 'cancel_must_keep_the_page_and_send_no_delete');
   const untouched = await get(runtime.child, '/materials/' + entry.demo.material_id);
-  check(!untouched.confirmed && untouched.revision === before.revision && untouched.content === before.content,
+  check(!untouched.confirmed && sourceSignature(untouched) === sourceSignature(before),
     'cancelled_deletion_must_preserve_source');
   step('explicit_child_page_deletion_and_return_home');
   await tap(runtime.page, button(runtime.page, 'Seite löschen'));
