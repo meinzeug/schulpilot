@@ -215,14 +215,9 @@ async function uploadAndConfirm(day) {
   for (const page of day.pages.filter(value => !value.confirmed)) {
     await checkpoint('confirm_page_' + page.page_number);
     await reveal(childPage, childPage.getByText('Seite ' + page.page_number + ' prüfen', {exact: true}));
-    const checks = childPage.getByRole('checkbox');
-    const expected = Math.max(1, page.uncertainties.length);
-    check(await checks.count() === expected, 'each_page_uncertainty_requires_its_own_confirmation');
-    for (let index = 0; index < expected; index++) {
-      const checkbox = checks.nth(index);
-      await reveal(childPage, checkbox);
-      if (await checkbox.getAttribute('aria-checked') !== 'true') await tap(childPage, checkbox);
-      check(await checkbox.getAttribute('aria-checked') === 'true', 'page_confirmation_checkbox_not_checked');
+    check(await childPage.getByRole('checkbox').count() === 0, 'review_must_not_require_checkboxes');
+    for (const uncertainty of page.uncertainties) {
+      await reveal(childPage, childPage.getByText(uncertainty, {exact: true}));
     }
     await screenshot(childPage, 'school-day-child-review-page-' + page.page_number + '.png');
     await tapResponse(childPage, button(childPage, 'Stimmt, weiter'), '/materials/' + page.id + '/confirm', 'PUT', 200);

@@ -219,38 +219,20 @@ void main() {
       expect(submissions, 1);
       expect(find.text('Seite 1 prüfen'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
-      expect(find.byType(CheckboxListTile), findsNWidgets(2));
+      expect(find.byType(CheckboxListTile), findsNothing);
+      expect(find.text('Bitte die obere Zahl prüfen.'), findsOneWidget);
+      expect(find.text('Bitte die untere Zahl prüfen.'), findsOneWidget);
+      expect(find.text('Seite löschen'), findsOneWidget);
       expect(packageCalls, 0);
-
-      final checkboxes = find.byType(CheckboxListTile);
-      await tester.ensureVisible(checkboxes.first);
-      await tester.tap(checkboxes.first);
-      await tester.pumpAndSettle();
+      expect(confirmed, isEmpty);
       final confirm = find.text('Stimmt, weiter');
-      await tester.ensureVisible(confirm);
-      await tester.tap(confirm);
-      await tester.pumpAndSettle();
-      expect(
-        confirmed,
-        isEmpty,
-        reason: 'One unchecked uncertainty must block confirmation.',
-      );
-      ScaffoldMessenger.of(tester.element(find.byType(SchoolDayScreen)))
-          .hideCurrentSnackBar();
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(checkboxes.last);
-      await tester.tap(checkboxes.last);
-      await tester.pumpAndSettle();
       await tester.ensureVisible(confirm);
       await tester.tap(confirm);
       await tester.pumpAndSettle();
       expect(confirmed, ['page1']);
       expect(find.text('Seite 2 prüfen'), findsOneWidget);
       expect(find.text('Jetzt lernen'), findsNothing);
-      final secondCheck = find.byType(CheckboxListTile);
-      await tester.ensureVisible(secondCheck);
-      await tester.tap(secondCheck);
-      await tester.pumpAndSettle();
+      expect(find.byType(CheckboxListTile), findsNothing);
       await tester.ensureVisible(confirm);
       await tester.tap(confirm);
       await tester.pumpAndSettle();

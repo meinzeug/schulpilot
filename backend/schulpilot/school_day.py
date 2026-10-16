@@ -25,7 +25,7 @@ from .db import (
 )
 from .fixtures import DAY_FIXTURE_IDS, worksheet
 from .learning import local_day, material_data, plan, record, unit_data
-from .materials import enqueue
+from .materials import enqueue, lock_material_units
 from .providers import ProviderError, config_for_function, external_allowed
 from .security import authenticated, child_access, rate_limit
 
@@ -433,16 +433,24 @@ def synthetic_pages(day_id: str, p=Depends(authenticated), db=Depends(get_db)):
 
 @router.delete("/school-days/{day_id}/pages/{material_id}")
 def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depends(get_db)):
-    day, child = get_day(db, p, day_id, write=True)
-    idle(db, child.id)
+    day, child = get_day(db, p, day_id)
+    child_access(db, p, child.id, write=p.user.role == "parent")
     material = db.get(Material, material_id)
-    if not material or material.school_day_id != day.id:
+    if not material or material.school_day_id != day.id or material.child_id != child.id:
         raise HTTPException(404, "Seite nicht gefunden.")
-    if (day.stage != "collecting" and material.status != "unreadable") or material.confirmed:
+    lock_material_units(db, child.id, material_id)
+    day, child = get_day(db, p, day_id, write=True, allow_archived=True)
+    idle(db, child.id)
+    material = db.get(Material, material_id, populate_existing=True)
+    if not material or material.school_day_id != day.id or material.child_id != child.id:
+        raise HTTPException(404, "Seite nicht gefunden.")
+    if (day.stage not in ("collecting", "review") and material.status != "unreadable") or material.confirmed:
         raise HTTPException(
             409,
-            "Nur noch unbestätigte Seiten können beim Sammeln entfernt werden. Bestätigte Inhalte verwalten deine Eltern.",
+            "Nur ungeprüfte Seiten können hier gelöscht werden. Bestätigte Inhalte verwalten deine Eltern.",
         )
+    if material.synthetic and material.fixture_id in DAY_FIXTURE_IDS and db.get(Family, child.family_id).synthetic:
+        raise HTTPException(409, "Diese Beispielseiten gehören zusammen. Bitte nutze beide Seiten.")
     path = material.path
     from .erasure import flush_journal, request
     from .tutor import purge_source_turns
@@ -451,6 +459,10 @@ def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depe
     request(db, "material", material.id)
     db.delete(material)
     day.revision += 1
+    db.flush()
+    from .school_preparation import sources_removed
+
+    sources_removed(db, day)
     record(db, child.id, "school_day_page_removed")
     db.commit()
     if path:

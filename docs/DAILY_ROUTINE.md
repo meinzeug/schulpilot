@@ -6,6 +6,8 @@ Die Heftsammlung ist der Vorrat, keine tägliche Aufgabenliste. Die Kinderstarts
 
 Fotos werden zunächst privat gespeichert. Die ausdrücklich beauftragte Vorbereitung arbeitet anschließend serverseitig weiter, auch wenn das Kind die App verlässt. Erkennung, Quellenprüfung und Paketvorbereitung bleiben getrennt: Erkannte Texte werden nicht heimlich bestätigt. Unsichere Stellen müssen vor Aufgaben aus diesen Quellen geprüft werden. Das Kind beginnt die Lernrunde selbst; ein fertiger Hintergrundauftrag startet keine Einheit.
 
+„Stimmt, weiter“ bestätigt eine geprüfte Seite direkt, ohne zusätzliche Checkbox. Erkennungshinweise bleiben sichtbar. Eine noch unbestätigte eigene Seite lässt sich mit „Seite löschen“ und einer kurzen Rückfrage entfernen. Anschließend erscheint die nächste ungeprüfte Seite; nach der letzten heutigen Seite wieder die Fotoauswahl. Bereits bestätigte Quellen können Kinder dabei nicht löschen.
+
 Fehlende heutige Lernzeit verhindert nicht, geprüften Stoff für spätere Lerntage zu speichern. Ein zusätzlicher KI-Auftrag wird dafür nicht benötigt. Ungeprüfte oder unleserliche Seiten bleiben als solche erkennbar. Bereits gespeicherte Antworten werden beim Ergänzen oder Neuplanen nicht überschrieben.
 
 ## Planung

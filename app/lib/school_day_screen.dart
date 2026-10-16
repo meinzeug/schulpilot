@@ -447,6 +447,15 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     if (mounted) setState(() => day = updated);
   }
 
+  void pageDeleted() {
+    if (!mounted || !ownerMatches) return;
+    if (!allowUploads && pages.length == 1) {
+      context.go('/app');
+      return;
+    }
+    unawaited(load());
+  }
+
   Future<void> startSavedUnit(Json unit) async {
     if (unit['status'] != 'completed') {
       await state.api.post('/units/${unit['id']}/start');
@@ -942,19 +951,16 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           'Seite ${selected['page_number']} prüfen',
           subtitle: '${day!['confirmed_count']} von ${pages.length} geprüft',
         ),
+        MaterialReview(
+          state,
+          selected,
+          key: ValueKey('${selected['id']}-${selected['status']}'),
+          showUnitAction: false,
+          simpleChild: true,
+          onRefresh: () => unawaited(load()),
+          onDeleted: pageDeleted,
+        ),
         if (selected['status'] == 'unreadable') ...[
-          const Notice(
-            'Diese Seite kann ich nicht gut lesen. Nimm sie bitte noch einmal auf.',
-            warning: true,
-          ),
-          SizedBox(
-            height: 170,
-            child: _SchoolPagePhoto(
-              state: state,
-              page: selected,
-              key: ValueKey(selected['id']),
-            ),
-          ),
           const SizedBox(height: 16),
           if (allowUploads)
             ActionButton(
@@ -970,15 +976,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 await state.api.post('/school-days/${day!['id']}/postpone');
               }),
             ),
-        ] else
-          MaterialReview(
-            state,
-            selected,
-            key: ValueKey('${selected['id']}-${selected['status']}'),
-            showUnitAction: false,
-            simpleChild: true,
-            onRefresh: () => unawaited(load()),
-          ),
+        ],
         const SizedBox(height: 10),
         if (allowUploads)
           TextButton(
@@ -1591,6 +1589,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                   key: ValueKey('${selected['id']}-${selected['status']}'),
                   showUnitAction: false,
                   onRefresh: () => unawaited(load()),
+                  onDeleted: pageDeleted,
                 ),
               ],
               if (!locked && !parent && !readOnly) ...[

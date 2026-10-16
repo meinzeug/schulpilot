@@ -245,21 +245,26 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
 @router.delete("/materials/{material_id}")
 def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
     material, child = get_material(db, p, material_id)
-    if p.user.role != "parent":
-        raise HTTPException(403, "Materialien werden durch Eltern gelöscht.")
-    child_access(db, p, child.id, write=True)
+    if p.user.role == "child" and material.school_day_id and not material.confirmed:
+        # The same day/source/preparation checks apply from either UI entry.
+        from .school_day import remove_page
+
+        return remove_page(material.school_day_id, material.id, p=p, db=db)
+    if p.user.role == "child" and material.confirmed:
+        raise HTTPException(403, "Bestätigte Materialien werden durch deine Eltern gelöscht.")
+    child_access(db, p, child.id, write=p.user.role == "parent")
     # Material deletion sets LearningUnit.material_id to null through its FK.
     # Answers and tutor help lock units before Child: keep that order rather
     # than holding Child while waiting for an in-flight answer's unit lock.
-    list(
-        db.scalars(
-            select(LearningUnit)
-            .where(LearningUnit.child_id == child.id, LearningUnit.material_id == material_id)
-            .order_by(LearningUnit.id)
-            .with_for_update()
-        )
-    )
+    lock_material_units(db, child.id, material_id)
     material, _ = get_material(db, p, material_id, True)
+    if p.user.role == "child":
+        if material.confirmed:
+            raise HTTPException(403, "Bestätigte Materialien werden durch deine Eltern gelöscht.")
+        if material.school_day_id:
+            raise HTTPException(409, "Die Seite wurde inzwischen geändert. Bitte neu laden.")
+        if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):
+            raise HTTPException(409, "Eine Verarbeitung läuft noch. Bitte kurz warten und aktualisieren.")
     path = material.path
     from .erasure import flush_journal, request
     from .tutor import purge_source_turns
@@ -274,6 +279,18 @@ def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_d
     return {
         "message": "Material und Bild gelöscht. Bereits erzeugte private Übungen bleiben bis zur Löschung des Lernverlaufs erhalten."
     }
+
+
+def lock_material_units(db, child_id, material_id):
+    """Keep material deletion in the same Unit -> Child lock order as answers."""
+    list(
+        db.scalars(
+            select(LearningUnit)
+            .where(LearningUnit.child_id == child_id, LearningUnit.material_id == material_id)
+            .order_by(LearningUnit.id)
+            .with_for_update()
+        )
+    )
 
 
 def enqueue(db, p, child, kind, payload, idempotency):

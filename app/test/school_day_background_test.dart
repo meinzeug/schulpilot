@@ -123,6 +123,14 @@ class PreparationServer {
       preparation = {'status': 'postponed', 'phase': 'review'};
       return response(day);
     }
+    if (request.method == 'DELETE' &&
+        request.url.path.startsWith('/api/school-days/day/pages/')) {
+      final id = request.url.pathSegments.last;
+      pages.removeWhere((page) => page['id'] == id);
+      if (pages.isEmpty) stage = 'collecting';
+      preparation = {'status': 'idle', 'phase': null};
+      return response(day);
+    }
     if (request.url.path.endsWith('/confirm')) {
       final body = jsonDecode(request.body) as Json;
       expect(body['uncertainties_resolved'], true);
@@ -274,6 +282,74 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final width in [320.0, 390.0, 1280.0]) {
+    testWidgets('Review deletion can be cancelled and advances on $width px', (
+      tester,
+    ) async {
+      mobile(tester, width);
+      final server = PreparationServer(
+        pages: [source(1), source(2)],
+        stage: 'review',
+        preparation: {'status': 'needs_review', 'phase': 'review'},
+      );
+      final navigation = router(server.state());
+      addTearDown(navigation.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+      );
+      await settleUi(tester);
+      expect(find.byType(CheckboxListTile), findsNothing);
+      await tapText(tester, 'Seite löschen');
+      expect(find.text('Seite löschen?'), findsOneWidget);
+      await tapText(tester, 'Abbrechen');
+      expect(server.pages, hasLength(2));
+      expect(server.requests.where((r) => r.startsWith('DELETE ')), isEmpty);
+
+      await tapText(tester, 'Seite löschen');
+      await tapText(tester, 'Bestätigen');
+      expect(server.pages.single['id'], 'page2');
+      expect(find.text('Seite 2 prüfen'), findsOneWidget);
+      expect(server.pages.single['confirmed'], false);
+
+      await tapText(tester, 'Seite löschen');
+      await tapText(tester, 'Bestätigen');
+      expect(server.pages, isEmpty);
+      expect(find.text('Zeig mir deine Heftseiten'), findsOneWidget);
+      expect(
+        server.requests.where((r) => r.startsWith('DELETE ')),
+        hasLength(2),
+      );
+      expect(server.requests.where((r) => r.contains('/confirm')), isEmpty);
+      expect(server.submissions, 0);
+      expect(server.starts, 0);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('Deleting the last archived review page returns home', (
+    tester,
+  ) async {
+    mobile(tester);
+    final server = PreparationServer(
+      pages: [source(1)],
+      stage: 'review',
+      preparation: {'status': 'needs_review', 'phase': 'review'},
+    )..archived = true;
+    final navigation = router(server.state(), archived: true);
+    addTearDown(navigation.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+    );
+    await settleUi(tester);
+    await tapText(tester, 'Seite löschen');
+    await tapText(tester, 'Bestätigen');
+    expect(server.pages, isEmpty);
+    expect(find.text('Startseite'), findsOneWidget);
+    expect(server.submissions, 0);
+    expect(server.requests.where((r) => r.contains('/confirm')), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [320.0, 1280.0]) {
     testWidgets(
       'Confirmation and package preparation never auto start on $width px',
@@ -291,12 +367,7 @@ void main() {
         );
         await settleUi(tester);
         expect(server.pages.single['confirmed'], false);
-        await tapText(tester, 'Stimmt, weiter');
-        expect(server.pages.single['confirmed'], false);
-        final checkbox = find.byType(CheckboxListTile);
-        await tester.ensureVisible(checkbox);
-        await tester.tap(checkbox);
-        await settleUi(tester);
+        expect(find.byType(CheckboxListTile), findsNothing);
         await tapText(tester, 'Stimmt, weiter');
         expect(server.pages.single['confirmed'], true);
         expect(server.submissions, 0);
@@ -474,10 +545,7 @@ void main() {
       await settleUi(tester);
       expect(find.text('Seite 1 prüfen'), findsOneWidget);
       expect(find.text('Noch eine Seite hinzufügen'), findsNothing);
-      final checkbox = find.byType(CheckboxListTile);
-      await tester.ensureVisible(checkbox);
-      await tester.tap(checkbox);
-      await settleUi(tester);
+      expect(find.byType(CheckboxListTile), findsNothing);
       await tapText(tester, 'Stimmt, weiter');
       await tapText(tester, 'Im Hintergrund vorbereiten');
       expect(server.submissions, 1);

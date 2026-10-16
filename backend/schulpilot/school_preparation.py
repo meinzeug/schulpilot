@@ -238,7 +238,12 @@ def submit(db, p, day, child, key):
     if previous and previous["fingerprint"] != fingerprint:
         raise HTTPException(409, "Dieser Anfrageschlüssel gehört zu einem anderen Stand der Heftseiten.")
     same = state.get("sources") == snapshot and state.get("day_revision") == day.revision
-    if previous or (same and state.get("status") in ("processing", "needs_review", "needs_photo", "ready", "saved")):
+    completed_review = state.get("status") == "needs_review" and all(m.confirmed for m in source_pages)
+    if previous or (
+        same
+        and not completed_review
+        and state.get("status") in ("processing", "needs_review", "needs_photo", "ready", "saved")
+    ):
         return
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
         raise HTTPException(409, "Für dich wird gerade noch etwas vorbereitet. Bitte kurz warten.")
@@ -296,6 +301,41 @@ def saved_by_user(db, day, p):
     )
     _notify(db, day, state, "saved")
     _write(day, state, status="saved", phase="deferred", job_id=None, error=None)
+
+
+def sources_removed(db, day):
+    """Called after deleting an unconfirmed page, while holding Child.
+
+    No pending inference may exist. Cancel the old coordinator intent so a tick
+    selected before deletion cannot reserve another job. Keep remaining pages,
+    prior attempt counts and completed learning untouched; continuing is explicit.
+    """
+    state = _state(day)
+    source_pages = _pages(db, day)
+    status, phase, error = "idle", None, None
+    if not source_pages:
+        day.stage = "collecting"
+    elif day.stage != "collecting":
+        if any(m.status == "unreadable" for m in source_pages):
+            status, phase = "needs_photo", "review"
+        elif any(m.status == "uploaded" and not m.confirmed for m in source_pages):
+            status, phase = "blocked", "extract"
+            error = "Deine übrigen Fotos sind gespeichert. Bitte gib sie erneut ab."
+        else:
+            status, phase = "needs_review", "review"
+    _write(
+        day,
+        state,
+        run_id=uid(),
+        sources=_sources(db, day),
+        day_revision=day.revision,
+        status=status,
+        phase=phase,
+        job_id=None,
+        error=error,
+        notice_created=0,
+        notice_status=None,
+    )
 
 
 def _queue(db, day, child, family, state, kind, payload):

@@ -123,10 +123,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Seite 1 prüfen'), findsOneWidget);
       for (final number in [1, 2]) {
-        final checkbox = find.byType(CheckboxListTile);
-        await tester.ensureVisible(checkbox);
-        await tester.tap(checkbox);
-        await tester.pumpAndSettle();
+        expect(find.byType(CheckboxListTile), findsNothing);
+        expect(find.text('Seite löschen'), findsOneWidget);
         final button = find.text('Stimmt, weiter');
         await tester.ensureVisible(button);
         await tester.tap(button);

@@ -142,10 +142,8 @@ try {
     const material = await jsonGet(parent, '/materials/' + demo.material_id);
     await tap(p, button(p, material.confirmed ? 'Stoff ansehen' : 'Stoff & Unsicherheiten bestätigen'));
     if (!material.confirmed) {
-      const checkbox = p.getByRole('checkbox', {name: 'Ich habe den Stoff geprüft und alle unsicheren Stellen geklärt.', exact: true});
-      await tap(p, checkbox);
-      assert.equal(await checkbox.getAttribute('aria-checked'), 'true');
-      const confirmed = await tapResponse(p, button(p, 'Stoff bestätigen'), '/materials/' + demo.material_id + '/confirm', 'PUT', 200);
+      assert.equal(await p.getByRole('checkbox').count(), 0);
+      const confirmed = await tapResponse(p, button(p, 'Stimmt, weiter'), '/materials/' + demo.material_id + '/confirm', 'PUT', 200);
       assert.equal(confirmed.confirmed, true);
       await reveal(p, p.getByText('Bestätigter Lernstoff', {exact: true}));
     }

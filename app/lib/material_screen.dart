@@ -329,6 +329,7 @@ class MaterialReview extends StatefulWidget {
   final AppState state;
   final Json data;
   final VoidCallback onRefresh;
+  final VoidCallback? onDeleted;
   final bool showUnitAction;
   final bool simpleChild;
   const MaterialReview(
@@ -336,6 +337,7 @@ class MaterialReview extends StatefulWidget {
     this.data, {
     super.key,
     required this.onRefresh,
+    this.onDeleted,
     this.showUnitAction = true,
     this.simpleChild = false,
   });
@@ -350,9 +352,56 @@ class _MaterialReviewState extends State<MaterialReview> {
   late final homework = TextEditingController(
     text: (widget.data['homework'] as List).join('\n'),
   );
-  bool checked = false;
   bool editing = false, confirmedHere = false;
-  final Set<int> checkedUncertainties = {};
+  bool changing = false;
+
+  Future<void> change(Future<void> Function() action) async {
+    if (changing) return;
+    changing = true;
+    try {
+      await action();
+    } finally {
+      changing = false;
+    }
+  }
+
+  Future<void> deletePage() async {
+    final d = widget.data;
+    if (!await confirmDialog(
+      context,
+      'Seite löschen?',
+      d['confirmed'] == true
+          ? 'Das Foto und der Text werden gelöscht. Deine bisherigen Übungen bleiben erhalten.'
+          : 'Dieses Foto und der erkannte Text werden gelöscht.',
+    )) {
+      return;
+    }
+    if (!mounted) return;
+    final dayId = d['school_day_id'];
+    await widget.state.api.delete(
+      dayId != null && d['confirmed'] != true
+          ? '/school-days/$dayId/pages/${d['id']}'
+          : '/materials/${d['id']}',
+    );
+    if (!mounted) return;
+    if (widget.onDeleted != null) {
+      widget.onDeleted!();
+    } else {
+      context.go('/app');
+    }
+  }
+
+  Widget deleteButton() => ActionButton(
+    label: 'Seite löschen',
+    secondary: true,
+    icon: Icons.delete_outline_rounded,
+    onPressed: () => change(deletePage),
+  );
+
+  bool get fixedDayExample =>
+      widget.data['synthetic'] == true &&
+      widget.data['school_day_id'] != null &&
+      widget.data['fixture_id'] != null;
   @override
   void dispose() {
     for (final c in [subject, topic, content, homework]) {
@@ -461,27 +510,13 @@ class _MaterialReviewState extends State<MaterialReview> {
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
               if (canConfirm) ...[
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Ich habe den Stoff geprüft und alle unsicheren Stellen geklärt.',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  value: checked,
-                  onChanged: (v) => setState(() => checked = v ?? false),
-                ),
                 const SizedBox(height: 12),
                 ActionButton(
                   label: d['confirmed']
                       ? 'Bestätigung speichern'
-                      : 'Stoff bestätigen',
+                      : 'Stimmt, weiter',
                   icon: Icons.check_rounded,
-                  onPressed: () async {
-                    if (!checked) {
-                      throw ApiError(
-                        'Bitte den Stoff prüfen und die Bestätigung aktivieren.',
-                      );
-                    }
+                  onPressed: () => change(() async {
                     await widget.state.api.put(
                       '/materials/${d['id']}/confirm',
                       {
@@ -500,7 +535,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                     if (context.mounted) {
                       toast(context, 'Stoff bestätigt und gespeichert.');
                     }
-                  },
+                  }),
                 ),
               ],
             ],
@@ -552,36 +587,19 @@ class _MaterialReviewState extends State<MaterialReview> {
               materialId: d['id'],
             ),
           ),
-        if (widget.state.isParent && widget.state.canManage)
+        if (!readonly &&
+            !fixedDayExample &&
+            ((widget.state.isParent && widget.state.canManage) ||
+                (widget.state.isChild && d['confirmed'] != true)))
           Padding(
             padding: const EdgeInsets.only(top: 20),
-            child: ActionButton(
-              label: 'Material löschen',
-              secondary: true,
-              icon: Icons.delete_outline,
-              onPressed: () async {
-                if (await confirmDialog(
-                  context,
-                  'Material löschen?',
-                  'Das private Bild und der bestätigte Stoff werden gelöscht. Bereits erzeugte Übungen bleiben im Lernverlauf erhalten.',
-                )) {
-                  await widget.state.api.delete('/materials/${d['id']}');
-                  if (context.mounted) context.go('/app');
-                }
-              },
-            ),
+            child: deleteButton(),
           ),
       ],
     );
   }
 
   Future<void> confirmPage() async {
-    final uncertainties = widget.data['uncertainties'] as List? ?? [];
-    if (uncertainties.isEmpty
-        ? !checked
-        : checkedUncertainties.length != uncertainties.length) {
-      throw ApiError('Prüfe bitte zuerst die markierten Stellen.');
-    }
     await widget.state.api.put('/materials/${widget.data['id']}/confirm', {
       'subject': subject.text,
       'topic': topic.text,
@@ -747,37 +765,14 @@ class _MaterialReviewState extends State<MaterialReview> {
                       'Hier bitte genau hinschauen:',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    for (var i = 0; i < uncertainties.length; i++)
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: Text(
-                          '${uncertainties[i]}',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        value: checkedUncertainties.contains(i),
-                        onChanged: (value) => setState(() {
-                          if (value == true) {
-                            checkedUncertainties.add(i);
-                          } else {
-                            checkedUncertainties.remove(i);
-                          }
-                        }),
-                      ),
-                  ] else
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: const Text('Ich habe die Seite geprüft.'),
-                      value: checked,
-                      onChanged: (value) =>
-                          setState(() => checked = value ?? false),
-                    ),
+                    for (final uncertainty in uncertainties)
+                      Notice('$uncertainty', warning: true),
+                  ],
                   const SizedBox(height: 10),
                   ActionButton(
                     label: 'Stimmt, weiter',
                     icon: Icons.check_rounded,
-                    onPressed: confirmPage,
+                    onPressed: () => change(confirmPage),
                   ),
                 ] else if (confirmed) ...[
                   const SizedBox(height: 14),
@@ -786,6 +781,10 @@ class _MaterialReviewState extends State<MaterialReview> {
               ],
             ),
           ),
+        if (!confirmed && !fixedDayExample) ...[
+          const SizedBox(height: 12),
+          deleteButton(),
+        ],
         if (confirmed && widget.showUnitAction) ...[
           const SizedBox(height: 20),
           ActionButton(

@@ -1,4 +1,12 @@
-# Aktueller Stand · Tagesroutine und Hintergrundvorbereitung · 15.10.2026
+# Aktueller Stand · Einfache Seitenprüfung · 16.10.2026
+
+Web und native Flutter-App 1.2.0+23: „Stimmt, weiter“ bestätigt eine importierte oder fotografierte Seite direkt. Zusätzliche Prüfcheckboxen entfallen; unsichere Stellen bleiben sichtbar und bearbeitbar. „Seite löschen“ entfernt nach kurzer Rückfrage eigene unbestätigte Seiten, auch direkt in der Prüfung. Danach folgt die nächste ungeprüfte Seite oder der heutige Fotoeinstieg; nach der letzten archivierten Seite die Startseite. Bestätigte Kindermaterialien, fremde Familien und laufende Verarbeitung bleiben geschützt. Der Vorbereitungsstand wird unter den bestehenden Sperren aktualisiert, ohne neue KI-Reservation. Bestehende Antworten und Verbrauch bleiben erhalten. Die feste zusammengehörige Zwei-Seiten-Demo bleibt vor einem defekten Teilpaket geschützt.
+
+**Clientprüfung und Builds:** Alle 98 Fluttertests bestanden, darunter direkte Bestätigung, weiterhin sichtbare Unsicherheiten, Löschabbruch, nächste/letzte Seite bei 320/390/1280 px und Archiv-Rücknavigation. Flutter-Analyse ohne Befund. Web, Direct-APK und Play-AAB mit unveränderten fixierten SDK-Versionen und externer Signierung erfolgreich gebaut. APK 23: 63.084.149 Bytes, SHA-256 `cb3d8654f95f184ad4f93f3c261f06c507a94feb53396ee68b0a7ce41a7dee7f`; Manifest, Signatur und 16-KB-Zipausrichtung geprüft. Keine neue Abhängigkeit oder Schemaänderung.
+
+**Backendprüfung:** 91 gezielte PostgreSQL-Tests bestanden (70,99 s), einschließlich Löschrechten, vollständigen Tagesassistent-/Hintergrund-/Tutor-Modulen und zwei echten gleichzeitigen Bestätigungs-/Löschvorgängen. Laufende Jobs und inzwischen bestätigte Quellen werden unter den bestehenden Sperren erneut geprüft. Auch nach Löschen der letzten ungeprüften Seite braucht ein Paket einen bewussten neuen Vorbereitungsauftrag. Anfängliche neue Test-Fixtures um Pflicht-Idempotenzschlüssel und getrennte Elternsitzungen korrigiert; keine Abschwächung der Produktprüfung. Ruff, Diff- und konkrete Geheimniswertprüfung ohne Befund.
+
+# Vorheriger Stand · Tagesroutine und Hintergrundvorbereitung · 15.10.2026
 
 Implementiert für Flutter Web und die native Direct-/Play-App 1.2.0+22: dauerhafter täglicher Fotoeinstieg, „Heute keine neuen Seiten“, begrenzte Lernportionen und ein anpassbarer Siebentagevorschlag. Elterntermine, Fachlerntage, Tages-/Wochenlimits und Pausen bleiben erhalten; alte Schultage verschwinden nicht nach 30 Tagen. Erledigte geschätzte Portionen verhindern ständiges Nachfüllen, ohne geplante Minuten als tatsächlich gemessene Aktivität auszugeben.
 

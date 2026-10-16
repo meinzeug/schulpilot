@@ -456,13 +456,9 @@ async function prepareDay() {
   for (const material of day.pages.filter(value => !value.confirmed)) {
     await persist('explicitly_confirm_page_' + material.page_number);
     await reveal(page, page.getByText('Seite ' + material.page_number + ' prüfen', {exact: true}));
-    const checks = page.getByRole('checkbox');
-    check(await checks.count() === Math.max(1, material.uncertainties.length),
-      'photo_uncertainties_must_each_be_visible');
-    for (let index = 0; index < await checks.count(); index++) {
-      const checkbox = checks.nth(index);
-      if (await checkbox.getAttribute('aria-checked') !== 'true') await tap(page, checkbox);
-      check(await checkbox.getAttribute('aria-checked') === 'true', 'uncertainty_checkbox_not_checked');
+    check(await page.getByRole('checkbox').count() === 0, 'review_must_not_require_checkboxes');
+    for (const uncertainty of material.uncertainties) {
+      await reveal(page, page.getByText(uncertainty, {exact: true}));
     }
     await screenshot(page, 'mobile-review-page-' + material.page_number, {scroll: false});
     await uiResponse(page, button(page, 'Stimmt, weiter'), '/materials/' + material.id + '/confirm', 'PUT');
