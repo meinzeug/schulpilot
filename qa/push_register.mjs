@@ -55,19 +55,26 @@ try {
   report.bell_opens_inbox=true;
   // An actual saved request from our own artificial child, never another family.
   const childContext=await (await import('@playwright/test')).request.newContext({baseURL:base,extraHTTPHeaders:{...headers,'X-Client-Platform':'native'}});
+  let childHeaders;
   try {
     const login=await childContext.post('/api/auth/login',{data:{username:credentials.child_username,password:credentials.child_password}});
     assert.equal(login.status(),200);
     const child=await login.json();assert.equal(child.user.synthetic,true);
-    const childHeaders={Authorization:'Bearer '+child.token};
+    childHeaders={Authorization:'Bearer '+child.token};
     const saved=await childContext.post('/api/children/'+child.user.child_id+'/messages',{headers:childHeaders,data:{kind:'help',body:'Künstlicher Hinweis für die Benachrichtigungsprüfung.'}});
     assert.equal(saved.status(),201);
     const {id}=await saved.json();
+    const refreshed=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/notifications/inbox'&&r.request().method()==='GET');
     await tap(page.getByRole('button',{name:'Aktualisieren',exact:true}));
-    await page.getByText('Unterstützung gewünscht',{exact:true}).first().waitFor();
+    assert.equal((await refreshed).status(),200);
+    await page.waitForTimeout(200);
+    // Flutter merges a ListTile's title and timestamp into one semantics node.
+    await page.getByText('Unterstützung gewünscht').first().waitFor();
     const feed=await (await context.request.get(base+'/api/notifications/inbox')).json();
     assert(feed.items.some(item=>item.id==='message:'+id&&!item.read));
+    const marked=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/notifications/inbox/read'&&r.request().method()==='POST');
     await tap(page.getByRole('button',{name:'Alle als gelesen markieren',exact:true}));
+    assert.equal((await marked).status(),200);
     const after=await (await context.request.get(base+'/api/notifications/inbox')).json();assert.equal(after.unread,0);
     assert.equal((await context.request.post(base+'/api/children/'+child.user.child_id+'/messages/'+id+'/resolve',{headers})).status(),200);
     report.saved_request_read_consistent=true;
@@ -76,8 +83,10 @@ try {
     await page.getByText('Deine Neuigkeiten',{exact:true}).waitFor();
     assert.equal((await (await context.request.get(base+'/api/notifications/inbox')).json()).unread,0);
     report.read_ack_survives_reload=true;
-    await childContext.post('/api/auth/logout',{headers:childHeaders});
-  } finally {await childContext.dispose();}
+  } finally {
+    if(childHeaders)await childContext.post('/api/auth/logout',{headers:childHeaders}).catch(()=>{});
+    await childContext.dispose();
+  }
   await tap(page.getByRole('button',{name:'Gerät einstellen',exact:true}));
   const button=page.getByRole('button',{name:'Auf diesem Gerät einschalten',exact:true});
   await button.waitFor();assert.equal(hosts.length,0);
@@ -136,6 +145,10 @@ try {
   report.session_revoked=(await context.request.get(base+'/api/auth/me')).status()===401;
   console.log(JSON.stringify(report));
   if(!report.registration || !report.session_revoked)process.exitCode=1;
+} catch(error) {
+  report.failure_category=safeError(error.message||'unknown');
+  console.log(JSON.stringify(report));
+  process.exitCode=1;
 } finally {
   await context.request.post(base+'/api/auth/logout',{headers}).catch(()=>{});
   await context.close();

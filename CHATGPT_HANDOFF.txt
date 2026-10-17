@@ -1,20 +1,87 @@
-SCHULPILOT – Benachrichtigungen 1.4.1+31 · bereit zur Bereitstellung
+SCHULPILOT – Benachrichtigungen 1.4.1+31 · bereitgestellt und geprüft
 
-Aktueller Arbeitsstand: docs/STATUS.md. Bedienung/Datenschutz/Rückweg:
-docs/NOTIFICATIONS.md und docs/OPERATIONS.md. Migration 0016 additiv.
-Glocke für Kind/Eltern mit echten Neuigkeiten und eigener Lesemarkierung;
-Adminglocke führt ausschließlich zur betrieblichen Push-Prüfung.
-Native Android-Anzeige im Vordergrund, eigener neutraler Kanal, sichtbare
-Berechtigungsprüfung, Token-Erneuerung und fertige Sprach-/Wortaufträge.
-791 PostgreSQL- und 295 Flutter-Tests bestanden, weitere gezielte Prüfungen
-und Analyze/Ruff erfolgreich. Signierte APK/Play-AAB und Web gebaut.
-Bestehendes Firebase-Projekt, Apps/APIs/minimale Rolle geprüft; echter
-Sender-OAuth und validate_only HTTP 200 am Server. Keine Freigabe geändert.
-Private Schlüssel bleiben an den bisherigen geschützten Orten.
+Dieser Abschnitt hat Vorrang vor der historischen Übergabe unten.
+Produktcommit dd6e30c09c41c1455f743c20ff5e26862bae298a, main gepusht.
+Release 20261017T202938Z-dd6e30c, Schema 0016 nach 0015.
+Web https://schulpilot.dorfspy.de ; eigene API /api.
+Sicherung Result=success/Exit=0, sieben bestehende Dienste aktiv, gültiges HTTPS,
+HTTP 308, sechs Direktlinks 200, private Push-APIs anonym 401.
+Öffentliche APK und main.dart.js stimmen mit den finalen lokalen Artefakten überein.
 
-Noch auszuführen: Deployment und öffentliche Web-/Android-Zustellprüfung.
-Noch keine neue sichtbare Zustellung behauptet. Nach erfolgreicher Prüfung
-wird dieser Abschnitt um konkrete Release-ID und Ergebnisse ergänzt.
+Neue Nutzung
+Glocke -> /notifications mit gespeicherten Familien-/Vorbereitungsneuigkeiten,
+Lesestatus und „Gerät einstellen“. Auch ohne Geräte-Push nutzbar. Eltern erlauben
+beim Kind zuerst in Lernvorgaben -> Erinnerungen & Ruhezeiten „Push am Kindergerät
+erlauben“. Danach am Kindergerät Glocke -> „Auf diesem Gerät einschalten“ und
+die Android-Erlaubnis bestätigen. Die Gerätefreigabe bleibt freiwillig.
+/settings bleibt erreichbar. Adminglocke führt ausschließlich zu /admin/push.
+Datenmodell, 30-Tage-Frist, Export/Löschung, Ruhezeiten und Rückweg:
+docs/NOTIFICATIONS.md und docs/OPERATIONS.md. Keine neue KI durch Neuigkeiten.
+
+Tatsächlich geprüft
+791 PostgreSQL- und 295 Flutter-Tests, zusätzliche gezielte Regressionen,
+Analyze/Ruff, finaler Web-/Direct-/Play-Build, Signatur/Zipalign, bundletool.
+Geheimnisprüfung 386 Quelldateien/244 Archiveinträge, 14 echte Quellen, kein Fund.
+Native Flutter-APK 31 im API-36-Emulator: Glocke, eigener Kinderlogin, explizite
+Geräteanmeldung, STOPPED vor genau einem Hintergrundtest, FCM-Annahme und
+sichtbare Android-Meldung, Klick öffnet das richtige Kinderkonto/Neuigkeiten.
+Ein zusätzlicher Vordergrundtest zeigte In-App- und native Android-Meldung.
+Danach Gerät entfernt und abgemeldet. OTA 30 -> 31 ohne adb install erfolgreich;
+drei Kalt-/Warmstart-Updatechecks erfolgreich.
+Web/Chrome: eigener künstlicher Elternzugang, Glocke, echte gespeicherte Anfrage,
+Gelesen-Markierung nach Reload, explizites Opt-in, Installations-/Registrierungs-
+API 200, eigener /push/-Serviceworker, validate_only und eine Testsendung mit
+sichtbarem Vordergrundbanner. Sitzungswiderruf 401. Vorherige Prüfskriptfehler
+betrafen Flutter-Semantik und fehlendes Abwarten des POST; Abschlusstest grün.
+Alte eigene Testsitzungen bereinigt, drei künstliche Prüfanfragen als besprochen
+markiert, keine aktiven Pushgeräte in beiden künstlichen Testkonten.
+
+Firebase-Stand
+Projekt schulpilot-f6bf3, vorhandene Android-/Web-App und drei benötigte APIs
+bestätigt. Dediziertes Runtime-Konto:
+schulpilot-fcm-sender@schulpilot-f6bf3.iam.gserviceaccount.com
+Rolle projects/schulpilot-f6bf3/roles/schulpilotFcmSender,
+ausschließlich cloudmessaging.messages.create, projektbezogen.
+Getrennte API-Keys, benötigte Installations-/Registration-APIs in der Allowlist;
+vorhandene leere Anwendungseinschränkungen nicht verändert/abgeschaltet.
+SDK Core 4.15.0 / Messaging 16.7.0 / Web JS 12.19.0 erhalten.
+Runtime: Dienstkontodatei, kein geerbter Entwicklungs-/Googlezugang.
+Lokal: /home/dennis/.local/share/schulpilot-firebase/fcm-service-account.json
+Server: /etc/schulpilot/fcm-service-account.json
+Lokales Verzeichnis 0700/Datei 0600; Server root:schulpilot 0640 geprüft.
+Keine private Datei in dieser Übergabe. Eigener OAuth-Refresh und validate_only
+HTTP 200 auf dem Server. Lokale Uhrabweichung erklärt die abgelehnte lokale
+OAuth-Probe, nicht einen Serverfehler. Produktive Push-Freigabe unverändert aktiv.
+KI unverändert Codex CLI / gpt-6.1-sol / xhigh / Revision 18, Kontokosten unbekannt.
+
+Builds
+Direct-APK artifacts/schulpilot-android.apk, Version 1.4.1+31, stable.
+Download https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+64840505 Bytes, SHA-256 21c2529a4d568f68be631723c90c74c870f10b525f8fb7c820e2ec264c490b77
+Play artifacts/schulpilot-play.aab gebaut/validiert, nicht öffentlich verteilt.
+Kein Play-Console-Upload oder Storefreigabe behauptet.
+
+Fortsetzung im Browser
+Normal über https://schulpilot.dorfspy.de/login anmelden. Betreiber meldet sich
+selbst an; keine Passwörter, Cookies, Tokens oder privaten Schlüssel an ChatGPT.
+Glocke -> /notifications: Neuigkeiten öffnen, gelesen markieren, Reload prüfen.
+„Gerät einstellen“ -> freiwillige Freigabe/Zeiten; Android-Systemeinstellungen
+bei Sperre direkt erreichbar. Testbuttons erscheinen nur beim freigegebenen
+künstlichen Konto und adressieren ausschließlich dessen aktuelles Gerät.
+/settings: Gerätewiderruf/Abmelden. /admin/push: normale Admin-Anmeldung,
+nur Betriebsmetadaten, kein privater Kinderzugriff. Keine öffentlichen Debug-
+oder beliebigen Token-Versandendpunkte.
+
+Verbleibende Grenzen
+Physisches Android/Huawei ohne Play-Dienste sowie erneute Web-Systemanzeige im
+Hintergrund nicht beobachtet. Vorhandene Nachweise nicht als pauschale Garantie
+aller Geräte oder Zustellzeiten ausgeben. Optionale nächste Aktion: persönliches
+Android-Gerät mit denselben Freigaben bei normalem Alltag beobachten.
+GitHub Actions 39058428549: „The job was not started because your account is
+locked due to a billing issue.“ Betreiber muss nur für Cloud-CI das GitHub-
+Abrechnungsproblem lösen; lokale Prüfungen und Deployment sind erfolgreich.
+Produktiver Rückweg nicht ausgeführt; dokumentierte kompatible Rückwegversion
+20261017T140346Z-58f2c8c, Tabelle 0016 erhalten, --rollback-compatible verwenden.
 
 SCHULPILOT – Sprachlernen 1.4.0+30 · tatsächlich bereitgestellt und geprüft
 

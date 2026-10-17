@@ -1,31 +1,66 @@
-# Bereit zur Bereitstellung · Benachrichtigungen 1.4.1+31 · 17.10.2026
+# Aktueller Stand · Benachrichtigungen 1.4.1+31 · 17.10.2026
 
-Implementiert: sichtbare Glocke für Web/Android, echte private Neuigkeiten,
-kontogebundene Lesemarkierungen, Android-Kanal und Vordergrunddarstellung,
-Geräte-/Berechtigungsstatus, Token-Erneuerung und Sprachauftrags-Fertigmeldung.
-Migration 0016 ergänzt ausschließlich notification_reads. Kein neuer Provider,
-keine geänderte Firebase-Freigabe. Betriebsregeln: [NOTIFICATIONS.md](NOTIFICATIONS.md).
+**Öffentlich aktiviert:** Produktcommit `dd6e30c09c41c1455f743c20ff5e26862bae298a`,
+Release `20261017T202938Z-dd6e30c`, Migration 0015 → 0016. Backend/Web und reguläre
+signierte Direct-APK unter https://schulpilot.dorfspy.de. Erfolgreiche Sicherung
+(Result=success/Exit=0), alle sieben geprüften bestehenden Dienste aktiv.
+HTTPS gültig, HTTP 308, sechs Direktlinks 200, drei private Push-APIs anonym 401;
+öffentlicher APK-Download und main.dart.js stimmen mit den lokalen Hashes überein.
 
-Bestätigt: bestehendes Cloudprojekt, Apps, APIs, minimale Senderrolle und
-getrennte Plattformkeys vorhanden. Dienstkonto-OAuth und FCM validate_only
-HTTP 200 am tatsächlichen Server. Vor dem Ausbau keine registrierten Geräte.
-Lokale OAuth-Probe wegen lokaler Uhrabweichung abgelehnt; die richtige Serveruhr
-wurde erfolgreich benutzt. Keine neue Cloudressource und kein neuer Schlüssel.
+**Neu:** sichtbare Glocke auf Android und im Browser, echte private Neuigkeiten
+und kontogebundene Lesemarkierungen. Gerätefreigabe über „Gerät einstellen“;
+Elternfreigabe, Android-Berechtigung und Kanalstatus werden konkret angezeigt.
+Nativer neutraler Android-Kanal/Vordergrundhinweis, Token-Erneuerung und
+Fertigmeldungen für Sprach-/Wortaufträge. Keine Firebase-Initialisierung durch
+Glocke/GET; keine neue KI, Anbieter-, Schlüssel- oder Freigabeänderung.
+Einzelheiten/Bedienung: [NOTIFICATIONS.md](NOTIFICATIONS.md).
 
-Prüfungen: gesamte PostgreSQL-Suite 791 bestanden; gezielte Migration-/Push-
-Regressionen 25 bestanden; abschließende Inboxprüfung nach gebündelter
-Namensabfrage 5 bestanden. Ganze Flutter-Suite 295 bestanden, zusätzliche
-Push-/Geräte-/Inbox-/Anmeldetests 12 bestanden. Flutter Analyze und Ruff ohne
-Befund. Web, signierte Direct-APK und Play-AAB mit bestehender fixierter
-Toolchain gebaut. Geheimnisprüfung ohne Fund; Signatur/Zipalign geprüft.
-Vorhandene Buildhinweise zu künftigem Kotlin und optionalem Wasm bleiben;
-JavaScript-Webrelease und native Builds sind erfolgreich.
+**Tatsächliche Zustellung:** Android-API-36-Emulator mit nativer Flutter-APK 31:
+Glocke sichtbar, Kinder-Opt-in registriert. Activity STOPPED vor dem einzigen
+Hintergrund-Testversand nachgewiesen; FCM-Annahme, tatsächliche Android-Meldung
+und Öffnen der Neuigkeiten im richtigen Kinderkonto beobachtet. Gesonderter
+Vordergrund-Test: In-App-Hinweis und native Android-Meldung bei aktiver App
+sichtbar. Beide Testsendungen ausschließlich an das eigene künstliche Gerät.
+Danach Registrierung entfernt und abgemeldet. Web/Chrome: echte gespeicherte
+Familienanfrage, Lesemarkierung und Reload konsistent; explizites Opt-in,
+Installations-/Registrierungs-API jeweils 200, eigener /push/-Worker, eigene
+FCM-Validierung und Annahme mit sichtbarem Vordergrundbanner, Logout 401.
+Anfängliche Web-Prüfskriptfehler (zusammengefasste Flutter-Semantik und nicht
+abgewartetes POST) korrigiert; kein Softwarefehler oder Zustellbeleg daraus
+abgeleitet. Abschließender öffentlicher Lauf erfolgreich.
 
-Nächste konkrete Aktion: Commit, Sicherung/Deployment, öffentliche HTTPS-
-Prüfung, OTA von APK 30 auf 31, beobachtete Hintergrund-/Vordergrundzustellung
-und Webglocke mit gespeichertem Lesestatus. Noch kein neuer Zustellnachweis.
-Vorheriger kompatibler Release: 20261017T140346Z-58f2c8c; Rückweg mit
---rollback-compatible und erhaltener additiver Tabelle. Kein Schema-Downgrade.
+**Build und Regressionen:** 791 PostgreSQL- und 295 Flutter-Tests bestanden.
+Zusätzliche gezielte Push-/Migrationsprüfung 25, Inboxprüfung 5 und Flutter-
+Push-/Geräte-/Anmeldetests 12 bestanden. Analyze/Ruff ohne Befund. Finales Web,
+Direct-APK und Play-AAB gebaut; Signatur/Zipalign und bundletool 1.18.3 erfolgreich.
+386 Quelldateien/244 Archiveinträge gegen 14 echte Geheimnisquellen geprüft,
+kein Fund. Bestehende Hinweise zu künftigem Kotlin/optionalem Wasm bleiben;
+JavaScript-Webrelease und native Builds erfolgreich, keine Abhängigkeitsmigration.
+
+APK 1.4.1+31: 64840505 Bytes,
+SHA-256 `21c2529a4d568f68be631723c90c74c870f10b525f8fb7c820e2ec264c490b77`.
+`artifacts/schulpilot-android.apk` und `artifacts/schulpilot-play.aab`.
+Tatsächlicher OTA-Pfad im Emulator von 30 auf 31 mit Android-Bestätigung,
+kein adb install; anschließend drei Updatechecks bei Kalt-/Warmstarts bestätigt.
+
+**Firebase/Betrieb:** bestehendes Projekt/Apps/APIs/minimale Senderrolle und
+getrennte Plattformkeys geprüft. Runtime nutzt das dedizierte Senderkonto aus
+/etc/schulpilot/fcm-service-account.json (root:schulpilot 0640). Echter OAuth-
+Refresh und validate_only HTTP 200 am Server. Lokale Probe scheiterte an der
+versetzten Entwicklungsuhr; dies betrifft nicht den geprüften Appserver.
+Produktionsfreigabe unverändert aktiv. Codex CLI/gpt-6.1-sol/xhigh/Revision 18
+unverändert. Eigene künstliche Alt-Testsitzungen widerrufen, drei Prüfanfragen
+als besprochen markiert, beide Testkonten ohne aktive Pushgeräte abgemeldet.
+
+**Grenzen:** keine physische Smartphone-/Huawei-Abnahme und keine erneute
+Web-Systemanzeige im Hintergrund; Webnachweis betrifft das Vordergrundbanner.
+Play-AAB nicht im Store veröffentlicht. GitHub-Actions-Lauf 39058428549 startete
+wegen Kontosperre durch ein Abrechnungsproblem nicht; lokale Prüfungen bestanden.
+Keine allgemeine Zustellgarantie gegen Gerätesperren/fehlende Play-Dienste.
+Rückweg: vorheriger Release 20261017T140346Z-58f2c8c mit --rollback-compatible,
+additive Tabelle erhalten. Keine produktive Rücksicherung durchgeführt.
+Nächste optionale Prüfung: eigener physischer Android-Alltag mit denselben
+Gerätefreigaben; reguläre Anmeldung, keine privaten Schlüssel weitergeben.
 
 # Aktueller Stand · Sprachausbau 1.4.0+30 · 17.10.2026
 
