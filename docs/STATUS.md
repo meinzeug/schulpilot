@@ -1,3 +1,32 @@
+# Bereit zur Bereitstellung · Benachrichtigungen 1.4.1+31 · 17.10.2026
+
+Implementiert: sichtbare Glocke für Web/Android, echte private Neuigkeiten,
+kontogebundene Lesemarkierungen, Android-Kanal und Vordergrunddarstellung,
+Geräte-/Berechtigungsstatus, Token-Erneuerung und Sprachauftrags-Fertigmeldung.
+Migration 0016 ergänzt ausschließlich notification_reads. Kein neuer Provider,
+keine geänderte Firebase-Freigabe. Betriebsregeln: [NOTIFICATIONS.md](NOTIFICATIONS.md).
+
+Bestätigt: bestehendes Cloudprojekt, Apps, APIs, minimale Senderrolle und
+getrennte Plattformkeys vorhanden. Dienstkonto-OAuth und FCM validate_only
+HTTP 200 am tatsächlichen Server. Vor dem Ausbau keine registrierten Geräte.
+Lokale OAuth-Probe wegen lokaler Uhrabweichung abgelehnt; die richtige Serveruhr
+wurde erfolgreich benutzt. Keine neue Cloudressource und kein neuer Schlüssel.
+
+Prüfungen: gesamte PostgreSQL-Suite 791 bestanden; gezielte Migration-/Push-
+Regressionen 25 bestanden; abschließende Inboxprüfung nach gebündelter
+Namensabfrage 5 bestanden. Ganze Flutter-Suite 295 bestanden, zusätzliche
+Push-/Geräte-/Inbox-/Anmeldetests 12 bestanden. Flutter Analyze und Ruff ohne
+Befund. Web, signierte Direct-APK und Play-AAB mit bestehender fixierter
+Toolchain gebaut. Geheimnisprüfung ohne Fund; Signatur/Zipalign geprüft.
+Vorhandene Buildhinweise zu künftigem Kotlin und optionalem Wasm bleiben;
+JavaScript-Webrelease und native Builds sind erfolgreich.
+
+Nächste konkrete Aktion: Commit, Sicherung/Deployment, öffentliche HTTPS-
+Prüfung, OTA von APK 30 auf 31, beobachtete Hintergrund-/Vordergrundzustellung
+und Webglocke mit gespeichertem Lesestatus. Noch kein neuer Zustellnachweis.
+Vorheriger kompatibler Release: 20261017T140346Z-58f2c8c; Rückweg mit
+--rollback-compatible und erhaltener additiver Tabelle. Kein Schema-Downgrade.
+
 # Aktueller Stand · Sprachausbau 1.4.0+30 · 17.10.2026
 
 Eigener bestätigter Wortschatz aus Foto, Text oder manuellen Paaren; Sammlungen,

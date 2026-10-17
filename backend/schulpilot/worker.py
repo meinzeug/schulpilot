@@ -564,6 +564,10 @@ def main():
                 job_id = claim(db)
             if job_id:
                 process(job_id)
+                # Persisted completion is visible immediately, even when the
+                # next provider job takes longer than the maintenance interval.
+                with DB.begin() as db:
+                    prepare_notifications(db)
             else:
                 time.sleep(1)
         except Exception as exc:

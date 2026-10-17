@@ -23,6 +23,7 @@ from . import (
     learning_progress,
     library,
     materials,
+    notification_inbox,
     notifications,
     public_privacy,
     releases,
@@ -199,7 +200,7 @@ def legal():
         "support_email": site.operator_support_email,
         "complete": bool(site.operator_name and site.operator_address and site.operator_support_email),
         "operator_data_approval": bool(site.real_data_approved and site.privacy_evidence),
-        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24, "push_devices_inactive": 60, "push_delivery_status": 14},
+        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24, "push_devices_inactive": 60, "push_delivery_status": 14, "notification_reads": 30},
         "accounting_retention": "Zahlungsbelege acht Jahre nach Ende des Buchungsjahres; bei Kontolöschung ohne Kontozuordnung.",
     }
 
@@ -219,6 +220,7 @@ for router in (
     synthetic.router,
     admin.router,
     notifications.router,
+    notification_inbox.router,
     public_privacy.router,
     commerce.router,
     releases.router,

@@ -1,3 +1,21 @@
+SCHULPILOT – Benachrichtigungen 1.4.1+31 · bereit zur Bereitstellung
+
+Aktueller Arbeitsstand: docs/STATUS.md. Bedienung/Datenschutz/Rückweg:
+docs/NOTIFICATIONS.md und docs/OPERATIONS.md. Migration 0016 additiv.
+Glocke für Kind/Eltern mit echten Neuigkeiten und eigener Lesemarkierung;
+Adminglocke führt ausschließlich zur betrieblichen Push-Prüfung.
+Native Android-Anzeige im Vordergrund, eigener neutraler Kanal, sichtbare
+Berechtigungsprüfung, Token-Erneuerung und fertige Sprach-/Wortaufträge.
+791 PostgreSQL- und 295 Flutter-Tests bestanden, weitere gezielte Prüfungen
+und Analyze/Ruff erfolgreich. Signierte APK/Play-AAB und Web gebaut.
+Bestehendes Firebase-Projekt, Apps/APIs/minimale Rolle geprüft; echter
+Sender-OAuth und validate_only HTTP 200 am Server. Keine Freigabe geändert.
+Private Schlüssel bleiben an den bisherigen geschützten Orten.
+
+Noch auszuführen: Deployment und öffentliche Web-/Android-Zustellprüfung.
+Noch keine neue sichtbare Zustellung behauptet. Nach erfolgreicher Prüfung
+wird dieser Abschnitt um konkrete Release-ID und Ergebnisse ergänzt.
+
 SCHULPILOT – Sprachlernen 1.4.0+30 · tatsächlich bereitgestellt und geprüft
 
 Dieser Abschnitt hat Vorrang vor der historischen Übergabe unten.

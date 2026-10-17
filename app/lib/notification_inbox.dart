@@ -1,0 +1,86 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
+import 'api.dart';
+
+/// Account-scoped cache. Only foreground GETs; no Firebase or generation here.
+class NotificationInbox extends ChangeNotifier {
+  final Api api;
+  NotificationInbox(this.api);
+  String? _account;
+  int _generation = 0;
+  int _readRevision = 0;
+  bool _foreground = true, _loading = false;
+  Timer? _timer;
+  List<Json> items = [];
+  int unread = 0;
+  String? error;
+
+  void activate(String? account) {
+    if (_account == account) return;
+    _generation++;
+    _account = account;
+    items = [];
+    unread = 0;
+    error = null;
+    _loading = false;
+    _timer?.cancel();
+    if (account != null) {
+      unawaited(refresh());
+      _timer = Timer.periodic(const Duration(seconds: 45), (_) {
+        if (_foreground) unawaited(refresh());
+      });
+    }
+    notifyListeners();
+  }
+
+  void foreground(bool value) {
+    final resume = value && !_foreground;
+    _foreground = value;
+    if (resume) unawaited(refresh());
+  }
+
+  Future<void> refresh() async {
+    if (_account == null || _loading || !_foreground) return;
+    final generation = _generation;
+    final readRevision = _readRevision;
+    _loading = true;
+    try {
+      final data = await api.get('/notifications/inbox');
+      if (generation != _generation || readRevision != _readRevision) return;
+      items = (data['items'] as List? ?? [])
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
+      unread = data['unread'] as int? ?? 0;
+      error = null;
+    } catch (_) {
+      if (generation == _generation) error = 'Neuigkeiten konnten nicht geladen werden. Bitte versuche es erneut.';
+    } finally {
+      if (generation == _generation) {
+        _loading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> markRead(List<String> ids) async {
+    if (_account == null || ids.isEmpty) return;
+    final generation = _generation;
+    await api.post('/notifications/inbox/read', {'ids': ids});
+    if (generation != _generation) return;
+    _readRevision++;
+    for (final item in items) {
+      if (ids.contains(item['id'])) item['read'] = true;
+    }
+    unread = items.where((row) => row['read'] != true).length;
+    notifyListeners();
+  }
+
+  void clear() => activate(null);
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}

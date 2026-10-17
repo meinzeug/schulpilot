@@ -11,7 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import Field, model_validator
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import load_only
 
 from . import schemas as s
@@ -22,6 +22,7 @@ from .db import (
     Family,
     Membership,
     Message,
+    NotificationRead,
     PushDelivery,
     PushDevice,
     PushTestGrant,
@@ -245,13 +246,15 @@ def seconds_before_quiet(current, zone, start, end):
 
 def children_for(db, user):
     if user.role == "child":
-        return list(db.scalars(select(Child).where(Child.user_id == user.id)))
+        return list(db.scalars(select(Child).join(Family).where(Child.user_id == user.id,
+            (Family.expires.is_(None)) | (Family.expires > int(now())))))
     if user.role == "parent":
         return list(
             db.scalars(
                 select(Child)
+                .join(Family, Family.id == Child.family_id)
                 .join(Membership, Membership.family_id == Child.family_id)
-                .where(Membership.user_id == user.id)
+                .where(Membership.user_id == user.id, (Family.expires.is_(None)) | (Family.expires > int(now())))
             )
         )
     return []
@@ -309,6 +312,9 @@ def operator_status(p=Depends(admin), db=Depends(get_db)):
     except (ValueError, OSError):
         pass
     audit(db, p.user.id, "push.operational_status", "firebase")
+    device_counts = dict(db.execute(select(PushDevice.platform, func.count()).group_by(PushDevice.platform)).all())
+    delivery_counts = dict(db.execute(select(PushDelivery.status, func.count()).where(
+        PushDelivery.created >= int(now()) - 86400).group_by(PushDelivery.status)).all())
     db.commit()
     return {
         "production_approved": site.push_approved,
@@ -319,6 +325,8 @@ def operator_status(p=Depends(admin), db=Depends(get_db)):
         "credential_configured": valid,
         "config_verification": site.fcm_config_verification,
         "privacy_evidence": site.push_privacy_evidence,
+        "device_counts": {platform: device_counts.get(platform, 0) for platform in ("android", "web")},
+        "delivery_counts_24h": delivery_counts,
         "delivery_notice": "Konfiguration und Annahme durch FCM beweisen keine am Gerät sichtbare Zustellung.",
     }
 
@@ -462,6 +470,25 @@ def due_kinds(db, device, current):
                 if not notice_allowed(db, day):
                     continue
                 result.add("preparation_ready" if state["status"] == "ready" else "preparation_review")
+            # New language jobs share the same queue. Only a currently valid
+            # request/source may trigger a notice, never a generated answer.
+            from .db import Job, LanguageProject, VocabularyImport
+            from .vocabulary import authority, current_sources
+
+            for model, ready in ((LanguageProject, "ready"), (VocabularyImport, "review")):
+                for row in db.scalars(select(model).join(Job, Job.id == model.job_id).where(
+                    model.child_id == child.id, model.status == ready, Job.status == "completed",
+                    Job.finished > current - 86400, Job.finished <= current).limit(20)):
+                    try:
+                        authority(db, row, child.family_id)
+                        current_sources(db, child.id, row.source_revisions)
+                        if model == LanguageProject:
+                            from .language_projects import context
+
+                            context(db, row)
+                    except HTTPException:
+                        continue
+                    result.add("learning_ready")
     return sorted(result)
 
 
@@ -474,6 +501,7 @@ def prepare(db, current=None):
     db.execute(delete(PushDevice).where(PushDevice.session_id.in_(dead_sessions)))
     db.execute(delete(PushDevice).where(PushDevice.updated < current - 60 * 86400))
     db.execute(delete(PushDelivery).where(PushDelivery.created < current - 14 * 86400))
+    db.execute(delete(NotificationRead).where(NotificationRead.created < current - 30 * 86400))
     if not public_config()["available"]:
         return
     for device in db.scalars(select(PushDevice)):
@@ -538,10 +566,13 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False):
             "notification": {"title": "SCHULPILOT", "body": body},
             "data": {"route": "/app"},
             "android": {
-                "priority": "normal",
+                # User-visible, already bundled notifications should arrive
+                # during Doze too. Keep the short privacy/quiet-hours TTL.
+                "priority": "high",
                 "ttl": str(ttl) + "s",
                 "collapse_key": "schulpilot",
-                "notification": {"tag": "schulpilot", "visibility": "PRIVATE"},
+                "notification": {"tag": "schulpilot", "visibility": "PRIVATE",
+                                 "channel_id": "schulpilot_updates_v1", "icon": "ic_notification"},
             },
             "webpush": {
                 "headers": {"TTL": str(ttl), "Urgency": "normal"},

@@ -48,8 +48,37 @@ async function tap(locator) {
 }
 try {
   assert.equal((await context.request.post(base+'/api/auth/login',{headers,data:{username:credentials.parent_username,password:credentials.parent_password}})).status(),200);
-  await page.goto(base+'/settings');await page.waitForSelector('flutter-view');
+  await page.goto(base+'/app');await page.waitForSelector('flutter-view');
   await page.locator('flt-semantics-placeholder').evaluateAll(ns=>ns.forEach(n=>n.click()));
+  await page.getByRole('button',{name:/Benachrichtigungen/}).click();
+  await page.getByText('Deine Neuigkeiten',{exact:true}).waitFor();
+  report.bell_opens_inbox=true;
+  // An actual saved request from our own artificial child, never another family.
+  const childContext=await (await import('@playwright/test')).request.newContext({baseURL:base,extraHTTPHeaders:{...headers,'X-Client-Platform':'native'}});
+  try {
+    const login=await childContext.post('/api/auth/login',{data:{username:credentials.child_username,password:credentials.child_password}});
+    assert.equal(login.status(),200);
+    const child=await login.json();assert.equal(child.user.synthetic,true);
+    const childHeaders={Authorization:'Bearer '+child.token};
+    const saved=await childContext.post('/api/children/'+child.user.child_id+'/messages',{headers:childHeaders,data:{kind:'help',body:'Künstlicher Hinweis für die Benachrichtigungsprüfung.'}});
+    assert.equal(saved.status(),201);
+    const {id}=await saved.json();
+    await tap(page.getByRole('button',{name:'Aktualisieren',exact:true}));
+    await page.getByText('Unterstützung gewünscht',{exact:true}).first().waitFor();
+    const feed=await (await context.request.get(base+'/api/notifications/inbox')).json();
+    assert(feed.items.some(item=>item.id==='message:'+id&&!item.read));
+    await tap(page.getByRole('button',{name:'Alle als gelesen markieren',exact:true}));
+    const after=await (await context.request.get(base+'/api/notifications/inbox')).json();assert.equal(after.unread,0);
+    assert.equal((await context.request.post(base+'/api/children/'+child.user.child_id+'/messages/'+id+'/resolve',{headers})).status(),200);
+    report.saved_request_read_consistent=true;
+    await page.reload();await page.waitForSelector('flutter-view');
+    await page.locator('flt-semantics-placeholder').evaluateAll(ns=>ns.forEach(n=>n.click()));
+    await page.getByText('Deine Neuigkeiten',{exact:true}).waitFor();
+    assert.equal((await (await context.request.get(base+'/api/notifications/inbox')).json()).unread,0);
+    report.read_ack_survives_reload=true;
+    await childContext.post('/api/auth/logout',{headers:childHeaders});
+  } finally {await childContext.dispose();}
+  await tap(page.getByRole('button',{name:'Gerät einstellen',exact:true}));
   const button=page.getByRole('button',{name:'Auf diesem Gerät einschalten',exact:true});
   await button.waitFor();assert.equal(hosts.length,0);
   const registration=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/notifications/device'&&r.request().method()==='PUT',{timeout:50000});
@@ -98,6 +127,8 @@ try {
       }
     }
   }
+  await page.goto(base+'/settings');await page.waitForSelector('flutter-view');
+  await page.locator('flt-semantics-placeholder').evaluateAll(ns=>ns.forEach(n=>n.click()));
   const logout=page.getByRole('button',{name:'Abmelden',exact:true});
   if(await logout.count())await tap(logout);
   else await context.request.post(base+'/api/auth/logout',{headers});

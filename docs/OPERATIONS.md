@@ -1,5 +1,28 @@
 # Betrieb
 
+## Benachrichtigungsrelease 1.4.1+31
+
+Migration 0016 ergänzt ausschließlich private Lesemarkierungen in
+`notification_reads`; keine bestehenden Quellen, Antworten, Noten, Lernzeiten,
+Provider- oder Firebasefreigaben umschreiben. Vor Aktivierung wie bisher eine
+erfolgreiche verschlüsselte Sicherung prüfen. Deployment baut keine zusätzliche
+Infrastruktur. API und vorhandener Worker verwenden dieselbe Datenbank.
+
+Rückweg auf `20261017T140346Z-58f2c8c`: Eigene laufende Aufträge kontrolliert
+beenden, sichern und den vorherigen Release mit den bisherigen Werkzeugen
+mit `--rollback-compatible` aktivieren. Tabelle 0016 erhalten; kein Datenbank-Downgrade und kein Restore über
+neuere Familienverläufe. Alte Push-APIs und das feste neutrale `/app`-Payloadziel
+bleiben kompatibel. Die neue Glocke/Lesemarker fehlen im alten Clientcode;
+installierte Android-APKs werden nicht automatisch heruntergestuft.
+Aktivierten Release und tatsächlich beobachtete Zustellung in STATUS/Handoff
+nachlesen; In-App-, FCM-Annahme- und sichtbare Geräteprüfung getrennt halten.
+Bedienung und Prüfwerkzeuge: [NOTIFICATIONS.md](NOTIFICATIONS.md).
+Die neue APK 31 behält beim Backend-Rückweg ihre Glocke; der ältere Server kennt
+die Übersicht nicht und zeigt dort einen Ladehinweis. Gerätefreigabe unter
+Konto sowie die bisherigen Lernabläufe bleiben verfügbar. Deshalb eine
+Vorwärtskorrektur bevorzugen. Dies ist ein dokumentierter Rückweg, kein in
+dieser Sitzung ausgeführter produktiver Rollback.
+
 ## Aktiver Sprachrelease 1.4.0+30
 
 Am 17.10.2026 aktiviert: `20261017T140346Z-58f2c8c`, Schema 0015.

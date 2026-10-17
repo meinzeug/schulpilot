@@ -427,6 +427,7 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 def export_child(db, child):
     from .db import (
         LanguageProject,
+        NotificationRead,
         SchoolGrade,
         VocabularyAction,
         VocabularyCollection,
@@ -460,6 +461,11 @@ def export_child(db, child):
     for model in (VocabularyCollection, VocabularyItem, VocabularyImport, VocabularyReview, VocabularyAction, LanguageProject):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
             for row in db.scalars(select(model).where(model.child_id == child.id))]
+    # A parent's own read receipts are private to that parent. Child receipts
+    # belong to the child's export; another parent's reading is not disclosed.
+    result["notification_reads"] = [{"event_key": row.event_key, "created": row.created}
+        for row in db.scalars(select(NotificationRead).where(
+            NotificationRead.child_id == child.id, NotificationRead.user_id == child.user_id))]
     for model, column, ids in ((VocabularyMembership, VocabularyMembership.item_id, [row["id"] for row in result["vocabulary_items"]]),
                               (VocabularyReviewEvent, VocabularyReviewEvent.review_id, [row["id"] for row in result["vocabulary_reviews"]])):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
@@ -470,6 +476,7 @@ def export_child(db, child):
 @router.get("/families/{family_id}/export")
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .commerce import orders_export
+    from .db import NotificationRead
 
     family, _ = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
@@ -492,6 +499,9 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                     },
                     "children": [export_child(db, c) for c in children],
                     "orders": orders_export(db, family.id),
+                    "notification_reads": [{"event_key": row.event_key, "created": row.created}
+                        for row in db.scalars(select(NotificationRead).where(
+                            NotificationRead.user_id == p.user.id, NotificationRead.child_id.in_([c.id for c in children])))],
                     "usage": [
                         {column.name: getattr(record, column.name) for column in Usage.__table__.columns}
                         for record in db.scalars(select(Usage).where(Usage.family_id == family.id))

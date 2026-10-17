@@ -1,7 +1,140 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'ui.dart';
+
+class NotificationsScreen extends StatefulWidget {
+  final AppState state;
+  const NotificationsScreen(this.state, {super.key});
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final _devicePanel = GlobalKey();
+  @override
+  void initState() {
+    super.initState();
+    widget.state.inbox.activate(widget.state.user?['id']);
+    widget.state.inbox.refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => PageFrame(
+    state: widget.state,
+    title: 'Benachrichtigungen',
+    actions: [
+      OutlinedButton.icon(
+        onPressed: () {
+          final target = _devicePanel.currentContext;
+          if (target != null) {
+            Scrollable.ensureVisible(
+              target,
+              duration: const Duration(milliseconds: 300),
+              alignment: .05,
+            );
+          }
+        },
+        icon: const Icon(Icons.tune_rounded),
+        label: const Text('Gerät einstellen'),
+      ),
+    ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListenableBuilder(
+          listenable: widget.state.inbox,
+          builder: (context, _) {
+            final inbox = widget.state.inbox;
+            return Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: heading('Deine Neuigkeiten')),
+                      IconButton(
+                        tooltip: 'Aktualisieren',
+                        onPressed: inbox.refresh,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  ),
+                  if (inbox.error != null) Notice(inbox.error!),
+                  if (inbox.items.isEmpty && inbox.error == null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text(
+                        'Hier erscheint Neues zu deinen Lernrunden und deiner Familie.',
+                      ),
+                    ),
+                  if (inbox.unread > 0)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ActionButton(
+                        label: 'Alle als gelesen markieren',
+                        secondary: true,
+                        onPressed: () => inbox.markRead(
+                          inbox.items
+                              .where((row) => row['read'] != true)
+                              .map((row) => row['id'] as String)
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                  for (final item in inbox.items)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      leading: Icon(
+                        item['kind'] == 'failed'
+                            ? Icons.info_outline_rounded
+                            : item['read'] == true
+                            ? Icons.notifications_none_rounded
+                            : Icons.notifications_active_outlined,
+                        color: item['read'] == true ? muted : teal,
+                      ),
+                      title: Text(
+                        item['title'],
+                        style: TextStyle(
+                          fontWeight: item['read'] == true
+                              ? FontWeight.w500
+                              : FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () async {
+                        try {
+                          await inbox.markRead([item['id']]);
+                          if (context.mounted) context.go(item['route']);
+                        } catch (error) {
+                          if (context.mounted) toast(context, error.toString());
+                        }
+                      },
+                    ),
+                  if (inbox.items.isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Die letzten Neuigkeiten aus 30 Tagen.',
+                        style: TextStyle(color: muted, fontSize: 12),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        KeyedSubtree(key: _devicePanel, child: NotificationPanel(widget.state)),
+      ],
+    ),
+  );
+}
 
 class NotificationPanel extends StatefulWidget {
   final AppState state;
@@ -46,6 +179,13 @@ class PushAdminScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(data['delivery_notice']),
+            const SizedBox(height: 12),
+            Text(
+              'Angemeldete Geräte: ${data['device_counts']?['android'] ?? 0} Android · ${data['device_counts']?['web'] ?? 0} Web',
+            ),
+            Text(
+              'Letzte 24 Stunden: ${data['delivery_counts_24h']?['accepted'] ?? 0} von FCM angenommen · ${data['delivery_counts_24h']?['failed'] ?? 0} fehlgeschlagen · ${data['delivery_counts_24h']?['queued'] ?? 0} ausstehend',
+            ),
             const SizedBox(height: 16),
             OutlinedButton(
               onPressed: refresh,
@@ -62,11 +202,31 @@ class PushAdminScreen extends StatelessWidget {
   );
 }
 
-class _NotificationPanelState extends State<NotificationPanel> {
+class _NotificationPanelState extends State<NotificationPanel>
+    with WidgetsBindingObserver {
   bool reminders = true, help = true, summaries = false;
   bool preferencesLoaded = false;
   int start = 20, end = 8, version = 0;
   String timezone = 'Europe/Berlin';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() => version++);
+    }
+  }
 
   Future<Json> load() async {
     final config = await widget.state.api.get('/notifications/config');
@@ -88,7 +248,18 @@ class _NotificationPanelState extends State<NotificationPanel> {
       }
       preferencesLoaded = true;
     }
-    return {'config': config, 'devices': devices, 'tests': tests};
+    Json native = {};
+    try {
+      native = await widget.state.push.deviceStatus();
+    } catch (_) {
+      /* Show unknown, never an invented success. */
+    }
+    return {
+      'config': config,
+      'devices': devices,
+      'tests': tests,
+      'native': native,
+    };
   }
 
   Future<void> enable() async {
@@ -101,14 +272,8 @@ class _NotificationPanelState extends State<NotificationPanel> {
         'help_requests': help,
         'summaries': summaries,
       });
-    } on ApiError catch (error) {
-      if (error.message.contains('Firebase') ||
-          error.message.contains('VAPID') ||
-          error.message.contains('Push-Registrierung')) {
-        throw ApiError(
-          'Benachrichtigungen konnten nicht eingeschaltet werden. Bitte versuche es später noch einmal.',
-        );
-      }
+    } on ApiError {
+      if (mounted) setState(() => version++);
       rethrow;
     }
     if (mounted) {
@@ -136,6 +301,9 @@ class _NotificationPanelState extends State<NotificationPanel> {
       final current = devices.where((device) => device['current'] == true);
       final enabled = current.isNotEmpty;
       final available = data['config']['available'] == true;
+      final blocked =
+          data['native']['permission'] == false ||
+          data['native']['channel'] == false;
       return Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -149,7 +317,7 @@ class _NotificationPanelState extends State<NotificationPanel> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
-                    enabled
+                    enabled && !blocked && widget.state.push.lastError == null
                         ? Icons.notifications_active_outlined
                         : Icons.notifications_none_rounded,
                     color: teal,
@@ -159,9 +327,7 @@ class _NotificationPanelState extends State<NotificationPanel> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    widget.state.isChild
-                        ? 'Erinnerungen'
-                        : 'Benachrichtigungen',
+                    'Auf diesem Gerät',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -172,20 +338,33 @@ class _NotificationPanelState extends State<NotificationPanel> {
             ),
             const SizedBox(height: 16),
             if (!available)
-              const Text(
-                'Benachrichtigungen sind noch nicht verfügbar.',
-                style: TextStyle(color: muted),
+              Text(
+                widget.state.isChild &&
+                        (data['config']['notice'] as String? ?? '').contains(
+                          'Eltern',
+                        )
+                    ? data['config']['notice']
+                    : 'Benachrichtigungen sind noch nicht verfügbar. Deine Neuigkeiten findest du hier in der App.',
+                style: const TextStyle(color: muted),
               )
             else ...[
               Text(
-                enabled
+                enabled && !blocked && widget.state.push.lastError == null
                     ? 'Für dieses Gerät eingeschaltet.'
+                    : enabled
+                    ? 'Bitte prüfe die Benachrichtigungen für dieses Gerät.'
                     : widget.state.isChild
                     ? 'Möchtest du an deine Lernzeit erinnert werden?'
                     : 'Erinnerungen und neue Familiennachrichten auf diesem Gerät.',
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 8),
+              if (enabled && blocked)
+                const Notice(
+                  'Android oder dein Browser blockiert die Benachrichtigungen. Bitte erlaube sie in den Einstellungen.',
+                ),
+              if (widget.state.push.lastError != null)
+                Notice(widget.state.push.lastError!),
               const Text(
                 'Persönliche Inhalte bleiben in der App.',
                 style: TextStyle(fontSize: 13, color: muted),
@@ -200,7 +379,7 @@ class _NotificationPanelState extends State<NotificationPanel> {
                   if (widget.state.isChild)
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('An meine Lernzeit erinnern'),
+                      title: const Text('Fertige Lernrunden & Lernzeit'),
                       value: reminders,
                       onChanged: (value) => setState(() => reminders = value),
                     ),
@@ -265,6 +444,12 @@ class _NotificationPanelState extends State<NotificationPanel> {
                 icon: Icons.notifications_outlined,
                 onPressed: enable,
               ),
+              if (widget.state.push.canOpenSettings)
+                TextButton.icon(
+                  onPressed: widget.state.push.openSettings,
+                  icon: const Icon(Icons.settings_outlined),
+                  label: const Text('Android-Einstellungen öffnen'),
+                ),
             ],
             if (enabled) ...[
               const SizedBox(height: 8),

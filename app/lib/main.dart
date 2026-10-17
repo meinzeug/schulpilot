@@ -78,14 +78,18 @@ class SchulpilotApp extends StatefulWidget {
   State<SchulpilotApp> createState() => _SchulpilotAppState();
 }
 
-class _SchulpilotAppState extends State<SchulpilotApp> {
+class _SchulpilotAppState extends State<SchulpilotApp>
+    with WidgetsBindingObserver {
   final messenger = GlobalKey<ScaffoldMessengerState>();
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.state.addListener(_syncInbox);
+    _syncInbox();
     widget.state.push.onOpen = () {
       widget.state.push.openPending = false;
-      router.go('/app');
+      router.go('/notifications');
     };
     widget.state.push.onForeground = () {
       if (!mounted || widget.state.user == null) return;
@@ -94,7 +98,7 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
           content: const Text('Es gibt Neuigkeiten in SCHULPILOT.'),
           action: SnackBarAction(
             label: 'Öffnen',
-            onPressed: () => router.go('/app'),
+            onPressed: () => router.go('/notifications'),
           ),
         ),
       );
@@ -102,9 +106,20 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.state.push.openPending) {
         widget.state.push.openPending = false;
-        router.go('/app');
+        router.go('/notifications');
       }
     });
+  }
+
+  void _syncInbox() => widget.state.inbox.activate(
+    (widget.state.isChild || widget.state.isParent)
+        ? (widget.state.user?['id'])
+        : null,
+  );
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    widget.state.inbox.foreground(state == AppLifecycleState.resumed);
   }
 
   late final GoRouter router = GoRouter(
@@ -122,6 +137,7 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       final protected =
           path == '/app' ||
           path == '/settings' ||
+          path == '/notifications' ||
           path == '/bestellungen' ||
           path.startsWith('/bestellen/') ||
           path.startsWith('/admin') ||
@@ -145,6 +161,9 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       }
       if (path == '/' && widget.state.user != null) return '/app';
       if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
+      if (path == '/notifications' && widget.state.isAdmin) {
+        return '/admin/push';
+      }
       if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
       return null;
     },
@@ -312,6 +331,10 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         builder: (context, s) => SettingsScreen(widget.state),
       ),
       GoRoute(
+        path: '/notifications',
+        builder: (context, s) => NotificationsScreen(widget.state),
+      ),
+      GoRoute(
         path: '/admin',
         builder: (context, s) => AdminScreen(widget.state),
       ),
@@ -339,6 +362,9 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
   );
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.state.removeListener(_syncInbox);
+    widget.state.inbox.clear();
     widget.state.push.onOpen = null;
     widget.state.push.onForeground = null;
     router.dispose();

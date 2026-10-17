@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'push_client.dart';
+import 'notification_inbox.dart';
 import 'pending_uploads.dart';
 import 'lesson_voice.dart';
 
@@ -179,6 +180,7 @@ class AppState extends ChangeNotifier {
   final FlutterSecureStorage storage;
   late final PendingUploads pendingUploads = PendingUploads(storage);
   late final PushClient push = PushClient(api);
+  late final NotificationInbox inbox = NotificationInbox(api);
   Json? user;
   bool needsSetup = false;
 
@@ -198,7 +200,10 @@ class AppState extends ChangeNotifier {
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
     this.api.onUnauthorized = () => Future<void>.microtask(clear);
-    push.onActivity = refreshState;
+    push.onActivity = () {
+      refreshState();
+      inbox.refresh();
+    };
   }
   bool get isParent => user?['role'] == 'parent';
   bool get isChild => user?['role'] == 'child';
@@ -259,6 +264,7 @@ class AppState extends ChangeNotifier {
     if (user != null && user!['id'] != response['user']['id']) {
       await LessonVoiceSession.shared.stop();
       collectionViews.clear();
+      inbox.clear();
       await push.forget();
       await pendingUploads.clear();
     }
@@ -305,6 +311,7 @@ class AppState extends ChangeNotifier {
   Future<void> clear() async {
     await LessonVoiceSession.shared.stop();
     collectionViews.clear();
+    inbox.clear();
     await push.forget();
     api.token = null;
     user = null;

@@ -11,7 +11,9 @@ import argparse
 import json
 import os
 import re
+import shlex
 import stat
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -94,7 +96,13 @@ def native_login(credentials):
         length = min(256, len(fields[index].get("text", "")))
         adb("shell", "input", "keyevent", "123")
         adb("shell", "input", "keyevent", *(["67"] * (length + 4)))
-        adb("shell", "input", "text", value)
+        result = subprocess.run(
+            [str(Path.home() / "android-sdk/platform-tools/adb"), "-s", "emulator-5580", "shell"],
+            input=("input text " + shlex.quote(value) + "\n").encode(),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
+        )
+        if result.returncode:
+            raise PushQaError("protected_native_input_failed")
         adb("shell", "input", "keyevent", "4")
     fields = [node for node in nodes() if node.get("class") == "android.widget.EditText"]
     if fields[0].get("text") != credentials["child_username"]:

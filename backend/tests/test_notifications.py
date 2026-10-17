@@ -201,6 +201,9 @@ def test_fcm_http_v1_neutral_payload_expiry_and_invalid_registration(api, tmp_pa
     message = sent[0]["message"]
     assert set(message["data"]) == {"route"} and message["data"]["route"] == "/app"
     assert message["android"]["ttl"] == "10s" and message["android"]["notification"]["visibility"] == "PRIVATE"
+    assert message["android"]["priority"] == "high"
+    assert message["android"]["notification"]["channel_id"] == "schulpilot_updates_v1"
+    assert message["android"]["notification"]["icon"] == "ic_notification"
     assert message["webpush"]["headers"]["TTL"] == "10"
     assert all(k not in json.dumps(message) for k in ["child_id", "family_id", "answer", "topic", "grade"])
     moment = int(datetime(2026, 10, 14, 19, 59, 50, tzinfo=ZoneInfo("Europe/Berlin")).timestamp())

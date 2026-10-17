@@ -308,9 +308,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Erinnerungen'), findsOneWidget);
+    expect(find.text('Auf diesem Gerät'), findsOneWidget);
     expect(
-      find.text('Benachrichtigungen sind noch nicht verfügbar.'),
+      find.textContaining('Benachrichtigungen sind noch nicht verfügbar.'),
       findsOneWidget,
     );
     expect(find.textContaining('Firebase'), findsNothing);

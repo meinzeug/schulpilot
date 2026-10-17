@@ -156,6 +156,7 @@ def reserve_one(version):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-code", type=int, default=15)
+    parser.add_argument("--foreground", action="store_true", help="One additional explicit foreground test on this own device.")
     args = parser.parse_args()
     report_file = ROOT / "artifacts/android-push-background-result.json"
     report = {
@@ -169,6 +170,7 @@ def main():
         "notification_opens_correct_child": False,
         "fixture_device_removed": False,
         "app_logged_out": False,
+        "bell_visible": False,
     }
     observer = None
     logged_in = False
@@ -230,6 +232,9 @@ def main():
         )
         native_login(credentials)
         logged_in = True
+        press("Benachrichtigungen")
+        wait("Deine Neuigkeiten")
+        report["bell_visible"] = True
         press("Konto")
         if credentials["child_username"] not in labels(nodes()):
             raise PushQaError("native_identity_mismatch")
@@ -306,11 +311,41 @@ def main():
         if not report["android_notification_visible"]:
             raise PushQaError("android_background_notification_not_visible")
         tap_node(seek_label(BACKGROUND_BODY))
-        wait("Heute")
+        wait("Deine Neuigkeiten")
         press("Konto")
         if credentials["child_username"] not in labels(nodes()):
             raise PushQaError("notification_opened_wrong_or_unauthenticated_account")
         report["notification_opens_correct_child"] = True
+        if args.foreground:
+            # The background message above was queued only AFTER STOPPED was
+            # observed. This second, separately checkpointed action tests the
+            # Flutter callback and its neutral native foreground presentation.
+            from android_push import mark_send
+
+            seek_label("Test an dieses Gerät senden")
+            mark_send(report["installed_code"])
+            before = own_notifications()
+            tap_node(seek_label("Test an dieses Gerät senden"))
+            report["requested_messages"] += 1
+            report["foreground_in_app_visible"] = False
+            until = time.monotonic() + 35
+            while time.monotonic() < until:
+                values = labels(nodes())
+                report["foreground_in_app_visible"] |= "Es gibt Neuigkeiten in SCHULPILOT." in values
+                if own_notifications() != before:
+                    break
+                time.sleep(.3)
+            # NotificationRecord alone is insufficient: inspect the actual
+            # neutral text in Android's visible notification shade as well.
+            foreground, _, _ = activity_state()
+            report["foreground_resumed_at_delivery"] = foreground
+            adb("shell", "cmd", "statusbar", "expand-notifications")
+            report["foreground_android_visible"] = BACKGROUND_BODY in labels(nodes())
+            adb("shell", "cmd", "statusbar", "collapse")
+            result = protected_request(credentials, device_id, registered_after, "status")
+            report["foreground_fcm_accepted"] = result.get("status") == "accepted"
+            if not (report["foreground_fcm_accepted"] and report["foreground_android_visible"] and foreground):
+                raise PushQaError("foreground_native_delivery_not_fully_observed")
     except Exception as error:
         report["blocker"] = str(error) if isinstance(error, PushQaError) else "unexpected_" + type(error).__name__
     finally:

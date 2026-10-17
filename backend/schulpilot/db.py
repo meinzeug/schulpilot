@@ -234,6 +234,15 @@ class PushDelivery(Base):
     sent = Column(Integer)
 
 
+class NotificationRead(Base):
+    """Only an acknowledgement; notification content stays in its source."""
+    __tablename__ = "notification_reads"
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    event_key = Column(String(80), primary_key=True)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
 class SchoolDay(Base):
     __tablename__ = "school_days"
     id = Column(String(32), primary_key=True, default=uid)

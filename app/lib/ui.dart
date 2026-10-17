@@ -649,6 +649,7 @@ class WorkspaceShell extends StatelessWidget {
       return 1;
     }
     if (state.isChild && path.startsWith('/material/')) return 2;
+    if (path == '/notifications') return entries.length - 1;
     return 0;
   }
 
@@ -670,7 +671,13 @@ class WorkspaceShell extends StatelessWidget {
     final displayName = name == null || name.isEmpty ? 'Konto' : name;
 
     return Scaffold(
-      appBar: desktop ? null : AppBar(title: brand(), toolbarHeight: 68),
+      appBar: desktop
+          ? null
+          : AppBar(
+              title: brand(),
+              toolbarHeight: 68,
+              actions: [NotificationBell(state), const SizedBox(width: 12)],
+            ),
       bottomNavigationBar: desktop
           ? null
           : NavigationBar(
@@ -704,6 +711,7 @@ class WorkspaceShell extends StatelessWidget {
                         : entries[selected].$2,
                     displayName: displayName,
                     compact: rail,
+                    notificationBell: NotificationBell(state),
                   ),
                 Expanded(
                   child: SelectionArea(
@@ -940,11 +948,13 @@ class _WorkspaceHeader extends StatelessWidget {
   final String section;
   final String displayName;
   final bool compact;
+  final Widget notificationBell;
   const _WorkspaceHeader({
     required this.roleLabel,
     required this.section,
     required this.displayName,
     required this.compact,
+    required this.notificationBell,
   });
 
   @override
@@ -989,6 +999,8 @@ class _WorkspaceHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
+        notificationBell,
+        const SizedBox(width: 8),
         Tooltip(
           message: 'Konto öffnen',
           child: TextButton(
@@ -1022,6 +1034,26 @@ class _WorkspaceHeader extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+class NotificationBell extends StatelessWidget {
+  final AppState state;
+  const NotificationBell(this.state, {super.key});
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: state.inbox,
+    builder: (context, _) => IconButton(
+      key: const ValueKey('notification-bell'),
+      tooltip: state.isAdmin ? 'Push-Status' : 'Benachrichtigungen',
+      onPressed: () =>
+          context.go(state.isAdmin ? '/admin/push' : '/notifications'),
+      icon: Badge(
+        isLabelVisible: !state.isAdmin && state.inbox.unread > 0,
+        label: Text('${state.inbox.unread > 99 ? '99+' : state.inbox.unread}'),
+        child: const Icon(Icons.notifications_none_rounded),
+      ),
     ),
   );
 }
