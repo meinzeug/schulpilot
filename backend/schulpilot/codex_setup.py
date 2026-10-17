@@ -2,9 +2,11 @@
 
 import json
 import os
+import re
 
 import httpx
 from fastapi import HTTPException
+from pydantic import BaseModel, Field, ValidationError
 
 from .config import settings
 from .db import DB, ProviderConfig, uid
@@ -37,8 +39,10 @@ def worker_health():
             return unavailable
         data = response.json()
         if not (
-            data.get("isolated") is True and data.get("cli_search") is True
-            and data.get("search") is settings.codex_web_search and data.get("cli_version") == CLI_VERSION
+            data.get("isolated") is True
+            and data.get("cli_search") is True
+            and data.get("search") is settings.codex_web_search
+            and data.get("cli_version") == CLI_VERSION
         ):
             return {"ready": False, "status": "Codex-Isolation, Websuche oder CLI-Version ist nicht bestätigt."}
         if data.get("auth_mode") != settings.codex_auth_mode:
@@ -49,7 +53,8 @@ def worker_health():
         return {
             "ready": True,
             "status": "Isolierter Codex-Worker erreichbar, eigene Anmeldung vorhanden. "
-            + search_policy_status() + " Ein echter Bild-/Aufgabentest ist separat erforderlich.",
+            + search_policy_status()
+            + " Ein echter Bild-/Aufgabentest ist separat erforderlich.",
             "web_search": settings.codex_web_search,
             "cli_search": True,
         }
@@ -76,15 +81,15 @@ def configure():
         # This is an explicit replacement, never an OpenRouter fallback.
         config.provider = "codex"
         config.model = config.extraction_model = MODEL
+        config.reasoning_effort = "medium"
         config.encrypted_key = None
         config.image_capable = config.structured_capable = True
         config.capability_evidence = (
             "Official Codex docs checked 2026-10-15; CLI 0.162.1; --search; image/schema; actual probe required"
-            + "; web_search=" + str(settings.codex_web_search).lower()
+            + "; web_search="
+            + str(settings.codex_web_search).lower()
         )
-        config.extraction_capability_evidence = (
-            "Official Codex docs checked 2026-10-15; CLI 0.162.1; OCR image/schema; actual probe required; web_search=false"
-        )
+        config.extraction_capability_evidence = "Official Codex docs checked 2026-10-15; CLI 0.162.1; OCR image/schema; actual probe required; web_search=false"
         config.production_block_reason = (
             "Codex ist ausgewählt. Eigene Server-Anmeldung und erfolgreicher künstlicher Bild-/Aufgabentest fehlen."
         )
@@ -103,9 +108,14 @@ def configure():
         config.revision += 1
         audit(db, "local-operator", "provider.codex_selected", settings.codex_auth_mode)
         audit(
-            db, "local-operator", "provider.codex_search_policy",
-            "account_web_search_no_preexecution_search_cap" if settings.codex_auth_mode == "account"
-            and settings.codex_web_search else "api_single_search" if settings.codex_web_search else "source_only",
+            db,
+            "local-operator",
+            "provider.codex_search_policy",
+            "account_web_search_no_preexecution_search_cap"
+            if settings.codex_auth_mode == "account" and settings.codex_web_search
+            else "api_single_search"
+            if settings.codex_web_search
+            else "source_only",
         )
     print(
         json.dumps(
@@ -142,3 +152,76 @@ def enqueue_probe():
             }
         )
     )
+
+
+# This is a private protocol schema, not a list of guessed provider capabilities.
+# Actual model IDs/effort options always come from the isolated pinned CLI.
+class CatalogModel(BaseModel):
+    model_config = {"extra": "forbid", "strict": True}
+    id: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$")
+    name: str = Field(min_length=1, max_length=160)
+    reasoning_efforts: list[str] = Field(max_length=32)
+    default_reasoning_effort: str
+    input_modalities: list[str] = Field(max_length=3)
+    hidden: bool
+
+
+def worker_models():
+    """Read bounded metadata over the fixed private socket; never infer or log in."""
+    unavailable = "Der Codex-Modellkatalog ist gerade nicht erreichbar. Bitte später erneut laden."
+    if not settings.codex_approved or not settings.codex_socket:
+        raise HTTPException(503, "Der isolierte Codex-Lernworker ist noch nicht eingerichtet.")
+    try:
+        transport = httpx.HTTPTransport(uds=settings.codex_socket)
+        with httpx.Client(transport=transport, timeout=httpx.Timeout(12, connect=2), follow_redirects=False) as client:
+            with client.stream("GET", "http://localhost/models") as response:
+                if response.status_code == 429:
+                    raise HTTPException(
+                        429, "Der Codex-Worker ist gerade belegt. Bitte den Modellkatalog später laden."
+                    )
+                if response.status_code != 200:
+                    raise HTTPException(503, unavailable)
+                raw = bytearray()
+                for chunk in response.iter_bytes():
+                    raw.extend(chunk)
+                    if len(raw) > 256 * 1024:
+                        raise HTTPException(503, "Der Codex-Modellkatalog ist zu groß oder ungültig.")
+        data = json.loads(raw)
+        if (
+            not isinstance(data, dict)
+            or set(data) != {"models", "source", "cli_version"}
+            or (
+                data["source"] != "codex_cli"
+                or data["cli_version"] != CLI_VERSION
+                or not isinstance(data["models"], list)
+                or not 1 <= len(data["models"]) <= 200
+            )
+        ):
+            raise ValueError("invalid catalog")
+        models, seen = [], set()
+        for item in data["models"]:
+            model = CatalogModel.model_validate(item)
+            if model.id in seen or any(ord(c) < 32 for c in model.name):
+                raise ValueError("invalid catalog entry")
+            seen.add(model.id)
+            efforts = model.reasoning_efforts
+            if (
+                len(efforts) != len(set(efforts))
+                or any(
+                    not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", effort)
+                    for effort in [*efforts, model.default_reasoning_effort]
+                )
+                or (efforts and model.default_reasoning_effort not in efforts)
+            ):
+                raise ValueError("invalid effort metadata")
+            if len(model.input_modalities) != len(set(model.input_modalities)) or any(
+                mode not in ("text", "image", "audio") for mode in model.input_modalities
+            ):
+                raise ValueError("invalid input modalities")
+            models.append(model.model_dump())
+        return {"models": models, "source": "codex_cli", "cli_version": CLI_VERSION}
+    except HTTPException:
+        raise
+    except (httpx.HTTPError, ValueError, TypeError, AttributeError, ValidationError):
+        # Do not echo the worker's response, auth data or exception text.
+        raise HTTPException(503, unavailable) from None

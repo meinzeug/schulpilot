@@ -301,6 +301,7 @@ class MessageRequest(Strict):
 class ProviderUpdate(Strict):
     provider: Literal["disabled", "openai", "openrouter", "codex"]
     model: str = Field(max_length=160)
+    reasoning_effort: str = Field(default="medium", max_length=32, pattern=r"^[a-z][a-z0-9_-]{0,31}$")
     extraction_model: str = Field(default="", max_length=160)
     extraction_capability_evidence: str = Field(default="", max_length=500)
     api_key: str | None = Field(default=None, max_length=1024)

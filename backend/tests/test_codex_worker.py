@@ -21,6 +21,13 @@ worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
 
 
+@pytest.fixture(autouse=True)
+def clean_database():
+    # This isolated process/HTTP contract never uses the application database.
+    # Do not rebuild its full schema for each synthetic worker request.
+    yield
+
+
 def job(mode="api_key", web_search=None):
     return {
         "auth_mode": mode,
@@ -55,6 +62,7 @@ def login(tmp_path, monkeypatch):
 def isolated_worker_policy(monkeypatch):
     monkeypatch.delenv("CODEX_WEB_SEARCH", raising=False)
     monkeypatch.setattr(worker, "last_failure", None)
+    monkeypatch.setattr(worker, "catalog_cache", None)
 
 
 def test_worker_rejects_host_missing_login_mode_mismatch_and_busy(login, monkeypatch):
@@ -91,6 +99,10 @@ def test_worker_rejects_host_missing_login_mode_mismatch_and_busy(login, monkeyp
         {"image": "not-base64"},
         {"system": []},
         {"web_search": "true"},
+        {"reasoning_effort": "high\n[tools]"},
+        {"reasoning_effort": "x" * 33},
+        {"reasoning_effort": None},
+        {"reasoning_effort": True},
     ],
 )
 def test_invalid_worker_contract(change):
@@ -128,11 +140,40 @@ def test_login_permissions_and_refreshed_auth(login, tmp_path):
     home.mkdir()
     refreshed = {"tokens": {"access_token": "SYNTHETIC-ACCESS", "refresh_token": "SYNTHETIC-REFRESH"}}
     (home / "auth.json").write_text(json.dumps(refreshed))
+    (home / "auth.json").chmod(0o600)
     worker.persist_refreshed_auth(home, original)
     assert worker.auth_mode() == "account" and login.stat().st_mode & 0o077 == 0
     # A concurrent new manual login wins over a stale job's refresh.
     worker.persist_refreshed_auth(home, original)
     assert json.loads(login.read_text()) == refreshed
+
+
+@pytest.mark.parametrize("effort", [None, "medium", "high", "xhigh", "future_effort-2"])
+def test_reasoning_effort_reaches_both_cli_and_actual_upstream(effort, login, monkeypatch):
+    payload = job()
+    if effort is not None:
+        payload["reasoning_effort"] = effort
+    worker.validate_job(payload)
+    chosen = effort or "medium"
+    calls = []
+    monkeypatch.setattr(worker.httpx, "Client", lambda **_: Upstream(calls))
+
+    def reasoning_cli(args, **kwargs):
+        config = __import__("tomllib").loads((Path(kwargs["env"]["CODEX_HOME"]) / "config.toml").read_text())
+        assert config["model_reasoning_effort"] == chosen
+        return fake_cli(args, **kwargs)
+
+    monkeypatch.setattr(worker.subprocess, "run", reasoning_cli)
+    assert worker.run(payload)["data"] == {"value": "six"}
+    assert calls[0]["body"]["reasoning"] == {"effort": chosen}
+
+
+def test_legacy_medium_generation_does_not_need_catalog(login, monkeypatch):
+    monkeypatch.setattr(worker, "isolated", lambda: True)
+    monkeypatch.setattr(worker, "read_catalog", lambda *_: pytest.fail("generation must not read the catalog"))
+    monkeypatch.setattr(worker, "run", lambda body: {"effort": worker.reasoning_effort(body)})
+    with TestClient(worker.app) as client:
+        assert client.post("/generate", json=job()).json() == {"effort": "medium"}
 
 
 def test_search_allowlist_and_api_reservation():
@@ -341,7 +382,8 @@ def test_actual_tool_policy_and_measured_search_count(login, monkeypatch, mode, 
 
 @pytest.mark.skipif(shutil.which("codex") is None, reason="Pinned CLI is not installed in generic CI")
 @pytest.mark.parametrize("mode", ["api_key", "account"])
-def test_real_installed_cli_against_fake_upstream(login, monkeypatch, mode):
+@pytest.mark.parametrize("effort", ["medium", "xhigh"])
+def test_real_installed_cli_against_fake_upstream(login, monkeypatch, mode, effort):
     if mode == "account":
         claims = {
             "exp": 4_000_000_000,
@@ -372,8 +414,9 @@ def test_real_installed_cli_against_fake_upstream(login, monkeypatch, mode):
         )
     calls = []
     monkeypatch.setattr(worker.httpx, "Client", lambda **_: Upstream(calls))
-    assert worker.run(job(mode))["data"] == {"value": "six"}
+    assert worker.run({**job(mode), "reasoning_effort": effort})["data"] == {"value": "six"}
     assert len(calls) == 1
+    assert calls[0]["body"]["reasoning"] == {"effort": effort}
     assert calls[0]["url"] == (
         "https://api.openai.com/v1/responses"
         if mode == "api_key"

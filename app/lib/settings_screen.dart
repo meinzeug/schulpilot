@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'codex_model_picker.dart';
 import 'dashboard.dart';
 import 'notification_panel.dart';
 import 'ui.dart';
@@ -890,6 +891,7 @@ class ProviderForm extends StatefulWidget {
 class _ProviderFormState extends State<ProviderForm> {
   late Json values = Map<String, dynamic>.from(widget.config);
   late final model = TextEditingController(text: values['model']);
+  final codexPicker = GlobalKey<CodexModelPickerState>();
   final keyField = TextEditingController();
   late final Map<String, TextEditingController> fields = {
     for (final field in [
@@ -961,6 +963,7 @@ class _ProviderFormState extends State<ProviderForm> {
         DropdownButtonFormField<String>(
           key: ValueKey(values['provider']),
           initialValue: values['provider'],
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'Provider'),
           items: const [
             DropdownMenuItem(value: 'disabled', child: Text('Deaktiviert')),
@@ -977,12 +980,25 @@ class _ProviderFormState extends State<ProviderForm> {
           onChanged: (v) => setState(() => values['provider'] = v),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: model,
-          decoration: const InputDecoration(
-            labelText: 'Modell-ID für Lerneinheiten (laut Anbieter)',
+        if (values['provider'] == 'codex')
+          CodexModelPicker(
+            key: codexPicker,
+            api: widget.state.api,
+            endpoint: widget.endpoint,
+            model: model,
+            extractionModel: fields['extraction_model']!,
+            reasoningEffort: values['reasoning_effort'] ?? 'medium',
+            savedConfig: widget.config,
+            onReasoningChanged: (value) =>
+                setState(() => values['reasoning_effort'] = value),
+          )
+        else
+          TextField(
+            controller: model,
+            decoration: const InputDecoration(
+              labelText: 'Modell-ID für Lerneinheiten (laut Anbieter)',
+            ),
           ),
-        ),
         const SizedBox(height: 16),
         TextField(
           controller: keyField,
@@ -1068,13 +1084,14 @@ class _ProviderFormState extends State<ProviderForm> {
           ('max_output_tokens', 'Maximale Ausgabetokens'),
           ('global_limit_micros', 'Unternehmensbudget pro Monat (Mikro-USD)'),
         ])
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: TextField(
-              controller: fields[field.$1],
-              decoration: InputDecoration(labelText: field.$2),
+          if (values['provider'] != 'codex' || field.$1 != 'extraction_model')
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: TextField(
+                controller: fields[field.$1],
+                decoration: InputDecoration(labelText: field.$2),
+              ),
             ),
-          ),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -1082,6 +1099,9 @@ class _ProviderFormState extends State<ProviderForm> {
             ActionButton(
               label: 'Konfiguration sicher speichern',
               onPressed: () async {
+                if (values['provider'] == 'codex') {
+                  codexPicker.currentState?.validateForSave();
+                }
                 final body = <String, dynamic>{
                   for (final k in [
                     'provider',
@@ -1092,6 +1112,8 @@ class _ProviderFormState extends State<ProviderForm> {
                   ])
                     k: values[k],
                   'model': model.text,
+                  if (values['provider'] == 'codex')
+                    'reasoning_effort': values['reasoning_effort'] ?? 'medium',
                   'api_key': keyField.text.isEmpty ? null : keyField.text,
                   'openrouter_free_only':
                       values['openrouter_free_only'] ?? true,

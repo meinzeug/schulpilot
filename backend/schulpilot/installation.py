@@ -288,6 +288,13 @@ def check_provider(actor=Depends(setup_operator), db=Depends(get_db)):
     return provider_check(actor, db)
 
 
+@router.get("/setup/provider/codex/models")
+def setup_codex_models(actor=Depends(setup_operator), db=Depends(get_db)):
+    from .admin import provider_model_catalog
+
+    return provider_model_catalog(actor, db)
+
+
 def test_mail(data, actor, db):
     from .mail import send_message
 

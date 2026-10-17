@@ -44,6 +44,56 @@ def test_first_installation_is_closed_to_accounts_until_operator_unlock(api):
     assert "bootstrap_digest" not in api.get("/api/setup/config").text
 
 
+def test_codex_catalog_requires_the_live_single_use_setup_cookie(api, monkeypatch):
+    calls = []
+    catalog = {
+        "source": "codex_cli",
+        "cli_version": "0.162.1",
+        "models": [{
+            "id": "synthetic-model",
+            "name": "Synthetic model",
+            "reasoning_efforts": ["medium", "high"],
+            "default_reasoning_effort": "medium",
+            "input_modalities": ["text", "image"],
+            "hidden": False,
+        }],
+    }
+
+    def read(actor, db):
+        calls.append(actor)
+        return catalog
+
+    monkeypatch.setattr("schulpilot.admin.provider_model_catalog", read)
+    fresh()
+    path = "/api/setup/provider/codex/models"
+    assert api.get(path).status_code == 401
+    assert calls == []
+    unlock(api)
+    response = api.get(path)
+    assert response.status_code == 200 and response.json() == catalog
+    assert calls == ["initial-setup"]
+    with TestClient(app, headers=HEADERS) as untrusted:
+        assert untrusted.get(path).status_code == 401
+    assert calls == ["initial-setup"]
+    assert finish(api).status_code == 201
+    assert api.get(path).status_code == 409
+    assert calls == ["initial-setup"]
+
+
+def test_expired_setup_session_cannot_read_codex_catalog(api, monkeypatch):
+    from schulpilot.db import Token
+
+    def forbidden(*args):
+        raise AssertionError("Expired setup must not reach the private worker")
+
+    monkeypatch.setattr("schulpilot.admin.provider_model_catalog", forbidden)
+    unlock(api)
+    with DB.begin() as db:
+        for token in db.scalars(select(Token).where(Token.purpose == "setup")):
+            token.expires = int(now()) - 1
+    assert api.get("/api/setup/provider/codex/models").status_code == 401
+
+
 def test_settings_are_encrypted_persisted_and_secrets_never_echoed(api):
     unlock(api)
     body = {

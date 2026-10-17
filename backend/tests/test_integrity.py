@@ -205,7 +205,10 @@ INSERT INTO usage(id,family_id,child_id,job_id,provider,model,config_revision,fu
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0012"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0013"
+        assert db.execute("select reasoning_effort,revision,model from provider_config where id=1").fetchone() == (
+            "medium", 1, "fixture/model:free"
+        )
         assert db.execute("select count(*) from google_identities").fetchone()[0] == 0
         assert db.execute("select count(*) from google_flows").fetchone()[0] == 0
         assert db.execute("select count(*) from tutor_turns").fetchone()[0] == 0

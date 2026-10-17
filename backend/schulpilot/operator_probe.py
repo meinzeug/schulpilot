@@ -7,7 +7,14 @@ from fastapi import HTTPException
 from sqlalchemy import select, update
 
 from .db import DB, Installation, OperatorJob, ProviderConfig, ServiceState, UsageBucket, now
-from .providers import ProviderError, config_for_function, external_allowed, request_provider, settle
+from .providers import (
+    ProviderError,
+    config_for_function,
+    external_allowed,
+    request_provider,
+    routing_fingerprint,
+    settle,
+)
 from .security import audit, insert_ignore, rate_limit
 
 
@@ -98,6 +105,8 @@ def work_one(should_continue=lambda: True):
                     "function": function,
                     "provider": config.provider,
                     "model": config.model,
+                    "reasoning_effort": config.reasoning_effort or "medium",
+                    "routing_fingerprint": routing_fingerprint(config),
                     "available": False,
                     "cost_micros_usd": None,
                     "status": "reserved",

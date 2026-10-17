@@ -1,5 +1,13 @@
 # Codex-Lernprovider
 
+## Modelle und Reasoning im Adminbereich
+
+Bei Codex bietet das Anbieterformular die Modelle der eigenen isolierten CLI als Auswahl an. Die Denkstufen stammen aus `supportedReasoningEfforts` des Katalogs. Bei einem abweichenden Bildmodell gilt die gemeinsame Auswahl beider Modelle. Die gewählte Stufe wird gespeichert und sowohl an `model_reasoning_effort` der CLI als auch an `reasoning.effort` der tatsächlichen Anbieteranfrage weitergegeben. Andere Anbieter behalten ihre bisherigen Modellfelder.
+
+Der geschützte Katalogaufruf startet keine Lernanfrage und legt keinen Thread oder Turn an. Anmeldung und Metadatenabfrage bleiben im eigenen Worker; Zugangsdaten erscheinen nicht im Client. Der Erstassistent verwendet denselben Katalog nur mit gültigem Einrichtungscookie. Katalogausfälle verändern eine gespeicherte Auswahl nicht. Katalogeinträge sind keine Garantie für Modellberechtigung oder funktionierende Bild-/Schemaausgaben; Änderungen durchlaufen weiterhin den regulären künstlichen Prüflauf. Größeres Reasoning erhöht weder Zeit- noch Kosten-/Aufruflimits.
+
+Migration 0013 ergänzt `provider_config.reasoning_effort` mit `medium`. Bestehende Modelle, Revisionen und Freigaben bleiben erhalten. Eine andere Denkstufe zählt wie eine Modelländerung zur revisionsgebundenen Konfiguration. [Offizielle Metadaten](https://learn.chatgpt.com/docs/app-server#list-models-modellist), [Katalog ist kein Berechtigungsnachweis](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server#using-codex-app-server).
+
 Betreiberauftrag vom 15.10.2026: Codex CLI dauerhaft für die gemeinsame Web-/Android-API auswählen, mit `--search`. Die frühere OpenRouter-Free-Auswahl wird damit ausdrücklich ersetzt. Gespeicherte und begonnene Einheiten werden dabei nicht neu geschrieben. Ein Modellwechsel allein beweist keine fachlich richtigen Aufgaben.
 
 ## Anmeldung auf dem Server

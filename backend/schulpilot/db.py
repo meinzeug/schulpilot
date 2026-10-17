@@ -435,6 +435,7 @@ class ProviderConfig(Base):
     revision = Column(Integer, default=1, server_default="1", nullable=False)
     provider = Column(String(20), default="openrouter", nullable=False)
     model = Column(String(160), default="", nullable=False)
+    reasoning_effort = Column(String(32), default="medium", server_default="medium", nullable=False)
     extraction_model = Column(String(160), default="", server_default="", nullable=False)
     extraction_capability_evidence = Column(String(500), default="", server_default="", nullable=False)
     encrypted_key = Column(Text)

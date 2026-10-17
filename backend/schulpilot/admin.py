@@ -6,7 +6,7 @@ from . import schemas as s
 from .config import runtime_settings, settings
 from .db import Audit, Family, ProviderConfig, Usage, get_db
 from .providers import usage_summary
-from .security import admin, audit, decrypt, encrypt, family_access, parent
+from .security import admin, audit, decrypt, encrypt, family_access, parent, rate_limit
 
 router = APIRouter(tags=["Betrieb und Kontingente"])
 
@@ -36,10 +36,57 @@ def update_provider(data: s.ProviderUpdate, p=Depends(admin), db=Depends(get_db)
     return save_provider(data, p.user.id, db)
 
 
+@router.get("/admin/provider/codex/models")
+def codex_models(p=Depends(admin), db=Depends(get_db)):
+    return provider_model_catalog(p.user.id, db)
+
+
+def provider_model_catalog(actor, db):
+    from .codex_setup import worker_models
+
+    rate_limit(db, "codex-models:" + actor, 12, 60, commit=False)
+    rate_limit(db, "codex-models-global", 60, 60, commit=False)
+    audit(db, actor, "admin.codex_models_read", "codex_cli")
+    db.commit()
+    return worker_models()
+
+
+def validate_codex_selection(catalog, values, config):
+    models = {m["id"]: m for m in catalog["models"]}
+    text_id = values["model"]
+    image_id = values.get("extraction_model", config.extraction_model) or text_id
+    effort = values.get("reasoning_effort", config.reasoning_effort)
+    if text_id not in models or image_id not in models:
+        raise HTTPException(422, "Ein ausgewähltes Codex-Modell ist für diese Anmeldung nicht im Katalog verfügbar.")
+    text, image = models[text_id], models[image_id]
+    if "text" not in text["input_modalities"]:
+        raise HTTPException(422, "Das gewählte Lernmodell unterstützt laut Katalog keine Texteingaben.")
+    if "image" not in image["input_modalities"]:
+        raise HTTPException(422, "Das gewählte Bildmodell unterstützt laut Katalog keine Fotos.")
+    if effort not in text["reasoning_efforts"] or effort not in image["reasoning_efforts"]:
+        raise HTTPException(422, "Diese Denkstufe wird nicht von beiden gewählten Codex-Modellen unterstützt.")
+
+
 def save_provider(data, actor, db):
-    config = db.get(ProviderConfig, 1)
+    catalog, catalog_error = None, None
+    previous_stop = None
+    if data.provider == "codex":
+        previous_stop = db.scalar(select(ProviderConfig.emergency_stop).where(ProviderConfig.id == 1))
+        try:
+            catalog = provider_model_catalog(actor, db)
+        except HTTPException as error:
+            if error.status_code not in (429, 503):
+                raise
+            catalog_error = error
+    # Fetch metadata before this lock, so slow CLI discovery cannot hold up
+    # the emergency stop. Re-read under the lock for safe omission/fallback.
+    config = db.scalar(
+        select(ProviderConfig).where(ProviderConfig.id == 1).with_for_update().execution_options(populate_existing=True)
+    )
+    if previous_stop is False and config.emergency_stop and not data.emergency_stop:
+        raise HTTPException(409, "Der Notfallstopp wurde inzwischen aktiviert. Bitte die Einstellungen neu laden.")
     values = data.model_dump(exclude={"api_key"})
-    for field in ("openrouter_free_only", "openrouter_require_zdr"):
+    for field in ("openrouter_free_only", "openrouter_require_zdr", "reasoning_effort"):
         if field not in data.model_fields_set:
             values.pop(field)
     free_only = values.get("openrouter_free_only", config.openrouter_free_only)
@@ -56,14 +103,22 @@ def save_provider(data, actor, db):
         "provider",
         "model",
         "extraction_model",
+        "reasoning_effort",
         "capability_evidence",
         "extraction_capability_evidence",
         "openrouter_free_only",
         "openrouter_require_zdr",
     )
-    if data.api_key or any(
+    routing_changed = bool(data.api_key) or any(
         values.get(field, getattr(config, field)) != getattr(config, field) for field in routing_fields
-    ):
+    )
+    if data.provider == "codex":
+        if catalog_error:
+            if routing_changed:
+                raise catalog_error
+        else:
+            validate_codex_selection(catalog, values, config)
+    if routing_changed:
         config.production_block_reason = "Neue Modellkonfiguration: datenschutzkonformen Endpunkt zuerst mit künstlichen Daten prüfen und lokal freigeben."
     if data.provider != config.provider:
         config.encrypted_key = None
@@ -74,6 +129,8 @@ def save_provider(data, actor, db):
     db.execute(update(ProviderConfig).where(ProviderConfig.id == 1).values(revision=ProviderConfig.revision + 1))
     db.refresh(config)
     config.status = "Konfiguration gespeichert. Verbindung noch nicht geprüft."
+    if catalog_error:
+        config.status = "Konfiguration gespeichert. Codex-Modellauswahl unverändert; Katalog gerade nicht erreichbar."
     audit(db, actor, "admin.provider_update", data.provider)
     db.commit()
     return config_data(config)

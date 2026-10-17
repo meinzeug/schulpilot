@@ -12,9 +12,11 @@ import math
 import os
 import re
 import secrets
+import selectors
 import subprocess
 import tempfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -29,6 +31,22 @@ SEARCH_CONTEXT_TOKENS = 128_000  # Conservative hosted search context ceiling.
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 slot = threading.Lock()
 last_failure = None
+CATALOG_TIMEOUT = 9
+CATALOG_CACHE_SECONDS = 30
+CATALOG_OUTPUT_LIMIT = 1024 * 1024
+CATALOG_RESPONSE_LIMIT = 256 * 1024
+catalog_cache = None
+
+
+def reasoning_effort(body):
+    # The pinned CLI defines ReasoningEffort as an advertised nonempty string,
+    # not a fixed enum. The backend checks membership when saving a route.
+    # Older queued jobs keep their already-tested medium setting without a
+    # catalog lookup or a second acquisition of the shared worker slot.
+    value = body.get("reasoning_effort", "medium")
+    if not isinstance(value, str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", value):
+        raise HTTPException(422, "Ungültige Codex-Denkstufe.")
+    return value
 
 
 def auth_mode(path=None):
@@ -40,7 +58,7 @@ def auth_mode(path=None):
         if isinstance(data.get("OPENAI_API_KEY"), str) and data["OPENAI_API_KEY"]:
             return "api_key"
         tokens = data.get("tokens") or {}
-        if tokens.get("access_token") and tokens.get("refresh_token"):
+        if all(isinstance(tokens.get(name), str) and tokens[name] for name in ("access_token", "refresh_token")):
             return "account"
     except (OSError, ValueError, TypeError, AttributeError):
         pass
@@ -102,7 +120,7 @@ def rejected_parameter(raw):
 
 
 def validate_job(body):
-    if set(body) != {
+    if set(body) - {"reasoning_effort"} != {
         "auth_mode",
         "web_search",
         "model",
@@ -116,6 +134,7 @@ def validate_job(body):
         "output_rate",
     }:
         raise HTTPException(422, "Ungültiger Providerauftrag.")
+    reasoning_effort(body)
     if body["auth_mode"] not in ("api_key", "account"):
         raise HTTPException(422, "Ungültige Codex-Anmeldeart.")
     if type(body["web_search"]) is not bool:
@@ -183,7 +202,7 @@ def upstream_body(body):
                   if body["web_search"] else []),
         "tool_choice": "auto" if body["web_search"] else "none",
         "parallel_tool_calls": False,
-        "reasoning": {"effort": "medium"},
+        "reasoning": {"effort": reasoning_effort(body)},
         "text": {"format": {"type": "json_schema", "name": "lesson", "strict": True, "schema": body["schema"]}},
     }
     # ChatGPT-managed Responses explicitly rejects max_tool_calls and
@@ -201,10 +220,11 @@ def upstream_body(body):
     return data
 
 
-def cli_config(port, token):
+def cli_config(port, token, effort="medium"):
+    effort = reasoning_effort({"reasoning_effort": effort})
     return f'''model_provider = "schulpilot"
 web_search = "live"
-model_reasoning_effort = "medium"
+model_reasoning_effort = {json.dumps(effort)}
 cli_auth_credentials_store = "file"
 check_for_update_on_startup = false
 [features]
@@ -238,6 +258,8 @@ def persist_refreshed_auth(home, original):
     """Keep only the login refresh, without overwriting a concurrent manual login."""
     refreshed = home / "auth.json"
     try:
+        if auth_mode(refreshed) not in ("account", "api_key"):
+            return
         new = refreshed.read_bytes()
         if new != original and hmac.compare_digest(
             hashlib.sha256(AUTH_FILE.read_bytes()).digest(), hashlib.sha256(original).digest()
@@ -248,6 +270,244 @@ def persist_refreshed_auth(home, original):
             temporary.replace(AUTH_FILE)
     except OSError:
         pass
+
+
+def cli_environment(home, root):
+    return {
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
+        "HOME": str(home),
+        "CODEX_HOME": str(home),
+        "LANG": "C.UTF-8",
+        "TMPDIR": str(root),
+    }
+
+
+def catalog_config():
+    # Use the native provider and the worker's own login. A custom Responses
+    # gateway can cause model/list to return the bundled fallback catalog.
+    # model/list itself is metadata, never proof of inference entitlement.
+    return '''cli_auth_credentials_store = "file"
+check_for_update_on_startup = false
+[features]
+shell_tool = false
+unified_exec = false
+shell_snapshot = false
+apps = false
+plugins = false
+hooks = false
+multi_agent = false
+browser_use = false
+computer_use = false
+image_generation = false
+unbounded_connection_retries = false
+[analytics]
+enabled = false
+'''
+
+
+class CatalogRPC:
+    """Bounded newline JSON-RPC reader; no server requests are executed."""
+
+    def __init__(self, process, deadline):
+        self.process = process
+        self.deadline = deadline
+        self.buffer = b""
+        self.total = 0
+        self.messages = 0
+        self.selector = selectors.DefaultSelector()
+        self.selector.register(process.stdout, selectors.EVENT_READ)
+
+    def close(self):
+        self.selector.close()
+
+    def send(self, method, params, request_id=None):
+        if method not in ("initialize", "initialized", "model/list"):
+            raise ValueError("unsupported metadata method")
+        message = {"method": method, "params": params}
+        if request_id is not None:
+            message["id"] = request_id
+        self.process.stdin.write(json.dumps(message, separators=(",", ":")).encode() + b"\n")
+        self.process.stdin.flush()
+
+    def result(self, request_id):
+        while time.monotonic() < self.deadline:
+            if b"\n" not in self.buffer:
+                if not self.selector.select(max(0, self.deadline - time.monotonic())):
+                    break
+                chunk = os.read(self.process.stdout.fileno(), 65_536)
+                if not chunk:
+                    break
+                self.total += len(chunk)
+                if self.total > CATALOG_OUTPUT_LIMIT:
+                    raise ValueError("metadata output limit")
+                self.buffer += chunk
+            while b"\n" in self.buffer:
+                line, self.buffer = self.buffer.split(b"\n", 1)
+                self.messages += 1
+                if self.messages > 1000:
+                    raise ValueError("metadata message limit")
+                message = json.loads(line)
+                if not isinstance(message, dict):
+                    raise ValueError("invalid metadata message")
+                if "method" in message and "id" in message:
+                    raise ValueError("unexpected server request")
+                if "id" in message:
+                    if message["id"] != request_id or "error" in message or "result" not in message:
+                        raise ValueError("metadata request failed")
+                    return message["result"]
+        raise TimeoutError("metadata deadline")
+
+
+def normalize_catalog(raw_models):
+    if not isinstance(raw_models, list) or not 1 <= len(raw_models) <= 200:
+        raise ValueError("invalid model count")
+    models, seen = [], set()
+    for raw in raw_models:
+        if not isinstance(raw, dict):
+            raise ValueError("invalid model metadata")
+        model_id, name = raw.get("model"), raw.get("displayName")
+        options, default = raw.get("supportedReasoningEfforts"), raw.get("defaultReasoningEffort")
+        # The wire model identifier can differ from the catalog's UI identifier.
+        if (
+            not isinstance(model_id, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,159}", model_id)
+            or model_id in seen
+            or not isinstance(name, str) or not 1 <= len(name) <= 160 or any(ord(c) < 32 for c in name)
+            or not isinstance(options, list) or len(options) > 32
+            or type(raw.get("hidden")) is not bool
+        ):
+            raise ValueError("invalid model metadata")
+        efforts = []
+        for option in options:
+            if not isinstance(option, dict):
+                raise ValueError("invalid reasoning option")
+            value = reasoning_effort({"reasoning_effort": option.get("reasoningEffort")})
+            if value in efforts:
+                raise ValueError("duplicate reasoning option")
+            efforts.append(value)
+        default = reasoning_effort({"reasoning_effort": default})
+        if efforts and default not in efforts:
+            raise ValueError("invalid default reasoning effort")
+        # This is the documented backwards-compatible model/list fallback.
+        # An explicit empty/text-only list must not gain image capability.
+        modalities = raw.get("inputModalities", ["text", "image"])
+        if (
+            not isinstance(modalities, list) or len(modalities) > 3
+            or any(not isinstance(item, str) or item not in ("text", "image", "audio") for item in modalities)
+            or len(set(modalities)) != len(modalities)
+        ):
+            raise ValueError("invalid input modalities")
+        seen.add(model_id)
+        models.append({
+            "id": model_id, "name": name, "reasoning_efforts": efforts,
+            "default_reasoning_effort": default, "input_modalities": modalities,
+            "hidden": raw["hidden"],
+        })
+    result = {"models": models, "source": "codex_cli", "cli_version": CLI_VERSION}
+    if len(json.dumps(result, ensure_ascii=False).encode()) > CATALOG_RESPONSE_LIMIT:
+        raise ValueError("normalized metadata output limit")
+    return result
+
+
+def read_catalog(original):
+    deadline = time.monotonic() + CATALOG_TIMEOUT
+    with tempfile.TemporaryDirectory(prefix="catalog-", dir="/tmp") as directory:
+        root = Path(directory)
+        home = root / "home"
+        home.mkdir(mode=0o700)
+        (home / "auth.json").write_bytes(original)
+        (home / "auth.json").chmod(0o600)
+        (home / "config.toml").write_text(catalog_config())
+        process, rpc = None, None
+        try:
+            process = subprocess.Popen(
+                ["/usr/local/bin/codex", "app-server", "--listen", "stdio://"],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                cwd=root, env=cli_environment(home, root),
+            )
+            rpc = CatalogRPC(process, deadline)
+            rpc.send("initialize", {"clientInfo": {
+                "name": "schulpilot_catalog", "title": "SCHULPILOT model catalog", "version": "1.0",
+            }}, 0)
+            if not isinstance(rpc.result(0), dict):
+                raise ValueError("invalid initialization")
+            rpc.send("initialized", {})
+            models, cursors = [], set()
+            cursor = None
+            for page in range(2):
+                params = {"limit": 100, "includeHidden": True}
+                if cursor is not None:
+                    params["cursor"] = cursor
+                rpc.send("model/list", params, page + 1)
+                result = rpc.result(page + 1)
+                if not isinstance(result, dict) or not isinstance(result.get("data"), list):
+                    raise ValueError("invalid metadata page")
+                models.extend(result["data"])
+                if len(result["data"]) > 100 or len(models) > 200:
+                    raise ValueError("metadata page limit")
+                cursor = result.get("nextCursor")
+                if cursor is None:
+                    return normalize_catalog(models)
+                if not isinstance(cursor, str) or not 1 <= len(cursor) <= 1024 or cursor in cursors:
+                    raise ValueError("invalid metadata cursor")
+                cursors.add(cursor)
+            raise ValueError("metadata pagination limit")
+        finally:
+            if rpc is not None:
+                rpc.close()
+            try:
+                if process is not None:
+                    try:
+                        process.terminate()
+                        process.wait(timeout=0.25)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=0.25)
+                    finally:
+                        for stream in (process.stdin, process.stdout):
+                            if stream is not None:
+                                stream.close()
+            finally:
+                # A failed/timed-out metadata request can still rotate a valid
+                # worker credential. Save it after shutdown, under slot.
+                persist_refreshed_auth(home, original)
+
+
+@app.get("/models")
+def models():
+    global catalog_cache
+    unavailable = "Der Codex-Modellkatalog ist gerade nicht erreichbar. Bitte später erneut laden."
+    if not isolated():
+        raise HTTPException(503, "Isolierter Containerbetrieb ist erforderlich.")
+    if auth_mode() not in ("account", "api_key"):
+        raise HTTPException(503, "Separate Codex-Anmeldung fehlt.")
+    try:
+        original = AUTH_FILE.read_bytes()
+        fingerprint = hashlib.sha256(original).digest()
+        cached = catalog_cache
+        if cached and hmac.compare_digest(cached[0], fingerprint) and time.monotonic() < cached[1]:
+            return json.loads(cached[2])
+        if not slot.acquire(blocking=False):
+            raise HTTPException(429, "Isolierter Worker ist belegt.")
+        try:
+            # A generation may have refreshed the login between the initial
+            # cache check and our acquisition. Never copy that stale login.
+            if auth_mode() not in ("account", "api_key"):
+                raise ValueError("worker login changed")
+            original = AUTH_FILE.read_bytes()
+            fingerprint = hashlib.sha256(original).digest()
+            result = read_catalog(original)
+            catalog_cache = (fingerprint, time.monotonic() + CATALOG_CACHE_SECONDS, json.dumps(result).encode())
+            return result
+        finally:
+            slot.release()
+    except HTTPException as error:
+        if error.status_code == 429:
+            raise
+        raise HTTPException(503, unavailable) from None
+    except (OSError, ValueError, TypeError, AttributeError, TimeoutError, subprocess.SubprocessError):
+        # Metadata/error payloads can include account details; never relay them.
+        raise HTTPException(503, unavailable) from None
 
 
 def run(body):
@@ -338,7 +598,7 @@ def run(body):
             original = AUTH_FILE.read_bytes()
             (home / "auth.json").write_bytes(original)
             (home / "auth.json").chmod(0o600)
-            (home / "config.toml").write_text(cli_config(gateway.server_port, gateway_token))
+            (home / "config.toml").write_text(cli_config(gateway.server_port, gateway_token, reasoning_effort(body)))
             schema = root / "schema.json"
             schema.write_text(json.dumps(body["schema"]))
             output = root / "output.json"
@@ -364,13 +624,7 @@ def run(body):
                 str(root),
                 "-",
             ]
-            environment = {
-                "PATH": "/usr/local/bin:/usr/bin:/bin",
-                "HOME": str(home),
-                "CODEX_HOME": str(home),
-                "LANG": "C.UTF-8",
-                "TMPDIR": str(root),
-            }
+            environment = cli_environment(home, root)
             try:
                 # No shell, no inherited environment, no sessions or event logs.
                 completed = subprocess.run(

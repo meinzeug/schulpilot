@@ -2,6 +2,7 @@
 
 import base64
 import copy
+import hashlib
 import json
 import math
 import re
@@ -502,6 +503,19 @@ def config_for_function(config, function):
     return ProviderConfig(**values)
 
 
+def routing_fingerprint(config):
+    """Record the exact model/effort selection without key or private context.
+
+    Existing medium was implicit before migration 0013, so omit that default
+    from the canonical selection rather than inventing a changed legacy route.
+    """
+    values = {"provider": config.provider, "model": config.model, "extraction_model": config.extraction_model}
+    effort = config.reasoning_effort or "medium"
+    if config.provider == "codex" and effort != "medium":
+        values["reasoning_effort"] = effort
+    return hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def external_allowed(config, image=False, synthetic_fixture=False):
     if config.emergency_stop:
         raise ProviderError("Kostenpflichtige KI-Aufrufe sind durch den Notfallstopp gesperrt.")
@@ -972,25 +986,28 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Material überschreitet die konfigurierte konservative Kostenreservierung. Material kürzen oder Preisobergrenze prüfen."
         )
     if config.provider == "codex":
+        worker_request = {
+            "auth_mode": settings.codex_auth_mode,
+            "web_search": settings.codex_web_search and function != "extract",
+            "model": config.model,
+            "system": instructions,
+            "payload": payload,
+            "schema": schema,
+            "image": image_data or None,
+            "max_output_tokens": config.max_output_tokens,
+            "reserve_micros": config.reserve_micros,
+            "input_rate": config.input_per_million_micros,
+            "output_rate": config.output_per_million_micros,
+        }
+        # The previous worker already defaults to medium and rejects unknown
+        # fields. Keep it compatible while backend and worker roll out in turn.
+        effort = config.reasoning_effort or "medium"
+        if effort != "medium":
+            worker_request["reasoning_effort"] = effort
         transport = httpx.HTTPTransport(uds=settings.codex_socket)
         try:
             with httpx.Client(transport=transport, timeout=155, follow_redirects=False) as client:
-                response = client.post(
-                    "http://localhost/generate",
-                    json={
-                        "auth_mode": settings.codex_auth_mode,
-                        "web_search": settings.codex_web_search and function != "extract",
-                        "model": config.model,
-                        "system": instructions,
-                        "payload": payload,
-                        "schema": schema,
-                        "image": image_data or None,
-                        "max_output_tokens": config.max_output_tokens,
-                        "reserve_micros": config.reserve_micros,
-                        "input_rate": config.input_per_million_micros,
-                        "output_rate": config.output_per_million_micros,
-                    },
-                )
+                response = client.post("http://localhost/generate", json=worker_request)
         except httpx.HTTPError:
             raise ProviderError(
                 "Der Codex-Lernworker ist nicht erreichbar. Bitte die Verbindung im Betrieb prüfen."

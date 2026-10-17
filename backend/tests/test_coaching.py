@@ -39,6 +39,9 @@ def normal_unit(api, household):
     parent, kid = household
     configured(parent["families"][0]["id"])
     with DB.begin() as db:
+        # These tests exercise coaching, not the parent's weekday schedule.
+        # Keep their explicit learning opportunity valid on weekend test runs.
+        db.get(Child, kid["id"]).preferences = {"weekdays": list(range(7))}
         material = Material(
             child_id=kid["id"],
             title="Künstlicher Stoff",
