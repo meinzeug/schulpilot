@@ -16,11 +16,12 @@ let browser, context, page, passed = false, loggedOut = false;
 let phase = 'local_guard', modelCount = 0, changedModel = false, changedReasoning = false;
 let sectionsChecked = false, settingsTabsChecked = false;
 const viewports = [1440, 960, 390, 320];
+const workspaceOnly = process.argv.includes('--workspace-only');
 
 function check(condition, code) { if (!condition) throw new Error(code); }
 async function get(path) {
   const response = await context.request.get(base + '/api' + path);
-  check(response.status() === 200, 'protected_metadata_read_failed');
+  check(response.status() === 200, 'protected_metadata_read_failed_' + response.status());
   return response.json();
 }
 async function visible(page, locator, modal = false) {
@@ -47,6 +48,16 @@ function field(page, label) {
   return page.getByRole('combobox', {name}).or(page.getByRole('button', {name}))
     .or(page.getByLabel(label, {exact: false})).first();
 }
+async function choice(page, label) {
+  // Prefer checked-chip semantics; a sidebar can have the same text as a tab.
+  const checkbox = page.getByRole('checkbox', {name: label, exact: true});
+  if (await checkbox.count()) return checkbox;
+  const checkedButton = page.getByRole('button', {name: label, exact: true})
+    .and(page.locator('[aria-checked]'));
+  if (await checkedButton.count()) return checkedButton;
+  return page.getByText(label, {exact: true}).last();
+}
+
 async function shot(page, name) {
   const path = artifacts + 'codex-models-' + name + '.png';
   await page.screenshot({path});
@@ -63,12 +74,12 @@ async function open(page, path) {
 }
 async function adminSections(page) {
   phase = 'workspace_family_navigation';
-  await tap(page, page.getByRole('button', {name: 'Familientarife', exact: true}));
+  await tap(page, await choice(page, 'Familientarife'));
   await visible(page, page.getByRole('textbox', {name: 'Familie suchen', exact: true})
     .or(page.getByLabel('Familie suchen', {exact: true})));
   // Inspect only section presence. Never copy family identifiers or audit rows.
   phase = 'workspace_audit_navigation';
-  await tap(page, page.getByRole('button', {name: 'Protokoll', exact: true}));
+  await tap(page, await choice(page, 'Protokoll'));
   await visible(page, page.getByText('Administratives Protokoll', {exact: true})
     .or(page.getByLabel('Administratives Protokoll', {exact: true})));
   sectionsChecked = true;
@@ -76,7 +87,8 @@ async function adminSections(page) {
   await open(page, '/admin/settings');
   for (const [tab, heading] of [['Tarif', 'Neue Familien'], ['E-Mail', 'E-Mail-Versand'],
     ['Status', 'Bereit für den Start'], ['Betrieb', 'Betreiber & Datenschutz']]) {
-    await tap(page, page.getByRole('button', {name: tab, exact: true}));
+    phase = 'installation_tab_' + ({Tarif: 'tariff', 'E-Mail': 'mail', Status: 'status', Betrieb: 'operator'}[tab]);
+    await tap(page, await choice(page, tab));
     await visible(page, page.getByText(heading, {exact: true})
       .or(page.getByLabel(heading, {exact: true})));
   }
@@ -100,22 +112,27 @@ async function main() {
       data: {username: 'admin', password, device: 'Codex model selector read-only QA'}});
     check(login.status() === 200, 'normal_admin_login_failed');
     check((await get('/auth/me')).role === 'admin', 'admin_role_required');
+    phase = 'admin_provider_metadata';
     const before = await get('/admin/provider');
     check(before.provider === 'codex', 'existing_codex_selection_required');
-    const catalog = await get('/admin/provider/codex/models');
-    check(catalog.source === 'codex_cli' && catalog.cli_version === '0.162.1' &&
-      Array.isArray(catalog.models) && catalog.models.length > 0, 'real_worker_catalog_required');
-    modelCount = catalog.models.length;
-    const original = catalog.models.find(model => model.id === before.model);
-    const photo = catalog.models.find(model => model.id === (before.extraction_model || before.model));
-    check(original && photo && original.reasoning_efforts.includes(before.reasoning_effort),
-      'saved_selection_must_be_preserved');
-    const savedIndex = catalog.models.findIndex(model => model.id === before.model);
-    const alternate = catalog.models.filter(model => model.id !== before.model &&
-      model.input_modalities.includes('text') &&
-      model.reasoning_efforts.some(value => photo.reasoning_efforts.includes(value)))
-      .sort((a, b) => Math.abs(catalog.models.indexOf(a) - savedIndex) -
-        Math.abs(catalog.models.indexOf(b) - savedIndex))[0];
+    let alternate, photo;
+    if (!workspaceOnly) {
+      phase = 'codex_catalog_metadata';
+      const catalog = await get('/admin/provider/codex/models');
+      check(catalog.source === 'codex_cli' && catalog.cli_version === '0.162.1' &&
+        Array.isArray(catalog.models) && catalog.models.length > 0, 'real_worker_catalog_required');
+      modelCount = catalog.models.length;
+      const original = catalog.models.find(model => model.id === before.model);
+      photo = catalog.models.find(model => model.id === (before.extraction_model || before.model));
+      check(original && photo && original.reasoning_efforts.includes(before.reasoning_effort),
+        'saved_selection_must_be_preserved');
+      const savedIndex = catalog.models.findIndex(model => model.id === before.model);
+      alternate = catalog.models.filter(model => model.id !== before.model &&
+        model.input_modalities.includes('text') &&
+        model.reasoning_efforts.some(value => photo.reasoning_efforts.includes(value)))
+        .sort((a, b) => Math.abs(catalog.models.indexOf(a) - savedIndex) -
+          Math.abs(catalog.models.indexOf(b) - savedIndex))[0];
+    }
     page = await context.newPage();
     page.on('pageerror', error => errors.push(digest(error.message)));
     await context.route('**/api/**', async route => {
@@ -132,13 +149,18 @@ async function main() {
       await open(page, '/admin');
       await visible(page, page.getByText('Betriebsübersicht', {exact: true})
         .or(page.getByLabel('Betriebsübersicht', {exact: true})));
-      if (width !== 320) await shot(page, 'overview-' + width);
+      if (width !== 320) {
+        await page.mouse.move(width - 24, page.viewportSize().height - 140);
+        await page.mouse.wheel(0, -20000);
+        await page.waitForTimeout(250);
+        await shot(page, 'overview-' + width);
+      }
       if (width === 1440) {
         await adminSections(page);
         await open(page, '/admin');
       }
       phase = 'model_select_' + width;
-      await tap(page, page.getByRole('button', {name: 'KI-Konfiguration', exact: true}));
+      await tap(page, await choice(page, 'KI-Konfiguration'));
       await visible(page, field(page, 'Modell für Lerneinheiten'));
       await visible(page, field(page, 'Reasoning / Denkstufe'));
       await shot(page, 'saved-' + width);
@@ -150,11 +172,13 @@ async function main() {
           .or(page.getByText(option)), true);
         changedModel = true;
         const efforts = alternate.reasoning_efforts.filter(value => photo.reasoning_efforts.includes(value));
+        const effort = efforts.find(value => value !== before.reasoning_effort) ?? efforts.at(-1);
+        phase = 'reasoning_select_' + width;
         await tap(page, field(page, 'Reasoning / Denkstufe'));
-        await tap(page, page.getByRole('menuitem', {name: efforts.at(-1), exact: true})
-          .or(page.getByRole('option', {name: efforts.at(-1), exact: true}))
-          .or(page.getByLabel(efforts.at(-1), {exact: true}))
-          .or(page.getByText(efforts.at(-1), {exact: true})).last(), true);
+        await tap(page, page.getByRole('menuitem', {name: effort, exact: true})
+          .or(page.getByRole('option', {name: effort, exact: true}))
+          .or(page.getByLabel(effort, {exact: true}))
+          .or(page.getByText(effort, {exact: true})).last(), true);
         changedReasoning = true;
         await shot(page, 'local-selection-' + width);
       }
@@ -172,7 +196,9 @@ async function main() {
       loggedOut = logout?.status() === 200 &&
         (await context.request.get(base + '/api/auth/me')).status() === 401;
     }
-    const report = {passed: passed && loggedOut, phase, failure: failure ?? null,
+    const report = {passed: passed && loggedOut, scope: workspaceOnly ? 'workspace_and_saved_fields' : 'workspace_and_catalog_selection',
+      phase, failure: failure ?? null,
+      page_route: page ? new URL(page.url()).pathname.replace(/[^a-z0-9/_-]/gi, '').slice(0, 80) : null,
       model_count: modelCount, viewports, workspace_sections_checked: sectionsChecked,
       existing_installation_direct_tabs_checked: settingsTabsChecked, local_model_selection_tested: changedModel,
       local_reasoning_selection_tested: changedReasoning, provider_saves: 0, inference_requests: 0,

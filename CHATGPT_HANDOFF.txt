@@ -1,3 +1,67 @@
+SCHULPILOT – aktueller Nachtrag 17.10.2026
+
+Dieser Abschnitt ersetzt sämtliche älteren Produkt-, Versions-, Provider- und Zeitlimitangaben
+des nachfolgenden historischen Protokolls. Bestehende Google-/Firebase-Einrichtung wurde in
+dieser Arbeitseinheit weder neu angelegt noch migriert; frühere Zustellnachweise bleiben
+historische Einzelbeobachtungen und sind keine neue Zustellabnahme von Version 25.
+
+Bereitgestellter Produktcommit: c8123d233714030ff6bf906a9c0ee4b365c4a545, main, gepusht.
+Öffentliches Release: 20261017T072625Z-c8123d2; https://schulpilot.dorfspy.de .
+Eigene API: https://schulpilot.dorfspy.de/api ; Health bestätigt Version 1.2.0 und Produktcommit.
+Web sowie signierte native Flutter-Direct-APK und Play-AAB: 1.2.0+25, keine WebView.
+APK: /home/dennis/schulpilot/artifacts/schulpilot-android.apk
+Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+63.314.609 Bytes; SHA256 69311fb8b5d377b269e727df61f464f9aa605eba26cb9148af2c4df9b5441b91.
+Play-AAB: /home/dennis/schulpilot/artifacts/schulpilot-play.aab ; gebaut, kein neuer Console-Upload.
+Nachfolgende QA-/Dokumentationscommits können neuer sein, ohne den bereitgestellten Produktcode zu ändern.
+
+Aktiver Provider ist Codex CLI, Lern- und Bildmodell gpt-6.1-sol, Reasoning xhigh, Revision 18.
+Die vorhandene eigene Workeranmeldung und erfolgreiche künstliche Freigabe sind erhalten;
+öffentlicher Status ai_available=true. Kein Providerwechsel oder zusätzlicher KI-Prüfauftrag
+in dieser Abnahme. Geldkosten des Kontobetriebs bleiben unbekannt, bestehende Reservierungen erhalten.
+
+Tägliche/wöchentliche Minuten sind Mindestziele aus gespeicherten aktiven Sekunden.
+Beispiel: 12 echte Minuten bei 20 Minuten Ziel lassen 8 Minuten verpflichtend offen.
+Erst nach dem Ziel ist weitere Lernzeit freiwillig; es gibt keine Zeitobergrenze.
+Neue Elternvorgaben, Elternfortschritt und responsive Arbeitsflächen für alle drei Rollen.
+Browser: kleine Touchansicht, Tablet-Rail ab 720 px, Desktop-Sidebar ab 1050 px.
+Eltern-/Admin-/Kinderrechte bleiben vollständig im Backend; keine neue Rollenwahl.
+
+Lokale Abnahme: 678 PostgreSQL-16-Tests, danach 23 gezielte PostgreSQL-Tests;
+195 Fluttertests im Gesamtlauf, danach 9 Admin- und 14 Elterntests; Flutter-Analyse/Ruff grün.
+Web, Direct-APK und Play-AAB gebaut; öffentliches HTTPS, Direktlinks, Rollen-Schutz und
+vollständiger APK-Download mit Größe/Hash geprüft. Automatisches Android-Update 24→25
+mit Installationsbestätigung sowie drei weitere Startprüfungen im eigenen Emulator bestanden.
+Öffentlicher Adminbrowser: 1440/960/390/320 px, neun echte CLI-Modelle, Modell und Denkstufe
+nur als Entwurf ausgewählt, keine Speicherung/KI-Aufträge/JS-Fehler; Prüfsitzung widerrufen.
+Öffentlicher Kinder-/Elterntest: 355 Sekunden echte UI-Bedienung, 339 gespeicherte aktive
+Sekunden; bei 299 Sekunden Fünf-Minuten-Ziel offen, bei 319 erfüllt, weiteres Lernen erlaubt.
+Eltern-Familie/Kinderdetail zeigen dieselben 5:39 / 5 Minuten bei 1280/390/320 px.
+Zwei historische Heartbeat-Bodies wurden vom QA-Observer nicht vollständig erfasst;
+teilweise rekonstruierter Zeitnachweis aus übrigen Antworten plus normalen GETs, ausdrücklich
+keine lückenlose Bodybeobachtung. Beide Einheitenstarts200, Rollenangriffe403, null externe
+KI-Aufträge. Eigene künstliche Familie regulär gelöscht, eigene Sitzungen danach401.
+Native APK25: eigene Eltern-/Kinderanmeldung, eine feste synthetische Einheit und eine
+Antwort mit Hinweis. Eltern und Kind übereinstimmend88 aktive Sekunden, Mindestziel5Minuten
+weiter offen. Android-Home20Sekunden ohne Zeitgutschrift, Resume ohne Nachtragen.
+Exakte Vordergrunddauer und exaktes Resume-Delta nach einem QA-Selektorabbruch nicht
+gesichert; im Bericht null, nur mindestens35Sekunden Vordergrund belegt. Elternvergleich
+am selben pausierten Fall abgeschlossen; eigene Testfamilien/Sitzungen bereinigt.
+
+Erreichbare Browserseiten: /login, /app, /admin, /admin/settings, /admin/push und /settings.
+Normale Anmeldung selbst durchführen; Passwörter, Sessions und Gerätetokens nicht weitergeben.
+Für Kinder-/Elternversuche ausschließlich eine eigene künstliche Testfamilie verwenden.
+Admin: Übersicht → KI-Konfiguration → Modell/Denkstufe ansehen; ohne ausdrücklichen
+Providerwechsel nicht speichern oder erneut prüfen. Familientarife, Protokoll und Einrichtung
+sind getrennt erreichbar. Eigenes Kontingent und fremde Kinderinhalte nicht verändern.
+Aktuelle weitere Browser-/Native-Zeitmessungsberichte und Grenzen stehen in docs/STATUS.md.
+
+GitHub-Push funktioniert. Actions-Lauf 39006063297 startet wegen GitHub-Kontosperre bei
+einem Abrechnungsproblem keine Testschritte; Kontoinhaber muss die Sperre bei GitHub klären.
+Kein erfolgreicher CI-Lauf, keine neue Play-Veröffentlichung und keine neue Push-Zustellung behauptet.
+
+--- Historisches Übergabeprotokoll, Stand 15.10.2026 ---
+
 SCHULPILOT – sichere Übergabe an ChatGPT
 Stand: 15.10.2026; Google-/Geräteabnahme mit eigenen künstlichen Haushalten.
 Nachtrag: ausdrücklich beauftragte Materialfehlerprüfung am 15.10.2026 mit genau fünf freigegebenen Seiten; keine echten Kinderantworten zum Testen eingetragen.

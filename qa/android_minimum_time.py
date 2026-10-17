@@ -93,6 +93,16 @@ def contains(fragment, seconds=25):
     raise RuntimeError("Expected native minimum-time state was not visible")
 
 
+def reveal(fragment):
+    """Real mobile cards may begin below the visible semantics viewport."""
+    top()
+    for _ in range(24):
+        if fragment in labels():
+            return
+        native.adb("shell", "input", "swipe", "900", "1700", "900", "1300", "400")
+    raise RuntimeError("Expected native minimum-time card was not reachable by scrolling")
+
+
 def top():
     for _ in range(3):
         native.adb("shell", "input", "swipe", "900", "650", "900", "1950", "250")
@@ -201,11 +211,13 @@ def run_case(parent, data, report):
     start_app()
     native.login(credentials["parent_username"], credentials["parent_password"])
     contains("Deine Familie")
-    contains("Tagesziel offen")
+    checkpoint("parent_family_scroll_to_daily_minimum")
+    reveal("Tagesziel offen")
     contains("0:00 / 5 Min.")
     screenshot("parent-family-before")
     native.press("Lernüberblick öffnen", scroll=True)
-    contains("Tagesziel offen")
+    checkpoint("parent_child_detail_scroll_to_daily_minimum")
+    reveal("Tagesziel offen")
     screenshot("parent-child-before")
     logout()
     checkpoint("independent_native_child_login_and_unit")
@@ -276,15 +288,37 @@ def run_case(parent, data, report):
     if not 20 <= final < 300:
         raise RuntimeError("The test minimum must remain unmet")
     no_ai(parent, family_id)
+    data["native_time_checks"] = {
+        "foreground_interaction_seconds": foreground_seconds, "saved_active_seconds": final,
+        "background_seconds": 20, "background_credit_seconds": 0,
+        "resume_credit_seconds": after - before, "synthetic_unit_jobs": 1, "persisted_answers": 1,
+    }
+    save(data)
+    finish_parent_checks(parent, data, report)
+
+
+def finish_parent_checks(parent, data, report, *, already_parent=False):
+    demo, credentials = data["demo"], data["demo"]["credentials"]
+    family_id = verify_own(demo)
+    final = actual(parent, demo)
+    unit = unit_view(parent, demo)
+    if (unit["status"] != "paused" or not 20 <= final < 300
+        or len(unit["questions"][0]["attempts"]) != 1
+        or unit["questions"][0]["attempts"][0]["assisted"] is not True):
+        raise RuntimeError("Only this same paused own unit with its saved time and single answer may continue")
     checkpoint("parent_matches_actual_child_time_and_role_guards")
-    logout()
-    native.login(credentials["parent_username"], credentials["parent_password"])
+    if not already_parent:
+        logout()
+        native.login(credentials["parent_username"], credentials["parent_password"])
     contains("Deine Familie")
     native_counter = f"{final // 60}:{final % 60:02d} / 5 Min."
+    # Revealing the counter alone can leave its following status below the
+    # bottom navigation. Reveal the status, then check the counter above it.
+    reveal("Tagesziel offen")
     contains(native_counter)
-    contains("Tagesziel offen")
     screenshot("parent-family-after")
     native.press("Lernüberblick öffnen", scroll=True)
+    reveal("Tagesziel offen")
     contains(native_counter)
     screenshot("parent-child-after")
     family = native.check(parent.get("/families/" + family_id))
@@ -306,10 +340,8 @@ def run_case(parent, data, report):
             raise RuntimeError("Child changed binding parent minimum")
     if parent.post(f"/units/{demo['unit_id']}/start").status_code != 403:
         raise RuntimeError("Parent could impersonate child learning")
-    report.update({"foreground_interaction_seconds": foreground_seconds, "saved_active_seconds": final,
-                   "background_seconds": 20, "background_credit_seconds": 0,
-                   "resume_credit_seconds": after - before, "synthetic_unit_jobs": 1,
-                   "persisted_answers": 1, "parent_matches_child": True, "external_ai_calls": 0})
+    report.update(data["native_time_checks"])
+    report.update({"saved_active_seconds": final, "parent_matches_child": True, "external_ai_calls": 0})
 
 
 def cleanup(data):
@@ -355,6 +387,10 @@ def main():
     mode.add_argument("--check", action="store_true", help="Offline syntax and fixed-target check; no API/ADB")
     mode.add_argument("--run", action="store_true", help="Only after explicit Root GO and real OTA to APK25")
     parser.add_argument("--cleanup-only", action="store_true")
+    parser.add_argument("--finish-parent-checks", action="store_true",
+                        help="Continue only parent checks from this same paused fixture; no account/job/timer restart")
+    parser.add_argument("--hold-on-failure", action="store_true",
+                        help="Keep this same private fixture for selector diagnosis; --cleanup-only finishes deletion")
     args = parser.parse_args()
     if args.check:
         ast.parse(Path(__file__).read_text())
@@ -365,19 +401,28 @@ def main():
     os.umask(0o077)
     native.adb = bounded_adb
     target()
-    if args.cleanup_only:
+    if args.cleanup_only and args.finish_parent_checks:
+        raise RuntimeError("Choose cleanup or the own parent continuation")
+    if args.cleanup_only or args.finish_parent_checks:
         data = load()
+        if args.finish_parent_checks and (data.get("delete_accepted") or not data.get("native_time_checks")):
+            raise RuntimeError("Only the retained paused fixture with recorded native time checks may continue")
     else:
         if PRIVATE.exists() or REPORT.exists():
             raise RuntimeError("Review/recover the previous own run before creating any family")
         data = {"marker": MARKER, "creation_attempts": 1, "creation_unresolved": True}
         save(data)
     report = {"passed": False, "installed_code": VERSION, "avd_verified": True, "external_ai_calls": None,
-              "mode": "cleanup_only" if args.cleanup_only else "full_native_qa", "qa_completed": False}
+              "mode": "cleanup_only" if args.cleanup_only else "parent_continuation" if args.finish_parent_checks
+              else "full_native_qa", "qa_completed": False}
     failure = None
     cleaned = False
     try:
-        if not args.cleanup_only:
+        if args.finish_parent_checks:
+            with client(data["demo"]["token"]) as parent:
+                finish_parent_checks(parent, data, report, already_parent=True)
+                report["qa_completed"] = True
+        elif not args.cleanup_only:
             checkpoint("create_exactly_one_own_fixed_demo")
             with client() as setup:
                 response = setup.post("/demo")
@@ -395,11 +440,18 @@ def main():
     except Exception as error:
         failure = type(error).__name__
         report["failed_phase"] = PHASE
+        try:
+            screenshot("failure-before-cleanup")
+        except Exception:
+            pass
     finally:
         try:
-            checkpoint("normal_own_account_deletion_and_session_revocation")
-            cleanup(data)
-            cleaned = True
+            if failure and args.hold_on_failure and not args.cleanup_only:
+                report["cleanup_pending"] = True
+            else:
+                checkpoint("normal_own_account_deletion_and_session_revocation")
+                cleanup(data)
+                cleaned = True
         except Exception as error:
             cleaned = False
             report["cleanup_failure_type"] = type(error).__name__

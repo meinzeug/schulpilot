@@ -15,6 +15,7 @@ const artifacts = fileURLToPath(new URL('../artifacts/', import.meta.url));
 const journalFile = path.join(artifacts, '.minimum-time-qa-account.json');
 const reportFile = path.join(artifacts, 'minimum-learning-time-result.json');
 const mode = process.argv[2] ?? '--help';
+const recoverObservedTime = process.argv.includes('--recover-observed-time');
 const headers = {'X-Schulpilot-Request': '1'};
 const screenshots = [], runtimeErrors = [], blocked = [], heartbeatResults = [];
 const responseWork = new Set(), heartbeatUnits = new Set();
@@ -180,16 +181,20 @@ function hasRequiredHeartbeatProgress() {
 }
 function validateHeartbeatEvidence() {
   const evidence = journal.heartbeat_evidence ?? [];
+  const knownUnknowns = new Set(journal.time_observer_recovery?.unknown_body_sequences ?? []);
   check(Number.isInteger(journal.heartbeat_posts_total) && journal.heartbeat_posts_total <= 35 &&
     evidence.length <= journal.heartbeat_posts_total && !journal.heartbeat_evidence_error &&
     new Set(evidence.map(value => value.sequence)).size === evidence.length &&
     evidence.every(value => Number.isInteger(value.sequence) && value.sequence > 0 &&
       value.sequence <= journal.heartbeat_posts_total && value.http_status === 200 &&
-      value.status === 'active' && !value.unreadable),
+      (value.unreadable ? knownUnknowns.has(value.sequence) && !value.contract_invalid
+        : value.status === 'active')),
     'ordinary_ui_heartbeat_failed_or_exceeded_the_persisted_budget');
   check(hasRequiredHeartbeatProgress(),
     'ordinary_child_heartbeats_must_show_required_goal_open_then_fulfilled');
-  for (const result of evidence) validateLearningTime(result.learning_time);
+  for (const result of evidence) {
+    if (!result.unreadable) validateLearningTime(result.learning_time);
+  }
 }
 function afterGoalStartRecorded() {
   return journal.second_start?.http_status === 200 &&
@@ -404,15 +409,23 @@ async function loginChild() {
     const work = (async () => {
       let evidence;
       const sequence = heartbeatSequences.get(response.request());
-      try {
-        const result = await response.json();
-        validateLearningTime(result.learning_time);
-        evidence = {sequence, http_status: response.status(), status: result.status,
-          baseline: response.request().postDataJSON()?.baseline === true,
-          active_seconds: result.active_seconds_approx, break_recommended: result.break_recommended === true,
-          learning_time: cleanLearningTime(result.learning_time)};
-      } catch {
-        evidence = {sequence, http_status: response.status(), unreadable: true};
+      let result;
+      try { result = await response.json(); }
+      catch (error) {
+        evidence = {sequence, http_status: response.status(), unreadable: true,
+          observer_stage: 'response_body_read', error_fingerprint: digest(String(error.message))};
+      }
+      if (!evidence) {
+        try {
+          validateLearningTime(result.learning_time);
+          evidence = {sequence, http_status: response.status(), status: result.status,
+            baseline: response.request().postDataJSON()?.baseline === true,
+            active_seconds: result.active_seconds_approx, break_recommended: result.break_recommended === true,
+            learning_time: cleanLearningTime(result.learning_time)};
+        } catch (error) {
+          evidence = {sequence, http_status: response.status(), unreadable: true,
+            contract_invalid: true, observer_stage: 'learning_time_contract', validation_code: safeReason(error)};
+        }
       }
       heartbeatResults.push(evidence);
       check(Number.isInteger(sequence), 'observed_heartbeat_must_have_its_persisted_request_sequence');
@@ -610,6 +623,55 @@ function clockLabel(seconds, minutes) {
   const total = Math.floor(seconds);
   return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0') + ' / ' + minutes + ' Min.';
 }
+async function recoverSavedActualActivity() {
+  step('recover_observed_actual_activity_with_independent_read_only_confirmation');
+  check(recoverObservedTime && !journal.counter_passed && journal.jobs.length === 2 &&
+    journal.jobs.every(job => job.id && job.unit_id) && journal.first_start?.http_status === 200 &&
+    !journal.second_start && journal.child_authenticated && journal.required_goal_started,
+    'recovery_is_only_for_the_existing_completed_observation_attempt');
+  const filename = path.join(artifacts, 'minimum-learning-time-first-attempt.json');
+  const info = await lstat(filename);
+  check(info.isFile() && !info.isSymbolicLink() && !(info.mode & 0o077), 'recovery_report_must_be_protected');
+  const serialized = await readFile(filename, 'utf8'), report = JSON.parse(serialized);
+  const proof = report.time_proof, unknown = journal.heartbeat_evidence.filter(value => value.unreadable);
+  check(report.failure === 'ordinary_ui_heartbeat_failed_or_exceeded_the_persisted_budget' &&
+    report.first_start_http === 200 && report.second_start_http === null &&
+    report.external_ai_usage_calls === 0 && report.synthetic_jobs === 2 &&
+    report.source_commit === journal.activity_source_commit &&
+    report.browser_runtime_errors.length === 0 && report.blocked_mutations.length === 0 &&
+    digest(JSON.stringify(proof.observations)) === digest(JSON.stringify(journal.actual_observations)) &&
+    digest(JSON.stringify(report.heartbeat_results)) === digest(JSON.stringify(journal.heartbeat_evidence)) &&
+    unknown.length === 2 && unknown.every(value => value.http_status === 200 && !value.contract_invalid) &&
+    Number.isInteger(proof.wall_seconds) && proof.wall_seconds <= 420 &&
+    proof.continued_wall_seconds >= 20 && proof.extra_actual_seconds >= 10,
+    'recovery_requires_original_real_artifacts_not_a_new_timer_or_synthetic_credit');
+  const last = journal.actual_observations.at(-1), data = await overview();
+  validateTimePlan(data.plan);
+  const unit = await get(parent, '/units/' + journal.counter_unit_id);
+  pristineUnit(unit);
+  validateLearningTime(unit.learning_time, true);
+  check(last.wall_seconds === proof.wall_seconds && last.daily_seconds >= 310 &&
+    last.daily_goal_met && last.weekly_goal_met && unit.status === 'active' &&
+    data.plan.date === journal.school_date && data.plan.daily_active_seconds >= last.daily_seconds &&
+    unit.learning_time.daily_active_seconds >= last.daily_seconds && data.plan.daily_goal_met &&
+    data.plan.weekly_goal_met && unit.active_seconds_approx >= last.unit_seconds,
+    'normal_persisted_api_reads_must_independently_confirm_the_original_actual_credit');
+  journal.time_observer_recovery = {
+    partial_reconstruction: true, original_report_sha256: digest(serialized),
+    unknown_body_sequences: unknown.map(value => value.sequence),
+    observer_limit: 'Two original HTTP200 bodies were not captured; their body or contract cannot be reconstructed.',
+    confirmed_with_normal_api_reads: true,
+    confirmed_daily_seconds: data.plan.daily_active_seconds,
+    confirmed_weekly_seconds: data.plan.weekly_active_seconds,
+    historical_screenshots: report.screenshots,
+  };
+  journal.measurement_wall_seconds = proof.wall_seconds;
+  journal.after_goal_wall_seconds = proof.continued_wall_seconds;
+  journal.after_goal_extra_seconds = proof.extra_actual_seconds;
+  validateHeartbeatEvidence();
+  journal.counter_passed = true;
+  await save();
+}
 async function assertParentLayoutFits(labels) {
   const viewport = page.viewportSize();
   const dimensions = await page.evaluate(() => ({
@@ -695,6 +757,7 @@ async function run() {
   check(ownDemo(journal.demo), 'owned_fixed_demo_required');
   await parentIdentity();
   await zeroUsage();
+  if (recoverObservedTime && !journal.counter_passed) await recoverSavedActualActivity();
   const needChild = needsChildUI();
   if (journal.counter_passed) validateSavedCounterProof();
   if (needChild) {
@@ -833,6 +896,8 @@ async function main() {
     console.log(JSON.stringify({qa_driver: 'minimum_learning_time', local_guard_checks: 'passed', public_requests: 0,
       run_only_after_deployment_go: 'node qa/minimum_learning_time.mjs --run',
       cleanup_recovery: 'node qa/minimum_learning_time.mjs --cleanup-only',
+      explicit_observer_recovery: 'node qa/minimum_learning_time.mjs --run --recover-observed-time',
+      recovery_requires_existing_owned_journal: true, maximum_persisted_ui_heartbeats: 35,
       actual_activity_deadline_seconds: 420, external_ai_allowed: false, maximum_synthetic_jobs: 2}));
     return;
   }
@@ -841,6 +906,7 @@ async function main() {
   journal = await readJournal();
   if (!journal) {
     check(mode === '--run', 'cleanup_requires_the_private_owned_journal');
+    check(!recoverObservedTime, 'observer_recovery_never_creates_a_new_account_or_journal');
     journal = {purpose: 'minimum-learning-time-fixed-demo-only', version: 1,
       run_id: new Date().toISOString().replace(/[-:.]/g, ''), jobs: [], actual_observations: []};
     await save();
@@ -905,6 +971,9 @@ async function main() {
       ordinary_ui_heartbeats_this_run: heartbeatPosts,
       ordinary_ui_heartbeats_total: journal.heartbeat_posts_total,
       unobserved_ui_heartbeat_requests: journal.heartbeat_posts_total - journal.heartbeat_evidence.length,
+      heartbeat_body_observation_complete: journal.heartbeat_evidence.every(value => !value.unreadable) &&
+        journal.heartbeat_evidence.length === journal.heartbeat_posts_total,
+      heartbeat_observer_limitation: journal.time_observer_recovery ?? null,
       heartbeat_results_this_run: heartbeatResults, heartbeat_results: journal.heartbeat_evidence,
       blocked_mutations: blocked, browser_runtime_errors: runtimeErrors, screenshots,
       operator_cleanup_if_needed: 'node qa/minimum_learning_time.mjs --cleanup-only',

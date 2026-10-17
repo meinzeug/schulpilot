@@ -14,7 +14,7 @@ Die Gesamtzusammenfassung, der nächste Lernschritt und Fortschrittskriterien we
 
 Zwei aufeinanderfolgende Runden mit Unterstützungsbedarf oder offenen Bewertungen führen zur Empfehlung, gemeinsam mit den Eltern weiterzulernen. Das Eltern-Dashboard zeigt den Anlass. Ein persönlicher Hilfewunsch wird nur auf ausdrückliche Aktion des Kindes versendet.
 
-Lerntage, Fach-Lerntage, Urlaubs-/Krankheitspausen, Tages-/Wochenzeit und schon eingeplante Einheiten begrenzen die Fortsetzung. Höchstens drei Runden einer Lernfolge pro Tag. Tatsächlich erfasste Aktivität und Pausen gelten auch über Einheitengrenzen. Fehlende Zeit erzeugt einen gespeicherten späteren Vorschlag statt weiterer Pflichtaufgaben.
+Seit 17.10.2026 sind Tages-/Wochenminuten Mindestziele aus tatsächlich gespeicherten aktiven Sekunden. Vor einem offenen Tagesminimum führt die nächste Runde weiter; erst danach ist zusätzliche Lernzeit freiwillig. Lerntage, Fach-Lerntage und Urlaubs-/Krankheitspausen gestalten den Vorschlag, sperren aber keine ausdrücklich gestartete zusätzliche Übung. Drei Runden einer Lernfolge pro Tag sind eine Pausenempfehlung. Es gibt weder Tages-/Wochen- noch Rundenzeit-Obergrenzen; echte spätere Prüftermine, Quellenprüfung, Elternauftrags-Startdaten und Kostenkontingente bleiben verbindlich. Jede weitere Vorbereitung ist ein ausdrücklicher, begrenzter Auftrag. [Zeitmessung und Alltag](DAILY_ROUTINE.md).
 
 ## Lernziele und Beobachtungen
 
