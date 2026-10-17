@@ -149,6 +149,7 @@ void main() {
       await _tap(tester, 'Katze');
       await _tap(tester, 'Antwort prüfen');
       expect(find.text('Richtig!'), findsOneWidget);
+      await _tap(tester, 'Warum das stimmt');
       expect(find.text('Cat heißt Katze.'), findsOneWidget);
       expect(find.text('Was bedeutet dog?'), findsNothing);
       expect(answers, 1);
@@ -158,9 +159,9 @@ void main() {
       expect(find.text('Aufgabe 2 von 2'), findsOneWidget);
       expect(answers, 1);
       expect(
-        requests.length,
-        4,
-      ); // Read, baseline, final activity pulse, answer.
+        requests.where((request) => request.endsWith('/answer')).length,
+        1,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       router.dispose();
@@ -210,7 +211,7 @@ void main() {
       await _tap(tester, 'Antwort prüfen');
       expect(find.text('Noch nicht ganz'), findsOneWidget);
       expect(find.text('Antwort prüfen'), findsNothing);
-      await _tap(tester, 'Ein Hinweis bitte');
+      await _tap(tester, 'Hilfe');
       expect(find.text('Eine Katze miaut.'), findsOneWidget);
       expect(hints, 1);
       await _tap(tester, 'Noch einmal versuchen');
@@ -259,16 +260,16 @@ void main() {
       final router = await _openUnit(tester, state);
       await _tap(tester, 'Katze');
       await _tap(tester, 'Antwort prüfen');
-      expect(find.text('Runde geschafft!'), findsNothing);
-      await _tap(tester, 'Zum Rückblick');
-      expect(find.text('Runde geschafft!'), findsOneWidget);
+      expect(find.text('Deine Runde ist bearbeitet.'), findsNothing);
+      await _tap(tester, 'Ergebnis ansehen');
+      expect(find.text('Deine Runde ist bearbeitet.'), findsOneWidget);
       expect(find.text('Was bedeutet cat?'), findsNothing);
       await _tap(tester, 'Mein Rückblick');
       expect(
         find.text('Gespeicherter Rückblick zur künstlichen Aufgabe.'),
         findsOneWidget,
       );
-      await _tap(tester, 'Antworten');
+      await _tap(tester, 'Deine Antworten');
       expect(find.text('Was bedeutet cat?'), findsOneWidget);
       expect(find.text('Katze · Richtig'), findsOneWidget);
       expect(answers, 1);

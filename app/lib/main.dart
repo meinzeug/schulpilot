@@ -19,6 +19,7 @@ import 'unit_screen.dart';
 import 'store_screens.dart';
 import 'notification_panel.dart';
 import 'google_login.dart';
+import 'learning_preparation_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -125,6 +126,7 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
           path.startsWith('/material/') ||
           path.startsWith('/library/') ||
           path.startsWith('/learn/') ||
+          path.startsWith('/learning-preparation/') ||
           path.startsWith('/unit/');
       if (protected && widget.state.user == null) {
         return path.startsWith('/bestell')
@@ -245,6 +247,14 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/unit/:id',
         builder: (context, s) =>
             UnitScreen(widget.state, unitId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/learning-preparation/:childId/:jobId',
+        builder: (context, s) => LearningPreparationScreen(
+          widget.state,
+          childId: s.pathParameters['childId']!,
+          jobId: s.pathParameters['jobId']!,
+        ),
       ),
       GoRoute(
         path: '/settings',

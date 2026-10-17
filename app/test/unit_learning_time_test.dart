@@ -182,7 +182,7 @@ String unitClock(WidgetTester tester) => tester
 
 void main() {
   testWidgets(
-    'A finished answer keeps an unmet daily minimum and leads to further learning',
+    'The final feedback keeps the open minimum and leads to the round result before further learning',
     (tester) async {
       var current = timedUnit(seconds: 720);
       final operations = <String>[];
@@ -224,11 +224,12 @@ void main() {
         find.text('Tagesziel noch offen · Noch 7:57 Min.'),
         findsOneWidget,
       );
-      expect(find.text('Weiterlernen'), findsOneWidget);
-      expect(find.text('Zum Rückblick'), findsNothing);
+      expect(find.text('Ergebnis ansehen'), findsOneWidget);
+      expect(find.text('Weiterlernen'), findsNothing);
       expect(find.text('Tagesminimum geschafft'), findsNothing);
-      await tap(tester, 'Weiterlernen');
-      expect(find.text('Nächster Lernschritt'), findsOneWidget);
+      await tap(tester, 'Ergebnis ansehen');
+      expect(find.text('Nächster Lernschritt'), findsNothing);
+      expect(find.text('Dein Rückblick'), findsOneWidget);
       await h.close();
     },
   );
@@ -249,9 +250,8 @@ void main() {
       );
       expect(find.text('Tagesminimum geschafft'), findsNothing);
       expect(find.textContaining('freiwillig'), findsNothing);
-      expect(find.text('Weiterlernen'), findsOneWidget);
-      await tap(tester, 'Weiterlernen');
-      expect(find.text('Nächster Lernschritt'), findsOneWidget);
+      expect(find.text('Rückblick starten'), findsOneWidget);
+      expect(find.text('Nächster Lernschritt'), findsNothing);
       expect(posts, 0); // Navigation never generates or charges a new exercise.
       expect(tester.takeException(), isNull);
       await h.close();
@@ -310,6 +310,8 @@ void main() {
       expect(find.text('Heute 20:00 / 20:00'), findsOneWidget);
       expect(find.text('Tagesminimum geschafft'), findsNothing);
       expect(find.text('Zeit wird noch gespeichert …'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+      await tester.pump();
       final pendingProgress = tester.widget<LinearProgressIndicator>(
         find.byKey(const ValueKey('learning-day-progress')),
       );
@@ -357,6 +359,8 @@ void main() {
           reply(timedUnit(status: 'completed', seconds: 720, required: false)),
     );
     expect(find.text('Heute 12:00'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+    await tester.pump();
     expect(find.text('Heute ist kein Mindestziel eingeplant.'), findsOneWidget);
     expect(find.textContaining('Tagesziel noch offen'), findsNothing);
     expect(find.text('Tagesminimum geschafft'), findsNothing);
@@ -612,7 +616,7 @@ void main() {
       await tap(tester, 'Antwort prüfen');
       expect(operations, ['baseline', 'activity', 'answer']);
       expect(find.text('Richtig!'), findsOneWidget);
-      expect(find.text('Zum Rückblick'), findsOneWidget);
+      expect(find.text('Ergebnis ansehen'), findsOneWidget);
       await h.close();
     },
   );

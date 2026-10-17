@@ -267,6 +267,10 @@ void main() {
     final requests = <http.Request>[];
     await open(tester, (request) async {
       requests.add(request);
+      if (request.method == 'POST') {
+        expect(request.url.path, '/api/units/m0/start');
+        return reply({'id': 'm0', 'status': 'active'});
+      }
       expect(request.method, 'GET');
       return reply(
         listing(
@@ -308,6 +312,12 @@ void main() {
           .uri
           .path,
       '/unit/m0',
+    );
+    expect(
+      requests
+          .where((request) => request.method == 'POST')
+          .map((request) => request.url.path),
+      ['/api/units/m0/start'],
     );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());

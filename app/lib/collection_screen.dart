@@ -86,7 +86,9 @@ class _PagedCollectionState extends State<PagedCollection> {
   String status = 'all', sort = 'subject', section = 'ready';
   DateTimeRange? dates;
   int page = 1, pageSize = 20, generation = 0;
-  bool loading = true;
+  bool loading = true, toolsExpanded = false;
+  bool get simpleLearning =>
+      widget.learning && widget.state.isChild && widget.onSelect == null;
   late String owner;
   String get cacheKey =>
       '${widget.learning ? 'learning' : 'materials'}:${widget.childId}';
@@ -122,6 +124,7 @@ class _PagedCollectionState extends State<PagedCollection> {
       }
     }
     if (widget.onSelect != null) status = 'confirmed';
+    toolsExpanded = filtered;
     load();
   }
 
@@ -387,6 +390,21 @@ class _PagedCollectionState extends State<PagedCollection> {
       widget.onSelect!(item);
       return;
     }
+    if (simpleLearning && item['status'] != 'completed') {
+      FocusManager.instance.primaryFocus?.unfocus();
+      setState(() => opening = item['id']);
+      try {
+        await openPlanItem(context, widget.state, {
+          'child': {'id': widget.childId},
+          'plan': {if (data?['date'] != null) 'date': data!['date']},
+        }, item);
+      } catch (error) {
+        if (mounted && active) showError(context, error);
+      } finally {
+        if (active) setState(() => opening = null);
+      }
+      return;
+    }
     final kind = item['kind'];
     String? route;
     if (!widget.learning || kind == 'material') {
@@ -468,79 +486,107 @@ class _PagedCollectionState extends State<PagedCollection> {
             ),
           const SizedBox(height: 16),
         ],
-        TextField(
-          controller: search,
-          maxLength: 120,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            labelText: widget.learning
-                ? 'Thema suchen'
-                : 'Heftseiten durchsuchen',
-            counterText: '',
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: search.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Suche löschen',
-                    onPressed: () => change(search.clear),
-                    icon: const Icon(Icons.close_rounded),
+        if (simpleLearning)
+          Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => toolsExpanded = !toolsExpanded);
+                  },
+                  icon: Badge(
+                    isLabelVisible: filtered,
+                    child: const Icon(Icons.search_rounded),
                   ),
+                  label: Text(
+                    toolsExpanded ? 'Suche schließen' : 'Suchen & filtern',
+                  ),
+                ),
+              ),
+              if (!toolsExpanded)
+                IconButton(
+                  tooltip: 'Liste aktualisieren',
+                  onPressed: loading ? null : load,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+            ],
           ),
-          onChanged: (_) => change(() {}, delayed: true),
-          onSubmitted: (_) {
-            FocusManager.instance.primaryFocus?.unfocus();
-            load();
-          },
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                key: ValueKey(subject),
-                initialValue: subject,
-                isExpanded: true,
-                hint: const Text('Alle Fächer'),
-                decoration: const InputDecoration(labelText: 'Fach'),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('Alle Fächer'),
-                  ),
-                  for (final value in choices)
-                    DropdownMenuItem(
-                      value: value,
-                      child: Text(
-                        value.isEmpty ? 'Fach noch offen' : value,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+        if (!simpleLearning || toolsExpanded) ...[
+          TextField(
+            controller: search,
+            maxLength: 120,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              labelText: widget.learning
+                  ? 'Thema suchen'
+                  : 'Heftseiten durchsuchen',
+              counterText: '',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Suche löschen',
+                      onPressed: () => change(search.clear),
+                      icon: const Icon(Icons.close_rounded),
                     ),
-                ],
-                onChanged: (value) {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  change(() => subject = value);
-                },
+            ),
+            onChanged: (_) => change(() {}, delayed: true),
+            onSubmitted: (_) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              load();
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  key: ValueKey(subject),
+                  initialValue: subject,
+                  isExpanded: true,
+                  hint: const Text('Alle Fächer'),
+                  decoration: const InputDecoration(labelText: 'Fach'),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Alle Fächer'),
+                    ),
+                    for (final value in choices)
+                      DropdownMenuItem(
+                        value: value,
+                        child: Text(
+                          value.isEmpty ? 'Fach noch offen' : value,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    change(() => subject = value);
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: 'Filter und Sortierung',
-              onPressed: filters,
-              icon: Badge(
-                isLabelVisible:
-                    status != 'all' || dates != null || sort != 'subject',
-                smallSize: 7,
-                child: const Icon(Icons.tune_rounded),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Filter und Sortierung',
+                onPressed: filters,
+                icon: Badge(
+                  isLabelVisible:
+                      status != 'all' || dates != null || sort != 'subject',
+                  smallSize: 7,
+                  child: const Icon(Icons.tune_rounded),
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Liste aktualisieren',
-              onPressed: loading ? null : load,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+              IconButton(
+                tooltip: 'Liste aktualisieren',
+                onPressed: loading ? null : load,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+        ],
         if (filtered)
           Align(
             alignment: Alignment.centerLeft,
@@ -591,6 +637,15 @@ class _PagedCollectionState extends State<PagedCollection> {
                         ? 'Bestätige zuerst eine Heftseite. Danach kannst du sie hier auswählen.'
                         : 'Hier sammeln sich deine Heftseiten.',
                   ),
+                  if (simpleLearning && section == 'ready' && !filtered) ...[
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () =>
+                          openRoute(context, '/after-school/${widget.childId}'),
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                      label: const Text('Heftseiten hinzufügen'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -681,12 +736,13 @@ class _PagedCollectionState extends State<PagedCollection> {
     final later =
         scheduled != null &&
         scheduled.isAfter(DateTime.parse(data?['date'] ?? '9999-01-01'));
-    final actionable =
-        !widget.learning ||
-        item['kind'] == 'unit' ||
-        widget.state.isChild && data?['paused'] != true && !later ||
-        !widget.state.isChild &&
-            ['review', 'study_path', 'material'].contains(item['kind']);
+    final actionable = simpleLearning
+        ? item['status'] == 'completed' || !later
+        : !widget.learning ||
+              item['kind'] == 'unit' ||
+              widget.state.isChild && data?['paused'] != true && !later ||
+              !widget.state.isChild &&
+                  ['review', 'study_path', 'material'].contains(item['kind']);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Panel(
@@ -764,6 +820,21 @@ class _PagedCollectionState extends State<PagedCollection> {
                       'Rückblick wird vorbereitet',
                       style: TextStyle(fontSize: 12, color: muted),
                     ),
+                  if (simpleLearning && item['status'] != 'completed' && !later)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 7),
+                      child: Text(
+                        ['active', 'paused'].contains(item['status'])
+                            ? 'Hier weiterlernen'
+                            : item['kind'] == 'unit'
+                            ? 'Runde starten'
+                            : 'Runde vorbereiten',
+                        style: const TextStyle(
+                          color: teal,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   if (count > 0 && item['status'] != 'completed')
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -788,7 +859,9 @@ class _PagedCollectionState extends State<PagedCollection> {
                 )
               : Icon(
                   actionable
-                      ? Icons.chevron_right_rounded
+                      ? simpleLearning && item['status'] != 'completed'
+                            ? Icons.play_arrow_rounded
+                            : Icons.chevron_right_rounded
                       : Icons.schedule_rounded,
                   color: muted,
                 ),

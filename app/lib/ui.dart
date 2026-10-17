@@ -640,7 +640,11 @@ class WorkspaceShell extends StatelessWidget {
   int _selected(List<(IconData, String, String)> entries, String path) {
     final index = entries.indexWhere((entry) => path == entry.$3);
     if (index >= 0) return index;
-    if (state.isChild && path.startsWith('/unit/')) return 1;
+    if (state.isChild &&
+        (path.startsWith('/unit/') ||
+            path.startsWith('/learning-preparation/'))) {
+      return 1;
+    }
     if (state.isChild && path.startsWith('/material/')) return 2;
     return 0;
   }

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import and_, case, func, or_, select, update
-from sqlalchemy.orm import defer, load_only
+from sqlalchemy.orm import aliased, defer, load_only
 
 from . import schemas as s
 from .daily_planner import completed_portions, distribute, period_starts, voluntary_steps
@@ -14,6 +14,7 @@ from .db import (
     Attempt,
     Child,
     Family,
+    Job,
     LearningUnit,
     Mastery,
     Material,
@@ -152,6 +153,48 @@ def learning_times(db, children):
     return result
 
 
+def pending_feedback(unit, attempts, events):
+    """Resume only the latest explicitly guided response; legacy history stays unchanged."""
+    if not attempts:
+        return None
+    latest = attempts[-1]
+    pending = any(e.kind == "feedback_pending" and e.detail.get("attempt_id") == latest.id for e in events)
+    seen = any(e.kind == "feedback_seen" and e.detail.get("attempt_id") == latest.id for e in events)
+    if not pending or seen:
+        return None
+    q = next((q for q in unit.questions if q["id"] == latest.question_id), None)
+    if not q:
+        return None
+    count = sum(a.question_id == latest.question_id for a in attempts)
+    return {
+        "attempt_id": latest.id,
+        "question_id": latest.question_id,
+        "answer": latest.answer,
+        "outcome": latest.outcome,
+        "assisted": latest.assisted,
+        "explanation": q["explanation"] if latest.outcome != "incorrect" or count >= 3 else None,
+    }
+
+
+def feedback_resume_id(db, child_id):
+    """Find unread latest feedback without loading answer bodies or scanning units in Python."""
+    pending, seen, newer = aliased(Activity), aliased(Activity), aliased(Attempt)
+    newer_answer = select(newer.id).where(
+        newer.unit_id == Attempt.unit_id,
+        or_(newer.created > Attempt.created, and_(newer.created == Attempt.created, newer.id > Attempt.id)),
+    ).correlate(Attempt).exists()
+    return db.scalar(
+        select(LearningUnit.id)
+        .join(Attempt, Attempt.unit_id == LearningUnit.id)
+        .join(pending, and_(pending.unit_id == LearningUnit.id, pending.child_id == child_id,
+                           pending.kind == "feedback_pending", pending.detail["attempt_id"].as_string() == Attempt.id))
+        .outerjoin(seen, and_(seen.unit_id == LearningUnit.id, seen.child_id == child_id,
+                             seen.kind == "feedback_seen", seen.detail["attempt_id"].as_string() == Attempt.id))
+        .where(LearningUnit.child_id == child_id, seen.id.is_(None), ~newer_answer)
+        .order_by(Attempt.created.desc(), Attempt.id.desc()).limit(1)
+    )
+
+
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import coaching
 
@@ -190,6 +233,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         if include_answers or unit.round_kind not in coaching.CHECK_KINDS or unit.status == "completed"
         else "",
         "questions": questions,
+        "pending_feedback": pending_feedback(unit, attempts, events),
         "status": unit.status,
         "synthetic": unit.synthetic,
         "active_seconds_approx": unit.active_seconds,
@@ -648,6 +692,18 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
     from .coaching import paths
 
     child = child_access(db, p, child_id)
+    resume_id = feedback_resume_id(db, child.id)
+    if resume_id:
+        from .library import unit_summaries
+
+        feedback_resume = unit_summaries(db, [resume_id])[resume_id] | {"kind": "unit", "pending_feedback": True}
+    else:
+        feedback_resume = None
+    preparing_unit = db.scalar(
+        select(Job).options(load_only(Job.id, Job.status))
+        .where(Job.child_id == child.id, Job.kind == "unit", Job.status.in_(["queued", "running"]))
+        .order_by(Job.created, Job.id).limit(1)
+    )
     learning_paths = paths(db, child.id)
     days = list(
         db.scalars(
@@ -733,6 +789,8 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         ],
         "plan": current_plan,
         "daily_capture": capture,
+        "feedback_resume": feedback_resume,
+        "learning_preparation": {"id": preparing_unit.id, "status": preparing_unit.status} if preparing_unit else None,
         "pending_preparations": preparations,
         "day_summary": summary(db, child, 1, learning_paths=learning_paths),
         "week_summary": summary(db, child, 7, learning_paths=learning_paths),
@@ -783,7 +841,9 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
 @router.get("/children/{child_id}/activity")
 def activity(child_id: str, before: int | None = None, p=Depends(authenticated), db=Depends(get_db)):
     child_access(db, p, child_id)
-    query = select(Activity).where(Activity.child_id == child_id)
+    query = select(Activity).where(
+        Activity.child_id == child_id, Activity.kind.not_in(["feedback_pending", "feedback_seen"])
+    )
     if before:
         query = query.where(Activity.created < before)
     return [
@@ -1122,6 +1182,10 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         raise HTTPException(409, reason)
     q = question(unit, question_id)
     existing = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    if data.guided_feedback:
+        events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
+        if pending_feedback(unit, existing, events):
+            raise HTTPException(409, "Lies zuerst die Rückmeldung und tippe auf Weiter.")
     previous = [a for a in existing if a.question_id == question_id]
     if previous and (previous[-1].outcome in ("correct", "uncertain") or len(previous) >= 3):
         raise HTTPException(409, "Diese Aufgabe wurde bereits abgeschlossen.")
@@ -1137,6 +1201,8 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     )
     db.add(attempt)
     db.flush()
+    if data.guided_feedback:
+        record(db, unit.child_id, "feedback_pending", {"attempt_id": attempt.id}, unit.id)
     record(db, unit.child_id, "answer", {"question_id": question_id, "outcome": outcome}, unit.id)
     attempts = [*existing, attempt]
     done = all(
@@ -1173,6 +1239,26 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         "explanation": q["explanation"] if outcome != "incorrect" or len(previous) >= 2 else None,
         "unit": unit_data(db, unit),
     }
+
+
+@router.post("/units/{unit_id}/feedback/acknowledge")
+def acknowledge_feedback(
+    unit_id: str, data: s.FeedbackAcknowledgement, p=Depends(child_user), db=Depends(get_db)
+):
+    unit = get_unit(db, p, unit_id, True, True)
+    attempt = db.get(Attempt, data.attempt_id)
+    if not attempt or attempt.unit_id != unit.id:
+        raise HTTPException(404, "Rückmeldung nicht gefunden.")
+    events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
+    if any(e.kind == "feedback_seen" and e.detail.get("attempt_id") == attempt.id for e in events):
+        return unit_data(db, unit)
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    pending = pending_feedback(unit, attempts, events)
+    if not pending or pending["attempt_id"] != attempt.id:
+        raise HTTPException(409, "Die Rückmeldung hat sich geändert. Bitte die Runde neu laden.")
+    record(db, unit.child_id, "feedback_seen", {"attempt_id": attempt.id}, unit.id)
+    db.commit()
+    return unit_data(db, unit)
 
 
 @router.post("/units/{unit_id}/feedback")

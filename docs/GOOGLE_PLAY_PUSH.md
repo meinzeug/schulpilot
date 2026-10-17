@@ -4,7 +4,7 @@ Google wird ausschließlich für Play und freiwilliges Push verwendet. Eigene An
 
 ## Android-Dateien und Signierung
 
-- Paket: `de.dorfspy.schulpilot`, Version `1.2.0`, Version-Code `25` (Stand 17.10.2026), Android 7.0 / API 24 bis Ziel-API 36. Den tatsächlich bereitgestellten Versionscode aus `/api/app-release` und [STATUS.md](STATUS.md) übernehmen.
+- Paket: `de.dorfspy.schulpilot`, Version `1.2.0`, Version-Code `26` (Stand 17.10.2026), Android 7.0 / API 24 bis Ziel-API 36. Den tatsächlich bereitgestellten Versionscode aus `/api/app-release` und [STATUS.md](STATUS.md) übernehmen.
 - Reguläre Direct-APK: `artifacts/schulpilot-android.apk`. Wird bei Deployment unter `/downloads/schulpilot-android.apk` veröffentlicht und vor/nach Web-Login verlinkt. `/api/app-release` enthält die tatsächliche Größe, Version, SHA-256 und den Kanal `stable`.
 - Upload-AAB: `artifacts/schulpilot-play.aab`. Nicht öffentlich und nicht in Git. Google Play verteilt daraus mit Play App Signing signierte APKs.
 - Eigener RSA-4096-Upload-Schlüssel und Passwörter: `~/.local/share/schulpilot-signing/`, Verzeichnis 0700, Dateien 0600. Unbedingt separat verschlüsselt sichern. Der private Schlüssel wird weder auf den App-Server noch zu GitHub kopiert. Der Google-App-Signing-Schlüssel ist davon getrennt.

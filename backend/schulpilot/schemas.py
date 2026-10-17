@@ -287,6 +287,11 @@ class UnitCreate(Strict):
 
 class AnswerRequest(Strict):
     answer: str = Field(max_length=1000)
+    guided_feedback: bool = False
+
+
+class FeedbackAcknowledgement(Strict):
+    attempt_id: str = Field(pattern=r"^[a-f0-9]{32}$")
 
 
 class HeartbeatRequest(Strict):

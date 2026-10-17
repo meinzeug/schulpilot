@@ -295,8 +295,8 @@ void main() {
     final requests = <http.Request>[];
     await mountHome(tester, data, requests: requests);
     expect(find.text('Freiwillig weiterlernen'), findsNothing);
-    expect(find.text('Mein Lernen öffnen'), findsOneWidget);
-    await tap(tester, 'Mein Lernen öffnen');
+    expect(find.text('Anderes Thema'), findsOneWidget);
+    await tap(tester, 'Anderes Thema');
     expect(find.text('Eigener Lernraum'), findsOneWidget);
     expect(requests.where((request) => request.method == 'POST'), isEmpty);
     await tester.pumpWidget(const SizedBox());
@@ -324,7 +324,7 @@ void main() {
   );
 
   testWidgets(
-    'a voluntary start does not relabel recorded homework as an optional assignment',
+    'a met time goal never labels a binding recorded homework assignment voluntary',
     (tester) async {
       final data = overview();
       makeVoluntary(data);
@@ -333,7 +333,8 @@ void main() {
       data['plan']['voluntary'][0]['mandatory'] = true;
       data['plan']['voluntary'][0]['assignment_kind'] = 'homework';
       await mountHome(tester, data, requests: []);
-      expect(find.text('Freiwillig weiterlernen'), findsOneWidget);
+      expect(find.text('Freiwillig weiterlernen'), findsNothing);
+      expect(find.text('Weiterlernen'), findsOneWidget);
       expect(
         find.textContaining('Notierte Hausaufgabe · Mathematik'),
         findsOneWidget,
@@ -353,7 +354,7 @@ void main() {
       await mountHome(tester, data, requests: requests);
       expect(find.text('Freiwillig weiterlernen'), findsNothing);
       expect(find.text('Weiterlernen'), findsNothing);
-      expect(find.text('Mein Lernen öffnen'), findsOneWidget);
+      expect(find.text('Anderes Thema'), findsOneWidget);
       expect(requests.where((request) => request.method == 'POST'), isEmpty);
       await tester.pumpWidget(const SizedBox());
     },

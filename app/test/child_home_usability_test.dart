@@ -160,6 +160,7 @@ void main() {
     final data = _overview();
     final requests = <http.Request>[];
     await _openHome(tester, data, requests: requests);
+    await tester.ensureVisible(find.text('Heute keine neuen Seiten'));
     await tester.tap(find.text('Heute keine neuen Seiten'));
     await tester.pumpAndSettle();
     expect(find.text('Heutige Seiten scannen'), findsNothing);
@@ -186,7 +187,7 @@ void main() {
         expect(find.text('Jetzt lernen'), findsNothing);
         expect(find.text('Weiterlernen'), findsNothing);
         expect(find.text('Freiwillig üben'), findsNothing);
-        expect(find.text('Heutige Heftseiten'), findsOneWidget);
+        expect(find.text('Heutige Seiten scannen'), findsOneWidget);
         expect(requests.where((r) => r.method == 'POST'), isEmpty);
         await tester.pumpWidget(const SizedBox());
       },
@@ -203,6 +204,7 @@ void main() {
       ];
       final requests = <http.Request>[];
       await _openHome(tester, data, requests: requests);
+      await tester.ensureVisible(find.text('Heftseiten prüfen'));
       await tester.tap(find.text('Heftseiten prüfen'));
       await tester.pumpAndSettle();
       final route = GoRouterState.of(
@@ -327,7 +329,18 @@ void main() {
                   'subject': 'Mathematik',
                   'topic': 'Brüche',
                   'questions': [
-                    {'id': 'q1', 'prompt': 'Was ist ein Nenner?'},
+                    {
+                      'id': 'q1',
+                      'prompt': 'Was ist ein Nenner?',
+                      'hints_used': 0,
+                      'attempts': [
+                        {
+                          'answer': 'Eigene künstliche Umschreibung',
+                          'outcome': 'uncertain',
+                          'assisted': false,
+                        },
+                      ],
+                    },
                   ],
                   'coaching': {
                     'status': 'ready',
@@ -355,7 +368,7 @@ void main() {
         ),
       );
       expect(find.text('Weiter üben'), findsOneWidget);
-      expect(find.text('Eine Antwort ist noch unklar.'), findsOneWidget);
+      expect(find.text('1 noch unklar'), findsOneWidget);
       expect(find.text('Alle gespeicherten Einzelheiten.'), findsNothing);
       expect(
         find.text('Der Nenner steht unter dem Bruchstrich.'),

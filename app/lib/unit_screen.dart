@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'api.dart';
 import 'coaching_panel.dart';
 import 'lesson_voice.dart';
-import 'study_path_panel.dart';
+import 'learning_room.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
 
@@ -53,10 +54,24 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? answerOutcome;
   bool answerAssisted = false;
   bool awaitingContinue = false;
-  String reviewSection = 'review';
+  String? feedbackAttemptId;
+  String? answeredText;
+  bool helpExpanded = false;
+  bool clockDetails = false;
+  bool actionBusy = false;
+  Object? actionError;
+  bool updatingDraft = false;
+  bool leaving = false;
   final stepTop = GlobalKey();
+  final hintTop = GlobalKey();
+  final roomScroll = ScrollController();
   AppState get state => widget.state;
   DateTime get interactionNow => widget.activityClock?.call() ?? DateTime.now();
+  bool requestIsCurrent(String id, String? requestedOwner) =>
+      mounted &&
+      widget.unitId == id &&
+      ownerId == requestedOwner &&
+      state.user?['id'] == requestedOwner;
   @override
   void initState() {
     super.initState();
@@ -66,6 +81,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
+    state.addListener(accountChanged);
+    text.addListener(draftChanged);
     load();
     timer = Timer.periodic(const Duration(seconds: 20), (_) => beat());
     liveClock = Timer.periodic(const Duration(seconds: 1), (_) => tickClock());
@@ -90,6 +107,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant UnitScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != state) {
+      oldWidget.state.removeListener(accountChanged);
+      state.addListener(accountChanged);
+      accountChanged();
+    }
     if (oldWidget.unitId != widget.unitId) {
       coachingPoll?.cancel();
       coachingPoll = null;
@@ -101,7 +123,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       answeredQuestion = null;
       answerOutcome = null;
       awaitingContinue = false;
-      reviewSection = 'review';
+      feedbackAttemptId = answeredText = null;
+      helpExpanded = clockDetails = actionBusy = false;
+      actionError = null;
       ownerId = state.user?['id'];
       needsTimeBaseline = true;
       breakDismissed = false;
@@ -109,7 +133,18 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       pendingSeconds = 0;
       clockOffline = clockWasRunning = false;
       lastInteraction = interactionNow;
+      updatingDraft = true;
       text.clear();
+      updatingDraft = false;
+      if (timer?.isActive != true) {
+        timer = Timer.periodic(const Duration(seconds: 20), (_) => beat());
+      }
+      if (liveClock?.isActive != true) {
+        liveClock = Timer.periodic(
+          const Duration(seconds: 1),
+          (_) => tickClock(),
+        );
+      }
       load();
     }
   }
@@ -117,10 +152,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    state.removeListener(accountChanged);
     timer?.cancel();
     liveClock?.cancel();
     coachingPoll?.cancel();
+    text.removeListener(draftChanged);
     text.dispose();
+    roomScroll.dispose();
     super.dispose();
   }
 
@@ -142,6 +180,76 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     lastInteraction = stamp;
     if (idle) unawaited(beat());
+  }
+
+  void draftChanged() {
+    if (updatingDraft || !mounted) return;
+    noteInteraction();
+    setState(() {});
+  }
+
+  void accountChanged() {
+    if (!mounted || state.user?['id'] == ownerId) return;
+    timer?.cancel();
+    liveClock?.cancel();
+    coachingPoll?.cancel();
+    needsTimeBaseline = true;
+    updatingDraft = true;
+    text.clear();
+    updatingDraft = false;
+    setState(() {
+      unit = null;
+      error = actionError = null;
+      answeredQuestion = null;
+      answeredText = explanation = hint = choice = null;
+      matches = {};
+      clockAnchor = null;
+    });
+  }
+
+  Json? get currentQuestion {
+    if (awaitingContinue && answeredQuestion != null) return answeredQuestion;
+    for (final question in unit?['questions'] as List? ?? []) {
+      if (!done(question)) return Json.from(question as Map);
+    }
+    return null;
+  }
+
+  void syncQuestionDraft() {
+    if (awaitingContinue) return;
+    final next = currentQuestion;
+    if (next?['id'] == questionId) return;
+    questionId = next?['id'];
+    choice = null;
+    matches = {};
+    hint = null;
+    helpExpanded = false;
+    updatingDraft = true;
+    text.clear();
+    updatingDraft = false;
+  }
+
+  void restoreFeedback(Json data) {
+    final pending = data['pending_feedback'];
+    if (pending is Map) {
+      final matching = (data['questions'] as List? ?? []).where(
+        (question) => question['id'] == pending['question_id'],
+      );
+      if (matching.isNotEmpty) {
+        answeredQuestion = Json.from(matching.first as Map);
+        answeredText = pending['answer']?.toString();
+        feedbackAttemptId = pending['attempt_id']?.toString();
+        answerOutcome = pending['outcome']?.toString();
+        answerAssisted = pending['assisted'] == true;
+        explanation = pending['explanation']?.toString();
+        awaitingContinue = true;
+      }
+    } else if (data.containsKey('pending_feedback')) {
+      awaitingContinue = false;
+      answeredQuestion = null;
+      answeredText = feedbackAttemptId = explanation = null;
+    }
+    syncQuestionDraft();
   }
 
   bool get clockRunning =>
@@ -256,11 +364,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (loading) return;
     loading = true;
     final requestedId = widget.unitId;
+    final requestedOwner = ownerId;
     try {
+      if (!requestIsCurrent(requestedId, requestedOwner)) return;
       final data = await state.api.get('/units/$requestedId');
-      if (mounted && requestedId == widget.unitId) {
+      if (requestIsCurrent(requestedId, requestedOwner)) {
         setState(() {
           unit = data;
+          restoreFeedback(data);
           acceptClockSnapshot();
           error = null;
         });
@@ -268,7 +379,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         if (needsTimeBaseline) await beat();
       }
     } catch (e) {
-      if (mounted && requestedId == widget.unitId) setState(() => error = e);
+      if (requestIsCurrent(requestedId, requestedOwner)) {
+        setState(() => error = e);
+      }
     } finally {
       if (requestedId == widget.unitId) loading = false;
     }
@@ -278,7 +391,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (unit?['coaching']?['status'] == 'pending' ||
         ['queued', 'running'].contains(unit?['coaching']?['practice_status'])) {
       coachingPoll ??= Timer.periodic(const Duration(seconds: 3), (_) {
-        if (visible) load();
+        if (visible && routeVisible && state.user?['id'] == ownerId) load();
       });
     } else {
       coachingPoll?.cancel();
@@ -320,43 +433,278 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => Listener(
-    onPointerDown: (_) => noteInteraction(),
-    onPointerSignal: (_) => noteInteraction(),
-    child: PageFrame(
-      state: state,
-      showTitle: !state.isChild,
-      title: state.isChild ? 'Lernen' : 'Einblick in die Lerneinheit',
-      subtitle: state.isChild ? null : 'Aufgaben, Antworten und Hilfen.',
-      child: error != null
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Notice(error.toString(), warning: true),
-                ActionButton(
-                  label: 'Erneut versuchen',
-                  icon: Icons.refresh_rounded,
-                  onPressed: load,
-                ),
-              ],
-            )
-          : unit == null
-          ? const Center(child: CircularProgressIndicator())
-          : KeyedSubtree(
-              key: stepTop,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (state.isChild && state.user?['id'] == ownerId) ...[
-                    learningClock(unit!),
-                    const SizedBox(height: 18),
-                  ],
-                  body(context),
-                ],
+  Widget build(BuildContext context) {
+    if (state.user?['id'] != ownerId) {
+      return const Scaffold(
+        body: SafeArea(
+          child: Center(child: Text('Bitte melde dich erneut an.')),
+        ),
+      );
+    }
+    final u = unit;
+    final content = error != null
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Notice(error.toString(), warning: true),
+              ActionButton(
+                label: 'Erneut versuchen',
+                icon: Icons.refresh_rounded,
+                onPressed: load,
               ),
+            ],
+          )
+        : u == null
+        ? const Center(child: CircularProgressIndicator())
+        : KeyedSubtree(key: stepTop, child: body(context));
+    if (!state.isChild) {
+      return PageFrame(
+        state: state,
+        title: 'Einblick in die Lerneinheit',
+        subtitle: 'Aufgaben, Antworten und Hilfen.',
+        child: content,
+      );
+    }
+    if (state.user?['id'] != ownerId) {
+      return const Scaffold(
+        body: SafeArea(
+          child: Center(child: Text('Bitte melde dich erneut an.')),
+        ),
+      );
+    }
+    final questions = u?['questions'] as List? ?? [];
+    final question = currentQuestion;
+    final number = question == null
+        ? null
+        : questions.indexWhere((item) => item['id'] == question['id']) + 1;
+    final phase = u?['status'] == 'completed' && !awaitingContinue
+        ? 2
+        : u?['introduction_seen'] == false
+        ? 0
+        : 1;
+    return PopScope(
+      canPop: leaving,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(leaveLearning());
+      },
+      child: Listener(
+        onPointerDown: (_) => noteInteraction(),
+        onPointerSignal: (_) => noteInteraction(),
+        child: LearningRoom(
+          title: u?['topic']?.toString() ?? 'Deine Lernrunde',
+          phase: phase,
+          progress: phase == 1 && number != null && number > 0
+              ? 'Aufgabe $number von ${questions.length}'
+              : null,
+          scrollController: roomScroll,
+          clock: u == null ? null : learningClock(u),
+          onLeave: () => unawaited(leaveLearning()),
+          onPause: u?['status'] == 'active' && !actionBusy
+              ? () => unawaited(perform(() => pauseUnit(u!)))
+              : null,
+          onHelp: u == null || actionBusy
+              ? null
+              : () => unawaited(perform(() => openHelp(u))),
+          primaryAction: u == null || error != null ? null : primaryAction(u),
+          actionMessage: actionError == null
+              ? null
+              : Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    actionError is ApiError
+                        ? (actionError as ApiError).message
+                        : 'Das hat gerade nicht geklappt. Versuch es noch einmal.',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF8D3D25),
+                    ),
+                  ),
+                ),
+          child: content,
+        ),
+      ),
+    );
+  }
+
+  Future<void> perform(Future<void> Function() action) async {
+    if (actionBusy || state.user?['id'] != ownerId) return;
+    final requestedId = widget.unitId;
+    final requestedOwner = ownerId;
+    setState(() {
+      actionBusy = true;
+      actionError = null;
+    });
+    try {
+      await action();
+    } catch (e) {
+      if (requestIsCurrent(requestedId, requestedOwner)) {
+        setState(() => actionError = e);
+      }
+    } finally {
+      if (requestIsCurrent(requestedId, requestedOwner)) {
+        setState(() => actionBusy = false);
+      }
+    }
+  }
+
+  bool answerReady(Json question) => question['type'] == 'choice'
+      ? choice != null
+      : question['type'] == 'match'
+      ? matches.length == (question['options'] as List).length
+      : text.text.trim().isNotEmpty;
+
+  Widget? primaryAction(Json u) {
+    if (u['status'] == 'completed' && !awaitingContinue) return null;
+    final question = currentQuestion;
+    late String label;
+    late Future<void> Function() action;
+    var enabled = true;
+    if (awaitingContinue) {
+      final closed = done(answeredQuestion);
+      label = !closed
+          ? 'Noch einmal versuchen'
+          : u['status'] == 'completed'
+          ? 'Ergebnis ansehen'
+          : 'Weiter';
+      action = acknowledgeFeedback;
+    } else if (u['status'] != 'active') {
+      label = u['status'] == 'paused' ? 'Lernen fortsetzen' : 'Einheit starten';
+      action = () => startUnit(u);
+    } else if (u['introduction_seen'] == false) {
+      label = 'Weiter zu den Übungen';
+      action = () => finishIntroduction(u);
+    } else if (question == null) {
+      label = 'Rückblick laden';
+      action = load;
+    } else {
+      label = 'Antwort prüfen';
+      enabled = answerReady(question);
+      action = () => submitAnswer(u, question);
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 52),
+      child: FilledButton.icon(
+        key: const ValueKey('learning-primary-action'),
+        onPressed: actionBusy || !enabled ? null : () => perform(action),
+        icon: actionBusy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                label == 'Antwort prüfen'
+                    ? Icons.check_rounded
+                    : Icons.arrow_forward_rounded,
+              ),
+        label: Text(actionBusy ? 'Bitte warten …' : label),
+      ),
+    );
+  }
+
+  Future<void> startUnit(Json u) async {
+    final id = u['id'];
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(id, requestedOwner)) return;
+    final data = await state.api.post('/units/$id/start');
+    if (!requestIsCurrent(id, requestedOwner)) return;
+    needsTimeBaseline = true;
+    setState(() {
+      unit = data;
+      restoreFeedback(data);
+      acceptClockSnapshot();
+    });
+    noteInteraction();
+    await beat();
+    revealStep();
+  }
+
+  Future<void> finishIntroduction(Json u) async {
+    final id = u['id'];
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(id, requestedOwner)) return;
+    final data = await state.api.post('/units/$id/introduction');
+    if (!requestIsCurrent(id, requestedOwner)) return;
+    setState(() {
+      unit = data;
+      restoreFeedback(data);
+    });
+    revealStep();
+  }
+
+  Future<void> acknowledgeFeedback() async {
+    final id = widget.unitId;
+    final requestedOwner = ownerId;
+    final attemptId = feedbackAttemptId;
+    noteInteraction();
+    await beat();
+    if (!requestIsCurrent(id, requestedOwner) || !routeVisible) return;
+    final data = attemptId == null
+        ? null
+        : await state.api.post('/units/$id/feedback/acknowledge', {
+            'attempt_id': attemptId,
+          });
+    if (!requestIsCurrent(id, requestedOwner)) return;
+    setState(() {
+      awaitingContinue = false;
+      answeredQuestion = null;
+      answeredText = feedbackAttemptId = explanation = null;
+      if (data != null) {
+        unit = data;
+        restoreFeedback(data);
+        acceptClockSnapshot();
+      } else {
+        syncQuestionDraft();
+      }
+    });
+    revealStep();
+    watchCoaching();
+  }
+
+  Future<void> leaveLearning() async {
+    if (actionBusy || leaving) return;
+    final requestedId = widget.unitId;
+    final requestedOwner = ownerId;
+    final u = unit;
+    final hasDraft =
+        !awaitingContinue &&
+        (choice != null || text.text.trim().isNotEmpty || matches.isNotEmpty);
+    if (hasDraft) {
+      final leave = await showDialog<bool>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          title: const Text('Jetzt eine Pause machen?'),
+          content: const Text(
+            'Deine ungeprüfte Antwort musst du später neu eingeben. Geprüfte Antworten bleiben gespeichert.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, false),
+              child: const Text('Hier bleiben'),
             ),
-    ),
-  );
+            FilledButton(
+              onPressed: () => Navigator.pop(dialog, true),
+              child: const Text('Pause machen'),
+            ),
+          ],
+        ),
+      );
+      if (leave != true || !requestIsCurrent(requestedId, requestedOwner)) {
+        return;
+      }
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    await perform(() async {
+      if (u?['status'] == 'active') await pauseUnit(u!);
+      if (!mounted ||
+          !requestIsCurrent(requestedId, requestedOwner) ||
+          !routeVisible) {
+        return;
+      }
+      setState(() => leaving = true);
+      context.go('/app');
+    });
+  }
 
   Json? measuredTime(Json u) {
     final raw = u['learning_time'];
@@ -395,14 +743,24 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         : (shown / goal).clamp(0.0, met ? 1.0 : 0.99);
     final localOnly = pendingSeconds > 0;
     final waiting = required && !met && shown >= goal;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 740),
-        child: Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
+    final stateText = required
+        ? met
+              ? 'Tagesminimum geschafft'
+              : waiting
+              ? 'Zeit wird noch gespeichert …'
+              : u['status'] == 'completed'
+              ? 'Tagesziel noch offen · Noch ${clockText(remaining)} Min.'
+              : 'Noch ${localOnly ? 'ca. ' : ''}${clockText(remaining)} Min.'
+        : 'Heute ist kein Mindestziel eingeplant.';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.timer_outlined, size: 17, color: teal),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
                 measured == null
                     ? 'Diese Einheit ${clockText(currentUnit)}'
                     : required
@@ -414,61 +772,69 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       : 'learning-day-clock',
                 ),
                 style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              if (measured != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Diese Einheit ${clockText(currentUnit)}',
-                  key: const ValueKey('learning-unit-clock'),
-                ),
-              ],
-              if (required) ...[
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  value: progress,
-                  key: const ValueKey('learning-day-progress'),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  met
-                      ? 'Tagesminimum geschafft'
-                      : waiting
-                      ? 'Zeit wird noch gespeichert …'
-                      : u['status'] == 'completed'
-                      ? 'Tagesziel noch offen · Noch ${clockText(remaining)} Min.'
-                      : 'Noch ${localOnly ? 'ca. ' : ''}${clockText(remaining)} Min.',
-                  key: const ValueKey('learning-goal-state'),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ] else if (measured != null) ...[
-                const SizedBox(height: 8),
-                const Text('Heute ist kein Mindestziel eingeplant.'),
-              ],
-              const SizedBox(height: 6),
-              Text(
-                clockOffline
-                    ? 'Zeit pausiert · Verbindung fehlt'
-                    : clockRunning
-                    ? 'Läuft · Zeitmessung als Näherung'
-                    : localOnly
-                    ? 'Zeit pausiert · letzter Zwischenstand'
-                    : 'Gespeicherte aktive Übungszeit · Näherung',
-                style: const TextStyle(fontSize: 12, color: muted),
+            ),
+            IconButton(
+              key: const ValueKey('learning-time-details'),
+              tooltip: clockDetails ? 'Zeitdetails schließen' : 'Zeitdetails',
+              onPressed: () => setState(() => clockDetails = !clockDetails),
+              icon: Icon(
+                clockDetails
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
+        if (measured != null)
+          Text(
+            'Diese Einheit ${clockText(currentUnit)}',
+            key: const ValueKey('learning-unit-clock'),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF53617A)),
+          ),
+        if (required)
+          Text(
+            stateText,
+            key: const ValueKey('learning-goal-state'),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        if (clockOffline)
+          const Text(
+            'Zeit pausiert · Verbindung fehlt',
+            style: TextStyle(fontSize: 12),
+          ),
+        if (clockDetails) ...[
+          const SizedBox(height: 8),
+          if (required)
+            LinearProgressIndicator(
+              value: progress,
+              key: const ValueKey('learning-day-progress'),
+            ),
+          if (!required && measured != null)
+            Text(stateText, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 6),
+          Text(
+            clockOffline
+                ? 'Zeit pausiert · Verbindung fehlt'
+                : clockRunning
+                ? 'Läuft · Zeitmessung als Näherung'
+                : localOnly
+                ? 'Zeit pausiert · letzter Zwischenstand'
+                : 'Gespeicherte aktive Übungszeit · Näherung',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF53617A)),
+          ),
+          const SizedBox(height: 6),
+        ],
+      ],
     );
   }
 
   Widget body(BuildContext context) {
     final u = unit!;
     final questions = u['questions'] as List;
-    final completed = questions.where(done).length;
     if (!state.isChild) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,138 +917,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return answerFeedback(context, u);
     }
     if (u['status'] == 'completed') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: mint,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.task_alt_rounded,
-                  color: teal,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Text(
-                  'Runde geschafft!',
-                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            '${u['subject']} · ${u['topic']}',
-            style: const TextStyle(color: muted),
-          ),
-          if (minimumOpen(u)) ...[
-            const SizedBox(height: 18),
-            ActionButton(
-              label: 'Weiterlernen',
-              icon: Icons.arrow_forward_rounded,
-              onPressed: () async {
-                openRoute(context, '/app');
-              },
-            ),
-          ],
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final section in [
-                ('review', 'Rückblick'),
-                if (u['school_day_id'] != null && u['synthetic'] != true)
-                  ('path', 'Lernweg'),
-                ('answers', 'Antworten'),
-              ])
-                ChoiceChip(
-                  label: Text(section.$2),
-                  selected: reviewSection == section.$1,
-                  onSelected: (_) => setState(() => reviewSection = section.$1),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (reviewSection == 'review')
-            if (minimumOpen(u))
-              ExpansionTile(
-                title: const Text('Rückblick ansehen'),
-                tilePadding: EdgeInsets.zero,
-                children: [CoachingPanel(state: state, unit: u, refresh: load)],
-              )
-            else
-              CoachingPanel(state: state, unit: u, refresh: load),
-          if (reviewSection == 'path' &&
-              u['school_day_id'] != null &&
-              u['synthetic'] != true) ...[
-            const SizedBox(height: 20),
-            StudyPathPanel(
-              state,
-              u['child_id'],
-              u['school_day_id'],
-              dense: true,
-              onChanged: load,
-            ),
-          ],
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              helpButton(context, u),
-              if (u['source_material_ids']?.isNotEmpty == true &&
-                  u['synthetic'] != true)
-                askButton(u),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (reviewSection == 'answers')
-            Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final q in questions)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            q['prompt'],
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 6),
-                          for (final a in q['attempts'] as List)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Text(
-                                '${a['answer']} · ${outcomeLabel(a['outcome'])}${a['assisted'] == true ? ' · mit Hilfe' : ''}',
-                              ),
-                            ),
-                          if (q['feedback_explanation'] != null) ...[
-                            Text(q['feedback_explanation']),
-                            ReadAloudButton(text: q['feedback_explanation']),
-                          ],
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
-      );
+      return CoachingPanel(state: state, unit: u, refresh: load);
     }
     if (u['status'] != 'active') {
       return Panel(
-        color: mint,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -690,331 +928,261 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               u['status'] == 'paused'
                   ? Icons.pause_circle_outline_rounded
                   : Icons.play_circle_outline_rounded,
+              size: 40,
               color: teal,
-              size: 48,
             ),
-            const SizedBox(height: 18),
-            Text(
-              u['topic'],
-              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Text(
               u['status'] == 'paused'
-                  ? 'Alles gespeichert. Bereit für die nächste Aufgabe?'
-                  : '${questions.length} Aufgaben',
+                  ? 'Deine Runde wartet auf dich.'
+                  : 'Bereit für deine Runde?',
+              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              u['status'] == 'paused'
+                  ? 'Geprüfte Antworten sind gespeichert.'
+                  : '${questions.length} Aufgaben · Schritt für Schritt',
               style: const TextStyle(fontSize: 16),
             ),
-            const SizedBox(height: 24),
-            ActionButton(
-              label: u['status'] == 'paused'
-                  ? 'Lernen fortsetzen'
-                  : 'Einheit starten',
-              icon: Icons.play_arrow_rounded,
-              onPressed: () async {
-                final id = u['id'];
-                final data = await state.api.post('/units/$id/start');
-                if (mounted && widget.unitId == id) {
-                  needsTimeBaseline = true;
-                  setState(() {
-                    unit = data;
-                    acceptClockSnapshot();
-                  });
-                  noteInteraction();
-                  await beat();
-                }
-              },
-            ),
+            if (u['synthetic'] == true) ...[
+              const SizedBox(height: 12),
+              sampleNotice(u),
+            ],
           ],
         ),
       );
     }
     if (u['introduction_seen'] == false) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Tag('1 · Verstehen'),
-                ),
-                if (u['synthetic'] == true) ...[
-                  const SizedBox(height: 12),
-                  sampleNotice(u),
-                ],
-                const SizedBox(height: 18),
-                Text(
-                  u['topic'],
-                  style: const TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  u['explanation'],
-                  style: const TextStyle(fontSize: 18, height: 1.6),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    ReadAloudButton(text: u['explanation']),
-                    if (u['synthetic'] != true) askButton(u),
-                  ],
-                ),
-                const SizedBox(height: 26),
-                ActionButton(
-                  label: 'Weiter zu den Übungen',
-                  icon: Icons.arrow_forward_rounded,
-                  onPressed: () async {
-                    final id = u['id'];
-                    final data = await state.api.post(
-                      '/units/$id/introduction',
-                    );
-                    if (mounted && widget.unitId == id) {
-                      setState(() => unit = data);
-                      revealStep();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [pauseButton(u), helpButton(context, u)],
-          ),
-        ],
-      );
-    }
-    final unfinished = questions.where((question) => !done(question));
-    if (unfinished.isEmpty) {
       return Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Deine Antworten sind gespeichert.'),
-            const SizedBox(height: 16),
-            ActionButton(
-              label: 'Rückblick laden',
-              icon: Icons.refresh_rounded,
-              onPressed: load,
+            const Text(
+              'Schau dir das kurz an',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
+            const SizedBox(height: 16),
+            Text(
+              u['explanation'],
+              style: const TextStyle(fontSize: 18, height: 1.55),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ReadAloudButton(text: u['explanation']),
+            ),
+            if (u['synthetic'] == true) ...[
+              const SizedBox(height: 12),
+              sampleNotice(u),
+            ],
           ],
         ),
       );
     }
-    final q = unfinished.first;
-    if (questionId != q['id']) {
-      questionId = q['id'];
-      choice = null;
-      matches = {};
-      text.clear();
-      hint = null;
+    final q = currentQuestion;
+    if (q == null) {
+      return const Panel(child: Text('Deine Antworten sind gespeichert.'));
     }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 740),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${u['subject']} · ${u['topic']}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                pauseButton(u),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (u['break_recommended'] == true && !breakDismissed) ...[
-              breakRecommendation(u),
-              const SizedBox(height: 14),
-            ],
-            LinearProgressIndicator(value: completed / questions.length),
-            const SizedBox(height: 10),
-            Text(
-              'Aufgabe ${completed + 1} von ${questions.length}',
-              style: const TextStyle(fontWeight: FontWeight.w600, color: muted),
-            ),
-            const SizedBox(height: 20),
-            if (u['synthetic'] == true) sampleNotice(u),
-            Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    q['prompt'],
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      height: 1.35,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: ReadAloudButton(text: q['prompt'], iconOnly: true),
-                  ),
-                  const SizedBox(height: 22),
-                  if (q['type'] == 'choice')
-                    for (final option in q['options'] as List)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Semantics(
-                          selected: choice == option,
-                          button: true,
-                          label: option,
-                          child: InkWell(
-                            onTap: () => setState(() => choice = option),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              constraints: const BoxConstraints(minHeight: 60),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: choice == option ? mint : Colors.white,
-                                border: Border.all(
-                                  color: choice == option
-                                      ? teal
-                                      : const Color(0xFFE1E7F2),
-                                  width: choice == option ? 2 : 1,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (u['break_recommended'] == true && !breakDismissed) ...[
+          breakRecommendation(u),
+          const SizedBox(height: 12),
+        ],
+        if (u['synthetic'] == true) ...[
+          sampleNotice(u),
+          const SizedBox(height: 8),
+        ],
+        Panel(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              questionPrompt(q),
+              const SizedBox(height: 18),
+              if (q['type'] == 'choice')
+                RadioGroup<String>(
+                  groupValue: choice,
+                  onChanged: (value) {
+                    noteInteraction();
+                    setState(() => choice = value);
+                  },
+                  child: Column(
+                    children: [
+                      for (final option in q['options'] as List)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color: choice == option ? mint : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: choice == option
+                                    ? teal
+                                    : const Color(0xFFD7DFED),
+                                width: choice == option ? 2 : 1,
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    choice == option
-                                        ? Icons.radio_button_checked_rounded
-                                        : Icons.radio_button_off_rounded,
-                                    color: choice == option ? teal : muted,
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Text(
-                                      option,
-                                      style: const TextStyle(fontSize: 17),
-                                    ),
-                                  ),
-                                ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: RadioListTile<String>(
+                              value: option,
+                              enabled: !actionBusy,
+                              title: Text(
+                                option,
+                                style: const TextStyle(fontSize: 17),
                               ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              minTileHeight: 58,
+                              activeColor: teal,
                             ),
                           ),
                         ),
-                      ),
-                  if (q['type'] == 'match')
-                    for (final pair in q['options'] as List)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: DropdownButtonFormField<String>(
-                          key: ValueKey('$questionId-$pair'),
-                          isExpanded: true,
-                          initialValue: matches[pair],
-                          decoration: InputDecoration(labelText: pair),
-                          items: (q['choices'] as List).reversed
-                              .map(
-                                (p) => DropdownMenuItem<String>(
-                                  value: p,
-                                  child: Text(
-                                    p,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) => setState(() => matches[pair] = v!),
-                        ),
-                      ),
-                  if (q['type'] == 'short' || q['type'] == 'gap')
-                    TextField(
-                      controller: text,
-                      maxLength: q['type'] == 'short' ? 500 : 200,
-                      minLines: 1,
-                      maxLines: q['type'] == 'short' ? 4 : 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Deine Antwort',
-                      ),
-                      onChanged: (_) => noteInteraction(),
-                    ),
-                  if (q['type'] == 'short' || q['type'] == 'gap')
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: VoiceInputButton(
-                        controller: text,
-                        maxLength: q['type'] == 'short' ? 500 : 200,
-                      ),
-                    ),
-                  if (hint != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Notice(
-                        hint!,
-                        icon: Icons.lightbulb_outline_rounded,
-                      ),
-                    ),
-                  if (hint != null)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ReadAloudButton(text: hint!),
-                    ),
-                  ActionButton(
-                    label: 'Antwort prüfen',
-                    icon: Icons.check_rounded,
-                    onPressed: () => submitAnswer(u, q),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Align(
-                    child: ActionButton(
-                      label: 'Ein Hinweis bitte',
-                      secondary: true,
-                      icon: Icons.lightbulb_outline_rounded,
-                      onPressed: () => requestHint(u, q),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 10,
-              runSpacing: 6,
-              children: [
-                ActionButton(
-                  label: 'Erklärung',
-                  secondary: true,
-                  icon: Icons.auto_stories_outlined,
-                  onPressed: () => showExplanation(context, u),
                 ),
-                helpButton(context, u),
-                if (u['synthetic'] != true &&
-                    u['source_material_ids']?.isNotEmpty == true)
-                  askButton(u),
-                TextButton(
-                  onPressed: () => showTaskFeedback(context, u),
-                  child: const Text('Passt die Aufgabe?'),
+              if (q['type'] == 'match')
+                for (final pair in q['options'] as List)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          pair,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          key: ValueKey('match-${q['id']}-$pair'),
+                          onPressed: actionBusy
+                              ? null
+                              : () => chooseMatch(q, pair),
+                          icon: const Icon(Icons.swap_horiz_rounded),
+                          label: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              matches[pair] ?? 'Was passt dazu?',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              if (q['type'] == 'short' || q['type'] == 'gap') ...[
+                TextField(
+                  key: ValueKey('answer-${q['id']}'),
+                  controller: text,
+                  readOnly: actionBusy,
+                  maxLength: q['type'] == 'short' ? 500 : 200,
+                  minLines: 1,
+                  maxLines: q['type'] == 'short' ? 4 : 2,
+                  scrollPadding: const EdgeInsets.all(20),
+                  decoration: const InputDecoration(labelText: 'Deine Antwort'),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: VoiceInputButton(
+                    controller: text,
+                    enabled: !actionBusy,
+                    maxLength: q['type'] == 'short' ? 500 : 200,
+                  ),
                 ),
               ],
+            ],
+          ),
+        ),
+        if (helpExpanded) ...[const SizedBox(height: 12), inlineHelp(u, q)],
+      ],
+    );
+  }
+
+  Widget questionPrompt(Json q) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Text(
+          q['prompt'],
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            height: 1.35,
+          ),
+        ),
+      ),
+      ReadAloudButton(text: q['prompt'], iconOnly: true),
+    ],
+  );
+
+  Future<void> chooseMatch(Json q, String pair) async {
+    final id = widget.unitId;
+    final requestedOwner = ownerId;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheet) => SizedBox(
+        height: MediaQuery.sizeOf(sheet).height * .72,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Text(
+                'Was passt zu „$pair“?',
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: RadioGroup<String>(
+                  groupValue: matches[pair],
+                  onChanged: (value) => Navigator.pop(sheet, value),
+                  child: Column(
+                    children: [
+                      for (final value in (q['choices'] as List).reversed)
+                        RadioListTile<String>(
+                          value: value,
+                          title: Text(
+                            value,
+                            style: const TextStyle(fontSize: 17),
+                          ),
+                          minVerticalPadding: 16,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextButton(
+                onPressed: () => Navigator.pop(sheet),
+                child: const Text('Zurück zur Aufgabe'),
+              ),
             ),
           ],
         ),
       ),
     );
+    if (selected != null &&
+        requestIsCurrent(id, requestedOwner) &&
+        currentQuestion?['id'] == q['id']) {
+      noteInteraction();
+      setState(() => matches[pair] = selected);
+    }
   }
 
   Widget sampleNotice(Json u) => Padding(
@@ -1029,13 +1197,29 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> requestHint(Json u, dynamic q) async {
     final id = u['id'];
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(id, requestedOwner)) return;
     final data = await state.api.post('/units/$id/questions/${q['id']}/hint');
-    if (mounted && widget.unitId == id) {
-      setState(() => hint = data['hint']);
+    if (requestIsCurrent(id, requestedOwner)) {
+      setState(() {
+        hint = data['hint'];
+        helpExpanded = true;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = hintTop.currentContext;
+        if (mounted && target != null) {
+          Scrollable.ensureVisible(
+            target,
+            alignment: 1,
+            duration: const Duration(milliseconds: 180),
+          );
+        }
+      });
     }
   }
 
   Future<void> submitAnswer(Json u, dynamic q) async {
+    final requestedOwner = ownerId;
     final answer = q['type'] == 'choice'
         ? choice
         : q['type'] == 'match'
@@ -1052,11 +1236,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final id = u['id'];
     noteInteraction();
     await beat();
+    if (!requestIsCurrent(id, requestedOwner) || !routeVisible) return;
     final data = await state.api.post(
       '/units/$id/questions/${q['id']}/answer',
-      {'answer': answer},
+      {
+        'answer': answer,
+        if (u.containsKey('pending_feedback')) 'guided_feedback': true,
+      },
     );
-    if (!mounted || widget.unitId != id) return;
+    if (!requestIsCurrent(id, requestedOwner)) return;
     noteInteraction();
     setState(() {
       unit = Map<String, dynamic>.from(data['unit']);
@@ -1069,7 +1257,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       answerOutcome = data['outcome'];
       answerAssisted = data['assisted'] == true;
       explanation = data['explanation'];
+      answeredText = answer;
+      feedbackAttemptId = null;
       awaitingContinue = true;
+      restoreFeedback(unit!);
     });
     revealStep();
     if (unit!['status'] == 'completed') {
@@ -1079,114 +1270,276 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Widget answerFeedback(BuildContext context, Json u) {
-    final closed = done(answeredQuestion);
+    final q = answeredQuestion!;
+    final closed = done(q);
     final correct = answerOutcome == 'correct';
     final uncertain = answerOutcome == 'uncertain';
     final title = correct
         ? 'Richtig!'
         : uncertain
-        ? 'Schauen wir gemeinsam drauf'
+        ? 'Noch nicht sicher bewertet'
         : closed
         ? 'Das üben wir noch'
         : 'Noch nicht ganz';
-    return Panel(
-      color: correct ? mint : const Color(0xFFFFF6E8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Icon(
-              correct
-                  ? Icons.check_circle_rounded
-                  : Icons.lightbulb_outline_rounded,
-              color: correct ? teal : const Color(0xFF92621A),
-              size: 46,
-            ),
+    final answer =
+        answeredText ??
+        (q['attempts'] as List).lastOrNull?['answer']?.toString() ??
+        '';
+    final matchingAnswers = q['type'] == 'match'
+        ? answer.split(';')
+        : <String>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Panel(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              questionPrompt(q),
+              const SizedBox(height: 18),
+              const Text(
+                'Deine Antwort',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF53617A),
+                ),
+              ),
+              const SizedBox(height: 6),
+              if (q['type'] == 'match')
+                for (var i = 0; i < (q['options'] as List).length; i++)
+                  Text(
+                    '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
+                    style: const TextStyle(fontSize: 17),
+                  )
+              else
+                Text(
+                  answer,
+                  key: const ValueKey('feedback-own-answer'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              const SizedBox(height: 18),
+              const Divider(),
+              const SizedBox(height: 12),
+              Semantics(
+                key: ValueKey('feedback-${feedbackAttemptId ?? q['id']}'),
+                liveRegion: true,
+                container: true,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      correct
+                          ? Icons.check_circle_rounded
+                          : Icons.lightbulb_outline_rounded,
+                      color: correct ? teal : const Color(0xFF92621A),
+                      size: 28,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (uncertain)
+                const Text(
+                  'Ich kann deine Antwort nicht sicher bewerten. Sie ist gespeichert.',
+                  style: TextStyle(fontSize: 16),
+                )
+              else if (!correct)
+                Text(
+                  closed ? 'Diese Aufgabe kommt später noch einmal dran.' : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',
+                  style: const TextStyle(fontSize: 16),
+                )
+              else if (answerAssisted)
+                const Text(
+                  'Mit Hilfe gelöst. Gut, dass du drangeblieben bist.',
+                  style: TextStyle(fontSize: 16),
+                ),
+              if (explanation?.trim().isNotEmpty == true) ...[
+                const SizedBox(height: 16),
+                if (correct)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Warum das stimmt'),
+                    children: [
+                      Text(
+                        explanation!,
+                        style: const TextStyle(fontSize: 17, height: 1.5),
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ReadAloudButton(text: explanation!),
+                      ),
+                    ],
+                  )
+                else ...[
+                  Text(
+                    explanation!,
+                    style: const TextStyle(fontSize: 17, height: 1.5),
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ReadAloudButton(text: explanation!),
+                  ),
+                ],
+              ],
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          if (uncertain)
-            const Text(
-              'Ich kann deine Antwort nicht sicher bewerten. Sie ist gespeichert.',
-              style: TextStyle(fontSize: 16),
-            )
-          else if (!correct)
-            Text(
-              closed ? 'Wir schauen später noch einmal auf diese Aufgabe.' : 'Ein Hinweis kann dir helfen. Versuch es in Ruhe noch einmal.',
-              style: const TextStyle(fontSize: 16),
-            )
-          else if (answerAssisted)
-            const Text(
-              'Mit Hilfe gelöst. Gut, dass du drangeblieben bist.',
-              style: TextStyle(fontSize: 16),
-            ),
-          if (explanation?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 18),
-            Text(
-              explanation!,
-              style: const TextStyle(fontSize: 17, height: 1.5),
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ReadAloudButton(text: explanation!),
-            ),
-          ],
-          if (hint != null && !closed) ...[
-            const SizedBox(height: 16),
-            Notice(hint!, icon: Icons.lightbulb_outline_rounded),
-          ],
-          const SizedBox(height: 26),
-          ActionButton(
-            label: !closed
-                ? 'Noch einmal versuchen'
-                : u['status'] == 'completed'
-                ? minimumOpen(u)
-                      ? 'Weiterlernen'
-                      : 'Zum Rückblick'
-                : 'Weiter',
-            icon: Icons.arrow_forward_rounded,
-            onPressed: () async {
-              if (closed && u['status'] == 'completed' && minimumOpen(u)) {
-                openRoute(context, '/app');
-                return;
-              }
-              setState(() {
-                awaitingContinue = false;
-                explanation = null;
-              });
-              noteInteraction();
-              revealStep();
-            },
-          ),
-          if (closed && u['status'] == 'completed' && minimumOpen(u))
-            TextButton(
-              onPressed: () => setState(() => awaitingContinue = false),
-              child: const Text('Rückblick ansehen'),
-            ),
-          if (!closed) ...[
-            const SizedBox(height: 10),
-            Align(
-              child: ActionButton(
-                label: 'Ein Hinweis bitte',
-                secondary: true,
-                icon: Icons.lightbulb_outline_rounded,
-                onPressed: () => requestHint(u, answeredQuestion),
+        ),
+        if (helpExpanded && !closed) ...[
+          const SizedBox(height: 12),
+          inlineHelp(u, q),
+        ],
+      ],
+    );
+  }
+
+  Future<void> openHelp(Json u) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final q = currentQuestion;
+    if (q != null &&
+        !done(q) &&
+        (u['status'] == 'active' || awaitingContinue)) {
+      if (hint == null) {
+        await requestHint(u, q);
+      } else {
+        setState(() => helpExpanded = true);
+        await moreHelp(u);
+      }
+    } else {
+      await moreHelp(u);
+    }
+  }
+
+  Widget inlineHelp(Json u, Json q) => Panel(
+    key: hintTop,
+    color: mint,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.lightbulb_outline_rounded, color: teal),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Dein Tipp',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ),
+            if (hint != null) ReadAloudButton(text: hint!, iconOnly: true),
           ],
-          const SizedBox(height: 10),
-          Align(child: helpButton(context, u)),
-          if (u['synthetic'] != true &&
-              u['source_material_ids']?.isNotEmpty == true)
-            Align(child: askButton(u)),
-        ],
+        ),
+        if (hint != null)
+          Text(hint!, style: const TextStyle(fontSize: 17, height: 1.5)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            TextButton(
+              onPressed: actionBusy
+                  ? null
+                  : () => perform(() => requestHint(u, q)),
+              child: const Text('Noch ein Tipp'),
+            ),
+            TextButton(
+              onPressed: actionBusy ? null : () => perform(() => moreHelp(u)),
+              child: const Text('Mehr Hilfe'),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Future<void> moreHelp(Json u) async {
+    final requestedOwner = ownerId;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Text(
+                  'Was hilft dir jetzt?',
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+                ),
+              ),
+              for (final option in [
+                (
+                  'explanation',
+                  'Erklärung ansehen',
+                  Icons.auto_stories_outlined,
+                ),
+                if (u['synthetic'] != true &&
+                    u['source_material_ids']?.isNotEmpty == true)
+                  (
+                    'tutor',
+                    'Eine Frage stellen',
+                    Icons.chat_bubble_outline_rounded,
+                  ),
+                (
+                  'parents',
+                  'Meine Eltern fragen',
+                  Icons.volunteer_activism_outlined,
+                ),
+                ('difficulty', 'Die Aufgabe passt nicht', Icons.tune_rounded),
+              ])
+                ListTile(
+                  leading: Icon(option.$3, color: teal),
+                  title: Text(option.$2),
+                  minVerticalPadding: 12,
+                  onTap: () => Navigator.pop(sheet, option.$1),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheet),
+                child: const Text('Zurück zur Aufgabe'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
+    if (!mounted || !requestIsCurrent(u['id'], requestedOwner)) {
+      return;
+    }
+    switch (selected) {
+      case 'explanation':
+        await showExplanation(context, u);
+      case 'tutor':
+        await showTutorSheet(
+          context,
+          state,
+          childId: u['child_id'] ?? state.user!['child_id'],
+          unitId: u['id'],
+        );
+      case 'parents':
+        await requestParentHelp(context, u);
+      case 'difficulty':
+        await showTaskFeedback(context, u);
+    }
   }
 
   Widget breakRecommendation(Json u) => Panel(
@@ -1221,13 +1574,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> pauseUnit(Json u) async {
     final id = u['id'];
+    final requestedOwner = ownerId;
     noteInteraction();
     await beat();
+    if (!requestIsCurrent(id, requestedOwner)) return;
     final data = await state.api.post('/units/$id/pause');
-    if (mounted && widget.unitId == id) {
+    if (requestIsCurrent(id, requestedOwner)) {
       needsTimeBaseline = true;
       setState(() {
         unit = data;
+        restoreFeedback(data);
         acceptClockSnapshot();
       });
     }
@@ -1241,8 +1597,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   );
 
   Future<void> showExplanation(BuildContext context, Json u) async {
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final data = await state.api.post('/units/${u['id']}/explanation');
-    if (!context.mounted || widget.unitId != u['id']) return;
+    if (!context.mounted || !requestIsCurrent(u['id'], requestedOwner)) return;
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1271,69 +1629,70 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget helpButton(BuildContext context, Json u) => ActionButton(
-    label: 'Ich brauche Hilfe',
-    secondary: true,
-    icon: Icons.volunteer_activism_outlined,
-    onPressed: () async {
-      final note = TextEditingController();
-      try {
-        await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Deine Eltern um Hilfe bitten?'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Es geht um ${u['topic']}.'),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: note,
-                    minLines: 1,
-                    maxLines: 3,
-                    maxLength: 600,
-                    decoration: const InputDecoration(
-                      labelText: 'Möchtest du etwas dazuschreiben?',
-                      hintText: 'Du kannst das Feld leer lassen.',
-                    ),
+  Future<void> requestParentHelp(BuildContext context, Json u) async {
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(u['id'], requestedOwner)) return;
+    final note = TextEditingController();
+    try {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Deine Eltern um Hilfe bitten?'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Es geht um ${u['topic']}.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: note,
+                  minLines: 1,
+                  maxLines: 3,
+                  maxLength: 600,
+                  decoration: const InputDecoration(
+                    labelText: 'Möchtest du etwas dazuschreiben?',
+                    hintText: 'Du kannst das Feld leer lassen.',
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Abbrechen'),
-              ),
-              ActionButton(
-                label: 'Hilfe anfragen',
-                icon: Icons.send_rounded,
-                onPressed: () async {
-                  final body =
-                      'Ich brauche Hilfe bei ${u['subject']}: ${u['topic']}.${note.text.trim().isEmpty ? '' : ' ${note.text.trim()}'}';
-                  await state.api.post(
-                    '/children/${state.user!['child_id']}/messages',
-                    {'kind': 'help', 'body': body},
-                  );
-                  state.refreshState();
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (context.mounted) {
-                    toast(context, 'Deine Eltern wissen Bescheid.');
-                  }
-                },
-              ),
-            ],
           ),
-        );
-      } finally {
-        note.dispose();
-      }
-    },
-  );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Abbrechen'),
+            ),
+            ActionButton(
+              label: 'Hilfe anfragen',
+              icon: Icons.send_rounded,
+              onPressed: () async {
+                if (!requestIsCurrent(u['id'], requestedOwner)) return;
+                final body =
+                    'Ich brauche Hilfe bei ${u['subject']}: ${u['topic']}.${note.text.trim().isEmpty ? '' : ' ${note.text.trim()}'}';
+                await state.api.post(
+                  '/children/${u['child_id'] ?? state.user!['child_id']}/messages',
+                  {'kind': 'help', 'body': body},
+                );
+                if (!requestIsCurrent(u['id'], requestedOwner)) return;
+                state.refreshState();
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  toast(context, 'Deine Eltern wissen Bescheid.');
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    } finally {
+      note.dispose();
+    }
+  }
 
   Future<void> showTaskFeedback(BuildContext context, Json u) async {
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(u['id'], requestedOwner)) return;
     await showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -1366,9 +1725,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 title: Text(item.$2),
                 onTap: () async {
                   try {
+                    if (!requestIsCurrent(u['id'], requestedOwner)) return;
                     await state.api.post('/units/${u['id']}/feedback', {
                       'kind': item.$1,
                     });
+                    if (!requestIsCurrent(u['id'], requestedOwner)) return;
                     if (sheet.mounted) Navigator.pop(sheet);
                     if (context.mounted) {
                       toast(context, 'Danke, das ist gespeichert.');

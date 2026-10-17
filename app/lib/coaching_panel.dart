@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'lesson_voice.dart';
+import 'learning_next_step.dart';
 import 'ui.dart';
 
 class LearningProgressPanel extends StatelessWidget {
@@ -13,6 +14,8 @@ class LearningProgressPanel extends StatelessWidget {
     final requiredDays = (progress['required_check_days'] as num? ?? 3).toInt();
     final checkedDays = (progress['successful_check_days'] as num? ?? 0)
         .toInt();
+    final minimumSpan = (progress['minimum_span_days'] as num? ?? 7).toInt();
+    final secure = progress['secure_observation'] == true;
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,14 +54,19 @@ class LearningProgressPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          LinearProgressIndicator(
-            value: (checkedDays / requiredDays.clamp(1, 100)).clamp(0, 1),
-          ),
-          const SizedBox(height: 10),
           Text(
             '$checkedDays von $requiredDays Prüftagen',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Wiederholungen über mindestens $minimumSpan Tage',
             style: const TextStyle(color: muted, fontSize: 12),
           ),
+          if (secure) ...[
+            const SizedBox(height: 10),
+            const Tag('Über mehrere Tage bestätigt'),
+          ],
           if (progress['next_review'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -79,7 +87,7 @@ class LearningProgressPanel extends StatelessWidget {
             ),
             children: [
               const Text(
-                'Neue Aufgaben an mindestens drei Tagen über eine Woche zeigen, was schon sicher sitzt. Nur selbstständig richtige Antworten zählen als erfolgreicher Prüftag.',
+                'Wir beobachten neue Aufgaben an verschiedenen Tagen. Nur selbstständig richtige Antworten zählen als erfolgreicher Prüftag. Eine einzelne Runde zeigt noch nicht, was langfristig hängen bleibt.',
                 style: TextStyle(fontSize: 13, color: muted),
               ),
               for (final goal in progress['learning_goals'] as List? ?? [])
@@ -329,34 +337,30 @@ class _ChildCoachingPanel extends StatelessWidget {
     final strengths = report['strengths'] as List? ?? [];
     final focus = report['practice_focus'] as List? ?? [];
     final reviews = report['question_reviews'] as List? ?? [];
-    final uncertain = reviews
-        .where((review) => review['assessment_kind'] == 'ai_opinion')
-        .length;
     final highlight = decision == 'repair' || decision == 'parent_help'
         ? focus.firstOrNull
         : strengths.firstOrNull;
     final childId = unit['child_id'] ?? state.user?['child_id'];
     final questions = unit['questions'] as List? ?? [];
-    final correctCount = questions
-        .where(
-          (q) => (q['attempts'] as List? ?? []).any(
-            (a) => a['outcome'] == 'correct',
-          ),
-        )
-        .length;
+    final facts = _RoundFacts(questions);
     final practicePending = [
       'queued',
       'running',
     ].contains(coach?['practice_status']);
+    final hasPractice =
+        ready &&
+        (decision == 'repair' || decision == 'check') &&
+        (coach?['next_unit_id'] != null || coach?['practice_deferred'] == true);
+    final fallback =
+        ready && decision != 'parent_help' && !hasPractice ||
+        coach != null && !ready && !pending && coach?['can_retry'] != true;
     final headingText = !ready
         ? 'Dein Rückblick'
         : switch (decision) {
-            'check' => 'Jetzt ohne Hilfe versuchen.',
-            'repair' => 'Das üben wir noch einmal.',
-            'parent_help' => 'Gemeinsam geht’s leichter.',
-            'pause' => 'Jetzt ist Pause.',
-            'spaced' => 'Für heute geschafft.',
-            _ => 'Deine Runde ist geschafft.',
+            'repair' => 'Diesen Schritt üben wir weiter.',
+            'parent_help' => 'Gemeinsam weiterlernen.',
+            'pause' => 'Eine Pause kann guttun.',
+            _ => 'Deine Runde ist bearbeitet.',
           };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -371,7 +375,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                   Icon(
                     decision == 'parent_help'
                         ? Icons.people_outline_rounded
-                        : Icons.auto_awesome_rounded,
+                        : Icons.task_alt_rounded,
                     color: teal,
                   ),
                   const SizedBox(width: 10),
@@ -387,26 +391,67 @@ class _ChildCoachingPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              Text(
-                '${questions.length} Aufgaben bearbeitet · $correctCount richtig gelöst',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
+              if (questions.isNotEmpty) ...[
+                Text(
+                  '${facts.answered} von ${questions.length} Aufgaben bearbeitet',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (facts.independent > 0)
+                      _RoundFact(
+                        '${facts.independent} selbstständig',
+                        Icons.check_rounded,
+                      ),
+                    if (facts.assisted > 0)
+                      _RoundFact(
+                        '${facts.assisted} mit Hilfe',
+                        Icons.lightbulb_outline_rounded,
+                      ),
+                    if (facts.uncertain > 0)
+                      _RoundFact(
+                        '${facts.uncertain} noch unklar',
+                        Icons.help_outline_rounded,
+                      ),
+                    if (facts.practice > 0)
+                      _RoundFact(
+                        '${facts.practice} weiter üben',
+                        Icons.edit_outlined,
+                      ),
+                    if (facts.unclassified > 0)
+                      _RoundFact(
+                        '${facts.unclassified} richtig gelöst',
+                        Icons.check_rounded,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+              ] else ...[
+                const Text(
+                  'Hier liegen noch keine gespeicherten Aufgabenergebnisse vor.',
+                ),
+                const SizedBox(height: 18),
+              ],
+              if (!fallback) _DayGoalLine(unit['learning_time'] as Map?),
               if (coach == null) ...[
-                const Text('Schauen wir gemeinsam auf deine Antworten.'),
+                const Text('Schauen wir auf deine gespeicherten Antworten.'),
                 const SizedBox(height: 18),
                 ActionButton(
                   label: 'Rückblick starten',
                   icon: Icons.play_arrow_rounded,
-                  onPressed: requestReview,
+                  onPressed: () => requestReview(context),
                 ),
               ] else if (pending) ...[
                 const LinearProgressIndicator(),
                 const SizedBox(height: 14),
                 const Text('Die KI schaut deine Antworten an.'),
                 const SizedBox(height: 6),
-                const Text('Du kannst später hier weitermachen.'),
+                const Text('Deine Antworten bleiben gespeichert.'),
+                _later(context),
               ] else if (!ready) ...[
                 const Text('Dein Rückblick ist gerade nicht verfügbar.'),
                 const SizedBox(height: 8),
@@ -416,7 +461,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                   ActionButton(
                     label: 'Noch einmal versuchen',
                     icon: Icons.refresh_rounded,
-                    onPressed: requestReview,
+                    onPressed: () => requestReview(context),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -442,101 +487,88 @@ class _ChildCoachingPanel extends StatelessWidget {
                   Text(highlight.toString()),
                   const SizedBox(height: 18),
                 ],
-                if (decision == 'parent_help') ...[
+                if (facts.uncertain > 0) ...[
                   const Text(
-                    'Bitte deine Eltern, mit dir auf die Aufgaben zu schauen.',
+                    'Unklare Antworten bleiben zur gemeinsamen Durchsicht offen.',
                   ),
                   const SizedBox(height: 18),
                 ],
-                if (uncertain > 0) ...[
-                  Text(
-                    uncertain == 1
-                        ? 'Eine Antwort ist noch unklar.'
-                        : '$uncertain Antworten sind noch unklar.',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                if (decision == 'parent_help' && childId != null) ...[
+                  const Text(
+                    'Schau mit deinen Eltern auf den schwierigen Schritt.',
                   ),
                   const SizedBox(height: 18),
-                ],
-                if (coach?['next_unit_id'] != null)
-                  ActionButton(
-                    label: decision == 'check'
-                        ? 'Selbst ausprobieren'
-                        : 'Weiter üben',
-                    icon: Icons.arrow_forward_rounded,
-                    onPressed: () async {
-                      final next = coach!['next_unit_id'];
-                      await state.api.post('/units/$next/start');
-                      if (context.mounted) openRoute(context, '/unit/$next');
-                    },
-                  )
-                else if (coach?['practice_deferred'] == true)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (practicePending) ...[
-                        const LinearProgressIndicator(),
-                        const SizedBox(height: 10),
-                        const Text('Deine nächste Übung entsteht …'),
-                      ] else
-                        ActionButton(
-                          label: coach?['practice_status'] == 'failed'
-                              ? 'Übung erneut vorbereiten'
-                              : decision == 'check'
-                              ? 'Ohne Hilfe ausprobieren'
-                              : 'Gezielt weiterüben',
-                          icon: Icons.auto_fix_high_rounded,
-                          secondary: unit['school_day_id'] != null,
-                          onPressed: () async {
-                            await state.api.post(
-                              '/units/${unit['id']}/practice',
-                              null,
-                              {
-                                'Idempotency-Key':
-                                    'practice-${DateTime.now().microsecondsSinceEpoch}',
-                              },
-                            );
-                            await refresh();
-                          },
-                        ),
-                      if (coach?['practice_error'] != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: Text(
-                            coach!['practice_error'],
-                            style: const TextStyle(color: muted, fontSize: 13),
-                          ),
-                        ),
-                    ],
-                  )
-                else if (decision == 'parent_help' && childId != null)
                   ActionButton(
                     label: 'Eltern um Hilfe bitten',
                     icon: Icons.volunteer_activism_outlined,
                     onPressed: () async {
+                      final current = _currentAction(context);
+                      if (!current()) return;
                       await state.api.post('/children/$childId/messages', {
                         'kind': 'help',
                         'body':
                             'Ich brauche Hilfe bei ${unit['subject']}: ${unit['topic']}.',
                       });
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Hilfewunsch gesendet.'),
-                          ),
-                        );
+                      if (context.mounted && current()) {
+                        toast(context, 'Hilfewunsch gesendet.');
                       }
                     },
-                  )
-                else
-                  ActionButton(
-                    label: 'Zur Startseite',
-                    icon: Icons.home_rounded,
-                    onPressed: () async => openRoute(context, '/app'),
                   ),
+                ] else if (hasPractice)
+                  if (coach?['next_unit_id'] != null)
+                    ActionButton(
+                      label: decision == 'check'
+                          ? 'Selbst ausprobieren'
+                          : 'Weiter üben',
+                      icon: Icons.arrow_forward_rounded,
+                      onPressed: () async {
+                        final current = _currentAction(context);
+                        if (!current()) return;
+                        final next = coach!['next_unit_id'];
+                        await state.api.post('/units/$next/start');
+                        if (context.mounted && current()) {
+                          openRoute(context, '/unit/$next');
+                        }
+                      },
+                    )
+                  else if (practicePending) ...[
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 10),
+                    const Text('Deine nächste Übung wird vorbereitet.'),
+                    _later(context),
+                  ] else ...[
+                    ActionButton(
+                      label: coach?['practice_status'] == 'failed'
+                          ? 'Übung erneut vorbereiten'
+                          : decision == 'check'
+                          ? 'Ohne Hilfe ausprobieren'
+                          : 'Gezielt weiterüben',
+                      icon: Icons.auto_fix_high_rounded,
+                      onPressed: () async {
+                        final current = _currentAction(context);
+                        if (!current()) return;
+                        await state.api.post(
+                          '/units/${unit['id']}/practice',
+                          null,
+                          {
+                            'Idempotency-Key':
+                                'practice-${DateTime.now().microsecondsSinceEpoch}',
+                          },
+                        );
+                        if (current()) await refresh();
+                      },
+                    ),
+                    if (coach?['practice_error'] != null)
+                      ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        title: const Text('Was ist passiert?'),
+                        children: [Text(coach!['practice_error'])],
+                      ),
+                  ],
                 if (coach?['next_review'] != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Text(
-                    'Wiederholen am ${_reviewDate(coach!['next_review'])}',
+                    'Später wiederholen: ${_reviewDate(coach!['next_review'])}',
                     style: const TextStyle(color: muted, fontSize: 13),
                   ),
                 ],
@@ -544,18 +576,26 @@ class _ChildCoachingPanel extends StatelessWidget {
             ],
           ),
         ),
-        if (ready) ...[
-          if ((report['explanation'] as String? ?? '').isNotEmpty)
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-              leading: const Icon(Icons.lightbulb_outline_rounded, color: teal),
-              title: const Text('Erklärung ansehen'),
-              childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
-              children: [
-                Text(report['explanation']),
-                ReadAloudButton(text: report['explanation']),
-              ],
-            ),
+        if (fallback && childId is String) ...[
+          const SizedBox(height: 18),
+          LearningNextStep(
+            state: state,
+            childId: childId,
+            currentUnitId: unit['id'],
+          ),
+        ],
+        if (ready && (report['explanation'] as String? ?? '').isNotEmpty)
+          ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+            leading: const Icon(Icons.lightbulb_outline_rounded, color: teal),
+            title: const Text('Erklärung ansehen'),
+            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+            children: [
+              Text(report['explanation']),
+              ReadAloudButton(text: report['explanation']),
+            ],
+          ),
+        if (ready)
           ExpansionTile(
             tilePadding: const EdgeInsets.symmetric(horizontal: 8),
             leading: const Icon(Icons.chat_bubble_outline_rounded, color: teal),
@@ -597,37 +637,63 @@ class _ChildCoachingPanel extends StatelessWidget {
               ),
             ],
           ),
-          if (reviews.isNotEmpty)
-            ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-              leading: const Icon(Icons.fact_check_outlined, color: teal),
-              title: const Text('Rückmeldung zu jeder Aufgabe'),
-              children: [
-                for (final review in reviews)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          (unit['questions'] as List? ?? []).firstWhere(
-                            (q) => q['id'] == review['question_id'],
-                            orElse: () => {'prompt': 'Deine Aufgabe'},
-                          )['prompt'],
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
+        if (reviews.isNotEmpty && ready)
+          ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+            leading: const Icon(Icons.fact_check_outlined, color: teal),
+            title: const Text('Rückmeldung zu jeder Aufgabe'),
+            children: [
+              for (final review in reviews)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        questions.firstWhere(
+                          (q) => q['id'] == review['question_id'],
+                          orElse: () => {'prompt': 'Deine Aufgabe'},
+                        )['prompt'],
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 8),
+                      if (review['assessment_kind'] == 'ai_opinion') ...[
+                        const Tag('KI-Vorschlag · Antwort bleibt unklar'),
                         const SizedBox(height: 8),
-                        if (review['assessment_kind'] == 'ai_opinion') ...[
-                          const Tag('KI-Vorschlag · Antwort bleibt unklar'),
-                          const SizedBox(height: 8),
-                        ],
-                        Text(review['feedback']),
                       ],
+                      Text(review['feedback']),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        if (questions.isNotEmpty)
+          ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+            leading: const Icon(Icons.edit_note_rounded, color: teal),
+            title: const Text('Deine Antworten'),
+            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+            children: [
+              for (final question in questions) ...[
+                Text(
+                  question['prompt'] ?? 'Deine Aufgabe',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                if ((question['attempts'] as List? ?? []).isEmpty)
+                  const Text('Noch keine Antwort gespeichert.'),
+                for (final attempt in question['attempts'] as List? ?? [])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
+                      '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe' : ''}',
                     ),
                   ),
+                const SizedBox(height: 14),
               ],
-            ),
-        ],
+            ],
+          ),
         if (progress != null)
           ExpansionTile(
             tilePadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -639,9 +705,117 @@ class _ChildCoachingPanel extends StatelessWidget {
     );
   }
 
-  Future<void> requestReview() async {
+  Widget _later(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: TextButton(
+      onPressed: () => openRoute(context, '/app'),
+      child: const Text('Später hier weitermachen'),
+    ),
+  );
+
+  bool Function() _currentAction(BuildContext context) {
+    final owner = state.user?['id'];
+    final child = unit['child_id'] ?? state.user?['child_id'];
+    final route = ModalRoute.of(context);
+    return () =>
+        context.mounted &&
+        owner != null &&
+        state.user?['id'] == owner &&
+        state.isChild &&
+        state.user?['child_id'] == child &&
+        (route?.isCurrent ?? true);
+  }
+
+  Future<void> requestReview(BuildContext context) async {
+    final current = _currentAction(context);
+    if (!current()) return;
     await state.api.post('/units/${unit['id']}/coaching');
-    await refresh();
+    if (current()) await refresh();
+  }
+}
+
+class _RoundFacts {
+  int answered = 0,
+      independent = 0,
+      assisted = 0,
+      uncertain = 0,
+      practice = 0,
+      unclassified = 0;
+  _RoundFacts(List questions) {
+    for (final question in questions) {
+      final attempts = question['attempts'] as List? ?? [];
+      if (attempts.isEmpty) continue;
+      answered++;
+      final correct = attempts
+          .where((attempt) => attempt['outcome'] == 'correct')
+          .toList();
+      if (correct.isNotEmpty) {
+        if (correct.any((attempt) => attempt['assisted'] == true)) {
+          assisted++;
+        } else if (correct.every((attempt) => attempt['assisted'] == false)) {
+          independent++;
+        } else {
+          unclassified++;
+        }
+      } else if (attempts.any((attempt) => attempt['outcome'] == 'uncertain')) {
+        uncertain++;
+      } else {
+        practice++;
+      }
+    }
+  }
+}
+
+class _RoundFact extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  const _RoundFact(this.label, this.icon);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: teal),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DayGoalLine extends StatelessWidget {
+  final Map? time;
+  const _DayGoalLine(this.time);
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = time?['daily_remaining_seconds'];
+    String? text;
+    if (time?['daily_goal_met'] == true) {
+      text = 'Tagesziel erreicht.';
+    } else if (time?['goal_required'] == true &&
+        remaining is num &&
+        remaining > 0) {
+      text = remaining < 60
+          ? 'Tagesziel: noch ${remaining.ceil()} Sek.'
+          : 'Tagesziel: noch ${(remaining / 60).ceil()} Min.';
+    }
+    if (text == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Text(text, style: const TextStyle(color: muted, fontSize: 13)),
+    );
   }
 }
 

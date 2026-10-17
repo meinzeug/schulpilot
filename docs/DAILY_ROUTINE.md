@@ -4,11 +4,25 @@ Die Heftsammlung ist der Vorrat, keine tägliche Aufgabenliste. Die Kinderstarts
 
 ## Vorbereitung nach der Schule
 
+Seit 17.10.2026 bleibt die Lernkarte auf der Startseite an derselben Stelle. Eine aktive oder pausierte Runde hat Vorrang; die heutigen Heftfotos bleiben als eigene kurze Aktion erreichbar. Neue Fotos und laufende Fotovorbereitung verdrängen keine bereits lernbare Runde. „Anderes Thema“ öffnet die Sammlung. Fachliche Elternaufträge bleiben auch nach erreichtem Zeitminimum verbindlich gekennzeichnet.
+
 Fotos werden zunächst privat gespeichert. Die ausdrücklich beauftragte Vorbereitung arbeitet anschließend serverseitig weiter, auch wenn das Kind die App verlässt. Erkennung, Quellenprüfung und Paketvorbereitung bleiben getrennt: Erkannte Texte werden nicht heimlich bestätigt. Unsichere Stellen müssen vor Aufgaben aus diesen Quellen geprüft werden. Das Kind beginnt die Lernrunde selbst; ein fertiger Hintergrundauftrag startet keine Einheit.
 
 „Stimmt, weiter“ bestätigt eine geprüfte Seite direkt, ohne zusätzliche Checkbox. Erkennungshinweise bleiben sichtbar. Eine noch unbestätigte eigene Seite lässt sich mit „Seite löschen“ und einer kurzen Rückfrage entfernen. Anschließend erscheint die nächste ungeprüfte Seite; nach der letzten heutigen Seite wieder die Fotoauswahl. Bereits bestätigte Quellen können Kinder dabei nicht löschen.
 
 Fehlende heutige Lernzeit verhindert nicht, geprüften Stoff für spätere Lerntage zu speichern. Ein zusätzlicher KI-Auftrag wird dafür nicht benötigt. Ungeprüfte oder unleserliche Seiten bleiben als solche erkennbar. Bereits gespeicherte Antworten werden beim Ergänzen oder Neuplanen nicht überschrieben.
+
+## Geführte Lernrunde
+
+Der Aufgabenraum zeigt die festen Schritte Verstehen → Üben → Rückblick. Globale Menüs treten während der Runde zurück; Verlassen, Pause und Hilfe bleiben erreichbar. Uhrdetails stehen auf Wunsch bereit. Frage und eigene Antwort bleiben bei der Rückmeldung sichtbar, bis das Kind bewusst weitergeht. Eine feste Hauptaktion erhält eigenen Platz oberhalb der Tastatur; sie überdeckt kein Antwortfeld. Einfache Hinweise, Erklärung, eigene Heftfrage und Elternhilfe sind am selben Hilfezugang erreichbar; Sprache startet nur ausdrücklich.
+
+Neue Antworten verwenden `guided_feedback: true`, sobald die Einheit mit dem Feld `pending_feedback` die Unterstützung dieses Protokolls anzeigt. Der Server merkt die jüngste noch nicht quittierte Rückmeldung, auch bei Pause, Neuladen oder Wechsel auf ein anderes eigenes Gerät. `POST /units/{id}/feedback/acknowledge` quittiert nur den zugehörigen Versuch idempotent; es erzeugt weder Antwort, Lernzeit noch KI-Auftrag. Alte Clients bleiben kompatibel, alte abgeschlossene Antworten werden nicht als ungelesen markiert. Bei einem älteren Backend verwendet der neue Client den bisherigen lokalen Rückmeldungsablauf ohne zusätzliches Schemafeld oder automatischen Antwortwiederholungsversuch. Die internen Marker erscheinen nicht als technische Ereignisse im Elternverlauf.
+
+Nach dem letzten Antwortfeedback erscheint immer der fachliche Abschluss. Selbstständig gelöst, mit Hilfe gelöst, unklar und weiter zu üben werden aus gespeicherten Versuchen getrennt gezählt. Die fachliche Anschlussaktion hat Vorrang vor einer allgemeinen Runde. Ein offenes Mindestziel bleibt sichtbar und führt anschließend weiter; ein geschafftes Zeitminimum erklärt keinen Stoff für beherrscht. Spätere Abrufe behalten ihre Termine. Drei Prüftage allein sind kein Nachweis über sieben Tage; eine gefestigte Beobachtung wird ausschließlich aus dem Backend übernommen.
+
+Eine neue Einzelrunde wird einmal ausdrücklich reserviert. Danach zeigt `/learning-preparation/{childId}/{jobId}` den gespeicherten Status, ohne weitere Erzeugung oder automatische Fehlerwiederholung. Abgleich nur für das eigene Konto, im Vordergrund und bei aktueller Route; bei Verbindungsfehlern bewusst neu laden. Nach Fertigstellung bewusst beginnen. `learning_preparation` in der Übersicht enthält nur ID und Status eines eigenen aktiven Einzelrundenauftrags; vorhandene Einheiten bleiben zugänglich. Tagespaket- und Fotovorbereitung behalten ihren eigenen Ablauf.
+
+Die Gestaltung wurde mit drei weiteren Agents vor der Umsetzung, während der Gegenprüfung und nach der Umsetzung gegen Primärquellen geprüft. Die Übertragung auf SCHULPILOT ist eine Produktentscheidung, kein nachgewiesener Wirksamkeitseffekt dieser App. [Quellen und Grenzen](SOURCES.md).
 
 ## Planung
 
