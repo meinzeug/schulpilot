@@ -1,58 +1,90 @@
-SCHULPILOT – Sprachlernen 1.4.0 · öffentliche Abnahme / finaler Build 30
+SCHULPILOT – Sprachlernen 1.4.0+30 · tatsächlich bereitgestellt und geprüft
 
 Dieser Abschnitt hat Vorrang vor der historischen Übergabe unten.
-Stand 17.10.2026: main 74fa0fb (Kernimplementierung 4059f59). Öffentlich läuft
-1.4.0+29 unter https://schulpilot.dorfspy.de , API /api, Release
-20261017T135240Z-74fa0fb, Migration 0015. Backup und alle sieben Dienste geprüft.
-Keine Firebase-, Auth-, Provider-, Reasoning- oder Kontingentumstellung.
+Stand 17.10.2026: Produktcommit 58f2c8cbe874a3e6e0802e0a64190749efec5d91,
+Release 20261017T140346Z-58f2c8c, Schema 0015 nach 0014.
+Web https://schulpilot.dorfspy.de ; eigene API /api ; main gepusht.
+Backup Result=success/Exit=0 und sieben bestehende Dienste geprüft.
+Gültiges HTTPS, HTTP 308, sieben Direktlinks 200, private Routen anonym 401.
+Provider unverändert Codex CLI 0.162.1 / gpt-6.1-sol / xhigh / Revision 18;
+Kontokosten unbekannt. Kein Firebase-, Auth-, Denkstufen- oder Kontingentumbau.
 
-Neue Abläufe: bestätigte Foto-/Text-/manuelle Wortpaare -> eigener Wortschatz ->
-kleine Abrufrunde -> gespeicherte Rückmeldung -> fähigkeits-/richtungsgebundene
-Wiedervorlage und Tagesplan. Eltern sehen Wörter, Übungen und dieselben realen
-Belege. Sprachwerkstatt: 18 begrenzte Projektarten mit eigener Vorarbeit und
-interaktiven Aufgaben; Grammatik nur aus ausdrücklich bestätigtem Unterricht.
-Datenmodell/Intervalle/Bewertung/20 Werkzeugzuordnungen: docs/LANGUAGE_LEARNING.md.
+Neue Abläufe
+Bestätigte Foto-/Text-/manuelle Paare -> eigener Wortschatz -> kleine Abrufrunde
+-> gespeicherte Rückmeldung -> fähigkeits-/richtungsgebundene Wiedervorlage und
+Tagesplan. Eltern sehen dieselben tatsächlichen Übungen und späteren Abrufe.
+Vorbereitet, begonnen, pausiert, beantwortet und später geprüft bleiben getrennt.
+Sprachwerkstatt: 18 begrenzte Projektarten, eigene Entwürfe, beratende Kriterien,
+Kontext-/Satz-/bestätigte Grammatikaufgaben, Dialoge höchstens vier Schritte.
+Datenmodell, Intervalle, Bewertung, Modusregeln und alle 20 Werkzeugzuordnungen:
+docs/LANGUAGE_LEARNING.md. Betriebs-/Rückwegregeln: docs/OPERATIONS.md.
 
-784 PostgreSQL-Tests vollständig, danach 94 und drei gezielte Abschlussprüfungen;
+Echte Prüfung
+Eigenes normales künstliches Elternkonto über tatsächlichen SMTP/IMAP-Weg
+verifiziert, eigener Kinderlogin im Browser. Fotoassistent mit Zuschnitt,
+Codex-OCR, bestätigte Seite, eigener Wortschatzauftrag und fünf bestätigte Paare.
+Drei Webaufgaben mit Offline-Wiederholung und Rückmeldung nach Reload.
+Tatsächliche Zeitminimum-Sekunden, Tagesplan, gleiche Eltern-/Kinderstände,
+Kindansichten 320/390/1280 px und Eltern 390/1280 px geprüft.
+Codex erzeugte zwei Kontextaufgaben, zwei belegte Simple-Present-Aufgaben und
+drei beratende Kriterien zum eigenen künstlichen Text. Insgesamt sechs
+Reservierungen: fünf erfolgreiche Aufträge, ein gespeicherter Schemafehler.
+Ursache: Schemaaufbereitung entfernte das echte title-Feld. Korrigiert und mit
+Regression abgesichert; genau ein bewusster neuer Auftrag, keine automatische
+Wiederholung. Abschließender Browserlauf auf Build 30: null zusätzliche Aufträge.
+Android-API-36-Emulator mit regulärer nativer Flutter-APK 30: eigener Kinderlogin,
+vorbereitetes Kontextprojekt geöffnet, zwei Tastaturantworten abgegeben, Feedback
+bestätigt, Kaltstart/Resume erfolgreich. Insgesamt fünf echte beantwortete Aufgaben,
+keine Doppelbuchung. Echte OTA-Updates 28 -> 29 -> 30 über den Systeminstaller;
+kein adb install für Updates. Je drei Start-/Wiederöffnungsprüfungen bestanden.
+Tatsächlicher Familienexport enthält alle acht neuen Tabellen, fünf unveränderte
+Attempts und genau fünf Reviewereignisse. Fortschritt Kind/Eltern nach Android
+gleich. Eigenen Testhaushalt gelöscht; alte Sitzungen danach 401. Native App
+verlangt nach Kaltstart wieder Anmeldung. Kontodatei gelöscht, Export nur im RAM.
+Keine realen Kinder-/Familieninhalte für diese Prüfungen gelesen oder verändert.
+
+Tests und Builds
+784 PostgreSQL-16-Tests vollständig; danach 94 und drei Abschlussprüfungen,
 nach Schemafix 70 Provider-/Sprach- und 21 Mathematik-/Coachtests bestanden.
-285 Fluttertests vollständig, nach letzter Statuskorrektur zehn Widgets bestanden.
-Analyse/Ruff ohne Befund. Finaler Build 30 Web/Direct-APK/Play-AAB erfolgreich;
-klare Unterscheidung vorbereitet/begonnen/pausiert. APK lokal
-/home/dennis/schulpilot/artifacts/schulpilot-android.apk, 64.806.733 Bytes,
+285 Fluttertests vollständig, danach zehn finale Wortschatz-Widgets bestanden.
+Analyse/Ruff ohne Befund, keine Abhängigkeit aktualisiert.
+Web/Direct-APK/Play-AAB 1.4.0+30 gebaut; Signatur, Paket, 16-KB-Ausrichtung und
+bundletool 1.18.3 geprüft. APK 64.806.733 Bytes,
 SHA256 c40e2af9a288cb2ab0c587a198c0414664bc0f28042d70ea8a0ad37a51c3b169.
-AAB /home/dennis/schulpilot/artifacts/schulpilot-play.aab. Aktivierung noch offen.
+/home/dennis/schulpilot/artifacts/schulpilot-android.apk
+/home/dennis/schulpilot/artifacts/schulpilot-play.aab
+Öffentlich /downloads/schulpilot-android.apk, vollständiger Hash/Größe geprüft.
+Geheimnisprüfung: 376 Quellen, 242 Archiveinträge, Web/Übergaben und 16 echte
+Geheimniswerte einschließlich künstlicher Testpasswörter, null Treffer.
+Bestehende Kotlin-/optionale Wasm-Hinweise ohne tatsächlichen Releasebuildfehler.
+GitHub-Actions Run 39031127815 startet wegen Kontosperre durch Abrechnungsproblem
+nicht; kein erfolgreicher CI-Lauf behauptet. Die genannten Prüfungen liefen lokal.
 
-Echt öffentlich: normales eigenes künstliches Elternkonto über SMTP/IMAP
-verifiziert, eigener Kinderlogin, Fotoassistent/Zuschnitt/Codex-OCR, fünf bestätigte
-Paare, drei Aufgaben, Netzverlust/Wiederholung, Reload der Rückmeldung, tatsächliche
-Zeitminimum-Messung, Tagesplan, gleiche Eltern-/Kinderstände. Kind 320/390/1280 px,
-Eltern 390/1280 px. Zwei Codex-Kontextaufgaben, zwei Simple-Present-Aufgaben, drei
-beratende Kriterien zum eigenen Text. Sechs reservierte Aufträge insgesamt,
-darunter ein aufbewahrter Schemafehler (echtes title-Feld entfernt), dann genau
-nach Korrektur bewusst neu angefordert. Keine automatischen Wiederholungen.
-Kontokosten unbekannt. Kein Nachweis einer Lernwirksamkeit oder Notenverbesserung.
+Browserfortsetzung
+Normal /login, danach Kind/Eltern /app. Über Lernen oder Kinderdetail zu
+/vocabulary/<eigenes-kind>, dort Wörter anwenden bzw.
+/language-projects/<eigenes-kind>. Eltern öffnen gespeicherte Projekte und
+Aufgaben/Antworten. Betriebsadministratoren erhalten keinen privaten Einblick.
+Es verbleibt kein künstlicher Testzugang: der Haushalt wurde nach Abnahme gelöscht.
+Für neue synthetische Tests lokal scripts/prepare_language_smoke.py starten,
+danach qa/language_learning.mjs --run, qa/android_language.py --run und
+qa/language_cleanup.py --run. Geschützte lokale Kontodatei wird nur dabei neu
+angelegt. Browseranmeldung selbst normal ausführen; keine Passwörter, Sitzungen,
+Gerätetokens oder privaten Schlüssel an ChatGPT übermitteln.
 
-Nächste konkrete Aktion: finalen Build 30 prüfen/committen/pushen/aktivieren,
-OTA 29 -> 30 bedienen, native Sprachrunde mit qa/android_language.py --run.
-Das echte OTA 28 -> 29 und drei Start-/Wiederöffnungschecks sind bereits bestanden.
-Vor nativer Wiederholung das reguläre Anmeldelimit ablaufen lassen; nichts lockern.
-Geschützte Fortsetzung: artifacts/.school-day-qa-account.json; keine Geheimnisse
-hier. Nach Abschluss ausschließlich diese künstliche Familie über
-scripts/prepare_language_smoke.py --cleanup löschen.
-
-Browser: normal /login, danach Kind/Eltern /app. Über Lernen oder Kinderdetail
-zu /vocabulary/<eigenes-kind>, dort Wörter anwenden bzw.
-/language-projects/<eigenes-kind>. Eltern können gespeicherte Projekte und
-Aufgaben/Antworten ansehen. Kein öffentlicher Versand-/Debugzugang. Betriebsadmin
-hat weiterhin keinen privaten Lerninhaltszugriff. Anmeldung im Browser selbst
-normal durchführen; keine Passwörter/Sitzungen an ChatGPT übermitteln.
-
-Physische Telefon-/Audio-/Mikrofonabnahme bleibt offen. STT ist keine
-Aussprachebewertung und kein selbstständiger Schreibbeleg; Gerätesprache kann
-online verarbeitet werden. Keine neue Audio-API, keine automatische Aufnahme.
-Kein Play-Upload erfolgt. Optionale Druck-/PPTX-Ausgabe ist nicht umgesetzt.
-Rückweg nach neuen Sprachdaten nur kompatibel vorwärts bzw. isoliert mit
-Löschjournal; kein blindes 0015-Downgrade. Details docs/OPERATIONS.md.
+Grenzen / nächster konkreter Schritt
+Physisches Telefon, hörbare TTS-Ausgabe und reale Mikrofon-/Berechtigungsprüfung
+sind offen. Als Nächstes genaue Sprachvarianten, fehlende Stimme, verweigertes
+Mikrofon, Routen-/Hintergrundwechsel mit neuem künstlichem Haushalt prüfen.
+STT ist keine Aussprachebewertung oder eigenständige Rechtschreibung; Geräte-
+Sprachdienste können online verarbeiten. Keine neue Audio-API oder Daueraufnahme.
+Alle 18 Projektarten im künstlichen Transport-/Worker-Test; echte Modellprüfung
+hier für Kontext, Grammatik und Textfeedback. Optionaler Druck-/PPTX-Export offen.
+Keine behauptete Lernwirksamkeit/Notenverbesserung, kein Play-Upload durchgeführt.
+Der vorherige 0015-kompatible Release ist 20261017T135240Z-74fa0fb. Kein blinder
+Rückweg auf Code vor 0015 und kein Schema-Downgrade mit Verlust neuer Belege.
+Frühere Google-/Firebase-/Push-Details unten sind historische Einzelbeobachtungen,
+keine in dieser Arbeitseinheit erneut durchgeführte Cloud- oder Zustellabnahme.
 
 Historischer Stand vor Sprachausbau · 17.10.2026 · 1.3.0+28
 

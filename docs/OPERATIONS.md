@@ -1,5 +1,28 @@
 # Betrieb
 
+## Aktiver Sprachrelease 1.4.0+30
+
+Am 17.10.2026 aktiviert: `20261017T140346Z-58f2c8c`, Schema 0015.
+Der tatsächlich geprüfte vorherige Zeiger ist `20261017T135240Z-74fa0fb`;
+dieser kennt bereits 0015, die Sprachbewertung und beide neuen Auftragsarten.
+Ein Code-Rückweg zwischen diesen beiden Releases ist ohne Schema-Downgrade
+kompatibel; laufende Aufträge trotzdem kontrolliert beenden und sichern.
+Installierte APKs werden nicht automatisch heruntergestuft. Für einen Rückweg
+auf Code vor 0015 gelten ausdrücklich die strengeren Vorgaben unten.
+
+Öffentliche Foto-/Sprachprüfung nur mit eigenem künstlichem Haushalt:
+`scripts/prepare_language_smoke.py`, `qa/language_learning.mjs --run`, danach
+eigene Emulatorprüfung `qa/android_language.py --run`. Der geschützte lokale
+Kontodatensatz enthält auch Wiederaufnahme-IDs. Keine fehlgeschlagenen Aufträge
+automatisch erneut erzeugen. Der einmalige Flag `--retry-failed-context` ist nur
+eine bewusste Nachprüfung nach nachgewiesener Korrektur, keine Produkt-Automatik.
+Nach erfolgreicher Web-/nativer Prüfung kontrolliert `qa/language_cleanup.py --run`
+den privaten Export in Arbeitsspeicher, löscht ausschließlich den eigenen
+Testhaushalt und prüft die alten Sitzungen. Alternativ erlaubt
+`scripts/prepare_language_smoke.py --cleanup` die Bereinigung auch nach Abbruch.
+Der aktuelle künstliche Haushalt wurde bereits gelöscht; keine Testzugänge
+oder Exportdateien öffentlich bereitstellen. Ergebnisse in STATUS/Handoff.
+
 ## Migration 0014 und Rückweg
 
 Release 1.3.0+28 ergänzt `school_grades` und `children.grade_planning_enabled`; keine vorhandenen Antworten, Lernzeiten, Quellen, Familien oder Providerdaten werden migriert/umgeschrieben. Die Standardfreigabe betrifft ausschließlich die neue optionale Notengewichtung. Bestehende Elternvorgaben bleiben unverändert; bereits vorbereitete Pakete ohne Noteneinträge behalten ihren bisherigen Planfingerprint. Noten werden über den normalen Familienexport gesichert und mit dem Kind gelöscht; der Wartungslauf hält dieselbe Höchstfrist von 365 Tagen wie für den Lernverlauf ein.

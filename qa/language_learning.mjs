@@ -265,6 +265,7 @@ try {
   page=await parent.newPage();
   await open('/vocabulary/'+account.child_id);
   await page.getByText(parentWords.child.display_name+' · Wortschatz',{exact:true}).waitFor();
+  await page.getByRole('button',{name:/Vorbereitet · noch nicht begonnen/}).first().waitFor();
   await shot('parent-words-1280');
   await page.setViewportSize({width:390,height:900});
   await shot('parent-words-390');
@@ -276,6 +277,7 @@ try {
     grammar_tasks:grammarUnit.questions.length,writing_criteria:writing.result.criteria.length,
     grammar_and_writing_creation:'authenticated_API',omitted_uncertain_rows:state.omitted_uncertain_rows??0,
     failed_context_reservations:state.failed_context_ids?.length??0,
+    created_model_reservations_this_run:used.calls_used-before.calls_used,prepared_round_status:true,
     widths:[320,390,1280],runtime_errors:0,audio_device_acceptance:false,native_acceptance:false};
   await writeFile(path.join(artifacts,'language-web-result.json'),JSON.stringify(report)+'\n');
   console.log(JSON.stringify(report));

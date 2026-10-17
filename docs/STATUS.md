@@ -7,8 +7,8 @@ integriert. 18 begrenzte Sprachprojektarten verbinden Quellen, eigene Entwürfe,
 beratende Kriterien und interaktive Aufgaben. Datenmodell, Modusregeln und die
 20 Werkzeugzuordnungen: [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).
 
-**Öffentlich aktiviert:** 1.4.0+29, Backendkorrektur 74fa0fb,
-Release `20261017T135240Z-74fa0fb`, Migration 0014 → 0015. Eigene Sicherung mit
+**Öffentlich aktiviert:** 1.4.0+30, Produktcommit `58f2c8cbe874a3e6e0802e0a64190749efec5d91`,
+Release `20261017T140346Z-58f2c8c`, Migration 0014 → 0015. Eigene Sicherung mit
 Result=success/Exit=0, sieben vorhandene Dienste aktiv. Gültiges HTTPS,
 HTTP-Weiterleitung 308, sieben Direktlinks 200 und drei private Routen anonym 401.
 Vollständiger öffentlicher APK-Download in Größe/Hash geprüft. Provider unverändert
@@ -44,12 +44,39 @@ bestanden. Analyse und Ruff ohne Befund. Keine Abhängigkeiten aktualisiert.
 Analyse und zehn finale Widgettests bestanden. APK 64.806.733 Bytes, SHA-256
 `c40e2af9a288cb2ab0c587a198c0414664bc0f28042d70ea8a0ad37a51c3b169`.
 Die Oberfläche unterscheidet vorbereitete, begonnene und pausierte Runden
-ausdrücklich. Aktivierung und native Sprachrunde stehen noch aus.
-Das echte automatische Android-Update 28 → 29 über den
-Systeminstaller sowie drei Start-/Wiederöffnungsprüfungen gelangen bereits.
-Bei den wiederholten künstlichen Anmeldungen griff regulär das 15-Minuten-Limit;
-keine Drossel wurde dafür gelockert. Nach Zeitfenster und finalem Update native
-Abnahme fortsetzen. Physische Mikrofon-/Lautsprecherprüfung bleibt separat.
+ausdrücklich. bundletool 1.18.3, Signatur, Paket und 16-KB-Zipausrichtung geprüft.
+Geheimnisprüfung über 376 Quelldateien, Web, 242 Archiveinträge und Übergaben mit
+16 tatsächlichen Geheimniswerten: null Treffer. Kotlin-/optionale Wasm-Hinweise
+bleiben ohne Fehler der tatsächlichen JavaScript-/Android-Releasebuilds.
+
+**Native Abnahme:** Android-API-36-Emulator, reguläre Flutter-APK 1.4.0+30.
+Echte automatische Updates 28 → 29 und 29 → 30 über den Android-Systeminstaller,
+kein adb install für die Updates. Je drei Kaltstart-/Wiederöffnungsprüfungen
+bestanden. Eigenständiger Kinderlogin, vorhandenes Kontextprojekt mit zwei
+Tastaturantworten und gespeicherter Rückmeldung abgeschlossen, Kaltstart und
+Wiederaufnahme geprüft. Fünf echte Aufgaben insgesamt (drei Web, zwei Android),
+keine doppelten Antworten oder zusätzlichen KI-Aufrufe. Bei früheren wiederholten
+Prüfanmeldungen griff die reguläre Drossel; das Zeitfenster wurde abgewartet,
+keine Schutzgrenze gelockert. Der abschließende Browserlauf auf Build 30 erzeugte
+null weitere Modellreservierungen und bestätigte die vorbereiteten Statuswerte.
+
+**Export/Löschung:** Der tatsächliche private Familienexport enthielt alle acht
+neuen Tabellen, fünf unveränderte Attempts und genau fünf referenzierende
+Reviewereignisse. Kind-/Elternfortschritt nach Android identisch. Ausschließlich
+den eigenen künstlichen Haushalt gelöscht; alte Kinder-/Elternsitzungen danach
+401. Auch die native App verlangte nach Kaltstart wieder die normale Anmeldung.
+Private Exportbytes blieben nur im Speicher, die lokale Kontodatei ist entfernt.
+
+**Verbleibende Grenzen:** Physisches Telefon, hörbare englische/deutsche Ausgabe
+und echte Mikrofon-/Berechtigungsbeobachtung sind nicht abgenommen. SDK-/Mocktests
+beweisen keine Audioqualität oder Lernwirksamkeit. Alle 18 Projekte sind im
+Transport-/Worker-Test geprüft; echte Modellprüfungen hier für Kontext, Grammatik
+und Textfeedback. Optionaler Druck-/PPTX-Export bleibt offen. GitHub-Actions startet
+wegen Kontosperre durch ein Abrechnungsproblem nicht (Run 39031127815); sämtliche
+oben genannten Tests/Builds wurden lokal durchgeführt. Push nach main erfolgreich.
+Nächster konkreter Schritt: TTS/STT mit echten Sprachvarianten, fehlender Stimme,
+Mikrofonverweigerung und Routen-/Hintergrundwechsel auf einem physischen Telefon
+prüfen. Der laufende Kernablauf ist öffentlich und nativ geprüft.
 
 ## Vorheriger geprüfter Produktstand
 

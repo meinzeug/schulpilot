@@ -9,19 +9,24 @@ Stand: 17.10.2026. Ausgangspunkt main 7dd09f4, Flutter 1.3.0+28, Alembic 0014.
 3. Abruf/Tagesplan: implementiert; getrennte Richtungen/Fähigkeiten, echte Attempts, transaktionale Wiederholung und Resume.
 4. Sprache: Locale/Tempo/Gerätedienstprüfung und Kontext-/Satz-/Grammatikpfad implementiert; echte Audioabnahme offen.
 5. Kontextwerkzeuge: 18 begrenzte Projektarten mit gespeicherter eigener Vorarbeit und 2–5 interaktiven Aufgaben implementiert.
-6. 784 PostgreSQL-Tests im Gesamtlauf, anschließend 94 und drei Abschlussprüfungen,
-   nach Schemafix weitere 70 Provider-/Sprach- und 21 Mathematik-/Coachtests;
-   285 Fluttertests vollständig und zehn finale Wortschatz-Widgettests bestanden.
-   Öffentlich 1.4.0+29 / 74fa0fb und Migration 0015 aktiviert. Foto-/Wortschatzweg
-   mit echtem Codex, Antworten, Reload, Offline-Wiederholung, Tagesplan und
-   Elternansicht bestanden. Zwei Kontext- und zwei Grammatikaufgaben sowie drei
-   Kriterien zum eigenen künstlichen Entwurf tatsächlich erzeugt.
+6. Aktiviert und geprüft: 1.4.0+30 / 58f2c8c, Migration 0015. 784 PostgreSQLtests
+   vollständig, danach 94 und drei Abschlussprüfungen, 70 Provider-/Sprach- und
+   21 Mathematik-/Coachtests. 285 Fluttertests vollständig, zehn finale Widgets,
+   Analyse/Ruff und Web/Direct-APK/Play-AAB bestanden. Öffentlicher Foto-/Wortweg,
+   reale Codex-Projekte (Kontext, Grammatik, Textfeedback), Eltern-/Kinderansicht
+   und Zeitminimum geprüft. Native Android-API-36-Runde nach echtem OTA auf 30:
+   zwei weitere Aufgaben, Feedback und Kaltstart/Resume bestanden. Export aller
+   acht Tabellen, fünf Attempts/Reviewereignisse und reale Haushaltslöschung
+   einschließlich Sitzungswiderruf geprüft. Künstliche Kontodatei entfernt.
 
-Nächste Aktion: finalen Build 1.4.0+30 bereitstellen und native Sprachrunde nach
-OTA 29 → 30 fertig prüfen. Das echte OTA 28 → 29 und drei Startchecks sind bereits
-bestanden. Keine Geräteaudio-, Zustell- oder Wirksamkeitsprüfung aus Mocktests
-ableiten. Alle 18 Projektarten sind strukturell mit künstlichem Providertransport
-geprüft; echte Modellprüfungen bislang für Kontext, Grammatik und Textfeedback.
+Alle Arbeitspakete haben einen nutzbaren implementierten Kern. Audioabnahme auf
+physischem Telefon/Mikrofon bleibt offen; Steuerungen/Locales sind mit den
+fixierten SDKs und Mocktests geprüft. Alle 18 Projektarten sind strukturell mit
+künstlichem Providertransport geprüft; echte Modellprüfungen in dieser Sitzung
+für Kontext, Grammatik und Textfeedback. Optionale Druck-/PPTX-Ausgabe bleibt
+offen. Nächste konkrete Aktion: physische TTS-/STT-Fehler-/Berechtigungsprüfung
+mit neuem eigenen künstlichen Haushalt. Kein Nachweis einer Lernwirksamkeit,
+Notenverbesserung oder Audioqualität aus diesen technischen Tests.
 
 ## Verbindliche Modellentscheidungen
 
