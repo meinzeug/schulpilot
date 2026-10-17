@@ -12,7 +12,7 @@ const headers = {'X-Schulpilot-Request': '1'};
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const errors = [], blocked = [], screenshots = [];
-let browser, context, passed = false, loggedOut = false;
+let browser, context, page, passed = false, loggedOut = false;
 let phase = 'local_guard', modelCount = 0, changedModel = false, changedReasoning = false;
 
 function check(condition, code) { if (!condition) throw new Error(code); }
@@ -85,7 +85,7 @@ async function main() {
       model.reasoning_efforts.some(value => photo.reasoning_efforts.includes(value)))
       .sort((a, b) => Math.abs(catalog.models.indexOf(a) - savedIndex) -
         Math.abs(catalog.models.indexOf(b) - savedIndex))[0];
-    const page = await context.newPage();
+    page = await context.newPage();
     page.on('pageerror', error => errors.push(digest(error.message)));
     await context.route('**/api/**', async route => {
       const request = route.request();
@@ -108,11 +108,15 @@ async function main() {
       if (alternate) {
         await tap(page, field(page, 'Modell für Lerneinheiten'));
         const option = new RegExp('\\(' + escape(alternate.id) + '\\)$');
-        await tap(page, page.getByRole('option', {name: option}).or(page.getByText(option)), true);
+        await tap(page, page.getByRole('menuitem', {name: option})
+          .or(page.getByRole('option', {name: option})).or(page.getByLabel(option))
+          .or(page.getByText(option)), true);
         changedModel = true;
         const efforts = alternate.reasoning_efforts.filter(value => photo.reasoning_efforts.includes(value));
         await tap(page, field(page, 'Reasoning / Denkstufe'));
-        await tap(page, page.getByRole('option', {name: efforts.at(-1), exact: true})
+        await tap(page, page.getByRole('menuitem', {name: efforts.at(-1), exact: true})
+          .or(page.getByRole('option', {name: efforts.at(-1), exact: true}))
+          .or(page.getByLabel(efforts.at(-1), {exact: true}))
           .or(page.getByText(efforts.at(-1), {exact: true})).last(), true);
         changedReasoning = true;
         await shot(page, 'local-selection-' + width);
@@ -124,6 +128,7 @@ async function main() {
     passed = true;
   } catch (error) {
     failure = /^[a-z0-9_]{1,100}$/.test(error.message) ? error.message : 'browser_or_local_operation_failed';
+    if (page) await shot(page, 'failure-' + phase).catch(() => {});
   } finally {
     if (context) {
       const logout = await context.request.post(base + '/api/auth/logout', {headers}).catch(() => null);
