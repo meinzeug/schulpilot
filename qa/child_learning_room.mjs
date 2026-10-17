@@ -588,12 +588,16 @@ async function practiceAndGrades() {
     t.needs_practice_tasks === 0 && t.uncertain_tasks === 0, 'all_saved_practice_must_count');
   await open('/progress/' + kid);
   await reveal(page.getByText('4 Aufgaben geübt', {exact: true}).first());
-  await tap(page.getByText('Mathematik', {exact: true}));
-  await tap(page.getByText('Brüche', {exact: true}));
-  await reveal(page.getByText(/Runde vom/));
+  step('child_progress_open_subject');
+  await tap(page.getByRole('button', {name: /^Mathematik/}));
+  step('child_progress_open_topic');
+  await tap(page.getByRole('button', {name: /^Brüche/}));
+  step('child_progress_saved_rounds');
+  await reveal(page.getByRole('button', {name: /^Runde vom /}));
   await screenshot('child-all-practice-rounds-390');
   const childPage = page;
   page = await parent.newPage();
+  step('parent_progress_and_grade_entry');
   await page.setViewportSize({width: 1280, height: 844});
   await open('/progress/' + kid);
   await reveal(button('Noten'));
@@ -601,6 +605,7 @@ async function practiceAndGrades() {
   const gradePath = '/children/' + kid + '/grades';
   await open('/grades/' + kid);
   await tap(button('Note eintragen'));
+  step('parent_grade_form');
   await type(page.getByRole('textbox', {name: 'Fach', exact: true}), 'Mathematik');
   await type(page.getByRole('textbox', {name: 'Thema (optional)', exact: true}), 'Brüche');
   await type(page.getByRole('textbox', {name: 'Note', exact: true}), '5');
@@ -610,6 +615,7 @@ async function practiceAndGrades() {
   const body = {subject: 'Mathematik', topic: 'Brüche', scale: 'grade_1_6', value: 5, kind: 'test',
     weight: 1, assessed_on: before.today, note: ''};
   gradeIntent = {method: 'POST', pathname: '/api' + gradePath, body_digest: bodyDigest(body)};
+  step('parent_grade_explicit_save');
   const saved = await uiResponse('POST', gradePath, () => tap(button('Speichern')));
   check(saved.status() === 201, 'explicit_grade_ui_save_failed');
   const grade = await saved.json();
@@ -708,7 +714,7 @@ async function main() {
       interrupted_run_cleanup: 'node qa/child_learning_room.mjs --cleanup-only'}));
     return;
   }
-  check(['--run', '--cleanup-only'].includes(mode), 'use_check_run_or_cleanup_only');
+  check(['--run', '--cleanup-only', '--resume-progress-grades'].includes(mode), 'use_check_run_resume_or_cleanup_only');
   await mkdir(artifacts, {recursive: true});
   journal = await readJournal();
   if (mode === '--run') {
@@ -719,6 +725,14 @@ async function main() {
   } else {
     check(journal?.purpose === 'child-learning-room-fixed-demo-only' && journal.version === 1 && ownDemo(journal.demo),
       'cleanup_requires_this_private_owned_demo_journal');
+    if (mode === '--resume-progress-grades') {
+      check(journal.completed_round_verified === true && journal.parent_answers_ui_verified === true &&
+        journal.child_authenticated === true && !journal.deleted && !(journal.grade_ui_writes > 0),
+        'progress_resume_requires_completed_owned_case_and_no_uncertain_grade_write');
+      const previous = JSON.parse(await readFile(reportFile, 'utf8'));
+      check(previous.source_commit === journal.source_commit, 'resume_source_must_match');
+      screenshots.push(...previous.screenshots.filter(value => value.startsWith('learning-room-' + journal.run_id + '-')));
+    }
   }
   let passed = false, failure = null, failedPhase = null;
   try {
@@ -735,6 +749,13 @@ async function main() {
       await exerciseLoop();
       await completionAndContinuation();
       await parentEvidence();
+    } else if (mode === '--resume-progress-grades') {
+      await parentIdentity();
+      const identity = await get(child, '/auth/me');
+      check(identity.role === 'child' && identity.child_id === journal.demo.child_id, 'owned_child_session_required');
+      page = await child.newPage();
+    }
+    if (mode !== '--cleanup-only') {
       await practiceAndGrades();
       await zeroUsage('after');
       check(blocked.length === 0 && runtimeErrors.length === 0, 'unexpected_mutation_or_runtime_layout_failure');

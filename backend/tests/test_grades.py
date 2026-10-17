@@ -335,3 +335,26 @@ def test_after_school_package_includes_weaker_subject_without_extra_provider_cal
     selected = [group for group in current["plan"]["groups"] if group["selected"]]
     assert len(selected) == 3 and "Mathematik" in {group["subject"] for group in selected}
     assert current["confirmed_count"] == 4 and len(calls) == before
+
+
+def test_grade_filter_uses_the_same_subject_aliases_as_progress_and_planning(api):
+    demo, _ = prepared(api)
+    path = f"/api/children/{demo['child_id']}/grades"
+    for subject, value in [("Mathe", 5), ("Mathematik", 4), ("Biologie", 2)]:
+        assert api.post(path, json=mark(demo["child_id"], subject=subject, value=value)).status_code == 201
+    result = api.get(path + "?subject=mathematik&page_size=1").json()
+    assert result["pagination"]["total"] == 2 and result["pagination"]["pages"] == 2
+    assert result["subjects"].count("Mathematik") == 1 and "Mathe" not in result["subjects"]
+    alias = api.get(path + "?subject=Mathe").json()
+    assert len(alias["items"]) == 2 and "Mathe" in alias["subjects"]
+    assert len(api.get(path + "?subject=BIOLOGIE").json()["items"]) == 1
+    assert api.get(path + "?subject=Unbekannt").json()["items"] == []
+
+
+def test_deleting_last_grade_keeps_the_active_filter_valid_for_existing_clients(api):
+    demo, _ = prepared(api)
+    path = f"/api/children/{demo['child_id']}/grades"
+    row = api.post(path, json=mark(demo["child_id"], subject="Physik")).json()
+    assert api.delete(path + "/" + row["id"]).status_code == 200
+    result = api.get(path + "?subject=Physik").json()
+    assert result["items"] == [] and "Physik" in result["subjects"]

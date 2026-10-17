@@ -140,19 +140,28 @@ def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
     from .library import bounds
 
     child = child_access(db, p, child_id)
+    names = sorted(set(child.subjects) | set(db.scalars(select(SchoolGrade.subject).where(
+        SchoolGrade.child_id == child.id).distinct())), key=lambda name: (name.casefold(), name))
+    subjects = {}
+    for name in names:
+        key = subject_key(name)
+        subjects.setdefault(key, "Mathematik" if key == "mathematik" else name)
     query = select(SchoolGrade).where(SchoolGrade.child_id == child.id)
     if subject:
-        query = query.where(SchoolGrade.subject == subject)
+        query = query.where(SchoolGrade.subject.in_([name for name in names if subject_key(name) == subject_key(subject)]))
     count = db.scalar(select(func.count()).select_from(query.subquery()))
     pagination = bounds(count, page, page_size)
     rows = db.scalars(query.order_by(SchoolGrade.assessed_on.desc(), SchoolGrade.created.desc(), SchoolGrade.id.desc())
                       .offset((pagination["page"] - 1) * page_size).limit(page_size))
+    # Keep the current selection renderable in existing clients, including an
+    # old alias or a subject whose last grade was just deleted.
+    options = set(subjects.values()) | ({subject} if subject is not None else set())
     return {"child_id": child.id, "items": [grade_data(r) for r in rows], "pagination": pagination,
             "today": local_day(child).isoformat(),
             "child_name": db.get(User, child.user_id).display_name,
             "can_manage": family_access(db, p, child.family_id)[1].permission != "view",
             "planning_enabled": child.grade_planning_enabled,
-            "subjects": sorted(set(child.subjects) | set(db.scalars(select(SchoolGrade.subject).where(SchoolGrade.child_id == child.id))), key=str.casefold),
+            "subjects": sorted(options, key=lambda name: (name.casefold(), name)),
             "focus": focus_summary(db, child),
             "notice": "Der Schnitt gilt nur für diese Einträge, nicht als Zeugnisnote. Der Lernplan berücksichtigt höchstens fünf Noten je Fach aus 90 Tagen; bestehende Zeitziele und Elternaufträge bleiben erhalten."}
 
