@@ -223,8 +223,15 @@ def strict_schema(model, *, preserve_limits=False):
             if node.get("type") == "object":
                 node["additionalProperties"] = False
                 node["required"] = list(node.get("properties", {}))
-            for value in node.values():
-                clean(value)
+            for key, value in node.items():
+                # These are maps of user-defined field/definition names, not
+                # schema nodes. A real field called "title" must survive;
+                # otherwise required references a missing property upstream.
+                if key in ("properties", "$defs", "definitions", "patternProperties") and isinstance(value, dict):
+                    for child in value.values():
+                        clean(child)
+                else:
+                    clean(value)
         elif isinstance(node, list):
             for item in node:
                 clean(item)

@@ -30,11 +30,33 @@ from schulpilot.db import (
 from schulpilot.families import export_child, remove_child
 from schulpilot.learning import plan
 from schulpilot.main import app
-from schulpilot.providers import Result
+from schulpilot.providers import Result, indexed_choice_schema, prune_schema, strict_schema
 from schulpilot.worker import claim, process
 from sqlalchemy import func, select, update
 from test_providers import configured
 from test_vocabulary import child_login, correct_answer, import_words, round_
+
+
+def test_provider_schema_keeps_real_title_and_every_required_property():
+    from schulpilot.language_tasks import LanguageProjectOutput
+
+    schema = strict_schema(LanguageProjectOutput, preserve_limits=True)
+    indexed_choice_schema(schema)
+    prune_schema(schema)
+    assert schema["properties"]["title"] == {"type": "string", "minLength": 1, "maxLength": 160}
+
+    def check(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object":
+                assert set(node["required"]) == set(node["properties"])
+                assert node["additionalProperties"] is False
+            for child in node.values():
+                check(child)
+        elif isinstance(node, list):
+            for child in node:
+                check(child)
+
+    check(schema)
 
 
 @pytest.fixture

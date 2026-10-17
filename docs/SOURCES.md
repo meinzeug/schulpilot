@@ -12,6 +12,11 @@ Sprachlernen, ergänzend geprüft am 17.10.2026:
   Abruf und verteilte Wiederholung als didaktische Muster. Unsere Intervalle sind eine Produktentscheidung, kein abgeleitetes Optimum.
 - Babbel-/sofatutor-Beobachtungen stammen aus dem vom Auftraggeber bereitgestellten Prüfprotokoll.
   Keine eigene erneute praktische Prüfung von Babbel Speak und keine Übernahme fremder Kursinhalte.
+- [Offizielle OpenAI-Dokumentation: Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs#supported-schemas):
+  alle Objektfelder in required, keine zusätzlichen Felder und gültige anyOf-Zweige.
+  Beim echten Sprachprojekttest entfernte unsere frühere Schemaaufbereitung ein
+  echtes Feld `title` irrtümlich als Metadatum; Feldnamen und Schemaknoten werden
+  jetzt getrennt durchlaufen. Keine Lockerung der serverseitigen Aufgabenprüfung.
 
 Lernmodell, alle Übungen und schulische Schwerpunkte, erneut tatsächlich geprüft am 17.10.2026:
 

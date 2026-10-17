@@ -40,11 +40,13 @@ async function reveal(locator, modal=false) {
   const target = locator.first();
   for(let i=0;i<35;i++) {
     const box = await target.count() ? await target.boundingBox().catch(()=>null) : null;
-    if(box && box.width>0 && box.y>=(modal?0:70) && box.y+box.height<page.viewportSize().height-(modal?0:85)) return target;
+    const bottom=modal?0:(page.url().includes('/unit/')?8:85);
+    if(box && box.width>0 && box.y>=(modal?0:70) && box.y+box.height<page.viewportSize().height-bottom) return target;
     await page.mouse.move(modal?page.viewportSize().width/2:page.viewportSize().width-20,page.viewportSize().height-150);
     await page.mouse.wheel(0,box && box.y<70 ? -420 : 420);
     await page.waitForTimeout(150);
   }
+  if(phase!=='own_child_login') console.log(JSON.stringify({missing_control:target.toString()}));
   throw new QaFailure('visible_ui_control_missing');
 }
 async function tap(locator, modal=false) {
@@ -55,8 +57,10 @@ async function tap(locator, modal=false) {
 async function type(locator,value,modal=false) {
   const input=await reveal(locator,modal);
   await input.click({position:{x:18,y:18}});
+  await page.waitForTimeout(250);
   await page.keyboard.press('Control+A');
   await page.keyboard.type(value,{delay:20});
+  await page.waitForTimeout(150);
   check(await input.inputValue()===value,'editor_did_not_receive_input');
 }
 async function tapResponse(locator,route,method,status,modal=false) {
@@ -93,8 +97,18 @@ try {
   const parentLogin=await parent.request.post(base+'/api/auth/login',{headers,data:{username:account.credentials.parent_username,password:account.credentials.parent_password}});
   check(parentLogin.status()===200,'own_parent_login_failed');
   check((await parentLogin.json()).user.id===account.user.id,'own_parent_identity_mismatch');
-  const prefs=await parent.request.put(base+'/api/children/'+account.child_id+'/preferences',{headers,data:{weekdays:[0,1,2,3,4,5,6],daily_minutes:20,weekly_minutes:20,session_minutes:5,break_minutes:5,timezone:'Europe/Berlin'}});
-  check(prefs.status()===200,'own_parent_preferences_failed');
+  if(process.argv.includes('--retry-failed-context')) {
+    check(state.project_id && !state.context_retry_used,'only_one_explicit_context_retry_allowed');
+    // This flag is a deliberate post-fix QA action, never a runtime retry.
+    const old=await get(parent,'/children/'+account.child_id+'/language-projects/'+state.project_id);
+    check(old.status==='failed','previous_context_project_must_remain_failed');
+    state.failed_context_ids=[...(state.failed_context_ids??[]),state.project_id];
+    state.project_id=null; state.context_retry_used=true;
+  }
+  if(!state.preferences_set) {
+    const prefs=await parent.request.put(base+'/api/children/'+account.child_id+'/preferences',{headers,data:{weekdays:[0,1,2,3,4,5,6],daily_minutes:20,weekly_minutes:20,session_minutes:5,break_minutes:5,timezone:'Europe/Berlin'}});
+    check(prefs.status()===200,'own_parent_preferences_failed'); state.preferences_set=true;
+  }
   page=await child.newPage();
   page.on('request',request=>{if(!['GET','HEAD','OPTIONS'].includes(request.method()))mutations.push(new URL(request.url()).pathname);});
   await checkpoint('own_child_login');
@@ -117,7 +131,7 @@ try {
       await tap(button('Zuschnitt übernehmen'),true);
       day=await waitFor(()=>get(child,'/school-days/'+state.day_id),d=>d.pages.length===1);
     }
-    if(day.pages[0].status==='uploaded') await tap(button('Weiter'));
+    if(day.pages[0].status==='uploaded') await tap(button('Fotos abgeben'));
     day=await waitFor(()=>get(child,'/school-days/'+state.day_id),d=>d.pages[0] && ['review','confirmed'].includes(d.pages[0].status));
     const material=day.pages[0];
     check(!material.synthetic && material.extraction_provider==='codex','normal_photo_did_not_use_actual_codex');
@@ -154,7 +168,7 @@ try {
   }
   await checkpoint('confirmed_vocabulary');
   const before=await get(parent,'/families/'+account.user.families[0].id+'/usage');
-  check(before.calls_used===2,'exactly_photo_and_text_import_reservations_expected');
+  check(before.calls_used===2+(state.failed_context_ids?.length??0)+Number(!!state.project_id)+Number(!!state.grammar_id)+Number(!!state.writing_id),'unexpected_model_reservations_before_resume');
   if(!state.unit_id) {
     await tap(button('Wörter üben'));
     const round=await tapResponse(button('Runde beginnen'),'/children/'+account.child_id+'/vocabulary/rounds','POST',201,true);
@@ -164,6 +178,7 @@ try {
   let unit=await get(child,'/units/'+state.unit_id);
   if(unit.status!=='completed') {
     if(unit.status!=='active') await tapResponse(button(unit.status==='paused'?'Lernen fortsetzen':'Einheit starten'),'/units/'+unit.id+'/start','POST',200);
+    if(!unit.introduction_seen) await tapResponse(button('Weiter zu den Übungen'),'/units/'+unit.id+'/introduction','POST',200);
     let disconnected=state.offline_checked===true;
     for(let i=0;i<8;i++) {
       unit=await get(child,'/units/'+state.unit_id);
@@ -213,8 +228,8 @@ try {
   if(!state.project_id) {
     await checkpoint('explicit_context_project');
     await open('/language-projects/'+account.child_id+'?material='+state.material_id);
-    await tap(page.getByRole('button',{name:'apple',exact:true}));
-    await tap(page.getByRole('button',{name:'school',exact:true}));
+    await tap(page.getByLabel('apple',{exact:true}).or(page.getByText('apple',{exact:true})));
+    await tap(page.getByLabel('school',{exact:true}).or(page.getByText('school',{exact:true})));
     const project=await tapResponse(button('Mein Lernprojekt vorbereiten'),'/children/'+account.child_id+'/language-projects','POST',202);
     state.project_id=project.id; await checkpoint('context_project_queued');
   }
@@ -246,18 +261,30 @@ try {
   check(writing.result.criteria?.length>=2 && writing.draft==='I go to school. I like my school.','own_draft_or_advisory_criteria_not_preserved');
   await open('/language-projects/'+account.child_id+'?project='+writing.id); await shot('writing-advice');
   const used=await get(parent,'/families/'+account.user.families[0].id+'/usage');
-  check(used.calls_used===5,'unexpected_extra_model_call');
+  check(used.calls_used===5+(state.failed_context_ids?.length??0),'unexpected_extra_model_call');
+  page=await parent.newPage();
+  await open('/vocabulary/'+account.child_id);
+  await page.getByText(parentWords.child.display_name+' · Wortschatz',{exact:true}).waitFor();
+  await shot('parent-words-1280');
+  await page.setViewportSize({width:390,height:900});
+  await shot('parent-words-390');
   check(errors.length===0,'browser_runtime_errors');
   await checkpoint('passed_keep_for_native');
   const report={web:true,photo_pages:1,confirmed_pairs:5,answered_tasks:3,feedback_reload:true,offline_retry:true,
-    parent_child_consistent:true,minimum_uses_actual_seconds:true,actual_provider:'codex',reserved_calls:used.calls_used,
+    parent_child_consistent:true,parent_browser_view:true,minimum_uses_actual_seconds:true,actual_provider:'codex',reserved_calls:used.calls_used,
     generated_context_tasks:contextUnit.questions.length,context_tasks_answered:false,
     grammar_tasks:grammarUnit.questions.length,writing_criteria:writing.result.criteria.length,
     grammar_and_writing_creation:'authenticated_API',omitted_uncertain_rows:state.omitted_uncertain_rows??0,
+    failed_context_reservations:state.failed_context_ids?.length??0,
     widths:[320,390,1280],runtime_errors:0,audio_device_acceptance:false,native_acceptance:false};
   await writeFile(path.join(artifacts,'language-web-result.json'),JSON.stringify(report)+'\n');
   console.log(JSON.stringify(report));
 } catch(error) {
+  if(page && phase!=='own_child_login') {
+    await shot('failure-'+phase).catch(()=>{});
+    const controls=await page.getByRole('button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label')??node.textContent).filter(Boolean)).catch(()=>[]);
+    console.log(JSON.stringify({owned_synthetic_ui_controls:controls}));
+  }
   const reason=error instanceof QaFailure && /^[a-z0-9_]+$/.test(error.message)?error.message:'browser_or_local_io_failed';
   console.error(JSON.stringify({failed_phase:phase,reason,private_state_preserved:true}));
   process.exitCode=1;
