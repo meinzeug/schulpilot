@@ -431,7 +431,7 @@ def test_three_check_days_must_span_a_week_and_cover_every_goal(normal_unit, goa
         assert result["successful_check_days"] == 0 and not result["secure_observation"]
 
 
-def test_parent_pause_blocks_prepared_followup_and_coaching_exports(api):
+def test_parent_pause_is_advisory_for_prepared_followup_and_coaching_exports(api):
     import io
     import zipfile
 
@@ -442,7 +442,7 @@ def test_parent_pause_blocks_prepared_followup_and_coaching_exports(api):
         with DB.begin() as db:
             child = db.get(Child, demo["child_id"])
             child.preferences = {**child.preferences, "pause_until": (local_day(child) + timedelta(days=2)).isoformat()}
-        assert client.post(f"/api/units/{next_id}/start").status_code == 409
+        assert client.post(f"/api/units/{next_id}/start").status_code == 200
     with DB() as db:
         family_id = db.get(Child, demo["child_id"]).family_id
     response = api.get(f"/api/families/{family_id}/export")
@@ -460,18 +460,25 @@ def test_parent_pause_blocks_prepared_followup_and_coaching_exports(api):
         assert db.scalar(select(func.count()).select_from(UnitCoaching)) == 0
 
 
-def test_learning_cycle_stops_after_three_rounds_in_one_day(api):
+def test_three_round_recommendation_allows_an_explicit_fourth_round(api):
     demo, unit_id = prepared(api)
     with child_client(demo) as client:
         first = finish(client, unit_id, help_first=True)
         second = finish(client, first["coaching"]["next_unit_id"])
         assert second["coaching"]["decision"] == "check"
         third = finish(client, second["coaching"]["next_unit_id"], help_first=True)
-        assert third["coaching"]["decision"] == "pause" and third["coaching"]["next_unit_id"] is None
+        assert third["coaching"]["decision"] == "repair" and third["coaching"]["next_unit_id"]
+        assert "Pause" in third["coaching"]["reason"]
+        assert "freiwillig" not in third["coaching"]["reason"]  # The measured minimum is still open.
         assert third["coaching"]["next_review"] > client.get("/api/child/home").json()["plan"]["date"]
+        fourth_id = third["coaching"]["next_unit_id"]
+        with DB() as db:
+            assert db.get(LearningUnit, fourth_id).status == "not_started"
+            assert db.scalar(select(func.count()).select_from(Attempt).where(Attempt.unit_id == fourth_id)) == 0
+        assert client.post(f"/api/units/{fourth_id}/start").status_code == 200
 
 
-def test_session_break_carries_across_units(api):
+def test_session_break_is_a_recommendation_across_units(api):
     demo, unit_id = prepared(api)
     with child_client(demo) as client:
         result = finish(client, unit_id)
@@ -488,7 +495,34 @@ def test_session_break_carries_across_units(api):
                     )
                 )
         response = client.post(f"/api/units/{next_id}/start")
-        assert response.status_code == 409 and "Pause" in response.json()["detail"]
+        assert response.status_code == 200, response.text
+        with DB() as db:
+            assert db.scalar(select(func.count()).select_from(Activity).where(Activity.kind == "active_time")) == 36
+
+
+def test_coaching_after_time_goals_free_day_and_pause_keeps_one_bounded_review(normal_unit, monkeypatch):
+    client, unit_id, _, _, kid = normal_unit
+    with DB.begin() as db:
+        child = db.get(Child, kid["id"])
+        child.preferences = {
+            "weekdays": [],
+            "subject_days": {"Mathematik": [(local_day(child).weekday() + 1) % 7]},
+            "pause_until": (local_day(child) + timedelta(days=2)).isoformat(),
+            "daily_minutes": 5,
+            "weekly_minutes": 5,
+            "session_minutes": 5,
+        }
+        db.add(Activity(child_id=child.id, kind="active_time", detail={"seconds": 3600}, created=int(now())))
+    calls = mocked_review(monkeypatch)
+    completed = finish(client, unit_id)
+    assert completed["status"] == "completed" and completed["coaching"]["decision"] == "check"
+    process_next()
+    result = client.get(f"/api/units/{unit_id}").json()
+    assert result["coaching"]["status"] == "ready" and result["coaching"]["request_count"] == 1
+    assert len(calls) == 1
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Usage)) == 1
+        assert db.scalar(select(func.count()).select_from(Attempt).where(Attempt.unit_id == unit_id)) == 2
 
 
 def test_legacy_parent_goal_is_frozen_before_review_and_later_changes_are_rejected(normal_unit, monkeypatch):

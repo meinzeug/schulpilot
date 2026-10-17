@@ -16,7 +16,7 @@ from sqlalchemy.orm import load_only
 from .commerce import usage_terms
 from .db import DB, Child, Family, Job, Material, ProviderConfig, SchoolDay, Session, Usage, User, now, uid
 from .fixtures import DAY_FIXTURE_IDS, LIVE_FIXTURE_IDS
-from .learning import local_day, record
+from .learning import record
 from .providers import ProviderError, Result, config_for_function, external_allowed, reserve, settle
 from .security import Principal, child_access, digest, rate_limit
 
@@ -140,10 +140,11 @@ def _saved(db, day, state, *, job=None):
 
 
 def defer_package(db, job, *, before_call=False):
-    """A midnight/time-budget change saves the learning path without new work.
+    """Only already covered sources need no new package.
 
     Before dispatch the known zero-cost result is settled explicitly. After a
-    real call its real usage is settled by the normal worker, even if deferred.
+    real call its real usage is settled by the normal worker. Crossing midnight
+    or a recommended time goal never discards an explicitly requested package.
     """
     if job.kind != "package" or not job.payload.get("preparation_id"):
         return False
@@ -151,9 +152,7 @@ def defer_package(db, job, *, before_call=False):
 
     day = db.get(SchoolDay, job.payload["school_day_id"])
     child = db.get(Child, job.child_id)
-    if day.school_date == local_day(child).isoformat() and any(
-        group["selected"] for group in package_plan(db, day, child)["groups"]
-    ):
+    if any(group["selected"] for group in package_plan(db, day, child)["groups"]):
         return False
     _saved(db, day, _state(day), job=job)
     if before_call:

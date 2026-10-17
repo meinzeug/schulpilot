@@ -18,7 +18,7 @@ class InstallationScreen extends StatefulWidget {
 class _InstallationScreenState extends State<InstallationScreen> {
   Json? config;
   Object? error;
-  bool unlocked = false, loading = true;
+  bool unlocked = false, loading = true, providerVisited = false;
   int step = 0;
   final code = TextEditingController();
   final username = TextEditingController(text: 'admin');
@@ -190,6 +190,91 @@ class _InstallationScreenState extends State<InstallationScreen> {
     children: [for (final field in groups[index]) input(field.$1, field.$2)],
   );
 
+  void selectStep(int next) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      step = next;
+      if (next == (widget.initial ? 3 : 2)) providerVisited = true;
+    });
+  }
+
+  Widget providerSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      ProviderForm(
+        widget.state,
+        Map<String, dynamic>.from(config!['provider']),
+        key: ValueKey(config!['provider']['revision']),
+        endpoint: widget.initial ? '/setup/provider' : '/admin/provider',
+        onRefresh: load,
+      ),
+      const SizedBox(height: 20),
+      ActionButton(
+        label: 'Bild & Aufgaben mit Beispieldaten prüfen',
+        icon: Icons.science_outlined,
+        onPressed: () async {
+          final path = widget.initial ? '/setup/provider' : '/admin/provider';
+          final job = await widget.state.api.post('$path/probe');
+          for (var i = 0; i < 180; i++) {
+            final result = await widget.state.api.get(
+              '$path/probes/${job['id']}',
+            );
+            if (mounted) setState(() => probe = result);
+            if (!['queued', 'running'].contains(result['status'])) {
+              await load();
+              return;
+            }
+            await Future<void>.delayed(const Duration(seconds: 2));
+            if (!mounted) return;
+          }
+          if (mounted) {
+            toast(
+              context,
+              'Die Prüfung läuft weiter. Bitte später erneut öffnen.',
+            );
+          }
+        },
+      ),
+      if (probe != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Text(
+            probe!['status'] == 'completed'
+                ? 'Bild- und Aufgabenprüfung erfolgreich.'
+                : probe!['error'] ??
+                      (probe!['status'] == 'failed'
+                          ? 'Prüfung fehlgeschlagen. Anbieterstatus ansehen.'
+                          : 'Prüfung läuft …'),
+          ),
+        ),
+      if (probe != null)
+        for (final item in probe!['report'] as List? ?? [])
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              item['available'] == true
+                  ? Icons.check_circle_outline
+                  : Icons.info_outline,
+              color: item['available'] == true ? teal : muted,
+            ),
+            title: Text(
+              {
+                    'extract': 'Foto erkennen',
+                    'unit': 'Übungen erstellen',
+                    'package': 'Tagespaket erstellen',
+                  }[item['function']] ??
+                  'Anbieterprüfung',
+            ),
+            subtitle: Text(
+              item['error'] ??
+                  (item['cost_micros_usd'] == null
+                      ? 'Kosten unbekannt'
+                      : '${(item['cost_micros_usd'] / 1000000).toStringAsFixed(6)} USD'),
+            ),
+          ),
+    ],
+  );
+
   Widget content() {
     if (widget.initial && !kIsWeb) {
       return Panel(
@@ -262,10 +347,10 @@ class _InstallationScreenState extends State<InstallationScreen> {
       'KI',
       'Tarif',
       'Push',
-      'Abschluss',
+      widget.initial ? 'Abschluss' : 'Status',
     ];
     final current = step - (widget.initial ? 1 : 0);
-    Widget body;
+    Widget? body;
     if (widget.initial && step == 0) {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -355,84 +440,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
         ],
       );
     } else if (current == 2) {
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ProviderForm(
-            widget.state,
-            Map<String, dynamic>.from(config!['provider']),
-            key: ValueKey(config!['provider']['revision']),
-            endpoint: widget.initial ? '/setup/provider' : '/admin/provider',
-            onRefresh: load,
-          ),
-          const SizedBox(height: 20),
-          ActionButton(
-            label: 'Bild & Aufgaben mit Beispieldaten prüfen',
-            icon: Icons.science_outlined,
-            onPressed: () async {
-              final path = widget.initial
-                  ? '/setup/provider'
-                  : '/admin/provider';
-              final job = await widget.state.api.post('$path/probe');
-              for (var i = 0; i < 180; i++) {
-                final result = await widget.state.api.get(
-                  '$path/probes/${job['id']}',
-                );
-                if (mounted) setState(() => probe = result);
-                if (!['queued', 'running'].contains(result['status'])) {
-                  await load();
-                  return;
-                }
-                await Future<void>.delayed(const Duration(seconds: 2));
-                if (!mounted) return;
-              }
-              if (mounted) {
-                toast(
-                  context,
-                  'Die Prüfung läuft weiter. Bitte später erneut öffnen.',
-                );
-              }
-            },
-          ),
-          if (probe != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(
-                probe!['status'] == 'completed'
-                    ? 'Bild- und Aufgabenprüfung erfolgreich.'
-                    : probe!['error'] ??
-                          (probe!['status'] == 'failed'
-                              ? 'Prüfung fehlgeschlagen. Anbieterstatus ansehen.'
-                              : 'Prüfung läuft …'),
-              ),
-            ),
-          if (probe != null)
-            for (final item in probe!['report'] as List? ?? [])
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  item['available'] == true
-                      ? Icons.check_circle_outline
-                      : Icons.info_outline,
-                  color: item['available'] == true ? teal : muted,
-                ),
-                title: Text(
-                  {
-                        'extract': 'Foto erkennen',
-                        'unit': 'Übungen erstellen',
-                        'package': 'Tagespaket erstellen',
-                      }[item['function']] ??
-                      'Anbieterprüfung',
-                ),
-                subtitle: Text(
-                  item['error'] ??
-                      (item['cost_micros_usd'] == null
-                          ? 'Kosten unbekannt'
-                          : '${(item['cost_micros_usd'] / 1000000).toStringAsFixed(6)} USD'),
-                ),
-              ),
-        ],
-      );
+      body = null;
     } else if (current == 3) {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -510,31 +518,58 @@ class _InstallationScreenState extends State<InstallationScreen> {
           runSpacing: 8,
           children: [
             for (var i = 0; i < labels.length; i++)
-              InputChip(
-                label: Text('${i + 1}  ${labels[i]}'),
+              ChoiceChip(
+                label: Text(
+                  widget.initial ? '${i + 1}  ${labels[i]}' : labels[i],
+                ),
                 selected: i == step,
-                onPressed: i < step ? () => setState(() => step = i) : null,
+                showCheckmark: false,
+                onSelected: !widget.initial || i < step
+                    ? (_) => selectStep(i)
+                    : null,
               ),
           ],
         ),
-        const SizedBox(height: 20),
-        LinearProgressIndicator(
-          value: (step + 1) / labels.length,
-          borderRadius: BorderRadius.circular(8),
-        ),
+        if (widget.initial) ...[
+          const SizedBox(height: 20),
+          LinearProgressIndicator(
+            value: (step + 1) / labels.length,
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ],
         const SizedBox(height: 24),
-        Panel(child: body),
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (body != null)
+                KeyedSubtree(
+                  key: ValueKey('site-section-$current'),
+                  child: body,
+                ),
+              if (providerVisited)
+                Offstage(
+                  key: const ValueKey('installation-provider-section'),
+                  offstage: current != 2,
+                  child: ExcludeFocus(
+                    excluding: current != 2,
+                    child: providerSection(),
+                  ),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(height: 24),
         Wrap(
           spacing: 12,
           runSpacing: 12,
           children: [
-            if (step > 0)
+            if (widget.initial && step > 0)
               OutlinedButton(
-                onPressed: () => setState(() => step--),
+                onPressed: () => selectStep(step - 1),
                 child: const Text('Zurück'),
               ),
-            if (step < labels.length - 1)
+            if (widget.initial && step < labels.length - 1)
               ActionButton(
                 label: 'Speichern & weiter',
                 icon: Icons.arrow_forward_rounded,
@@ -552,7 +587,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
                   } else {
                     await save();
                   }
-                  if (mounted) setState(() => step++);
+                  if (mounted) selectStep(step + 1);
                 },
               ),
             if (!widget.initial)

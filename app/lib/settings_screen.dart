@@ -738,137 +738,402 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  int version = 0;
+  int version = 0, section = 0;
+  String familyFilter = '';
+
+  void refresh() => setState(() => version++);
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
-    title: 'KI & Plattformbetrieb',
-    subtitle: 'Anbieter, Modell und Kostenlimits. Kein automatischer Zugriff auf private Kinderinhalte.',
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    title: 'Kontrollzentrum',
+    subtitle: 'Betrieb, KI und Familien an einem Ort.',
+    actions: [
+      OutlinedButton.icon(
+        onPressed: refresh,
+        icon: const Icon(Icons.refresh_rounded, size: 18),
+        label: const Text('Aktualisieren'),
+      ),
+      PopupMenuButton<String>(
+        tooltip: 'Schnellzugriff',
+        icon: const Icon(Icons.more_horiz_rounded),
+        onSelected: (route) => openRoute(context, route),
+        itemBuilder: (_) => const [
+          PopupMenuItem(
+            value: '/admin/settings',
+            child: Text('Betriebseinstellungen'),
+          ),
+          PopupMenuItem(
+            value: '/admin/verkauf',
+            child: Text('Zahlungen prüfen'),
+          ),
+          PopupMenuItem(value: '/admin/push', child: Text('Push prüfen')),
+        ],
+      ),
+      ActionButton(
+        label: 'KI-Aufrufe sofort stoppen',
+        secondary: true,
+        icon: Icons.stop_circle_outlined,
+        onPressed: () async {
+          await widget.state.api.post('/admin/emergency-stop');
+          if (mounted) refresh();
+        },
+      ),
+    ],
+    child: LoadView<Json>(
+      key: ValueKey('admin-workspace-$version'),
+      load: () => widget.state.api.get('/admin/provider'),
+      builder: (config, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FocusCard(
+            eyebrow: 'SCHULPILOT · Administration',
+            title: config['emergency_stop'] == true
+                ? 'KI-Aufrufe sind gestoppt'
+                : 'Deine Plattform im Blick',
+            subtitle:
+                '${_providerName(config['provider'])} · ${config['model'] ?? 'Kein Modell'}',
+            icon: Icons.space_dashboard_rounded,
+            action: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => setState(() => section = 1),
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                  label: const Text('KI konfigurieren'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () => openRoute(context, '/admin/verkauf'),
+                  icon: const Icon(Icons.account_balance_outlined, size: 18),
+                  label: const Text('Zahlungen prüfen'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (index, item) in const [
+                (Icons.grid_view_rounded, 'Übersicht'),
+                (Icons.auto_awesome_rounded, 'KI-Konfiguration'),
+                (Icons.family_restroom_rounded, 'Familientarife'),
+                (Icons.history_rounded, 'Protokoll'),
+              ].indexed)
+                ChoiceChip(
+                  avatar: Icon(
+                    item.$1,
+                    size: 18,
+                    color: section == index ? teal : muted,
+                  ),
+                  label: Text(item.$2),
+                  selected: section == index,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(() => section = index),
+                ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          _AdminSection(
+            offstage: section != 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                heading('Betriebsübersicht'),
+                LoadView<Json>(
+                  load: () => widget.state.api.get('/admin/operations'),
+                  builder: (data, _) => AdminOperationCards(data),
+                ),
+                const SizedBox(height: 20),
+                Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      heading('Direkt erledigen'),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                openRoute(context, '/admin/settings'),
+                            icon: const Icon(Icons.tune_rounded),
+                            label: const Text('Betriebseinstellungen'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () => openRoute(context, '/admin/push'),
+                            icon: const Icon(Icons.notifications_outlined),
+                            label: const Text('Push prüfen'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () => setState(() => section = 2),
+                            icon: const Icon(Icons.family_restroom_rounded),
+                            label: const Text('Familientarife verwalten'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _AdminSection(
+            offstage: section != 1,
+            child: ProviderForm(widget.state, config, onRefresh: refresh),
+          ),
+          _AdminSection(
+            offstage: section != 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                heading(
+                  'Familientarife',
+                  subtitle: 'Berechtigungen und Kontingente verwalten.',
+                ),
+                TextField(
+                  onChanged: (value) =>
+                      setState(() => familyFilter = value.trim().toLowerCase()),
+                  decoration: const InputDecoration(
+                    labelText: 'Familie suchen',
+                    hintText: 'Familienkennung oder Tarif',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                LoadView<List<dynamic>>(
+                  load: () => widget.state.api.list('/admin/families'),
+                  builder: (families, _) {
+                    final filtered = families
+                        .where(
+                          (family) => '${family['id']} ${family['plan']}'
+                              .toLowerCase()
+                              .contains(familyFilter),
+                        )
+                        .toList();
+                    return Panel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '${filtered.length} Familien',
+                            style: const TextStyle(color: muted),
+                          ),
+                          if (filtered.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Text('Keine Familien gefunden.'),
+                            ),
+                          for (final family in filtered)
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                              ),
+                              leading: const CircleAvatar(
+                                backgroundColor: mint,
+                                child: Icon(
+                                  Icons.family_restroom_rounded,
+                                  color: teal,
+                                ),
+                              ),
+                              title: Text(
+                                '${family['plan']}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${family['id']}\n${family['child_limit']} Kinder · ${family['call_limit']} KI-Aufrufe',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              isThreeLine: true,
+                              trailing: IconButton.outlined(
+                                tooltip: 'Tarif bearbeiten',
+                                icon: const Icon(Icons.edit_outlined),
+                                onPressed: () async {
+                                  await entitlementDialog(
+                                    context,
+                                    widget.state,
+                                    Map<String, dynamic>.from(family),
+                                  );
+                                  if (mounted) refresh();
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          _AdminSection(
+            offstage: section != 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                heading('Administratives Protokoll'),
+                LoadView<List<dynamic>>(
+                  load: () => widget.state.api.list('/admin/audit'),
+                  builder: (events, _) => Panel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (events.isEmpty) const Text('Noch keine Einträge.'),
+                        for (final event in events)
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                            ),
+                            leading: const Icon(
+                              Icons.history_rounded,
+                              color: teal,
+                            ),
+                            title: Text(
+                              '${event['action']}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${event['target']}\n${DateTime.fromMillisecondsSinceEpoch(event['created'] * 1000).toLocal()}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: muted,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String _providerName(dynamic provider) => switch (provider) {
+  'codex' => 'Codex CLI',
+  'openrouter' => 'OpenRouter',
+  'openai' => 'OpenAI',
+  _ => 'KI deaktiviert',
+};
+
+class AdminOperationCards extends StatelessWidget {
+  final Json data;
+  const AdminOperationCards(this.data, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final stalled =
+        (data['stalled_queued'] as num? ?? 0) +
+        (data['stalled_running'] as num? ?? 0);
+    final metrics = [
+      (
+        Icons.hourglass_top_rounded,
+        '${data['jobs']?['queued'] ?? 0}',
+        'Wartende Aufträge',
+        false,
+      ),
+      (
+        Icons.play_circle_outline_rounded,
+        '${data['jobs']?['running'] ?? 0}',
+        'In Bearbeitung',
+        false,
+      ),
+      (Icons.schedule_rounded, '$stalled', 'Überfällige Aufträge', stalled > 0),
+      (
+        Icons.notifications_outlined,
+        '${data['push_failures_24h'] ?? 0}',
+        'Pushfehler · 24 Stunden',
+        (data['push_failures_24h'] as num? ?? 0) > 0,
+      ),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FilledButton.icon(
-          onPressed: () => openRoute(context, '/admin/settings'),
-          icon: const Icon(Icons.tune_rounded),
-          label: const Text('Betriebseinstellungen'),
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => openRoute(context, '/admin/verkauf'),
-          icon: const Icon(Icons.account_balance_outlined),
-          label: const Text('Verkauf & Zahlungseingänge'),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => openRoute(context, '/admin/push'),
-          icon: const Icon(Icons.notifications_outlined),
-          label: const Text('Push-Prüfung'),
-        ),
-        ActionButton(
-          label: 'KI-Aufrufe sofort stoppen',
-          icon: Icons.stop_circle_outlined,
-          onPressed: () async {
-            await widget.state.api.post('/admin/emergency-stop');
-            setState(() => version++);
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 900
+                ? 4
+                : constraints.maxWidth >= 440
+                ? 2
+                : 1;
+            return Wrap(
+              spacing: 14,
+              runSpacing: 14,
+              children: [
+                for (final metric in metrics)
+                  SizedBox(
+                    width:
+                        (constraints.maxWidth - (columns - 1) * 14) / columns,
+                    child: Panel(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            metric.$1,
+                            color: metric.$4 ? orange : teal,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            metric.$2,
+                            style: const TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          Text(
+                            metric.$3,
+                            style: const TextStyle(color: muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
           },
         ),
-        const SizedBox(height: 24),
-        LoadView<Json>(
-          key: ValueKey(version),
-          load: () => widget.state.api.get('/admin/provider'),
-          builder: (config, refresh) => ProviderForm(
-            widget.state,
-            config,
-            onRefresh: () => setState(() => version++),
-          ),
-        ),
-        const SizedBox(height: 28),
-        heading('Betriebszustand'),
-        LoadView<Json>(
-          key: ValueKey('operations-$version'),
-          load: () => widget.state.api.get('/admin/operations'),
-          builder: (data, _) => Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['worker_age_seconds'] == null
-                      ? 'Noch kein Worker-Lebenszeichen erfasst.'
-                      : 'Letztes Worker-Lebenszeichen vor ${data['worker_age_seconds']} Sekunden.',
-                ),
-                Text(
-                  'Wartend: ${data['jobs']['queued'] ?? 0} · Laufend: ${data['jobs']['running'] ?? 0}',
-                ),
-                Text(
-                  'Überfällige Aufträge: ${data['stalled_queued'] + data['stalled_running']}',
-                ),
-                Text(
-                  'Ausstehende Löschprotokolle: ${data['pending_erasure_journal']} · Pushfehler in 24 Stunden: ${data['push_failures_24h']}',
-                ),
-              ],
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          children: [
+            Tag(
+              data['worker_age_seconds'] == null
+                  ? 'Worker · noch kein Signal'
+                  : 'Worker · letztes Signal vor ${data['worker_age_seconds']} s',
             ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        heading(
-          'Familien-Tarifberechtigungen',
-          subtitle: 'Betriebskennungen und Limits; keine Namen oder privaten Lerninhalte.',
-        ),
-        LoadView<List<dynamic>>(
-          key: ValueKey('entitlements-$version'),
-          load: () => widget.state.api.list('/admin/families'),
-          builder: (families, _) => Panel(
-            child: Column(
-              children: [
-                for (final family in families)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '${family['id']}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    subtitle: Text(
-                      '${family['plan']} · ${family['child_limit']} Kinder · ${family['call_limit']} Aufrufe',
-                    ),
-                    trailing: TextButton(
-                      onPressed: () async {
-                        await entitlementDialog(
-                          context,
-                          widget.state,
-                          Map<String, dynamic>.from(family),
-                        );
-                        setState(() => version++);
-                      },
-                      child: const Text('Limits'),
-                    ),
-                  ),
-              ],
+            Tag(
+              '${data['pending_erasure_journal'] ?? 0} offene Löschprotokolle',
             ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        heading('Protokoll administrativer Zugriffe'),
-        LoadView<List<dynamic>>(
-          key: ValueKey('audit-$version'),
-          load: () => widget.state.api.list('/admin/audit'),
-          builder: (events, _) => Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final event in events)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      '${event['action']} · ${event['target']} · ${DateTime.fromMillisecondsSinceEpoch(event['created'] * 1000).toUtc()}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          ],
         ),
       ],
-    ),
+    );
+  }
+}
+
+class _AdminSection extends StatelessWidget {
+  final bool offstage;
+  final Widget child;
+  const _AdminSection({required this.offstage, required this.child});
+  @override
+  Widget build(BuildContext context) => Offstage(
+    offstage: offstage,
+    child: ExcludeFocus(excluding: offstage, child: child),
   );
 }
 
@@ -1035,6 +1300,7 @@ class _ProviderFormState extends State<ProviderForm> {
                 setState(() => values['openrouter_require_zdr'] = v),
           ),
         ],
+        heading('Fähigkeiten & Freigaben'),
         for (final field in [
           ('emergency_stop', 'Notfallstopp aktiv'),
           (
@@ -1054,44 +1320,85 @@ class _ProviderFormState extends State<ProviderForm> {
             onChanged: (v) => setState(() => values[field.$1] = v),
           ),
         const SizedBox(height: 16),
-        for (final field in [
+        for (final group in [
           (
-            'extraction_model',
-            'Abweichendes Bildmodell (optional, sonst Modell für Lerneinheiten)',
-          ),
-          (
-            'extraction_capability_evidence',
-            'Nachweis Bildmodell (OpenRouter upstream=<slug>)',
-          ),
-          (
-            'capability_evidence',
-            'Nachweis Modellfähigkeiten (OpenRouter zusätzlich upstream=<slug>)',
-          ),
-          (
-            'privacy_evidence',
-            'Verweis auf Datenschutz-/Minderjährigenfreigabe',
-          ),
-          ('reserve_micros', 'Kostenreservierung je Anfrage (Mikro-USD)'),
-          (
-            'input_per_million_micros',
-            'Preisobergrenze pro Mio. Eingabetokens (Mikro-USD)',
-          ),
-          (
-            'output_per_million_micros',
-            'Preisobergrenze pro Mio. Ausgabetokens (Mikro-USD)',
-          ),
-          ('pricing_evidence', 'Preisquelle mit Datum / Vertrag'),
-          ('max_output_tokens', 'Maximale Ausgabetokens'),
-          ('global_limit_micros', 'Unternehmensbudget pro Monat (Mikro-USD)'),
-        ])
-          if (values['provider'] != 'codex' || field.$1 != 'extraction_model')
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: TextField(
-                controller: fields[field.$1],
-                decoration: InputDecoration(labelText: field.$2),
+            'Modelle & Nachweise',
+            <(String, String)>[
+              (
+                'extraction_model',
+                'Abweichendes Bildmodell (optional, sonst Modell für Lerneinheiten)',
               ),
-            ),
+              (
+                'extraction_capability_evidence',
+                'Nachweis Bildmodell (OpenRouter upstream=<slug>)',
+              ),
+              (
+                'capability_evidence',
+                'Nachweis Modellfähigkeiten (OpenRouter zusätzlich upstream=<slug>)',
+              ),
+              (
+                'privacy_evidence',
+                'Verweis auf Datenschutz-/Minderjährigenfreigabe',
+              ),
+            ],
+          ),
+          (
+            'Kosten & Grenzen',
+            <(String, String)>[
+              ('reserve_micros', 'Kostenreservierung je Anfrage (Mikro-USD)'),
+              (
+                'input_per_million_micros',
+                'Preisobergrenze pro Mio. Eingabetokens (Mikro-USD)',
+              ),
+              (
+                'output_per_million_micros',
+                'Preisobergrenze pro Mio. Ausgabetokens (Mikro-USD)',
+              ),
+              ('pricing_evidence', 'Preisquelle mit Datum / Vertrag'),
+              ('max_output_tokens', 'Maximale Ausgabetokens'),
+              (
+                'global_limit_micros',
+                'Unternehmensbudget pro Monat (Mikro-USD)',
+              ),
+            ],
+          ),
+        ]) ...[
+          heading(group.$1),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 780 ? 2 : 1;
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  for (final field in group.$2)
+                    if (values['provider'] != 'codex' ||
+                        field.$1 != 'extraction_model')
+                      SizedBox(
+                        width:
+                            (constraints.maxWidth - (columns - 1) * 16) /
+                            columns,
+                        child: TextField(
+                          controller: fields[field.$1],
+                          keyboardType:
+                              [
+                                'reserve_micros',
+                                'input_per_million_micros',
+                                'output_per_million_micros',
+                                'max_output_tokens',
+                                'global_limit_micros',
+                              ].contains(field.$1)
+                              ? TextInputType.number
+                              : TextInputType.text,
+                          decoration: InputDecoration(labelText: field.$2),
+                        ),
+                      ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+        ],
         Wrap(
           spacing: 12,
           runSpacing: 12,

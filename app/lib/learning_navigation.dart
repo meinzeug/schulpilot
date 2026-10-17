@@ -3,12 +3,28 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'ui.dart';
 
+bool planItemDue(Json plan, dynamic item) {
+  final scheduled = item['scheduled_for'];
+  final date = plan['date'];
+  return scheduled == null ||
+      date is! String ||
+      scheduled.toString().compareTo(date) <= 0;
+}
+
 Future<void> openPlanItem(
   BuildContext context,
   AppState state,
   Json data,
   dynamic item,
 ) async {
+  // Collections do not carry a server calendar. Their fixed start dates are
+  // enforced by the API; never guess the child's timezone from this device.
+  final plan = data['plan'] is Map
+      ? Json.from(data['plan'] as Map)
+      : <String, dynamic>{};
+  if (!planItemDue(plan, item)) {
+    throw ApiError('Dieser Lernauftrag ist für einen späteren Tag eingeplant.');
+  }
   if (item['kind'] == 'study_path') {
     openRoute(
       context,

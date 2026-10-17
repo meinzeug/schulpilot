@@ -95,7 +95,7 @@ void main() {
       await _openHome(tester, data, requests: requests);
 
       expect(find.byType(FocusCard), findsOneWidget);
-      expect(find.text('Jetzt lernen'), findsOneWidget);
+      expect(find.text('Weiterlernen'), findsOneWidget);
       expect(find.text('Heutige Seiten scannen'), findsOneWidget);
       expect(find.text('Synthetischer Hefteintrag · Brüche'), findsNothing);
       expect(find.text('Was steht heute an?'), findsNothing);
@@ -163,7 +163,7 @@ void main() {
     await tester.tap(find.text('Heute keine neuen Seiten'));
     await tester.pumpAndSettle();
     expect(find.text('Heutige Seiten scannen'), findsNothing);
-    expect(find.text('Jetzt lernen'), findsOneWidget);
+    expect(find.text('Weiterlernen'), findsOneWidget);
     expect(find.text('Heutige Heftseiten'), findsOneWidget);
     expect(requests.where((r) => r.method == 'POST').map((r) => r.url.path), [
       '/api/children/${data['child']['id']}/day-check-in',

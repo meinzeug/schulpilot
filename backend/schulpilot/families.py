@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from starlette.background import BackgroundTask
 
@@ -66,9 +66,17 @@ def child_data(db, child):
 @router.get("/families/{family_id}")
 def family_detail(family_id: str, p=Depends(parent), db=Depends(get_db)):
     family, membership = family_access(db, p, family_id)
-    from .learning import summary
+    from .learning import learning_times, summary
 
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
+    measured = learning_times(db, children)
+    open_assignments = dict(
+        db.execute(
+            select(Assignment.child_id, func.count())
+            .where(Assignment.child_id.in_([c.id for c in children]), Assignment.done.is_(False))
+            .group_by(Assignment.child_id)
+        ).all()
+    )
     return {
         "id": family.id,
         "name": family.name,
@@ -77,7 +85,15 @@ def family_detail(family_id: str, p=Depends(parent), db=Depends(get_db)):
         "plan": family.plan,
         "child_limit": family.child_limit,
         "expires": family.expires,
-        "children": [{**child_data(db, c), "summary": summary(db, c, 1)} for c in children],
+        "children": [
+            {
+                **child_data(db, c),
+                "summary": summary(db, c, 1),
+                "learning_time": measured[c.id],
+                "open_assignments": open_assignments.get(c.id, 0),
+            }
+            for c in children
+        ],
     }
 
 
@@ -403,7 +419,9 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
     db.commit()
     unlink_uploads(paths)
     flush_journal()
-    return {"message": "Konto und eigene Familien gelöscht. Backups verfallen spätestens nach 14 Tagen. Gesetzlich erforderliche Zahlungsbelege bleiben ohne Kontozuordnung aufbewahrt."}
+    return {
+        "message": "Konto und eigene Familien gelöscht. Backups verfallen spätestens nach 14 Tagen. Gesetzlich erforderliche Zahlungsbelege bleiben ohne Kontozuordnung aufbewahrt."
+    }
 
 
 def export_child(db, child):

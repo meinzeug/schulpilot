@@ -113,108 +113,55 @@ class DashboardScreen extends StatelessWidget {
                     },
                   ),
                 ),
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: mint,
-                  borderRadius: BorderRadius.circular(22),
-                ),
+              Panel(
+                padding: const EdgeInsets.all(20),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const CircleAvatar(
+                      backgroundColor: mint,
+                      child: Icon(Icons.diversity_1_rounded, color: teal),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'GEMEINSAM AUF KURS',
-                            style: TextStyle(
-                              color: teal,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                              letterSpacing: 1.6,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
                           Text(
-                            'Willkommen bei ${family['name']}.',
+                            family['name'],
                             style: const TextStyle(
-                              fontSize: 25,
+                              fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: ink,
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
                           Text(
                             highlightHelp
-                                ? 'Dein Kind hat eine Frage. Schau in die Familiennachrichten.'
-                                : 'Alle Lernräume. Die nächsten Schritte. Alles an einem Ort.',
-                            style: const TextStyle(color: muted, height: 1.6),
+                                ? 'Ein Hilfewunsch wartet auf dich.'
+                                : 'Euer Lernen heute im Blick.',
+                            style: const TextStyle(color: muted),
+                          ),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              Tag(
+                                '$completed ${completed == 1 ? 'Runde' : 'Runden'}',
+                              ),
+                              Tag('$answerCount Antworten'),
+                              Tag(
+                                '$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}',
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    if (MediaQuery.sizeOf(context).width > 650)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 30),
-                        child: Image.asset(
-                          'assets/brand/schulpilot-mark.png',
-                          width: 96,
-                          height: 80,
-                          excludeFromSemantics: true,
-                        ),
-                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final item in [
-                      ('$completed', 'Einheiten', Icons.task_alt_rounded),
-                      ('$answerCount', 'Antworten', Icons.edit_note_rounded),
-                      (
-                        '$help',
-                        'Hilfewünsche',
-                        Icons.volunteer_activism_outlined,
-                      ),
-                    ])
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Panel(
-                            padding: EdgeInsets.all(
-                              constraints.maxWidth < 500 ? 12 : 20,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(item.$3, size: 20, color: teal),
-                                const SizedBox(height: 12),
-                                Text(
-                                  item.$1,
-                                  style: const TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                Text(
-                                  item.$2,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
               heading(
                 'Deine Kinder',
                 trailing: IconButton(
@@ -243,102 +190,16 @@ class DashboardScreen extends StatelessWidget {
               else
                 LayoutBuilder(
                   builder: (context, size) => Wrap(
-                    spacing: 18,
-                    runSpacing: 18,
+                    spacing: 16,
+                    runSpacing: 16,
                     children: [
-                      for (final c in children)
+                      for (final child in children)
                         SizedBox(
                           width: size.maxWidth > 760
-                              ? (size.maxWidth - 18) / 2
+                              ? (size.maxWidth - 16) / 2
                               : size.maxWidth,
-                          child: Panel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 24,
-                                      backgroundColor: mint,
-                                      child: Text(
-                                        (c['display_name'] as String)
-                                            .characters
-                                            .first
-                                            .toUpperCase(),
-                                        style: const TextStyle(
-                                          color: teal,
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            c['display_name'],
-                                            style: const TextStyle(
-                                              fontSize: 19,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Klasse ${c['grade']}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: muted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Tag(
-                                      c['summary']['help_requests'] > 0 &&
-                                              c['preferences']['notify_help'] !=
-                                                  false
-                                          ? 'Hilfe gewünscht'
-                                          : 'Lernraum',
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 22),
-                                Text(
-                                  c['summary']['support'],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    height: 1.6,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        '${c['summary']['completed_units']} Einheiten · ca. ${c['summary']['active_minutes_approx']} Min.',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: muted,
-                                        ),
-                                      ),
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: () => openRoute(
-                                        context,
-                                        '/child/${c['id']}',
-                                      ),
-                                      label: const Text('Ansehen'),
-                                      icon: const Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 17,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          child: _FamilyChildCard(
+                            child: Map<String, dynamic>.from(child),
                           ),
                         ),
                     ],
@@ -352,6 +213,149 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FamilyChildCard extends StatelessWidget {
+  final Json child;
+  const _FamilyChildCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = child['summary'] as Json;
+    final time = child['learning_time'];
+    final help = summary['help_requests'] as num? ?? 0;
+    final open = child['open_assignments'];
+    return Panel(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: mint,
+                child: Text(
+                  (child['display_name'] as String).characters.firstOrNull
+                          ?.toUpperCase() ??
+                      'S',
+                  style: const TextStyle(
+                    color: teal,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      child['display_name'],
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Klasse ${child['grade']}',
+                      style: const TextStyle(fontSize: 12, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (time is Map)
+            LearningGoalPanel(
+              plan: Map<String, dynamic>.from(time),
+              compact: true,
+            )
+          else
+            Text(
+              'Heute ca. ${learningMinutes(summary['active_minutes_approx'])} Min. aktiv',
+              style: const TextStyle(color: muted),
+            ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (open is num)
+                Tag(
+                  '$open ${open == 1 ? 'offener Auftrag' : 'offene Aufträge'}',
+                ),
+              if (help > 0 && child['preferences']?['notify_help'] != false)
+                Tag('$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}'),
+              Tag('${summary['completed_units']} Runden heute'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            summary['support'],
+            style: const TextStyle(fontSize: 13, color: muted),
+          ),
+          const SizedBox(height: 18),
+          ActionButton(
+            label: 'Lernüberblick öffnen',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: () async => openRoute(context, '/child/${child['id']}'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentStatusCard extends StatelessWidget {
+  final String title, value, detail, action;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool highlighted;
+  const _ParentStatusCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.detail,
+    required this.action,
+    required this.onTap,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => Panel(
+    color: highlighted ? mint : null,
+    padding: const EdgeInsets.all(20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: teal, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Text(detail, style: const TextStyle(color: muted, fontSize: 13)),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(onPressed: onTap, child: Text(action)),
+        ),
+      ],
+    ),
+  );
 }
 
 Widget demoAccess(BuildContext context, AppState state) => Panel(
@@ -481,11 +485,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   int version = 0;
   Timer? preparationPoll;
   GoRouter? observedRouter;
+  String? observingUser;
+  Duration? pollInterval;
   bool foreground = true,
       preparing = false,
       routeVisible = true,
       reading = false;
   AppState get state => widget.state;
+  bool get sameAccount =>
+      state.user != null && state.user?['id'] == observingUser;
   void refresh() => setState(() => version++);
   bool get visible {
     final path = observedRouter?.routeInformationProvider.value.uri.path;
@@ -495,6 +503,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   @override
   void initState() {
     super.initState();
+    observingUser = state.user?['id'];
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -512,7 +521,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
 
   void routeChanged() {
     final next = visible;
-    if (next && !routeVisible && foreground) {
+    if (next && !routeVisible && foreground && sameAccount) {
       scheduleMicrotask(() {
         if (mounted) refresh();
       });
@@ -528,7 +537,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     if (!foreground) {
       preparationPoll?.cancel();
       preparationPoll = null;
-    } else if (!wasForeground && visible && state.user != null) {
+    } else if (!wasForeground && visible && sameAccount) {
       refresh();
     }
   }
@@ -539,15 +548,19 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
           (p) => p['status'] == 'processing',
         ) ||
         data['daily_capture']?['preparation']?['status'] == 'processing';
-    if (!preparing) {
+    if (!sameAccount || (!preparing && state.isChild)) {
       preparationPoll?.cancel();
       preparationPoll = null;
       return;
     }
-    if (!foreground || !visible || preparationPoll?.isActive == true) return;
-    preparationPoll = Timer(const Duration(seconds: 5), () {
+    final delay = Duration(seconds: preparing ? 5 : 15);
+    if (!foreground || !visible) return;
+    if (preparationPoll?.isActive == true && pollInterval == delay) return;
+    preparationPoll?.cancel();
+    pollInterval = delay;
+    preparationPoll = Timer(delay, () {
       preparationPoll = null;
-      if (mounted && foreground && visible && state.user != null && !reading) {
+      if (mounted && foreground && visible && sameAccount && !reading) {
         refresh();
       }
     });
@@ -601,6 +614,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         }
         final child = data['child'] as Json;
         final plan = data['plan'] as Json;
+        final openAssignments = (data['assignments'] as List? ?? [])
+            .where((assignment) => assignment['done'] != true)
+            .length;
+        final helpRequests =
+            (data['day_summary']?['help_requests'] as num? ?? 0).toInt();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -621,7 +639,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Lernraum von ${child['display_name']}',
+                        child['display_name'],
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
@@ -636,44 +654,84 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            LayoutBuilder(
+              builder: (context, size) {
+                final columns = size.maxWidth >= 900
+                    ? 3
+                    : size.maxWidth >= 620
+                    ? 2
+                    : 1;
+                final width = (size.maxWidth - (columns - 1) * 12) / columns;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: width,
+                      child: LearningGoalPanel(plan: plan),
+                    ),
+                    SizedBox(
+                      width: width,
+                      child: _ParentStatusCard(
+                        title: 'Offene Aufträge',
+                        value: '$openAssignments',
+                        icon: Icons.checklist_rounded,
+                        detail: openAssignments == 0
+                            ? 'Keine offenen Aufträge.'
+                            : 'Aufträge und Termine gemeinsam im Blick.',
+                        action: 'Plan ansehen',
+                        onTap: () => setState(() => tab = 1),
+                      ),
+                    ),
+                    SizedBox(
+                      width: width,
+                      child: _ParentStatusCard(
+                        title: 'Unterstützung',
+                        value: helpRequests > 0
+                            ? '$helpRequests ${helpRequests == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}'
+                            : 'Heutiger Einblick',
+                        icon: Icons.volunteer_activism_outlined,
+                        detail:
+                            data['day_summary']?['support'] ??
+                            'Noch keine Rückmeldung.',
+                        highlighted: helpRequests > 0,
+                        action: helpRequests > 0
+                            ? 'Nachrichten ansehen'
+                            : 'Verlauf ansehen',
+                        onTap: () =>
+                            setState(() => tab = helpRequests > 0 ? 4 : 3),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  for (final t in [
-                    'Überblick',
-                    'Plan & Vorgaben',
-                    'Materialien',
-                    'Lernverlauf',
-                    'Familiennachrichten',
-                  ])
-                    ChoiceChip(
-                      label: Text(t),
-                      selected:
-                          tab ==
-                          [
-                            'Überblick',
-                            'Plan & Vorgaben',
-                            'Materialien',
-                            'Lernverlauf',
-                            'Familiennachrichten',
-                          ].indexOf(t),
-                      onSelected: (_) => setState(
-                        () => tab = [
-                          'Überblick',
-                          'Plan & Vorgaben',
-                          'Materialien',
-                          'Lernverlauf',
-                          'Familiennachrichten',
-                        ].indexOf(t),
+                  for (final entry in [
+                    ('Überblick', Icons.space_dashboard_outlined),
+                    ('Plan', Icons.event_note_rounded),
+                    ('Heftseiten', Icons.photo_library_outlined),
+                    ('Verlauf', Icons.history_rounded),
+                    ('Nachrichten', Icons.chat_bubble_outline_rounded),
+                  ].indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        avatar: Icon(entry.$2.$2, size: 17),
+                        label: Text(entry.$2.$1),
+                        selected: tab == entry.$1,
+                        onSelected: (_) => setState(() => tab = entry.$1),
                       ),
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 24),
             if (tab == 0) ...[
               FocusCard(
                 eyebrow: 'Tagespaket',
@@ -690,38 +748,37 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   in (data['pending_preparations'] as List? ?? []).cast<Json>())
                 PreparationCard(childId: child['id'], preparation: preparation),
               const SizedBox(height: 24),
-              Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    heading('Muss ich unterstützen?'),
-                    Text(
-                      data['day_summary']['support'],
-                      style: const TextStyle(fontSize: 16, height: 1.6),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Letzte 7 Tage: ${data['week_summary']['completed_units']} abgeschlossene Einheiten · ${data['week_summary']['hints_used']} Hinweise · ca. ${data['week_summary']['active_minutes_approx']} aktive Minuten.',
-                      style: const TextStyle(color: muted, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      data['week_summary']['support'],
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ],
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                leading: const Icon(Icons.insights_rounded, color: teal),
+                title: const Text('Rückblick auf sieben Tage'),
+                subtitle: Text(
+                  '${data['week_summary']['completed_units']} Einheiten · ${data['week_summary']['hints_used']} Hinweise',
                 ),
+                childrenPadding: const EdgeInsets.only(bottom: 14),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      data['week_summary']['support'],
+                      style: const TextStyle(color: muted),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 28),
               heading(
                 'Was steht heute an?',
                 subtitle:
-                    '${plan['available_minutes']} Minuten im Plan · ${plan['completed_today']} heute abgeschlossen',
+                    'Vorschlag: ca. ${plan['planned_minutes'] ?? plan['available_minutes']} Minuten · ${plan['completed_today']} heute abgeschlossen',
               ),
               for (final notice in plan['notices'] as List) Notice(notice),
               if ((plan['today'] as List).isEmpty)
-                const Notice(
-                  'Heute ist nichts fest eingeplant. Du kannst bestätigtes Material auswählen oder später wiederkommen.',
+                Notice(
+                  plan['goal_required'] == true &&
+                          plan['daily_goal_met'] != true
+                      ? 'Das Mindestziel ist noch offen. Im Lernraum geht es mit weiteren Runden weiter.'
+                      : 'Heute sind keine weiteren Runden fest eingeplant. Gespeicherten Stoff findest du im Lernraum.',
                 ),
               for (final item in plan['today'] as List)
                 planTile(context, state, data, item, parent: true),
@@ -801,7 +858,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Tagesziel: ${child['preferences']['daily_minutes']} Min. · Wochenziel: ${child['preferences']['weekly_minutes']} Min.',
+                      'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -809,7 +866,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Einheiten: max. ${child['preferences']['session_minutes']} Min. · Pausen: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
+                      'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
                       style: const TextStyle(color: muted),
                     ),
                     const SizedBox(height: 18),
@@ -1066,14 +1123,35 @@ class _ChildHomeContent extends StatelessWidget {
         .firstOrNull;
     final reviewWaiting = !photosWaiting && pendingReview != null;
     final paused = plan['paused'] == true;
-    final next = today.firstOrNull;
-    final canLearn =
-        !paused &&
-        plan['free_day'] != true &&
-        (plan['available_minutes'] as num? ?? 0) > 0 &&
-        next != null;
+    final voluntary = plan['can_continue_voluntarily'] == false
+        ? <dynamic>[]
+        : plan['voluntary'] as List? ?? [];
+    final recommended = today.where((item) => planItemDue(plan, item));
+    final next =
+        recommended.firstOrNull ??
+        voluntary.where((item) => planItemDue(plan, item)).firstOrNull;
+    final canLearn = next != null;
+    final nextObligation = next?['assignment_kind'] == 'homework'
+        ? 'Notierte Hausaufgabe · '
+        : next?['mandatory'] == true
+        ? 'Elternauftrag · '
+        : '';
+    final goalRequired =
+        plan['goal_required'] as bool? ?? (!paused && plan['free_day'] != true);
+    final goalMet = plan['daily_goal_met'] == true;
+    final optionalRound = canLearn && (goalMet || !goalRequired);
+    final activeMinutes =
+        activeLearningMinutes(plan, 'daily') ??
+        data['day_summary']?['active_minutes_approx'];
+    final dailyGoal =
+        plan['daily_goal_minutes'] ?? child['preferences']?['daily_minutes'];
     final continuing =
         canLearn && (next['status'] == 'active' || next['status'] == 'paused');
+    final learnLabel = optionalRound
+        ? 'Freiwillig weiterlernen'
+        : goalRequired && !goalMet || continuing || recommended.isEmpty
+        ? 'Weiterlernen'
+        : 'Jetzt lernen';
     final completed = (plan['completed_today'] as num? ?? 0).toInt();
     final familyMessages = data['messages'] as List? ?? [];
 
@@ -1092,7 +1170,9 @@ class _ChildHomeContent extends StatelessWidget {
                 ? 'Nach der Schule'
                 : reviewWaiting
                 ? 'Dein Rückblick'
-                : 'Deine Lernportion für heute',
+                : optionalRound
+                ? 'Wenn du magst'
+                : 'Deine nächste Runde',
             title: photosWaiting
                 ? 'Deine Heftfotos warten.'
                 : needsCapture
@@ -1100,11 +1180,17 @@ class _ChildHomeContent extends StatelessWidget {
                 : reviewWaiting
                 ? 'Schau auf deine Lernrunde zurück.'
                 : canLearn
-                ? '${next['topic']}'
+                ? optionalRound
+                      ? continuing
+                            ? 'Möchtest du weitermachen?'
+                            : 'Noch eine Runde?'
+                      : '${next['topic']}'
                 : paused || plan['free_day'] == true
                 ? 'Heute ist Lernpause.'
+                : goalMet && goalRequired
+                ? 'Tagesziel geschafft!'
                 : completed > 0
-                ? 'Für heute geschafft!'
+                ? 'Deine Runde ist gespeichert.'
                 : 'Heute ist nichts eingeplant.',
             subtitle: photosWaiting
                 ? 'Mach mit deinen Fotos weiter.'
@@ -1113,8 +1199,8 @@ class _ChildHomeContent extends StatelessWidget {
                 : reviewWaiting
                 ? 'Deine Antworten sind gespeichert.'
                 : canLearn
-                ? '${next['subject']} · heute insgesamt ca. ${plan['planned_minutes'] ?? next['estimated_minutes'] ?? plan['session_minutes']} Minuten'
-                : 'Der übrige Stoff wartet auf die nächsten Lerntage.',
+                ? '$nextObligation${next['subject']} · ${next['topic']}\nRundendauer: ca. ${next['estimated_minutes'] ?? plan['session_minutes']} Minuten'
+                : 'Du kannst deinen gespeicherten Stoff jederzeit öffnen.',
             icon: photosWaiting || needsCapture
                 ? Icons.document_scanner_rounded
                 : canLearn
@@ -1130,10 +1216,8 @@ class _ChildHomeContent extends StatelessWidget {
                     : reviewWaiting
                     ? 'Rückblick ansehen'
                     : canLearn
-                    ? continuing
-                          ? 'Weiterlernen'
-                          : 'Jetzt lernen'
-                    : 'Zu meinen Heftseiten',
+                    ? learnLabel
+                    : 'Mein Lernen öffnen',
                 icon: photosWaiting || needsCapture
                     ? Icons.add_a_photo_outlined
                     : canLearn || reviewWaiting
@@ -1149,7 +1233,7 @@ class _ChildHomeContent extends StatelessWidget {
                   } else if (canLearn) {
                     await startNext(context, state, data);
                   } else {
-                    openRoute(context, '/library/${child['id']}');
+                    openRoute(context, '/learn/${child['id']}');
                   }
                 },
               ),
@@ -1167,6 +1251,30 @@ class _ChildHomeContent extends StatelessWidget {
             },
             child: const Text('Heute keine neuen Seiten'),
           ),
+        if (activeMinutes is num && dailyGoal is num) ...[
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                goalMet && goalRequired
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.schedule_rounded,
+                color: teal,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  goalRequired
+                      ? '${goalMet ? 'Tagesziel geschafft' : 'Tagesziel offen'} · Heute ca. ${learningMinutes(activeMinutes)} von ${learningMinutes(dailyGoal)} Min. aktiv'
+                      : 'Heute ca. ${learningMinutes(activeMinutes)} Min. aktiv · ohne festes Lernziel',
+                  style: const TextStyle(color: muted, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
         if ((needsCapture || focusedPreparation != null) &&
             !photosWaiting &&
             (canLearn || reviewWaiting)) ...[
@@ -1179,14 +1287,14 @@ class _ChildHomeContent extends StatelessWidget {
                 Text(
                   reviewWaiting
                       ? 'Dein Rückblick'
-                      : 'Heute lernen · ca. ${plan['planned_minutes'] ?? next['estimated_minutes'] ?? plan['session_minutes']} Min.',
+                      : 'Nächste Runde · ca. ${next['estimated_minutes'] ?? plan['session_minutes']} Min.',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   reviewWaiting
                       ? 'Deine Antworten sind gespeichert.'
-                      : '${next['subject']} · ${next['topic']}',
+                      : '$nextObligation${next['subject']} · ${next['topic']}',
                   style: const TextStyle(color: muted),
                 ),
                 const SizedBox(height: 12),
@@ -1199,13 +1307,7 @@ class _ChildHomeContent extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(
-                    reviewWaiting
-                        ? 'Rückblick ansehen'
-                        : continuing
-                        ? 'Weiterlernen'
-                        : 'Jetzt lernen',
-                  ),
+                  label: Text(reviewWaiting ? 'Rückblick ansehen' : learnLabel),
                 ),
               ],
             ),
@@ -1269,8 +1371,8 @@ class _ChildHomeContent extends StatelessWidget {
             children: [
               if (today.isEmpty)
                 Text(
-                  paused
-                      ? 'Deine Eltern haben eine Lernpause eingestellt.'
+                  paused || !goalRequired
+                      ? 'Heute ist Lernpause geplant. Du darfst freiwillig lernen.'
                       : 'Heute ist nichts fest eingeplant.',
                   style: const TextStyle(color: muted),
                 ),
@@ -1412,12 +1514,7 @@ class _ChildPlanRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final plan = data['plan'] as Json;
     final scheduled = item['scheduled_for'];
-    final available =
-        plan['paused'] != true &&
-        plan['free_day'] != true &&
-        (plan['available_minutes'] as num? ?? 0) > 0 &&
-        (scheduled == null ||
-            scheduled.toString().compareTo(plan['date']) <= 0);
+    final available = planItemDue(plan, item);
     final obligation = item['assignment_kind'] == 'homework'
         ? 'Notierte Hausaufgabe'
         : item['mandatory'] == true
@@ -1597,16 +1694,14 @@ Future<void> startNext(BuildContext context, AppState state, Json data) async {
     openRoute(context, '/material/${pending.first['id']}');
     return;
   }
-  final today = data['plan']['today'] as List;
-  if (data['plan']['paused'] == true ||
-      data['plan']['free_day'] == true ||
-      (data['plan']['available_minutes'] as num? ?? 0) <= 0) {
-    throw ApiError(
-      'Für heute ist genug gelernt oder eine Pause eingeplant. Dein Stoff bleibt gespeichert.',
-    );
-  }
-  if (today.isNotEmpty) {
-    await openPlanItem(context, state, data, today.first);
+  final plan = data['plan'] as Json;
+  final choices = <dynamic>[
+    ...(plan['today'] as List? ?? []),
+    if (plan['can_continue_voluntarily'] != false)
+      ...(plan['voluntary'] as List? ?? []),
+  ].where((item) => planItemDue(plan, item));
+  if (choices.isNotEmpty) {
+    await openPlanItem(context, state, data, choices.first);
   } else {
     throw ApiError(
       'Bitte zuerst Unterrichtsmaterial bestätigen oder mit deinen Eltern einen Lernauftrag vereinbaren.',
@@ -1941,6 +2036,7 @@ Future<void> preferencesDialog(
   Json child,
 ) async {
   final p = Map<String, dynamic>.from(child['preferences']);
+  final form = GlobalKey<FormState>();
   final daily = TextEditingController(text: '${p['daily_minutes']}'),
       weekly = TextEditingController(text: '${p['weekly_minutes']}'),
       session = TextEditingController(text: '${p['session_minutes']}'),
@@ -1959,133 +2055,261 @@ Future<void> preferencesDialog(
     for (final entry in (p['subject_days'] as Map? ?? {}).entries)
       entry.key: List<int>.from(entry.value),
   };
-  await showDialog(
+  Widget numeric(
+    TextEditingController controller,
+    String label,
+    int low,
+    int high, {
+    String suffix = 'Min.',
+    String? helper,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: suffix,
+        helperText: helper,
+        helperMaxLines: 3,
+      ),
+      validator: (value) {
+        final number = int.tryParse(value?.trim() ?? '');
+        return number == null || number < low || number > high
+            ? 'Bitte $low bis $high eingeben.'
+            : null;
+      },
+    ),
+  );
+  await showDialog<void>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, set) => AlertDialog(
-        title: const Text('Lernvorgaben & Pausen'),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        title: const Text('Lernziele & Plan'),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Bevorzugte Lerntage',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 7,
-                  children: [
-                    for (var i = 0; i < 7; i++)
-                      FilterChip(
-                        label: Text(
-                          ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][i],
+            child: Form(
+              key: form,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PreferenceSection(
+                    title: 'Mindestlernzeit',
+                    description: 'An Lerntagen gilt das Tagesziel. Danach darf dein Kind freiwillig weiterlernen.',
+                    child: Column(
+                      children: [
+                        numeric(daily, 'Mindestziel pro Tag', 5, 120),
+                        numeric(weekly, 'Mindestziel pro Woche', 5, 600),
+                        numeric(
+                          session,
+                          'Rundendauer',
+                          5,
+                          45,
+                          helper: 'Empfehlung für kleine Lernportionen, kein Stopp.',
                         ),
-                        selected: weekdays.contains(i),
-                        onSelected: (v) => set(() {
-                          if (v) {
-                            weekdays.add(i);
-                          } else {
-                            weekdays.remove(i);
-                          }
-                        }),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Fachliche Lerntage (ohne Auswahl: alle Lerntage)',
-                  style: TextStyle(fontSize: 12, color: muted),
-                ),
-                for (final subject in child['subjects'] as List) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      subject,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                        numeric(
+                          breaks,
+                          'Lernpause',
+                          1,
+                          30,
+                          helper: 'Pausenempfehlung zwischen den Runden.',
+                        ),
+                      ],
                     ),
                   ),
-                  Wrap(
-                    spacing: 5,
-                    children: [
-                      for (var day = 0; day < 7; day++)
-                        FilterChip(
-                          label: Text(
-                            ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][day],
+                  _PreferenceSection(
+                    title: 'Lerntage',
+                    description:
+                        'Ohne ausgewählte Tage gibt es kein festes Tagesziel.',
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (var day = 0; day < 7; day++)
+                          FilterChip(
+                            label: Text(
+                              ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][day],
+                            ),
+                            selected: weekdays.contains(day),
+                            onSelected: (selected) => set(() {
+                              if (selected) {
+                                weekdays.add(day);
+                              } else {
+                                weekdays.remove(day);
+                              }
+                            }),
                           ),
-                          selected:
-                              subjectDays[subject]?.contains(day) ?? false,
-                          onSelected: (selected) => set(() {
-                            final days = subjectDays.putIfAbsent(
-                              subject,
-                              () => [],
-                            );
-                            if (selected) {
-                              days.add(day);
-                            } else {
-                              days.remove(day);
-                            }
-                            if (days.isEmpty) subjectDays.remove(subject);
-                          }),
-                        ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 18),
-                for (final item in [
-                  (daily, 'Ziel pro Tag (Minuten)'),
-                  (weekly, 'Ziel pro Woche (Minuten)'),
-                  (session, 'Maximale Einheit (Minuten)'),
-                  (breaks, 'Gewünschte Pause (Minuten)'),
-                  (focus, 'Schwerpunktfächer, durch Komma getrennt'),
-                  (
-                    repeat,
-                    'Wiederholungsziele: Fach: Thema, durch Komma getrennt',
-                  ),
-                  (pause, 'Pause / Urlaub / Krankheit bis (JJJJ-MM-TT)'),
-                  (quietStart, 'Ruhezeit ab (Stunde 0–23)'),
-                  (quietEnd, 'Ruhezeit bis (Stunde 0–23)'),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: TextField(
-                      controller: item.$1,
-                      decoration: InputDecoration(labelText: item.$2),
+                      ],
                     ),
                   ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Gebündelte Erinnerung in der App'),
-                  subtitle: const Text('Kein Push auf dem Sperrbildschirm'),
-                  value: p['reminders'],
-                  onChanged: (v) => set(() => p['reminders'] = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Benachrichtigungen am Kindergerät erlauben',
+                  _PreferenceSection(
+                    title: 'Schwerpunkte',
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: focus,
+                          decoration: const InputDecoration(
+                            labelText: 'Fächer',
+                            hintText: 'Zum Beispiel Mathematik, Englisch',
+                            helperText: 'Mehrere Fächer mit Komma trennen.',
+                            helperMaxLines: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: repeat,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Themen zum Wiederholen',
+                            hintText: 'Mathematik: Brüche, Englisch: Verben',
+                            helperText:
+                                'Fach: Thema; mehrere mit Komma trennen.',
+                            helperMaxLines: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: const Text('Fächer auf Tage verteilen'),
+                          subtitle: const Text('Ohne Auswahl: alle Lerntage'),
+                          children: [
+                            for (final subject
+                                in child['subjects'] as List) ...[
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 12,
+                                    bottom: 8,
+                                  ),
+                                  child: Text(
+                                    subject,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Wrap(
+                                spacing: 5,
+                                runSpacing: 4,
+                                children: [
+                                  for (var day = 0; day < 7; day++)
+                                    FilterChip(
+                                      label: Text(
+                                        [
+                                          'Mo',
+                                          'Di',
+                                          'Mi',
+                                          'Do',
+                                          'Fr',
+                                          'Sa',
+                                          'So',
+                                        ][day],
+                                      ),
+                                      selected:
+                                          subjectDays[subject]?.contains(day) ??
+                                          false,
+                                      onSelected: (selected) => set(() {
+                                        final days = subjectDays.putIfAbsent(
+                                          subject,
+                                          () => [],
+                                        );
+                                        if (selected) {
+                                          days.add(day);
+                                        } else {
+                                          days.remove(day);
+                                        }
+                                        if (days.isEmpty) {
+                                          subjectDays.remove(subject);
+                                        }
+                                      }),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  subtitle: const Text(
-                    'Dein Kind entscheidet anschließend auf seinem Gerät, ob es sie einschaltet.',
+                  _PreferenceSection(
+                    title: 'Geplante Auszeit',
+                    description: 'Urlaub oder Krankheit pausieren das Tagesziel. Freiwilliges Lernen bleibt möglich.',
+                    child: TextFormField(
+                      controller: pause,
+                      decoration: InputDecoration(
+                        labelText: 'Auszeit bis',
+                        hintText: 'JJJJ-MM-TT',
+                        suffixIcon: IconButton(
+                          tooltip: 'Auszeit aufheben',
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => pause.clear(),
+                        ),
+                      ),
+                      validator: (value) {
+                        final text = value?.trim() ?? '';
+                        if (text.isEmpty) return null;
+                        final date = DateTime.tryParse(text);
+                        return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text) &&
+                                date != null &&
+                                date.toIso8601String().substring(0, 10) == text
+                            ? null
+                            : 'Bitte ein gültiges Datum eingeben.';
+                      },
+                    ),
                   ),
-                  value: p['push_consent'] == true,
-                  onChanged: (v) => set(() => p['push_consent'] = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Hilfewünsche im Elternüberblick hervorheben',
+                  _PreferenceSection(
+                    title: 'Erinnerungen & Ruhezeiten',
+                    child: Column(
+                      children: [
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Lernerinnerung in der App'),
+                          value: p['reminders'] == true,
+                          onChanged: (value) =>
+                              set(() => p['reminders'] = value),
+                        ),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Push am Kindergerät erlauben'),
+                          subtitle: const Text(
+                            'Dein Kind schaltet Push auf seinem Gerät selbst ein.',
+                          ),
+                          value: p['push_consent'] == true,
+                          onChanged: (value) =>
+                              set(() => p['push_consent'] = value),
+                        ),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Hilfewünsche hervorheben'),
+                          value: p['notify_help'] == true,
+                          onChanged: (value) =>
+                              set(() => p['notify_help'] = value),
+                        ),
+                        const SizedBox(height: 16),
+                        numeric(
+                          quietStart,
+                          'Ruhezeit ab',
+                          0,
+                          23,
+                          suffix: 'Uhr',
+                        ),
+                        numeric(quietEnd, 'Ruhezeit bis', 0, 23, suffix: 'Uhr'),
+                      ],
+                    ),
                   ),
-                  value: p['notify_help'],
-                  onChanged: (v) => set(() => p['notify_help'] = v),
-                ),
-                const Notice(
-                  'Übervolle Vorgaben führen zu einem Vorschlag zur Neuplanung. Verbindliche Lernziele bleiben bestehen. Zeitzone: Europe/Berlin.',
-                ),
-              ],
+                  Text(
+                    'Zeitzone: ${p['timezone'] ?? 'Europe/Berlin'}',
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -2095,16 +2319,17 @@ Future<void> preferencesDialog(
             child: const Text('Abbrechen'),
           ),
           ActionButton(
-            label: 'Lernvorgaben speichern',
+            label: 'Speichern',
             onPressed: () async {
+              if (form.currentState?.validate() != true) return;
               await state.api.put('/children/${child['id']}/preferences', {
                 ...p,
                 'weekdays': weekdays,
                 'subject_days': subjectDays,
-                'daily_minutes': int.tryParse(daily.text) ?? 0,
-                'weekly_minutes': int.tryParse(weekly.text) ?? 0,
-                'session_minutes': int.tryParse(session.text) ?? 0,
-                'break_minutes': int.tryParse(breaks.text) ?? 0,
+                'daily_minutes': int.parse(daily.text.trim()),
+                'weekly_minutes': int.parse(weekly.text.trim()),
+                'session_minutes': int.parse(session.text.trim()),
+                'break_minutes': int.parse(breaks.text.trim()),
                 'focus_subjects': focus.text
                     .split(',')
                     .map((s) => s.trim())
@@ -2115,9 +2340,11 @@ Future<void> preferencesDialog(
                     .map((s) => s.trim())
                     .where((s) => s.isNotEmpty)
                     .toList(),
-                'pause_until': pause.text.isEmpty ? null : pause.text,
-                'quiet_start': int.tryParse(quietStart.text) ?? -1,
-                'quiet_end': int.tryParse(quietEnd.text) ?? -1,
+                'pause_until': pause.text.trim().isEmpty
+                    ? null
+                    : pause.text.trim(),
+                'quiet_start': int.parse(quietStart.text.trim()),
+                'quiet_end': int.parse(quietEnd.text.trim()),
               });
               state.refreshState();
               if (ctx.mounted) Navigator.pop(ctx);
@@ -2127,6 +2354,8 @@ Future<void> preferencesDialog(
       ),
     ),
   );
+  // Dialog route transitions may still paint its fields during this frame.
+  await Future<void>.delayed(const Duration(milliseconds: 200));
   for (final c in [
     daily,
     weekly,
@@ -2140,4 +2369,37 @@ Future<void> preferencesDialog(
   ]) {
     c.dispose();
   }
+}
+
+class _PreferenceSection extends StatelessWidget {
+  final String title;
+  final String? description;
+  final Widget child;
+  const _PreferenceSection({
+    required this.title,
+    this.description,
+    required this.child,
+  });
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 26),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        if (description != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            description!,
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+        ],
+        const SizedBox(height: 16),
+        child,
+      ],
+    ),
+  );
 }

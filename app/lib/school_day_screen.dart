@@ -1072,7 +1072,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                     : 'Du entscheidest, wann du loslegst.'
               : allDone
               ? 'Deine Heftseiten und Übungen bleiben gespeichert.'
-              : 'Heute ist keine weitere Lernzeit eingeplant.',
+              : 'Dein Stoff bleibt gespeichert. Du kannst später weiterlernen.',
           action: ActionButton(
             label: canStart
                 ? newPackage

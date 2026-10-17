@@ -6,6 +6,7 @@ captured locally; these tests never contact an external model.
 
 import copy
 import json as jsonlib
+from datetime import timedelta
 
 import httpx
 import pytest
@@ -14,6 +15,8 @@ from schulpilot import coaching, materials, providers
 from schulpilot.db import (
     DB,
     Activity,
+    Child,
+    Family,
     Job,
     LearningUnit,
     Material,
@@ -22,7 +25,9 @@ from schulpilot.db import (
     UnitCoaching,
     UnitSource,
     Usage,
+    now,
 )
+from schulpilot.learning import local_day
 from schulpilot.providers import ProviderError, Result
 from schulpilot.synthetic import CONTENT, sample_unit
 from sqlalchemy import func, select
@@ -127,6 +132,44 @@ def test_failed_generator_preserves_finished_review_answers_and_usage(deferred_r
         usage = db.scalar(select(Usage).where(Usage.job_id == job_id))
         assert usage.function == "coach_practice"
         assert usage.cost_micros is None and usage.status == "failed_unknown"
+
+
+@pytest.mark.parametrize("quota_exhausted", [False, True])
+def test_voluntary_practice_after_goals_and_pause_still_respects_quota(deferred_review, monkeypatch, quota_exhausted):
+    client, unit_id, _, _, kid, original, _ = deferred_review
+    with DB.begin() as db:
+        child = db.get(Child, kid["id"])
+        child.preferences = {
+            "weekdays": [],
+            "daily_minutes": 5,
+            "weekly_minutes": 5,
+            "session_minutes": 5,
+            "pause_until": (local_day(child) + timedelta(days=2)).isoformat(),
+        }
+        db.add(Activity(child_id=child.id, kind="active_time", detail={"seconds": 7200}, created=int(now())))
+        if quota_exhausted:
+            db.get(Family, child.family_id).call_limit = 0
+    calls = []
+
+    def provider(config, function, payload):
+        assert function == "unit"
+        calls.append(True)
+        return Result(practice_output(unit_id), 100, 100, 0)
+
+    monkeypatch.setattr(coaching, "request_provider", provider)
+    response = client.post(f"/api/units/{unit_id}/practice", headers={"Idempotency-Key": "voluntary-practice"})
+    assert response.status_code == (429 if quota_exhausted else 202), response.text
+    if not quota_exhausted:
+        process_next()
+    after = client.get(f"/api/units/{unit_id}").json()
+    assert after["questions"] == original["questions"]
+    assert after["coaching"]["request_count"] == 1
+    assert len(calls) == int(not quota_exhausted)
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Usage)) == (1 if quota_exhausted else 2)
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == (1 if quota_exhausted else 2)
+        if not quota_exhausted:
+            assert db.get(LearningUnit, after["coaching"]["next_unit_id"]).status == "not_started"
 
 
 def test_practice_has_one_explicit_retry_and_idempotent_pending_request(deferred_review, monkeypatch):

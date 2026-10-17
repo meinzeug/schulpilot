@@ -213,7 +213,14 @@ def learning_list(
     child = child_access(db, p, child_id)
     learning_paths = paths(db, child.id)
     current = plan(db, child, learning_paths=learning_paths)
-    later = list(current["later"])
+    ready = []
+    ready_ids = set()
+    for item in [*current["today"], *current.get("voluntary", [])]:
+        identity = (item["kind"], item["id"], item.get("block_id"))
+        if identity not in ready_ids:
+            ready.append(item)
+            ready_ids.add(identity)
+    later = [item for item in current["later"] if (item["kind"], item["id"], item.get("block_id")) not in ready_ids]
     # Future retrieval dates must stay visible without generating a new unit.
     for path in learning_paths:
         if path["next_review"] and path["next_review"] > current["date"] and not path["next_unit_id"]:
@@ -229,7 +236,7 @@ def learning_list(
                 }
             )
     counts = {
-        "ready": len(current["today"]),
+        "ready": len(ready),
         "later": len(later),
         "completed": db.scalar(
             select(func.count())
@@ -268,7 +275,7 @@ def learning_list(
         summaries = unit_summaries(db, ids)
         items = [summaries[id] for id in ids]
     else:
-        items = [dict(item) for item in (current["today"] if section == "ready" else later)]
+        items = [dict(item) for item in (ready if section == "ready" else later)]
         needle = q.strip().casefold()
         if needle:
             items = [item for item in items if needle in (item["topic"] + " " + item["subject"]).casefold()]
@@ -316,4 +323,21 @@ def learning_list(
         "paused": current["paused"],
         "free_day": current["free_day"],
         "available_minutes": current["available_minutes"],
+        **{
+            key: current[key]
+            for key in (
+                "daily_goal_minutes",
+                "weekly_goal_minutes",
+                "daily_active_seconds",
+                "weekly_active_seconds",
+                "daily_goal_met",
+                "weekly_goal_met",
+                "daily_remaining_minutes",
+                "weekly_remaining_minutes",
+                "goal_required",
+                "can_continue_voluntarily",
+                "optional_learning",
+            )
+            if key in current
+        },
     }

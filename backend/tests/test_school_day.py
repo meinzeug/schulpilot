@@ -5,13 +5,15 @@ import json
 import uuid
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 
 import pytest
 from conftest import HEADERS, create_child
 from fastapi.testclient import TestClient
 from PIL import Image
 from schulpilot.config import settings
-from schulpilot.db import DB, Child, Job, LearningUnit, Material, ProviderConfig, SchoolDay, UnitSource, Usage
+from schulpilot.db import DB, Attempt, Child, Job, LearningUnit, Material, ProviderConfig, SchoolDay, UnitSource, Usage
+from schulpilot.learning import local_day
 from schulpilot.main import app
 from schulpilot.providers import Result
 from schulpilot.security import encrypt
@@ -263,7 +265,7 @@ def test_package_is_atomic_and_rejects_changed_sources_goals_or_bad_output(api, 
     assert api.get(f"/api/school-days/{day['id']}").json()["last_error"]
 
 
-def test_parent_time_budget_and_focus_leave_excess_subjects_visible(api, household, monkeypatch):
+def test_parent_time_goal_and_focus_order_do_not_block_other_package_subjects(api, household, monkeypatch):
     _, child = household
     day, _ = prepare_day(api, child, monkeypatch)
     with DB.begin() as db:
@@ -275,15 +277,16 @@ def test_parent_time_budget_and_focus_leave_excess_subjects_visible(api, househo
             "focus_subjects": ["Englisch"],
         }
     view = api.get(f"/api/school-days/{day['id']}").json()
-    assert [g["subject"] for g in view["plan"]["groups"] if g["selected"]] == ["Englisch"]
+    assert [g["subject"] for g in view["plan"]["groups"] if g["selected"]] == ["Mathematik", "Englisch"]
+    assert view["plan"]["estimated_minutes"] == 16
     result = finish_job(api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "bounded"}))
     assert result["status"] == "completed"
     view = api.get(f"/api/school-days/{day['id']}").json()
-    assert [u["subject"] for u in view["units"]] == ["Englisch"]
+    assert {u["subject"] for u in view["units"]} == {"Englisch", "Mathematik"}
     assert len(view["pages"]) == 3 and any(g["subject"] == "Mathematik" for g in view["plan"]["groups"])
 
 
-def test_parent_goal_keeps_its_time_and_package_fits_remaining_five_minutes(api, household, monkeypatch):
+def test_parent_goal_keeps_priority_and_package_uses_short_sessions_beyond_goal_remainder(api, household, monkeypatch):
     _, child = household
     day, _ = prepare_day(api, child, monkeypatch)
     with DB.begin() as db:
@@ -305,14 +308,69 @@ def test_parent_goal_keeps_its_time_and_package_fits_remaining_five_minutes(api,
     )
     assert goal.status_code == 201, goal.text
     preview = api.get(f"/api/school-days/{day['id']}").json()["plan"]
-    assert preview["estimated_minutes"] == 5 and preview["available_minutes"] == 5
+    assert preview["estimated_minutes"] == 16 and preview["available_minutes"] == 5
     result = finish_job(
         api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "parent-time"})
     )
     assert result["status"] == "completed", result
     overview = api.get(f"/api/children/{child['id']}/overview").json()
     assert overview["plan"]["today"][0]["id"] == goal.json()["id"]
-    assert any(x["estimated_minutes"] == 5 for x in overview["plan"]["today"] if x["kind"] == "unit")
+    assert len(overview["units"]) == 2
+    assert all(unit["estimated_minutes"] == 8 for unit in overview["units"])
+
+
+def test_voluntary_package_stays_finite_on_free_day_after_time_goal(api, household, monkeypatch):
+    from schulpilot.db import Activity
+
+    _, child = household
+    day, _ = prepare_day(api, child, monkeypatch, subjects=("Mathematik", "Deutsch", "Englisch", "Sachunterricht"))
+    with DB.begin() as db:
+        profile = db.get(Child, child["id"])
+        profile.preferences = {
+            "weekdays": [],
+            "daily_minutes": 5,
+            "weekly_minutes": 5,
+            "session_minutes": 5,
+            "pause_until": (local_day(profile) + timedelta(days=2)).isoformat(),
+        }
+        db.add(Activity(child_id=profile.id, kind="active_time", detail={"seconds": 3600}))
+    preview = api.get(f"/api/school-days/{day['id']}").json()["plan"]
+    assert preview["available_minutes"] == 0
+    assert len([group for group in preview["groups"] if group["selected"]]) == 3
+    assert preview["estimated_minutes"] == 15
+    result = finish_job(
+        api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "voluntary"})
+    )
+    assert result["status"] == "completed", result
+    value = api.get(f"/api/school-days/{day['id']}").json()
+    assert len(value["pages"]) == 4 and len(value["units"]) == 3
+    assert all(unit["status"] == "not_started" for unit in value["units"])
+    assert value["preparation"]["status"] != "processing"
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+
+
+def test_confirmed_archived_day_allows_explicit_package_but_no_additional_upload(api, household, monkeypatch):
+    _, child = household
+    day, _ = prepare_day(api, child, monkeypatch)
+    with DB.begin() as db:
+        profile = db.get(Child, child["id"])
+        db.get(SchoolDay, day["id"]).school_date = (local_day(profile) - timedelta(days=1)).isoformat()
+    archived = api.get(f"/api/school-days/{day['id']}").json()
+    assert archived["read_only"] and archived["allow_uploads"] is False
+    assert len([group for group in archived["plan"]["groups"] if group["selected"]]) == 2
+    result = finish_job(api, api.post(f"/api/school-days/{day['id']}/package", headers={"Idempotency-Key": "archived"}))
+    assert result["status"] == "completed", result
+    saved = api.get(f"/api/school-days/{day['id']}").json()
+    assert len(saved["units"]) == 2 and all(unit["status"] == "not_started" for unit in saved["units"])
+    upload = api.post(
+        f"/api/children/{child['id']}/materials?school_day_id={day['id']}",
+        files={"file": ("synthetic.jpg", image_bytes(), "image/jpeg")},
+    )
+    assert upload.status_code == 409
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+        assert db.scalar(select(func.count()).select_from(Material)) == 3
 
 
 def test_parallel_package_requests_reserve_only_one_call(api, household, monkeypatch):

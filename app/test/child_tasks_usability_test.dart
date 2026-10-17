@@ -16,6 +16,14 @@ http.Response _json(Object value) => http.Response(
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
+http.Response _timeReply() => _json({
+  'status': 'active',
+  'active_seconds_approx': 0,
+  'break_until': null,
+  'break_recommended': false,
+  'break_minutes': 5,
+});
+
 AppState _child(MockClient client) =>
     AppState(
         api: Api(base: 'https://example.invalid/api', client: client),
@@ -111,6 +119,7 @@ void main() {
       final state = _child(
         MockClient((request) async {
           requests.add('${request.method} ${request.url.path}');
+          if (request.url.path.endsWith('/heartbeat')) return _timeReply();
           if (request.method == 'POST') {
             expect(request.url.path, '/api/units/unit/questions/first/answer');
             expect(jsonDecode(request.body), {'answer': 'Katze'});
@@ -148,7 +157,10 @@ void main() {
       expect(find.text('Cat heißt Katze.'), findsNothing);
       expect(find.text('Aufgabe 2 von 2'), findsOneWidget);
       expect(answers, 1);
-      expect(requests.length, 2);
+      expect(
+        requests.length,
+        4,
+      ); // Read, baseline, final activity pulse, answer.
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       router.dispose();
@@ -164,6 +176,7 @@ void main() {
       var current = _unit([_question('first', 'Was bedeutet cat?')]);
       final state = _child(
         MockClient((request) async {
+          if (request.url.path.endsWith('/heartbeat')) return _timeReply();
           if (request.url.path.endsWith('/hint')) {
             expect(request.method, 'POST');
             hints++;
@@ -219,6 +232,7 @@ void main() {
       var current = _unit([_question('first', 'Was bedeutet cat?')]);
       final state = _child(
         MockClient((request) async {
+          if (request.url.path.endsWith('/heartbeat')) return _timeReply();
           if (request.method == 'POST') {
             expect(request.url.path, '/api/units/unit/questions/first/answer');
             answers++;

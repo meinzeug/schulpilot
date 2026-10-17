@@ -49,6 +49,10 @@ Ein Schema-Downgrade auf 0007 erzeugt nur leere TOTP-Spalten und stellt entfernt
 
 ## Sicherungen und Wiederherstellung
 
+### Rückweg über Mindestlernziele (17.10.2026)
+
+Die Änderung benötigt keine Schema-Migration; gespeicherte Minutenwerte bleiben unverändert. Alter Code interpretiert sie wieder als Obergrenzen und kennt die neue Zeit-Baseline nicht. Ein Rückweg würde daher freiwilliges Weiterlernen wieder sperren und die neue Zeitmessung beeinträchtigen. Bevorzugt vorwärts korrigieren. Falls ein Code-Rückweg unvermeidbar ist, eigene laufende Aufträge kontrolliert beenden lassen und sichern; über die wieder eingeführten Lernbeschränkungen ausdrücklich entscheiden. Keine Lernverläufe, beantworteten Aufgaben oder historisch erfassten Sekunden zurücksetzen und keine alte Gesamtdatenbank über neue Daten spielen. Konfiguration von KI-Provider und Reasoning bleibt beim Codewechsel erhalten.
+
 ### Rückweg über die Codex-Denkstufe (0013)
 
 Migration 0013 ergänzt nur `provider_config.reasoning_effort` mit dem bisherigen Wert `medium`; keine Quelle, Antwort, Konfigurationsrevision oder Freigabe wird dabei zurückgesetzt. Die Spalte beim gewöhnlichen Code-Rückweg erhalten. Alter Backend-/Workercode kennt die Auswahl nicht und verwendet stets `medium`. Deshalb bei einer später gewählten anderen Denkstufe nicht unbemerkt zurückrollen: Zuerst neue Aufträge unterbinden, eigene laufende Aufträge beenden lassen und eine aktuelle Sicherung erstellen. Eine ausdrücklich gewählte, katalogkompatible `medium`-Konfiguration unter dem neuen Code speichern und regulär prüfen oder einen korrigierten neuen Release verwenden. Erst bei nachvollziehbar passender Modell-/Denkstufenkonfiguration den alten Code aktivieren. Keine alte Gesamtdatenbank über neuere Familienverläufe zurückspielen und keine Modell-/Kostenlimits für den Rückweg stillschweigend ändern.

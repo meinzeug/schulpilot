@@ -289,6 +289,10 @@ class AnswerRequest(Strict):
     answer: str = Field(max_length=1000)
 
 
+class HeartbeatRequest(Strict):
+    baseline: bool = False
+
+
 class FeedbackRequest(Strict):
     kind: Literal["too_easy", "too_hard", "unclear"]
 

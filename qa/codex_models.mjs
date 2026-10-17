@@ -14,6 +14,8 @@ const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const errors = [], blocked = [], screenshots = [];
 let browser, context, page, passed = false, loggedOut = false;
 let phase = 'local_guard', modelCount = 0, changedModel = false, changedReasoning = false;
+let sectionsChecked = false, settingsTabsChecked = false;
+const viewports = [1440, 960, 390, 320];
 
 function check(condition, code) { if (!condition) throw new Error(code); }
 async function get(path) {
@@ -50,6 +52,35 @@ async function shot(page, name) {
   await page.screenshot({path});
   await chmod(path, 0o600);
   screenshots.push(path.split('/').at(-1));
+}
+
+async function open(page, path) {
+  const response = await page.goto(base + path, {waitUntil: 'domcontentloaded'});
+  check(response?.ok() && response.url().startsWith(base), 'public_workspace_route_failed');
+  await page.waitForSelector('flutter-view', {timeout: 90000});
+  await page.locator('flt-semantics-placeholder').evaluateAll(nodes => nodes.forEach(node => node.click()));
+  await page.waitForTimeout(600);
+}
+async function adminSections(page) {
+  phase = 'workspace_family_navigation';
+  await tap(page, page.getByRole('button', {name: 'Familientarife', exact: true}));
+  await visible(page, page.getByRole('textbox', {name: 'Familie suchen', exact: true})
+    .or(page.getByLabel('Familie suchen', {exact: true})));
+  // Inspect only section presence. Never copy family identifiers or audit rows.
+  phase = 'workspace_audit_navigation';
+  await tap(page, page.getByRole('button', {name: 'Protokoll', exact: true}));
+  await visible(page, page.getByText('Administratives Protokoll', {exact: true})
+    .or(page.getByLabel('Administratives Protokoll', {exact: true})));
+  sectionsChecked = true;
+  phase = 'existing_installation_direct_tabs';
+  await open(page, '/admin/settings');
+  for (const [tab, heading] of [['Tarif', 'Neue Familien'], ['E-Mail', 'E-Mail-Versand'],
+    ['Status', 'Bereit für den Start'], ['Betrieb', 'Betreiber & Datenschutz']]) {
+    await tap(page, page.getByRole('button', {name: tab, exact: true}));
+    await visible(page, page.getByText(heading, {exact: true})
+      .or(page.getByLabel(heading, {exact: true})));
+  }
+  settingsTabsChecked = true;
 }
 
 async function main() {
@@ -95,13 +126,19 @@ async function main() {
       }
       return route.continue();
     });
-    for (const width of [1280, 390, 320]) {
+    for (const width of viewports) {
       phase = 'model_select_' + width;
-      await page.setViewportSize({width, height: width === 1280 ? 950 : 844});
-      await page.goto(base + '/admin', {waitUntil: 'domcontentloaded'});
-      await page.waitForSelector('flutter-view', {timeout: 90000});
-      await page.locator('flt-semantics-placeholder').evaluateAll(nodes => nodes.forEach(node => node.click()));
-      await page.waitForTimeout(600);
+      await page.setViewportSize({width, height: width >= 960 ? 950 : 844});
+      await open(page, '/admin');
+      await visible(page, page.getByText('Betriebsübersicht', {exact: true})
+        .or(page.getByLabel('Betriebsübersicht', {exact: true})));
+      if (width !== 320) await shot(page, 'overview-' + width);
+      if (width === 1440) {
+        await adminSections(page);
+        await open(page, '/admin');
+      }
+      phase = 'model_select_' + width;
+      await tap(page, page.getByRole('button', {name: 'KI-Konfiguration', exact: true}));
       await visible(page, field(page, 'Modell für Lerneinheiten'));
       await visible(page, field(page, 'Reasoning / Denkstufe'));
       await shot(page, 'saved-' + width);
@@ -136,7 +173,8 @@ async function main() {
         (await context.request.get(base + '/api/auth/me')).status() === 401;
     }
     const report = {passed: passed && loggedOut, phase, failure: failure ?? null,
-      model_count: modelCount, viewports: [1280, 390, 320], local_model_selection_tested: changedModel,
+      model_count: modelCount, viewports, workspace_sections_checked: sectionsChecked,
+      existing_installation_direct_tabs_checked: settingsTabsChecked, local_model_selection_tested: changedModel,
       local_reasoning_selection_tested: changedReasoning, provider_saves: 0, inference_requests: 0,
       own_admin_session_revoked: loggedOut, screenshots, runtime_errors: errors, blocked_mutations: blocked};
     const path = artifacts + 'codex-models-browser-result.json';

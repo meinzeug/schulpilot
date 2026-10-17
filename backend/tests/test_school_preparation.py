@@ -265,7 +265,7 @@ def test_source_revision_change_during_call_discards_result(api, household, monk
         assert db.scalar(select(Usage)).cost_micros == 0
 
 
-def test_midnight_ocr_finishes_review_is_possible_and_no_time_saves_learning_path(api, household, monkeypatch):
+def test_midnight_ocr_and_explicit_package_finish_without_a_new_day_time_gate(api, household, monkeypatch):
     _, child = household
     day, calls = capture(api, child, monkeypatch)
     submit(api, day)
@@ -275,20 +275,21 @@ def test_midnight_ocr_finishes_review_is_possible_and_no_time_saves_learning_pat
     with DB() as db:
         tomorrow = local_day(db.get(Child, child["id"])) + timedelta(days=1)
     monkeypatch.setattr("schulpilot.school_day.local_day", lambda child: tomorrow)
-    monkeypatch.setattr("schulpilot.school_preparation.local_day", lambda child: tomorrow)
     assert step()
     old = api.get(f"/api/school-days/{day['id']}").json()
     assert old["read_only"] is True and old["allow_uploads"] is False
     assert old["preparation"]["status"] == "needs_review"
     review(api, day)
     result = submit(api, day)
-    assert result["status"] == "saved" and result["phase"] == "deferred"
-    assert submit(api, day)["status"] == "saved" and step() is None
-    assert calls == ["extract", "extract"]
+    assert result["status"] == "processing" and result["phase"] == "package"
+    assert step()
+    assert submit(api, day)["status"] == "ready" and step() is None
+    assert calls == ["extract", "extract", "package"]
     with DB() as db:
         saved = db.get(SchoolDay, day["id"])
         assert saved.learning_plan and saved.stage == "ready"
-        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 0
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
+        assert db.scalar(select(LearningUnit)).status == "not_started"
     upload = api.post(
         f"/api/children/{child['id']}/materials?school_day_id={day['id']}",
         files={"file": ("synthetic.jpg", image_bytes(), "image/jpeg")},
@@ -297,7 +298,7 @@ def test_midnight_ocr_finishes_review_is_possible_and_no_time_saves_learning_pat
 
 
 @pytest.mark.parametrize("when", ["before", "during"])
-def test_package_midnight_defers_without_false_failure_or_units(api, household, monkeypatch, when):
+def test_explicit_package_crosses_midnight_without_discarding_its_units(api, household, monkeypatch, when):
     _, child = household
     day, calls = capture(api, child, monkeypatch, 1)
     submit(api, day)
@@ -311,7 +312,6 @@ def test_package_midnight_defers_without_false_failure_or_units(api, household, 
 
     def midnight():
         monkeypatch.setattr("schulpilot.school_day.local_day", lambda child: tomorrow)
-        monkeypatch.setattr("schulpilot.school_preparation.local_day", lambda child: tomorrow)
 
     if when == "before":
         midnight()
@@ -330,13 +330,15 @@ def test_package_midnight_defers_without_false_failure_or_units(api, household, 
         monkeypatch.setattr("schulpilot.worker.request_provider", provider)
     assert step()
     state = api.get(f"/api/school-days/{day['id']}").json()["preparation"]
-    assert state["status"] == "saved" and state["error"] is None
+    assert state["status"] == "ready" and state["error"] is None
     with DB() as db:
         job = db.get(Job, result["job"]["id"])
-        assert job.status == "completed" and job.result["deferred"] is True
-        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 0
+        assert job.status == "completed" and job.result["unit_ids"]
+        assert not job.result.get("deferred")
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
+        assert db.scalar(select(LearningUnit)).status == "not_started"
         assert db.get(SchoolDay, day["id"]).learning_plan
-    assert calls == (["extract"] if when == "before" else ["extract", "package"])
+    assert calls == ["extract", "package"]
 
 
 def test_child_cannot_prepare_sibling_and_new_key_dedupes_existing_work(api, household, monkeypatch):

@@ -86,6 +86,19 @@ void main() {
         client: MockClient((request) async {
           Json result;
           if (request.method == 'POST') posts.add(request.url.path);
+          if (request.url.path.endsWith('/heartbeat')) {
+            expect(jsonDecode(request.body), {'baseline': true});
+            return http.Response(
+              jsonEncode({
+                'status': 'active',
+                'active_seconds_approx': 0,
+                'break_until': null,
+                'break_recommended': false,
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
           if (request.url.path.contains('/units/next')) {
             result = {
               'id': 'next',
@@ -148,7 +161,7 @@ void main() {
       await tester.tap(next);
       await tester.pumpAndSettle();
       expect(find.text('Eine wirklich neue Aufgabe'), findsOneWidget);
-      expect(posts, ['/api/units/next/start']);
+      expect(posts, ['/api/units/next/start', '/api/units/next/heartbeat']);
       await tester.pumpWidget(const SizedBox());
       router.dispose();
     },

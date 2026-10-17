@@ -563,244 +563,511 @@ class PageFrame extends StatelessWidget {
     this.actions = const [],
     this.showTitle = true,
   });
+
+  @override
+  Widget build(BuildContext context) => WorkspaceShell(
+    state: state,
+    title: title,
+    subtitle: subtitle,
+    actions: actions,
+    showTitle: showTitle,
+    browser: kIsWeb,
+    child: child,
+  );
+}
+
+/// Shared page content with navigation suited to its browser or native host.
+class WorkspaceShell extends StatelessWidget {
+  final AppState state;
+  final String title;
+  final String? subtitle;
+  final Widget child;
+  final List<Widget> actions;
+  final bool showTitle;
+  final bool browser;
+
+  const WorkspaceShell({
+    super.key,
+    required this.state,
+    required this.title,
+    this.subtitle,
+    required this.child,
+    required this.browser,
+    this.actions = const [],
+    this.showTitle = true,
+  });
+
+  String get _roleLabel => state.isChild
+      ? 'Dein Lernraum'
+      : state.isAdmin
+      ? 'Administration'
+      : 'Familienbereich';
+
+  List<(IconData, String, String)> _entries({required bool sidebar}) => [
+    (
+      Icons.grid_view_rounded,
+      state.isChild
+          ? 'Heute'
+          : state.isAdmin
+          ? 'Betrieb'
+          : 'Familie',
+      state.isAdmin ? '/admin' : '/app',
+    ),
+    if (state.isChild)
+      (
+        Icons.auto_stories_rounded,
+        'Lernen',
+        '/learn/${state.user!['child_id']}',
+      ),
+    if (state.isChild)
+      (
+        Icons.folder_open_rounded,
+        'Hefte',
+        '/library/${state.user!['child_id']}',
+      ),
+    if (state.isAdmin) ...[
+      (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
+      if (sidebar) ...[
+        (Icons.storefront_outlined, 'Verkauf', '/admin/verkauf'),
+        (Icons.notifications_outlined, 'Push', '/admin/push'),
+      ],
+    ],
+    if (browser && state.isOwner && !state.isDemo)
+      (Icons.receipt_long_outlined, 'Tarif', '/bestellungen'),
+    (Icons.person_outline_rounded, 'Konto', '/settings'),
+  ];
+
+  int _selected(List<(IconData, String, String)> entries, String path) {
+    final index = entries.indexWhere((entry) => path == entry.$3);
+    if (index >= 0) return index;
+    if (state.isChild && path.startsWith('/unit/')) return 1;
+    if (state.isChild && path.startsWith('/material/')) return 2;
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 1050;
-    final uri = GoRouterState.of(context).uri.path;
-    final entries = <(IconData, String, String)>[
-      (
-        Icons.grid_view_rounded,
-        state.isChild
-            ? 'Heute'
-            : state.isAdmin
-            ? 'Betrieb'
-            : 'Familie',
-        state.isAdmin ? '/admin' : '/app',
-      ),
-      if (state.isChild)
-        (
-          Icons.auto_stories_rounded,
-          'Lernen',
-          '/learn/${state.user!['child_id']}',
-        ),
-      if (state.isChild)
-        (
-          Icons.folder_open_rounded,
-          'Hefte',
-          '/library/${state.user!['child_id']}',
-        ),
-      if (state.isAdmin) (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
-      if (kIsWeb && state.isOwner && !state.isDemo)
-        (Icons.receipt_long_outlined, 'Tarif', '/bestellungen'),
-      (Icons.person_outline_rounded, 'Konto', '/settings'),
-    ];
-    var selected = entries.indexWhere(
-      (e) =>
-          uri == e.$3 ||
-          (e.$3.contains('after-school') && uri.startsWith(e.$3)),
-    );
-    if (selected < 0) selected = 0;
-    if (state.isChild && uri.startsWith('/unit/')) selected = 1;
-    if (state.isChild && uri.startsWith('/material/')) selected = 2;
-    Widget sidebar() => Container(
-      width: 252,
-      padding: const EdgeInsets.fromLTRB(24, 34, 20, 24),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF17243C), Color(0xFF111A30)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          brand(light: true),
-          const SizedBox(height: 48),
-          for (var i = 0; i < entries.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: Colors.transparent,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  tileColor: selected == i
-                      ? Colors.white.withValues(alpha: .12)
-                      : null,
-                  leading: Icon(
-                    entries[i].$1,
-                    color: selected == i
-                        ? const Color(0xFFC7CBFF)
-                        : Colors.white54,
-                    size: 22,
-                  ),
-                  title: Text(
-                    entries[i].$2,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: selected == i
-                          ? FontWeight.w700
-                          : FontWeight.w400,
-                    ),
-                  ),
-                  onTap: () => context.go(entries[i].$3),
-                ),
-              ),
-            ),
-          const Spacer(),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 16),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFF333D60),
-              child: Text(
-                ((state.user?['display_name'] as String?)?.trim().isNotEmpty ==
-                            true
-                        ? state.user!['display_name'] as String
-                        : 'S')
-                    .characters
-                    .first,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            title: Text(
-              state.user?['display_name'] ?? '',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            subtitle: Text(
-              state.isChild
-                  ? 'Dein Lernraum'
-                  : state.isParent
-                  ? 'Elternkonto'
-                  : 'Administration',
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-            onTap: () => context.go('/settings'),
-          ),
-        ],
-      ),
-    );
+    final width = MediaQuery.sizeOf(context).width;
+    final sidebar = browser && width >= 1050;
+    final rail = browser && !sidebar && width >= 720;
+    final desktop = sidebar || rail;
+    final path = GoRouterState.of(context).uri.path;
+    final entries = _entries(sidebar: sidebar);
+    final selected = _selected(entries, path);
+    final maxWidth = state.isChild
+        ? 1060.0
+        : state.isAdmin
+        ? 1440.0
+        : 1360.0;
+    final name = (state.user?['display_name'] as String?)?.trim();
+    final displayName = name == null || name.isEmpty ? 'Konto' : name;
+
     return Scaffold(
-      appBar: wide ? null : AppBar(title: brand(), toolbarHeight: 68),
-      bottomNavigationBar: wide
+      appBar: desktop ? null : AppBar(title: brand(), toolbarHeight: 68),
+      bottomNavigationBar: desktop
           ? null
           : NavigationBar(
               selectedIndex: selected,
               onDestinationSelected: (i) => context.go(entries[i].$3),
               destinations: [
-                for (final e in entries)
-                  NavigationDestination(icon: Icon(e.$1), label: e.$2),
+                for (final entry in entries)
+                  NavigationDestination(icon: Icon(entry.$1), label: entry.$2),
               ],
             ),
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (wide) sidebar(),
+          if (sidebar)
+            _WorkspaceSidebar(
+              entries: entries,
+              selected: selected,
+              roleLabel: _roleLabel,
+            ),
+          if (rail) _WorkspaceRail(entries: entries, selected: selected),
           Expanded(
-            child: SelectionArea(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  wide ? 44 : 20,
-                  wide ? 40 : 24,
-                  wide ? 44 : 20,
-                  24,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (state.isDemo)
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 20),
-                            child: Tag('Demo · nur Beispieldaten'),
-                          ),
-                        if (!state.isDemo &&
-                            !state.isAdmin &&
-                            state.user?['real_data_enabled'] == false)
-                          const Notice(
-                            'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
-                          ),
-                        if (showTitle)
-                          Row(
+            child: Column(
+              children: [
+                if (desktop)
+                  _WorkspaceHeader(
+                    roleLabel: _roleLabel,
+                    section: state.isAdmin && path == '/admin/verkauf'
+                        ? 'Verkauf'
+                        : state.isAdmin && path == '/admin/push'
+                        ? 'Push'
+                        : entries[selected].$2,
+                    displayName: displayName,
+                    compact: rail,
+                  ),
+                Expanded(
+                  child: SelectionArea(
+                    child: SingleChildScrollView(
+                      key: const ValueKey('workspace-scroll'),
+                      padding: EdgeInsets.fromLTRB(
+                        sidebar
+                            ? 36
+                            : desktop
+                            ? 28
+                            : 20,
+                        desktop ? 32 : 24,
+                        sidebar
+                            ? 36
+                            : desktop
+                            ? 28
+                            : 20,
+                        24,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: Column(
+                            key: const ValueKey('workspace-content'),
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              if (state.isDemo)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 20),
+                                  child: Tag('Demo · nur Beispieldaten'),
+                                ),
+                              if (!state.isDemo &&
+                                  !state.isAdmin &&
+                                  state.user?['real_data_enabled'] == false)
+                                const Notice(
+                                  'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
+                                ),
+                              if (showTitle || actions.isNotEmpty) ...[
+                                _WorkspaceHeading(
+                                  title: showTitle ? title : null,
+                                  subtitle: showTitle ? subtitle : null,
+                                  actions: actions,
+                                ),
+                                const SizedBox(height: 26),
+                              ],
+                              child,
+                              if (browser && path == '/app') ...[
+                                const SizedBox(height: 28),
+                                AndroidDownload(state.api),
+                              ],
+                              if (!state.isChild || path == '/settings') ...[
+                                const SizedBox(height: 24),
+                                Wrap(
+                                  spacing: 12,
                                   children: [
-                                    Text(
-                                      title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium,
+                                    TextButton(
+                                      onPressed: () =>
+                                          openRoute(context, '/privacy'),
+                                      child: const Text('Datenschutz'),
                                     ),
-                                    if (subtitle != null &&
-                                        subtitle!.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          subtitle!,
-                                          style: const TextStyle(color: muted),
-                                        ),
-                                      ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          openRoute(context, '/about'),
+                                      child: const Text('Über SCHULPILOT'),
+                                    ),
                                   ],
                                 ),
-                              ),
-                              if (wide) ...actions,
+                              ],
                             ],
                           ),
-                        if (!wide && actions.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: actions,
-                            ),
-                          ),
-                        if (showTitle) const SizedBox(height: 26),
-                        child,
-                        if (kIsWeb && uri == '/app') ...[
-                          const SizedBox(height: 28),
-                          AndroidDownload(state.api),
-                        ],
-                        if (!state.isChild || uri == '/settings') ...[
-                          const SizedBox(height: 24),
-                          Wrap(
-                            spacing: 12,
-                            children: [
-                              TextButton(
-                                onPressed: () => openRoute(context, '/privacy'),
-                                child: const Text('Datenschutz'),
-                              ),
-                              TextButton(
-                                onPressed: () => openRoute(context, '/about'),
-                                child: const Text('Über SCHULPILOT'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _WorkspaceSidebar extends StatelessWidget {
+  final List<(IconData, String, String)> entries;
+  final int selected;
+  final String roleLabel;
+
+  const _WorkspaceSidebar({
+    required this.entries,
+    required this.selected,
+    required this.roleLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('workspace-sidebar'),
+    width: 248,
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [ink, Color(0xFF111A30)],
+      ),
+      border: Border(right: BorderSide(color: Color(0xFF354361))),
+    ),
+    child: SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
+            child: brand(light: true),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 0, 20, 16),
+            child: Text(
+              roleLabel,
+              style: const TextStyle(
+                color: Color(0xFFBBC9E0),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                letterSpacing: .4,
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                for (var i = 0; i < entries.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Material(
+                      color: i == selected
+                          ? const Color(0xFF303A60)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      child: ListTile(
+                        selected: i == selected,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        leading: Icon(
+                          entries[i].$1,
+                          color: i == selected
+                              ? electric
+                              : const Color(0xFFBBC9E0),
+                          size: 22,
+                        ),
+                        title: Text(
+                          entries[i].$2,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: i == selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                        onTap: () => context.go(entries[i].$3),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _WorkspaceRail extends StatelessWidget {
+  final List<(IconData, String, String)> entries;
+  final int selected;
+  const _WorkspaceRail({required this.entries, required this.selected});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('workspace-rail'),
+    width: 104,
+    color: ink,
+    child: SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Image.asset('assets/brand/schulpilot-mark.png', width: 34),
+          ),
+          Expanded(
+            child: NavigationRail(
+              scrollable: true,
+              minWidth: 104,
+              backgroundColor: ink,
+              indicatorColor: const Color(0xFF303A60),
+              selectedIconTheme: const IconThemeData(color: electric),
+              unselectedIconTheme: const IconThemeData(
+                color: Color(0xFFBBC9E0),
+              ),
+              selectedLabelTextStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+              unselectedLabelTextStyle: const TextStyle(
+                color: Color(0xFFBBC9E0),
+                fontSize: 12,
+              ),
+              labelType: NavigationRailLabelType.all,
+              selectedIndex: selected,
+              onDestinationSelected: (i) => context.go(entries[i].$3),
+              destinations: [
+                for (final entry in entries)
+                  NavigationRailDestination(
+                    icon: Icon(entry.$1),
+                    label: Text(entry.$2),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _WorkspaceHeader extends StatelessWidget {
+  final String roleLabel;
+  final String section;
+  final String displayName;
+  final bool compact;
+  const _WorkspaceHeader({
+    required this.roleLabel,
+    required this.section,
+    required this.displayName,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('workspace-header'),
+    height: 80,
+    padding: EdgeInsets.symmetric(horizontal: compact ? 28 : 36),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      border: Border(bottom: BorderSide(color: Color(0xFFE2E7F0))),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  roleLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: muted, fontSize: 13),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: muted,
+                  size: 18,
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  section,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Tooltip(
+          message: 'Konto öffnen',
+          child: TextButton(
+            onPressed: () => context.go('/settings'),
+            style: TextButton.styleFrom(
+              foregroundColor: ink,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 17,
+                  backgroundColor: mint,
+                  foregroundColor: teal,
+                  child: Text(displayName.characters.first.toUpperCase()),
+                ),
+                const SizedBox(width: 10),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: compact ? 140 : 200),
+                  child: Text(
+                    displayName,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.chevron_right_rounded, size: 18),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _WorkspaceHeading extends StatelessWidget {
+  final String? title;
+  final String? subtitle;
+  final List<Widget> actions;
+  const _WorkspaceHeading({this.title, this.subtitle, required this.actions});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final heading = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null)
+            Text(title!, style: Theme.of(context).textTheme.headlineMedium),
+          if (subtitle?.isNotEmpty == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(subtitle!, style: const TextStyle(color: muted)),
+            ),
+        ],
+      );
+      if (constraints.maxWidth >= 760 && title != null && actions.isNotEmpty) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: heading),
+            const SizedBox(width: 24),
+            Flexible(
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: actions,
+              ),
+            ),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) heading,
+          if (title != null && actions.isNotEmpty) const SizedBox(height: 16),
+          if (actions.isNotEmpty)
+            Wrap(spacing: 8, runSpacing: 8, children: actions),
+        ],
+      );
+    },
+  );
 }
 
 Widget heading(String title, {String? subtitle, Widget? trailing}) => Padding(

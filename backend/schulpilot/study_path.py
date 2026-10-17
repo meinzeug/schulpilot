@@ -30,7 +30,7 @@ from .db import (
     now,
     uid,
 )
-from .learning import local_day, plan, record
+from .learning import record
 from .providers import ProviderError, config_for_function, request_provider, reserve, settle, source_excerpt_candidates
 from .school_day import get_day, pages, planning_fingerprint
 from .security import authenticated, child_user, rate_limit
@@ -210,30 +210,16 @@ def ensure_plan(db, day):
 
 
 def block_reason(db, child, subject, *, unit_id=None, question_count=2, current_plan=None):
-    prefs = s.Preferences(**child.preferences)
-    today = local_day(child)
-    if prefs.pause_until and today <= prefs.pause_until:
-        return "Du hast gerade Lernpause. Deine Lernreise bleibt gespeichert."
-    if today.weekday() not in prefs.weekdays or (
-        prefs.subject_days.get(subject) and today.weekday() not in prefs.subject_days[subject]
-    ):
-        return "Heute ist dafür kein Lerntag. Die nächste Etappe bleibt für später da."
-    current = current_plan if current_plan is not None else plan(db, child)
-    reserved = sum(
-        (item.get("estimated_minutes") or current["session_minutes"])
-        for item in current["today"]
-        if item.get("id") != unit_id and item.get("kind") != "study_path"
-    )
-    needed = min(prefs.session_minutes, max(5, question_count * 2))
-    if unit_id and current["available_minutes"] > 0:
-        # A prepared round may be paused at today's boundary and resumed later.
-        needed = min(needed, current["available_minutes"])
-    if current["available_minutes"] - reserved < needed:
-        return "Für heute reicht es. Deine nächste Etappe bleibt gespeichert."
+    # Scheduling and remaining goal minutes inform recommendations. An
+    # explicit stage request is voluntary and still uses the ordinary budget.
+    if unit_id is None:
+        return None
+    unit = db.get(LearningUnit, unit_id)
+    if not unit or unit.child_id != child.id:
+        return "Diese Etappe ist nicht verfügbar."
     from .coaching import continuation_block
 
-    probe = LearningUnit(child_id=child.id, subject=subject, questions=[], round_kind="study_block")
-    return continuation_block(db, probe, child, check_sources=False)
+    return continuation_block(db, unit, child, check_sources=False)
 
 
 def path_data(db, day, child):
@@ -287,9 +273,8 @@ def path_data(db, day, child):
         result["total_questions"] += count
         result["completed_questions"] += answered
         result["ready_questions"] += count - answered if status == "ready" else 0
-    # Different subjects of one school day can follow different parent days.
-    # Keep source order within a subject, without blocking Thursday's English
-    # behind Monday's unfinished mathematics.
+    # Prefer the suggested portion, then explicitly available voluntary work.
+    # Neither a free day nor a reached time goal closes the source-sized path.
     from .learning import plan
 
     current = plan(db, child)
@@ -297,7 +282,7 @@ def path_data(db, day, child):
     preferred = next(
         (
             b
-            for item in current["today"]
+            for item in [*current["today"], *current.get("voluntary", [])]
             for b in open_blocks
             if (item["kind"] == "study_path" and item["id"] == day.id and item.get("block_id") == b["id"])
             or (item["kind"] == "unit" and item["id"] == b.get("unit_id"))
@@ -317,10 +302,6 @@ def path_data(db, day, child):
             question_count=next_block["question_count"],
             current_plan=current,
         )
-        if preferred is None and not result["block_reason"]:
-            result["block_reason"] = (
-                "Dieser Lernweg ist für einen späteren Lerntag eingeplant. Schau in deinen Tagesplan."
-            )
     if result["stale"]:
         result["block_reason"] = (
             "Die Heftseiten wurden geändert. Bitte die Lernreise neu planen. Deine Antworten bleiben erhalten."

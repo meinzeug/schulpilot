@@ -3,11 +3,11 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.orm import defer, load_only
 
 from . import schemas as s
-from .daily_planner import completed_portions, distribute, period_starts
+from .daily_planner import completed_portions, distribute, period_starts, voluntary_steps
 from .db import (
     Activity,
     Assignment,
@@ -94,6 +94,64 @@ def mastery_data(m):
     }
 
 
+def break_recommendation(db, unit):
+    prefs = s.Preferences(**db.get(Child, unit.child_id).preferences)
+    return {
+        "break_recommended": unit.status == "active" and (unit.segment_seconds or 0) >= prefs.session_minutes * 60,
+        "break_minutes": prefs.break_minutes,
+    }
+
+
+def learning_time(db, child):
+    """Only saved activity establishes a minimum; estimates never earn time."""
+    return learning_times(db, [child])[child.id]
+
+
+def learning_times(db, children):
+    """One scoped aggregate for a family, respecting each child's timezone."""
+    if not children:
+        return {}
+    periods = {}
+    for child in children:
+        prefs = s.Preferences(**child.preferences)
+        today = local_day(child)
+        periods[child.id] = (prefs, today, *period_starts(today, prefs.timezone))
+    seconds = Activity.detail["seconds"].as_integer()
+    daily_condition = or_(
+        *(and_(Activity.child_id == id, Activity.created >= values[2]) for id, values in periods.items())
+    )
+    weekly_condition = or_(
+        *(and_(Activity.child_id == id, Activity.created >= values[3]) for id, values in periods.items())
+    )
+    totals = {
+        id: (daily, weekly)
+        for id, daily, weekly in db.execute(
+            select(
+                Activity.child_id,
+                func.coalesce(func.sum(case((daily_condition, seconds), else_=0)), 0),
+                func.coalesce(func.sum(seconds), 0),
+            )
+            .where(Activity.kind == "active_time", weekly_condition)
+            .group_by(Activity.child_id)
+        )
+    }
+    result = {}
+    for id, (prefs, today, _, _) in periods.items():
+        daily, weekly = totals.get(id, (0, 0))
+        result[id] = {
+            "daily_active_seconds": daily,
+            "weekly_active_seconds": weekly,
+            "daily_goal_minutes": prefs.daily_minutes,
+            "weekly_goal_minutes": prefs.weekly_minutes,
+            "daily_goal_met": daily >= prefs.daily_minutes * 60,
+            "weekly_goal_met": weekly >= prefs.weekly_minutes * 60,
+            "daily_remaining_seconds": max(0, prefs.daily_minutes * 60 - daily),
+            "goal_required": today.weekday() in prefs.weekdays
+            and not (prefs.pause_until and today <= prefs.pause_until),
+        }
+    return result
+
+
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import coaching
 
@@ -135,7 +193,9 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "status": unit.status,
         "synthetic": unit.synthetic,
         "active_seconds_approx": unit.active_seconds,
+        "learning_time": learning_time(db, db.get(Child, unit.child_id)),
         "break_until": unit.break_until,
+        **break_recommendation(db, unit),
         "material_id": unit.material_id,
         "school_day_id": unit.school_day_id,
         "estimated_minutes": unit.estimated_minutes,
@@ -249,20 +309,17 @@ def plan(db, child, *, learning_paths=None):
         db.scalars(select(Mastery).where(Mastery.child_id == child.id, Mastery.next_review <= today.isoformat()))
     )
     start, week = period_starts(today, prefs.timezone)
-    timed = list(
-        db.scalars(
-            select(Activity).where(
-                Activity.child_id == child.id, Activity.kind == "active_time", Activity.created >= week
-            )
-        )
-    )
-    daily_seconds = sum(e.detail.get("seconds", 0) for e in timed if e.created >= start)
-    weekly_seconds = sum(e.detail.get("seconds", 0) for e in timed)
+    measured = learning_time(db, child)
+    daily_seconds = measured["daily_active_seconds"]
+    weekly_seconds = measured["weekly_active_seconds"]
     daily_used = (daily_seconds + 59) // 60
     weekly_used = (weekly_seconds + 59) // 60
     completed_daily, completed_weekly = completed_portions(units, prefs, start, week)
     daily_load, weekly_load = max(daily_used, completed_daily), max(weekly_used, completed_weekly)
-    available = max(0, min(prefs.daily_minutes - daily_load, prefs.weekly_minutes - weekly_load))
+    # Estimates bound the suggested portion, never measured progress or access.
+    available = max(0, prefs.daily_minutes - daily_load)
+    daily_remaining = max(0, prefs.daily_minutes * 60 - daily_seconds)
+    weekly_remaining = max(0, prefs.weekly_minutes * 60 - weekly_seconds)
     notices = []
     paused = bool(prefs.pause_until and today <= prefs.pause_until)
     free_day = today.weekday() not in prefs.weekdays
@@ -270,14 +327,12 @@ def plan(db, child, *, learning_paths=None):
         notices.append(f"Lernpause bis {prefs.pause_until.isoformat()}. Offene Ziele bleiben erhalten.")
         available = 0
     elif free_day:
-        notices.append("Heute ist ein lernfreier Tag. Neue Heftseiten kannst du trotzdem speichern.")
+        notices.append("Heute ist kein Lernziel eingeplant. Wenn du möchtest, kannst du freiwillig lernen.")
         available = 0
     if prefs.session_minutes > prefs.daily_minutes:
-        notices.append("Die Einheit wird auf das Tagesziel gekürzt.")
+        notices.append("Für den Tagesvorschlag planen wir eine kürzere Runde. Du kannst danach weiterlernen.")
     if len(prefs.weekdays) * prefs.daily_minutes < prefs.weekly_minutes:
-        notices.append(
-            "Das Wochenziel passt nicht in die gewählten Lerntage. Vorschlag: Wochenziel reduzieren oder einen weiteren Lerntag wählen."
-        )
+        notices.append("Das Wochenminimum liegt über den Tagesvorschlägen. Plant bei Bedarf weitere Lernzeit ein.")
     days = list(db.scalars(select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date)))
     source_dates = {d.id: d.school_date for d in days}
     practiced = {}
@@ -382,11 +437,17 @@ def plan(db, child, *, learning_paths=None):
                     "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes),
                 }
             )
-    for m in db.scalars(
-        select(Material)
-        .where(Material.child_id == child.id, Material.confirmed.is_(True), Material.school_day_id.is_(None))
-        .options(defer(Material.content), defer(Material.homework), defer(Material.uncertainties))
-    ):
+    confirmed_materials = list(
+        db.scalars(
+            select(Material)
+            .where(Material.child_id == child.id, Material.confirmed.is_(True))
+            .options(defer(Material.content), defer(Material.homework), defer(Material.uncertainties))
+            .order_by(Material.created, Material.id)
+        )
+    )
+    for m in confirmed_materials:
+        if m.school_day_id:
+            continue
         if not any(x["topic"] == m.topic for x in candidates) and not any(u.material_id == m.id for u in units):
             candidates.append(
                 {
@@ -451,17 +512,83 @@ def plan(db, child, *, learning_paths=None):
         notices.append(
             "Ein Elterntermin passt voraussichtlich nicht in die Lernzeit. Bitte Termin oder Schwerpunkte gemeinsam prüfen."
         )
+    optional = voluntary_steps(candidates, today)
+    offered_materials = {item["id"] for item in optional if item["kind"] == "material"}
+    offered_groups = set()
+    group_materials = {}
+    for material in confirmed_materials:
+        group = (material.school_day_id or material.id, material.subject.casefold())
+        group_materials.setdefault(group, set()).add(material.id)
+    source_units = {}
+    if confirmed_materials:
+        for unit_id, material_id in db.execute(
+            select(UnitSource.unit_id, UnitSource.material_id)
+            .join(LearningUnit, LearningUnit.id == UnitSource.unit_id)
+            .where(LearningUnit.child_id == child.id, UnitSource.material_id.in_([m.id for m in confirmed_materials]))
+        ):
+            source_units.setdefault(material_id, set()).add(unit_id)
+    for material in confirmed_materials:
+        group = (material.school_day_id or material.id, material.subject.casefold())
+        if material.id in offered_materials or group in offered_groups:
+            continue
+        material_ids = group_materials[group]
+        related_units = set().union(*(source_units.get(id, set()) for id in material_ids))
+        previous = [
+            unit
+            for unit in units
+            if unit.material_id in material_ids
+            or unit.id in related_units
+            or (
+                material.school_day_id
+                and unit.school_day_id == material.school_day_id
+                and unit.subject.casefold() == material.subject.casefold()
+            )
+        ]
+        if not previous or any(unit.status != "completed" for unit in previous):
+            continue
+        day = next((value for value in days if value.id == material.school_day_id), None)
+        if day and any(
+            block.get("subject", "").casefold() == material.subject.casefold()
+            and (not units_by_id.get(block.get("unit_id")) or units_by_id[block["unit_id"]].status != "completed")
+            for block in (day.learning_plan or {}).get("blocks", [])
+        ):
+            continue
+        offered_groups.add(group)
+        optional.append(
+            {
+                "kind": "material",
+                "id": material.id,
+                "topic": material.topic,
+                "subject": material.subject,
+                "mandatory": False,
+                "status": "ready",
+                "estimated_minutes": min(8, prefs.session_minutes),
+                "reason": "material",
+            }
+        )
     return {
         **proposal,
         "date": today.isoformat(),
         "available_minutes": available,
         "session_minutes": minutes,
         "break_minutes": prefs.break_minutes,
+        # Old clients retain the numeric fields, but they are no access limit.
         "daily_limit_minutes": prefs.daily_minutes,
         "weekly_limit_minutes": prefs.weekly_minutes,
+        "daily_goal_minutes": prefs.daily_minutes,
+        "weekly_goal_minutes": prefs.weekly_minutes,
+        "daily_active_seconds": daily_seconds,
+        "weekly_active_seconds": weekly_seconds,
+        "daily_goal_met": daily_seconds >= prefs.daily_minutes * 60,
+        "weekly_goal_met": weekly_seconds >= prefs.weekly_minutes * 60,
+        "goal_required": not paused and not free_day,
+        "daily_remaining_minutes": (daily_remaining + 59) // 60,
         "daily_used_minutes_approx": round(daily_seconds / 60, 1),
         "weekly_used_minutes_approx": round(weekly_seconds / 60, 1),
-        "weekly_remaining_minutes": max(0, prefs.weekly_minutes - weekly_load),
+        "weekly_remaining_minutes": (weekly_remaining + 59) // 60,
+        "voluntary": optional,
+        "can_continue_voluntarily": bool(optional),
+        "optional_learning": True,
         "completed_portion_minutes": completed_daily,
         "weekly_portion_minutes": completed_weekly,
         "notices": notices,
@@ -765,12 +892,6 @@ def start(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
             409, f"Dieser Lernauftrag beginnt am {assignment.scheduled_for}. Deine Eltern können ihn neu planen."
         )
     prefs = s.Preferences(**child.preferences)
-    if prefs.pause_until and local_day(child) <= prefs.pause_until:
-        raise HTTPException(
-            409, "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
-        )
-    if unit.break_until and unit.break_until > now():
-        raise HTTPException(409, "Zeit für deine Pause. Du kannst diese Einheit danach fortsetzen.")
     if unit.break_until:
         unit.segment_seconds = 0
         unit.break_until = None
@@ -795,8 +916,11 @@ def pause(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
 
 
 @router.post("/units/{unit_id}/heartbeat")
-def heartbeat(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
+def heartbeat(unit_id: str, data: s.HeartbeatRequest | None = None, p=Depends(child_user), db=Depends(get_db)):
     unit = get_unit(db, p, unit_id, True, True)
+    # Serialize activity across this child's devices/units. Two open exercises
+    # must never earn two minutes in the same minute of wall-clock time.
+    db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
     prefs = s.Preferences(**db.get(Child, unit.child_id).preferences)
     stamp = int(now())
     if unit.status == "active":
@@ -807,37 +931,45 @@ def heartbeat(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
             db.commit()
             return {
                 "active_seconds_approx": unit.active_seconds,
+                "learning_time": learning_time(db, db.get(Child, unit.child_id)),
                 "status": unit.status,
                 "break_until": unit.break_until,
+                **break_recommendation(db, unit),
             }
         elapsed = stamp - (unit.heartbeat or stamp)
-        if 0 < elapsed <= 45:
-            child = db.get(Child, unit.child_id)
-            start, week = period_starts(local_day(child), prefs.timezone)
-            events = list(
-                db.scalars(
-                    select(Activity).where(
-                        Activity.child_id == child.id, Activity.kind == "active_time", Activity.created >= week
-                    )
+        if elapsed >= prefs.break_minutes * 60:
+            unit.segment_seconds = 0
+        if 0 < elapsed <= 45 and not (data and data.baseline):
+            last_credit = db.scalar(
+                select(func.max(Activity.created)).where(
+                    Activity.child_id == unit.child_id,
+                    Activity.kind == "active_time",
+                    Activity.created >= stamp - 45,
                 )
             )
-            day_left = max(
-                0, prefs.daily_minutes * 60 - sum(e.detail.get("seconds", 0) for e in events if e.created >= start)
-            )
-            week_left = max(0, prefs.weekly_minutes * 60 - sum(e.detail.get("seconds", 0) for e in events))
-            seconds = min(elapsed, 25, day_left, week_left, max(0, prefs.session_minutes * 60 - unit.segment_seconds))
+            seconds = min(elapsed, 25, max(0, stamp - last_credit) if last_credit is not None else 25)
             unit.active_seconds += seconds
             unit.segment_seconds += seconds
             if seconds:
-                record(db, unit.child_id, "active_time", {"seconds": seconds}, unit.id)
+                db.add(
+                    Activity(
+                        child_id=unit.child_id,
+                        unit_id=unit.id,
+                        kind="active_time",
+                        detail={"seconds": seconds},
+                        created=stamp,
+                    )
+                )
         unit.heartbeat = stamp
-        if unit.segment_seconds >= prefs.session_minutes * 60:
-            unit.status = "paused"
-            unit.break_until = stamp + prefs.break_minutes * 60
-            unit.heartbeat = None
-            record(db, unit.child_id, "scheduled_break", {"minutes": prefs.break_minutes}, unit.id)
+        unit.break_until = None
         db.commit()
-    return {"active_seconds_approx": unit.active_seconds, "status": unit.status, "break_until": unit.break_until}
+    return {
+        "active_seconds_approx": unit.active_seconds,
+        "learning_time": learning_time(db, db.get(Child, unit.child_id)),
+        "status": unit.status,
+        "break_until": unit.break_until,
+        **break_recommendation(db, unit),
+    }
 
 
 @router.post("/units/{unit_id}/explanation")
@@ -912,9 +1044,6 @@ def evaluate(q, answer):
 def learning_block(db, unit):
     child = db.get(Child, unit.child_id)
     today = local_day(child)
-    prefs = s.Preferences(**child.preferences)
-    if prefs.pause_until and today <= prefs.pause_until:
-        return "Deine Eltern haben eine Lernpause eingestellt. Du kannst eine Planänderung vorschlagen."
     if unit.not_before and unit.not_before > today.isoformat():
         return f"Diese spätere Abrufprobe beginnt frühestens am {unit.not_before}."
     from .coaching import continuation_block

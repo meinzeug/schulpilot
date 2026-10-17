@@ -15,7 +15,6 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func, or_, select, update
-from sqlalchemy.orm import load_only
 
 from . import schemas as s
 from .db import (
@@ -42,7 +41,7 @@ from .security import child_user, rate_limit
 router = APIRouter(tags=["Betreutes Lernen"])
 log = logging.getLogger("schulpilot.coaching")
 CHECK_KINDS = ("check", "spaced_review", "study_recall")
-MAX_DAILY_ROUNDS = 3
+RECOMMENDED_DAILY_ROUNDS = 3
 MAX_REQUESTS = 2
 
 
@@ -383,7 +382,7 @@ def paths(db, child_id):
 
 
 def plan_review(db, unit):
-    from .learning import local_day, plan
+    from .learning import local_day
 
     child = db.get(Child, unit.child_id)
     prefs = s.Preferences(**child.preferences)
@@ -406,40 +405,15 @@ def plan_review(db, unit):
     }[action]
     from .daily_planner import period_starts
 
-    start, week = period_starts(today, prefs.timezone)
-    allocated_today = allocated_week = 0
-    for other in db.scalars(
-        select(LearningUnit).where(LearningUnit.child_id == child.id, LearningUnit.created >= week)
-    ):
-        goal = db.get(Assignment, other.assignment_id) if other.assignment_id else None
-        if goal and goal.scheduled_for and goal.scheduled_for > today.isoformat():
-            continue
-        duration = other.estimated_minutes or min(8, prefs.session_minutes)
-        allocated_week += duration
-        if other.created >= start:
-            allocated_today += duration
-    current_plan = plan(db, child)
-    reserved_goals = sum(
-        (entry.get("estimated_minutes") or current_plan["session_minutes"])
-        for entry in current_plan["today"]
-        if entry.get("mandatory") and entry.get("kind") != "unit"
-    )
-    available = min(
-        current_plan["available_minutes"] - reserved_goals,
-        prefs.daily_minutes - allocated_today,
-        prefs.weekly_minutes - allocated_week,
-    )
+    start, _ = period_starts(today, prefs.timezone)
     rounds_today = sum(u.created >= start for u in units)
     if recent_hard:
         action, reason = (
             "parent_help",
             "Zwei Runden brauchten Unterstützung oder blieben unklar. Lass uns vor weiteren Aufgaben gemeinsam mit deinen Eltern auf die schwierigen Schritte schauen.",
         )
-    elif action in ("repair", "check") and (rounds_today >= MAX_DAILY_ROUNDS or available < 5):
-        action, reason = (
-            "pause",
-            "Für heute reicht es: Lernzeit, Lerntage und höchstens drei Runden pro Lernfolge begrenzen die Fortsetzung. Der Stoff bleibt für später gespeichert.",
-        )
+    elif action in ("repair", "check") and rounds_today >= RECOMMENDED_DAILY_ROUNDS:
+        reason += " Eine kurze Pause kann guttun. Danach geht es mit dem nächsten Lernschritt weiter."
     return {
         "next_action": action,
         "reason": reason,
@@ -457,56 +431,21 @@ def plan_review(db, unit):
 
 
 def continuation_block(db, unit, child, *, check_sources=True):
+    """Protect source/explicit release dates, never recommended learning time."""
     from .learning import local_day
 
-    prefs = s.Preferences(**child.preferences)
-    today = local_day(child)
-    if today.weekday() not in prefs.weekdays or (
-        prefs.subject_days.get(unit.subject) and today.weekday() not in prefs.subject_days[unit.subject]
-    ):
-        return "Heute ist für diese Lernfolge kein Lerntag vorgesehen. Der Stoff bleibt gespeichert."
+    today = local_day(child).isoformat()
+    if unit.not_before and unit.not_before > today:
+        return f"Diese spätere Abrufprobe beginnt frühestens am {unit.not_before}."
+    goal = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
+    if goal and goal.scheduled_for and goal.scheduled_for > today:
+        return f"Dieser Lernauftrag beginnt am {goal.scheduled_for}. Deine Eltern können ihn neu planen."
     # Validate all copied source revisions again when a prepared round starts.
     if check_sources:
         try:
             context(db, unit)
         except ProviderError as error:
             return str(error)
-    from .daily_planner import completed_portions, period_starts
-
-    start, week = period_starts(today, prefs.timezone)
-    completed = db.scalars(
-        select(LearningUnit)
-        .options(load_only(LearningUnit.completed, LearningUnit.estimated_minutes))
-        .where(LearningUnit.child_id == child.id, LearningUnit.completed >= week)
-    )
-    day_portions, week_portions = completed_portions(completed, prefs, start, week)
-    if day_portions >= prefs.daily_minutes:
-        return "Deine Lernportion für heute ist geschafft. Am nächsten Lerntag geht es weiter."
-    if week_portions >= prefs.weekly_minutes:
-        return "Deine Lernportionen für diese Woche sind geschafft. Der übrige Stoff bleibt gespeichert."
-    events = list(
-        db.scalars(
-            select(Activity)
-            .where(
-                Activity.child_id == child.id,
-                Activity.kind == "active_time",
-                Activity.created >= week,
-            )
-            .order_by(Activity.created)
-        )
-    )
-    if sum(e.detail.get("seconds", 0) for e in events if e.created >= start) >= prefs.daily_minutes * 60:
-        return "Deine geplante Lernzeit für heute ist erreicht. Morgen geht es in Ruhe weiter."
-    if sum(e.detail.get("seconds", 0) for e in events) >= prefs.weekly_minutes * 60:
-        return "Der geplante Lernumfang dieser Woche ist erreicht. Deine Eltern können den Plan mit dir besprechen."
-    segment, previous = 0, None
-    for event in events:
-        if previous is None or event.created - previous >= prefs.break_minutes * 60:
-            segment = 0
-        segment += event.detail.get("seconds", 0)
-        previous = event.created
-    if previous and now() - previous < prefs.break_minutes * 60 and segment >= prefs.session_minutes * 60:
-        return f"Jetzt ist eine Pause von {prefs.break_minutes} Minuten dran. Danach kannst du fortsetzen."
     return None
 
 
@@ -1139,6 +1078,9 @@ def request_practice(
 
     unit = get_unit(db, p, unit_id, True)
     db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
+    child = db.get(Child, unit.child_id)
+    if reason := continuation_block(db, unit, child, check_sources=False):
+        raise HTTPException(409, reason)
     item = db.get(UnitCoaching, unit.id)
     if not item or item.status != "ready" or not item.report.get("practice_deferred") or item.next_unit_id:
         raise HTTPException(409, "Bitte den aktuellen Rückblick öffnen.")
@@ -1152,7 +1094,9 @@ def request_practice(
         payload["practice_number"] = previous.payload.get("practice_number", 1)
         return enqueue(db, p, db.get(Child, unit.child_id), "coach_practice", payload, idempotency)
     if plan_review(db, unit)["next_action"] not in ("repair", "check"):
-        raise HTTPException(409, "Jetzt ist eine Pause oder Elternhilfe dran. Die Übungen bleiben für später möglich.")
+        raise HTTPException(
+            409, "Bitte schau in deinen Rückblick. Eine spätere Wiederholung oder Elternhilfe ist dran."
+        )
     old_jobs = list(db.scalars(select(Job).where(Job.child_id == unit.child_id, Job.kind == "coach_practice")))
     if sum(j.payload.get("unit_id") == unit.id for j in old_jobs) >= 2:
         raise HTTPException(
@@ -1174,10 +1118,12 @@ def process_practice(job_id):
             item = db.get(UnitCoaching, unit.id) if unit else None
             if not unit or unit.child_id != job.child_id or not item or item.status != "ready" or item.next_unit_id:
                 raise ProviderError("Diese Lernrunde wurde inzwischen verändert.")
+            if reason := continuation_block(db, unit, db.get(Child, unit.child_id), check_sources=False):
+                raise ProviderError(reason)
             signature, payload, sources = context(db, unit)
             if signature != job.payload["signature"] or plan_review(db, unit)["next_action"] not in ("repair", "check"):
                 raise ProviderError(
-                    "Die Quellen oder deine Lernzeit wurden geändert. Bitte den aktuellen Lernplan öffnen."
+                    "Die Quellen oder der nächste Lernschritt wurden geändert. Bitte den aktuellen Lernplan öffnen."
                 )
             config = config_for_function(db.get(ProviderConfig, 1), "unit")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
@@ -1238,6 +1184,8 @@ def process_practice(job_id):
                 raise ProviderError(
                     "Der Lernplan wurde während der Vorbereitung geändert. Bitte den aktuellen Plan öffnen."
                 )
+            if reason := continuation_block(db, unit, db.get(Child, unit.child_id), check_sources=False):
+                raise ProviderError(reason)
             data = {key: copy.deepcopy(item.report[key]) for key in s.CoachingOutput.model_fields if key != "next_unit"}
             for review in data["question_reviews"]:
                 review.pop("assessment_kind", None)

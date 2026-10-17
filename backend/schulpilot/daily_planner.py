@@ -1,4 +1,4 @@
-"""Read-only rolling proposals. More source material never raises a time limit."""
+"""Read-only portions toward minimum goals, with explicit optional next steps."""
 
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -42,8 +42,33 @@ def reason(item):
     return "material"
 
 
+def voluntary_steps(candidates, today):
+    """Offer manual choices, retaining source order and actual release dates.
+
+    Weekdays, rest preferences and minutes shape the suggested plan only.
+    This list never creates an exercise or changes a binding parent assignment.
+    """
+    first_in_chain = {}
+    for item in candidates:
+        if item.get("_chain"):
+            chain = item["_chain"]
+            first_in_chain[chain] = min(first_in_chain.get(chain, item["_sequence"]), item["_sequence"])
+    result = []
+    for item in candidates:
+        if any(item.get(key) and item[key] > today.isoformat() for key in ("scheduled_for", "not_before")):
+            continue
+        if item.get("_chain") and item["_sequence"] > first_in_chain[item["_chain"]]:
+            continue
+        # A parent assignment already practised today stays visible as a goal;
+        # its completed round is not silently replaced with another AI request.
+        if item["status"] == "practiced_today":
+            continue
+        result.append({k: v for k, v in item.items() if not k.startswith("_")} | {"reason": reason(item)})
+    return result
+
+
 def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, completed_chains=None):
-    """Project the known next steps, preserving source order and weekly caps.
+    """Project modest portions; a weekly minimum never caps another day's plan.
 
     Future dates are suggestions, not persisted deadlines or generated exercises.
     A prepared unit can be spread across days; an ungenerated stage stays atomic.
@@ -52,17 +77,12 @@ def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, c
     week = []
     assigned = {}
     finished = {}
-    current_monday = today - timedelta(days=today.weekday())
-    used_week = (weekly_seconds + 59) // 60
     for offset in range(7):
         day = today + timedelta(days=offset)
-        monday = day - timedelta(days=day.weekday())
-        if monday != current_monday:
-            used_week, current_monday = 0, monday
         free = day.weekday() not in prefs.weekdays
         paused = bool(prefs.pause_until and day <= prefs.pause_until)
         daily_left = max(0, prefs.daily_minutes - ((daily_seconds + 59) // 60 if offset == 0 else 0))
-        capacity = 0 if free or paused else min(daily_left, max(0, prefs.weekly_minutes - used_week))
+        capacity = 0 if free or paused else daily_left
         remaining, items, subjects, lanes, chains_today = capacity, [], {}, {}, {}
         if offset == 0:
             chains_today.update(completed_chains or {})
@@ -143,7 +163,6 @@ def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, c
             else:
                 finished[key] = day.isoformat()
                 pending.remove(item)
-        used_week += capacity - remaining
         week.append(
             {
                 "date": day.isoformat(),

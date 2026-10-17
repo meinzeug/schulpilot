@@ -71,7 +71,7 @@ def test_mail_transport_verifies_tls_and_never_uses_plaintext(monkeypatch):
         raise AssertionError("Plaintext mail transport accepted")
 
 
-def test_background_time_stops_and_session_break_is_enforced(api):
+def test_background_time_stops_and_session_break_is_only_recommended(api):
     demo, unit_id = prepared(api)
     with child_client(demo) as child:
         child.post(f"/api/units/{unit_id}/start")
@@ -85,8 +85,15 @@ def test_background_time_stops_and_session_break_is_enforced(api):
             unit.heartbeat = int(now()) - 20
             unit.segment_seconds = 899
         result = child.post(f"/api/units/{unit_id}/heartbeat").json()
-        assert result["status"] == "paused" and result["active_seconds_approx"] == 1 and result["break_until"] > now()
-        assert child.post(f"/api/units/{unit_id}/start").status_code == 409
+        assert result["status"] == "active" and 20 <= result["active_seconds_approx"] <= 25
+        assert result["break_until"] is None and result["break_recommended"] is True
+        before = result["active_seconds_approx"]
+        assert child.post(f"/api/units/{unit_id}/start").status_code == 200
+        with DB.begin() as db:
+            db.get(LearningUnit, unit_id).heartbeat = int(now()) - 500
+        result = child.post(f"/api/units/{unit_id}/heartbeat").json()
+        assert result["active_seconds_approx"] == before
+        assert result["status"] == "active" and result["break_recommended"] is False
 
 
 def test_repeat_preferences_create_visible_goals_and_subject_days(api, household):

@@ -302,11 +302,11 @@ def test_sources_and_parent_planning_are_checked_before_and_after_generation(api
         assert db.scalar(select(Usage)).cost_micros == (0 if when == "during" else None)
     assert len(stage_transport["calls"]) == (1 if when == "during" else 0)
     current = api.get(path(study)).json()
-    assert current["can_continue"] is False
+    assert current["can_continue"] is (change == "planning")
     assert current["stale"] is (change == "source")
 
 
-def test_parent_assignments_keep_their_reserved_daily_time(study):
+def test_parent_assignments_keep_priority_without_blocking_voluntary_stage(study):
     with DB.begin() as db:
         child = db.get(Child, study["child"]["id"])
         child.preferences = {**child.preferences, "daily_minutes": 20}
@@ -322,10 +322,40 @@ def test_parent_assignments_keep_their_reserved_daily_time(study):
                 )
             )
     planned = create(study)
-    assert planned["can_continue"] is False
-    assert generate(study, planned["next_block_id"]).status_code == 409
+    assert planned["can_continue"] is True
+    assert generate(study, planned["next_block_id"]).status_code == 202
     with DB() as db:
-        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 1
+        assert db.scalar(select(func.count()).select_from(Assignment).where(Assignment.done.is_(False))) == 2
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+
+
+@pytest.mark.parametrize("quota_exhausted", [False, True])
+def test_voluntary_stage_ignores_time_schedule_but_preserves_provider_quota(study, stage_transport, quota_exhausted):
+    with DB.begin() as db:
+        child = db.get(Child, study["child"]["id"])
+        child.preferences = {
+            "weekdays": [],
+            "subject_days": {"Sachunterricht": [(local_day(child).weekday() + 1) % 7]},
+            "pause_until": (local_day(child) + timedelta(days=3)).isoformat(),
+            "daily_minutes": 5,
+            "weekly_minutes": 5,
+            "session_minutes": 5,
+        }
+        db.add(Activity(child_id=child.id, kind="active_time", detail={"seconds": 7200}, created=int(now())))
+        if quota_exhausted:
+            db.get(Family, child.family_id).call_limit = 0
+    current = create(study)
+    assert current["can_continue"] is True and current["block_reason"] is None
+    result = generate(study, current["next_block_id"])
+    assert result.status_code == (429 if quota_exhausted else 202), result.text
+    if not quota_exhausted:
+        finish()
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == int(not quota_exhausted)
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == int(not quota_exhausted)
+    assert len(stage_transport["calls"]) == int(not quota_exhausted)
 
 
 @pytest.mark.parametrize("change", ["provider", "privacy", "entitlement"])

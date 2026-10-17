@@ -419,6 +419,17 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                           : 'Erste Etappe starten',
                     ),
                   ),
+                if (!waiting &&
+                    !posting &&
+                    editable &&
+                    data?['can_continue'] == true &&
+                    completed > 0) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Die nächste Runde beginnt, wenn du sie auswählst.',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                ],
               ] else if (blocks.isNotEmpty)
                 const Text(
                   'Alle Etappen sind bearbeitet. Gut gemacht!',

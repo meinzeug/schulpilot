@@ -12,7 +12,13 @@ import 'ui.dart';
 class UnitScreen extends StatefulWidget {
   final AppState state;
   final String unitId;
-  const UnitScreen(this.state, {super.key, required this.unitId});
+  final DateTime Function()? activityClock;
+  const UnitScreen(
+    this.state, {
+    super.key,
+    required this.unitId,
+    this.activityClock,
+  });
   @override
   State<UnitScreen> createState() => _UnitScreenState();
 }
@@ -21,10 +27,22 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Json? unit;
   Object? error;
   Timer? timer;
+  Timer? liveClock;
   Timer? coachingPoll;
   bool loading = false;
-  DateTime lastInteraction = DateTime.now();
+  late DateTime lastInteraction;
   bool visible = true;
+  bool routeVisible = true;
+  bool needsTimeBaseline = true;
+  bool sendingHeartbeat = false;
+  bool heartbeatSucceeded = false;
+  Completer<void>? heartbeatDone;
+  bool breakDismissed = false;
+  DateTime? clockAnchor;
+  int pendingSeconds = 0;
+  bool clockOffline = false;
+  bool clockWasRunning = false;
+  String? ownerId;
   final text = TextEditingController();
   String? choice;
   Map<String, String> matches = {};
@@ -38,12 +56,35 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String reviewSection = 'review';
   final stepTop = GlobalKey();
   AppState get state => widget.state;
+  DateTime get interactionNow => widget.activityClock?.call() ?? DateTime.now();
   @override
   void initState() {
     super.initState();
+    ownerId = state.user?['id'];
+    lastInteraction = interactionNow;
+    visible =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     load();
     timer = Timer.periodic(const Duration(seconds: 20), (_) => beat());
+    liveClock = Timer.periodic(const Duration(seconds: 1), (_) => tickClock());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final current = ModalRoute.of(context)?.isCurrent ?? true;
+    if (routeVisible != current) {
+      routeVisible = current;
+      needsTimeBaseline = true;
+      if (current) {
+        lastInteraction = interactionNow;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(beat());
+        });
+      }
+    }
   }
 
   @override
@@ -61,6 +102,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       answerOutcome = null;
       awaitingContinue = false;
       reviewSection = 'review';
+      ownerId = state.user?['id'];
+      needsTimeBaseline = true;
+      breakDismissed = false;
+      clockAnchor = null;
+      pendingSeconds = 0;
+      clockOffline = clockWasRunning = false;
+      lastInteraction = interactionNow;
       text.clear();
       load();
     }
@@ -70,6 +118,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     timer?.cancel();
+    liveClock?.cancel();
     coachingPoll?.cancel();
     text.dispose();
     super.dispose();
@@ -78,26 +127,128 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     visible = lifecycle == AppLifecycleState.resumed;
-    if (visible) lastInteraction = DateTime.now();
+    needsTimeBaseline = true;
+    if (visible) {
+      lastInteraction = interactionNow;
+      unawaited(beat());
+    }
+  }
+
+  void noteInteraction() {
+    final stamp = interactionNow;
+    final idle = stamp.difference(lastInteraction).inSeconds > 60;
+    if (idle) {
+      needsTimeBaseline = true;
+    }
+    lastInteraction = stamp;
+    if (idle) unawaited(beat());
+  }
+
+  bool get clockRunning =>
+      mounted &&
+      state.isChild &&
+      state.user?['id'] == ownerId &&
+      visible &&
+      routeVisible &&
+      unit?['status'] == 'active' &&
+      !needsTimeBaseline &&
+      !clockOffline &&
+      clockAnchor != null &&
+      interactionNow.difference(lastInteraction).inSeconds <= 60;
+
+  void tickClock() {
+    if (!mounted) return;
+    final running = clockRunning;
+    // Never project more than the server can credit between heartbeats. A
+    // stalled/offline request cannot make the displayed pending time grow.
+    final pending = running
+        ? interactionNow.difference(clockAnchor!).inSeconds.clamp(0, 25)
+        : pendingSeconds;
+    if (pending != pendingSeconds || running != clockWasRunning) {
+      setState(() {
+        pendingSeconds = pending;
+        clockWasRunning = running;
+      });
+    }
+  }
+
+  void acceptClockSnapshot() {
+    pendingSeconds = 0;
+    clockOffline = false;
+    clockAnchor = !needsTimeBaseline && unit?['status'] == 'active'
+        ? interactionNow
+        : null;
+    clockWasRunning = clockRunning;
   }
 
   Future<void> beat() async {
-    if (!state.isChild ||
+    if (!mounted ||
+        !state.isChild ||
+        state.user?['id'] != ownerId ||
         !visible ||
-        unit?['status'] != 'active' ||
-        DateTime.now().difference(lastInteraction).inSeconds > 60) {
+        !routeVisible ||
+        unit?['status'] != 'active') {
       return;
     }
+    if (interactionNow.difference(lastInteraction).inSeconds > 60) {
+      needsTimeBaseline = true;
+      return;
+    }
+    if (sendingHeartbeat) {
+      final resyncRequested = needsTimeBaseline;
+      await heartbeatDone?.future;
+      if (resyncRequested && needsTimeBaseline && heartbeatSucceeded) {
+        await beat();
+      }
+      return;
+    }
+    final requestedId = widget.unitId;
+    final requestedOwner = ownerId;
+    final baseline = needsTimeBaseline;
+    if (baseline) clockAnchor = null;
+    needsTimeBaseline = false;
+    sendingHeartbeat = true;
+    heartbeatSucceeded = false;
+    final completed = Completer<void>();
+    heartbeatDone = completed;
     try {
-      final result = await state.api.post('/units/${widget.unitId}/heartbeat');
-      if (mounted && result['status'] == 'paused') {
+      final result = await state.api.post('/units/$requestedId/heartbeat', {
+        'baseline': baseline,
+      });
+      heartbeatSucceeded = true;
+      if (mounted &&
+          requestedId == widget.unitId &&
+          requestedOwner == state.user?['id'] &&
+          unit?['status'] == 'active') {
         setState(() {
-          unit!['status'] = 'paused';
+          unit!['status'] = result['status'] ?? unit!['status'];
           unit!['break_until'] = result['break_until'];
+          unit!['active_seconds_approx'] = result['active_seconds_approx'];
+          unit!['break_recommended'] = result['break_recommended'];
+          unit!['break_minutes'] = result['break_minutes'];
+          if (result['learning_time'] is Map) {
+            unit!['learning_time'] = result['learning_time'];
+          } else {
+            unit!.remove('learning_time');
+          }
+          acceptClockSnapshot();
+          if (result['break_recommended'] != true) breakDismissed = false;
         });
       }
     } catch (_) {
+      heartbeatSucceeded = false;
+      needsTimeBaseline = true;
+      if (mounted && requestedId == widget.unitId) {
+        setState(() {
+          clockOffline = true;
+          clockAnchor = null;
+        });
+      }
       /* No invented time or progress while offline. */
+    } finally {
+      sendingHeartbeat = false;
+      completed.complete();
+      if (identical(heartbeatDone, completed)) heartbeatDone = null;
     }
   }
 
@@ -110,9 +261,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       if (mounted && requestedId == widget.unitId) {
         setState(() {
           unit = data;
+          acceptClockSnapshot();
           error = null;
         });
         watchCoaching();
+        if (needsTimeBaseline) await beat();
       }
     } catch (e) {
       if (mounted && requestedId == widget.unitId) setState(() => error = e);
@@ -168,8 +321,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => Listener(
-    onPointerDown: (_) => lastInteraction = DateTime.now(),
-    onPointerSignal: (_) => lastInteraction = DateTime.now(),
+    onPointerDown: (_) => noteInteraction(),
+    onPointerSignal: (_) => noteInteraction(),
     child: PageFrame(
       state: state,
       showTitle: !state.isChild,
@@ -189,9 +342,129 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             )
           : unit == null
           ? const Center(child: CircularProgressIndicator())
-          : KeyedSubtree(key: stepTop, child: body(context)),
+          : KeyedSubtree(
+              key: stepTop,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (state.isChild && state.user?['id'] == ownerId) ...[
+                    learningClock(unit!),
+                    const SizedBox(height: 18),
+                  ],
+                  body(context),
+                ],
+              ),
+            ),
     ),
   );
+
+  Json? measuredTime(Json u) {
+    final raw = u['learning_time'];
+    if (raw is! Map ||
+        raw['daily_active_seconds'] is! num ||
+        raw['daily_goal_minutes'] is! num ||
+        (raw['daily_goal_minutes'] as num) <= 0) {
+      return null;
+    }
+    return Map<String, dynamic>.from(raw);
+  }
+
+  bool minimumOpen(Json u) {
+    final measured = measuredTime(u);
+    return measured?['goal_required'] == true &&
+        measured?['daily_goal_met'] != true;
+  }
+
+  String clockText(int seconds) {
+    final safe = seconds.clamp(0, 1 << 40);
+    return '${safe ~/ 60}:${(safe % 60).toString().padLeft(2, '0')}';
+  }
+
+  Widget learningClock(Json u) {
+    final measured = measuredTime(u);
+    final unitSeconds = (u['active_seconds_approx'] as num? ?? 0).toInt();
+    final currentUnit = unitSeconds + pendingSeconds;
+    final actual = (measured?['daily_active_seconds'] as num? ?? 0).toInt();
+    final goal = (measured?['daily_goal_minutes'] as num? ?? 0).toInt() * 60;
+    final shown = actual + pendingSeconds;
+    final required = measured?['goal_required'] == true;
+    final met = measured?['daily_goal_met'] == true;
+    final remaining = (goal - shown).clamp(0, 1 << 40);
+    final progress = goal == 0
+        ? 0.0
+        : (shown / goal).clamp(0.0, met ? 1.0 : 0.99);
+    final localOnly = pendingSeconds > 0;
+    final waiting = required && !met && shown >= goal;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 740),
+        child: Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                measured == null
+                    ? 'Diese Einheit ${clockText(currentUnit)}'
+                    : required
+                    ? 'Heute ${clockText(shown)} / ${clockText(goal)}'
+                    : 'Heute ${clockText(shown)}',
+                key: ValueKey(
+                  measured == null
+                      ? 'learning-unit-clock'
+                      : 'learning-day-clock',
+                ),
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (measured != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Diese Einheit ${clockText(currentUnit)}',
+                  key: const ValueKey('learning-unit-clock'),
+                ),
+              ],
+              if (required) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: progress,
+                  key: const ValueKey('learning-day-progress'),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  met
+                      ? 'Tagesminimum geschafft'
+                      : waiting
+                      ? 'Zeit wird noch gespeichert …'
+                      : u['status'] == 'completed'
+                      ? 'Tagesziel noch offen · Noch ${clockText(remaining)} Min.'
+                      : 'Noch ${localOnly ? 'ca. ' : ''}${clockText(remaining)} Min.',
+                  key: const ValueKey('learning-goal-state'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ] else if (measured != null) ...[
+                const SizedBox(height: 8),
+                const Text('Heute ist kein Mindestziel eingeplant.'),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                clockOffline
+                    ? 'Zeit pausiert · Verbindung fehlt'
+                    : clockRunning
+                    ? 'Läuft · Zeitmessung als Näherung'
+                    : localOnly
+                    ? 'Zeit pausiert · letzter Zwischenstand'
+                    : 'Gespeicherte aktive Übungszeit · Näherung',
+                style: const TextStyle(fontSize: 12, color: muted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget body(BuildContext context) {
     final u = unit!;
     final questions = u['questions'] as List;
@@ -309,6 +582,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             '${u['subject']} · ${u['topic']}',
             style: const TextStyle(color: muted),
           ),
+          if (minimumOpen(u)) ...[
+            const SizedBox(height: 18),
+            ActionButton(
+              label: 'Weiterlernen',
+              icon: Icons.arrow_forward_rounded,
+              onPressed: () async {
+                openRoute(context, '/app');
+              },
+            ),
+          ],
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -329,7 +612,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 20),
           if (reviewSection == 'review')
-            CoachingPanel(state: state, unit: u, refresh: load),
+            if (minimumOpen(u))
+              ExpansionTile(
+                title: const Text('Rückblick ansehen'),
+                tilePadding: EdgeInsets.zero,
+                children: [CoachingPanel(state: state, unit: u, refresh: load)],
+              )
+            else
+              CoachingPanel(state: state, unit: u, refresh: load),
           if (reviewSection == 'path' &&
               u['school_day_id'] != null &&
               u['synthetic'] != true) ...[
@@ -412,7 +702,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             Text(
               u['status'] == 'paused'
                   ? 'Alles gespeichert. Bereit für die nächste Aufgabe?'
-                  : '${questions.length} Aufgaben${u['estimated_minutes'] != null ? ' · etwa ${u['estimated_minutes']} Minuten' : ''}',
+                  : '${questions.length} Aufgaben',
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 24),
@@ -425,7 +715,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 final id = u['id'];
                 final data = await state.api.post('/units/$id/start');
                 if (mounted && widget.unitId == id) {
-                  setState(() => unit = data);
+                  needsTimeBaseline = true;
+                  setState(() {
+                    unit = data;
+                    acceptClockSnapshot();
+                  });
+                  noteInteraction();
+                  await beat();
                 }
               },
             ),
@@ -546,6 +842,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ],
             ),
             const SizedBox(height: 14),
+            if (u['break_recommended'] == true && !breakDismissed) ...[
+              breakRecommendation(u),
+              const SizedBox(height: 14),
+            ],
             LinearProgressIndicator(value: completed / questions.length),
             const SizedBox(height: 10),
             Text(
@@ -649,7 +949,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       decoration: const InputDecoration(
                         labelText: 'Deine Antwort',
                       ),
-                      onChanged: (_) => lastInteraction = DateTime.now(),
+                      onChanged: (_) => noteInteraction(),
                     ),
                   if (q['type'] == 'short' || q['type'] == 'gap')
                     Align(
@@ -750,14 +1050,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     FocusManager.instance.primaryFocus?.unfocus();
     final id = u['id'];
+    noteInteraction();
+    await beat();
     final data = await state.api.post(
       '/units/$id/questions/${q['id']}/answer',
       {'answer': answer},
     );
     if (!mounted || widget.unitId != id) return;
-    lastInteraction = DateTime.now();
+    noteInteraction();
     setState(() {
       unit = Map<String, dynamic>.from(data['unit']);
+      acceptClockSnapshot();
       answeredQuestion = Map<String, dynamic>.from(
         (unit!['questions'] as List).firstWhere(
           (question) => question['id'] == q['id'],
@@ -842,18 +1145,29 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             label: !closed
                 ? 'Noch einmal versuchen'
                 : u['status'] == 'completed'
-                ? 'Zum Rückblick'
+                ? minimumOpen(u)
+                      ? 'Weiterlernen'
+                      : 'Zum Rückblick'
                 : 'Weiter',
             icon: Icons.arrow_forward_rounded,
             onPressed: () async {
+              if (closed && u['status'] == 'completed' && minimumOpen(u)) {
+                openRoute(context, '/app');
+                return;
+              }
               setState(() {
                 awaitingContinue = false;
                 explanation = null;
               });
-              lastInteraction = DateTime.now();
+              noteInteraction();
               revealStep();
             },
           ),
+          if (closed && u['status'] == 'completed' && minimumOpen(u))
+            TextButton(
+              onPressed: () => setState(() => awaitingContinue = false),
+              child: const Text('Rückblick ansehen'),
+            ),
           if (!closed) ...[
             const SizedBox(height: 10),
             Align(
@@ -875,17 +1189,55 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget breakRecommendation(Json u) => Panel(
+    color: mint,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Zeit für eine kurze Pause?',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+        const SizedBox(height: 6),
+        Text('${u['break_minutes'] ?? 5} Minuten Pause tun gut.'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            TextButton.icon(
+              onPressed: () => pauseUnit(u),
+              icon: const Icon(Icons.pause_rounded),
+              label: const Text('Pause machen'),
+            ),
+            TextButton(
+              onPressed: () => setState(() => breakDismissed = true),
+              child: const Text('Weiterlernen'),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  Future<void> pauseUnit(Json u) async {
+    final id = u['id'];
+    noteInteraction();
+    await beat();
+    final data = await state.api.post('/units/$id/pause');
+    if (mounted && widget.unitId == id) {
+      needsTimeBaseline = true;
+      setState(() {
+        unit = data;
+        acceptClockSnapshot();
+      });
+    }
+  }
+
   Widget pauseButton(Json u) => ActionButton(
     label: 'Pause',
     secondary: true,
     icon: Icons.pause_rounded,
-    onPressed: () async {
-      final id = u['id'];
-      final data = await state.api.post('/units/$id/pause');
-      if (mounted && widget.unitId == id) {
-        setState(() => unit = data);
-      }
-    },
+    onPressed: () => pauseUnit(u),
   );
 
   Future<void> showExplanation(BuildContext context, Json u) async {

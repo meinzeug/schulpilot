@@ -8,6 +8,7 @@ from conftest import HEADERS, create_child, register
 from fastapi.testclient import TestClient
 from schulpilot.db import (
     DB,
+    Activity,
     Assignment,
     Attempt,
     Child,
@@ -306,7 +307,7 @@ def test_learning_room_preserves_plan_and_filters_future_parent_orders(api, hous
         assert db.scalar(select(func.count()).select_from(Job)) == 0
 
 
-def test_learning_pause_keeps_existing_rounds_for_later_without_starting_them(api, household):
+def test_learning_pause_keeps_rounds_voluntarily_ready_without_starting_them(api, household):
     _, child = household
     with DB.begin() as db:
         profile = db.get(Child, child["id"])
@@ -327,10 +328,66 @@ def test_learning_pause_keeps_existing_rounds_for_later_without_starting_them(ap
         )
     ready = api.get(f"/api/children/{child['id']}/learning?section=ready").json()
     later = api.get(f"/api/children/{child['id']}/learning?section=later").json()
-    assert ready["paused"] is True and ready["total"] == 0
-    assert later["total"] == 1 and later["items"][0]["status"] == "not_started"
+    assert ready["paused"] is True and ready["total"] == 1
+    assert ready["items"][0]["status"] == "not_started"
+    assert later["total"] == 0
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(Job)) == 0
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+
+
+def test_voluntary_learning_is_paginated_after_goals_and_preserves_future_release_dates(api, household):
+    _, child = household
+    with DB.begin() as db:
+        profile = db.get(Child, child["id"])
+        tomorrow = (local_day(profile) + timedelta(days=1)).isoformat()
+        profile.preferences = {
+            "weekdays": [],
+            "daily_minutes": 5,
+            "weekly_minutes": 5,
+            "session_minutes": 5,
+            "pause_until": tomorrow,
+        }
+        db.add(Activity(child_id=profile.id, kind="active_time", detail={"seconds": 3600}, created=int(now())))
+        for index in range(45):
+            db.add(
+                LearningUnit(
+                    child_id=profile.id,
+                    **sample_unit(),
+                    estimated_minutes=8,
+                    created=int(now()) - index,
+                    provider="synthetic-fixture",
+                )
+            )
+        db.add(LearningUnit(child_id=profile.id, **sample_unit(), not_before=tomorrow, provider="synthetic-fixture"))
+        assignment = Assignment(
+            child_id=profile.id, kind="parent", subject="Deutsch", topic="Später", scheduled_for=tomorrow
+        )
+        db.add(assignment)
+        db.flush()
+        db.add(
+            LearningUnit(
+                child_id=profile.id, **sample_unit(), assignment_id=assignment.id, provider="synthetic-fixture"
+            )
+        )
+    seen = []
+    for page in range(1, 4):
+        response = api.get(f"/api/children/{child['id']}/learning", params={"page": page, "page_size": 20})
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["total"] == 45 and data["pages"] == 3
+        assert data["daily_goal_met"] and data["weekly_goal_met"]
+        assert data["daily_active_seconds"] == data["weekly_active_seconds"] == 3600
+        assert data["can_continue_voluntarily"] and data["optional_learning"]
+        assert len(data["items"]) == (5 if page == 3 else 20)
+        assert all("questions" not in item and "explanation" not in item for item in data["items"])
+        seen.extend(item["id"] for item in data["items"])
+    assert len(set(seen)) == len(seen) == 45
+    later = api.get(f"/api/children/{child['id']}/learning?section=later").json()
+    assert later["total"] == 2
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Job)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
         assert db.scalar(select(func.count()).select_from(Attempt)) == 0
 
 

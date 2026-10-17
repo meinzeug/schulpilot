@@ -98,8 +98,7 @@ def package_plan(db, day, child):
         x.get("estimated_minutes") or current["session_minutes"] for x in current["today"] if x["kind"] != "study_path"
     )
     remaining = max(0, available - reserved)
-    minutes = min(8, s.Preferences(**child.preferences).session_minutes, max(5, remaining))
-    slots = min(3, remaining // minutes)
+    minutes = min(8, s.Preferences(**child.preferences).session_minutes)
     groups = []
     covered = {
         (source.material_id, source.revision)
@@ -132,30 +131,21 @@ def package_plan(db, day, child):
             not any(t in prefs.repeat_topics for t in g["topics"]),
         ),
     )
-    eligible = [
-        g
-        for g in ranked
-        if g["new_material_ids"]
-        and (not prefs.subject_days.get(g["subject"]) or local_day(child).weekday() in prefs.subject_days[g["subject"]])
-    ]
-    selected = eligible[:slots]
+    eligible = [g for g in ranked if g["new_material_ids"]]
+    # Each explicit request prepares a small finite package. Daily/weekly
+    # targets and preferred subject days never deny voluntary preparation.
+    selected = eligible[:3]
     for group in groups:
         group["selected"] = group in selected
         group["covered"] = not bool(group["new_material_ids"])
     notices = []
     if reserved:
-        notices.append(f"Für bereits eingeplante Einheiten und Aufträge bleiben {reserved} Minuten reserviert.")
+        notices.append("Deine eingeplanten Aufträge bleiben im Tagesplan. Du kannst zusätzlich freiwillig üben.")
     if current["paused"] or current["free_day"]:
         notices.extend(current["notices"][:1])
     pending_count = sum(not g["covered"] for g in groups)
     if len(selected) < pending_count:
-        notices.append(
-            "Nicht alles passt heute in die Lernzeit oder zu den Fach-Lerntagen. Diese Seiten bleiben gespeichert; daraus entsteht kein automatischer Aufgabenberg."
-        )
-    if pending_count and not selected:
-        notices.append(
-            "Für neue Übungen ist heute keine Zeit eingeplant. Bitte mit deinen Eltern eine passende Lernzeit vereinbaren. Deine Seiten bleiben erhalten."
-        )
+        notices.append("Dieses Paket beginnt mit bis zu drei Fächern. Die übrigen Seiten bleiben im Lernweg erhalten.")
     return {
         "groups": groups,
         "estimated_minutes": sum(g["estimated_minutes"] for g in selected),
@@ -485,12 +475,8 @@ def validate_package_sources(db, job):
         or not all(m.confirmed for m in source_pages)
     ):
         raise ProviderError("Seiten wurden inzwischen geändert oder gelöscht. Bitte das Tagespaket erneut prüfen.")
-    if (
-        not job.payload.get("preparation_id") and local_day(child).isoformat() != day.school_date
-    ) or planning_fingerprint(db, child) != job.payload["planning_fingerprint"]:
-        raise ProviderError(
-            "Lerntag oder Elternvorgaben haben sich geändert. Bitte den aktuellen Tagesplan erneut prüfen."
-        )
+    if planning_fingerprint(db, child) != job.payload["planning_fingerprint"]:
+        raise ProviderError("Die Elternvorgaben haben sich geändert. Bitte den aktuellen Tagesplan erneut prüfen.")
     return day, source_pages
 
 
@@ -498,7 +484,7 @@ def validate_package_sources(db, job):
 def create_package(
     day_id: str, idempotency_key: str | None = Header(None), p=Depends(authenticated), db=Depends(get_db)
 ):
-    day, child = get_day(db, p, day_id, write=True)
+    day, child = get_day(db, p, day_id, write=True, allow_archived=True)
     if day.stage == "ready":
         raise HTTPException(409, "Dein Lernpaket ist bereits fertig. Bitte die gespeicherten Einheiten öffnen.")
     source_pages = pages(db, day)
@@ -516,7 +502,7 @@ def create_package(
     if not selected:
         raise HTTPException(
             409,
-            "Heute ist keine Lernzeit für ein neues Paket eingeplant. Deine Seiten bleiben gespeichert; bitte mit deinen Eltern neu planen.",
+            "Für diese bestätigten Seiten gibt es bereits Einheiten. Bitte den gespeicherten Lernweg öffnen.",
         )
     # No client-provided page IDs, family IDs, goals, durations or provider settings.
     payload = {

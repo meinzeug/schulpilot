@@ -1,13 +1,14 @@
-"""Daily routine, large growing notebooks, real limits and private check-ins."""
+"""Small daily proposals, honest minimum goals and voluntary continuation."""
 
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
 from conftest import HEADERS, create_child
 from fastapi.testclient import TestClient
 from schulpilot import learning
-from schulpilot.daily_planner import distribute, period_starts
-from schulpilot.db import DB, Activity, Child, Job, LearningUnit, Material, SchoolDay, Usage, now
+from schulpilot.daily_planner import distribute, period_starts, voluntary_steps
+from schulpilot.db import DB, Activity, Child, Job, LearningUnit, Material, SchoolDay, UnitSource, Usage, now
 from schulpilot.main import app
 from schulpilot.schemas import Preferences
 from schulpilot.synthetic import sample_unit
@@ -26,7 +27,7 @@ def step(number, **kwargs):
     }
 
 
-def test_hundreds_of_stages_stay_inside_daily_and_calendar_week_limits():
+def test_hundreds_of_stages_keep_proposals_small_without_a_weekly_time_ceiling():
     prefs = Preferences(weekdays=list(range(7)), daily_minutes=20, weekly_minutes=50)
     result = distribute(
         [step(i) for i in range(300)], prefs, date(2026, 10, 15), daily_seconds=5 * 60, weekly_seconds=30 * 60
@@ -39,8 +40,11 @@ def test_hundreds_of_stages_stay_inside_daily_and_calendar_week_limits():
         d = date.fromisoformat(day["date"])
         monday = (d - timedelta(days=d.weekday())).isoformat()
         weeks[monday] = weeks.get(monday, 30 if d < date(2026, 10, 19) else 0) + day["planned_minutes"]
-    assert all(minutes <= 50 for minutes in weeks.values())
+    assert any(minutes > 50 for minutes in weeks.values())
     assert result["planned_minutes"] <= 15
+    # A fulfilled weekly minimum does not cancel the next daily suggestion.
+    after_goal = distribute([step(1)], prefs, date(2026, 10, 15), weekly_seconds=100 * 60)
+    assert after_goal["today"] and after_goal["planned_minutes"] == 8
 
 
 def test_source_order_subject_rotation_reviews_and_mandatory_dates():
@@ -94,6 +98,120 @@ def test_day_and_week_start_follow_local_calendar_across_clock_change():
     zone = ZoneInfo("Europe/Berlin")
     assert datetime.fromtimestamp(week, zone).isoformat() == "2026-10-19T00:00:00+02:00"
     assert datetime.fromtimestamp(start, zone).hour == 0
+
+
+def test_voluntary_steps_keep_source_order_and_real_future_dates():
+    items = [step(i, _chain="source", _sequence=i) for i in range(4)]
+    items += [step(9, scheduled_for="2026-10-18"), step(10, not_before="2026-10-18")]
+    items += [step(11, subject="Englisch")]
+    ready = voluntary_steps(items, date(2026, 10, 17))
+    assert [item["id"] for item in ready] == ["0", "11"]
+    assert not any(key.startswith("_") for item in ready for key in item)
+
+
+def test_completed_material_offers_normal_optional_practice_without_early_review(api):
+    from test_learning import child_client, prepared
+
+    demo, unit_id = prepared(api)
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        unit.status, unit.completed = "completed", int(now())
+    with child_client(demo) as child:
+        route = f"/api/children/{demo['child_id']}"
+        view = child.get(route + "/overview?compact=true").json()
+        choice = next(item for item in view["plan"]["voluntary"] if item["kind"] == "material")
+        assert choice["id"] == demo["material_id"] and not choice["mandatory"]
+        response = child.post(
+            route + "/units", json={"material_id": choice["id"]}, headers={"Idempotency-Key": "extra-practice"}
+        )
+        assert response.status_code == 202, response.text
+        with DB() as db:
+            job = db.get(Job, response.json()["id"])
+            assert job.kind == "unit" and not job.payload.get("review_of")
+            assert db.get(LearningUnit, unit_id).status == "completed"
+
+
+@pytest.mark.parametrize("status", ["not_started", "active", "paused"])
+@pytest.mark.parametrize("primary_source", [True, False])
+def test_open_normal_round_prevents_another_material_offer_for_its_entire_source_group(
+    api, household, status, primary_source
+):
+    _, kid = household
+    with DB.begin() as db:
+        child = db.get(Child, kid["id"])
+        child.preferences = {"weekdays": list(range(7))}
+        day = SchoolDay(child_id=child.id, school_date=learning.local_day(child).isoformat(), stage="ready")
+        db.add(day)
+        db.flush()
+        pages = [
+            Material(
+                child_id=child.id,
+                school_day_id=day.id,
+                page_number=index + 1,
+                title="Künstliche Heftseite",
+                topic="Künstlicher Stoff",
+                subject=subject,
+                content="Ein Bruch hat Zähler und Nenner." if index < 2 else "I learn. You learn.",
+                confirmed=True,
+                status="confirmed",
+            )
+            for index, subject in enumerate(("Mathematik", "MATHEMATIK", "Englisch"))
+        ]
+        db.add_all(pages)
+        db.flush()
+        finished = []
+        for material, subject in ((pages[0], "Mathematik"), (pages[2], "Englisch")):
+            unit = LearningUnit(
+                child_id=child.id,
+                school_day_id=day.id,
+                material_id=material.id,
+                **(sample_unit() | {"subject": subject}),
+                provider="synthetic-fixture",
+                status="completed",
+                completed=int(now()),
+            )
+            db.add(unit)
+            db.flush()
+            finished.append(unit)
+        day.learning_plan = {
+            "blocks": [
+                {"id": unit.id, "unit_id": unit.id, "subject": unit.subject, "question_count": len(unit.questions)}
+                for unit in finished
+            ]
+        }
+        pending = LearningUnit(
+            child_id=child.id,
+            material_id=pages[0].id if primary_source else None,
+            **sample_unit(),
+            provider="synthetic-fixture",
+            status=status,
+        )
+        db.add(pending)
+        db.flush()
+        for unit, sources in ((finished[0], pages[:2]), (finished[1], pages[2:]), (pending, pages[:2])):
+            for source in sources:
+                db.add(UnitSource(unit_id=unit.id, material_id=source.id, revision=source.revision))
+        pending_id = pending.id
+        math_ids = {page.id for page in pages[:2]}
+        assert pending.school_day_id is None
+    route = f"/api/children/{kid['id']}/overview?compact=true"
+    response = api.get(route)
+    assert response.status_code == 200, response.text
+    options = response.json()["plan"]["voluntary"]
+    assert any(item["kind"] == "unit" and item["id"] == pending_id for item in options)
+    materials = [item for item in options if item["kind"] == "material"]
+    assert len(materials) == 1 and materials[0]["subject"] == "Englisch"
+    assert not any(item["id"] in math_ids for item in materials)
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, pending_id)
+        unit.status, unit.completed = "completed", int(now())
+    options = api.get(route).json()["plan"]["voluntary"]
+    materials = [item for item in options if item["kind"] == "material"]
+    assert len(materials) == 2
+    assert sum(item["id"] in math_ids for item in materials) == 1
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Job)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
 def login_child():
@@ -190,7 +308,7 @@ def test_confirmed_pages_can_be_scheduled_during_a_pause_without_an_ai_call(api,
         assert db.get(SchoolDay, day_id).learning_plan["blocks"]
 
 
-def test_daily_budget_applies_to_regular_units_and_heartbeat_cannot_overrun_it(api, household):
+def test_daily_goal_does_not_stop_a_regular_unit_or_cap_heartbeat_credit(api, household):
     _, kid = household
     with DB.begin() as db:
         child = db.get(Child, kid["id"])
@@ -207,15 +325,22 @@ def test_daily_budget_applies_to_regular_units_and_heartbeat_cannot_overrun_it(a
         db.add(unit)
         db.flush()
         unit_id = unit.id
-        db.add(Activity(child_id=child.id, unit_id=unit.id, kind="active_time", detail={"seconds": 295}))
+        db.add(
+            Activity(
+                child_id=child.id, unit_id=unit.id, kind="active_time", detail={"seconds": 295}, created=int(now()) - 20
+            )
+        )
     with login_child() as child:
         assert child.post(f"/api/units/{unit_id}/heartbeat").status_code == 200
-        assert child.post(f"/api/units/{unit_id}/start").status_code == 409
+        assert child.post(f"/api/units/{unit_id}/start").status_code == 200
         view = child.get(f"/api/children/{kid['id']}/overview").json()
         assert view["plan"]["available_minutes"] == 0 and not view["plan"]["today"]
+        assert view["plan"]["daily_goal_met"]
+        assert view["plan"]["can_continue_voluntarily"]
+        assert view["plan"]["daily_active_seconds"] >= 315
     with DB() as db:
         assert (
-            sum(a.detail["seconds"] for a in db.scalars(select(Activity).where(Activity.kind == "active_time"))) == 300
+            sum(a.detail["seconds"] for a in db.scalars(select(Activity).where(Activity.kind == "active_time"))) >= 315
         )
 
 
@@ -247,7 +372,9 @@ def test_fast_completed_portions_do_not_refill_the_day_or_fabricate_learning_tim
         assert view["plan"]["available_minutes"] == 0 and not view["plan"]["today"]
         assert view["plan"]["completed_portion_minutes"] == 20
         assert view["day_summary"]["active_minutes_approx"] == 0
-        assert child.post(f"/api/units/{unit_id}/start").status_code == 409
+        assert not view["plan"]["daily_goal_met"] and view["plan"]["daily_remaining_minutes"] == 20
+        assert any(item["id"] == unit_id for item in view["plan"]["voluntary"])
+        assert child.post(f"/api/units/{unit_id}/start").status_code == 200
         assert any(d["items"] for d in view["plan"]["week"][1:])
 
 
