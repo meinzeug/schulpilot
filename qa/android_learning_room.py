@@ -1,4 +1,4 @@
-"""Native APK26 acceptance; --check is offline, --run requires Root's OTA GO.
+"""Native APK27 acceptance; --check is offline, --run requires Root's OTA GO.
 
 Only emulator-5580 / schulpilot-qa-api36, one newly owned fixed Demo and one
 synthetic four-component unit. No provider, audio, installer or clock changes.
@@ -17,7 +17,7 @@ from pathlib import Path
 import android_minimum_time as shared
 import android_smoke as native
 
-VERSION = 26
+VERSION = 27
 MARKER = "own-android-learning-room-v1"
 PRIVATE = native.ARTIFACTS / ".learning-room-android-qa.json"
 REPORT = native.ARTIFACTS / "learning-room-native-result.json"
@@ -57,7 +57,7 @@ def target():
     require(name == "schulpilot-qa-api36", "dedicated_avd_required")
     package = native.adb("shell", "dumpsys", "package", native.PACKAGE).decode(errors="replace")
     version = re.search(r"\bversionCode=(\d+)", package)
-    require(version and int(version[1]) == VERSION, "root_ota_to_apk26_required")
+    require(version and int(version[1]) == VERSION, "root_ota_to_apk27_required")
 
 
 def shot(label):
@@ -442,7 +442,7 @@ def main():
     args = parser.parse_args()
     if args.check:
         ast.parse(Path(__file__).read_text())
-        require(VERSION == 26 and native.ADB[-2:] == ["-s", "emulator-5580"], "offline_target_changed")
+        require(VERSION == 27 and native.ADB[-2:] == ["-s", "emulator-5580"], "offline_target_changed")
         require(PRIVATE.name == ".learning-room-android-qa.json", "private_journal_changed")
         print(json.dumps({"offline_check": True, "network_calls": 0, "adb_calls": 0,
                           "required_apk_code": VERSION, "maximum_own_demos": 1,

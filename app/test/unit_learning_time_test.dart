@@ -182,6 +182,21 @@ String unitClock(WidgetTester tester) => tester
 
 void main() {
   testWidgets(
+    'Web and native clocks preserve a positive twenty-minute goal and remaining duration',
+    (tester) async {
+      final h = await openUnit(tester, (_) async {
+        return reply(timedUnit(status: 'completed', seconds: 0));
+      });
+      expect(find.text('Heute 0:00 / 20:00'), findsOneWidget);
+      expect(find.text('Tagesziel noch offen · Noch 20:00 Min.'), findsOneWidget);
+      expect(find.text('Diese Einheit 2:00'), findsOneWidget);
+      expect(find.text('Heute 0:00 / 0:00'), findsNothing);
+      expect(find.text('Tagesminimum geschafft'), findsNothing);
+      await h.close();
+    },
+  );
+
+  testWidgets(
     'The final feedback keeps the open minimum and leads to the round result before further learning',
     (tester) async {
       var current = timedUnit(seconds: 720);

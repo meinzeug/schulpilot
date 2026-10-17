@@ -1,12 +1,14 @@
 // Public child-entry acceptance. Run ONLY after Root's deployment and GO.
 // One new fixed /demo family, one fixed synthetic unit, no external AI.
 // --check: offline guard checks; --run: create/resume; --cleanup-only: recovery.
+// --run --keep-for-timer retains ONLY the accepted own case on Root's order.
+// --park-for-timer makes one normal own pause for a subsequent read-only check.
 import assert from 'node:assert/strict';
 import {createHash, randomBytes} from 'node:crypto';
 import {chmod, lstat, mkdir, readFile, rename, unlink, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium, devices} from 'playwright';
 
 const base = 'https://schulpilot.dorfspy.de';
 const artifacts = fileURLToPath(new URL('../artifacts/', import.meta.url));
@@ -14,6 +16,8 @@ const journalFile = path.join(artifacts, '.learning-room-home-qa.json');
 const reportFile = path.join(artifacts, 'child-learning-entry-result.json');
 const headers = {'X-Schulpilot-Request': '1'};
 const mode = process.argv[2] ?? '--help';
+const keepForTimer = process.argv.includes('--keep-for-timer');
+const captureId = new Date().toISOString().replace(/[-:.]/g, '');
 const screenshots = [], errors = [], blocked = [];
 const intent = {login: false, start: false, pause: false, resume: false};
 let journal, browser, parent, child, page, phase = 'local_check';
@@ -85,6 +89,7 @@ function permitted(method, pathname, body, choice) {
 }
 async function context(role, cookies = []) {
   const ctx = await browser.newContext({viewport: {width: 390, height: 844},
+    userAgent: devices['Pixel 7'].userAgent, deviceScaleFactor: 1,
     isMobile: true, hasTouch: true, storageState: {cookies, origins: []}});
   ctx.on('page', opened => opened.on('pageerror', error => errors.push({
     name: /^[A-Za-z]+Error$/.test(error.name) ? error.name : 'RuntimeError',
@@ -217,8 +222,18 @@ async function prepare() {
 }
 async function accessible() {
   await page.waitForSelector('flutter-view', {timeout: 90000});
-  await page.locator('flt-semantics-placeholder').evaluateAll(nodes => nodes.forEach(node => node.click()));
-  await page.waitForTimeout(350);
+  // Flutter's pinned mobile enabler requires an actual pointer at the exact
+  // centre; HTMLElement.click() has offset(0,0) and only enables desktop AT.
+  // This activates the accessibility layer, never an application action.
+  for (const placeholder of await page.locator('flt-semantics-placeholder').all()) {
+    const box = await placeholder.boundingBox();
+    if (box && box.width > 1 && box.height > 1) {
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    } else {
+      await placeholder.evaluate(node => node.click());
+    }
+  }
+  await page.waitForTimeout(450);
 }
 async function open(route) {
   const response = await page.goto(base + route, {waitUntil: 'domcontentloaded', timeout: 90000});
@@ -228,7 +243,7 @@ async function open(route) {
 function button(name) { return page.getByRole('button', {name, exact: true}); }
 async function reveal(locator) {
   const target = locator.first(), size = page.viewportSize();
-  const upper = size.width >= 1040 || new URL(page.url()).pathname.startsWith('/unit/') ? 4 : 75;
+  const upper = new URL(page.url()).pathname.startsWith('/unit/') ? 0 : size.width >= 1040 ? 4 : 75;
   for (let attempt = 0; attempt < 30; attempt++) {
     const box = await target.count() ? await target.boundingBox({timeout: 500}).catch(() => null) : null;
     if (box && box.width > 0 && box.height > 0 && box.x >= 0 && box.x + box.width <= size.width + 1 &&
@@ -241,7 +256,11 @@ async function reveal(locator) {
 }
 async function tap(locator) {
   const target = await reveal(locator), box = await target.boundingBox();
-  check(box && box.height >= 35 && box.height < page.viewportSize().height, 'touch_control_not_usable');
+  check(box && box.height >= 44 && box.height < page.viewportSize().height, 'touch_control_not_usable');
+  journal.touch_bounds ??= [];
+  journal.touch_bounds.push({width: Math.round(box.width), height: Math.round(box.height),
+    viewport: page.viewportSize().width});
+  await save();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(250);
 }
@@ -262,7 +281,7 @@ async function uiResponse(method, route, action) {
 }
 async function shot(label) {
   check(journal.child_authenticated === true, 'never_capture_login_credentials');
-  const filename = 'child-learning-entry-' + journal.run_id + '-' + label + '.png';
+  const filename = 'child-learning-entry-' + journal.run_id + '-' + captureId + '-' + label + '.png';
   await privateWrite(path.join(artifacts, filename), await page.screenshot());
   screenshots.push(filename);
 }
@@ -337,7 +356,7 @@ async function run() {
   await save();
   await prepare();
   await childLogin();
-  const currentState = journal.resumed ? 'active' : journal.paused ? 'paused' : 'prepared';
+  const currentState = journal.resumed ? 'active' : journal.paused ? 'paused' : journal.started ? 'active' : 'prepared';
   for (const width of [390, 320, 1280]) await homeAndList(width, currentState);
   if (!journal.started) {
     check(!journal.start_attempted, 'uncertain_start_requires_normal_read_only_operator_review');
@@ -423,6 +442,29 @@ async function cleanup() {
   journal.sessions_invalidated = true;
   await save();
 }
+async function parkForTimer() {
+  check(journal.acceptance_passed === true && journal.cleanup_held_for_timer === true && ownDemo(journal.demo),
+    'timer_parking_requires_the_completed_owned_held_acceptance');
+  step('normally_pause_only_the_verified_owned_round_for_read_only_timer_check');
+  await parentIdentity();
+  const identity = await get(child, '/auth/me');
+  check(identity.role === 'child' && identity.child_id === journal.demo.child_id, 'owned_child_session_required_for_pause');
+  let unit = await get(child, '/units/' + journal.job.unit_id);
+  unitProof(unit);
+  if (unit.status === 'active') {
+    check(!journal.timer_pause_attempted, 'an_uncertain_final_pause_must_not_be_repeated');
+    journal.timer_pause_attempted = true;
+    await save();
+    const response = await child.request.post(base + '/api/units/' + unit.id + '/pause', {headers, maxRedirects: 0});
+    check(response.status() === 200, 'normal_owned_timer_pause_failed_' + response.status());
+    unit = await response.json();
+    unitProof(unit);
+  }
+  check(unit.status === 'paused', 'read_only_timer_followup_requires_the_real_paused_unit');
+  journal.parked_for_timer = true;
+  await zeroAi();
+  await save();
+}
 function localChecks() {
   const previous = journal, id = 'a'.repeat(32);
   journal = {job: {unit_id: id}};
@@ -452,12 +494,14 @@ async function main() {
   if (mode === '--check' || mode === '--help') {
     console.log(JSON.stringify({qa_driver: 'child_learning_entry', local_checks: 'passed', public_requests: 0,
       run_after_root_go: 'node qa/child_learning_entry.mjs --run', cleanup_recovery: 'node qa/child_learning_entry.mjs --cleanup-only',
+      explicit_root_timer_hold: 'node qa/child_learning_entry.mjs --run --keep-for-timer',
+      normal_own_pause_for_timer: 'node qa/child_learning_entry.mjs --park-for-timer',
       own_fixed_demo_families: 1, maximum_fixed_synthetic_jobs: 1, maximum_explicit_ui_starts: 2,
       maximum_ui_heartbeats: 12, external_ai_allowed: false, answers_allowed: false,
       widths: [390, 320, 1280], pending_status_is_covered_offline: true}));
     return;
   }
-  check(['--run', '--cleanup-only'].includes(mode), 'use_check_run_or_cleanup_only');
+  check(['--run', '--cleanup-only', '--park-for-timer'].includes(mode), 'use_check_run_cleanup_or_park_for_timer');
   await mkdir(artifacts, {recursive: true});
   journal = await readJournal();
   if (!journal) {
@@ -479,11 +523,31 @@ async function main() {
       check(!journal.deleted, 'never_recreate_a_deleted_demo_on_resume');
       await run();
     }
-    await cleanup();
+    if (mode === '--park-for-timer') {
+      await parkForTimer();
+    } else if (keepForTimer && mode === '--run') {
+      step('hold_owned_demo_for_root_timer_verification');
+      check(journal.acceptance_passed === true, 'only_a_completed_acceptance_can_be_held');
+      journal.cleanup_held_for_timer = true;
+      await save();
+    } else {
+      await cleanup();
+    }
     passed = true;
   } catch (error) {
     failedPhase = phase;
     failure = safeReason(error);
+    if (journal.child_authenticated && page && !new URL(page.url()).pathname.startsWith('/login')) {
+      await shot('failure-current').catch(() => {});
+      journal.failure_ui = await page.evaluate(() => ({
+        semantics_nodes: document.querySelectorAll('flt-semantics').length,
+        placeholders: document.querySelectorAll('flt-semantics-placeholder').length,
+        android_user_agent: /Android/.test(navigator.userAgent),
+        has_password_field: document.querySelector('input[type="password"]') !== null,
+        width: innerWidth,
+      })).catch(() => null);
+      await save();
+    }
     // Recovery keeps ONLY this protected own journal. It cannot recreate an
     // uncertain account/job or send an extra start. Operator can clean up.
   } finally {
@@ -495,13 +559,20 @@ async function main() {
       synthetic_jobs: journal.job?.id ? 1 : 0, external_ai_zero_verified: journal.zero_ai === true,
       explicit_start: journal.started === true, saved_pause: journal.paused === true,
       explicit_home_resume: journal.resumed === true,
+      real_paused_state_for_root_timer_check: journal.parked_for_timer === true,
       layouts: journal.layouts ?? [], preparation_direct_link_read_only: journal.acceptance_passed === true,
+      browser_profile: 'Android Pixel 7 user-agent, CSS viewport sizes, deviceScaleFactor 1',
+      prior_driver_failure_ui: journal.failure_ui ?? null,
+      actual_clicked_control_bounds: journal.touch_bounds ?? [],
       child_answers_submitted: 0, ordinary_ui_heartbeats: journal.heartbeat_posts,
       cleanup_complete: journal.deleted === true && journal.sessions_invalidated === true,
+      cleanup_held_for_root_timer_check: journal.cleanup_held_for_timer === true && journal.deleted !== true,
       browser_runtime_errors: errors, blocked_mutations: blocked, screenshots,
       cleanup_recovery: 'node qa/child_learning_entry.mjs --cleanup-only', completed: new Date().toISOString()};
-    await privateWrite(reportFile, JSON.stringify(report, null, 2));
-    await privateWrite(path.join(artifacts, 'child-learning-entry-' + journal.run_id + '-result.json'), JSON.stringify(report, null, 2));
+    const reportSuffix = mode === '--park-for-timer' ? '-timer-park' : mode === '--cleanup-only' ? '-cleanup' : '';
+    const destination = reportSuffix ? path.join(artifacts, 'child-learning-entry' + reportSuffix + '-result.json') : reportFile;
+    await privateWrite(destination, JSON.stringify(report, null, 2));
+    await privateWrite(path.join(artifacts, 'child-learning-entry-' + journal.run_id + reportSuffix + '-result.json'), JSON.stringify(report, null, 2));
     if (report.cleanup_complete) await unlink(journalFile);
     console.log(JSON.stringify(report));
     if (!report.qa_passed) process.exitCode = 1;

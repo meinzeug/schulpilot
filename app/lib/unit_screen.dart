@@ -724,7 +724,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   String clockText(int seconds) {
-    final safe = seconds.clamp(0, 1 << 40);
+    // Bit shifts have a 32-bit range in web builds. Keep this duration bound
+    // numeric so Dart VM and JavaScript display the same positive seconds.
+    final safe = seconds.clamp(0, 1099511627776);
     return '${safe ~/ 60}:${(safe % 60).toString().padLeft(2, '0')}';
   }
 
@@ -737,7 +739,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final shown = actual + pendingSeconds;
     final required = measured?['goal_required'] == true;
     final met = measured?['daily_goal_met'] == true;
-    final remaining = (goal - shown).clamp(0, 1 << 40);
+    final remaining = (goal - shown).clamp(0, 1099511627776);
     final progress = goal == 0
         ? 0.0
         : (shown / goal).clamp(0.0, met ? 1.0 : 0.99);

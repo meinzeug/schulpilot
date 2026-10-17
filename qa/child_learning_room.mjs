@@ -522,7 +522,10 @@ async function completionAndContinuation() {
       'direct_existing_next_round_start_failed');
     await page.waitForURL(base + '/unit/' + nextId, {timeout: 45000});
     check(journal.answer_posts === before, 'continuation_must_not_answer_the_next_round');
-    journal.continuation = {mode: 'existing_saved_synthetic_round', started: true, new_generation_requests: 0};
+    if (next.introduction_seen !== true) await reveal(button('Weiter zu den Übungen'));
+    else await reveal(page.getByText(next.questions[0].prompt, {exact: true}));
+    journal.continuation = {mode: 'existing_saved_synthetic_round', started: true,
+      next_content_rendered: true, new_generation_requests: 0};
     await screenshot('direct-next-round-390');
   } else {
     // Honest bounded fallback: inspect the existing recommendation; do not
