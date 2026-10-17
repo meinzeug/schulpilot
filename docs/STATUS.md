@@ -1,33 +1,55 @@
-# Aktueller Stand · Sprachausbau 1.4.0+29 · 17.10.2026
+# Aktueller Stand · Sprachausbau 1.4.0+30 · 17.10.2026
 
-**Lokaler Releasekandidat:** Eigener bestätigter Wortschatz aus normalem Fotoimport,
-Text oder manuellen Paaren; Sammlungen, Suche/Seitenteilung, Korrekturen und
-Revisionen; kleine echte Abrufrunden, gespeicherte Rückmeldung und fähigkeits-/
-richtungsgebundene Wiedervorlage. Sprachauswertung und Erzeugung sind vom
-Mathematik-/Sachpfad getrennt. Tagesplan/Elternansicht und neutrale gebündelte
-Erinnerungen integriert. 18 begrenzte Sprachprojektarten verbinden Wortschatz,
-bestätigte Quellen, eigene Entwürfe und echte Aufgaben. Details und die 20
-Werkzeugzuordnungen: [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).
+Eigener bestätigter Wortschatz aus Foto, Text oder manuellen Paaren; Sammlungen,
+Suche/Seitenteilung, Revisionen, kleine echte Abrufrunden und getrennte Fähigkeiten
+und Richtungen. Tagesplan, Elternansicht und gebündelte neutrale Erinnerungen sind
+integriert. 18 begrenzte Sprachprojektarten verbinden Quellen, eigene Entwürfe,
+beratende Kriterien und interaktive Aufgaben. Datenmodell, Modusregeln und die
+20 Werkzeugzuordnungen: [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).
 
-**Abnahme vor Aktivierung:** 784 isolierte PostgreSQL-16-Tests im Gesamtlauf
-bestanden (437,99 s), anschließend 94 gezielte Prüfungen zu Sprachkern, Quellen,
-Bibliothek und Feedback bestanden (59,90 s). Alle 285 Fluttertests bestanden;
-der zusätzliche vollständige Wortdialog fand und beseitigte einen mobilen
-Dropdownüberlauf und zu früh entsorgte Textcontroller. Flutter-Analyse ohne
-Befund. Web, signierte Direct-APK und Play-AAB 1.4.0+29 gebaut; bundletool,
-Signierung, 16-KB-Ausrichtung geprüft. APK 64.806.733 Bytes, SHA-256
-`b11fd27a59ac0283d1eb613a77b26f2d10eb4253e92126f315bc132b89e81945`.
-Geheimnisprüfung über Quellen, Web, APK/AAB und Übergaben: 16 tatsächliche
-Geheimniswerte einschließlich der eigenen künstlichen Testzugänge, null Treffer.
-Bestehende Kotlin-Pluginhinweise bleiben ohne Buildfehler; keine Abhängigkeit aktualisiert.
+**Öffentlich aktiviert:** 1.4.0+29, Backendkorrektur 74fa0fb,
+Release `20261017T135240Z-74fa0fb`, Migration 0014 → 0015. Eigene Sicherung mit
+Result=success/Exit=0, sieben vorhandene Dienste aktiv. Gültiges HTTPS,
+HTTP-Weiterleitung 308, sieben Direktlinks 200 und drei private Routen anonym 401.
+Vollständiger öffentlicher APK-Download in Größe/Hash geprüft. Provider unverändert
+Codex CLI 0.162.1, gpt-6.1-sol/xhigh, Revision 18; keine Firebase-Änderung.
 
-**Betriebsschritt noch offen:** Commit/Push, bestehende Projektsicherung,
-Migration 0014 → 0015, Aktivierung, echte öffentliche Foto-/Provider-/Browser-
-und Emulatorprüfung. Bis zur unten ausdrücklich ergänzten Aktivierungsbestätigung
-läuft öffentlich weiter 1.3.0+28 / 8770118. Das normale künstliche Testkonto wurde
-über den echten E-Mail-Weg verifiziert; private Zugangsdaten bleiben ausschließlich
-in der ignorierten lokalen Prüffortsetzung. Keine echten Kinderdaten verwendet.
-Echte Mikrofon-/Lautsprecheraudio und physische Telefonabnahme bleiben getrennt.
+**Tatsächlicher öffentlicher Funktionstest:** Eigenes normales künstliches Konto
+über echte Bestätigungsmail verifiziert; Kind im Browser angemeldet. Normaler
+Fotoassistent/Zuschnitt → wörtliche Codex-Erkennung → bestätigte Heftseite → eigener
+Wortschatzauftrag → fünf bestätigte Paare → drei beantwortete Aufgaben. Offline-
+Wiederholung, gespeicherte Rückmeldung nach Reload, gleiche Eltern-/Kinderstände,
+noch nicht erfülltes 20-Minuten-Ziel aus echten Sekunden und Wortvorschlag im Plan
+geprüft. Kindansichten bei 320/390/1280 px und Eltern bei 390/1280 px bedient.
+Zwei echte KI-Kontextaufgaben, zwei belegte Simple-Present-Aufgaben und drei
+beratende Kriterien zum eigenen künstlichen Text erzeugt. Sechs Reservierungen:
+fünf erfolgreiche Aufträge und ein gespeicherter früherer Fehler; Kontokosten
+unbekannt. Keine zusätzlichen automatischen Aufrufe. Null Browserlaufzeitfehler.
+
+**Gefundene Korrektur:** Die bisherige Schemaaufbereitung entfernte das echte
+Feld title aus properties. Dadurch war das neue Sprachprojekt-Schema ungültig
+(HTTP 400). Feldnamen und Schemaknoten werden jetzt getrennt verarbeitet; ein
+gezielter Regressionstest sichert die vollständigen required-Felder. Der
+fehlgeschlagene Auftrag wurde nicht überschrieben; genau ein bewusster neuer
+Auftrag nach Bereitstellung der Korrektur gelang.
+
+**Lokale Tests:** 784 isolierte PostgreSQL-16-Tests im Gesamtlauf bestanden
+(437,99 s), anschließend 94 gezielte Prüfungen sowie drei abschließende
+Migrations-/Datenschutz-/Parallelitätsprüfungen. Nach Schemafix weitere 70
+Provider-/Sprachtests und 21 Mathematik-/Coach-Regressionen bestanden. Alle 285
+Fluttertests im Gesamtlauf, nach letzter Statuskorrektur zehn Wortschatz-Widgettests
+bestanden. Analyse und Ruff ohne Befund. Keine Abhängigkeiten aktualisiert.
+
+**Finaler Build:** Web, signierte Direct-APK und Play-AAB 1.4.0+30 gebaut;
+Analyse und zehn finale Widgettests bestanden. APK 64.806.733 Bytes, SHA-256
+`c40e2af9a288cb2ab0c587a198c0414664bc0f28042d70ea8a0ad37a51c3b169`.
+Die Oberfläche unterscheidet vorbereitete, begonnene und pausierte Runden
+ausdrücklich. Aktivierung und native Sprachrunde stehen noch aus.
+Das echte automatische Android-Update 28 → 29 über den
+Systeminstaller sowie drei Start-/Wiederöffnungsprüfungen gelangen bereits.
+Bei den wiederholten künstlichen Anmeldungen griff regulär das 15-Minuten-Limit;
+keine Drossel wurde dafür gelockert. Nach Zeitfenster und finalem Update native
+Abnahme fortsetzen. Physische Mikrofon-/Lautsprecherprüfung bleibt separat.
 
 ## Vorheriger geprüfter Produktstand
 

@@ -67,6 +67,7 @@ Future<(AppState, GoRouter)> open(
   double width = 320,
   bool parent = false,
   bool workshop = false,
+  Json? wordListing,
 }) async {
   tester.view.physicalSize = Size(width, 900);
   tester.view.devicePixelRatio = 1;
@@ -119,7 +120,7 @@ Future<(AppState, GoRouter)> open(
               if (request.url.path.endsWith('/materials')) {
                 return reply({'items': []});
               }
-              return reply(listing());
+              return reply(wordListing ?? listing());
             }),
           ),
         )
@@ -231,13 +232,30 @@ void main() {
       await tester.ensureVisible(find.text('Geprüfte Fähigkeiten'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Wörter schreiben · Deutsch → Lernsprache'),
+        find.text('Wörter schreiben · Deutsch in die Lernsprache'),
         findsOneWidget,
       );
       expect(requests.every((r) => r.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Prepared rounds are distinct from begun or paused work', (
+    tester,
+  ) async {
+    final data = listing();
+    data['open_rounds'] = [
+      {'id': 'new', 'topic': 'Neue Wörter', 'status': 'not_started'},
+      {'id': 'active', 'topic': 'Schon begonnen', 'status': 'active'},
+      {'id': 'paused', 'topic': 'Für später', 'status': 'paused'},
+    ];
+    final requests = <http.Request>[];
+    await open(tester, requests, parent: true, wordListing: data);
+    expect(find.text('Vorbereitet · noch nicht begonnen'), findsOneWidget);
+    expect(find.text('Begonnen · fortsetzen'), findsOneWidget);
+    expect(find.text('Pausiert · fortsetzen'), findsOneWidget);
+    expect(requests.every((request) => request.method == 'GET'), isTrue);
+  });
 
   testWidgets(
     'Explicit round creation sends locale direction skill and idempotency key',

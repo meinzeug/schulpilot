@@ -27,9 +27,9 @@ String vocabularyKey() =>
     'words-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}';
 
 String languageDirection(String direction) => switch (direction) {
-  'de_to_target' => 'Deutsch → Lernsprache',
+  'de_to_target' => 'Deutsch in die Lernsprache',
   'target_to_target' => 'Anwendung in der Lernsprache',
-  _ => 'Lernsprache → Deutsch',
+  _ => 'Lernsprache ins Deutsche',
 };
 String languageSkill(String skill) =>
     languageSkills[skill] ??
@@ -500,11 +500,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                   items: const [
                     DropdownMenuItem(
                       value: 'de_to_target',
-                      child: Text('Deutsch → Lernsprache'),
+                      child: Text('Deutsch in die Lernsprache'),
                     ),
                     DropdownMenuItem(
                       value: 'target_to_de',
-                      child: Text('Lernsprache → Deutsch'),
+                      child: Text('Lernsprache ins Deutsche'),
                     ),
                   ],
                   onChanged: (v) => update(() => direction = v!),
@@ -772,7 +772,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     color: teal,
                   ),
                   title: Text(round['topic']),
-                  subtitle: const Text('Deine angefangene Runde'),
+                  subtitle: Text(switch (round['status']) {
+                    'not_started' => 'Vorbereitet · noch nicht begonnen',
+                    'paused' => 'Pausiert · fortsetzen',
+                    _ => 'Begonnen · fortsetzen',
+                  }),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => openRoute(context, '/unit/${round['id']}'),
                 ),

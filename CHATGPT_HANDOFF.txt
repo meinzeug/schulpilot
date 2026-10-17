@@ -1,37 +1,58 @@
-SCHULPILOT – Sprachausbau 1.4.0+29 · lokale Abnahme, Aktivierung vorbereitet
+SCHULPILOT – Sprachlernen 1.4.0 · öffentliche Abnahme / finaler Build 30
 
-Dieser neue Abschnitt hat Vorrang vor den historischen Angaben unten.
-Neue Workflows: bestätigte Vokabelseite/Text/manuelle Wortpaare -> Prüfung ->
-eigener Wortschatz -> kleine echte Runde -> gespeicherte Antworten/Feedback ->
-getrennte Fälligkeit im Tagesplan und gleiche Eltern-/Kinderansicht.
-Sprachwerkstatt mit 18 begrenzten Projektarten, eigener Vorarbeit, Kriterien,
-Kontext-/Satz-/bestätigten Grammatikaufgaben und höchstens vier Dialogschritten.
-Neue Routen /vocabulary/<eigenes-kind> und /language-projects/<eigenes-kind>.
-Bestehende eigene Eltern-/Kinderanmeldung; kein Firebase-/Google-Umbau.
+Dieser Abschnitt hat Vorrang vor der historischen Übergabe unten.
+Stand 17.10.2026: main 74fa0fb (Kernimplementierung 4059f59). Öffentlich läuft
+1.4.0+29 unter https://schulpilot.dorfspy.de , API /api, Release
+20261017T135240Z-74fa0fb, Migration 0015. Backup und alle sieben Dienste geprüft.
+Keine Firebase-, Auth-, Provider-, Reasoning- oder Kontingentumstellung.
 
-Migration 0015 nach 0014, acht private Tabellen und kompatible Attempt-Felder.
-Alte Clients erhalten neue Sprachaufgaben nicht als startbare Lernplanung;
-Mathematik/Sachaufgaben unverändert. Speicherung/Export/Löschung und bekannte
-Vorlagen-/Sprachhilfen werden mitgeführt. Keine Aussprachebewertung durch STT.
-Lernmodell, Modusregeln, Intervalle und Werkzeugstatus: docs/LANGUAGE_LEARNING.md.
+Neue Abläufe: bestätigte Foto-/Text-/manuelle Wortpaare -> eigener Wortschatz ->
+kleine Abrufrunde -> gespeicherte Rückmeldung -> fähigkeits-/richtungsgebundene
+Wiedervorlage und Tagesplan. Eltern sehen Wörter, Übungen und dieselben realen
+Belege. Sprachwerkstatt: 18 begrenzte Projektarten mit eigener Vorarbeit und
+interaktiven Aufgaben; Grammatik nur aus ausdrücklich bestätigtem Unterricht.
+Datenmodell/Intervalle/Bewertung/20 Werkzeugzuordnungen: docs/LANGUAGE_LEARNING.md.
 
-Geprüft: 784 PostgreSQL-Tests vollständig, danach 94 gezielte Regressionen;
-285 Fluttertests, Analyse und Ruff; Web, signierte Direct-APK und Play-AAB gebaut.
-APK 1.4.0+29: /home/dennis/schulpilot/artifacts/schulpilot-android.apk
-SHA256 b11fd27a59ac0283d1eb613a77b26f2d10eb4253e92126f315bc132b89e81945
-64.806.733 Bytes. AAB am entsprechenden artifacts/schulpilot-play.aab-Pfad.
-Keine Play-Console-Veröffentlichung, keine physische Audioabnahme behauptet.
+784 PostgreSQL-Tests vollständig, danach 94 und drei gezielte Abschlussprüfungen;
+nach Schemafix 70 Provider-/Sprach- und 21 Mathematik-/Coachtests bestanden.
+285 Fluttertests vollständig, nach letzter Statuskorrektur zehn Widgets bestanden.
+Analyse/Ruff ohne Befund. Finaler Build 30 Web/Direct-APK/Play-AAB erfolgreich;
+klare Unterscheidung vorbereitet/begonnen/pausiert. APK lokal
+/home/dennis/schulpilot/artifacts/schulpilot-android.apk, 64.806.733 Bytes,
+SHA256 c40e2af9a288cb2ab0c587a198c0414664bc0f28042d70ea8a0ad37a51c3b169.
+AAB /home/dennis/schulpilot/artifacts/schulpilot-play.aab. Aktivierung noch offen.
 
-Noch als nächstes auszuführen: Commit/Push; Backup/Migration/Aktivierung über
-scripts/deploy.sh; öffentliche Prüfung mit qa/language_learning.mjs --run,
-danach tatsächliches OTA-Update und qa/android_language.py --run. Nur das eigene
-über echten E-Mail-Weg verifizierte künstliche Konto verwenden. Fortsetzung
-geschützt unter artifacts/.school-day-qa-account.json, keine Zugangsdaten hier.
-Prüfaufträge werden nach Fehlern nicht automatisch wiederholt. Nach Abschluss
-mit scripts/prepare_language_smoke.py --cleanup ausschließlich diese Familie löschen.
-Bis zur ergänzten tatsächlichen Aktivierung gilt öffentlich weiterhin der
-folgende bisherige geprüfte Release. Produktive Daten anderer Familien wurden
-für diesen Ausbau nicht gelesen oder verändert.
+Echt öffentlich: normales eigenes künstliches Elternkonto über SMTP/IMAP
+verifiziert, eigener Kinderlogin, Fotoassistent/Zuschnitt/Codex-OCR, fünf bestätigte
+Paare, drei Aufgaben, Netzverlust/Wiederholung, Reload der Rückmeldung, tatsächliche
+Zeitminimum-Messung, Tagesplan, gleiche Eltern-/Kinderstände. Kind 320/390/1280 px,
+Eltern 390/1280 px. Zwei Codex-Kontextaufgaben, zwei Simple-Present-Aufgaben, drei
+beratende Kriterien zum eigenen Text. Sechs reservierte Aufträge insgesamt,
+darunter ein aufbewahrter Schemafehler (echtes title-Feld entfernt), dann genau
+nach Korrektur bewusst neu angefordert. Keine automatischen Wiederholungen.
+Kontokosten unbekannt. Kein Nachweis einer Lernwirksamkeit oder Notenverbesserung.
+
+Nächste konkrete Aktion: finalen Build 30 prüfen/committen/pushen/aktivieren,
+OTA 29 -> 30 bedienen, native Sprachrunde mit qa/android_language.py --run.
+Das echte OTA 28 -> 29 und drei Start-/Wiederöffnungschecks sind bereits bestanden.
+Vor nativer Wiederholung das reguläre Anmeldelimit ablaufen lassen; nichts lockern.
+Geschützte Fortsetzung: artifacts/.school-day-qa-account.json; keine Geheimnisse
+hier. Nach Abschluss ausschließlich diese künstliche Familie über
+scripts/prepare_language_smoke.py --cleanup löschen.
+
+Browser: normal /login, danach Kind/Eltern /app. Über Lernen oder Kinderdetail
+zu /vocabulary/<eigenes-kind>, dort Wörter anwenden bzw.
+/language-projects/<eigenes-kind>. Eltern können gespeicherte Projekte und
+Aufgaben/Antworten ansehen. Kein öffentlicher Versand-/Debugzugang. Betriebsadmin
+hat weiterhin keinen privaten Lerninhaltszugriff. Anmeldung im Browser selbst
+normal durchführen; keine Passwörter/Sitzungen an ChatGPT übermitteln.
+
+Physische Telefon-/Audio-/Mikrofonabnahme bleibt offen. STT ist keine
+Aussprachebewertung und kein selbstständiger Schreibbeleg; Gerätesprache kann
+online verarbeitet werden. Keine neue Audio-API, keine automatische Aufnahme.
+Kein Play-Upload erfolgt. Optionale Druck-/PPTX-Ausgabe ist nicht umgesetzt.
+Rückweg nach neuen Sprachdaten nur kompatibel vorwärts bzw. isoliert mit
+Löschjournal; kein blindes 0015-Downgrade. Details docs/OPERATIONS.md.
 
 Historischer Stand vor Sprachausbau · 17.10.2026 · 1.3.0+28
 

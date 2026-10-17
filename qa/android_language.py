@@ -1,4 +1,4 @@
-"""Native APK29, only the verified normal artificial browser-test household.
+"""Native APK30, only the verified normal artificial browser-test household.
 
 No installation, provider invocation, clock tampering or real-user data. This
 finishes the already generated context round through Android's Flutter UI.
@@ -42,7 +42,10 @@ def step(value):
 def wait(fragment, seconds=35):
     end = time.monotonic() + seconds
     while time.monotonic() < end:
-        if fragment in labels():
+        current = labels()
+        if "Zu viele Anfragen. Bitte später erneut versuchen." in current:
+            raise QaFailure("normal_login_rate_limited_wait_for_next_window")
+        if fragment in current:
             return
         time.sleep(0.4)
     raise QaFailure("expected_native_state_missing")
@@ -80,7 +83,7 @@ def main():
     parser.add_argument("--run", action="store_true")
     args = parser.parse_args()
     if not args.run:
-        print(json.dumps({"ready": True, "requires": "own successful language web case and OTA to APK29"}))
+        print(json.dumps({"ready": True, "requires": "own successful language web case and OTA to APK30"}))
         return 0
     account = json.loads(PRIVATE.read_text())
     check(
@@ -91,12 +94,13 @@ def main():
     )
     case = account.get("language_qa", {})
     check(
-        case.get("phase") == "passed_keep_for_native" and case.get("project_unit_id"),
-        "successful_owned_web_case_required",
+        case.get("phase") in ("grammar_probe_queued", "explicit_writing_provider_probe", "writing_probe_queued", "passed_keep_for_native")
+        and case.get("project_unit_id"),
+        "successful_owned_web_word_and_context_case_required",
     )
     check(native.adb("emu", "avd", "name").decode().splitlines()[0] == "schulpilot-qa-api36", "dedicated_avd_required")
     package = native.adb("shell", "dumpsys", "package", native.PACKAGE).decode()
-    check(bool(re.search(r"\bversionCode=29\b", package)), "ota_to_regular_apk29_required")
+    check(bool(re.search(r"\bversionCode=30\b", package)), "ota_to_regular_apk30_required")
     child_id, unit_id = account["child_id"], case["project_unit_id"]
     with httpx.Client(base_url=native.BASE, headers=HEADERS, timeout=30) as api:
         credentials = account["credentials"]
@@ -126,13 +130,17 @@ def main():
                 press("Anmelden")
             time.sleep(0.4)
         wait("Willkommen zurück")
+        step("native_login_form")
         for index, value in enumerate((credentials["child_username"], credentials["child_password"])):
             fields = [n for n in native.nodes() if n.get("class") == "android.widget.EditText"]
             check(len(fields) == 2, "native_login_fields_missing")
             native.tap_node(fields[index])
+            native.adb("shell", "input", "keyevent", "123")
+            native.adb("shell", "input", "keyevent", *(["67"] * 128))
             input_text(value)
             native.adb("shell", "input", "keyevent", "4")
         press("Anmelden")
+        step("native_login_submitted")
         wait("Hallo,")
         step("native_vocabulary_and_saved_round")
         press("Wörter")
@@ -144,7 +152,7 @@ def main():
                 press("Lernen fortsetzen" if unit["status"] == "paused" else "Einheit starten")
             if not unit["introduction_seen"]:
                 press("Weiter zu den Übungen")
-            while True:
+            for _ in range(16):
                 unit = api_get(api, "/units/" + unit_id)
                 if unit.get("pending_feedback"):
                     press("Ergebnis ansehen" if unit["status"] == "completed" else "Weiter")
@@ -219,7 +227,7 @@ def main():
         )
         report = {
             "native_android_api": 36,
-            "version_code": 29,
+            "version_code": 30,
             "native_flutter": True,
             "own_child_login": True,
             "cross_device_context_resume": True,
