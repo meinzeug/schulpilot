@@ -1,64 +1,99 @@
 SCHULPILOT – aktueller Nachtrag 17.10.2026
 
-Dieser Abschnitt ersetzt sämtliche älteren Produkt-, Versions-, Provider- und Zeitlimitangaben
-des nachfolgenden historischen Protokolls. Bestehende Google-/Firebase-Einrichtung wurde in
-dieser Arbeitseinheit weder neu angelegt noch migriert; frühere Zustellnachweise bleiben
-historische Einzelbeobachtungen und sind keine neue Zustellabnahme von Version 25.
+Dieser Abschnitt ersetzt sämtliche älteren Produkt-, Versions-, Provider- und Zeitangaben
+des nachfolgenden historischen Protokolls. Google-/Firebase-Einrichtung wurde in dieser
+Arbeitseinheit weder neu angelegt noch migriert. Frühere IAM-/Keyrestriktions- und
+Zustellprüfungen bleiben historische Einzelbeobachtungen, keine neue Cloud-Abnahme.
 
-Bereitgestellter Produktcommit: c8123d233714030ff6bf906a9c0ee4b365c4a545, main, gepusht.
-Öffentliches Release: 20261017T072625Z-c8123d2; https://schulpilot.dorfspy.de .
-Eigene API: https://schulpilot.dorfspy.de/api ; Health bestätigt Version 1.2.0 und Produktcommit.
-Web sowie signierte native Flutter-Direct-APK und Play-AAB: 1.2.0+25, keine WebView.
+Bereitgestellter Produktcommit: 14d1789993a5c7a33ea9d9207433babd61c46eb3, main, gepusht.
+Öffentliches Release: 20261017T085036Z-14d1789; https://schulpilot.dorfspy.de
+Eigene API: https://schulpilot.dorfspy.de/api; Health bestätigt Version und Produktcommit.
+Web sowie signierte native Flutter-Direct-APK und Play-AAB: 1.2.0+27.
 APK: /home/dennis/schulpilot/artifacts/schulpilot-android.apk
 Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
-63.314.609 Bytes; SHA256 69311fb8b5d377b269e727df61f464f9aa605eba26cb9148af2c4df9b5441b91.
-Play-AAB: /home/dennis/schulpilot/artifacts/schulpilot-play.aab ; gebaut, kein neuer Console-Upload.
-Nachfolgende QA-/Dokumentationscommits können neuer sein, ohne den bereitgestellten Produktcode zu ändern.
+63.790.101 Bytes; SHA256 5751deb347ca12cdd6212e1ca9b3fa1b849494a31bab555963331130175b3b2a.
+Play-AAB: /home/dennis/schulpilot/artifacts/schulpilot-play.aab; gebaut und bundletool-validiert,
+kein neuer Console-Upload. Nachfolgende QA-/Dokumentationscommits können neuer sein.
 
-Aktiver Provider ist Codex CLI, Lern- und Bildmodell gpt-6.1-sol, Reasoning xhigh, Revision 18.
-Die vorhandene eigene Workeranmeldung und erfolgreiche künstliche Freigabe sind erhalten;
-öffentlicher Status ai_available=true. Kein Providerwechsel oder zusätzlicher KI-Prüfauftrag
-in dieser Abnahme. Geldkosten des Kontobetriebs bleiben unbekannt, bestehende Reservierungen erhalten.
+Kinderführung vollständig überarbeitet: stabile Lernrunde und heutige Fotos auf Home,
+ruhiger Lernraum mit Verstehen/Üben/Rückblick, eine Hauptaktion und abgestufte Hilfe,
+gespeicherte Rückmeldung nach Reload/Neustart und fachliches Ergebnis vor dem Weiterlernen.
+Antworten, Hilfen, unklare Ergebnisse und spätere Prüftage bleiben getrennt. Kein behauptetes
+hundertprozentiges Verständnis allein aus einer richtigen Antwort oder drei Prüftagen.
+Bewusste neue Einzelrunde hat eine eigene Statusseite; reine Statusabfragen erzeugen nichts.
+Mindestziele bleiben aus tatsächlichen aktiven Serversekunden verbindlich, weitere Zeit nach
+dem Ziel freiwillig. Schätzungen erfüllen kein Zeitminimum. Eltern sehen dieselben gespeicherten
+Fakten; Rollen/Familientrennung, Quoten und Kostenkontrollen erhalten. Kein Schemawechsel.
 
-Tägliche/wöchentliche Minuten sind Mindestziele aus gespeicherten aktiven Sekunden.
-Beispiel: 12 echte Minuten bei 20 Minuten Ziel lassen 8 Minuten verpflichtend offen.
-Erst nach dem Ziel ist weitere Lernzeit freiwillig; es gibt keine Zeitobergrenze.
-Neue Elternvorgaben, Elternfortschritt und responsive Arbeitsflächen für alle drei Rollen.
-Browser: kleine Touchansicht, Tablet-Rail ab 720 px, Desktop-Sidebar ab 1050 px.
-Eltern-/Admin-/Kinderrechte bleiben vollständig im Backend; keine neue Rollenwahl.
+Codex-Konfiguration wurde unverändert belassen. Zuletzt separat bestätigter Stand:
+Codex CLI, Lern-/Bildmodell gpt-6.1-sol, Reasoning xhigh, Revision 18. Aktueller öffentlicher
+Status ai_available=true; bestehender isolierter Worker-Fingerprint erhalten. Keine erneuten
+Providerprüfungen oder externen KI-Aufträge in dieser Abnahme; Kontokosten bleiben unbekannt.
 
-Lokale Abnahme: 678 PostgreSQL-16-Tests, danach 23 gezielte PostgreSQL-Tests;
-195 Fluttertests im Gesamtlauf, danach 9 Admin- und 14 Elterntests; Flutter-Analyse/Ruff grün.
-Web, Direct-APK und Play-AAB gebaut; öffentliches HTTPS, Direktlinks, Rollen-Schutz und
-vollständiger APK-Download mit Größe/Hash geprüft. Automatisches Android-Update 24→25
-mit Installationsbestätigung sowie drei weitere Startprüfungen im eigenen Emulator bestanden.
-Öffentlicher Adminbrowser: 1440/960/390/320 px, neun echte CLI-Modelle, Modell und Denkstufe
-nur als Entwurf ausgewählt, keine Speicherung/KI-Aufträge/JS-Fehler; Prüfsitzung widerrufen.
-Öffentlicher Kinder-/Elterntest: 355 Sekunden echte UI-Bedienung, 339 gespeicherte aktive
-Sekunden; bei 299 Sekunden Fünf-Minuten-Ziel offen, bei 319 erfüllt, weiteres Lernen erlaubt.
-Eltern-Familie/Kinderdetail zeigen dieselben 5:39 / 5 Minuten bei 1280/390/320 px.
-Zwei historische Heartbeat-Bodies wurden vom QA-Observer nicht vollständig erfasst;
-teilweise rekonstruierter Zeitnachweis aus übrigen Antworten plus normalen GETs, ausdrücklich
-keine lückenlose Bodybeobachtung. Beide Einheitenstarts200, Rollenangriffe403, null externe
-KI-Aufträge. Eigene künstliche Familie regulär gelöscht, eigene Sitzungen danach401.
-Native APK25: eigene Eltern-/Kinderanmeldung, eine feste synthetische Einheit und eine
-Antwort mit Hinweis. Eltern und Kind übereinstimmend88 aktive Sekunden, Mindestziel5Minuten
-weiter offen. Android-Home20Sekunden ohne Zeitgutschrift, Resume ohne Nachtragen.
-Exakte Vordergrunddauer und exaktes Resume-Delta nach einem QA-Selektorabbruch nicht
-gesichert; im Bericht null, nur mindestens35Sekunden Vordergrund belegt. Elternvergleich
-am selben pausierten Fall abgeschlossen; eigene Testfamilien/Sitzungen bereinigt.
+Lokale Abnahme: 688 PostgreSQL-16-Backendtests, nach der kompakten Rückmeldungs-Wiederaufnahme
+54 gezielte PostgreSQL-Tests. Abschließend alle 259 Fluttertests; Analyse und Ruff sauber.
+Nach Sichtbefund in 26 genau zwei plattformabhängige Zeitformatierungsgrenzen korrigiert:
+echter Chrome-Widgettest und 16 native Zeit-VM-Tests grün. Keine Heartbeat-/Zielregel verändert.
+Web, Direct-APK und Play-AAB gebaut; Signatur/Version/16-KB-Zipausrichtung geprüft.
+Ein Buildprozess wurde zuvor mit 143 beendet; vollständiger Wiederholungsbuild erfolgreich,
+keine abgebrochenen Teilartefakte veröffentlicht.
 
-Erreichbare Browserseiten: /login, /app, /admin, /admin/settings, /admin/push und /settings.
-Normale Anmeldung selbst durchführen; Passwörter, Sessions und Gerätetokens nicht weitergeben.
-Für Kinder-/Elternversuche ausschließlich eine eigene künstliche Testfamilie verwenden.
-Admin: Übersicht → KI-Konfiguration → Modell/Denkstufe ansehen; ohne ausdrücklichen
-Providerwechsel nicht speichern oder erneut prüfen. Familientarife, Protokoll und Einrichtung
-sind getrennt erreichbar. Eigenes Kontingent und fremde Kinderinhalte nicht verändern.
-Aktuelle weitere Browser-/Native-Zeitmessungsberichte und Grenzen stehen in docs/STATUS.md.
+Öffentliches HTTPS, neun Web-Direktlinks, private API mit 401 und vollständiger APK-Download
+mit Größe/Hash geprüft. Sieben bestehende Dienste aktiv; Konfigurations-/Datenbanksicherung
+erfolgreich. Vorheriger Releasepointer: 20261017T083609Z-ec48f1f, Rückweg docs/OPERATIONS.md.
+Automatische Android-Updates 25 → 26 und 26 → 27 jeweils über Appprüfung/Download und Androids
+Installationsbestätigung, ohne adb install; auf 27 drei weitere echte Startprüfungen bestanden.
 
-GitHub-Push funktioniert. Actions-Lauf 39006063297 startet wegen GitHub-Kontosperre bei
-einem Abrechnungsproblem keine Testschritte; Kontoinhaber muss die Sperre bei GitHub klären.
-Kein erfolgreicher CI-Lauf, keine neue Play-Veröffentlichung und keine neue Push-Zustellung behauptet.
+Öffentlicher Lernablauf auf 26: eigene feste Demo, alle 4 Aufgabenarten, 5 Antworten, 1 Hinweis,
+5 Quittungen, Reload mit erhaltener Rückmeldung und Ergebnis bei 320/390/1280.
+Gespeichert exakt 3 selbstständige und 1 unterstützte Lösung. Vorhandene nächste synthetische
+Runde direkt gestartet (HTTP 200 + Unitroute); der Screenshot noch im Laden, daraus keine fertig
+gerenderte nächste Aufgabe behauptet. Eltern sehen dieselben 5 Antworten und den Hinweis.
+14 normale UI-Heartbeats nur nach HTTP-Status beobachtet, keine vollständige Body-/Zeitabnahme.
+Null externe KI/Reservierungen. Familie regulär gelöscht, Eltern-/Kindersitzungen mit 401.
+
+Separater Home-Test: Android-Browserprofil bei 320/390/1280, vorbereitet/aktiv/pausiert,
+Start → Pause → Home-Fortsetzen ohne Extrastartgate. Geklickte Nebenkontrollen 48 px, Hauptaktion 52 px.
+Genau 1 synthetischer Job, keine Antworten/externe KI. Der 1280-Test ist ein breites Android-Profil,
+keine pauschale Desktop- oder physische Geräteabnahme. Laufend wartender Job nicht live erzwungen;
+Warte-/Fehler-/Racezustände in Widgettests. Rein lesender 27-Nachtest derselben pausierten Familie:
+Server: 1 aktive Sekunde / 20 Min. Ziel; Anzeige 0:01/20:00 und 19:59 Rest bei 320/390/1280 korrekt.
+Nur GET/HEAD; Status, Antworten, Hinweise, Zeit, Kontingente und privates Journal unverändert.
+Anschließend derselbe Home-Haushalt regulär gelöscht, Eltern-/Kindersitzungen mit 401,
+privates Journal und temporäre Dateien entfernt.
+
+Native APK 27: denselben eigenen Fall nach OTA fortgesetzt, alle vier Komponenten bedient.
+Falsche Antwort mit derselben Rückmeldungskennung nach Prozessneustart wiederhergestellt;
+ein Tipp, fünf Versuche, drei selbstständige und eine unterstützte Lösung. 20 Sekunden Pause
+ergaben null Zeitgutschrift; Rückmeldungsquittung im pausierten Zustand startet nicht neu.
+184 aktive Sekunden (3:04) bei 20 Minuten Ziel, somit 16:56 weiter offen; Eltern zeigen exakt
+dieselben Werte. Feste synthetische Anschlussrunde nur gelesen, nicht gestartet. Keine neuen
+KI-Aufträge/Reservierungen. Eine zu enge Prüftreiberannahme über diese feste Anschlussrunde
+korrigiert, ursprünglichen Fehlbericht erhalten; derselbe Fall ohne neue Familie fortgesetzt.
+Normale Löschung, Eltern-/Kindersitzungen 401, Appneustart am Gastlogin, eigene Emulator-
+Appdaten und privates Journal bereinigt. Alle drei eigenen Testfamilien dieser Abnahme gelöscht.
+Ergebnisdatei: artifacts/learning-room-native-result.json. Kein akustischer/physischer Nachweis.
+
+Abschließende Diff-/Geheimnisprüfung ohne Befund: Quellen, Web, entpackte APK/AAB und
+bereinigte Übergabe, während der Livefälle auch die eigenen Prüfzugänge einbezogen.
+Private Journale entfernt; Dienstkonto/OAuth/Signierung bleiben außerhalb von Git und Downloads.
+
+Erreichbare Browserseiten: /login, /app, /admin, /admin/settings, /admin/push, /settings.
+Nach Kinderlogin: Home → Weiterlernen oder heutige Seiten; Lernen → Anderes Thema; Hefte → eigene Seite.
+Eigene Einheitsseite: /unit/<eigeneUnitID>; laufender eigener Einzelauftrag:
+/learning-preparation/<eigenesKind>/<eigenerJob>. Keine fremden Kennungen verwenden.
+Normale Anmeldung selbst durchführen; keine Passwörter, Sessions, Gerätetokens oder Schlüssel teilen.
+ChatGPT-Testfolge mit einer eigenen künstlichen Familie: Kind normal anmelden, Home/Lernen bei
+klein/groß prüfen, Erklärung → Aufgaben → Fehler/Hilfe → bewusst Weiter, Reload und Pause/Fortsetzen,
+letzte Antwort → Ergebnis → passende Folgerunde; im Elternkonto Antworten, Hilfen und echte Sekunden
+vergleichen. Admin nur für Betrieb; Provider nicht versehentlich wechseln oder erneut prüfen.
+Push in /settings nur freiwillig aktivieren, bei Kindern vorher Elternfreigabe. Ein vorhandenes
+Gerät oder früherer Zustellbericht ist kein neuer Zustellnachweis. Mikrofon/TTS nicht automatisch
+aktiviert. Keine akustische oder neue FCM-/Google-Abnahme mit 27 behauptet.
+
+GitHub-Push funktioniert. Produktlauf 39011474012 startet wegen GitHub-Kontosperre durch ein
+Abrechnungsproblem keine Testschritte. Kontoinhaber muss die Sperre bei GitHub klären.
+Kein erfolgreicher gehosteter CI-Lauf, keine neue Play-Veröffentlichung, kein physischer Gerätetest.
 
 --- Historisches Übergabeprotokoll, Stand 15.10.2026 ---
 

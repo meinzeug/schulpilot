@@ -133,6 +133,23 @@ def keep_minimum_open(unit):
             "minimum_must_still_be_open")
 
 
+def fixed_review(parent, data, unit):
+    coach = unit.get("coaching") or {}
+    require(coach.get("status") == "ready" and coach.get("provider") == "synthetic"
+            and not coach.get("practice_job_id"), "only_automatic_synthetic_review_allowed")
+    if coach.get("next_unit_id"):
+        # Fixed Demo coaching can save its fixed follow-up immediately, without
+        # a job or provider. Observe that known fixture, never start/generate it.
+        next_unit = native.check(parent.get("/units/" + coach["next_unit_id"]))
+        require(next_unit.get("child_id") == data["demo"]["child_id"]
+                and next_unit.get("followup_of") == data["demo"]["unit_id"]
+                and next_unit.get("synthetic") is True and next_unit.get("provider") == "synthetic"
+                and next_unit.get("status") == "not_started"
+                and all(not q.get("attempts") for q in next_unit.get("questions", [])),
+                "prebuilt_fixed_followup_must_remain_unstarted")
+    return bool(coach.get("next_unit_id"))
+
+
 def app_start():
     native.adb("shell", "am", "start", "-n", native.PACKAGE + "/.MainActivity")
 
@@ -355,9 +372,7 @@ def run_case(parent, data, report):
                           and (u.get("coaching") or {}).get("status") == "ready",
                           "automatic_synthetic_round_review_not_ready", seconds=60)
     keep_minimum_open(completed)
-    coach = completed["coaching"]
-    require(coach.get("provider") == "synthetic" and not coach.get("next_unit_id")
-            and not coach.get("practice_job_id"), "only_automatic_synthetic_review_allowed")
+    fixed_review(parent, data, completed)
     require([len(q["attempts"]) for q in completed["questions"]] == [2, 1, 1, 1]
             and all(q["attempts"][-1]["outcome"] == "correct" for q in completed["questions"])
             and [q["attempts"][-1]["assisted"] for q in completed["questions"]] == [True, False, False, False],
@@ -365,6 +380,7 @@ def run_case(parent, data, report):
     wait_fragment("4 von 4 Aufgaben bearbeitet")
     wait_fragment("1 mit Hilfe")
     wait_fragment("3 selbstständig")
+    wait_fragment("Beispielrückblick · ohne KI")
     shot("one-honest-round-result")
     save_check(data, "round_result")
     finish_checks(parent, data, report)
@@ -377,6 +393,7 @@ def finish_checks(parent, data, report):
     require(completed["status"] == "completed" and completed.get("pending_feedback") is None,
             "completed_acknowledged_owned_round_required")
     keep_minimum_open(completed)
+    prebuilt_followup = fixed_review(parent, data, completed)
     if not checks.get("native_parent_readback"):
         step("native_parent_sees_same_saved_time")
         # A retained case may already be on the parent's Home after a selector
@@ -427,6 +444,8 @@ def finish_checks(parent, data, report):
                    "minimum_still_open": True, "paused_seconds_observed": data["paused_seconds_observed"],
                    "paused_credit_seconds": data["paused_credit_seconds"], "synthetic_unit_jobs": 1,
                    "automatic_review_provider": "synthetic", "external_ai_calls": 0,
+                   "prebuilt_synthetic_followup": prebuilt_followup, "followup_started": False,
+                   "qa_assumption_corrected": "fixed_demo_review_can_prebuild_a_followup_without_a_job",
                    "parent_readback_verified": True, "roles_verified": True,
                    "audio_played_or_recorded": False})
 
