@@ -194,6 +194,14 @@ def process(job_id):
                 "recent_outcomes": difficulties,
                 "review": bool(job.payload.get("review_of")),
             }
+            if job.kind in ("unit", "package"):
+                from .grades import subject_key
+                from .learning_guidance import strategies
+
+                # Only an instructional strategy is sent; no school grades,
+                # parent notes, averages or grade records leave our database.
+                teaching_strategies = strategies(db, child)
+                payload["instructional_support"] = teaching_strategies.get(subject_key(material.subject if material else ""), "practice_and_retrieval")
             if job.kind == "extract":
                 from .extraction import request_payload
 
@@ -213,7 +221,8 @@ def process(job_id):
                     if m.id in g["material_ids"]
                 ]
                 payload["selected_groups"] = [
-                    {"id": g["id"], "subject": g["subject"], "estimated_minutes": g["estimated_minutes"]}
+                    {"id": g["id"], "subject": g["subject"], "estimated_minutes": g["estimated_minutes"],
+                     "instructional_support": teaching_strategies.get(subject_key(g["subject"]), "practice_and_retrieval")}
                     for g in job.payload["groups"]
                 ]
             elif job.kind == "unit" and source_pages:
@@ -436,6 +445,9 @@ def maintenance():
                 db.delete(bucket)
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
+        from .db import SchoolGrade
+
+        db.execute(delete(SchoolGrade).where(SchoolGrade.created < int(now()) - 365 * 86400))
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
         db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))

@@ -26,6 +26,8 @@ Die Gestaltung wurde mit drei weiteren Agents vor der Umsetzung, während der Ge
 
 ## Planung
 
+Noten können seit 17.10.2026 als zusätzliche schulische Beobachtung berücksichtigt werden. Eltern verwalten sie je Kind unter „Noten“; Familienmitglieder mit Leserecht können sie nachvollziehen. Schlechtere aktuelle Ergebnisse erhöhen das Fachgewicht über den Wochenvorschlag, ohne Tageskapazität, Elternfristen oder Startdaten zu verändern. Die Gewichtung ist abschaltbar und startet keine KI. Bestätigte passende Seiten sind Voraussetzung für daraus angenommene Elternlernziele. [Genaue Berechnung, Pädagogik und Grenzen](LEARNING_MODEL.md).
+
 `daily_planner.py` berechnet einen Vorschlag für sieben Kalendertage aus offenen Einheiten, noch nicht erzeugten Etappen, Elternaufträgen und bekannten Wiederholungen. Das Lesen erzeugt keine Jobs, Kostenreservierungen oder gespeicherten Plandaten. Neue Seiten, Antworten, Elternänderungen und Pausen passen den Vorschlag an.
 
 - Die bisherigen Minutenwerte sind Mindestziele: standardmäßig 20 Minuten am Lerntag und 100 Minuten je lokaler Kalenderwoche. Eine Runde von 15 Minuten und eine Pause von 5 Minuten sind Empfehlungen. Weder Zielerreichung noch empfohlene Runden-/Pausendauer stoppen eine Übung. Eltern können die Zielwerte weiterhin festlegen.

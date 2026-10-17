@@ -20,6 +20,8 @@ import 'store_screens.dart';
 import 'notification_panel.dart';
 import 'google_login.dart';
 import 'learning_preparation_screen.dart';
+import 'progress_screen.dart';
+import 'grades_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -127,6 +129,8 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
           path.startsWith('/library/') ||
           path.startsWith('/learn/') ||
           path.startsWith('/learning-preparation/') ||
+          path.startsWith('/progress/') ||
+          path.startsWith('/grades/') ||
           path.startsWith('/unit/');
       if (protected && widget.state.user == null) {
         return path.startsWith('/bestell')
@@ -139,6 +143,7 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
       }
       if (path == '/' && widget.state.user != null) return '/app';
       if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
+      if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
       return null;
     },
     routes: [
@@ -242,6 +247,26 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/material/:id',
         builder: (context, s) =>
             MaterialScreen(widget.state, materialId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/progress/:id',
+        builder: (context, s) => ProgressScreen(
+          widget.state,
+          key: ValueKey(
+            'progress:${s.pathParameters['id']}:${widget.state.user?['id']}',
+          ),
+          childId: s.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/grades/:id',
+        builder: (context, s) => GradesScreen(
+          widget.state,
+          key: ValueKey(
+            'grades:${s.pathParameters['id']}:${widget.state.user?['id']}',
+          ),
+          childId: s.pathParameters['id']!,
+        ),
       ),
       GoRoute(
         path: '/unit/:id',

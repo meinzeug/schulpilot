@@ -818,6 +818,24 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         instructions += "\nSpätere Abrufprobe: Verwende neue Aufgaben, keine Frage aus previous_prompts. Übernimm required_subject und required_topic exakt."
         if payload.get("learning_goals"):
             instructions += " Bediene focus_goal_ids aus den gespeicherten learning_goals. Ordne jede Aufgabe dem passenden learning_goal_id zu; Lernziele unverändert erhalten."
+    if function in ("unit", "package") and not payload.get("review"):
+        instructions += (
+            "\nPädagogischer Ablauf: Erkläre genau den bestätigten Stoff in kleinen, altersgerechten Schritten. "
+            "Zeige bei einem im Material belegten Verfahren ein kurzes vollständig gelöstes Beispiel; "
+            "nenne sonst ein konkretes Beispiel aus dem Material. Lass danach dieselbe Grundidee mit "
+            "einer neuen, quellengebundenen Aufgabe selbst anwenden. Vermeide bloßes Abschreiben. "
+            "Bei Schwierigkeiten Hilfen zum nächsten Teilschritt anbieten, nicht sofort die Lösung verraten. "
+            "Nutze ausschließlich bereits erklärte Voraussetzungen. Schwierigkeit am bestätigten Stoff "
+            "und an der Klassenstufe ausrichten, nicht durch zusätzliche unbekannte Inhalte erhöhen."
+        )
+        if payload.get("instructional_support") == "guided_example":
+            instructions += (
+                " Der nächste Schritt braucht mehr Anleitung: ein besonders kleines Beispiel mit klaren "
+                "Zwischenschritten, danach eine ähnliche selbst zu lösende Aufgabe. Lernziele erhalten; "
+                "keine langen Zusatztexte und keine zusätzlichen Aufgaben außerhalb des vereinbarten Umfangs."
+            )
+        if function == "package":
+            instructions += " Beachte instructional_support je selected_groups-Eintrag: guided_example braucht besonders kleine erklärte Zwischenschritte."
     compact_free = (
         config.provider == "openrouter"
         and config.model.endswith(":free")

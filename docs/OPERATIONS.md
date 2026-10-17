@@ -1,5 +1,11 @@
 # Betrieb
 
+## Migration 0014 und Rückweg
+
+Release 1.3.0+28 ergänzt `school_grades` und `children.grade_planning_enabled`; keine vorhandenen Antworten, Lernzeiten, Quellen, Familien oder Providerdaten werden migriert/umgeschrieben. Die Standardfreigabe betrifft ausschließlich die neue optionale Notengewichtung. Bestehende Elternvorgaben bleiben unverändert; bereits vorbereitete Pakete ohne Noteneinträge behalten ihren bisherigen Planfingerprint. Noten werden über den normalen Familienexport gesichert und mit dem Kind gelöscht; der Wartungslauf hält dieselbe Höchstfrist von 365 Tagen wie für den Lernverlauf ein.
+
+`scripts/deploy.sh` sichert die projektspezifische Proxykonfiguration und vor der Migration die Datenbank einschließlich drainender Worker. Bei einem Fehler nach erfolgter Migration nicht automatisch das Schema zurücksetzen. Kompatiblen Code-Rückweg mit dem gesicherten vorherigen Release und `--rollback-compatible` aktivieren; zusätzliche Spalte/Tabelle stehen lassen. Das vorherige Programm kann weiter mit vorhandenen Accounts und Antworten arbeiten, zeigt die neue Notenverwaltung jedoch nicht. Eine Schema-Rückstufung würde neue Noteneinträge löschen und gehört nicht zum gewöhnlichen Rollback. Keine produktive Rücksicherung ohne separate Wiederherstellungsprüfung und Löschjournalabgleich.
+
 ## Bestehender Server
 
 `ssh dorfspy`, `91.99.217.84`, Ubuntu 24.04, vorhandenes Caddy 2.6.2 und PostgreSQL 16. Andere Anwendungen bleiben unverändert. Projektbenutzer `schulpilot`, Datenbank/Rolle `schulpilot` mit lokaler Peer-Authentifizierung, API ausschließlich `127.0.0.1:3240`. Datenbank und Caddy-Verwaltungsport bleiben lokal. Keine kostenpflichtigen Ressourcen bestellt.

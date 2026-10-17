@@ -82,15 +82,23 @@ def append_page(db, p, child, day_id):
 
 
 def planning_fingerprint(db, child):
+    from .db import SchoolGrade
+
     db.refresh(child)
     goals = [
         (a.id, a.revision, a.done)
         for a in db.scalars(select(Assignment).where(Assignment.child_id == child.id).order_by(Assignment.id))
     ]
-    return hashlib.sha256(json.dumps([child.grade, child.preferences, goals], sort_keys=True).encode()).hexdigest()
+    snapshot = [child.grade, child.preferences, goals]
+    grades = list(db.execute(select(SchoolGrade.id, SchoolGrade.revision).where(SchoolGrade.child_id == child.id).order_by(SchoolGrade.id)))
+    if grades or not child.grade_planning_enabled:
+        snapshot.append([child.grade_planning_enabled, [tuple(row) for row in grades]])
+    return hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()
 
 
 def package_plan(db, day, child):
+    from .grades import priorities, subject_key
+
     current = plan(db, child)
     available = current["available_minutes"] if day.school_date == local_day(child).isoformat() else 0
     # Mandatory parent/homework goals keep their existing place in the day.
@@ -124,10 +132,12 @@ def package_plan(db, day, child):
         if material.topic not in group["topics"]:
             group["topics"].append(material.topic)
     prefs = s.Preferences(**child.preferences)
+    grade_priorities = priorities(db, child)
     ranked = sorted(
         groups,
         key=lambda g: (
             g["subject"] not in prefs.focus_subjects,
+            -grade_priorities.get(subject_key(g["subject"]), 0),
             not any(t in prefs.repeat_topics for t in g["topics"]),
         ),
     )

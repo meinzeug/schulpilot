@@ -15,7 +15,10 @@ PARAGRAPHS = (
         "SCHULPILOT begleitet Familien beim Lernen. Wir speichern Elternzugänge, zugeordnete Kinderzugänge, "
         "notwendige Lernvorgaben und die innerhalb der App ausgeführten Aktivitäten. Kinder benötigen keine eigene E-Mail-Adresse. "
         "Eltern sehen ausschließlich in ihrer berechtigten Familie Materialien, Aufgaben, Antworten, Hinweise, Erklärungen, "
-        "Hilfewünsche und die näherungsweise aktive Lernzeit. Andere Apps, fremde Webseiten und das übrige Gerät werden nicht überwacht. "
+        "Hilfewünsche und die näherungsweise aktive Lernzeit. Eltern können freiwillig Schulnoten mit Fach, Datum und optionaler "
+        "Notiz verwalten und deren Gewichtung im Lernplan ausschalten. Die gespeicherten Noten und Notennotizen werden "
+        "nicht automatisch an die Lern-KI übermittelt; nur eine abgeleitete Unterstützungsstrategie wird ergänzt. "
+        "Andere Apps, fremde Webseiten und das übrige Gerät werden nicht überwacht. "
         "Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Materialien.",
     ),
     (
@@ -71,7 +74,7 @@ PARAGRAPHS = (
         "Speicherung, Sicherheit und Aufbewahrung",
         "Konto-, Lern- und Familiendaten liegen in der eigenen Datenbank auf dem SCHULPILOT-Server bei Hetzner. "
         "Private Materialien und Datenbank sind nicht öffentlich zugänglich. Sitzungen sind widerrufbar und Passwörter "
-        "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen und Nachrichten werden höchstens "
+        "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen, Schulnoteneinträge und Nachrichten werden höchstens "
         "365 Tage gespeichert; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere sieben Tage; "
         "tägliche Backups 14 Tage. Backups werden vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen. "
         "Technische Betriebsprotokolle enthalten keine Fotos, vollständigen Kinderantworten oder Zugangsdaten.",

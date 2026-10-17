@@ -30,6 +30,12 @@ class CollectionScreen extends StatelessWidget {
         ? 'Meine Hefte'
         : 'Heftseiten',
     actions: [
+      if (learning)
+        TextButton.icon(
+          onPressed: () => openRoute(context, '/progress/$childId'),
+          icon: const Icon(Icons.insights_rounded),
+          label: const Text('Lernstand'),
+        ),
       if (!learning && (state.isChild || state.canManage))
         OutlinedButton.icon(
           onPressed: () async {

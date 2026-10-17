@@ -11,6 +11,7 @@ import 'daily_plan_panel.dart';
 import 'preparation_card.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
+import 'practice_evidence.dart';
 import 'ui.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -582,6 +583,18 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         ? 'Hallo, ${state.user?['display_name'] ?? 'du'}!'
         : 'Lernüberblick',
     actions: [
+      if (!state.isChild) ...[
+        TextButton.icon(
+          onPressed: () => openRoute(context, '/progress/${widget.childId}'),
+          icon: const Icon(Icons.insights_rounded),
+          label: const Text('Fächer & Fortschritt'),
+        ),
+        TextButton.icon(
+          onPressed: () => openRoute(context, '/grades/${widget.childId}'),
+          icon: const Icon(Icons.school_outlined),
+          label: const Text('Noten'),
+        ),
+      ],
       if (state.isChild)
         IconButton(
           onPressed: refresh,
@@ -620,6 +633,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
             .length;
         final helpRequests =
             (data['day_summary']?['help_requests'] as num? ?? 0).toInt();
+        final seenTopics = <(String, String)>{};
+        final uniquePaths = (data['learning_paths'] as List? ?? [])
+            .where(
+              (path) => seenTopics.add((
+                path['subject'].toString().toLowerCase(),
+                path['topic'].toString().toLowerCase(),
+              )),
+            )
+            .toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -784,9 +806,43 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               for (final item in plan['today'] as List)
                 planTile(context, state, data, item, parent: true),
               const SizedBox(height: 24),
-              if ((data['learning_paths'] as List? ?? []).isNotEmpty) ...[
+              if (data['practice_summary'] is Map) ...[
+                heading('Fortschritt in allen Fächern'),
+                Panel(
+                  child: PracticeEvidence(Json.from(data['practice_summary'])),
+                ),
+                const SizedBox(height: 12),
+                for (final subject in data['subject_progress'] as List? ?? [])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Panel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            subject['subject'],
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          PracticeEvidence(Json.from(subject), compact: true),
+                        ],
+                      ),
+                    ),
+                  ),
+                TextButton.icon(
+                  onPressed: () =>
+                      openRoute(context, '/progress/${widget.childId}'),
+                  icon: const Icon(Icons.insights_rounded),
+                  label: const Text('Alle Fächer, Themen und Übungen'),
+                ),
+                const SizedBox(height: 24),
+              ],
+              if (uniquePaths.isNotEmpty) ...[
                 heading('Betreut weiterlernen'),
-                for (final path in data['learning_paths'] as List)
+                for (final path in uniquePaths)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Column(

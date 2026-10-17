@@ -212,11 +212,11 @@ def goal_states(db, unit):
     root, chain = root_and_units(db, unit)
     goals = goals_for(db, root)
     dates = {g["id"]: [] for g in goals}
+    practice = {g["id"]: {"practiced_tasks": 0, "independent_tasks": 0, "assisted_tasks": 0,
+                           "needs_practice_tasks": 0, "uncertain_tasks": 0, "attempts": 0} for g in goals}
     child = db.get(Child, unit.child_id)
     zone = ZoneInfo(s.Preferences(**child.preferences).timezone)
     for old in chain:
-        if old.status != "completed":
-            continue
         old_report = db.get(UnitCoaching, old.id)
         mapping = (
             {q["question_id"]: q["learning_goal_id"] for q in (old_report.report or {}).get("question_reviews", [])}
@@ -229,6 +229,19 @@ def goal_states(db, unit):
             goal_id = question.get("learning_goal_id") or mapping.get(question["id"])
             if goal_id in dates:
                 groups.setdefault(goal_id, []).append(by_id[question["id"]])
+        for goal_id, items in groups.items():
+            for item in items:
+                attempts = item["attempts"]
+                if not attempts:
+                    continue
+                count = practice[goal_id]
+                count["practiced_tasks"] += 1
+                count["attempts"] += len(attempts)
+                last = attempts[-1]
+                key = ("independent_tasks" if len(attempts) == 1 and not last["assisted"] else "assisted_tasks") if last["outcome"] == "correct" else "needs_practice_tasks" if last["outcome"] == "incorrect" else "uncertain_tasks"
+                count[key] += 1
+        if old.status != "completed":
+            continue
         helped = bool(
             db.scalar(
                 select(Activity.id).where(
@@ -265,6 +278,7 @@ def goal_states(db, unit):
     return [
         {
             **g,
+            "practice": practice[g["id"]],
             "successful_check_dates": dates[g["id"]],
             "successful_check_days": len(dates[g["id"]]),
             "secure_observation": len(dates[g["id"]]) >= 3
@@ -297,8 +311,13 @@ def focus_ids(db, unit, action):
     return [g["id"] for g in states[:2]]
 
 
-def progress(db, unit):
+def progress(db, unit, *, ledger=None):
+    from .learning_progress import read_ledger, topic_evidence, totals
+
     root, units = root_and_units(db, unit)
+    if ledger is None:
+        ledger = read_ledger(db, unit.child_id)
+    chain_ids = {u.id for u in units}
     child = db.get(Child, unit.child_id)
     prefs = s.Preferences(**child.preferences)
     completed = [u for u in units if u.status == "completed"]
@@ -344,6 +363,8 @@ def progress(db, unit):
         "minimum_span_days": 7,
         "secure_observation": secure and state == "secure",
         "completed_rounds": len(completed),
+        "practice": totals([row for row in ledger if row["id"] in chain_ids]),
+        "topic_practice": topic_evidence(ledger, root.subject, root.topic),
         "next_unit_id": pending.id if pending else None,
         "next_review": None
         if not sources_current
@@ -364,7 +385,9 @@ def progress(db, unit):
     }
 
 
-def paths(db, child_id):
+def paths(db, child_id, *, ledger=None):
+    from .learning_progress import read_ledger
+
     roots = list(
         db.scalars(
             select(LearningUnit)
@@ -378,7 +401,9 @@ def paths(db, child_id):
             .limit(100)
         )
     )
-    return [progress(db, root) for root in roots]
+    if ledger is None:
+        ledger = read_ledger(db, child_id)
+    return [progress(db, root, ledger=ledger) for root in roots]
 
 
 def plan_review(db, unit):

@@ -457,8 +457,12 @@ def process(job_id):
                 for u in db.scalars(select(LearningUnit).where(LearningUnit.school_day_id == day.id))
                 for q in u.questions
             ][-120:]
+            from .grades import subject_key
+            from .learning_guidance import strategies
+
             payload = {
                 "grade": child.grade,
+                "instructional_support": strategies(db, child).get(subject_key(block["subject"]), "practice_and_retrieval"),
                 "required_subject": block["subject"],
                 "required_topic": block["title"],
                 "material": {

@@ -77,6 +77,8 @@ def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, c
     week = []
     assigned = {}
     finished = {}
+    weighted_subjects = {}
+    weighted_plan = any(item.get("_grade_priority", 0) for item in pending)
     for offset in range(7):
         day = today + timedelta(days=offset)
         free = day.weekday() not in prefs.weekdays
@@ -125,7 +127,8 @@ def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, c
                 return (
                     not item.get("mandatory", False),
                     item.get("due") or "9999" if item.get("mandatory") else "9999",
-                    subjects.get(item["subject"], 0),
+                    (weighted_subjects if weighted_plan else subjects).get(item["subject"], 0) / (1 + item.get("_grade_priority", 0)),
+                    -item.get("_grade_priority", 0),
                     {"continue": 0, "review": 1, "parent_goal": 0, "material": 2}[item["reason"]],
                     lanes.get(recent, 0),
                     not recent,
@@ -147,6 +150,7 @@ def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, c
             public.update(planned_for=day.isoformat(), estimated_minutes=duration)
             items.append(public)
             subjects[item["subject"]] = subjects.get(item["subject"], 0) + duration
+            weighted_subjects[item["subject"]] = weighted_subjects.get(item["subject"], 0) + duration
             recent = bool(item.get("source_date") and item["source_date"] >= (day - timedelta(days=1)).isoformat())
             if item["reason"] == "material":
                 lanes[recent] = lanes.get(recent, 0) + 1

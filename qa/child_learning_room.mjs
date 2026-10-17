@@ -1,5 +1,6 @@
 // Public acceptance ONLY after an explicit deployment GO from the release owner.
 // Exactly one owned fixed demo, one unit job, four real Flutter task components.
+// Includes owned private grades and read-only subject/topic/round progress.
 // No external inference, provider writes, manual coaching or practice requests.
 // The protected journal is deliberately kept after a failure for explicit cleanup.
 import assert from 'node:assert/strict';
@@ -18,12 +19,14 @@ const requestHeaders = {'X-Schulpilot-Request': '1'};
 const widths = [320, 390, 1280];
 const maximumHeartbeats = 35;
 const intent = {login: null, start: null, introduction: null, answer: null, hint: null, ack: null};
+let gradeIntent = null;
 const knownUnits = new Set(), heartbeatUnits = new Set();
 const blocked = [], runtimeErrors = [], screenshots = [], responseTasks = new Set();
 let journal, browser, parent, child, page, phase = 'offline_checks';
 let writes = Promise.resolve();
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 const digest = value => createHash('sha256').update(value).digest('hex');
+const bodyDigest = value => digest(JSON.stringify(Object.fromEntries(Object.entries(value ?? {}).sort(([a], [b]) => a.localeCompare(b)))));
 
 class QaFailure extends Error {}
 function check(value, code) { if (!value) throw new QaFailure(code); }
@@ -128,10 +131,17 @@ async function makeContext(role, cookies = []) {
     const request = route.request(), pathname = new URL(request.url()).pathname;
     let body = null;
     try { body = request.postDataJSON(); } catch { /* The exact body guard rejects malformed JSON. */ }
-    if (role !== 'child' && !['GET', 'HEAD'].includes(request.method()) ||
-        !allowMutation(request.method(), pathname, body)) {
+    const gradeWrite = role === 'parent' && gradeIntent && request.method() === gradeIntent.method &&
+      pathname === gradeIntent.pathname && bodyDigest(body) === gradeIntent.body_digest;
+    if (!gradeWrite && (role !== 'child' && !['GET', 'HEAD'].includes(request.method()) ||
+        !allowMutation(request.method(), pathname, body))) {
       blocked.push({role, method: request.method(), path_fingerprint: digest(pathname)});
       return route.abort('blockedbyclient');
+    }
+    if (gradeWrite) {
+      gradeIntent = null;
+      journal.grade_ui_writes = (journal.grade_ui_writes ?? 0) + 1;
+      await save();
     }
     if (request.method() === 'POST') {
       if (pathname === '/api/auth/login') intent.login = null;
@@ -567,6 +577,74 @@ async function parentEvidence() {
   page = savedChildPage;
   await save();
 }
+
+async function practiceAndGrades() {
+  step('all_practice_visible_for_child_and_parent_by_subject_topic_and_round');
+  const kid = journal.demo.child_id, progressPath = '/children/' + kid + '/learning-progress';
+  const childProgress = await get(child, progressPath), parentProgress = await get(parent, progressPath);
+  check(JSON.stringify(childProgress) === JSON.stringify(parentProgress), 'parent_child_practice_must_match');
+  const t = parentProgress.totals;
+  check(t.practiced_tasks === 4 && t.attempts === 5 && t.independent_tasks === 3 && t.assisted_tasks === 1 &&
+    t.needs_practice_tasks === 0 && t.uncertain_tasks === 0, 'all_saved_practice_must_count');
+  await open('/progress/' + kid);
+  await reveal(page.getByText('4 Aufgaben geübt', {exact: true}).first());
+  await tap(page.getByText('Mathematik', {exact: true}));
+  await tap(page.getByText('Brüche', {exact: true}));
+  await reveal(page.getByText(/Runde vom/));
+  await screenshot('child-all-practice-rounds-390');
+  const childPage = page;
+  page = await parent.newPage();
+  await page.setViewportSize({width: 1280, height: 844});
+  await open('/progress/' + kid);
+  await reveal(button('Noten'));
+  await screenshot('parent-subject-progress-1280');
+  const gradePath = '/children/' + kid + '/grades';
+  await open('/grades/' + kid);
+  await tap(button('Note eintragen'));
+  await type(page.getByRole('textbox', {name: 'Fach', exact: true}), 'Mathematik');
+  await type(page.getByRole('textbox', {name: 'Thema (optional)', exact: true}), 'Brüche');
+  await type(page.getByRole('textbox', {name: 'Note', exact: true}), '5');
+  const before = await get(parent, gradePath);
+  check(before.items.length === 0 && before.can_manage === true && before.planning_enabled === true,
+    'owned_grade_list_must_initially_be_empty');
+  const body = {subject: 'Mathematik', topic: 'Brüche', scale: 'grade_1_6', value: 5, kind: 'test',
+    weight: 1, assessed_on: before.today, note: ''};
+  gradeIntent = {method: 'POST', pathname: '/api' + gradePath, body_digest: bodyDigest(body)};
+  const saved = await uiResponse('POST', gradePath, () => tap(button('Speichern')));
+  check(saved.status() === 201, 'explicit_grade_ui_save_failed');
+  const grade = await saved.json();
+  check(uuid(grade.id) && grade.value === 5 && grade.subject === 'Mathematik', 'stored_grade_must_match');
+  journal.grade_id = grade.id;
+  await save();
+  await reveal(page.getByText('Notenschnitt: 5', {exact: true}));
+  const focused = await get(parent, gradePath);
+  check(focused.focus[0]?.priority === 2, 'school_grade_must_change_subject_priority');
+  for (const width of widths) {
+    await page.setViewportSize({width, height: 844});
+    await open('/grades/' + kid);
+    await reveal(page.getByText('Notenschnitt: 5', {exact: true}));
+    await screenshot('parent-private-grades-' + width);
+  }
+  const goalBody = {mandatory: true}, goalPath = gradePath + '/' + grade.id + '/goal';
+  gradeIntent = {method: 'POST', pathname: '/api' + goalPath, body_digest: bodyDigest(goalBody)};
+  await tap(button('Passendes Lernziel anlegen'));
+  const createdGoal = await uiResponse('POST', goalPath, () => tap(button('Lernziel anlegen')));
+  check(createdGoal.status() === 200, 'explicit_source_bound_goal_failed');
+  const goal = await createdGoal.json();
+  check(goal.material_id === journal.demo.material_id && goal.mandatory === true,
+    'grade_goal_requires_existing_owned_confirmed_material');
+  const privateChild = await child.request.get(base + '/api' + gradePath, {maxRedirects: 0});
+  check(privateChild.status() === 403, 'child_cannot_read_parent_school_grades');
+  const after = await get(parent, progressPath);
+  check(JSON.stringify(after.totals) === JSON.stringify(parentProgress.totals),
+    'a_grade_or_goal_cannot_fabricate_practice');
+  journal.progress_grades = {practice: t, parent_child_identical: true, hierarchy_ui: true,
+    grade_ui_saved: true, source_bound_goal_ui_created: true, grade_priority: 2,
+    grade_private_from_child: true, grades_widths: widths, ai_jobs_from_grade_actions: 0};
+  await save();
+  await page.close();
+  page = childPage;
+}
 async function cleanup() {
   step('normal_account_deletion_and_both_session_revocations');
   for (const context of [parent, child]) await Promise.all(context.pages().map(opened => opened.close()));
@@ -657,6 +735,7 @@ async function main() {
       await exerciseLoop();
       await completionAndContinuation();
       await parentEvidence();
+      await practiceAndGrades();
       await zeroUsage('after');
       check(blocked.length === 0 && runtimeErrors.length === 0, 'unexpected_mutation_or_runtime_layout_failure');
       check(!journal.observer_failed && journal.heartbeat_responses?.every(value => value.http_status === 200),
@@ -687,6 +766,7 @@ async function main() {
       last_feedback_before_completion: journal.last_feedback_seen_before_completion === true,
       saved_facts: journal.saved_facts ?? null, completion_widths: journal.completion_widths ?? [],
       continuation: journal.continuation ?? null, parent_answers_ui_verified: journal.parent_answers_ui_verified === true,
+      progress_grades: journal.progress_grades ?? null, grade_ui_writes: journal.grade_ui_writes ?? 0,
       usage_before: journal.usage?.before ?? null, usage_after: journal.usage?.after ?? null,
       ordinary_ui_heartbeat_requests: journal.heartbeat_posts ?? 0,
       heartbeat_response_statuses_observed: journal.heartbeat_responses?.length ?? 0,

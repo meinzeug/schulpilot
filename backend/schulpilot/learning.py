@@ -255,7 +255,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "not_before": unit.not_before,
         "coaching": coaching.view(db, unit),
         "learning_progress": coaching.progress(db, unit)
-        if include_progress and (unit.status == "completed" or unit.learning_root_id)
+        if include_progress
         else None,
         "created": unit.created,
         "completed": unit.completed,
@@ -335,9 +335,11 @@ def summary(db, child, days, *, learning_paths=None):
 
 def plan(db, child, *, learning_paths=None):
     from .coaching import paths
+    from .grades import priorities, subject_key
 
     prefs = s.Preferences(**child.preferences)
     today = local_day(child)
+    grade_priorities = priorities(db, child)
     units = list(
         db.scalars(
             select(LearningUnit)
@@ -538,6 +540,20 @@ def plan(db, child, *, learning_paths=None):
         if unit.completed and unit.completed >= start and unit.school_day_id:
             key = f"{unit.school_day_id}:{unit.subject}"
             completed_chains[key] = completed_chains.get(key, 0) + 1
+    # A grade changes emphasis, never daily capacity, release dates or answers.
+    # If all ordinary rounds in a priority subject are done, offer one bounded
+    # new practice from its confirmed material instead of manufacturing a topic.
+    for key, priority in grade_priorities.items():
+        if not any(subject_key(item["subject"]) == key for item in candidates):
+            material = next((m for m in reversed(confirmed_materials) if subject_key(m.subject) == key), None)
+            if material and not any(u.status != "completed" and u.material_id == material.id for u in units):
+                candidates.append({"kind": "material", "id": material.id, "topic": material.topic,
+                                   "subject": material.subject, "mandatory": False, "status": "ready",
+                                   "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes)})
+    for item in candidates:
+        item["_grade_priority"] = grade_priorities.get(subject_key(item["subject"]), 0)
+        if item["_grade_priority"]:
+            item["focus_reason"] = "Diesen Stoff üben wir besonders regelmäßig."
     proposal = distribute(
         candidates,
         prefs,
@@ -610,6 +626,10 @@ def plan(db, child, *, learning_paths=None):
                 "reason": "material",
             }
         )
+    optional.sort(key=lambda item: (
+        item.get("status") not in ("active", "paused"), not item.get("mandatory", False),
+        -grade_priorities.get(subject_key(item["subject"]), 0),
+    ))
     return {
         **proposal,
         "date": today.isoformat(),
@@ -631,6 +651,8 @@ def plan(db, child, *, learning_paths=None):
         "weekly_used_minutes_approx": round(weekly_seconds / 60, 1),
         "weekly_remaining_minutes": (weekly_remaining + 59) // 60,
         "voluntary": optional,
+        "subject_focus": [{"subject": name, "priority": priority, "reason": "Schwerpunkt aus den eingetragenen Schulleistungen"}
+                          for name, priority in sorted({item["subject"]: item["_grade_priority"] for item in candidates if item["_grade_priority"]}.items())],
         "can_continue_voluntarily": bool(optional),
         "optional_learning": True,
         "completed_portion_minutes": completed_daily,
@@ -690,6 +712,7 @@ def no_new_pages(child_id: str, p=Depends(child_user), db=Depends(get_db)):
 @router.get("/children/{child_id}/overview")
 def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, compact: bool = False):
     from .coaching import paths
+    from .learning_progress import read_ledger, subject_evidence, totals
 
     child = child_access(db, p, child_id)
     resume_id = feedback_resume_id(db, child.id)
@@ -704,7 +727,9 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         .where(Job.child_id == child.id, Job.kind == "unit", Job.status.in_(["queued", "running"]))
         .order_by(Job.created, Job.id).limit(1)
     )
-    learning_paths = paths(db, child.id)
+    ledger = read_ledger(db, child.id)
+    learning_paths = paths(db, child.id, ledger=ledger)
+    subject_progress = subject_evidence(ledger)
     days = list(
         db.scalars(
             select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
@@ -820,6 +845,9 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
             for m in db.scalars(select(Mastery).where(Mastery.child_id == child.id).limit(3 if compact else None))
         ],
         "learning_paths": learning_paths[:3] if compact else learning_paths,
+        "practice_summary": totals(ledger),
+        "subject_progress": subject_progress[:4] if compact else subject_progress,
+        "subject_count": len(subject_progress),
         "messages": [
             {
                 "id": m.id,

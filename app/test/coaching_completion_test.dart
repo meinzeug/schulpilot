@@ -503,6 +503,9 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(find.text('3 von 3 Prüftagen'), findsNothing);
+        await tester.tap(find.text('Was bleibt über mehrere Tage hängen?'));
+        await tester.pumpAndSettle();
         expect(find.text('3 von 3 Prüftagen'), findsOneWidget);
         expect(
           find.text('Wiederholungen über mindestens 7 Tage'),

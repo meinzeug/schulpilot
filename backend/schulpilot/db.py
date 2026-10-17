@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -148,6 +149,7 @@ class Child(Base):
     school_type = Column(String(80), default="", nullable=False)
     region = Column(String(80), default="", nullable=False)
     preferences = Column(JSON, default=dict, nullable=False)
+    grade_planning_enabled = Column(Boolean, default=True, server_default=true(), nullable=False)
 
 
 class Session(Base):
@@ -359,6 +361,27 @@ class UnitSource(Base):
     unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), primary_key=True)
     material_id = Column(ForeignKey("materials.id", ondelete="CASCADE"), primary_key=True)
     revision = Column(Integer, nullable=False)
+
+
+class SchoolGrade(Base):
+    __tablename__ = "school_grades"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    subject = Column(String(80), nullable=False)
+    topic = Column(String(160), default="", nullable=False)
+    kind = Column(String(20), nullable=False)
+    scale = Column(String(12), nullable=False)
+    value = Column(Numeric(4, 2), nullable=False)
+    weight = Column(Integer, default=1, nullable=False)
+    assessed_on = Column(String(10), nullable=False)
+    note = Column(String(500), default="", nullable=False)
+    assignment_id = Column(ForeignKey("assignments.id", ondelete="SET NULL"))
+    request_key = Column(String(80))
+    request_digest = Column(String(64))
+    revision = Column(Integer, default=1, server_default="1", nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    updated = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_grade_request"),)
 
 
 class TutorTurn(Base):

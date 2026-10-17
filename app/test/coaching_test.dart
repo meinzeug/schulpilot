@@ -197,6 +197,11 @@ void main() {
       await tester.ensureVisible(progress);
       await tester.tap(progress);
       await tester.pumpAndSettle();
+      expect(find.text('0 von 3 Prüftagen'), findsNothing);
+      final retention = find.text('Was bleibt über mehrere Tage hängen?');
+      await tester.ensureVisible(retention);
+      await tester.tap(retention);
+      await tester.pumpAndSettle();
       expect(find.text('0 von 3 Prüftagen'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

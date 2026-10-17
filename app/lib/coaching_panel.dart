@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'lesson_voice.dart';
 import 'learning_next_step.dart';
+import 'practice_evidence.dart';
 import 'ui.dart';
 
 class LearningProgressPanel extends StatelessWidget {
@@ -11,57 +12,33 @@ class LearningProgressPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final requiredDays = (progress['required_check_days'] as num? ?? 3).toInt();
     final checkedDays = (progress['successful_check_days'] as num? ?? 0)
         .toInt();
+    final requiredDays = (progress['required_check_days'] as num? ?? 3).toInt();
     final minimumSpan = (progress['minimum_span_days'] as num? ?? 7).toInt();
     final secure = progress['secure_observation'] == true;
+    final practice = progress['topic_practice'] ?? progress['practice'];
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: mint,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.insights_rounded, color: teal),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${progress['subject']} · ${progress['topic']}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      progress['label'],
-                      style: const TextStyle(color: muted, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           Text(
-            '$checkedDays von $requiredDays Prüftagen',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            '${progress['subject']} · ${progress['topic']}',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Wiederholungen über mindestens $minimumSpan Tage',
-            style: const TextStyle(color: muted, fontSize: 12),
+          const SizedBox(height: 16),
+          if (practice is Map)
+            PracticeEvidence(Json.from(practice))
+          else
+            Text(
+              progress['completed_rounds'] is num
+                  ? '${progress['completed_rounds']} Runden bearbeitet'
+                  : 'Deine bearbeiteten Runden bleiben gespeichert.',
+            ),
+          const SizedBox(height: 10),
+          const Text(
+            'Alle Übungen zu diesem Thema zählen – auch freiwillige.',
+            style: TextStyle(color: muted, fontSize: 13),
           ),
           if (secure) ...[
             const SizedBox(height: 10),
@@ -69,26 +46,32 @@ class LearningProgressPanel extends StatelessWidget {
           ],
           if (progress['next_review'] != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 12),
               child: Text(
                 'Wiederholen: ${progress['next_review']}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: 8),
             title: const Text(
-              'Fortschritt im Detail',
+              'Was bleibt über mehrere Tage hängen?',
               style: TextStyle(fontSize: 13),
             ),
+            childrenPadding: const EdgeInsets.only(bottom: 12),
             children: [
               const Text(
-                'Wir beobachten neue Aufgaben an verschiedenen Tagen. Nur selbstständig richtige Antworten zählen als erfolgreicher Prüftag. Eine einzelne Runde zeigt noch nicht, was langfristig hängen bleibt.',
-                style: TextStyle(fontSize: 13, color: muted),
+                'Deine Übungen sind oben mitgezählt. Neue Aufgaben ohne Hilfe an späteren Tagen zeigen zusätzlich, was du noch weißt.',
+                style: TextStyle(color: muted, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$checkedDays von $requiredDays Prüftagen',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Wiederholungen über mindestens $minimumSpan Tage',
+                style: const TextStyle(color: muted, fontSize: 12),
               ),
               for (final goal in progress['learning_goals'] as List? ?? [])
                 Padding(
@@ -97,27 +80,23 @@ class LearningProgressPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${goal['label']} · ${goal['successful_check_days']} Prüftage',
+                        goal['label'],
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      if ((goal['successful_check_dates'] as List? ?? [])
-                          .isNotEmpty)
-                        Text(
-                          'Geprüft am: ${(goal['successful_check_dates'] as List).join(', ')}',
-                          style: const TextStyle(fontSize: 12, color: muted),
+                      if (goal['practice'] is Map) ...[
+                        const SizedBox(height: 8),
+                        PracticeEvidence(
+                          Json.from(goal['practice']),
+                          compact: true,
                         ),
+                      ],
                       Text(
-                        'Quelle: „${goal['source_excerpt']}“',
-                        style: const TextStyle(fontSize: 12, color: muted),
+                        '${goal['successful_check_days']} spätere Prüftage',
+                        style: const TextStyle(color: muted, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 12),
-              Text(
-                progress['notice'],
-                style: const TextStyle(fontSize: 12, color: muted),
-              ),
             ],
           ),
         ],
@@ -700,6 +679,13 @@ class _ChildCoachingPanel extends StatelessWidget {
             leading: const Icon(Icons.insights_rounded, color: teal),
             title: const Text('Mein Lernstand'),
             children: [LearningProgressPanel(progress!)],
+          ),
+        if (unit['child_id'] is String)
+          TextButton.icon(
+            onPressed: () =>
+                openRoute(context, '/progress/${unit['child_id']}'),
+            icon: const Icon(Icons.insights_rounded),
+            label: const Text('Alle Fächer ansehen'),
           ),
       ],
     );

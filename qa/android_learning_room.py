@@ -1,4 +1,4 @@
-"""Native APK27 acceptance; --check is offline, --run requires Root's OTA GO.
+"""Native APK28 acceptance; --check is offline, --run follows verified OTA.
 
 Only emulator-5580 / schulpilot-qa-api36, one newly owned fixed Demo and one
 synthetic four-component unit. No provider, audio, installer or clock changes.
@@ -17,10 +17,10 @@ from pathlib import Path
 import android_minimum_time as shared
 import android_smoke as native
 
-VERSION = 27
-MARKER = "own-android-learning-room-v1"
+VERSION = 28
+MARKER = "own-android-learning-room-v2"
 PRIVATE = native.ARTIFACTS / ".learning-room-android-qa.json"
-REPORT = native.ARTIFACTS / "learning-room-native-result.json"
+REPORT = native.ARTIFACTS / "progress-grades-native-result.json"
 PREFERENCES = {"weekdays": list(range(7)), "daily_minutes": 20, "weekly_minutes": 20,
                "session_minutes": 5, "break_minutes": 5, "timezone": "Europe/Berlin"}
 PHASE = "offline_check"
@@ -57,7 +57,7 @@ def target():
     require(name == "schulpilot-qa-api36", "dedicated_avd_required")
     package = native.adb("shell", "dumpsys", "package", native.PACKAGE).decode(errors="replace")
     version = re.search(r"\bversionCode=(\d+)", package)
-    require(version and int(version[1]) == VERSION, "root_ota_to_apk27_required")
+    require(version and int(version[1]) == VERSION, "root_ota_to_apk28_required")
 
 
 def shot(label):
@@ -415,6 +415,33 @@ def finish_checks(parent, data, report):
         wait_fragment(f"{seconds // 60}:{seconds % 60:02d} / 20 Min.")
         shot("parent-child-saved-time")
         save_check(data, "native_parent_readback")
+    if not checks.get("native_progress_grades"):
+        step("native_parent_subject_progress_and_private_school_grades")
+        child_id = data["demo"]["child_id"]
+        evidence = native.check(parent.get(f"/children/{child_id}/learning-progress"))["totals"]
+        require(evidence["practiced_tasks"] == 4 and evidence["attempts"] == 5
+                and evidence["independent_tasks"] == 3 and evidence["assisted_tasks"] == 1,
+                "all_four_tasks_and_five_attempts_must_count")
+        listing = native.check(parent.get(f"/children/{child_id}/grades"))
+        grade = native.check(parent.post(f"/children/{child_id}/grades", json={
+            "subject": "Mathematik", "topic": "Brüche", "scale": "grade_1_6", "value": 5,
+            "kind": "test", "weight": 1, "assessed_on": listing["today"], "note": "Künstlicher Gerätetest",
+        }, headers={"Idempotency-Key": "native-progress-grade-" + data["demo"]["child_id"]}), 201)
+        require(grade["value"] == 5, "own_grade_must_match")
+        for _ in range(3):
+            native.adb("shell", "input", "swipe", "900", "800", "900", "1700", "300")
+        press("Fächer & Fortschritt")
+        wait_fragment("4 Aufgaben geübt")
+        require("3 alleine gelöst" in text() and "1 mit Hilfe gelöst" in text(), "native_practice_categories_missing")
+        shot("all-subject-practice")
+        press("Mathematik")
+        wait_fragment("Brüche")
+        shot("subject-topic-practice")
+        native.adb("shell", "input", "keyevent", "4")
+        press("Noten")
+        wait_fragment("Notenschnitt: 5")
+        shot("parent-private-grades")
+        save_check(data, "native_progress_grades")
     # Observe the child's independent ordinary session and role guard; never
     # answer, start, hint or send a heartbeat through this API session.
     if not data.get("observer_token"):
@@ -461,7 +488,7 @@ def main():
     args = parser.parse_args()
     if args.check:
         ast.parse(Path(__file__).read_text())
-        require(VERSION == 27 and native.ADB[-2:] == ["-s", "emulator-5580"], "offline_target_changed")
+        require(VERSION == 28 and native.ADB[-2:] == ["-s", "emulator-5580"], "offline_target_changed")
         require(PRIVATE.name == ".learning-room-android-qa.json", "private_journal_changed")
         print(json.dumps({"offline_check": True, "network_calls": 0, "adb_calls": 0,
                           "required_apk_code": VERSION, "maximum_own_demos": 1,
