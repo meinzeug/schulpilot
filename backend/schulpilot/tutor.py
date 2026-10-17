@@ -472,6 +472,10 @@ def purge_source_turns(db, material_ids, *, child_id=None):
     the material/account deletion workflow. Job payloads contain no private text.
     """
     material_ids = set(material_ids)
+    if child_id:
+        from .vocabulary import purge_sources
+
+        purge_sources(db, material_ids, child_id)
     query = select(TutorTurn.id, TutorTurn.source_revisions)
     if child_id:
         query = query.where(TutorTurn.child_id == child_id)

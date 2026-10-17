@@ -37,7 +37,7 @@ def reason(item):
         return "parent_goal"
     if item.get("status") in ("active", "paused"):
         return "continue"
-    if item["kind"] == "review":
+    if item["kind"] in ("review", "vocabulary"):
         return "review"
     return "material"
 

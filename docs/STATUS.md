@@ -1,4 +1,35 @@
-# Aktueller Stand · Jede Übung zählt, Fächer und Schulnoten · 17.10.2026
+# Aktueller Stand · Sprachausbau 1.4.0+29 · 17.10.2026
+
+**Lokaler Releasekandidat:** Eigener bestätigter Wortschatz aus normalem Fotoimport,
+Text oder manuellen Paaren; Sammlungen, Suche/Seitenteilung, Korrekturen und
+Revisionen; kleine echte Abrufrunden, gespeicherte Rückmeldung und fähigkeits-/
+richtungsgebundene Wiedervorlage. Sprachauswertung und Erzeugung sind vom
+Mathematik-/Sachpfad getrennt. Tagesplan/Elternansicht und neutrale gebündelte
+Erinnerungen integriert. 18 begrenzte Sprachprojektarten verbinden Wortschatz,
+bestätigte Quellen, eigene Entwürfe und echte Aufgaben. Details und die 20
+Werkzeugzuordnungen: [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).
+
+**Abnahme vor Aktivierung:** 784 isolierte PostgreSQL-16-Tests im Gesamtlauf
+bestanden (437,99 s), anschließend 94 gezielte Prüfungen zu Sprachkern, Quellen,
+Bibliothek und Feedback bestanden (59,90 s). Alle 285 Fluttertests bestanden;
+der zusätzliche vollständige Wortdialog fand und beseitigte einen mobilen
+Dropdownüberlauf und zu früh entsorgte Textcontroller. Flutter-Analyse ohne
+Befund. Web, signierte Direct-APK und Play-AAB 1.4.0+29 gebaut; bundletool,
+Signierung, 16-KB-Ausrichtung geprüft. APK 64.806.733 Bytes, SHA-256
+`b11fd27a59ac0283d1eb613a77b26f2d10eb4253e92126f315bc132b89e81945`.
+Geheimnisprüfung über Quellen, Web, APK/AAB und Übergaben: 16 tatsächliche
+Geheimniswerte einschließlich der eigenen künstlichen Testzugänge, null Treffer.
+Bestehende Kotlin-Pluginhinweise bleiben ohne Buildfehler; keine Abhängigkeit aktualisiert.
+
+**Betriebsschritt noch offen:** Commit/Push, bestehende Projektsicherung,
+Migration 0014 → 0015, Aktivierung, echte öffentliche Foto-/Provider-/Browser-
+und Emulatorprüfung. Bis zur unten ausdrücklich ergänzten Aktivierungsbestätigung
+läuft öffentlich weiter 1.3.0+28 / 8770118. Das normale künstliche Testkonto wurde
+über den echten E-Mail-Weg verifiziert; private Zugangsdaten bleiben ausschließlich
+in der ignorierten lokalen Prüffortsetzung. Keine echten Kinderdaten verwendet.
+Echte Mikrofon-/Lautsprecheraudio und physische Telefonabnahme bleiben getrennt.
+
+## Vorheriger geprüfter Produktstand
 
 Quellversion **1.3.0+28** für Flutter Web und native Android-App. Das zusammenhängende [Lernmodell](LEARNING_MODEL.md) verbindet bestätigten Heft-/Arbeitsheftstoff, schulische Schwerpunkte, kurze Erklärungen mit belegten Beispielen, eigene Anwendung, gestufte Hilfe und spätere Abrufe. IES/WWC und die EEF-Leitfäden wurden tatsächlich erneut geprüft; Umsetzung und Schwellen bleiben Produktentscheidungen, keine Garantie besserer Schulnoten.
 

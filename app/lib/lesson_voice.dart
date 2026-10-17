@@ -13,8 +13,14 @@ class LessonVoiceFailure implements Exception {
 
 /// Injectable boundary: tests exercise controls without claiming device audio.
 abstract class LessonVoiceAdapter {
-  Future<void> read(String text, {required bool Function() isActive});
+  Future<void> read(
+    String text, {
+    required bool Function() isActive,
+    String locale = 'de-DE',
+    bool slow = false,
+  });
   Future<void> listen({
+    String locale = 'de-DE',
     required bool Function() isActive,
     required VoidCallback onStarted,
     required ValueChanged<String> onText,
@@ -44,18 +50,31 @@ class LessonVoiceSession extends ChangeNotifier {
   bool _active(Object owner, int generation) =>
       owns(owner) && generation == _generation;
 
-  Future<void> read(Object owner, String text) async {
-    if (_disposed || text.trim().isEmpty) return;
+  Future<bool> read(
+    Object owner,
+    String text, {
+    String locale = 'de-DE',
+    bool slow = false,
+  }) async {
+    if (_disposed || text.trim().isEmpty) return false;
     final generation = ++_generation;
     _owner = owner;
     mode = LessonVoiceMode.reading;
     message = null;
     notifyListeners();
     try {
-      await adapter.cancel();
-      if (!_active(owner, generation)) return;
-      await adapter.read(text, isActive: () => _active(owner, generation));
-      if (_active(owner, generation)) _finish();
+      await adapter.cancel().timeout(const Duration(seconds: 3));
+      if (!_active(owner, generation)) return false;
+      await adapter.read(
+        text,
+        locale: locale,
+        slow: slow,
+        isActive: () => _active(owner, generation),
+      );
+      if (_active(owner, generation)) {
+        _finish();
+        return true;
+      }
     } catch (error) {
       if (_active(owner, generation)) {
         _fail(
@@ -66,9 +85,14 @@ class LessonVoiceSession extends ChangeNotifier {
         );
       }
     }
+    return false;
   }
 
-  Future<void> listen(Object owner, ValueChanged<String> onText) async {
+  Future<void> listen(
+    Object owner,
+    ValueChanged<String> onText, {
+    String locale = 'de-DE',
+  }) async {
     if (_disposed) return;
     final generation = ++_generation;
     _owner = owner;
@@ -81,9 +105,10 @@ class LessonVoiceSession extends ChangeNotifier {
       if (_active(owner, generation)) unawaited(stop(owner: owner));
     });
     try {
-      await adapter.cancel();
+      await adapter.cancel().timeout(const Duration(seconds: 3));
       if (!_active(owner, generation)) return;
       await adapter.listen(
+        locale: locale,
         isActive: () => _active(owner, generation),
         onStarted: () {
           if (_active(owner, generation)) {
@@ -149,7 +174,7 @@ class LessonVoiceSession extends ChangeNotifier {
     mode = LessonVoiceMode.idle;
     if (active) notifyListeners();
     try {
-      await adapter.cancel();
+      await adapter.cancel().timeout(const Duration(seconds: 3));
     } catch (_) {
       // Stopping never logs provider callbacks, audio or recognized words.
     }
@@ -176,39 +201,66 @@ class _DeviceLessonVoice implements LessonVoiceAdapter {
   Completer<void>? _readingCancelled;
 
   @override
-  Future<void> read(String text, {required bool Function() isActive}) async {
+  Future<void> read(
+    String text, {
+    required bool Function() isActive,
+    String locale = 'de-DE',
+    bool slow = false,
+  }) async {
     final tts = _tts ??= FlutterTts();
     if (!isActive()) return;
-    final available = await tts.isLanguageAvailable('de-DE');
+    final available = await tts.isLanguageAvailable(locale);
     if (!isActive()) return;
     if (available != true && available != 1) {
-      throw const LessonVoiceFailure(
-        'Eine deutsche Vorlesestimme fehlt. Prüfe die Spracheinstellungen deines Geräts.',
+      throw LessonVoiceFailure(
+        'Eine Vorlesestimme für $locale fehlt. Prüfe die Spracheinstellungen deines Geräts.',
       );
     }
-    await tts.setLanguage('de-DE');
-    // Prefer a known offline German voice; do not claim that other voices are
-    // offline. Engine/voice processing remains controlled by the device.
+    final selected = await tts.setLanguage(locale);
+    if (selected == 0 || selected == false) {
+      throw LessonVoiceFailure(
+        'Die Vorlesestimme für $locale konnte nicht gewählt werden.',
+      );
+    }
+    // Never silently substitute a different language/variant. Device voices
+    // may use a network service; we do not claim offline processing.
     final voices = await tts.getVoices;
     if (!isActive()) return;
     if (voices is List) {
-      final local = voices
+      final matches = voices
           .whereType<Map>()
           .where(
             (voice) =>
                 voice['locale'].toString().replaceAll('_', '-').toLowerCase() ==
-                    'de-de' &&
-                ['0', 'false'].contains(voice['network_required'].toString()),
+                locale.toLowerCase(),
           )
-          .firstOrNull;
+          .toList();
+      final local =
+          matches
+              .where(
+                (voice) => [
+                  '0',
+                  'false',
+                ].contains(voice['network_required'].toString()),
+              )
+              .firstOrNull ??
+          matches.firstOrNull;
       if (local != null && local['name'] is String) {
         await tts.setVoice({
           'name': local['name'] as String,
           'locale': local['locale'].toString(),
         });
+      } else {
+        throw LessonVoiceFailure(
+          'Eine passende Vorlesestimme für $locale fehlt. Du kannst weiter lesen und tippen.',
+        );
       }
+    } else {
+      throw LessonVoiceFailure(
+        'Die Vorlesestimme für $locale konnte nicht geprüft werden.',
+      );
     }
-    await tts.setSpeechRate(.43);
+    await tts.setSpeechRate(slow ? .28 : .43);
     await tts.awaitSpeakCompletion(true);
     final cancelled = Completer<void>();
     _readingCancelled = cancelled;
@@ -241,6 +293,7 @@ class _DeviceLessonVoice implements LessonVoiceAdapter {
 
   @override
   Future<void> listen({
+    String locale = 'de-DE',
     required bool Function() isActive,
     required VoidCallback onStarted,
     required ValueChanged<String> onText,
@@ -274,22 +327,23 @@ class _DeviceLessonVoice implements LessonVoiceAdapter {
         'Mikrofon oder Spracheingabe ist hier nicht verfügbar. Du kannst weiter tippen.',
       );
     }
-    var locale = 'de-DE';
+    var deviceLocale = locale;
     if (!kIsWeb) {
       final locales = await speech.locales();
       if (!isActive()) return;
       final german = locales
           .where(
             (value) =>
-                value.localeId.replaceAll('_', '-').toLowerCase() == 'de-de',
+                value.localeId.replaceAll('_', '-').toLowerCase() ==
+                locale.toLowerCase(),
           )
           .firstOrNull;
       if (german == null) {
-        throw const LessonVoiceFailure(
-          'Deutsche Spracheingabe fehlt auf diesem Gerät. Du kannst weiter tippen.',
+        throw LessonVoiceFailure(
+          'Spracheingabe für $locale fehlt auf diesem Gerät. Du kannst weiter tippen.',
         );
       }
-      locale = german.localeId;
+      deviceLocale = german.localeId;
     }
     if (!isActive()) return;
     await speech.listen(
@@ -297,7 +351,7 @@ class _DeviceLessonVoice implements LessonVoiceAdapter {
         if (isActive()) onText(result.recognizedWords);
       },
       listenOptions: stt.SpeechListenOptions(
-        localeId: locale,
+        localeId: deviceLocale,
         listenFor: const Duration(seconds: 30),
         pauseFor: const Duration(seconds: 4),
         partialResults: true,
@@ -377,11 +431,19 @@ mixin _VoiceLifecycle<T extends StatefulWidget>
 
 class ReadAloudButton extends StatefulWidget {
   final String text;
+  final String locale;
+  final bool slow;
+  final Future<void> Function()? beforeRead;
+  final Future<void> Function()? onReadCompleted;
   final bool enabled, iconOnly;
   final LessonVoiceSession? voice;
   const ReadAloudButton({
     super.key,
     required this.text,
+    this.locale = 'de-DE',
+    this.slow = false,
+    this.beforeRead,
+    this.onReadCompleted,
     this.enabled = true,
     this.iconOnly = false,
     this.voice,
@@ -418,7 +480,10 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
       );
       voice.addListener(voiceChanged);
     }
-    if (!widget.enabled || oldWidget.text != widget.text) {
+    if (!widget.enabled ||
+        oldWidget.text != widget.text ||
+        oldWidget.locale != widget.locale ||
+        oldWidget.slow != widget.slow) {
       unawaited(voice.stop(owner: owner));
     }
   }
@@ -443,12 +508,40 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
   @override
   Widget build(BuildContext context) {
     final active = voice.owns(owner);
-    final label = active ? 'Vorlesen stoppen' : 'Vorlesen';
-    void pressed() {
+    final label = active
+        ? 'Vorlesen stoppen'
+        : widget.slow
+        ? 'Langsam vorlesen'
+        : 'Vorlesen';
+    Future<void> pressed() async {
       if (active) {
         unawaited(voice.stop(owner: owner));
       } else {
-        unawaited(voice.read(owner, widget.text));
+        try {
+          await widget.beforeRead?.call();
+          if (!mounted) return;
+          if (!widget.enabled ||
+              ModalRoute.of(this.context)?.isCurrent == false) {
+            return;
+          }
+          final completed = await voice.read(
+            owner,
+            widget.text,
+            locale: widget.locale,
+            slow: widget.slow,
+          );
+          if (completed && mounted) await widget.onReadCompleted?.call();
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.maybeOf(this.context)?.showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Die Sprachhilfe konnte nicht gespeichert werden. Bitte erneut versuchen.',
+                ),
+              ),
+            );
+          }
+        }
       }
     }
 
@@ -476,12 +569,16 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
 
 class VoiceInputButton extends StatefulWidget {
   final TextEditingController controller;
+  final String locale;
+  final VoidCallback? onRecognized;
   final bool enabled, iconOnly;
   final int maxLength;
   final LessonVoiceSession? voice;
   const VoiceInputButton({
     super.key,
     required this.controller,
+    this.locale = 'de-DE',
+    this.onRecognized,
     this.enabled = true,
     this.iconOnly = false,
     this.maxLength = 500,
@@ -530,7 +627,9 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       widget.controller.addListener(textChanged);
       unawaited(voice.stop(owner: owner));
     }
-    if (!widget.enabled) unawaited(voice.stop(owner: owner));
+    if (!widget.enabled || oldWidget.locale != widget.locale) {
+      unawaited(voice.stop(owner: owner));
+    }
   }
 
   @override
@@ -587,13 +686,14 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       final limited = combined.length > widget.maxLength
           ? combined.substring(0, widget.maxLength)
           : combined;
+      widget.onRecognized?.call();
       writing = true;
       widget.controller.value = TextEditingValue(
         text: limited,
         selection: TextSelection.collapsed(offset: limited.length),
       );
       writing = false;
-    });
+    }, locale: widget.locale);
   }
 
   @override

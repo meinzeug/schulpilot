@@ -18,6 +18,7 @@ from . import (
     google_login,
     grades,
     installation,
+    language_projects,
     learning,
     learning_progress,
     library,
@@ -29,6 +30,7 @@ from . import (
     study_path,
     synthetic,
     tutor,
+    vocabulary,
 )
 from .config import runtime_settings, settings
 from .db import DB, ProviderConfig, init_db
@@ -223,6 +225,8 @@ for router in (
     school_day.router,
     study_path.router,
     tutor.router,
+    vocabulary.router,
+    language_projects.router,
 ):
     app.include_router(router, prefix="/api")
 

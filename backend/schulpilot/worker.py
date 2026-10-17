@@ -87,6 +87,16 @@ def process(job_id):
     with DB() as db:
         candidate = db.get(Job, job_id)
         kind = candidate.kind if candidate else None
+    if kind == "vocabulary_import":
+        from .vocabulary import process as process_vocabulary
+
+        process_vocabulary(job_id)
+        return
+    if kind == "language_project":
+        from .language_projects import process as process_language
+
+        process_language(job_id)
+        return
     if kind in ("coach", "coach_practice", "study_block", "tutor"):
         from . import coaching, study_path, tutor
 
@@ -445,9 +455,11 @@ def maintenance():
                 db.delete(bucket)
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
-        from .db import SchoolGrade
+        from .db import LanguageProject, SchoolGrade, VocabularyCollection, VocabularyImport, VocabularyItem
 
         db.execute(delete(SchoolGrade).where(SchoolGrade.created < int(now()) - 365 * 86400))
+        for model in (LanguageProject, VocabularyImport, VocabularyItem, VocabularyCollection):
+            db.execute(delete(model).where(model.created < int(now()) - 365 * 86400))
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
         db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))

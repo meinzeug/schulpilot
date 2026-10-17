@@ -643,6 +643,8 @@ class WorkspaceShell extends StatelessWidget {
     if (state.isChild &&
         (path.startsWith('/unit/') ||
             path.startsWith('/progress/') ||
+            path.startsWith('/vocabulary/') ||
+            path.startsWith('/language-projects/') ||
             path.startsWith('/learning-preparation/'))) {
       return 1;
     }

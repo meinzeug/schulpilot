@@ -26,6 +26,18 @@ Dienste: `schulpilot-api.service`, `schulpilot-worker.service`, `schulpilot-back
 
 ## Rückweg
 
+Sprachrelease **0015 / 1.4.0** ergänzt Tabellen und kompatible Attempt-Spalten,
+verändert aber die Bewertung neuer Sprachrunden. Vor jeder Aktivierung sichern
+und nur SCHULPILOT anhalten/migrieren. Rückweg auf Code vor 0015 ist nach
+Sprachbenutzung kein gewöhnlicher `--rollback-compatible`-Vorgang: neue Jobs
+(`vocabulary_import`, `language_project`) und neue Aufgaben dürfen weder an den
+alten Worker noch an die alte globale Bewertung gelangen. Aktive Aufträge erst
+kontrolliert beenden/abbrechen, Schreibzugriffe stoppen und einen kompatiblen
+Korrekturrelease einsetzen. Vor neuer Sprachbenutzung (alle neuen Tabellen leer,
+keine neuen Aufträge/Sprachrunden) ist der bisherige gesicherte Rückweg möglich.
+Andernfalls Restore nur separat prüfen, Löschjournal abgleichen und neue Belege
+erhalten; kein routinemäßiges Schema-Downgrade. Details: LANGUAGE_LEARNING.md.
+
 Aktiven und vorherigen Release prüfen: `readlink -f /opt/schulpilot/current` / `readlink -f /opt/schulpilot/previous`.
 
 ```bash

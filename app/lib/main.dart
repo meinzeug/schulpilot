@@ -22,6 +22,8 @@ import 'google_login.dart';
 import 'learning_preparation_screen.dart';
 import 'progress_screen.dart';
 import 'grades_screen.dart';
+import 'vocabulary_screen.dart';
+import 'language_workshop.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -272,6 +274,30 @@ class _SchulpilotAppState extends State<SchulpilotApp> {
         path: '/unit/:id',
         builder: (context, s) =>
             UnitScreen(widget.state, unitId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/vocabulary/:id',
+        builder: (context, s) => VocabularyScreen(
+          widget.state,
+          key: ValueKey(
+            'words:${s.pathParameters['id']}:${widget.state.user?['id']}:${s.uri.queryParameters['material']}:${s.uri.queryParameters['locale']}',
+          ),
+          childId: s.pathParameters['id']!,
+          materialId: s.uri.queryParameters['material'],
+          initialLocale: s.uri.queryParameters['locale'] ?? 'en-GB',
+        ),
+      ),
+      GoRoute(
+        path: '/language-projects/:id',
+        builder: (context, s) => LanguageWorkshop(
+          widget.state,
+          key: ValueKey(
+            'language:${s.pathParameters['id']}:${s.uri.queryParameters['project']}:${widget.state.user?['id']}',
+          ),
+          childId: s.pathParameters['id']!,
+          materialId: s.uri.queryParameters['material'],
+          projectId: s.uri.queryParameters['project'],
+        ),
       ),
       GoRoute(
         path: '/learning-preparation/:childId/:jobId',

@@ -212,7 +212,9 @@ INSERT INTO usage(id,family_id,child_id,job_id,provider,model,config_revision,fu
     subprocess.run([*command, "head"], env=env, check=True, capture_output=True)
     with sqlite3.connect(path) as db:
         assert db.execute("select revision,content from materials where id='m'").fetchone() == (1, "x")
-        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0014"
+        assert db.execute("select version_num from alembic_version").fetchone()[0] == "0015"
+        assert db.execute("select count(*) from vocabulary_items").fetchone()[0] == 0
+        assert db.execute("select input_method,request_key,evaluation from attempts where id='attempt'").fetchone() == ("typed", None, None)
         assert db.execute("select grade_planning_enabled,preferences from children where id='c'").fetchone() == (1, "{}")
         assert db.execute("select count(*) from school_grades").fetchone()[0] == 0
         assert db.execute("select reasoning_effort,revision,model from provider_config where id=1").fetchone() == (

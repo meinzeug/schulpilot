@@ -117,6 +117,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
     state: widget.state,
     title: widget.state.isChild ? 'Dein Lernstand' : 'Fächer & Fortschritt',
     actions: [
+      TextButton.icon(
+        onPressed: () => openRoute(context, '/vocabulary/${widget.childId}'),
+        icon: const Icon(Icons.translate_rounded),
+        label: const Text('Wortschatz'),
+      ),
       if (!widget.state.isChild)
         OutlinedButton.icon(
           onPressed: () => openRoute(context, '/grades/${widget.childId}'),

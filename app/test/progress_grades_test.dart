@@ -191,6 +191,8 @@ void main() {
         });
       });
       expect(find.text('Mika (Beispiel)'), findsOneWidget);
+      await tester.ensureVisible(find.text('Mathematik'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Mathematik'));
       await tester.pumpAndSettle();
       expect(reads.last.url.queryParameters['subject'], 'Mathematik');

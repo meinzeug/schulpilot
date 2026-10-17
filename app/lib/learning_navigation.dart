@@ -82,6 +82,13 @@ Future<void> openPlanItem(
     );
     return;
   }
+  if (item['kind'] == 'vocabulary') {
+    openRoute(
+      context,
+      '/vocabulary/${data['child']['id']}?locale=${item['target_locale'] ?? 'en-GB'}',
+    );
+    return;
+  }
   String? unitId;
   if (item['kind'] == 'unit') {
     unitId = item['id'];

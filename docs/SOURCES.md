@@ -1,5 +1,18 @@
 # Offizielle Quellen, geprüft am 14.10.2026
 
+Sprachlernen, ergänzend geprüft am 17.10.2026:
+
+- [flutter_tts 4.2.5](https://pub.dev/packages/flutter_tts/versions/4.2.5) und
+  [API](https://pub.dev/documentation/flutter_tts/4.2.5/flutter_tts/FlutterTts-class.html):
+  konkrete Sprachwahl, Stimmenliste, Verfügbarkeit, Tempo und Abbruch; vorhandene Version unverändert.
+- [speech_to_text 7.5.0](https://pub.dev/packages/speech_to_text/versions/7.5.0) und
+  [SpeechListenOptions](https://pub.dev/documentation/speech_to_text/7.5.0/speech_to_text/SpeechListenOptions-class.html):
+  localeId gehört bei dieser fixierten Version in die Listenoptionen. Kein SDK-Update und keine Audio-API eingeführt.
+- [EEF Cognitive Science Approaches](https://educationendowmentfoundation.org.uk/education-evidence/evidence-reviews/cognitive-science-approaches-in-the-classroom/):
+  Abruf und verteilte Wiederholung als didaktische Muster. Unsere Intervalle sind eine Produktentscheidung, kein abgeleitetes Optimum.
+- Babbel-/sofatutor-Beobachtungen stammen aus dem vom Auftraggeber bereitgestellten Prüfprotokoll.
+  Keine eigene erneute praktische Prüfung von Babbel Speak und keine Übernahme fremder Kursinhalte.
+
 Lernmodell, alle Übungen und schulische Schwerpunkte, erneut tatsächlich geprüft am 17.10.2026:
 
 - [IES/WWC Practice Guide 1, 2007](https://ies.ed.gov/ncee/wwc/PracticeGuide/1): verteiltes Lernen, Abrufübungen und Wechsel zwischen gelöstem Beispiel und eigenem Problemlösen. Die Quelle stuft die Evidenz für diese einzelnen Empfehlungen unterschiedlich ein. Umsetzung und Grenzen: [LEARNING_MODEL.md](LEARNING_MODEL.md).

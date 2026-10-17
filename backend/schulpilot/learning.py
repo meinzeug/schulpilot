@@ -2,7 +2,7 @@ import unicodedata
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.orm import aliased, defer, load_only
 
@@ -176,7 +176,7 @@ def pending_feedback(unit, attempts, events):
     }
 
 
-def feedback_resume_id(db, child_id):
+def feedback_resume_id(db, child_id, *, include_language=True):
     """Find unread latest feedback without loading answer bodies or scanning units in Python."""
     pending, seen, newer = aliased(Activity), aliased(Activity), aliased(Attempt)
     newer_answer = select(newer.id).where(
@@ -190,7 +190,8 @@ def feedback_resume_id(db, child_id):
                            pending.kind == "feedback_pending", pending.detail["attempt_id"].as_string() == Attempt.id))
         .outerjoin(seen, and_(seen.unit_id == LearningUnit.id, seen.child_id == child_id,
                              seen.kind == "feedback_seen", seen.detail["attempt_id"].as_string() == Attempt.id))
-        .where(LearningUnit.child_id == child_id, seen.id.is_(None), ~newer_answer)
+        .where(LearningUnit.child_id == child_id, seen.id.is_(None), ~newer_answer,
+               True if include_language else LearningUnit.round_kind != "vocabulary")
         .order_by(Attempt.created.desc(), Attempt.id.desc()).limit(1)
     )
 
@@ -208,11 +209,17 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
             value.pop("accepted", None)
             value.pop("hints", None)
             value.pop("explanation", None)
+            value.pop("language_feedback", None)
+            if q.get("language"):
+                from .language_tasks import public_metadata
+
+                value["language"] = public_metadata(q["language"])
             if q["type"] == "match":
                 value["options"] = [pair.split("|")[0] for pair in q["options"]]
                 value["choices"] = sorted(pair.split("|")[1] for pair in q["options"])
         value["attempts"] = [
-            {"id": a.id, "answer": a.answer, "outcome": a.outcome, "assisted": a.assisted, "created": a.created}
+            {"id": a.id, "answer": a.answer, "outcome": a.outcome, "assisted": a.assisted, "created": a.created,
+             "evaluation": a.evaluation, "input_method": a.input_method}
             for a in attempts
             if a.question_id == q["id"]
         ]
@@ -223,6 +230,8 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
             or any(a["outcome"] in ("correct", "uncertain") for a in value["attempts"])
         ):
             value["feedback_explanation"] = q["explanation"]
+            if q.get("language_feedback"):
+                value["language_feedback"] = q["language_feedback"]
         questions.append(value)
     return {
         "id": unit.id,
@@ -253,15 +262,38 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "followup_of": unit.followup_of,
         "round_kind": unit.round_kind,
         "not_before": unit.not_before,
-        "coaching": coaching.view(db, unit),
+        "language_version": 1 if any(q.get("language") for q in unit.questions) else None,
+        "vocabulary_result": vocabulary_result(db, unit),
+        "coaching": {"status": "not_needed"} if unit.round_kind == "vocabulary" else coaching.view(db, unit),
         "learning_progress": coaching.progress(db, unit)
-        if include_progress
+        if include_progress and unit.round_kind != "vocabulary"
         else None,
         "created": unit.created,
         "completed": unit.completed,
         "provider": unit.provider,
         "model": unit.model,
     }
+
+
+def vocabulary_result(db, unit):
+    if unit.round_kind != "vocabulary":
+        return None
+    from .db import VocabularyReviewEvent
+
+    events = list(db.scalars(select(VocabularyReviewEvent).join(Attempt).where(Attempt.unit_id == unit.id)))
+    return {"answered_tasks": len({a.question_id for a in db.scalars(select(Attempt).where(Attempt.unit_id == unit.id))}),
+            "advanced_skills": sum(e.advanced for e in events),
+            "next_due": min((e.due for e in events), default=None),
+            "skills": sorted({q["language"]["skill"] for q in unit.questions if q.get("language")})}
+
+
+def language_capability(unit, capabilities):
+    if any(q.get("language") for q in unit.questions) and not language_supported(capabilities):
+        raise HTTPException(426, "Für diese Sprachrunde bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
+
+
+def language_supported(capabilities):
+    return isinstance(capabilities, str) and "language-v1" in capabilities.split(",")
 
 
 def summary(db, child, days, *, learning_paths=None):
@@ -333,7 +365,7 @@ def summary(db, child, days, *, learning_paths=None):
     }
 
 
-def plan(db, child, *, learning_paths=None):
+def plan(db, child, *, learning_paths=None, include_language=True):
     from .coaching import paths
     from .grades import priorities, subject_key
 
@@ -344,7 +376,7 @@ def plan(db, child, *, learning_paths=None):
         db.scalars(
             select(LearningUnit)
             .options(defer(LearningUnit.questions), defer(LearningUnit.explanation))
-            .where(LearningUnit.child_id == child.id)
+            .where(LearningUnit.child_id == child.id, True if include_language else LearningUnit.round_kind != "vocabulary")
             .order_by(LearningUnit.created)
         )
     )
@@ -550,6 +582,15 @@ def plan(db, child, *, learning_paths=None):
                 candidates.append({"kind": "material", "id": material.id, "topic": material.topic,
                                    "subject": material.subject, "mandatory": False, "status": "ready",
                                    "estimated_minutes": min(8, prefs.session_minutes, prefs.daily_minutes)})
+    from .vocabulary import summary as vocabulary_summary
+
+    words = vocabulary_summary(db, child)
+    for language in words["by_locale"]:
+        if include_language and (language["due_words"] or language["new_words"] or language["unpracticed_skills"]):
+            exams = [a.due for a in assignments if a.kind == "exam" and a.due and subject_key(a.subject) == subject_key(language["subject"])]
+            candidates.append({"kind": "vocabulary", "id": child.id + ":" + language["locale"], "topic": "Deine Wörter wiederholen",
+                               "target_locale": language["locale"], "subject": language["subject"], "mandatory": False, "status": "ready",
+                               "due": min(exams) if exams else None, "estimated_minutes": min(5, prefs.session_minutes)})
     for item in candidates:
         item["_grade_priority"] = grade_priorities.get(subject_key(item["subject"]), 0)
         if item["_grade_priority"]:
@@ -633,6 +674,7 @@ def plan(db, child, *, learning_paths=None):
     return {
         **proposal,
         "date": today.isoformat(),
+        "vocabulary": words,
         "available_minutes": available,
         "session_minutes": minutes,
         "break_minutes": prefs.break_minutes,
@@ -710,12 +752,14 @@ def no_new_pages(child_id: str, p=Depends(child_user), db=Depends(get_db)):
 
 
 @router.get("/children/{child_id}/overview")
-def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, compact: bool = False):
+def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, compact: bool = False,
+             capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     from .coaching import paths
     from .learning_progress import read_ledger, subject_evidence, totals
 
     child = child_access(db, p, child_id)
-    resume_id = feedback_resume_id(db, child.id)
+    include_language = language_supported(capabilities)
+    resume_id = feedback_resume_id(db, child.id, include_language=include_language)
     if resume_id:
         from .library import unit_summaries
 
@@ -735,7 +779,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
             select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date.desc()).limit(30)
         )
     )
-    current_plan = plan(db, child, learning_paths=learning_paths)
+    current_plan = plan(db, child, learning_paths=learning_paths, include_language=include_language)
     capture = capture_status(db, child, current_plan)
     from .school_preparation import preparation_data
 
@@ -837,7 +881,8 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         else [
             unit_data(db, u, include_answers=p.user.role == "parent", include_progress=False)
             for u in db.scalars(
-                select(LearningUnit).where(LearningUnit.child_id == child.id).order_by(LearningUnit.created.desc())
+                select(LearningUnit).where(LearningUnit.child_id == child.id,
+                    True if include_language else LearningUnit.round_kind != "vocabulary").order_by(LearningUnit.created.desc())
             )
         ],
         "mastery": [
@@ -961,14 +1006,19 @@ def get_unit(db, p, unit_id, child_only=False, lock=False):
 
 
 @router.get("/units/{unit_id}")
-def unit_view(unit_id: str, p=Depends(authenticated), db=Depends(get_db)):
+def unit_view(unit_id: str, p=Depends(authenticated), db=Depends(get_db),
+              capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id)
+    if p.user.role == "child":
+        language_capability(unit, capabilities)
     return unit_data(db, unit, p.user.role == "parent")
 
 
 @router.post("/units/{unit_id}/start")
-def start(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
+def start(unit_id: str, p=Depends(child_user), db=Depends(get_db),
+          capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id, True, True)
+    language_capability(unit, capabilities)
     if unit.status == "completed":
         return unit_data(db, unit)
     if reason := learning_block(db, unit):
@@ -1113,6 +1163,10 @@ def normalized(text):
 
 
 def evaluate(q, answer):
+    if q.get("language"):
+        from .language_evaluation import evaluate as evaluate_language
+
+        return evaluate_language(q, answer)["outcome"]
     from .checks import expanded_fraction, fraction_parts
 
     expected_form = expanded_fraction(q["prompt"]) if q["type"] in ("choice", "gap", "short") else None
@@ -1130,6 +1184,26 @@ def evaluate(q, answer):
 
 
 def learning_block(db, unit):
+    if unit.round_kind == "vocabulary":
+        from .vocabulary import current_sources
+
+        try:
+            snapshots = {source["id"]: source for q in unit.questions
+                         for source in (q.get("language") or {}).get("source_revisions", [])}
+            for row in db.scalars(select(UnitSource).where(UnitSource.unit_id == unit.id)):
+                snapshots[row.material_id] = {"id": row.material_id, "revision": row.revision}
+            current_sources(db, unit.child_id, list(snapshots.values()))
+        except HTTPException as error:
+            return error.detail
+        if unit.status == "not_started":
+            from .db import VocabularyItem
+
+            for q in unit.questions:
+                meta = q.get("language") or {}
+                item = db.get(VocabularyItem, meta.get("vocabulary_item_id"))
+                if not item or not item.confirmed or item.revision != meta.get("vocabulary_revision"):
+                    return "Ein Wort wurde korrigiert. Bitte eine neue Runde aus den bestätigten Wörtern beginnen."
+        return None
     child = db.get(Child, unit.child_id)
     today = local_day(child)
     if unit.not_before and unit.not_before > today.isoformat():
@@ -1202,13 +1276,26 @@ def update_mastery(db, unit, attempts):
 
 
 @router.post("/units/{unit_id}/questions/{question_id}/answer")
-def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(child_user), db=Depends(get_db)):
+def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(child_user), db=Depends(get_db),
+           capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id, True, True)
+    language_capability(unit, capabilities)
+    from .vocabulary import fingerprint
+
+    request_digest = fingerprint([question_id, data.answer, data.input_method, data.guided_feedback])
+    if data.request_id:
+        saved = db.scalar(select(Attempt).where(Attempt.unit_id == unit.id, Attempt.request_key == data.request_id))
+        if saved:
+            if saved.request_digest != request_digest:
+                raise HTTPException(409, "Dieser Antwortschlüssel gehört zu einer anderen Antwort.")
+            return answer_response(db, unit, question(unit, question_id), saved)
     if unit.status != "active":
         raise HTTPException(409, "Bitte die Lerneinheit zuerst starten oder fortsetzen.")
     if reason := learning_block(db, unit):
         raise HTTPException(409, reason)
     q = question(unit, question_id)
+    if q.get("language") and not data.request_id:
+        raise HTTPException(422, "Für Sprachantworten wird ein eindeutiger Antwortschlüssel benötigt. Bitte die App aktualisieren.")
     existing = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     if data.guided_feedback:
         events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
@@ -1224,11 +1311,42 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
     )
     outcome = evaluate(q, data.answer)
+    evaluation = None
+    if q.get("language"):
+        from .language_evaluation import evaluate as evaluate_language
+        from .vocabulary_review import recent_exposure
+
+        # Sources can change while waiting for the common child lock. Recheck
+        # after it, before storing any language answer or review event.
+        db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
+        if reason := learning_block(db, unit):
+            raise HTTPException(409, reason)
+        evaluation = evaluate_language(q, data.answer)
+        exposed = recent_exposure(db, unit, q)
+        hinted = hinted or exposed or data.input_method == "speech"
+        evaluation.update(skill=q["language"]["skill"], direction=q["language"]["direction"],
+                          input_method=data.input_method, independent_attempt=not bool(hinted or previous),
+                          independent_evidence=outcome == "correct" and not bool(hinted or previous))
+        evaluation["support_reasons"] = (["recent_solution"] if exposed else []) + (["speech_transcript"] if data.input_method == "speech" else [])
+        if q["language"]["skill"] == "listening":
+            heard = any(e.detail.get("question_id") == question_id and e.detail.get("kind") == "listen"
+                        for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "language_stimulus")))
+            if not heard:
+                raise HTTPException(409, "Bitte zuerst den Hörtext abspielen. Ohne Audio ist das keine Hörübung.")
     attempt = Attempt(
-        unit_id=unit.id, question_id=question_id, answer=data.answer, outcome=outcome, assisted=bool(hinted or previous)
+        unit_id=unit.id, question_id=question_id, answer=data.answer, outcome=outcome, assisted=bool(hinted or previous),
+        request_key=data.request_id, request_digest=request_digest if data.request_id else None,
+        evaluation=evaluation, input_method=data.input_method,
     )
     db.add(attempt)
     db.flush()
+    if q.get("language"):
+        from .vocabulary_review import record_review
+
+        record_review(db, unit, q, attempt)
+        if outcome in ("correct", "uncertain") or len(previous) >= 2:
+            record(db, unit.child_id, "vocabulary_exposure", {"item_id": q["language"]["vocabulary_item_id"],
+                   "revision": q["language"]["vocabulary_revision"], "via": "answer_feedback"}, unit.id)
     if data.guided_feedback:
         record(db, unit.child_id, "feedback_pending", {"attempt_id": attempt.id}, unit.id)
     record(db, unit.child_id, "answer", {"question_id": question_id, "outcome": outcome}, unit.id)
@@ -1244,17 +1362,24 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         unit.status = "completed"
         unit.completed = int(now())
         unit.heartbeat = None
-        update_mastery(db, unit, attempts)
+        if unit.round_kind != "vocabulary":
+            update_mastery(db, unit, attempts)
         # An exercise is evidence of practice. Only a parent can close the
         # binding goal; a single completed unit cannot establish full mastery.
         record(db, unit.child_id, "unit_completed", {"topic": unit.topic}, unit.id)
     db.commit()
-    if done:
+    if done and unit.round_kind != "vocabulary":
         from .coaching import schedule
 
         schedule(unit.id, automatic=True)
         db.expire_all()
         unit = db.get(LearningUnit, unit_id)
+    return answer_response(db, unit, q, attempt)
+
+
+def answer_response(db, unit, q, attempt):
+    outcome = attempt.outcome
+    count = db.scalar(select(func.count()).select_from(Attempt).where(Attempt.unit_id == unit.id, Attempt.question_id == q["id"]))
     text = {
         "correct": "Gut gelöst. Wiederholen hilft dir, das Wissen zu festigen.",
         "incorrect": "Das passt noch nicht. Schau dir den Hinweis an und versuche es noch einmal.",
@@ -1263,8 +1388,10 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     return {
         "outcome": outcome,
         "assisted": attempt.assisted,
+        "attempt_id": attempt.id,
+        "evaluation": attempt.evaluation,
         "feedback": text,
-        "explanation": q["explanation"] if outcome != "incorrect" or len(previous) >= 2 else None,
+        "explanation": q["explanation"] if outcome != "incorrect" or count >= 3 else None,
         "unit": unit_data(db, unit),
     }
 
@@ -1325,6 +1452,7 @@ def resolve(child_id: str, message_id: str, p=Depends(parent), db=Depends(get_db
 
 
 @router.get("/child/home")
-def child_home(p=Depends(child_user), db=Depends(get_db)):
+def child_home(p=Depends(child_user), db=Depends(get_db),
+               capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     child = own_child(db, p)
-    return overview(child.id, p, db)
+    return overview(child.id, p, db, capabilities=capabilities)

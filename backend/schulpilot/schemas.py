@@ -286,6 +286,8 @@ class UnitCreate(Strict):
 
 
 class AnswerRequest(Strict):
+    request_id: str | None = Field(default=None, min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    input_method: Literal["typed", "speech"] = "typed"
     answer: str = Field(max_length=1000)
     guided_feedback: bool = False
 

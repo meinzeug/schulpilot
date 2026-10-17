@@ -7,6 +7,8 @@ import 'package:schulpilot/lesson_voice.dart';
 class FakeLessonVoice implements LessonVoiceAdapter {
   int reads = 0, listens = 0, cancellations = 0;
   String? readText;
+  String? readLocale, listenLocale;
+  bool? readSlow;
   bool recording = false;
   LessonVoiceFailure? readFailure, listenFailure;
   Completer<void>? reading, permission;
@@ -15,9 +17,16 @@ class FakeLessonVoice implements LessonVoiceAdapter {
   ValueChanged<LessonVoiceFailure>? failed;
 
   @override
-  Future<void> read(String text, {required bool Function() isActive}) async {
+  Future<void> read(
+    String text, {
+    required bool Function() isActive,
+    String locale = 'de-DE',
+    bool slow = false,
+  }) async {
     reads++;
     readText = text;
+    readLocale = locale;
+    readSlow = slow;
     if (readFailure != null) throw readFailure!;
     reading = Completer<void>();
     await reading!.future;
@@ -25,6 +34,7 @@ class FakeLessonVoice implements LessonVoiceAdapter {
 
   @override
   Future<void> listen({
+    String locale = 'de-DE',
     required bool Function() isActive,
     required VoidCallback onStarted,
     required ValueChanged<String> onText,
@@ -32,6 +42,7 @@ class FakeLessonVoice implements LessonVoiceAdapter {
     required ValueChanged<LessonVoiceFailure> onError,
   }) async {
     listens++;
+    listenLocale = locale;
     if (listenFailure != null) throw listenFailure!;
     if (permission != null) await permission!.future;
     if (!isActive()) return;
@@ -84,6 +95,68 @@ Widget inputHome(
 );
 
 void main() {
+  test(
+    'Explicit English reading and German instructions keep their own locale',
+    () async {
+      final adapter = FakeLessonVoice();
+      final voice = LessonVoiceSession(adapter: adapter);
+      final owner = Object();
+      final english = voice.read(
+        owner,
+        'Where is the school?',
+        locale: 'en-GB',
+        slow: true,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.readLocale, 'en-GB');
+      expect(adapter.readSlow, isTrue);
+      adapter.reading!.complete();
+      expect(await english, isTrue);
+      final german = voice.read(owner, 'Höre erst zu.', locale: 'de-DE');
+      await Future<void>.delayed(Duration.zero);
+      expect(adapter.readLocale, 'de-DE');
+      adapter.reading!.complete();
+      expect(await german, isTrue);
+      voice.dispose();
+    },
+  );
+
+  test(
+    'Language change cancels preceding playback and STT uses answer locale',
+    () async {
+      final adapter = FakeLessonVoice();
+      final voice = LessonVoiceSession(adapter: adapter);
+      final owner = Object();
+      final first = voice.read(owner, 'Apfel', locale: 'de-DE');
+      await Future<void>.delayed(Duration.zero);
+      final second = voice.read(owner, 'apple', locale: 'en-US');
+      await Future<void>.delayed(Duration.zero);
+      expect(await first, isFalse);
+      expect(adapter.readLocale, 'en-US');
+      adapter.reading!.complete();
+      expect(await second, isTrue);
+      String? transcript;
+      await voice.listen(owner, (text) => transcript = text, locale: 'en-GB');
+      expect(adapter.listenLocale, 'en-GB');
+      adapter.result!('I go to school');
+      expect(transcript, 'I go to school');
+      await voice.stop(owner: owner);
+      expect(adapter.recording, isFalse);
+      voice.dispose();
+    },
+  );
+
+  test(
+    'Missing English voice is a failure and never a completed hearing stimulus',
+    () async {
+      final adapter = FakeLessonVoice()
+        ..readFailure = const LessonVoiceFailure('Englische Stimme fehlt.');
+      final voice = LessonVoiceSession(adapter: adapter);
+      expect(await voice.read(Object(), 'apple', locale: 'en-GB'), isFalse);
+      expect(voice.message, contains('Stimme fehlt'));
+      voice.dispose();
+    },
+  );
   testWidgets('Reading starts only on tap and has an immediate stop control', (
     tester,
   ) async {

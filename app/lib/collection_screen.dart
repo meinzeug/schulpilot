@@ -30,6 +30,11 @@ class CollectionScreen extends StatelessWidget {
         ? 'Meine Hefte'
         : 'Heftseiten',
     actions: [
+      TextButton.icon(
+        onPressed: () => openRoute(context, '/vocabulary/$childId'),
+        icon: const Icon(Icons.translate_rounded),
+        label: const Text('Wörter'),
+      ),
       if (learning)
         TextButton.icon(
           onPressed: () => openRoute(context, '/progress/$childId'),

@@ -81,6 +81,8 @@ Future<GoRouter> _open(
         '/library/child',
         '/after-school/child',
         '/unit/unit',
+        '/vocabulary/child',
+        '/language-projects/child',
         '/material/material',
         '/privacy',
         '/about',
@@ -225,6 +227,8 @@ void main() {
 
   for (final entry in [
     ('/unit/unit', 1),
+    ('/vocabulary/child', 1),
+    ('/language-projects/child', 1),
     ('/material/material', 2),
     ('/after-school/child', 0),
   ]) {

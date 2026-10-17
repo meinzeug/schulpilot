@@ -395,6 +395,7 @@ def paths(db, child_id, *, ledger=None):
                 LearningUnit.child_id == child_id,
                 LearningUnit.learning_root_id.is_(None),
                 LearningUnit.followup_of.is_(None),
+                LearningUnit.round_kind != "vocabulary",
                 LearningUnit.status == "completed",
             )
             .order_by(LearningUnit.created.desc())
@@ -922,6 +923,8 @@ def schedule(unit_id, *, automatic=False):
             unit = db.get(LearningUnit, unit_id)
             if not unit or unit.status != "completed":
                 raise HTTPException(409, "Bitte die Einheit zuerst abschließen.")
+            if unit.round_kind == "vocabulary":
+                return {"status": "not_needed", "reason": "Sprachrunden verwenden ihre gespeicherte Sprachbewertung und Wiedervorlage."}
             db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
             item = db.get(UnitCoaching, unit_id)
             if item and (automatic or item.status == "ready" or item.request_count >= MAX_REQUESTS):

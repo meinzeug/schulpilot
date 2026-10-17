@@ -425,7 +425,17 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 
 
 def export_child(db, child):
-    from .db import SchoolGrade
+    from .db import (
+        LanguageProject,
+        SchoolGrade,
+        VocabularyAction,
+        VocabularyCollection,
+        VocabularyImport,
+        VocabularyItem,
+        VocabularyMembership,
+        VocabularyReview,
+        VocabularyReviewEvent,
+    )
 
     result = {"child": child_data(db, child), "grade_settings": {"planning_enabled": child.grade_planning_enabled}}
     for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay, TutorTurn):
@@ -447,6 +457,13 @@ def export_child(db, child):
         {c.name: getattr(row, c.name) for c in UnitCoaching.__table__.columns}
         for row in db.scalars(select(UnitCoaching).where(UnitCoaching.unit_id.in_(units)))
     ]
+    for model in (VocabularyCollection, VocabularyItem, VocabularyImport, VocabularyReview, VocabularyAction, LanguageProject):
+        result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
+            for row in db.scalars(select(model).where(model.child_id == child.id))]
+    for model, column, ids in ((VocabularyMembership, VocabularyMembership.item_id, [row["id"] for row in result["vocabulary_items"]]),
+                              (VocabularyReviewEvent, VocabularyReviewEvent.review_id, [row["id"] for row in result["vocabulary_reviews"]])):
+        result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
+                                      for row in db.scalars(select(model).where(column.in_(ids)))]
     return result
 
 

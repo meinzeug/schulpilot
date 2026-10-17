@@ -4,7 +4,7 @@ from datetime import date, datetime, time
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import load_only
 
@@ -206,13 +206,15 @@ def learning_list(
     page_size: int = Query(20, ge=1, le=50),
     p=Depends(authenticated),
     db=Depends(get_db),
+    capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"),
 ):
     from .coaching import paths
-    from .learning import plan
+    from .learning import language_supported, plan
 
     child = child_access(db, p, child_id)
     learning_paths = paths(db, child.id)
-    current = plan(db, child, learning_paths=learning_paths)
+    include_language = language_supported(capabilities)
+    current = plan(db, child, learning_paths=learning_paths, include_language=include_language)
     ready = []
     ready_ids = set()
     for item in [*current["today"], *current.get("voluntary", [])]:
@@ -241,11 +243,14 @@ def learning_list(
         "completed": db.scalar(
             select(func.count())
             .select_from(LearningUnit)
-            .where(LearningUnit.child_id == child.id, LearningUnit.status == "completed")
+            .where(LearningUnit.child_id == child.id, LearningUnit.status == "completed",
+                   True if include_language else LearningUnit.round_kind != "vocabulary")
         ),
     }
     if section == "completed":
         conditions = [LearningUnit.child_id == child.id, LearningUnit.status == "completed"]
+        if not include_language:
+            conditions.append(LearningUnit.round_kind != "vocabulary")
         if q.strip():
             conditions.append(or_(contains(LearningUnit.topic, q.strip()), contains(LearningUnit.subject, q.strip())))
         facet = subject_value(LearningUnit.subject)

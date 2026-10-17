@@ -1,4 +1,39 @@
-SCHULPILOT – bereinigter aktueller Stand · 17.10.2026 · 1.3.0+28
+SCHULPILOT – Sprachausbau 1.4.0+29 · lokale Abnahme, Aktivierung vorbereitet
+
+Dieser neue Abschnitt hat Vorrang vor den historischen Angaben unten.
+Neue Workflows: bestätigte Vokabelseite/Text/manuelle Wortpaare -> Prüfung ->
+eigener Wortschatz -> kleine echte Runde -> gespeicherte Antworten/Feedback ->
+getrennte Fälligkeit im Tagesplan und gleiche Eltern-/Kinderansicht.
+Sprachwerkstatt mit 18 begrenzten Projektarten, eigener Vorarbeit, Kriterien,
+Kontext-/Satz-/bestätigten Grammatikaufgaben und höchstens vier Dialogschritten.
+Neue Routen /vocabulary/<eigenes-kind> und /language-projects/<eigenes-kind>.
+Bestehende eigene Eltern-/Kinderanmeldung; kein Firebase-/Google-Umbau.
+
+Migration 0015 nach 0014, acht private Tabellen und kompatible Attempt-Felder.
+Alte Clients erhalten neue Sprachaufgaben nicht als startbare Lernplanung;
+Mathematik/Sachaufgaben unverändert. Speicherung/Export/Löschung und bekannte
+Vorlagen-/Sprachhilfen werden mitgeführt. Keine Aussprachebewertung durch STT.
+Lernmodell, Modusregeln, Intervalle und Werkzeugstatus: docs/LANGUAGE_LEARNING.md.
+
+Geprüft: 784 PostgreSQL-Tests vollständig, danach 94 gezielte Regressionen;
+285 Fluttertests, Analyse und Ruff; Web, signierte Direct-APK und Play-AAB gebaut.
+APK 1.4.0+29: /home/dennis/schulpilot/artifacts/schulpilot-android.apk
+SHA256 b11fd27a59ac0283d1eb613a77b26f2d10eb4253e92126f315bc132b89e81945
+64.806.733 Bytes. AAB am entsprechenden artifacts/schulpilot-play.aab-Pfad.
+Keine Play-Console-Veröffentlichung, keine physische Audioabnahme behauptet.
+
+Noch als nächstes auszuführen: Commit/Push; Backup/Migration/Aktivierung über
+scripts/deploy.sh; öffentliche Prüfung mit qa/language_learning.mjs --run,
+danach tatsächliches OTA-Update und qa/android_language.py --run. Nur das eigene
+über echten E-Mail-Weg verifizierte künstliche Konto verwenden. Fortsetzung
+geschützt unter artifacts/.school-day-qa-account.json, keine Zugangsdaten hier.
+Prüfaufträge werden nach Fehlern nicht automatisch wiederholt. Nach Abschluss
+mit scripts/prepare_language_smoke.py --cleanup ausschließlich diese Familie löschen.
+Bis zur ergänzten tatsächlichen Aktivierung gilt öffentlich weiterhin der
+folgende bisherige geprüfte Release. Produktive Daten anderer Familien wurden
+für diesen Ausbau nicht gelesen oder verändert.
+
+Historischer Stand vor Sprachausbau · 17.10.2026 · 1.3.0+28
 
 Dieser Abschnitt ersetzt die älteren Produkt-/Versions-/Providerangaben unten.
 Google-/Firebase-Einrichtung wurde in dieser Arbeitseinheit nicht verändert.

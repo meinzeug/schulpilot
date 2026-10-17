@@ -620,6 +620,13 @@ class _MaterialReviewState extends State<MaterialReview> {
     final d = widget.data;
     final synthetic = d['synthetic'] == true;
     final confirmed = d['confirmed'] == true || confirmedHere;
+    final languageMaterial = [
+      'englisch',
+      'english',
+      'französisch',
+      'francais',
+      'spanisch',
+    ].contains((d['subject'] ?? '').toString().trim().toLowerCase());
     final uncertainties = d['uncertainties'] as List? ?? [];
     final canConfirm = !confirmed && d['status'] == 'review';
     final longText =
@@ -788,9 +795,16 @@ class _MaterialReviewState extends State<MaterialReview> {
         if (confirmed && widget.showUnitAction) ...[
           const SizedBox(height: 20),
           ActionButton(
-            label: 'Jetzt lernen',
+            label: languageMaterial ? 'Wörter & Sprache üben' : 'Jetzt lernen',
             icon: Icons.play_arrow_rounded,
             onPressed: () async {
+              if (languageMaterial) {
+                openRoute(
+                  context,
+                  '/vocabulary/${d['child_id']}?material=${d['id']}',
+                );
+                return;
+              }
               final result = await widget.state.api.job(
                 '/children/${d['child_id']}/units',
                 {'material_id': d['id']},
@@ -804,6 +818,14 @@ class _MaterialReviewState extends State<MaterialReview> {
         ],
         if (confirmed && d['synthetic'] != true) ...[
           const SizedBox(height: 12),
+          TextButton.icon(
+            icon: const Icon(Icons.translate_rounded),
+            label: const Text('Wörter aus dieser Seite'),
+            onPressed: () => openRoute(
+              context,
+              '/vocabulary/${d['child_id']}?material=${d['id']}',
+            ),
+          ),
           TextButton.icon(
             icon: const Icon(Icons.chat_bubble_outline_rounded),
             label: const Text('Frag nach'),

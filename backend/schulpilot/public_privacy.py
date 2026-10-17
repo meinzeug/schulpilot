@@ -47,11 +47,11 @@ PARAGRAPHS = (
         "dem eigenen Gerät für höchstens 24 Stunden fortsetzen (maximal acht Seiten und drei MB); Abmelden oder Entfernen "
         "löscht diese lokale Warteschlange. Der Server entfernt Bildmetadaten. Persönliche Angaben im Bild müssen vor dem "
         "Upload zugeschnitten werden. Private Bilder sind ausschließlich nach Anmeldung und Berechtigungsprüfung abrufbar. "
-        "Für die freigegebene KI-Verarbeitung wird OpenRouter mit kostenlosen, technisch geprüften Modellen und festem "
-        "Upstream verwendet; der konkret verwendete Anbieter wird am Lerninhalt angezeigt. Namen, Passwörter und Familienkennungen "
+        "Die freigegebene KI-Verarbeitung nutzt den vom Betreiber ausgewählten Anbieter: OpenAI, OpenRouter oder die "
+        "isolierte Codex-Anbindung von OpenAI. Der konkret verwendete Anbieter wird am Lerninhalt angezeigt. Namen, Passwörter und Familienkennungen "
         "werden dafür nicht benötigt. Verarbeitet werden bestätigte Unterrichtsinhalte und bei der Lernbegleitung Aufgaben, "
         "Antworten, Fehlversuche und Hinweise. Die Anbieterwahl erfolgt serverseitig; es gibt keine heimlichen Providerwechsel. "
-        "Die zusätzliche Zero-Data-Retention-Anforderung ist im beauftragten Free-Standard nicht aktiviert. Eine vollständige "
+        "Die zusätzliche Zero-Data-Retention-Anforderung ist im beauftragten OpenRouter-Free-Standard nicht aktiviert. Eine vollständige "
         "Löschung bei allen beteiligten Anbietern allein aufgrund einer API-Einstellung wird nicht behauptet. "
         "Der öffentliche Testraum verwendet ausschließlich künstliche Daten und wird nach 24 Stunden gelöscht.",
     ),
@@ -74,7 +74,8 @@ PARAGRAPHS = (
         "Speicherung, Sicherheit und Aufbewahrung",
         "Konto-, Lern- und Familiendaten liegen in der eigenen Datenbank auf dem SCHULPILOT-Server bei Hetzner. "
         "Private Materialien und Datenbank sind nicht öffentlich zugänglich. Sitzungen sind widerrufbar und Passwörter "
-        "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen, Schulnoteneinträge und Nachrichten werden höchstens "
+        "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen, Wortlisten, Wiederholungsstände, "
+        "Sprachprojekte mit eigenen Entwürfen, Schulnoteneinträge und Nachrichten werden höchstens "
         "365 Tage gespeichert; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere sieben Tage; "
         "tägliche Backups 14 Tage. Backups werden vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen. "
         "Technische Betriebsprotokolle enthalten keine Fotos, vollständigen Kinderantworten oder Zugangsdaten.",
@@ -88,6 +89,17 @@ PARAGRAPHS = (
         "speichert keine Audiodateien und lädt selbst keine Audiodateien hoch. Der erkannte Text ist vor dem Senden "
         "bearbeitbar. Auch Vorlesestimmen können einen Gerätedienst verwenden; eine Offlineverarbeitung ist nicht "
         "auf jedem Gerät verfügbar. Tippen und Lesen bleiben ohne diese Funktionen möglich.",
+    ),
+    (
+        "Eigener Wortschatz und Sprachprojekte",
+        "Bestätigte Wörter, konkrete Bedeutungen, Kontext und die gewählte Sprachvariante werden privat für das jeweilige Kind gespeichert. "
+        "Korrekturen erhalten nachvollziehbare Revisionen. Wiederholungen beruhen auf den tatsächlich gespeicherten Antworten, "
+        "getrennt nach Fähigkeit und Richtung. Beim ausdrücklich angeforderten Erkennen oder Erstellen einer Sprachübung "
+        "erhält der freigegebene KI-Anbieter die ausgewählten bestätigten Wörter und Hefttexte, beim Textfeedback auch den eigenen Entwurf. "
+        "Modellbeispiele und Vorschläge sind keine eigene Lernleistung. Berechtigte Eltern können den privaten Verlauf nachvollziehen "
+        "und exportieren. Entfernte Quellen sperren ihre weitere Verwendung; bereits abgegebene Antworten bleiben im privaten "
+        "Lernverlauf bis zu dessen Löschung oder der Aufbewahrungsgrenze erhalten. Ein Sprachtranskript ist keine Ausspracheprüfung "
+        "und kein selbstständiger Rechtschreibnachweis.",
     ),
     (
         "Bestellungen und Überweisungen",
@@ -125,7 +137,7 @@ def privacy():
         """<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SCHULPILOT – Datenschutz</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:820px;margin:auto;padding:32px 22px}a{color:#5732bd}header{display:flex;align-items:center;gap:16px}header img{width:64px;height:64px}h1{font-size:32px}h2{font-size:22px;margin-top:32px}p{white-space:pre-line}nav{display:flex;gap:20px;flex-wrap:wrap}section{border-bottom:1px solid #dce1ec;padding-bottom:12px}</style>
 <main><header><img src="/icons/icon-192.png" alt=""><strong>SCHULPILOT</strong></header><h1>Datenschutz</h1>
-<p>Stand: 14. Oktober 2026. Für die Web-App und die Android-App.</p><nav><a href="/">Startseite</a><a href="/settings">Einstellungen</a><a href="/account-deletion">Konto löschen</a></nav>"""
+<p>Stand: 17. Oktober 2026. Für die Web-App und die Android-App.</p><nav><a href="/">Startseite</a><a href="/settings">Einstellungen</a><a href="/account-deletion">Konto löschen</a></nav>"""
         + sections
         + """
 <p>Weitere Informationen der eingesetzten Dienste: <a href="https://policies.google.com/privacy">Google-Datenschutz</a>,

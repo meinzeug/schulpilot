@@ -7,6 +7,8 @@ import 'api.dart';
 import 'coaching_panel.dart';
 import 'lesson_voice.dart';
 import 'learning_room.dart';
+import 'learning_next_step.dart';
+import 'vocabulary_screen.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
 
@@ -48,6 +50,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? choice;
   Map<String, String> matches = {};
   String? questionId;
+  String? answerRequestKey, answerRequestBody;
+  bool speechAnswer = false;
+  List<String>? languageBank;
+  String bankJoiner = ' ';
   String? explanation;
   String? hint;
   Json? answeredQuestion;
@@ -220,6 +226,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final next = currentQuestion;
     if (next?['id'] == questionId) return;
     questionId = next?['id'];
+    speechAnswer = false;
+    languageBank = null;
+    bankJoiner = ' ';
+    answerRequestKey = answerRequestBody = null;
     choice = null;
     matches = {};
     hint = null;
@@ -866,7 +876,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 20),
           if (u['status'] == 'completed') ...[
-            CoachingPanel(state: state, unit: u, refresh: load),
+            if (u['round_kind'] == 'vocabulary')
+              vocabularyResult(u)
+            else
+              CoachingPanel(state: state, unit: u, refresh: load),
             askButton(u),
             const SizedBox(height: 20),
           ],
@@ -919,7 +932,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return answerFeedback(context, u);
     }
     if (u['status'] == 'completed') {
-      return CoachingPanel(state: state, unit: u, refresh: load);
+      return u['round_kind'] == 'vocabulary'
+          ? vocabularyResult(u)
+          : CoachingPanel(state: state, unit: u, refresh: load);
     }
     if (u['status'] != 'active') {
       return Panel(
@@ -1003,6 +1018,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               questionPrompt(q),
+              if (q['language'] is Map) languagePrompt(q),
               const SizedBox(height: 18),
               if (q['type'] == 'choice')
                 RadioGroup<String>(
@@ -1094,6 +1110,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   alignment: Alignment.centerLeft,
                   child: VoiceInputButton(
                     controller: text,
+                    locale: q['language']?['answer_locale'] ?? 'de-DE',
+                    onRecognized: () {
+                      if (mounted) setState(() => speechAnswer = true);
+                    },
                     enabled: !actionBusy,
                     maxLength: q['type'] == 'short' ? 500 : 200,
                   ),
@@ -1103,6 +1123,185 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
         ),
         if (helpExpanded) ...[const SizedBox(height: 12), inlineHelp(u, q)],
+      ],
+    );
+  }
+
+  Widget languagePrompt(Json q) {
+    final meta = Json.from(q['language']);
+    final cue = meta['cue']?.toString() ?? '';
+    final bank = languageBank ?? meta['word_bank'] as List? ?? [];
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (meta['generated_example'] == true)
+            const Tag('Erzeugtes Übungsbeispiel'),
+          if (cue.isNotEmpty) ...[
+            Text(
+              cue,
+              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+            ),
+            ReadAloudButton(text: cue, locale: meta['cue_locale'] ?? 'de-DE'),
+          ],
+          if ((meta['context'] ?? '').toString().isNotEmpty)
+            Text('Kontext: ${meta['context']}'),
+          if (meta['skill'] == 'listening') ...[
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final slow in [false, true])
+                  ReadAloudButton(
+                    text: meta['stimulus'],
+                    locale: meta['target_locale'],
+                    slow: slow,
+                    enabled: !actionBusy,
+                    onReadCompleted: () async {
+                      if (!mounted || currentQuestion?['id'] != q['id']) return;
+                      await state.api.post(
+                        '/units/${unit!['id']}/questions/${q['id']}/language-stimulus',
+                        {'kind': 'listen'},
+                      );
+                      noteInteraction();
+                    },
+                  ),
+              ],
+            ),
+            const Text(
+              'Höre erst zu, dann antworte. Ohne passende Stimme wähle im Wortschatz eine Lese- oder Schreibübung.',
+              style: TextStyle(fontSize: 13, color: muted),
+            ),
+          ],
+          if (bank.isNotEmpty) ...[
+            const Text(
+              'Tippe die Bausteine in der passenden Reihenfolge an. Du kannst den Satz danach bearbeiten.',
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final token in bank)
+                  ActionChip(
+                    label: Text(token),
+                    onPressed: actionBusy
+                        ? null
+                        : () {
+                            text.text =
+                                '${text.text}${text.text.isEmpty ? '' : bankJoiner}$token';
+                            noteInteraction();
+                          },
+                  ),
+              ],
+            ),
+          ],
+          if (meta['skill'] == 'spelling' && bank.isEmpty)
+            TextButton.icon(
+              onPressed: actionBusy
+                  ? null
+                  : () => perform(() async {
+                      final id = widget.unitId;
+                      final response = await state.api.post(
+                        '/units/$id/questions/${q['id']}/language-stimulus',
+                        {'kind': 'word_bank'},
+                      );
+                      if (mounted &&
+                          unit?['id'] == id &&
+                          currentQuestion?['id'] == q['id']) {
+                        setState(() {
+                          languageBank = List<String>.from(
+                            response['word_bank'],
+                          );
+                          bankJoiner = response['joiner'] ?? ' ';
+                        });
+                      }
+                    }),
+              icon: const Icon(Icons.extension_outlined),
+              label: const Text('Mit Bausteinen üben · Hilfe'),
+            ),
+          if (speechAnswer)
+            const Text(
+              'Mit Spracheingabe · zählt als unterstützte Antwort',
+              style: TextStyle(fontSize: 13, color: muted),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget feedbackAudio(Json q, String explanationText) {
+    final segments = q['language_feedback'] as List?;
+    if (q['language'] is! Map) return ReadAloudButton(text: explanationText);
+    if (segments == null) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (final segment in segments)
+          ReadAloudButton(text: segment['text'], locale: segment['locale']),
+      ],
+    );
+  }
+
+  Widget vocabularyResult(Json u) {
+    final questions = u['questions'] as List;
+    final independent = questions.where((q) {
+      final attempts = q['attempts'] as List;
+      return attempts.length == 1 &&
+          attempts.first['outcome'] == 'correct' &&
+          attempts.first['assisted'] != true;
+    }).length;
+    final result = u['vocabulary_result'] as Map? ?? {};
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Panel(
+          color: mint,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.check_circle_outline_rounded,
+                color: teal,
+                size: 38,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Deine Wörterrunde ist bearbeitet.',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '${questions.length} Aufgaben bearbeitet · $independent beim ersten Versuch ohne Hilfe richtig',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                (result['skills'] as List? ?? [])
+                    .map((skill) => languageSkills[skill] ?? skill)
+                    .join(' · '),
+              ),
+              if (result['next_due'] != null)
+                Text('Wiedervorlage: ${result['next_due']}'),
+              const SizedBox(height: 12),
+              const Text(
+                'Jede Antwort zählt in deinem Lernverlauf. Die Wiedervorlage gilt nur für die geübte Fähigkeit und Richtung.',
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () =>
+                    openRoute(context, '/vocabulary/${u['child_id']}'),
+                child: const Text('Zu meinen Wörtern'),
+              ),
+            ],
+          ),
+        ),
+        if (state.isChild) ...[
+          const SizedBox(height: 16),
+          LearningNextStep(
+            state: state,
+            childId: u['child_id'],
+            currentUnitId: u['id'],
+          ),
+        ],
       ],
     );
   }
@@ -1239,10 +1438,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     noteInteraction();
     await beat();
     if (!requestIsCurrent(id, requestedOwner) || !routeVisible) return;
+    if (q['language'] is Map) {
+      final body = '$id:${q['id']}:$answer:$speechAnswer';
+      if (answerRequestBody != body) {
+        answerRequestBody = body;
+        answerRequestKey = vocabularyKey();
+      }
+    }
     final data = await state.api.post(
       '/units/$id/questions/${q['id']}/answer',
       {
         'answer': answer,
+        if (q['language'] is Map) 'request_id': answerRequestKey,
+        if (q['language'] is Map)
+          'input_method': speechAnswer ? 'speech' : 'typed',
         if (u.containsKey('pending_feedback')) 'guided_feedback': true,
       },
     );
@@ -1366,9 +1575,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   style: const TextStyle(fontSize: 16),
                 )
               else if (answerAssisted)
-                const Text(
-                  'Mit Hilfe gelöst. Gut, dass du drangeblieben bist.',
-                  style: TextStyle(fontSize: 16),
+                Text(
+                  q['language'] is Map &&
+                          ((q['attempts'] as List)
+                                          .last['evaluation']?['support_reasons']
+                                      as List? ??
+                                  [])
+                              .contains('recent_solution')
+                      ? 'Gerade mit Vorlage gelernt. Später probierst du es ohne.'
+                      : 'Mit Hilfe gelöst. Gut, dass du drangeblieben bist.',
+                  style: const TextStyle(fontSize: 16),
                 ),
               if (explanation?.trim().isNotEmpty == true) ...[
                 const SizedBox(height: 16),
@@ -1383,7 +1599,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       ),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: ReadAloudButton(text: explanation!),
+                        child: feedbackAudio(q, explanation!),
                       ),
                     ],
                   )
@@ -1394,7 +1610,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   ),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: ReadAloudButton(text: explanation!),
+                    child: feedbackAudio(q, explanation!),
                   ),
                 ],
               ],

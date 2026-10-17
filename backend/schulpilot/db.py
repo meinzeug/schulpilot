@@ -411,8 +411,129 @@ class Attempt(Base):
     answer = Column(JSON, nullable=False)
     outcome = Column(String(20), nullable=False)
     assisted = Column(Boolean, default=False, nullable=False)
+    request_key = Column(String(80))
+    request_digest = Column(String(64))
+    evaluation = Column(JSON)
+    input_method = Column(String(12), default="typed", server_default="typed", nullable=False)
     created = Column(Float, default=now, nullable=False)
-    __table_args__ = (UniqueConstraint("unit_id", "question_id", "id"),)
+    __table_args__ = (UniqueConstraint("unit_id", "question_id", "id"),
+                      Index("uq_attempt_request", "unit_id", "request_key", unique=True))
+
+
+class VocabularyCollection(Base):
+    __tablename__ = "vocabulary_collections"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(160), nullable=False)
+    target_locale = Column(String(12), nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class VocabularyItem(Base):
+    __tablename__ = "vocabulary_items"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    identity = Column(String(64), nullable=False)
+    target_locale = Column(String(12), nullable=False)
+    word = Column(String(200), nullable=False)
+    meaning = Column(String(200), nullable=False)
+    context = Column(String(500), default="", nullable=False)
+    part_of_speech = Column(String(40), default="", nullable=False)
+    variants = Column(JSON, default=list, nullable=False)
+    meaning_variants = Column(JSON, default=list, nullable=False)
+    source_revisions = Column(JSON, default=list, nullable=False)
+    origin = Column(String(16), nullable=False)
+    revision = Column(Integer, default=1, nullable=False)
+    confirmed = Column(Boolean, default=False, nullable=False)
+    history = Column(JSON, default=list, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "identity", name="uq_vocabulary_identity"),)
+
+
+class VocabularyMembership(Base):
+    __tablename__ = "vocabulary_memberships"
+    collection_id = Column(ForeignKey("vocabulary_collections.id", ondelete="CASCADE"), primary_key=True)
+    item_id = Column(ForeignKey("vocabulary_items.id", ondelete="CASCADE"), primary_key=True)
+
+
+class VocabularyReview(Base):
+    __tablename__ = "vocabulary_reviews"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_id = Column(ForeignKey("vocabulary_items.id", ondelete="CASCADE"), nullable=False)
+    revision = Column(Integer, nullable=False)
+    direction = Column(String(16), nullable=False)
+    skill = Column(String(24), nullable=False)
+    stage = Column(Integer, default=0, nullable=False)
+    due = Column(String(10), nullable=False)
+    last_promoted = Column(String(10))
+    needs_clarification = Column(Boolean, default=False, nullable=False)
+    __table_args__ = (UniqueConstraint("item_id", "revision", "direction", "skill", name="uq_vocabulary_review"),)
+
+
+class VocabularyReviewEvent(Base):
+    __tablename__ = "vocabulary_review_events"
+    attempt_id = Column(ForeignKey("attempts.id", ondelete="CASCADE"), primary_key=True)
+    review_id = Column(ForeignKey("vocabulary_reviews.id", ondelete="CASCADE"), nullable=False, index=True)
+    day = Column(String(10), nullable=False)
+    advanced = Column(Boolean, nullable=False)
+    stage = Column(Integer, nullable=False)
+    due = Column(String(10), nullable=False)
+
+
+class VocabularyImport(Base):
+    __tablename__ = "vocabulary_imports"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    request_key = Column(String(80), nullable=False)
+    request_digest = Column(String(64), nullable=False)
+    target_locale = Column(String(12), nullable=False)
+    title = Column(String(160), nullable=False)
+    text = Column(Text, default="", nullable=False)
+    source_revisions = Column(JSON, default=list, nullable=False)
+    pairs = Column(JSON, default=list, nullable=False)
+    status = Column(String(16), default="review", nullable=False)
+    job_id = Column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    collection_id = Column(ForeignKey("vocabulary_collections.id", ondelete="SET NULL"))
+    error = Column(String(500))
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_vocabulary_import_request"),)
+
+
+class VocabularyAction(Base):
+    __tablename__ = "vocabulary_actions"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    request_key = Column(String(80), nullable=False)
+    request_digest = Column(String(64), nullable=False)
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_vocabulary_action_request"),)
+
+
+class LanguageProject(Base):
+    __tablename__ = "language_projects"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    request_key = Column(String(80), nullable=False)
+    request_digest = Column(String(64), nullable=False)
+    target_locale = Column(String(12), nullable=False)
+    mode = Column(String(32), nullable=False)
+    inputs = Column(JSON, nullable=False)
+    source_revisions = Column(JSON, default=list, nullable=False)
+    item_revisions = Column(JSON, default=list, nullable=False)
+    previous_id = Column(ForeignKey("language_projects.id", ondelete="CASCADE"))
+    step = Column(Integer, default=1, nullable=False)
+    status = Column(String(16), default="queued", nullable=False)
+    result = Column(JSON)
+    error = Column(String(500))
+    job_id = Column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="SET NULL"))
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_language_project_request"),)
 
 
 class Activity(Base):

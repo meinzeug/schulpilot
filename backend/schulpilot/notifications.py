@@ -423,7 +423,12 @@ def due_kinds(db, device, current):
             and local.weekday() in prefs.weekdays
             and not (prefs.pause_until and local.date() <= prefs.pause_until)
         ):
-            if not db.scalar(
+            from .db import VocabularyItem, VocabularyReview
+
+            word_due = db.scalar(select(VocabularyReview.id).join(VocabularyItem).where(
+                VocabularyReview.child_id == child.id, VocabularyReview.revision == VocabularyItem.revision,
+                VocabularyReview.due <= local.date().isoformat()).limit(1))
+            if word_due or not db.scalar(
                 select(Activity.id).where(
                     Activity.child_id == child.id, Activity.kind == "unit_completed", Activity.created >= start
                 )

@@ -583,6 +583,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         ? 'Hallo, ${state.user?['display_name'] ?? 'du'}!'
         : 'Lernüberblick',
     actions: [
+      TextButton.icon(
+        onPressed: () => openRoute(context, '/vocabulary/${widget.childId}'),
+        icon: const Icon(Icons.translate_rounded),
+        label: const Text('Wörter'),
+      ),
       if (!state.isChild) ...[
         TextButton.icon(
           onPressed: () => openRoute(context, '/progress/${widget.childId}'),

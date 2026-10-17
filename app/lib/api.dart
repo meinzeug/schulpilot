@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'push_client.dart';
 import 'pending_uploads.dart';
+import 'lesson_voice.dart';
 
 import 'transport.dart' if (dart.library.js_interop) 'transport_web.dart';
 
@@ -37,6 +38,7 @@ class Api {
 
   Map<String, String> get headers => {
     'X-Schulpilot-Request': '1',
+    'X-Schulpilot-Capabilities': 'language-v1',
     if (!kIsWeb) 'X-Client-Platform': 'native',
     if (token != null) 'Authorization': 'Bearer $token',
   };
@@ -255,6 +257,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> accept(Json response) async {
     if (user != null && user!['id'] != response['user']['id']) {
+      await LessonVoiceSession.shared.stop();
       collectionViews.clear();
       await push.forget();
       await pendingUploads.clear();
@@ -289,6 +292,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await LessonVoiceSession.shared.stop();
     if (!kIsWeb) await storage.delete(key: 'google_login_proof');
     try {
       await api.post('/auth/logout');
@@ -299,6 +303,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> clear() async {
+    await LessonVoiceSession.shared.stop();
     collectionViews.clear();
     await push.forget();
     api.token = null;

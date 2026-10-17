@@ -4,6 +4,14 @@ Stand 17.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächli
 
 ## Der durchgängige Ablauf
 
+Sprachlernen ergänzt diesen Ablauf innerhalb derselben Lernräume. Die genaue
+Bewertungspolitik, getrennte Sprachfähigkeiten/Richtungen, Eintragsrevisionen,
+Intervallregel und Werkzeugzuordnung stehen in [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).
+Ein umgedrehter Kartenrücken ist keine Leistung. Modellbeispiel und eigener
+Entwurf bleiben getrennt. Erst echte Antworten zählen; ein späterer selbstständiger
+Abruf erhält eine eigene zeitliche Beobachtung. Neue Kontext- und Grammatikübungen
+benötigen bestätigte Wörter/Unterrichtsquellen und eine bewusste Aktion.
+
 1. Heft- und Arbeitsheftseiten abgeben; die Vorbereitung läuft im Hintergrund. Erkannte Inhalte und Unsicherheiten ausdrücklich prüfen. Ohne bestätigten Stoff werden daraus keine Aufgaben.
 2. Elternaufträge, Termine, offene Schwierigkeiten und spätere Wiederholungen bestimmen die nächste überschaubare Portion. Aktuelle Schulnoten verändern die Fachgewichtung innerhalb derselben verfügbaren Zeit. Bestehende Pflichtziele bleiben erhalten.
 3. Verstehen: kurze, altersgerechte Erklärung. Für ein im Heft belegtes Verfahren ein kleines gelöstes Beispiel mit Zwischenschritten; bei Sachthemen ein konkretes belegtes Beispiel. Kein unbekanntes Zusatzwissen als Voraussetzung.
