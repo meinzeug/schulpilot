@@ -1,99 +1,130 @@
-SCHULPILOT – aktueller Nachtrag 17.10.2026
+SCHULPILOT – bereinigter aktueller Stand · 17.10.2026 · 1.3.0+28
 
-Dieser Abschnitt ersetzt sämtliche älteren Produkt-, Versions-, Provider- und Zeitangaben
-des nachfolgenden historischen Protokolls. Google-/Firebase-Einrichtung wurde in dieser
-Arbeitseinheit weder neu angelegt noch migriert. Frühere IAM-/Keyrestriktions- und
-Zustellprüfungen bleiben historische Einzelbeobachtungen, keine neue Cloud-Abnahme.
+Dieser Abschnitt ersetzt die älteren Produkt-/Versions-/Providerangaben unten.
+Google-/Firebase-Einrichtung wurde in dieser Arbeitseinheit nicht verändert.
+Frühere Cloud-IAM-, Keyrestriktions-, Google-Login- und Zustellbeobachtungen sind
+historische Einzelprüfungen, keine neu durchgeführte Cloud-/Zustellabnahme.
 
-Bereitgestellter Produktcommit: 14d1789993a5c7a33ea9d9207433babd61c46eb3, main, gepusht.
-Öffentliches Release: 20261017T085036Z-14d1789; https://schulpilot.dorfspy.de
-Eigene API: https://schulpilot.dorfspy.de/api; Health bestätigt Version und Produktcommit.
-Web sowie signierte native Flutter-Direct-APK und Play-AAB: 1.2.0+27.
-APK: /home/dennis/schulpilot/artifacts/schulpilot-android.apk
-Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
-63.790.101 Bytes; SHA256 5751deb347ca12cdd6212e1ca9b3fa1b849494a31bab555963331130175b3b2a.
-Play-AAB: /home/dennis/schulpilot/artifacts/schulpilot-play.aab; gebaut und bundletool-validiert,
-kein neuer Console-Upload. Nachfolgende QA-/Dokumentationscommits können neuer sein.
+Produkt und Bereitstellung
+Repository /home/dennis/schulpilot ; https://github.com/meinzeug/schulpilot ; main.
+Aktueller bereitgestellter Produktcommit 8770118ef04f7be6655fc49feb4616fc5c45b5f7, auf main gepusht.
+Release 20261017T104304Z-8770118 ; https://schulpilot.dorfspy.de
+API https://schulpilot.dorfspy.de/api ; Health bestätigt Quellstand, KI verfügbar.
+Web und echte native Flutter-Direct-APK / Play-AAB 1.3.0+28.
+APK /home/dennis/schulpilot/artifacts/schulpilot-android.apk
+Download https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+64.445.825 Bytes ; SHA256 9c2bffd5c0142eee3c580d89ef25da27723149b93554890bdb68915940e7b000.
+AAB /home/dennis/schulpilot/artifacts/schulpilot-play.aab ; gebaut, bundletool-validiert.
+Kein Play-Console-Upload dieser Arbeitseinheit. APK/Webquellen sind unverändert zum
+vollständig öffentlich und nativ geprüften Produktstand 7fc41e0; danach nur Backendfilter
+und Dokumentation verbessert. Nachfolgende reine Dokumentationscommits können neuer sein.
 
-Kinderführung vollständig überarbeitet: stabile Lernrunde und heutige Fotos auf Home,
-ruhiger Lernraum mit Verstehen/Üben/Rückblick, eine Hauptaktion und abgestufte Hilfe,
-gespeicherte Rückmeldung nach Reload/Neustart und fachliches Ergebnis vor dem Weiterlernen.
-Antworten, Hilfen, unklare Ergebnisse und spätere Prüftage bleiben getrennt. Kein behauptetes
-hundertprozentiges Verständnis allein aus einer richtigen Antwort oder drei Prüftagen.
-Bewusste neue Einzelrunde hat eine eigene Statusseite; reine Statusabfragen erzeugen nichts.
-Mindestziele bleiben aus tatsächlichen aktiven Serversekunden verbindlich, weitere Zeit nach
-dem Ziel freiwillig. Schätzungen erfüllen kein Zeitminimum. Eltern sehen dieselben gespeicherten
-Fakten; Rollen/Familientrennung, Quoten und Kostenkontrollen erhalten. Kein Schemawechsel.
+Lernprodukt
+Jede gespeicherte beantwortete Aufgabe zählt sofort, auch freiwillig, nach erreichtem
+Zeitminimum und in begonnenen Runden. Weitere Versuche bleiben sichtbar. Alleine im ersten
+Versuch, unterstützt/erneut richtig, weiter üben und offene Bewertung bleiben getrennt.
+Fach → Thema → einzelne Runden für Kind und berechtigte Eltern, mit Seitenteilung.
+Spätere selbstständige Prüftage zusätzlich aufklappbar; sie ersetzen keine Übungsleistung.
+Schulnoten verwalten ausschließlich berechtigte Eltern; Familienleserecht bleibt erhalten.
+Schwächere aktuelle Ergebnisse verändern Fachgewichtung im bestehenden Wochenplan und in der
+Schultagportion. Eltern können die Gewichtung abschalten und ausdrücklich aus bestätigtem
+passendem Material einen Pflichtauftrag anlegen. Keine automatische KI durch Noteneingabe.
+Noteneinträge und Notennotizen werden nicht automatisch an die Lern-KI übertragen.
+Nur eine abgeleitete Unterstützungsstrategie ergänzt die neuen Lernaufträge.
+Belegte kleine Beispiele, eigenes Anwenden, gestufte Hilfen und spätere Abrufe; genaue
+Heuristiken, geprüfte Forschungsquellen und Grenzen: docs/LEARNING_MODEL.md.
+Mindestziele bleiben aus tatsächlichen aktiven Serversekunden verbindlich; Schätzungen
+zählen nicht als Zeit. Pausenempfehlungen, Quoten, Klassen-/Quellenbindung und Elternziele
+bleiben erhalten. Keine Garantie besserer Schulnoten oder vollständiger Stoffbeherrschung.
 
-Codex-Konfiguration wurde unverändert belassen. Zuletzt separat bestätigter Stand:
-Codex CLI, Lern-/Bildmodell gpt-6.1-sol, Reasoning xhigh, Revision 18. Aktueller öffentlicher
-Status ai_available=true; bestehender isolierter Worker-Fingerprint erhalten. Keine erneuten
-Providerprüfungen oder externen KI-Aufträge in dieser Abnahme; Kontokosten bleiben unbekannt.
+Backend / Betrieb
+Schema 0014: zusätzliche private Schulnotentabelle und eigene Notengewichtungsoption.
+Vorhandene Elternpräferenzen, Antworten, Lernzeiten und Planfingerprints ohne Noten erhalten.
+Export und Kinder-/Kontolöschung enthalten die Noten; Höchstaufbewahrung 365 Tage.
+Sicherungen vor Aktivierung erfolgreich; sieben bestehende Dienste nachher aktiv.
+Vorheriger Releasepointer 20261017T103014Z-7fc41e0. Kompatibler Rückweg ohne Schemalöschung:
+docs/OPERATIONS.md. Keine produktive Datenrücksicherung ohne Löschjournalabgleich.
+Provider unverändert: Codex CLI, gpt-6.1-sol für Text/Bild, xhigh, Revision 18.
+Isolierter Workerfingerprint erhalten; kein Anbieterwechsel, keine Lockerung von Limits.
+Kein neuer echter KI-Anbieteraufruf in dieser Abnahme; Kontokosten bleiben unbekannt.
 
-Lokale Abnahme: 688 PostgreSQL-16-Backendtests, nach der kompakten Rückmeldungs-Wiederaufnahme
-54 gezielte PostgreSQL-Tests. Abschließend alle 259 Fluttertests; Analyse und Ruff sauber.
-Nach Sichtbefund in 26 genau zwei plattformabhängige Zeitformatierungsgrenzen korrigiert:
-echter Chrome-Widgettest und 16 native Zeit-VM-Tests grün. Keine Heartbeat-/Zielregel verändert.
-Web, Direct-APK und Play-AAB gebaut; Signatur/Version/16-KB-Zipausrichtung geprüft.
-Ein Buildprozess wurde zuvor mit 143 beendet; vollständiger Wiederholungsbuild erfolgreich,
-keine abgebrochenen Teilartefakte veröffentlicht.
+Tatsächliche Prüfungen dieser Arbeitseinheit
+720 Backendtests im vollständigen isolierten PostgreSQL-16-Lauf bestanden (560,18 s).
+Nach den ergänzten Fachfilterfällen alle 45 gezielten Backendtests bestanden (23,59 s).
+269 Fluttertests im Gesamtlauf bestanden; nach zusätzlicher mobiler Formularprüfung zwölf
+gezielte Tests bei 320/390/1280 px bestanden. Analyse, Ruff und Diffprüfung ohne Befund.
+Web, signierte APK, Play-AAB, Signatur und 16-KB-Zipausrichtung geprüft.
+Elf öffentliche Web-Direktlinks 200, fünf private APIs anonym 401, HTTPS und HTTP→HTTPS 308.
+Vollständiger öffentlicher APK-Download mit Größe/Hash gegengeprüft.
+Öffentliche Browserbedienung: alle vier Komponenten, fünf Antworten, ein Hinweis,
+Rückmeldung nach Reload, Fach/Thema/Runde, identischer Eltern-/Kinderfortschritt,
+Notenanlage und quellgebundener Pflichtauftrag über normale Oberfläche. Kind-Noten-API 403.
+Android-Update 27→28 über Appprüfung und Androids Installationsbestätigung, ohne adb install.
+Drei zusätzliche echte Startprüfungen bestanden. Installierte APK 28: vier Komponenten,
+Prozessneustart, Hinweis, falsche/richtige Wiederholung, Pause, Fortsetzung und Elternansicht.
+111 echte gespeicherte aktive Sekunden / 20 Minuten Ziel in Eltern- und Kinderansicht gleich;
+Mindestziel bleibt offen. 20 beobachtete Pausensekunden erzeugten null Zeitgutschrift.
+Native Fach-/Themenübersicht und private Noten bedient und visuell geprüft.
+Neue Filterkorrektur zusätzlich an der öffentlichen API mit drei künstlichen Noten geprüft.
+Alle drei eigenen künstlichen Haushalte regulär gelöscht, Sitzungen anschließend 401;
+private Journale entfernt, native App wieder im Gastzustand/eigene Appdaten gelöscht.
+Null externe KI-Aufträge/Reservierungen in diesen Fällen, keine echten Kinderseiten verwendet.
+Geheimnisprüfungen über Quellen/Web/APK/AAB/bereinigte Übergaben, auch bei aktiven eigenen
+Testzugängen: null Treffer. Berichte in artifacts/ und Einzelheiten docs/STATUS.md.
 
-Öffentliches HTTPS, neun Web-Direktlinks, private API mit 401 und vollständiger APK-Download
-mit Größe/Hash geprüft. Sieben bestehende Dienste aktiv; Konfigurations-/Datenbanksicherung
-erfolgreich. Vorheriger Releasepointer: 20261017T083609Z-ec48f1f, Rückweg docs/OPERATIONS.md.
-Automatische Android-Updates 25 → 26 und 26 → 27 jeweils über Appprüfung/Download und Androids
-Installationsbestätigung, ohne adb install; auf 27 drei weitere echte Startprüfungen bestanden.
+Unveränderte Firebase-/Google-Basis, historisch bestätigt
+Projekt schulpilot-f6bf3, Nummer 460657028995, bestehende Android- und Web-App erhalten.
+Dedizierter Sender schulpilot-fcm-sender@schulpilot-f6bf3.iam.gserviceaccount.com
+Rolle projects/schulpilot-f6bf3/roles/schulpilotFcmSender, nur cloudmessaging.messages.create.
+Keine zusätzlichen Konten, Schlüssel, Apps, VAPID-Schlüssel oder kostenpflichtigen Ressourcen.
+Historisch bestätigte APIs: fcm.googleapis.com, fcmregistrations.googleapis.com,
+firebaseinstallations.googleapis.com. Getrennte Android-/Web-Keys; bestehende Restriktionen
+wurden nicht gelockert. Historisch leere Anwendungseinschränkungen und 27-API-Allowlist;
+keine neue Cloudrestriktionsprüfung behaupten. Ausführlicher Nachweis im historischen Teil.
+Lokale öffentliche Konfiguration:
+/home/dennis/.local/share/schulpilot-firebase/firebase-public-config.json (0600, Ordner 0700).
+Private Dienstkontodatei nur als Pfad, niemals als Übergabedownload:
+/home/dennis/.local/share/schulpilot-firebase/fcm-service-account.json (0600).
+Server /etc/schulpilot/fcm-service-account.json (root:schulpilot,0640).
+Privater OAuth-Webclient /home/dennis/.local/share/schulpilot-firebase/google-oauth-client.json
+Server /etc/schulpilot/google-oauth-client.json (root:schulpilot,0640).
+Heute lokale Datei-/Ordnerrechte und serverseitige Dienstkontorechte erneut geprüft;
+keine neue OAuth-Authentifizierung, FCM-Validierung oder sichtbare Zustellung ausgeführt.
+Die gesondert auditierte allgemeine Produktions-Pushfreigabe dieser Installation bleibt
+erhalten. Freiwilliger Geräte-Opt-in, zusätzliche Elternfreigabe bei Kindern und Ruhezeiten
+bleiben erforderlich. Pushannahme ist weiterhin kein Zustellnachweis.
 
-Öffentlicher Lernablauf auf 26: eigene feste Demo, alle 4 Aufgabenarten, 5 Antworten, 1 Hinweis,
-5 Quittungen, Reload mit erhaltener Rückmeldung und Ergebnis bei 320/390/1280.
-Gespeichert exakt 3 selbstständige und 1 unterstützte Lösung. Vorhandene nächste synthetische
-Runde direkt gestartet (HTTP 200 + Unitroute); der Screenshot noch im Laden, daraus keine fertig
-gerenderte nächste Aufgabe behauptet. Eltern sehen dieselben 5 Antworten und den Hinweis.
-14 normale UI-Heartbeats nur nach HTTP-Status beobachtet, keine vollständige Body-/Zeitabnahme.
-Null externe KI/Reservierungen. Familie regulär gelöscht, Eltern-/Kindersitzungen mit 401.
+Konkrete Fortsetzung im Browser durch ChatGPT
+https://schulpilot.dorfspy.de/login – normaler sicherer Login, Google optional nur für Eltern.
+https://schulpilot.dorfspy.de/app – rollenbezogener Einstieg.
+https://schulpilot.dorfspy.de/settings – Gerät/Push und Google-Verknüpfung.
+https://schulpilot.dorfspy.de/admin – Betrieb, ausdrücklich nur Administrator.
+https://schulpilot.dorfspy.de/admin/settings – Betriebseinstellungen, keine privaten Kinderinhalte.
+https://schulpilot.dorfspy.de/admin/push – geschützter Sender-/Freigabestatus.
+/progress/{childId} und /grades/{childId} – nur nach eigener Anmeldung und Familienrechten.
+Keine Logindaten, Cookies, Geräte-/OAuth-Tokens oder privaten Schlüssel weitergeben.
+Betreiber meldet sich selbst über normalen Login an. Admin ohne TOTP; Erstinstallation mit
+lokalem einmaligem Einrichtungscode im Wizard, Wiederherstellung docs/INSTALLATION.md.
+Für neue Tests ausschließlich einen eigenen künstlichen Beispielhaushalt verwenden;
+die drei hier verwendeten Zugänge sind gelöscht. Kein dauerhafter Debug- oder Versandzugang.
+Eltern: Familie → Kind → Fächer & Fortschritt → Fach → Thema → Runde; gespeicherte Antworten
+prüfen. Unter Noten künstliche Einträge anlegen/ändern/entfernen, Gewichtung und passenden
+Lernauftrag prüfen. Nie Schulnoten aus App-Antworten erfinden.
+Kind separat anmelden → Lernen → Lernstand; alle eigenen Übungen nachvollziehen, Eltern-
+und Notenverwaltung dürfen nicht zugänglich sein. Fachliche nächste Runde bewusst starten.
+Push unter Einstellungen freiwillig aktivieren; bei Kind vorher Elternfreigabe. Nur eigenes
+künstliches Testgerät nutzen. Vorder-/Hintergrund, Neustart, Ruhezeit, Logout/Entzug prüfen;
+sichtbare Geräteanzeige unabhängig von FCM-Annahme beobachten. Huawei ohne passende Google
+Play Services nicht als funktionsfähig voraussetzen. Physische Geräte und akustische Sprach-
+beobachtung wurden hier nicht erneut getestet. Android-Google-Login braucht die normale
+Google-Anmeldung im Systembrowser. Keine Passwörter oder Tokens an ChatGPT schicken.
 
-Separater Home-Test: Android-Browserprofil bei 320/390/1280, vorbereitet/aktiv/pausiert,
-Start → Pause → Home-Fortsetzen ohne Extrastartgate. Geklickte Nebenkontrollen 48 px, Hauptaktion 52 px.
-Genau 1 synthetischer Job, keine Antworten/externe KI. Der 1280-Test ist ein breites Android-Profil,
-keine pauschale Desktop- oder physische Geräteabnahme. Laufend wartender Job nicht live erzwungen;
-Warte-/Fehler-/Racezustände in Widgettests. Rein lesender 27-Nachtest derselben pausierten Familie:
-Server: 1 aktive Sekunde / 20 Min. Ziel; Anzeige 0:01/20:00 und 19:59 Rest bei 320/390/1280 korrekt.
-Nur GET/HEAD; Status, Antworten, Hinweise, Zeit, Kontingente und privates Journal unverändert.
-Anschließend derselbe Home-Haushalt regulär gelöscht, Eltern-/Kindersitzungen mit 401,
-privates Journal und temporäre Dateien entfernt.
-
-Native APK 27: denselben eigenen Fall nach OTA fortgesetzt, alle vier Komponenten bedient.
-Falsche Antwort mit derselben Rückmeldungskennung nach Prozessneustart wiederhergestellt;
-ein Tipp, fünf Versuche, drei selbstständige und eine unterstützte Lösung. 20 Sekunden Pause
-ergaben null Zeitgutschrift; Rückmeldungsquittung im pausierten Zustand startet nicht neu.
-184 aktive Sekunden (3:04) bei 20 Minuten Ziel, somit 16:56 weiter offen; Eltern zeigen exakt
-dieselben Werte. Feste synthetische Anschlussrunde nur gelesen, nicht gestartet. Keine neuen
-KI-Aufträge/Reservierungen. Eine zu enge Prüftreiberannahme über diese feste Anschlussrunde
-korrigiert, ursprünglichen Fehlbericht erhalten; derselbe Fall ohne neue Familie fortgesetzt.
-Normale Löschung, Eltern-/Kindersitzungen 401, Appneustart am Gastlogin, eigene Emulator-
-Appdaten und privates Journal bereinigt. Alle drei eigenen Testfamilien dieser Abnahme gelöscht.
-Ergebnisdatei: artifacts/learning-room-native-result.json. Kein akustischer/physischer Nachweis.
-
-Abschließende Diff-/Geheimnisprüfung ohne Befund: Quellen, Web, entpackte APK/AAB und
-bereinigte Übergabe, während der Livefälle auch die eigenen Prüfzugänge einbezogen.
-Private Journale entfernt; Dienstkonto/OAuth/Signierung bleiben außerhalb von Git und Downloads.
-
-Erreichbare Browserseiten: /login, /app, /admin, /admin/settings, /admin/push, /settings.
-Nach Kinderlogin: Home → Weiterlernen oder heutige Seiten; Lernen → Anderes Thema; Hefte → eigene Seite.
-Eigene Einheitsseite: /unit/<eigeneUnitID>; laufender eigener Einzelauftrag:
-/learning-preparation/<eigenesKind>/<eigenerJob>. Keine fremden Kennungen verwenden.
-Normale Anmeldung selbst durchführen; keine Passwörter, Sessions, Gerätetokens oder Schlüssel teilen.
-ChatGPT-Testfolge mit einer eigenen künstlichen Familie: Kind normal anmelden, Home/Lernen bei
-klein/groß prüfen, Erklärung → Aufgaben → Fehler/Hilfe → bewusst Weiter, Reload und Pause/Fortsetzen,
-letzte Antwort → Ergebnis → passende Folgerunde; im Elternkonto Antworten, Hilfen und echte Sekunden
-vergleichen. Admin nur für Betrieb; Provider nicht versehentlich wechseln oder erneut prüfen.
-Push in /settings nur freiwillig aktivieren, bei Kindern vorher Elternfreigabe. Ein vorhandenes
-Gerät oder früherer Zustellbericht ist kein neuer Zustellnachweis. Mikrofon/TTS nicht automatisch
-aktiviert. Keine akustische oder neue FCM-/Google-Abnahme mit 27 behauptet.
-
-GitHub-Push funktioniert. Produktlauf 39011474012 startet wegen GitHub-Kontosperre durch ein
-Abrechnungsproblem keine Testschritte. Kontoinhaber muss die Sperre bei GitHub klären.
-Kein erfolgreicher gehosteter CI-Lauf, keine neue Play-Veröffentlichung, kein physischer Gerätetest.
+Offen
+GitHub Actions startet wegen Abrechnungssperre des Kontos keine Schritte; Push funktioniert.
+Aktueller Produktlauf https://github.com/meinzeug/schulpilot/actions/runs/39018485864 .
+Kontoinhaber muss diese Sperre klären. Kein neuer Play-Upload, kein neuer Google-/FCM-
+Zustellnachweis und kein Nachweis verbesserter echter Schulnoten aus den synthetischen Tests.
+Langfristige pädagogische Wirkung muss mit realer Nutzung fachlich geprüft werden.
 
 --- Historisches Übergabeprotokoll, Stand 15.10.2026 ---
 
