@@ -4,6 +4,13 @@ Stand 17.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächli
 
 ## Der durchgängige Ablauf
 
+Fotografierte Vokabellisten bleiben nicht nur Heftseiten: Sichtbare Wortpaare
+und Lernsprache zusammen mit der Quelle bestätigen und in den persönlichen
+Wortschatz übernehmen. Fehlende/mehrdeutige Bedeutungen zunächst klären;
+Grammatikregeln nicht als Übersetzung ausgeben. Speichern ist noch keine
+Lernleistung. Erst die anschließenden kurzen Abrufrunden erzeugen Attempts
+und fähigkeitsbezogene Wiedervorlagen, sichtbar für Kind und Eltern.
+
 Sprachlernen ergänzt diesen Ablauf innerhalb derselben Lernräume. Die genaue
 Bewertungspolitik, getrennte Sprachfähigkeiten/Richtungen, Eintragsrevisionen,
 Intervallregel und Werkzeugzuordnung stehen in [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).

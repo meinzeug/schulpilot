@@ -1,6 +1,6 @@
-# Laufender Zusatz · Foto-Vokabeln und Wörter-Menü · 18.10.2026
+# Aktueller Stand · Foto-Vokabeln 1.4.3+33 · 18.10.2026
 
-1.4.3+33 ist lokal implementiert, noch nicht produktiv aktiviert. Wörtliche
+**Implementiert und bereitgestellt:** Wörtliche
 Wortpaare mit Übersetzung/Sprachbestätigung werden zusammen mit der Heftseite
 in den bestehenden Wortschatz übernommen. Unklare Paare bleiben zur Prüfung
 offen. Bereits gespeicherte Seiten nachträglich übernehmen, Textkorrekturen
@@ -13,19 +13,58 @@ dabei echten Refreshfehler behoben:
 `LoadView.refresh` gab im setState-Callback einen Future zurück. Menü-/Assistent-
 Regressionen zuvor 42 bestanden. 35 gezielte PostgreSQLtests einschließlich
 Parallelität, Quellenrevision, Export und Löschung bestanden; finale Analyse
-und Ruff ohne Befund. Vollständiger PostgreSQLlauf: 804 bestanden, ein
-unveränderter echter CLI-Katalogtest meldete temporär 503. Separat ohne
-Limitänderung bestanden; danach alle 27 Tests seines Moduls in 6,04 Sekunden
-bestanden. Kein vollständig grüner einzelner Gesamtlauf behauptet. Web,
+und Ruff ohne Befund. Abschließender vollständiger PostgreSQLlauf:
+**806 bestanden in 526,48 Sekunden**. Im ersten Lauf meldete ein bestehender
+echter Codex-Katalogtest 503 (804 bestanden); separat, alle 27 Modultests und
+der erneute Gesamtlauf anschließend bestanden, Limits unverändert. Web,
 signierte Direct-APK und Play-AAB 1.4.3+33 gebaut; Signatur/Zipalign und
 bundletool erfolgreich, Versionscode 33. APK 65.168.237 Bytes, SHA-256
 `39c3550d8b18a1061d26642a36fb88b43a172176fc805df276240d581cbeb925`.
-Geheimnisprüfung über Quellen, Web und beide Archive ohne Fund.
+Geheimnisprüfung: 399 Quelldateien/244 Archiveinträge gegen 16 tatsächliche
+Geheimnisquellen, kein Fund.
 Zusätzlicher Mischseiten-Test schützt Grammatikregeln vor Übernahme als
-vermeintliche Wortpaare. Erneuter vollständiger Backendlauf läuft.
-Nächste Aktion: Commit/Push, gesicherter Deploy, öffentliche Foto-Wortkette
-und natives OTA/Bedienung. Noch kein neuer
-Deployment-/Geräteerfolg behaupten. Live bleibt der folgende Release32.
+vermeintliche Wortpaare.
+
+**Öffentlich aktiviert:** Produktcommit `48add35e43f027bed560d47e2198f4c35f289647`,
+main gepusht, Release `20261018T112557Z-48add35`, Schema weiter 0016.
+Sicherung Result=success/Exit=0 und sieben vorhandene Dienste aktiv. HTTPS
+gültig, HTTP 308, sieben Direktlinks 200 und vier private APIs anonym 401.
+Öffentliche APK und Webbundle entsprechen bytegenau den lokalen Artefakten.
+Rückweg auf `20261018T101528Z-505312c` dokumentiert, nicht ausgeführt.
+
+**Tatsächliche Browserkette:** normale Anmeldung eines ausschließlich künstlichen
+regulären Haushalts, Foto auswählen/zuschneiden, echte Codex-OCR, fünf sichtbare
+Wortpaare und Locale, einmalige Quellenbestätigung speichert alle fünf Wörter
+mit Übersetzung. Drei reale Übungsantworten, gespeicherte Rückmeldung nach
+Reload, Netzverlust/Wiederaufnahme, konsistente Eltern-/Kinderansicht und
+weiter offenes gemessenes Zeitminimum geprüft. Eine OCR-Reservierung, keine
+weitere KI für Wortübernahme/Runde; Wiederholung ohne Duplikate. Wörter im
+regulären Menü, Eltern-Kind-Auswahl und Ansichten bei 320/390/960/1440 px.
+Null JavaScript-Laufzeitfehler. Ein anfänglicher Prüfskript-Selektor für das
+sichtbare Dropdown wurde korrigiert; gespeicherte OCR fortgesetzt, kein neuer
+Anbieteraufruf und keine Produktkorrektur dadurch nötig.
+
+Reales Android-OTA 32 → 33 mit Systembestätigung, kein adb install; drei
+Kalt-/Warmstartprüfungen bestanden. Native Flutter-APK33 im API36-Emulator:
+Kinderlogin, reguläres Wörter-Menü, drei weitere Bedeutungsaufgaben,
+gespeicherte Rückmeldung nach Kaltstart und explizites Weitergehen bestanden.
+Elternlogin, eigener Wörter-Menüpunkt, Kind-Auswahl und Wortschatzanzeige
+bedient. Eltern sehen exakt sechs Aufgaben aus beiden Clients; keine doppelte
+Antwort durch Neustart. Beide Konten auf dem Emulator abgemeldet.
+
+Export aller acht vorhandenen Sprachtabellen geprüft: fünf Wörter, ein Import,
+sechs Reviews und sechs eindeutig referenzierte Attempts/Reviewereignisse;
+eine OCR-Nutzung. Eigenen künstlichen Haushalt über die normale Account-API
+vollständig gelöscht, beide alten Sitzungen danach 401, private Kontodatei
+entfernt. Keine neue Firebase-Zustell-, Mikrofon-, physische Telefon- oder
+Lernwirksamkeitsprüfung aus diesen Tests ableiten.
+
+GitHub-Produktpush erfolgreich. Actions-Lauf 39115365110: beide Jobs mit null
+Schritten wegen bestehender Kontosperre/Abrechnungsproblem abgewiesen; konkrete
+Annotation gelesen. Lokale Prüfungen oben bestanden. Nächste optionale
+Abnahme: physisches Telefon/Audio mit neuem eigenen künstlichen Haushalt;
+GitHub-Abrechnung benötigt die Betreiberaktion. Kein neuer Funktionsblocker
+für die geprüfte Foto-Wortkette.
 
 # Bereitgestellt · Design 1.4.2+32 · 18.10.2026
 

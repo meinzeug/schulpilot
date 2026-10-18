@@ -146,7 +146,7 @@ try {
     const material = day.pages[0];
     assert(!material.synthetic && material.extraction_provider === 'codex', 'actual_approved_ocr_required');
     assert([...expected].every(([meaning, word]) => material.vocabulary_preview?.pairs.some(p => p.word === word && p.meaning === meaning)), 'literal_word_preview_missing');
-    await reveal(page.locator('[aria-label*="Lernsprache bestätigen"]'));
+    await reveal(page.getByText('5 Wörter übernehmen', {exact: true}));
     await shot('before-source-confirmation');
     const confirmed = material.confirmed ? material : await tapResponse(button('Stimmt, weiter'), '/materials/' + material.id + '/confirm', 'PUT', 200);
     if (!material.confirmed) assert.equal(confirmed.vocabulary_transfer.confirmed_words, 5);
@@ -166,8 +166,9 @@ try {
   }});
   assert.equal(repeat.status(), 200);
   assert.equal((await repeat.json()).confirmed_words, 5);
+  await checkpoint('regular_child_menu');
   await open('/app');
-  await page.getByRole('button', {name: 'Wörter', exact: true}).first().click();
+  await page.getByRole('button', {name: 'Wörter', exact: true}).or(page.getByRole('tab', {name: /^Wörter/})).first().click();
   await page.waitForURL(base + '/vocabulary/' + account.child_id);
   await page.getByText('Meine Wörter', {exact: true}).waitFor();
   await shot('regular-child-menu');
@@ -236,10 +237,10 @@ try {
   }
   page = await parent.newPage();
   await open('/app');
-  await page.getByRole('button', {name: 'Wörter', exact: true}).first().click();
+  await page.getByRole('button', {name: 'Wörter', exact: true}).or(page.getByRole('tab', {name: /^Wörter/})).first().click();
   await page.waitForURL(base + '/words');
   await page.getByText('Wörter deiner Kinder', {exact: true}).waitFor();
-  await tap(page.getByText('Künstliches Testkind', {exact: true}));
+  await tap(page.getByText('Künstliches Testkind', {exact: true}).or(page.getByRole('button', {name: /Künstliches Testkind/})));
   await page.waitForURL(base + '/vocabulary/' + account.child_id);
   await page.getByText('Künstliches Testkind · Wortschatz', {exact: true}).waitFor();
   await shot('regular-parent-menu');
@@ -260,6 +261,11 @@ try {
   report.success = false;
   report.failed_phase = phase;
   report.error = error instanceof assert.AssertionError ? error.message.split('\n')[0] : 'photo_word_review_failed';
+  report.failure_type = error.name;
+  const privateError = path.join(out, 'material-words-web-private-error.txt');
+  await writeFile(privateError, String(error.stack ?? error), {mode: 0o600});
+  await chmod(privateError, 0o600);
+  if (page && phase !== 'normal_child_login') await shot('interrupted-' + phase).catch(() => {});
   process.exitCode = 1;
 } finally {
   for (const context of [child, parent].filter(Boolean)) {

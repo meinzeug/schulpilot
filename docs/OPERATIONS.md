@@ -2,6 +2,10 @@
 
 ## Foto-Wortschatz 1.4.3+33
 
+Aktiviert am 18.10.2026: `20261018T112557Z-48add35`. Sicherung erfolgreich,
+Schema und sieben vorhandene Dienste tatsächlich geprüft. Öffentliche/nativ
+beobachtete Abnahme und Grenzen stehen in STATUS/Handoff.
+
 Keine Schemaänderung, Datenbank bleibt auf 0016. Verwendet vorhandene private
 Wortschatztabellen und dieselben Quellen-/Export-/Löschwege. Wörtliche Übernahme
 im Bestätigungsvorgang benötigt keine weitere KI-Reservierung; unklare Paare

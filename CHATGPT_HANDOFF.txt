@@ -1,25 +1,57 @@
-SCHULPILOT – laufender Vokabel-Zusatz 1.4.3+33
+SCHULPILOT – Foto-Vokabeln 1.4.3+33 · bereitgestellt
 
-Stand 18.10.2026: lokal implementiert, noch nicht bereitgestellt. Fotoassistent
+Stand 18.10.2026; dieser Abschnitt hat Vorrang vor der Historie unten.
+Produktcommit 48add35e43f027bed560d47e2198f4c35f289647,
+main gepusht, Release 20261018T112557Z-48add35. Fotoassistent
 zeigt wörtliche Wortpaare und Lernsprache; „Stimmt, weiter“ speichert Quelle
 und Wortschatz atomar. Offene Übersetzungen bleiben als Prüfimport erhalten.
 Gespeicherte Seiten nachträglich übernehmen; Wörter im regulären Kinder- und
 Elternmenü. Kein neuer Provideraufruf für eindeutig lesbare Paare, keine neue
 Migration (0016 bleibt). Bestehende KI-Importe weiterhin ausdrücklich starten.
 309 Fluttertests und 35 gezielte PostgreSQLtests bestanden; gemeinsame
-LoadView-Aktualisierung repariert. Analyse/Ruff sauber. Vollständiger PG-Lauf:
-804 bestanden, ein bestehender echter Codex-Katalogtest vorübergehend 503;
-separat ohne Limitänderung bestanden, danach alle 27 Modultests bestanden.
+LoadView-Aktualisierung repariert. Analyse/Ruff sauber. Abschließender voller
+PostgreSQLlauf: 806 bestanden in 526,48 Sekunden. Im ersten Lauf bestehender
+Codex-Katalogtest vorübergehend 503; separat, alle 27 Modultests und erneuter
+Gesamtlauf bestanden, Limits unverändert. Mischseiten zusätzlich abgesichert.
 Web, Direct-APK und Play-AAB 1.4.3+33 gebaut. Signatur/Zipalign, bundletool und
 Versionscode geprüft; Geheimnisprüfung ohne Fund. APK 65168237 Bytes, SHA-256
 39c3550d8b18a1061d26642a36fb88b43a172176fc805df276240d581cbeb925
-Fortsetzung: Commit/Push, gesicherter Deploy, normaler öffentlicher Foto-Wortablauf mit
-künstlichem Haushalt, natives OTA/Bedienung und Abschlussdokumentation.
-Keine Zugangsdaten in dieser Übergabe. Öffentlich aktuell weiterhin Release32.
-Gemischte Vokabel-/Grammatikseiten zusätzlich abgesichert; erneuter ganzer
-Backendlauf gestartet, Ergebnis in artifacts/vocabulary-all-pg-final.log.
+Sicherung success/Exit0, sieben Dienste aktiv. HTTPS gültig, HTTP308,
+sieben Direktlinks200, vier private APIs401; öffentliche APK/Webbundle
+bytegenau geprüft. Rückweg 20261018T101528Z-505312c, keine Schemaänderung.
+Öffentlicher Chrome: künstliche normale Fotoseite, echte Codex-OCR,
+fünf Wörter bei Quellenbestätigung gespeichert, drei Übungsantworten,
+Feedback-Reload, Netzverlust, Eltern-/Kinderabgleich, Menü und vier Breiten
+320/390/960/1440 bestanden. Genau eine OCR, keine zusätzliche Wort-KI.
+Anfänglichen Prüfskript-Selektor korrigiert, vorhandene OCR fortgesetzt.
+Echtes OTA32->33 und drei Startchecks bestanden. Native Flutter-APK33 auf
+API36: eigenes Kind, Wörter-Menü, drei Bedeutungsaufgaben, gespeicherte
+Rückmeldung nach Kaltstart, Elternmenü/Kind-Auswahl und Logout bestanden.
+Exakt sechs gespeicherte Aufgaben aus Web/Android, keine doppelte Antwort.
+Export aller acht Sprachtabellen geprüft: fünf Wörter/ein Import/sechs
+Reviewereignisse mit denselben sechs Attempts. Eigener künstlicher Haushalt
+über die Account-API gelöscht, alte Eltern-/Kindersitzungen danach401,
+private Kontodatei entfernt. Tests jederzeit mit neuem eigenen Haushalt
+wiederholbar; QA-Skripte und Details in docs/LANGUAGE_LEARNING.md.
 
-SCHULPILOT – Design 1.4.2+32 · bereitgestellt und tatsächlich geprüft
+Browser: /login, Kind -> Wörter (/vocabulary/<eigene-Kind-ID>), Eltern ->
+/words -> eigenes Kind. Neue Vokabelseite im normalen Fotoassistenten:
+Sprache/Wortpaare prüfen -> Stimmt, weiter -> Wörter-Menü -> Wörter üben.
+Gespeicherte Seite in Hefte öffnen -> Wörter übernehmen; unklare Paare
+über Wörter prüfen klären. Admin /admin hat keinen privaten Wörterbereich.
+Normale sichere Anmeldung selbst durchführen; keine Passwörter, Cookies,
+Geräte-Tokens oder Schlüssel an eine Browser-KI weitergeben.
+APK artifacts/schulpilot-android.apk bzw.
+https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play-AAB artifacts/schulpilot-play.aab, nicht im Store veröffentlicht.
+Keine neue Audio-/Push-Zustell- oder physische Telefonprüfung behauptet.
+Firebase/Google-Anbindung unverändert; kein zusätzlicher Cloud-Dienst.
+Actions39115365110 startete wegen Kontosperre/Abrechnung nicht (null Schritte,
+Annotation gelesen). Lokale Tests/Builds und GitHub-Push erfolgreich.
+Optionale Fortsetzung: echtes Telefon/Audio; GitHub-Abrechnung durch Betreiber.
+Keine Zugangsdaten in dieser Übergabe.
+
+SCHULPILOT – Design 1.4.2+32 · historischer geprüfter Release
 
 Stand 18.10.2026. Dieser Abschnitt hat Vorrang vor der Historie unten.
 Produktcommit 505312c3e0949545be9f119e22b69c74cac7b1fc, main gepusht.

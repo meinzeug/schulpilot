@@ -2,7 +2,7 @@
 
 ## Foto → Wortschatz · Ausbau 18.10.2026
 
-Implementiert für 1.4.3+33, noch nicht als öffentlich abgenommen ausgeben:
+Mit 1.4.3+33 bereitgestellt und mit ausschließlich künstlichen Inhalten geprüft:
 Der normale Fotoassistent zeigt erkannte wörtliche Wortpaare vor „Stimmt,
 weiter“ und lässt die Lernsprache/Variante bestätigen. Dieselbe Transaktion
 bestätigt die Quelle und übernimmt die sichtbaren Paare in die bestehenden
@@ -34,14 +34,27 @@ unterer Navigation. Eltern wählen dort ein eigenes Kind; Betriebsadmins
 erhalten keinen privaten Wortschatzzugriff. Der alte Materiallink öffnet jetzt
 den passenden Quellenimport oder die schon vorhandene Sammlung.
 
-309 Fluttertests und 35 gezielte PostgreSQLtests bestanden. Im ersten gesamten
-Backendlauf 804 bestanden, ein bestehender echter Codex-Katalogtest meldete 503;
-danach separat und alle 27 Modultests bestanden, Limits unverändert. Nach der
-zusätzlichen Mischseiten-Regression erneuter Gesamtlauf gestartet. Analyse und
-Ruff sauber; Web, signierte Direct-APK und Play-AAB 1.4.3+33 gebaut. Signatur,
-Zipalign, bundletool und Geheimnisprüfung bestanden. Nächster Schritt:
-Commit/Push, gesichert bereitstellen und öffentlichen
-Foto-/Wortablauf, native Android-Bedienung, Export und Bereinigung prüfen.
+309 Fluttertests, 35 gezielte PostgreSQLtests und abschließend alle 806
+Backendtests bestanden. Ein vorheriges 503 des bestehenden echten
+Codex-Katalogtests separat, im Modul und im erneuten Gesamtlauf nachgeprüft;
+Limits unverändert. Analyse/Ruff, Web, signierte Direct-APK und Play-AAB,
+Signatur/Zipalign, bundletool und Geheimnisprüfung bestanden.
+Produktcommit 48add35, Release 20261018T112557Z-48add35, Schema 0016.
+Sicherung und HTTPS/Downloadhashes tatsächlich geprüft.
+
+Öffentlicher normaler Fotoassistent: echtes Codex-OCR eines künstlichen Bildes,
+fünf Wortpaare gemeinsam mit Quelle gespeichert, drei reale Webantworten,
+Netzverlust/Reload, Zeitminimum, vier Browserbreiten und Elternabgleich.
+Genau eine OCR-Reservierung, keine weitere KI für Übernahme/Runde.
+Native APK33 nach echtem OTA: Wörter-Menü in Kinder-/Elternbereich,
+drei weitere Bedeutungsaufgaben, Feedback nach Kaltstart und Logout.
+Export enthält genau fünf Wörter, einen Import und sechs Attempts mit sechs
+Reviewereignissen. Eigener Haushalt normal gelöscht, Sitzungen401, private
+Kontodatei entfernt. Reproduzierbarer Weg: scripts/prepare_language_smoke.py,
+qa/material_words.mjs --run, qa/android_update.py --upgrade/--check-starts,
+qa/android_material_words.py, qa/material_words_cleanup.py --run.
+Keine physische Telefon-/Audio- oder Lernwirksamkeitsabnahme. Optionale nächste
+Aktion: neue eigene künstliche Testfamilie auf einem physischen Telefon prüfen.
 
 Stand: 17.10.2026. Ausgangspunkt main 7dd09f4, Flutter 1.3.0+28, Alembic 0014.
 
