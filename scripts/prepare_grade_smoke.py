@@ -48,7 +48,7 @@ def main():
                     "changed": [(s, h, k, n, "3" if s == "Englisch" else v) for s, h, k, n, v in first] + [("Mathematik", 1, "other", 3, "2")]}
         for name, entries in variants.items():
             file = ROOT / f"artifacts/grades-synthetic-{name}.pdf"
-            file.write_bytes(fixture.pdf(year, entries))
+            file.write_bytes(fixture.pdf(year, entries, padding_bytes=240 * 1024))
             file.chmod(0o600)
         state["school_year_start"] = year
         PRIVATE.write_text(json.dumps(account) + "\n")

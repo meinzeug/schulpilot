@@ -1,5 +1,30 @@
 # Fuxnoten-PDFimport
 
+## Größenprüfung korrigiert18.10.2026
+
+Die erste Freigabe wurde mit kleinen künstlichen PDF-Dateien geprüft. Ein
+zusätzlicher Content-Length-Check hatte entgegen dem eigentlichen Uploadlimit
+noch64KiB zugelassen. Eine normale234.106Byte große Fuxnoten-Datei wurde daher
+schon vor Parser/Vorschau mit413 abgewiesen. Der Parser selbst liest die
+bereitgestellte Datei auch auf dem Server korrekt:14 Einzelnoten, Schuljahr2026.
+Keine Notenwerte oder Personenköpfe wurden ausgegeben oder an KI übertragen.
+
+`request_body_limit` ist jetzt die gemeinsame Policy für Header und empfangene
+Bytes:7MiB für PDF-Multipart,512KiB für die Notenbestätigung,256KiB für die
+Quellenbestätigung,12MiB für Fotouploads; sonst64KiB. Die PDF selbst bleibt
+auf6MiB begrenzt. Rechte, Parsinglimits und ausdrückliche Bestätigung bleiben
+erhalten. Keine automatische Übernahme oder stiller Wiederholungsauftrag.
+
+Neue synthetische Regression mit über240KiB PDF: normaler und gestreamter
+Upload, Vorschau, Bestätigung und zweiter Import ohne Duplikate. Große gültige
+Bestätigungsnachricht gelangt bis zur normalen Ressourcenprüfung; gewöhnliche
+JSON-Endpunkte bleiben begrenzt. Vor Fix zwei gezielte Fehler und tatsächlicher
+öffentlicher Browserupload mit413 reproduziert; danach82 gezielte PostgreSQL-
+Tests bestanden83,20s,17 Fluttertests und Analyse erfolgreich. Öffentliche und
+native erneute Abnahme sowie tatsächlicher Release werden in STATUS/Handoff
+nachgetragen. Keine SDK-/Abhängigkeitsänderung, Appquelle/Build35 unverändert;
+der Serverfix wirkt auch für bereits installierte APK35.
+
 ## Ablauf
 
 Eltern öffnen **Noten & Lernschwerpunkte → PDF importieren**, wählen die

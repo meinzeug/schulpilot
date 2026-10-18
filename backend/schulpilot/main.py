@@ -59,6 +59,20 @@ app = FastAPI(
 )
 
 
+def request_body_limit(path: str) -> int:
+    """One policy for declared and received sizes, including multipart overhead."""
+    if path.startswith("/api/children/"):
+        if path.endswith("/materials"):
+            return 12 * 1024 * 1024
+        if path.endswith("/grade-imports"):
+            return 7 * 1024 * 1024
+        if "/grade-imports/" in path and path.endswith("/confirm"):
+            return 512 * 1024
+    if path.startswith("/api/materials/") and path.endswith("/confirm"):
+        return 256 * 1024
+    return 64 * 1024
+
+
 class ActualBodyLimit:
     """Limit received bytes too: Content-Length alone does not cover chunking."""
 
@@ -68,14 +82,7 @@ class ActualBodyLimit:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] not in ("POST", "PUT", "PATCH", "DELETE"):
             return await self.app(scope, receive, send)
-        path = scope.get("path", "")
-        maximum = 12 * 1024 * 1024 if path.startswith("/api/children/") and path.endswith("/materials") else 64 * 1024
-        if path.startswith("/api/children/") and path.endswith("/grade-imports"):
-            maximum = 7 * 1024 * 1024
-        if path.startswith("/api/children/") and "/grade-imports/" in path and path.endswith("/confirm"):
-            maximum = 512 * 1024
-        if path.startswith("/api/materials/") and path.endswith("/confirm"):
-            maximum = 256 * 1024
+        maximum = request_body_limit(scope.get("path", ""))
         size = 0
 
         async def limited_receive():
@@ -101,7 +108,7 @@ async def security_headers(request: Request, call_next):
             return JSONResponse({"detail": "Fremder Ursprung ist nicht erlaubt."}, status_code=403)
         if request.headers.get("x-schulpilot-request") != "1":
             return JSONResponse({"detail": "Sicherheitsheader fehlt."}, status_code=403)
-        maximum = 12 * 1024 * 1024 if "/materials" in request.url.path else 64 * 1024
+        maximum = request_body_limit(request.url.path)
         length = request.headers.get("content-length", "0")
         if not length.isdigit() or int(length) > maximum:
             return JSONResponse({"detail": "Anfrage ist zu groß."}, status_code=413)

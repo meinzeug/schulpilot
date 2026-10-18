@@ -6,7 +6,7 @@ from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 
-def pdf(year, entries=None, *, corrupt_header=False, encrypted=False, bad_subject=False):
+def pdf(year, entries=None, *, corrupt_header=False, encrypted=False, bad_subject=False, padding_bytes=0):
     entries = (
         entries
         if entries is not None
@@ -65,6 +65,11 @@ def pdf(year, entries=None, *, corrupt_header=False, encrypted=False, bad_subjec
     for subject, half, kind, slot, value in entries:
         text(value, columns[half, kind, slot], 1370 - subjects.index(subject) * 30)
     text(f"Schuljahr: {year} / 1. HJ", 1000, 40)
+    if padding_bytes:
+        # Real print-to-PDF exports contain embedded fonts/resources and easily
+        # exceed the ordinary 64 KiB JSON limit. A harmless PDF comment gives
+        # this original synthetic fixture a representative upload size.
+        commands.append("%" + "S" * padding_bytes)
     stream = DecodedStreamObject()
     stream.set_data("\n".join(commands).encode())
     page[NameObject("/Contents")] = writer._add_object(stream)

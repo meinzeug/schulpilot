@@ -1,7 +1,7 @@
 // Actual public Flutter PDF selection/preview/confirmation; own artificial family only.
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
-import {readFile, writeFile, chmod} from 'node:fs/promises';
+import {readFile, writeFile, chmod, stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -51,6 +51,7 @@ async function api(route) {
   return r.json();
 }
 async function upload(which) {
+  assert((await stat(path.join(out, `grades-synthetic-${which}.pdf`))).size > 234106, 'print_sized_fixture_required');
   await tap(button('PDF importieren'));
   const waiter = page.waitForEvent('filechooser', {timeout: 20000});
   waiter.catch(() => {});

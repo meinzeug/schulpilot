@@ -7,6 +7,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
+import httpx
 import pytest
 from conftest import HEADERS, create_child, register
 from fastapi.testclient import TestClient
@@ -115,6 +116,48 @@ def test_import_preview_confirmation_repeat_export_delete_and_no_ai(api, househo
     with DB() as db:
         for model in (SchoolGrade, GradeImport, GradeSourceSlot):
             assert db.scalar(select(func.count()).select_from(model)) == 0
+
+
+@pytest.mark.parametrize("chunked", [False, True])
+def test_print_sized_pdf_passes_header_and_stream_limits_and_imports_once(api, household, chunked):
+    _, child = household
+    raw = pdf(today_year(child["id"]), padding_bytes=240 * 1024)
+    assert 234_106 < len(raw) < 6 * 1024 * 1024
+    if chunked:
+        multipart = httpx.Request("POST", "http://testserver", files={"file": ("synthetic.pdf", raw, "application/pdf")})
+        body = multipart.read()
+        response = api.post(
+            f"/api/children/{child['id']}/grade-imports",
+            content=(body[n:n + 16_384] for n in range(0, len(body), 16_384)),
+            headers={"Content-Type": multipart.headers["Content-Type"], "Idempotency-Key": "print-sized-grade-upload-0001"},
+        )
+    else:
+        response = upload(api, child, raw, "print-sized-grade-upload-0001")
+    assert response.status_code == 201, response.text
+    preview = response.json()
+    assert preview["counts"]["new"] == 3
+    assert confirm(api, child, preview).json()["added"] == 3
+    repeated = upload(api, child, raw, "print-sized-grade-upload-0002").json()
+    assert repeated["counts"]["existing"] == 3
+    assert confirm(api, child, repeated).json()["unchanged"] == 3
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(SchoolGrade)) == 3
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+def test_large_confirmation_uses_its_own_limit_without_relaxing_json_endpoints(api, household):
+    _, child = household
+    body = {
+        "school_year_start": today_year(child["id"]),
+        "context_revision": "a" * 64,
+        "choices": [{"slot_key": "b" * 64, "action": "add"} for _ in range(1000)],
+    }
+    assert 64 * 1024 < len(json.dumps(body).encode()) < 512 * 1024
+    response = api.post(f"/api/children/{child['id']}/grade-imports/{'c' * 32}/confirm", json=body)
+    assert response.status_code == 404, response.text
+    response = api.post("/api/auth/login", json={"username": "S" * (70 * 1024), "password": "synthetic"})
+    assert response.status_code == 413
+    assert "S" * 100 not in response.text
 
 
 def test_changed_upload_and_manual_edits_never_silently_overwrite(api, household):
