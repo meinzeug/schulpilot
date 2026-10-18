@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
+import 'notebook_shelf.dart';
 import 'ui.dart';
 
 class CollectionScreen extends StatelessWidget {
@@ -60,12 +61,19 @@ class CollectionScreen extends StatelessWidget {
           label: const Text('Zum Lernüberblick'),
         ),
     ],
-    child: PagedCollection(
-      state,
-      key: ValueKey('${state.user?['id']}:$childId:$learning'),
-      childId: childId,
-      learning: learning,
-    ),
+    child: learning
+        ? PagedCollection(
+            state,
+            key: ValueKey('${state.user?['id']}:$childId:$learning'),
+            childId: childId,
+            learning: learning,
+          )
+        : NotebookShelf(
+            state,
+            key: ValueKey('shelf:${state.user?['id']}:$childId'),
+            childId: childId,
+            allPages: PagedCollection(state, childId: childId),
+          ),
   );
 }
 

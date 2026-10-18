@@ -72,7 +72,7 @@ Nummer bestätigen, niemals ein Sprachlernjahr aus der Schulklasse raten.
 
 ## Nächste konkrete Implementierung
 
-1. Grundlagenregression fertigstellen und eigenen Stand committen/pushen.
+1. Grundlage ist produktiv; Bildhefter/Album1.6 sind gebaut und in Abnahme.
 2. Additive Katalogtabellen an0018 anschließen; normalisierte Metadaten und
    alle Herkunfts-/Prüfkennzeichen idempotent importieren. Validierte CSV als
    zusätzlichen Beziehungsabgleich verwenden, nicht als Fachstamm.
@@ -103,12 +103,16 @@ Mit dem ausdrücklich eingesetzten eingebauten Imagegen-Skill sind alle16
 Referenzfach-Cover als reale A4-Papphefter mit handschriftlichem Fachnamen
 erzeugt. Originale und optimierte WebP liegen in artifacts/folder-covers;
 generation-manifest.json enthält die tatsächlich verwendeten Prompts und
-geschützten Entwicklungsquellenpfade. Originale bleiben erhalten. Die16
-640px-WebP benötigen zusammen etwa528KB. Noch nicht im Produkt eingebunden.
-Beim Einbinden finale Assets nach app/assets/folders und öffentliche
-Prompt-/Herkunftsdokumentation ohne lokale Entwicklungszugänge übernehmen.
-Weitere vorhandene Standardfächer erhalten eigene Bilder; unbekannte eigene
-Fächer brauchen einen erkennbaren allgemeinen Ersatz ohne erfundene Beschriftung.
+geschützten Entwicklungsquellenpfade. Originale bleiben erhalten. Inzwischen
+alle24 festen Fächer plus ein allgemeiner eigener Hefter erzeugt:25 WebP,
+640px,784.908Bytes, in app/assets/folders eingebunden. Bereinigtes öffentliches
+Promptmanifest docs/NOTEBOOK_ASSETS.json ohne lokale Entwicklungsquellenpfade.
+Fachhefter/Fotoalbum: docs/NOTEBOOKS.md; tatsächliche Freigabe in STATUS/Handoff.
+
+Der unregistrierte Katalogmodell-Entwurf wurde unverändert nach
+artifacts/wip/catalog_models.py ausgelagert. Für die Fortsetzung zurückholen,
+prüfen und erst zusammen mit Migration0019/Importer registrieren. Er gehört
+ausdrücklich nicht zum Hefter-Release; Katalogmetadaten/Lerntipps bleiben offen.
 
 Aktuelle Prüfzahlen/Aktivierung in STATUS/Handoff nachführen. Keine privaten
 PDF-/Kinderinhalte oder Zugangsdaten in Katalog, Assets, Logs oder Git.

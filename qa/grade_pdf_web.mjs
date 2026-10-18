@@ -84,7 +84,7 @@ async function shot(name) {
 }
 
 if (!process.argv.includes('--run')) {
-  console.log(JSON.stringify({ready: true, requires: 'prepare_grade_smoke.py, deployed 1.5.0, then --run'}));
+  console.log(JSON.stringify({ready: true, requires: 'prepare_grade_smoke.py, deployed PDF import, then --run'}));
   process.exit(0);
 }
 try {
@@ -92,7 +92,8 @@ try {
   state = account.grade_pdf_qa;
   assert(account.normal_account && account.verified && state?.manual_id && /\+schulpilot-normal-qa-[a-f0-9]{12}@/.test(account.credentials.parent_username), 'own_fixture_required');
   const health = await (await fetch(base + '/api/health')).json();
-  assert.equal(health.version, '1.5.0', 'deploy_pdf_release_first');
+  const [major, minor] = health.version.split('.').map(Number);
+  assert(major > 1 || (major === 1 && minor >= 5), 'deploy_pdf_release_first');
   browser = await chromium.launch({headless: true, executablePath: '/opt/google/chrome/chrome', args: ['--no-sandbox']});
   context = await browser.newContext({viewport: {width: 390, height: 900}, isMobile: true, hasTouch: true});
   page = await context.newPage();

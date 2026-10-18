@@ -9,6 +9,7 @@ import 'account_deletion_screen.dart';
 import 'auth_screens.dart';
 import 'dashboard.dart';
 import 'collection_screen.dart';
+import 'notebook_screen.dart';
 import 'material_screen.dart';
 import 'settings_screen.dart';
 import 'installation_screen.dart';
@@ -267,6 +268,17 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         path: '/library/:id',
         builder: (context, s) =>
             CollectionScreen(widget.state, childId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/library/:id/subject/:subjectId',
+        builder: (context, s) => NotebookScreen(
+          widget.state,
+          key: ValueKey(
+            'notebook:${widget.state.user?['id']}:${s.pathParameters['id']}:${s.pathParameters['subjectId']}',
+          ),
+          childId: s.pathParameters['id']!,
+          subjectId: s.pathParameters['subjectId']!,
+        ),
       ),
       GoRoute(
         path: '/learn/:id',

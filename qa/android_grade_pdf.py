@@ -40,10 +40,12 @@ def main():
     state = account.get("grade_pdf_qa", {})
     require(account.get("normal_account") and account.get("verified") and state.get("phase") == "web_passed_native_pending"
             and re.search(r"\+schulpilot-normal-qa-[a-f0-9]{12}@", account["credentials"]["parent_username"]), "own_web_fixture_required")
-    require(installed_code() == 35, "actual_ota35_required")
+    current = installed_code()
+    published = httpx.get(native.BASE + '/app-release', timeout=20).raise_for_status().json()
+    require(current >= 35 and current == published["version_code"], "current_signed_release_required")
     require(native.adb("emu", "avd", "name").decode().splitlines()[0] == "schulpilot-qa-api36", "own_dedicated_avd_required")
     phase, checks = "login", []
-    report = {"success": False, "native_flutter": True, "installed_code": 35, "android_api": 36, "checks": checks}
+    report = {"success": False, "native_flutter": True, "installed_code": current, "android_api": 36, "checks": checks}
     try:
         with httpx.Client(base_url=native.BASE, headers={**native.HEADERS, "X-Schulpilot-Capabilities": "grade-pdf-v1"}, timeout=60) as api:
             signed = api.post("/auth/login", json={"username": account["credentials"]["parent_username"],

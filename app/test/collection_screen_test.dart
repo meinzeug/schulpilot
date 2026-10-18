@@ -88,7 +88,13 @@ Future<(AppState, GoRouter)> open(
     routes: [
       GoRoute(
         path: '/library/:id',
-        builder: (_, _) => CollectionScreen(state, childId: 'child'),
+        // These regressions exercise the retained "Alle Heftseiten" view.
+        // The new default subject shelf and album have their own widget tests.
+        builder: (_, _) => PageFrame(
+          state: state,
+          title: 'Meine Hefte',
+          child: PagedCollection(state, childId: 'child'),
+        ),
       ),
       GoRoute(
         path: '/learn/:id',

@@ -16,6 +16,7 @@ Future<void> importMaterial(
   AppState state,
   String childId,
 ) async {
+  final owner = state.user?['id'];
   if (state.isDemo) {
     if (!await confirmDialog(
       context,
@@ -27,7 +28,10 @@ Future<void> importMaterial(
     final material = await state.api.post(
       '/children/$childId/materials/synthetic-fixture',
     );
-    if (context.mounted) openRoute(context, '/material/${material['id']}');
+    if (context.mounted && owner == state.user?['id']) {
+      state.refreshState();
+      openRoute(context, '/material/${material['id']}');
+    }
     return;
   }
   final status = await state.api.get('/status');
@@ -66,7 +70,10 @@ Future<void> importMaterial(
   final cropped = await pickMaterialPhoto(context, source);
   if (cropped == null) return;
   final material = await state.api.upload(childId, cropped);
-  if (context.mounted) openRoute(context, '/material/${material['id']}');
+  if (context.mounted && owner == state.user?['id']) {
+    state.refreshState();
+    openRoute(context, '/material/${material['id']}');
+  }
 }
 
 Future<Uint8List?> pickMaterialPhoto(
@@ -749,6 +756,7 @@ class _MaterialReviewState extends State<MaterialReview> {
     );
     if (!mounted || owner != widget.state.user?['id']) return;
     setState(() => confirmedHere = true);
+    widget.state.refreshState();
     if (result['vocabulary_transfer'] is Map) {
       final words = result['vocabulary_transfer'];
       toast(

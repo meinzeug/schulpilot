@@ -27,9 +27,16 @@ def subject_data(row):
     }
 
 
-def owned_subject(db, child, subject_id):
+def owned_subject(db, child, subject_id, viewer=None):
     row = db.get(Subject, subject_id)
     if not row or row.owner_family_id not in (None, child.family_id):
+        raise HTTPException(404, "Fach nicht gefunden.")
+    if (
+        viewer is not None
+        and viewer.user.role == "child"
+        and row.owner_family_id is not None
+        and row.id not in child_subject_ids(db, child.id)
+    ):
         raise HTTPException(404, "Fach nicht gefunden.")
     return row
 

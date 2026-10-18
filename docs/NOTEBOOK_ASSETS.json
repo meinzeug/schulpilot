@@ -1,0 +1,132 @@
+{
+  "tool": "built-in image_gen",
+  "generated_on": "2026-10-18",
+  "processing": "FFmpeg: scale640x640, libwebp quality85. Original PNGs retained outside source control.",
+  "assets": [
+    {
+      "id": "biologie",
+      "file": "app/assets/folders/biologie.webp",
+      "prompt": "Use case: product-mockup. Asset type: one real photographic folder cover for the SCHULPILOT school app, first image of a coordinated series. Create a high quality photorealistic studio product photograph of ONE closed German A4 cardboard fastener folder (Pappschnellhefter), deep botanical green cardstock, visible subtle paper fibres and folded spine along the left, slightly rounded worn corners. A large off-white paper label on the front bears ONLY the word \"Biologie\" written by hand in clear dark black school handwriting. Exact readable German text, no other words. Straight nearly top-down view, portrait A4 folder fully visible and centered on a square warm-white background, slight three degree rotation, soft natural shadow. Fill about 84 percent of image height, generous uncluttered edge, consistent premium catalog composition suitable as clickable mobile subject card. It must look like real matte cardboard, not a ring binder, not a book, not plastic. No people, no logos, no watermark, no personal information, no extra objects. Keep the front handwritten subject large and legible at small thumbnail sizes."
+    },
+    {
+      "id": "mathematik",
+      "file": "app/assets/folders/mathematik.webp",
+      "prompt": "Use case: product-mockup. Asset: one photographic school subject folder cover in a coordinated catalog series. ONE closed real German A4 Pappschnellhefter, rich cobalt blue matte cardboard with subtle paper fibres, folded narrow spine at the left, softly worn corners. Large cream paper label on the upper front, exact sole text \"Mathematik\" handwritten neatly with black pen, highly legible. Front nearly top-down, full portrait A4 folder centered on square warm-white studio background with a soft natural shadow and just 2 degrees rotation, folder fills 84 percent of image height. Premium natural product photograph, not a plastic sleeve, ring binder or book. No extra objects, no people, no names, no logos, no watermarks, no other words. Consistent lighting and uncluttered framing, suitable as a clickable mobile card."
+    },
+    {
+      "id": "englisch",
+      "file": "app/assets/folders/englisch.webp",
+      "prompt": "Use case: product-mockup. Asset: one photographic school subject folder cover in a coordinated catalog series. ONE closed real German A4 Pappschnellhefter, warm cranberry red matte cardboard with subtle paper fibres, folded narrow spine at the left, softly worn corners. Large cream paper label on the upper front, exact sole text \"Englisch\" handwritten neatly with black pen, highly legible. Front nearly top-down, full portrait A4 folder centered on square warm-white studio background with a soft natural shadow and just 2 degrees rotation, folder fills 84 percent of image height. Premium natural product photograph, not a plastic sleeve, ring binder or book. No extra objects, no people, no names, no logos, no watermarks, no other words. Consistent lighting and uncluttered framing, suitable as a clickable mobile card."
+    },
+    {
+      "id": "deutsch",
+      "file": "app/assets/folders/deutsch.webp",
+      "prompt": "Use case: product-mockup. Asset: coordinated SCHULPILOT subject-folder photograph. One closed authentic German A4 cardboard fastener folder (Pappschnellhefter), warm sunflower yellow matte textured cardstock with narrow folded spine on the left and gently worn rounded corners. A large cream paper label on its upper front has exactly \"Deutsch\" in clear neat black handwritten school lettering. Full portrait A4 object centered against square warm-white studio background, soft natural shadow, front/top-down camera, very slight 2 degree rotation. Folder fills 84 percent image height. Premium real product photo, readable at thumbnail size. No extra text, names, people, logos, watermarks or other objects. Not a ring binder, book, or plastic folder. Match the green Biologie, blue Mathematik and red Englisch cover series."
+    },
+    {
+      "id": "physik",
+      "file": "app/assets/folders/physik.webp",
+      "prompt": "Use case: product-mockup. Asset: coordinated SCHULPILOT subject-folder photograph. One closed authentic German A4 cardboard fastener folder (Pappschnellhefter), deep violet matte textured cardstock with narrow folded spine on the left and gently worn rounded corners. A large cream paper label on its upper front has exactly \"Physik\" in clear neat black handwritten school lettering. Full portrait A4 object centered against square warm-white studio background, soft natural shadow, front/top-down camera, very slight 2 degree rotation. Folder fills 84 percent image height. Premium real product photo, readable at thumbnail size. No extra text, names, people, logos, watermarks or other objects. Not a ring binder, book, or plastic folder. Match the green Biologie, blue Mathematik and red Englisch cover series."
+    },
+    {
+      "id": "chemie",
+      "file": "app/assets/folders/chemie.webp",
+      "prompt": "Use case: product-mockup. One photographic folder cover for a school library app. ONE authentic closed German A4 Pappschnellhefter made of clear turquoise matte cardboard, visible fibres, narrow left folded spine, softly rounded slightly worn corners. Large cream paper label upper front carries exactly \"Chemie\" handwritten neatly in black ink, easy to read. Full portrait A4 folder centered on square warm-white background; near top-down front view, slight 2 degree angle, soft natural studio shadow. Folder fills 84 percent image height. Same consistent premium product-photo composition as a physical set of school folders. No other text, logo, watermark, names, people or objects. Not a ring binder, book or plastic sleeve."
+    },
+    {
+      "id": "geschichte",
+      "file": "app/assets/folders/geschichte.webp",
+      "prompt": "Use case: product-mockup. One photographic folder cover for a school library app. ONE authentic closed German A4 Pappschnellhefter made of warm terracotta orange matte cardboard, visible fibres, narrow left folded spine, softly rounded slightly worn corners. Large cream paper label upper front carries exactly \"Geschichte\" handwritten neatly in black ink, easy to read. Full portrait A4 folder centered on square warm-white background; near top-down front view, slight 2 degree angle, soft natural studio shadow. Folder fills 84 percent image height. Same consistent premium product-photo composition as a physical set of school folders. No other text, logo, watermark, names, people or objects. Not a ring binder, book or plastic sleeve."
+    },
+    {
+      "id": "geographie",
+      "file": "app/assets/folders/geographie.webp",
+      "prompt": "Use case: product-mockup. One photographic folder cover for a coordinated school library. ONE closed authentic German A4 cardboard fastener folder (Pappschnellhefter), muted ocean blue matte paperboard with visible fibres, a narrow folded spine along the left, slightly worn corners. Large warm-cream paper label in upper front with only \"Geographie\" in neat clear BLACK HANDWRITING. Keep every letter including German accents correct. Full portrait A4 folder centered in a square warm-white studio image, near top-down view, subtle 2 degree angle, soft natural shadow. Folder fills 84 percent image height, premium real product photo, highly readable as mobile thumbnail. No other text, extra objects, people, personal names, logos or watermarks. Not plastic, not a book, not a ring binder."
+    },
+    {
+      "id": "franzoesisch",
+      "file": "app/assets/folders/franzoesisch.webp",
+      "prompt": "Use case: product-mockup. One photographic folder cover for a coordinated school library. ONE closed authentic German A4 cardboard fastener folder (Pappschnellhefter), soft lilac purple matte paperboard with visible fibres, a narrow folded spine along the left, slightly worn corners. Large warm-cream paper label in upper front with only \"Französisch\" in neat clear BLACK HANDWRITING. Keep every letter including German accents correct. Full portrait A4 folder centered in a square warm-white studio image, near top-down view, subtle 2 degree angle, soft natural shadow. Folder fills 84 percent image height, premium real product photo, highly readable as mobile thumbnail. No other text, extra objects, people, personal names, logos or watermarks. Not plastic, not a book, not a ring binder."
+    },
+    {
+      "id": "latein",
+      "file": "app/assets/folders/latein.webp",
+      "prompt": "Use case: product-mockup. Asset: one school subject cover for a coordinated SCHULPILOT folder set. ONE real closed German A4 cardboard fastener folder (Pappschnellhefter), natural warm kraft brown textured matte paperboard, narrow folded left spine and slightly softened corners. The large off-white paper label on the upper front has ONLY \"Latein\" in clear neat BLACK HANDWRITING. Fully visible portrait A4 folder, centered on square warm-white studio background, near top-down frontal product camera, subtle 2 degree rotation, natural soft shadow. Folder fills 84 percent of image height, true paper fibres, premium photographic realism, legible at small mobile size. No people, extra objects, branding, watermarks, names or any other words. Not a ring binder, book or plastic sleeve."
+    },
+    {
+      "id": "spanisch",
+      "file": "app/assets/folders/spanisch.webp",
+      "prompt": "Use case: product-mockup. Asset: one school subject cover for a coordinated SCHULPILOT folder set. ONE real closed German A4 cardboard fastener folder (Pappschnellhefter), deep marigold orange textured matte paperboard, narrow folded left spine and slightly softened corners. The large off-white paper label on the upper front has ONLY \"Spanisch\" in clear neat BLACK HANDWRITING. Fully visible portrait A4 folder, centered on square warm-white studio background, near top-down frontal product camera, subtle 2 degree rotation, natural soft shadow. Folder fills 84 percent of image height, true paper fibres, premium photographic realism, legible at small mobile size. No people, extra objects, branding, watermarks, names or any other words. Not a ring binder, book or plastic sleeve."
+    },
+    {
+      "id": "musik",
+      "file": "app/assets/folders/musik.webp",
+      "prompt": "Use case: product-mockup. Asset: one photographic school subject folder in a coordinated collection. ONE closed authentic German A4 Pappschnellhefter, soft periwinkle blue matte cardboard with natural paper fibres, folded narrow left spine, gently worn rounded corners. A large warm-cream label on the upper cover carries ONLY the exact subject \"Musik\" in clear tidy BLACK HANDWRITING, legible in a mobile card. Full portrait A4 folder centered against a square warm-white studio backdrop, near top-down front view, slight 2 degree angle and soft natural shadow, filling 84 percent image height. Real high-quality product photography. No logos, watermarks, extra objects, people, names, other words, plastic, book binding or ring binder."
+    },
+    {
+      "id": "sachunterricht",
+      "file": "app/assets/folders/sachunterricht.webp",
+      "prompt": "Use case: product-mockup. Asset: one photographic school subject folder in a coordinated collection. ONE closed authentic German A4 Pappschnellhefter, fresh olive green matte cardboard with natural paper fibres, folded narrow left spine, gently worn rounded corners. A large warm-cream label on the upper cover carries ONLY the exact subject \"Sachunterricht\" in clear tidy BLACK HANDWRITING, legible in a mobile card. Full portrait A4 folder centered against a square warm-white studio backdrop, near top-down front view, slight 2 degree angle and soft natural shadow, filling 84 percent image height. Real high-quality product photography. No logos, watermarks, extra objects, people, names, other words, plastic, book binding or ring binder."
+    },
+    {
+      "id": "deutsch-als-zweitsprache",
+      "file": "app/assets/folders/deutsch-als-zweitsprache.webp",
+      "prompt": "Use case: product-mockup. One photographic school folder cover, part of a cohesive catalog series. ONE authentic closed German A4 Pappschnellhefter of pale mint green matte cardboard, visible fine paper fibres, narrow folded spine at left and gently worn corners. Large cream label upper front; the ONLY text is \"Deutsch als Zweitsprache\", written neatly by hand with a BLACK PEN. Set the exact subject over two clearly spaced lines if necessary, preserve all German spelling and hyphens, make it readable at thumbnail size. Full portrait A4 folder centered in a square warm-white studio photo, near top-down front camera, very slight angle and natural soft shadow, folder about 84 percent image height. Realistic tactile cardstock, no people, names, logos, watermarks or extra objects. Not a book, plastic sleeve or ring binder."
+    },
+    {
+      "id": "lern-und-arbeitstechniken",
+      "file": "app/assets/folders/lern-und-arbeitstechniken.webp",
+      "prompt": "Use case: product-mockup. One photographic school folder cover, part of a cohesive catalog series. ONE authentic closed German A4 Pappschnellhefter of slate blue-grey matte cardboard, visible fine paper fibres, narrow folded spine at left and gently worn corners. Large cream label upper front; the ONLY text is \"Lern- und Arbeitstechniken\", written neatly by hand with a BLACK PEN. Set the exact subject over two clearly spaced lines if necessary, preserve all German spelling and hyphens, make it readable at thumbnail size. Full portrait A4 folder centered in a square warm-white studio photo, near top-down front camera, very slight angle and natural soft shadow, folder about 84 percent image height. Realistic tactile cardstock, no people, names, logos, watermarks or extra objects. Not a book, plastic sleeve or ring binder."
+    },
+    {
+      "id": "kreativitaet-und-bewegung",
+      "file": "app/assets/folders/kreativitaet-und-bewegung.webp",
+      "prompt": "Use case: product-mockup. One photographic school folder cover for the SCHULPILOT coordinated series. ONE authentic closed German A4 Pappschnellhefter made of warm coral-pink matte cardboard, fine natural paper fibres, narrow left folded spine, gently worn rounded corners. A large off-white paper label on the upper front contains ONLY the exact subject \"Kreativität und Bewegung\", handwritten neatly in black pen on two spacious lines. Preserve the German ä and every word, keep handwriting clear and readable. Full portrait A4 folder centered on square warm-white studio background, nearly top-down front view, subtle angle and soft natural shadow, folder fills 84 percent image height. Premium real product photograph. No people, names, logos, watermarks, extra objects or other text. Not plastic, not a ring binder, not a book."
+    },
+    {
+      "id": "ethik",
+      "file": "app/assets/folders/ethik.webp",
+      "prompt": "Use case: product-mockup. One photographic school folder cover in a coordinated catalog. ONE authentic closed German A4 Pappschnellhefter, muted deep teal matte cardboard with visible paper fibres, left narrow folded spine, softly worn corners. Large cream paper label upper front contains ONLY the exact subject \"Ethik\", neatly handwritten in black pen. Full portrait A4 folder centered on square warm-white studio background, near top-down front view, slight 2 degree rotation, soft natural shadow, 84 percent image height. Real tactile cardboard, premium product photo. No extra text, names, logos, watermarks, people or other objects. Not a plastic sleeve, ring binder or book."
+    },
+    {
+      "id": "gemeinschaftskunde",
+      "file": "app/assets/folders/gemeinschaftskunde.webp",
+      "prompt": "Use case: product-mockup. A photographic folder cover for the SCHULPILOT coordinated school collection. ONE authentic closed German A4 Pappschnellhefter of warm sage green matte cardboard, fine visible paper fibres, narrow folded left spine, softly worn corners. Large cream paper label on upper front contains ONLY the exact subject \"Gemeinschaftskunde\", written neatly in clear black pen, keep every German letter correct and large enough to read. Full portrait A4 folder centered on square warm-white studio background, near top-down frontal view, subtle 2 degree rotation and soft natural shadow, folder fills 84 percent image height. Realistic premium cardboard product photo. No people, names, logos, watermarks, additional objects or other words. Not plastic, not a book or ring binder."
+    },
+    {
+      "id": "informatik",
+      "file": "app/assets/folders/informatik.webp",
+      "prompt": "Use case: product-mockup. ONE closed real German A4 Pappschnellhefter for a coordinated school library, dark navy blue matte cardboard with visible paper fibres, narrow folded left spine and subtly worn corners. A large cream paper label upper front has ONLY \"Informatik\" in neat black handwritten school lettering, perfectly legible. Full portrait A4 folder centered on square warm-white studio background, near top-down frontal camera, 2 degree rotation, soft natural shadow, 84 percent image height. Premium realistic product photograph of paperboard. No computer graphics or symbols, no people, names, logos, watermarks, other text or extra objects. Not a ring binder, plastic sleeve or book."
+    },
+    {
+      "id": "kunst",
+      "file": "app/assets/folders/kunst.webp",
+      "prompt": "Use case: product-mockup. A photographic subject cover for the coordinated SCHULPILOT school folder set. ONE closed German A4 Pappschnellhefter made of deep magenta matte cardboard, visible fine paper fibres, narrow folded left spine and gently worn corners. Large cream paper label upper front carries ONLY \"Kunst\" in neat clear BLACK HANDWRITING. Full portrait A4 folder fully visible and centered on square warm-white studio background, slight 2 degree rotation, near top-down frontal product photograph, soft natural shadow, 84 percent image height. Real paperboard, no plastic, no book binding, no ring binder. No people, other objects, names, logos, extra words or watermarks."
+    },
+    {
+      "id": "mein-heft",
+      "file": "app/assets/folders/mein-heft.webp",
+      "prompt": "Use case: product-mockup. One generic photographic school folder cover matching the SCHULPILOT subject collection. ONE closed authentic German A4 Pappschnellhefter of pale warm sand-beige matte cardboard with fine paper fibres, narrow folded left spine and gently worn corners. Large cream paper label upper front contains ONLY the exact text \"Mein Heft\" in clear neat BLACK HANDWRITING. Full portrait A4 folder fully visible and centered on square warm-white studio background, near top-down frontal camera, subtle 2 degree angle and soft natural shadow, 84 percent image height. Premium realistic tactile paperboard product photo. No names, subject names, people, logos, watermarks, extra objects or other words. Not a book, plastic sleeve or ring binder."
+    },
+    {
+      "id": "religion",
+      "file": "app/assets/folders/religion.webp",
+      "prompt": "Use case: product-mockup. A coordinated SCHULPILOT school subject folder photograph. ONE closed authentic German A4 Pappschnellhefter of warm burgundy red matte paperboard, subtle natural fibres, narrow folded left spine and gently worn corners. Large cream paper label upper front contains ONLY \"Religion\" handwritten neatly in legible black pen. No religious symbols. Full portrait A4 folder fully visible and centered on a square warm-white studio background, near top-down front view, slight 2 degree rotation, natural soft shadow, 84 percent image height. Real cardboard, premium product photo. No people, names, logos, extra objects, additional words or watermarks. Not a book, ring binder or plastic folder."
+    },
+    {
+      "id": "sport",
+      "file": "app/assets/folders/sport.webp",
+      "prompt": "Use case: product-mockup. One photographic school subject folder for a coordinated SCHULPILOT catalog. ONE closed real German A4 Pappschnellhefter made of fresh grass-green matte cardboard with visible fine paper fibres, narrow left folded spine, softly worn corners. Large cream paper label on the upper front bears ONLY the exact text \"Sport\" in neat readable black handwritten school lettering. Full portrait A4 folder centered against a square warm-white studio background, nearly top-down frontal view, slight 2 degree rotation, natural soft shadow. Folder fills 84 percent of image height. Premium realistic tactile paperboard. No people, names, logos, watermark, extra objects, other text, plastic, book binding or ring binder."
+    },
+    {
+      "id": "technik",
+      "file": "app/assets/folders/technik.webp",
+      "prompt": "Use case: product-mockup. ONE closed authentic German A4 Pappschnellhefter for a coordinated school folder collection. Cool graphite grey matte cardboard, visible fine paper fibres, narrow folded left spine and slightly worn corners. Large cream paper label on the upper front carries ONLY \"Technik\" in neat legible BLACK HANDWRITING. Full portrait A4 folder fully visible and centered on a square warm-white studio background, near top-down front view, subtle 2 degree rotation, soft natural shadow, folder fills 84 percent of image height. Realistic premium paperboard product photo. No extra text, icons, people, names, logos, watermarks or other objects. Not a book, plastic sleeve or ring binder."
+    },
+    {
+      "id": "wirtschaft",
+      "file": "app/assets/folders/wirtschaft.webp",
+      "prompt": "Use case: product-mockup. ONE real closed German A4 Pappschnellhefter from a cohesive school folder set, ochre gold matte cardboard with natural fine paper fibres, narrow folded left spine and gently worn corners. A large cream paper label upper front contains ONLY the exact subject \"Wirtschaft\", neatly handwritten in BLACK PEN, readable at small thumbnail size. Full portrait A4 folder centered and fully visible on square warm-white studio background, near top-down front view, slight 2 degree rotation, natural soft shadow, 84 percent image height. Premium realistic cardboard product photography. No currency symbols, names, people, branding, watermarks, extra objects or additional text. Not a book, ring binder or plastic sleeve."
+    }
+  ]
+}

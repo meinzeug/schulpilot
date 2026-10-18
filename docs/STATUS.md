@@ -1,3 +1,35 @@
+# Fachhefter/Fotoalbum1.6.0+36 · gebaut, in Abnahme
+
+Implementiert:24 feste Fächer mit eigenen fotorealistischen Papphefterbildern,
+zusätzlich neutraler eigener Hefter;25 echte WebP-Assets784.908Bytes samt
+bereinigtem Promptmanifest. Standard „Hefte“ jetzt Fachübersicht mit Suche,
+Meine-Fächer-Filter und Karten-/Listenansicht. Leere Fächer bleiben öffnbar.
+Fotoalbum mit echten privaten Fotos, Wischen/Pfeilen/Tastatur, Blättereffekt,
+reduzierter Bewegung, Zoom, Such-/Zeit-/Statusfiltern, Seitensprung und
+paginierten Foto-Kachel-/Listenübersichten. Bestehende Textprüfung/Lernen/
+„Alle Heftseiten“ erhalten. Server filtert stabile Fach-ID inklusive Aliasen;
+Geschwisterschutz und Clientprüfung gegen ignorierte Filter alter Backends.
+Fotos begrenzt/lazy dekodieren, bei Logout/Dispose verwerfen. Keine KI oder
+erfundene Lernleistung durch Lesen/Blättern.
+
+**Geprüft:**875 vollständige PostgreSQLtests511,43s,326 vollständige
+Fluttertests; nach letzter alter-Backend-Absicherung17 betroffene Tests und
+Analyse erneut erfolgreich. Web/signierte Direct-APK/Play-AAB1.6.0+36 gebaut.
+APK66.320.086Bytes, SHA256
+f36eac13642f37e35eb1474cd0e33ae148db6df7776d550a1cdd8d0c63e29e80.
+Vollständige öffentliche und native Abnahme/gesicherte Aktivierung folgen.
+Noch produktiv ist PDF-Hotfix1.5.0+35/961b153, Schema0018.
+
+Regulärer eigener künstlicher Haushalt vorbereitet:26 echte Foto-Uploads,
+zwei tatsächliche reservierte Codex-OCR-Jobs, zwei ausdrücklich bestätigte
+Mathematikseiten,24 noch unzugeordnete Seiten. Keine Datenbankinjektion,
+keine erfundenen Antworten. Geschützter Checkpoint außerhalb von Git für
+qa/notebooks_web.mjs, qa/android_notebooks.py, qa/notebooks_cleanup.py.
+Eigener API36-Emulator ist wieder gestartet, installiert35 als OTA-Basis.
+Docs/Details: NOTEBOOKS.md, NOTEBOOK_ASSETS.json.
+Katalogimport/Lerntipps weiterhin eigener offener Ausbau; unveränderter
+Modellentwurf in artifacts/wip/catalog_models.py, Archivmetadaten vorhanden.
+
 # PDF-Größenfehler behoben · 18.10.2026
 
 **Produktiv:** `961b1537dafc0ddb8d88a80ca95ab92db6d0b03c`, main gepusht,
@@ -54,7 +86,7 @@ Diff sauber. Keine Flutteränderung in diesem Paket; zuvor318 Tests und
 Web/APK/Play35 tatsächlich gebaut/geprüft. Neue volle Regression erst nach
 Katalog-/Oberflächenintegration. Quelle/Arbeitsplan: CATALOG_INTEGRATION.md.
 
-**Noch offen / nächste Aktion:** Katalogmodelle in catalog_models.py sind nur
+**Noch offen / nächste Aktion:** Katalogmodelle in artifacts/wip/catalog_models.py sind nur
 unregistrierte Grundlage. Tabellenmigration0019, vollständiger idempotenter
 Import samt Herkunft/CSV-Abgleich, gemeinsamer präziser Matcher, bestehende
 KI-Pfade begrenzen und private Kontexte/Feedback integrieren. Danach tatsächliche

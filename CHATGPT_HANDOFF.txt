@@ -1,3 +1,28 @@
+FACHHEFTER/FOTOALBUM1.6.0+36 – gebaut, in Abnahme
+
+Fachübersicht mit25 erzeugten Coverassets (24 feste Fächer plus neutraler
+Hefter), echte private Fotos im Album mit Blättereffekt/Wischen/Zoom,
+Such-/Datums-/Statusfilter, Seitensprung, Kachel-/Listenübersicht. Leere Fächer
+bleiben öffnbar; bestehende „Alle Heftseiten“ und Textprüfung/Lernen erhalten.
+Stabile serverseitige Fachfilter/Aliase, Geschwisterschutz, keine KI oder
+Lernleistung durch Listen/Blättern; begrenztes Laden/Cacheeviction bei Logout.
+875 PostgreSQLtests511,43s,326 Fluttertests erfolgreich, anschließend17
+betroffene Tests plus Analyse nach letzter Kompatibilitätsprüfung bestanden.
+Web/Direct-APK/Play-AAB1.6.0+36 gebaut, noch nicht produktiv aktiviert.
+APK66320086Bytes, SHA256
+f36eac13642f37e35eb1474cd0e33ae148db6df7776d550a1cdd8d0c63e29e80
+Öffentliche/native Abnahme ausstehend. Eigener normal verifizierter künstlicher
+Haushalt mit26 normalen Fotouploads, zwei echten reservierten Codex-OCR-Jobs,
+zwei bestätigten Mathematikseiten/24 offenen Seiten vorbereitet. Kein privates
+Passwort/Token in Übergabe/Git. Emulator API36 wieder aktiv, installiert35.
+Nächste Aktion: Commit/Push, gesicherter Release, öffentliche Flutterprüfung,
+echtes OTA35->36, native Fotoalbumprüfung, Export und eigene Familienlöschung.
+Prüfpfade qa/notebooks_web.mjs, qa/android_notebooks.py, qa/notebooks_cleanup.py.
+Katalogimport/Lerntipps separat offen; Modellentwurf unverändert nach
+artifacts/wip/catalog_models.py ausgelagert, vor Migration0019 überarbeiten.
+Tatsächlich aktiv bleibt bis zur Abnahme PDF-Hotfix961b153/1.5.0+35/Schema0018.
+Details docs/NOTEBOOKS.md, docs/NOTEBOOK_ASSETS.json und docs/STATUS.md.
+
 PDF-UPLOADFIX18.10.2026 – produktiv
 
 Commit961b1537dafc0ddb8d88a80ca95ab92db6d0b03c, main gepusht,

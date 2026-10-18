@@ -964,7 +964,8 @@ class WorkspaceShell extends StatelessWidget {
             path.startsWith('/learning-preparation/'))) {
       return 1;
     }
-    if (state.isChild && path.startsWith('/material/')) {
+    if (state.isChild &&
+        (path.startsWith('/material/') || path.startsWith('/library/'))) {
       return entries.indexWhere((entry) => entry.$2 == 'Hefte');
     }
     if (path == '/notifications') return entries.length - 1;

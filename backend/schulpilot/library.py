@@ -11,6 +11,7 @@ from sqlalchemy.orm import load_only
 from . import schemas as s
 from .db import Assignment, Attempt, LearningUnit, Material, SchoolDay, UnitCoaching, get_db
 from .security import authenticated, child_access
+from .subjects import owned_subject
 
 router = APIRouter(tags=["Bibliothek und Lernraum"])
 Sort = Literal["subject", "newest", "oldest"]
@@ -44,13 +45,15 @@ def material_summary(material, school_date=None):
             "page_number",
             "title",
             "subject",
+            "subject_id",
+            "revision",
             "topic",
             "status",
             "confirmed",
             "synthetic",
             "created",
         )
-    } | {"school_date": school_date}
+    } | {"school_date": school_date, "has_image": bool(material.path)}
 
 
 MATERIAL_FIELDS = (
@@ -60,6 +63,9 @@ MATERIAL_FIELDS = (
     Material.page_number,
     Material.title,
     Material.subject,
+    Material.subject_id,
+    Material.revision,
+    Material.path,
     Material.topic,
     Material.status,
     Material.confirmed,
@@ -73,6 +79,7 @@ def materials(
     child_id: str,
     q: str = Query("", max_length=120),
     subject: str | None = Query(None, max_length=80),
+    subject_id: str | None = Query(None, pattern=r"^(?:[a-f0-9]{32}|unassigned)$"),
     topic: str | None = Query(None, max_length=160),
     status: Literal["all", "review", "confirmed"] = "all",
     sort: Sort = "subject",
@@ -87,6 +94,14 @@ def materials(
     if since and until and since > until:
         raise HTTPException(422, "Der Beginn muss vor dem Ende des Zeitraums liegen.")
     conditions = [Material.child_id == child.id]
+    if subject_id is not None:
+        if subject is not None:
+            raise HTTPException(422, "Bitte nur einen Fachfilter verwenden.")
+        if subject_id == "unassigned":
+            conditions.append(Material.subject_id.is_(None))
+        else:
+            owned_subject(db, child, subject_id, p)
+            conditions.append(Material.subject_id == subject_id)
     if q.strip():
         conditions.append(
             or_(
