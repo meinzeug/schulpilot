@@ -1,3 +1,34 @@
+# In Umsetzung · Fachstamm/Katalog/Bildhefte · 18.10.2026
+
+**Fachgrundlage erledigt, noch nicht produktiv:** Migration0018 an0017,
+versionierter24-Fächer-Seed aus allen16 tatsächlichen Katalogfächern plus acht
+zusätzlichen Schulfächern. Alias-/Providerzuordnung und persönliche Fächer/
+Stufentypen getrennt. Additive Fachreferenzen für Material/Auftrag/Einheit/
+Note/Mastery; historische Labels, Antworten und Quellenrevisionen unverändert.
+Zusätzliche alte Fächer familienprivat erhalten; Kinder sehen keine eigenen
+Fachnamen von Geschwistern. Neue explizite Elternfächer ebenfalls privat,
+keine automatische Anlage durch KI oder normale Backfills. Profilanlage,
+Export und Kinder-/Familienlöschung verwenden dieselbe Grundlage.
+
+**Geprüft:**31 gezielte PostgreSQLtests bestanden (21,46s): frische Fächer ohne
+Material/Account/KI, eigener Kinderlogin, leere Fächer, wiederholter Seed und
+Backfill, Aliasgrenzen, private Extras, Geschwisterschutz, Löschung, eigene
+Fächerlimits einschließlich Profilumgehung, alte SQLite-Migration mit
+Antworterhalt und unveränderte PDF-Migrations-/Importregression. Ruff und
+Diff sauber. Keine Flutteränderung in diesem Paket; zuvor318 Tests und
+Web/APK/Play35 tatsächlich gebaut/geprüft. Neue volle Regression erst nach
+Katalog-/Oberflächenintegration. Quelle/Arbeitsplan: CATALOG_INTEGRATION.md.
+
+**Noch offen / nächste Aktion:** Katalogmodelle in catalog_models.py sind nur
+unregistrierte Grundlage. Tabellenmigration0019, vollständiger idempotenter
+Import samt Herkunft/CSV-Abgleich, gemeinsamer präziser Matcher, bestehende
+KI-Pfade begrenzen und private Kontexte/Feedback integrieren. Danach tatsächliche
+Fach-/Lerntipp-/Albumoberflächen, Tests und gesicherter kombinierter Release.
+Alle16 Referenzcovers liegen erzeugt als PNG/optimierte WebP in
+artifacts/folder-covers mit Promptmanifest; Zusatzfächer brauchen noch Bilder.
+Produktiv bleibt geprüfter PDF-Release1.5.0+35, Schema0017,87f9cf6.
+Keinen Katalogimport, sichtbare neue Hefter oder neue Bereitstellung behaupten.
+
 # Noten-PDFimport1.5.0+35 · bereitgestellt18.10.2026
 
 **Produktiv aktiv:** Produktcommit `87f9cf68962385cd1dd7c996eacdd02dde6e3462`,

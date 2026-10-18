@@ -1,3 +1,21 @@
+FORTSETZUNG18.10.2026 – Fachstamm/Katalog/Bildhefte
+
+Backendgrundlage für festen Fachstamm implementiert,31 gezielte PostgreSQL-
+Prüfungen bestanden, noch nicht produktiv. Migration0018 folgt0017.
+Alle16 Katalogfächer plus acht allgemeine Fächer, stabile IDs/Aliase/
+Providerzuordnung, additive Referenzen, leere Fächer, normale unabhängige
+Kinderzugänge. Zusätzliche historische/eigene Fächer bleiben familienprivat;
+Kinder sehen keine Geschwister-Fachnamen. KI/GETs erzeugen keine Fächer.
+Historische Lerninhalte/Antworten nicht umschreiben. Profil, Export und
+Löschung erweitert; Details docs/CATALOG_INTEGRATION.md und docs/STATUS.md.
+Nächste Aktion: unregistrierte Katalogmodelle mit Migration0019 einbinden,
+idempotenten vollständigen Import, Matcher, Lerntipps und Bildhefte umsetzen.
+ZIP ist vorhanden, tatsächliche Metadaten geprüft.16 Referenzcovers erzeugt,
+noch nicht im Produkt eingebunden. Keine Umsetzung/Abnahme daraus ableiten.
+Aktiver Web-/Androidstand bleibt1.5.0+35/87f9cf6, Schema0017 (Bericht unten).
+Keine Zugangsdaten in dieser Übergabe. Arbeit unabhängig vom noch nötigen
+frischen Kinderlogin für den alten Sprachwerkstatt-Prüfauftrag fortsetzen.
+
 SCHULPILOT – Noten-PDFimport1.5.0+35 · bereitgestellt18.10.2026
 
 Produktcommit87f9cf68962385cd1dd7c996eacdd02dde6e3462, main gepusht.

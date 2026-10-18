@@ -133,6 +133,9 @@ def create_child(family_id: str, data: s.ChildCreate, p=Depends(parent), db=Depe
     )
     db.add(child)
     db.flush()
+    from .subject_registry import sync_profile
+
+    sync_profile(db, child)
     audit(db, p.user.id, "child.create", child.id)
     db.commit()
     return child_data(db, child)
@@ -146,6 +149,9 @@ def update_child(child_id: str, data: s.ChildUpdate, p=Depends(parent), db=Depen
     db.get(User, child.user_id).display_name = data.display_name
     for key in ("grade", "subjects", "school_type", "region"):
         setattr(child, key, getattr(data, key))
+    from .subject_registry import sync_profile
+
+    sync_profile(db, child)
     db.commit()
     return child_data(db, child)
 
@@ -357,6 +363,9 @@ def remove_child(db, child):
     user = db.get(User, child.user_id)
     db.delete(child)
     db.flush()
+    from .subject_registry import purge_unused_private
+
+    purge_unused_private(db, child.family_id)
     if user:
         db.delete(user)
     return paths
@@ -426,6 +435,7 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 
 def export_child(db, child):
     from .db import (
+        ChildSubject,
         GradeImport,
         GradeSourceSlot,
         LanguageProject,
@@ -450,6 +460,13 @@ def export_child(db, child):
     for model in (GradeImport, GradeSourceSlot):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
                                      for row in db.scalars(select(model).where(model.child_id == child.id))]
+    from .db import Subject
+    from .subject_registry import child_subject_ids
+
+    result["child_subjects"] = [{c.name: getattr(row, c.name) for c in ChildSubject.__table__.columns}
+                                for row in db.scalars(select(ChildSubject).where(ChildSubject.child_id == child.id))]
+    result["subject_definitions"] = [{c.name: getattr(row, c.name) for c in Subject.__table__.columns}
+                                     for row in db.scalars(select(Subject).where(Subject.id.in_(child_subject_ids(db, child.id))))]
     units = [u["id"] for u in result["learning_units"]]
     result["attempts"] = [
         {c.name: getattr(row, c.name) for c in Attempt.__table__.columns}

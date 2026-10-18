@@ -153,6 +153,45 @@ class Child(Base):
     grade_planning_enabled = Column(Boolean, default=True, server_default=true(), nullable=False)
 
 
+class Subject(Base):
+    __tablename__ = "subjects"
+    id = Column(String(32), primary_key=True)
+    key = Column(String(100), nullable=False, unique=True)
+    title = Column(String(80), nullable=False)
+    owner_family_id = Column(ForeignKey("families.id", ondelete="CASCADE"), index=True)
+    cover_key = Column(String(100), nullable=False)
+    active = Column(Boolean, default=True, nullable=False)
+    sort_order = Column(Integer, default=100, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class SubjectAlias(Base):
+    __tablename__ = "subject_aliases"
+    key = Column(String(64), primary_key=True)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False, index=True)
+    family_id = Column(ForeignKey("families.id", ondelete="CASCADE"), index=True)
+    normalized = Column(String(160), nullable=False)
+
+
+class SubjectProvider(Base):
+    __tablename__ = "subject_providers"
+    provider = Column(String(24), primary_key=True)
+    external_id = Column(String(100), primary_key=True)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False, index=True)
+    data = Column(JSON, nullable=False)
+
+
+class ChildSubject(Base):
+    __tablename__ = "child_subjects"
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), primary_key=True)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="CASCADE"), primary_key=True)
+    active = Column(Boolean, default=True, nullable=False)
+    level_type = Column(String(16))
+    level_number = Column(Integer)
+    revision = Column(Integer, default=1, nullable=False)
+    __table_args__ = (CheckConstraint("(level_type IS NULL AND level_number IS NULL) OR (level_type IS NOT NULL AND level_type IN ('klasse','lernjahr','vorschule') AND level_number IS NOT NULL AND level_number >= 0 AND level_number <= 20)", name="ck_child_subject_level"),)
+
+
 class Session(Base):
     __tablename__ = "sessions"
     id = Column(String(32), primary_key=True, default=uid)
@@ -288,6 +327,7 @@ class Material(Base):
     path = Column(String(80))
     status = Column(String(24), default="uploaded", nullable=False)
     subject = Column(String(80), default="", nullable=False)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="SET NULL"), index=True)
     topic = Column(String(160), default="", nullable=False)
     content = Column(Text, default="", nullable=False)
     uncertainties = Column(JSON, default=list, nullable=False)
@@ -309,6 +349,7 @@ class Assignment(Base):
     material_id = Column(ForeignKey("materials.id", ondelete="SET NULL"))
     kind = Column(String(24), nullable=False)  # parent, exam, homework, interest
     subject = Column(String(80), nullable=False)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="SET NULL"), index=True)
     topic = Column(String(160), nullable=False)
     note = Column(Text, default="", nullable=False)
     due = Column(String(10))
@@ -329,6 +370,7 @@ class LearningUnit(Base):
     material_id = Column(ForeignKey("materials.id", ondelete="SET NULL"))
     assignment_id = Column(ForeignKey("assignments.id", ondelete="SET NULL"))
     subject = Column(String(80), nullable=False)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="SET NULL"), index=True)
     topic = Column(String(160), nullable=False)
     explanation = Column(Text, nullable=False)
     questions = Column(JSON, nullable=False)
@@ -378,6 +420,7 @@ class SchoolGrade(Base):
     id = Column(String(32), primary_key=True, default=uid)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     subject = Column(String(80), nullable=False)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="SET NULL"), index=True)
     topic = Column(String(160), default="", nullable=False)
     kind = Column(String(20), nullable=False)
     scale = Column(String(12), nullable=False)
@@ -592,6 +635,7 @@ class Mastery(Base):
     id = Column(String(32), primary_key=True, default=uid)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     subject = Column(String(80), nullable=False)
+    subject_id = Column(ForeignKey("subjects.id", ondelete="SET NULL"), index=True)
     topic = Column(String(160), nullable=False)
     independent = Column(Integer, default=0, nullable=False)
     assisted = Column(Integer, default=0, nullable=False)
@@ -734,6 +778,9 @@ def init_db():
 
     with DB.begin() as db:
         insert_ignore(db, ProviderConfig, {"id": 1})
+        from .subject_registry import seed_connection
+
+        seed_connection(db.connection())
     from .installation import initialize
 
     initialize()

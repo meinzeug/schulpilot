@@ -30,6 +30,7 @@ from . import (
     releases,
     school_day,
     study_path,
+    subjects,
     synthetic,
     tutor,
     vocabulary,
@@ -235,6 +236,7 @@ for router in (
     tutor.router,
     vocabulary.router,
     language_projects.router,
+    subjects.router,
 ):
     app.include_router(router, prefix="/api")
 

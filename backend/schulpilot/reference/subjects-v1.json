@@ -1,0 +1,192 @@
+{
+  "seed_version": 1,
+  "catalog_schema": "1.5",
+  "catalog_built_at": "2026-10-18T12:22:14.044960+00:00",
+  "catalog_sha256": "c67500bd581a16aaca394ab042c511836a91f223056445c51c4610778690b481",
+  "subjects": [
+    {
+      "key": "englisch",
+      "title": "Englisch",
+      "provider": "sofatutor",
+      "provider_id": "englisch",
+      "provider_url": "https://www.sofatutor.com/englisch",
+      "aliases": [
+        "Engl."
+      ]
+    },
+    {
+      "key": "franzoesisch",
+      "title": "Französisch",
+      "provider": "sofatutor",
+      "provider_id": "franzoesisch",
+      "provider_url": "https://www.sofatutor.com/franzoesisch",
+      "aliases": [
+        "Franz."
+      ]
+    },
+    {
+      "key": "latein",
+      "title": "Latein",
+      "provider": "sofatutor",
+      "provider_id": "latein",
+      "provider_url": "https://www.sofatutor.com/latein",
+      "aliases": []
+    },
+    {
+      "key": "spanisch",
+      "title": "Spanisch",
+      "provider": "sofatutor",
+      "provider_id": "spanisch",
+      "provider_url": "https://www.sofatutor.com/spanisch",
+      "aliases": []
+    },
+    {
+      "key": "mathematik",
+      "title": "Mathematik",
+      "provider": "sofatutor",
+      "provider_id": "mathematik",
+      "provider_url": "https://www.sofatutor.com/mathematik",
+      "aliases": [
+        "Mathe",
+        "Math"
+      ]
+    },
+    {
+      "key": "deutsch",
+      "title": "Deutsch",
+      "provider": "sofatutor",
+      "provider_id": "deutsch",
+      "provider_url": "https://www.sofatutor.com/deutsch",
+      "aliases": []
+    },
+    {
+      "key": "biologie",
+      "title": "Biologie",
+      "provider": "sofatutor",
+      "provider_id": "biologie",
+      "provider_url": "https://www.sofatutor.com/biologie",
+      "aliases": [
+        "Bio"
+      ]
+    },
+    {
+      "key": "physik",
+      "title": "Physik",
+      "provider": "sofatutor",
+      "provider_id": "physik",
+      "provider_url": "https://www.sofatutor.com/physik",
+      "aliases": []
+    },
+    {
+      "key": "chemie",
+      "title": "Chemie",
+      "provider": "sofatutor",
+      "provider_id": "chemie",
+      "provider_url": "https://www.sofatutor.com/chemie",
+      "aliases": []
+    },
+    {
+      "key": "geschichte",
+      "title": "Geschichte",
+      "provider": "sofatutor",
+      "provider_id": "geschichte",
+      "provider_url": "https://www.sofatutor.com/geschichte",
+      "aliases": []
+    },
+    {
+      "key": "geographie",
+      "title": "Geographie",
+      "provider": "sofatutor",
+      "provider_id": "geographie",
+      "provider_url": "https://www.sofatutor.com/geographie",
+      "aliases": [
+        "Geografie",
+        "Erdkunde"
+      ]
+    },
+    {
+      "key": "sachunterricht",
+      "title": "Sachunterricht",
+      "provider": "sofatutor",
+      "provider_id": "sachunterricht",
+      "provider_url": "https://www.sofatutor.com/sachunterricht",
+      "aliases": []
+    },
+    {
+      "key": "musik",
+      "title": "Musik",
+      "provider": "sofatutor",
+      "provider_id": "musik",
+      "provider_url": "https://www.sofatutor.com/musik",
+      "aliases": []
+    },
+    {
+      "key": "lern-und-arbeitstechniken",
+      "title": "Lern- und Arbeitstechniken",
+      "provider": "sofatutor",
+      "provider_id": "lern-und-arbeitstechniken",
+      "provider_url": "https://www.sofatutor.com/lern-und-arbeitstechniken",
+      "aliases": [
+        "Lerntechniken"
+      ]
+    },
+    {
+      "key": "kreativitaet-und-bewegung",
+      "title": "Kreativität und Bewegung",
+      "provider": "sofatutor",
+      "provider_id": "kreativitaet-und-bewegung",
+      "provider_url": "https://www.sofatutor.com/kreativitaet-und-bewegung",
+      "aliases": []
+    },
+    {
+      "key": "deutsch-als-zweitsprache",
+      "title": "Deutsch als Zweitsprache",
+      "provider": "sofatutor",
+      "provider_id": "deutsch-als-zweitsprache",
+      "provider_url": "https://www.sofatutor.com/deutsch-als-zweitsprache",
+      "aliases": [
+        "DaZ"
+      ]
+    },
+    {
+      "key": "sport",
+      "title": "Sport",
+      "aliases": []
+    },
+    {
+      "key": "kunst",
+      "title": "Kunst",
+      "aliases": []
+    },
+    {
+      "key": "ethik",
+      "title": "Ethik",
+      "aliases": []
+    },
+    {
+      "key": "religion",
+      "title": "Religion",
+      "aliases": []
+    },
+    {
+      "key": "informatik",
+      "title": "Informatik",
+      "aliases": []
+    },
+    {
+      "key": "technik",
+      "title": "Technik",
+      "aliases": []
+    },
+    {
+      "key": "wirtschaft",
+      "title": "Wirtschaft",
+      "aliases": []
+    },
+    {
+      "key": "gemeinschaftskunde",
+      "title": "Gemeinschaftskunde",
+      "aliases": []
+    }
+  ]
+}
