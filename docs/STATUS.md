@@ -1,4 +1,23 @@
-# Fachhefter/Fotoalbum1.6.0+36 · gebaut, in Abnahme
+# Fachhefter/Fotoalbum1.6.1+37 · kompakt gebaut, in Abnahme
+
+Kompakter Leser nach tatsächlicher390px-Sichtprüfung: Fachüberschrift/Zurück/
+Fotoaktion in einer Zeile, Suche erst auf eigene Aktion, Ansichten klar
+gruppiert, A4-angepasste Fotohöhe. Belegte und ausgewählte Hefter zuerst,
+alle leeren Fächer weiterhin sichtbar/öffnbar. Große Schrift/fehlendes Foto
+ohne Überlauf.328 vollständige Fluttertests, Analyse und57 gezielte
+PostgreSQLregressionen bestanden. Die unveränderte Backendlogik zuvor in875
+vollständigen PostgreSQLtests511,43s geprüft. Web/Direct/Play37 neu gebaut.
+APK66.320.086Bytes, SHA256
+d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae.
+
+Zwischenrelease36/007c570 ist tatsächlich aktiv:20261018T152551Z-007c570,
+Schema0018, Backup success/Exit0 und sieben Dienste aktiv. Echtes OTA35->36
+mit automatischem geprüften Download und Android-Bestätigung erfolgreich,
+kein adb install für dieses Upgrade. Öffentliche eigene Fotos/Zoom auf36
+bedient; erster weiterer UI-Lauf brach im QA-Scrollhelfer ab, kein bestandener
+Gesamtlauf daraus abgeleitet. Helfer korrigiert, finale öffentliche/native
+Prüfung folgt auf37. GitHub-CI39131505701:beide Jobs0 Schritte, tatsächliche
+Annotation meldet Kontosperre wegen Billing. Lokale Prüfungen/Push erfolgreich.
 
 Implementiert:24 feste Fächer mit eigenen fotorealistischen Papphefterbildern,
 zusätzlich neutraler eigener Hefter;25 echte WebP-Assets784.908Bytes samt
@@ -17,15 +36,14 @@ Fluttertests; nach letzter alter-Backend-Absicherung17 betroffene Tests und
 Analyse erneut erfolgreich. Web/signierte Direct-APK/Play-AAB1.6.0+36 gebaut.
 APK66.320.086Bytes, SHA256
 f36eac13642f37e35eb1474cd0e33ae148db6df7776d550a1cdd8d0c63e29e80.
-Vollständige öffentliche und native Abnahme/gesicherte Aktivierung folgen.
-Noch produktiv ist PDF-Hotfix1.5.0+35/961b153, Schema0018.
+Historische Bauzahlen36; finale37-Daten im Absatz oben.
 
 Regulärer eigener künstlicher Haushalt vorbereitet:26 echte Foto-Uploads,
 zwei tatsächliche reservierte Codex-OCR-Jobs, zwei ausdrücklich bestätigte
 Mathematikseiten,24 noch unzugeordnete Seiten. Keine Datenbankinjektion,
 keine erfundenen Antworten. Geschützter Checkpoint außerhalb von Git für
 qa/notebooks_web.mjs, qa/android_notebooks.py, qa/notebooks_cleanup.py.
-Eigener API36-Emulator ist wieder gestartet, installiert35 als OTA-Basis.
+Eigener API36-Emulator läuft, tatsächlich auf36 aktualisiert als OTA37-Basis.
 Docs/Details: NOTEBOOKS.md, NOTEBOOK_ASSETS.json.
 Katalogimport/Lerntipps weiterhin eigener offener Ausbau; unveränderter
 Modellentwurf in artifacts/wip/catalog_models.py, Archivmetadaten vorhanden.

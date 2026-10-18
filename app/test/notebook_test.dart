@@ -191,6 +191,10 @@ void main() {
         final (_, _, requests) = await open(tester, shelf: true, width: width);
         expect(find.text('Biologie'), findsOneWidget);
         expect(find.text('Noch keine Seiten'), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.text('Mathematik')).dx,
+          lessThan(tester.getTopLeft(find.text('Biologie')).dx),
+        );
         expect(requests, hasLength(1));
         expect(requests.single.url.path.endsWith('/subjects'), isTrue);
         await tap(tester, find.text('Biologie'));
@@ -316,6 +320,38 @@ void main() {
       await tap(tester, find.text('Text & Lernen'));
       expect(find.text('Quelltext & Lernen'), findsOneWidget);
       expect(requests.every((r) => r.method == 'GET'), isTrue);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Search opens by action and clearing it restores the unfiltered album',
+    (tester) async {
+      final (_, _, requests) = await open(tester);
+      expect(find.byType(TextField), findsNothing);
+      await tap(tester, find.byTooltip('Im Hefter suchen'));
+      await tester.enterText(find.byType(TextField), 'Brüche');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(
+        requests
+            .where((r) => r.url.path.endsWith('/materials'))
+            .last
+            .url
+            .queryParameters['q'],
+        'Brüche',
+      );
+      await tap(tester, find.byTooltip('Suche schließen'));
+      expect(find.byType(TextField), findsNothing);
+      expect(
+        requests
+            .where((r) => r.url.path.endsWith('/materials'))
+            .last
+            .url
+            .queryParameters['q'],
+        '',
+      );
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
   );

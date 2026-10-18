@@ -27,10 +27,12 @@ def main():
             state.get("phase") == "web_passed_native_pending" and
             re.search(r"\+schulpilot-normal-qa-[a-f0-9]{12}@", account["credentials"]["parent_username"]),
             "own_actual_web_album_required")
-    require(installed_code() == 36, "actual_signed_apk36_required")
+    current = installed_code()
+    published = httpx.get(native.BASE + '/app-release', timeout=20).raise_for_status().json()
+    require(current >= 36 and current == published['version_code'], "current_signed_album_apk_required")
     require(native.adb("emu", "avd", "name").decode().splitlines()[0] == "schulpilot-qa-api36", "own_avd_required")
     checks, phase = [], "native_child_login"
-    report = {"success": False, "installed_code": 36, "native_flutter": True, "android_api": 36, "checks": checks}
+    report = {"success": False, "installed_code": current, "native_flutter": True, "android_api": 36, "checks": checks}
     try:
         launch()
         native.wait_any(["Anmelden", "Willkommen zurück", "Heute"])

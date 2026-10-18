@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
@@ -27,6 +28,7 @@ class NotebookScreen extends StatefulWidget {
 
 class _NotebookScreenState extends State<NotebookScreen> {
   final search = TextEditingController();
+  final searchFocus = FocusNode();
   Timer? debounce;
   late final String? owner;
   Json? subject, data;
@@ -36,7 +38,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   int index = 0, generation = 0;
   int stateRevision = 0;
   double swipeDistance = 0;
-  bool loading = true;
+  bool loading = true, showSearch = false;
   static const pageSize = 20;
   bool get current => mounted && widget.state.user?['id'] == owner;
   String get memoryKey => 'notebook:${widget.childId}:${widget.subjectId}';
@@ -60,6 +62,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     sort = saved?['sort'] ?? 'newest';
     status = saved?['status'] ?? 'all';
     search.text = saved?['q'] ?? '';
+    showSearch = search.text.isNotEmpty;
     index = saved?['index'] ?? 0;
     if (saved?['since'] != null && saved?['until'] != null) {
       dates = DateTimeRange(
@@ -91,6 +94,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     debounce?.cancel();
     widget.state.removeListener(identityChanged);
     search.dispose();
+    searchFocus.dispose();
     super.dispose();
   }
 
@@ -380,46 +384,88 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   void detail(Json item) => openRoute(context, '/material/${item['id']}');
 
+  void toggleSearch() {
+    if (showSearch) {
+      searchFocus.unfocus();
+      if (search.text.isNotEmpty) {
+        change(() {
+          search.clear();
+          showSearch = false;
+        });
+      } else {
+        setState(() => showSearch = false);
+      }
+    } else {
+      setState(() => showSearch = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (current) searchFocus.requestFocus();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!current) return const SizedBox();
     return PageFrame(
       state: widget.state,
       title: subject?['title'] ?? 'Dein Hefter',
-      actions: [
-        TextButton.icon(
-          onPressed: () => openRoute(context, '/library/${widget.childId}'),
-          icon: const Icon(Icons.folder_open_rounded),
-          label: const Text('Alle Hefter'),
-        ),
-        if (widget.state.isChild || widget.state.canManage)
-          OutlinedButton.icon(
-            onPressed: addPhoto,
-            icon: const Icon(Icons.add_a_photo_outlined),
-            label: const Text('Heftfoto hinzufügen'),
-          ),
-      ],
+      showTitle: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Alle Hefter',
+                onPressed: () => context.go('/library/${widget.childId}'),
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subject?['title'] ?? 'Dein Hefter',
+                  maxLines: 2,
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (widget.state.isChild || widget.state.canManage)
+                IconButton(
+                  tooltip: 'Heftfoto hinzufügen',
+                  onPressed: addPhoto,
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
           Panel(
             tone: PanelTone.subtle,
+            padding: const EdgeInsets.all(12),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
-                  controller: search,
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    hintText: 'In diesem Hefter suchen',
-                    prefixIcon: Icon(Icons.search_rounded),
+                if (showSearch) ...[
+                  TextField(
+                    controller: search,
+                    focusNode: searchFocus,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'In diesem Hefter suchen',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: 'Suche schließen',
+                        onPressed: toggleSearch,
+                        icon: const Icon(Icons.close),
+                      ),
+                    ),
+                    onChanged: (_) => change(() {}, delayed: true),
+                    onSubmitted: (_) {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      load();
+                    },
                   ),
-                  onChanged: (_) => change(() {}, delayed: true),
-                  onSubmitted: (_) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    load();
-                  },
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+                ],
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -440,10 +486,32 @@ class _NotebookScreenState extends State<NotebookScreen> {
                           remember();
                         },
                       ),
-                    OutlinedButton.icon(
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        data == null
+                            ? (loading ? 'Seiten laden…' : '')
+                            : '$total ${total == 1 ? 'Seite' : 'Seiten'} · ${sort == 'newest' ? 'Neueste zuerst' : 'Älteste zuerst'}${status == 'confirmed'
+                                  ? ' · Geprüft'
+                                  : status == 'review'
+                                  ? ' · Noch prüfen'
+                                  : ''}${dates == null ? '' : ' · Zeitraum'}',
+                        style: const TextStyle(color: muted, fontSize: 12),
+                      ),
+                    ),
+                    if (!showSearch)
+                      IconButton(
+                        tooltip: 'Im Hefter suchen',
+                        onPressed: toggleSearch,
+                        icon: const Icon(Icons.search_rounded),
+                      ),
+                    IconButton(
+                      tooltip: 'Filter',
                       onPressed: filters,
                       icon: const Icon(Icons.tune_rounded),
-                      label: const Text('Filter'),
                     ),
                     IconButton(
                       tooltip: 'Seiten aktualisieren',
@@ -554,10 +622,13 @@ class _NotebookScreenState extends State<NotebookScreen> {
   Widget album() {
     final item = selected;
     if (item == null) return const SizedBox();
-    final height = (MediaQuery.sizeOf(context).height * 0.59).clamp(
-      300.0,
-      760.0,
-    );
+    final viewport = MediaQuery.sizeOf(context);
+    final height = math
+        .min(
+          (viewport.height * 0.60).clamp(260.0, 760.0),
+          (math.min(viewport.width - 40, 1060) - 28) * math.sqrt2 + 28,
+        )
+        .clamp(240.0, 760.0);
     final reduce =
         MediaQuery.disableAnimationsOf(context) ||
         MediaQuery.accessibleNavigationOf(context);
@@ -636,23 +707,25 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                 ),
                               )
                             : Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.description_outlined,
-                                      size: 48,
-                                      color: muted,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      'Diese Seite enthält Text, kein Foto.',
-                                    ),
-                                    TextButton(
-                                      onPressed: () => detail(item),
-                                      child: const Text('Text ansehen'),
-                                    ),
-                                  ],
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.description_outlined,
+                                        size: 48,
+                                        color: muted,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Diese Seite enthält Text, kein Foto.',
+                                      ),
+                                      TextButton(
+                                        onPressed: () => detail(item),
+                                        child: const Text('Text ansehen'),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                       ),

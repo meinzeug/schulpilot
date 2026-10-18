@@ -1,4 +1,23 @@
-FACHHEFTER/FOTOALBUM1.6.0+36 – gebaut, in Abnahme
+FACHHEFTER/FOTOALBUM1.6.1+37 – kompakt gebaut, in Abnahme
+
+Nach tatsächlicher öffentlicher390px-Sichtprüfung Leser kompakter gestaltet:
+Quelle zuerst, Suche auf Aktion, A4-Fotohöhe, belegte/ausgewählte Hefter vorne.
+Alle leeren Fächer weiter verfügbar.328 vollständige Fluttertests/Analyse,
+57 gezielte PostgreSQLtests erfolgreich; Backendlogik zuvor875 vollständige
+Tests bestanden. Web/Direct/Play37 neu gebaut, APK66320086Bytes, SHA256
+d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae
+Noch aktiv:Release20261018T152551Z-007c570/1.6.0+36/Schema0018, Backup success,
+sieben Dienste aktiv. OTA35->36 mit geprüftem Download/Systembestätigung,
+ohne adb install erfolgreich. Fotos/Zoom auf36 öffentlich bedient, weiterer
+QA-Lauf im Scrollhelfer abgebrochen und Helfer korrigiert, keine vollständige
+öffentliche/native Abnahme behauptet. Nächste Aktion:37 committen/pushen/
+bereitstellen, öffentliche eigene Testfamilie komplett bedienen, echtes
+OTA36->37, native Albumprüfung, Export/privaten Haushalt löschen.
+Geschützter Checkpoint weiterhin vorbereitet; keine Zugangsdaten übertragen.
+GitHub-CI39131505701:beide Jobs0 Schritte; gelesene Annotation Billing-Sperre.
+Vorherige36-Bauzahlen unten sind historisch, aktuellen37-Stand verwenden.
+
+FACHHEFTER/FOTOALBUM1.6.0+36 – Zwischenstand
 
 Fachübersicht mit25 erzeugten Coverassets (24 feste Fächer plus neutraler
 Hefter), echte private Fotos im Album mit Blättereffekt/Wischen/Zoom,

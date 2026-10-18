@@ -32,6 +32,8 @@ direktem Seitensprung. Sanfter Blättereffekt mit Perspektive/Fade; bei
 reduzierter Bewegung ohne Animation. Vergrößern öffnet das echte Foto mit
 Pinch-/Mauszoom. Quelle/Text und bestehendes Lernen sind über die normale
 berechtigte Detailseite erreichbar; ungeprüfte Seiten führen zur Prüfung.
+Seit1.6.1 kompakte Leserleiste, Suche erst auf Wunsch und A4-angepasste
+Fotohöhe. Belegte/ausgewählte Fächer zuerst, ohne die übrigen auszublenden.
 
 Kachel- und Listenübersicht zeigen reale Fotos und Datum/Prüfstatus. Maximal20
 Metadatensätze pro Abruf, stabile created/id-Sortierung, Suche im vorhandenen
@@ -58,7 +60,9 @@ langsame Wischgeste/Tastatur, Kontowechsel während Fotodownload.
 Zusätzlich vollständige875 PostgreSQLtests511,43s und326 Fluttertests
 erfolgreich. Nach dem abschließenden Clientcheck gegen ignorierte Fachfilter
 älterer Backends die17 betroffenen Widgettests/Analyse erneut bestanden und
-Web/Direct-APK/Play-AAB neu gebaut. Diese Komponentenprüfungen sind noch kein
+Web/Direct-APK/Play-AAB neu gebaut. Anschließend für den kompakteren37-Leser
+alle328 Fluttertests/Analyse und57 Backendregressionen bestanden.
+Diese Komponentenprüfungen sind noch kein
 öffentlicher oder nativer Nachweis. Keine Abhängigkeiten/SDKs aktualisiert.
 
 Öffentliche Abnahme vorbereitet mit26 ausschließlich künstlichen Foto-

@@ -124,6 +124,16 @@ class _NotebookShelfState extends State<NotebookShelf> {
               '${r['title']}'.toLowerCase().contains(query),
         )
         .toList();
+    int priority(Json row) => (row['page_count'] as num? ?? 0) > 0
+        ? 0
+        : row['selected'] == true
+        ? 1
+        : 2;
+    final order = {for (var n = 0; n < items.length; n++) items[n]['id']: n};
+    visible.sort((a, b) {
+      final group = priority(a).compareTo(priority(b));
+      return group != 0 ? group : order[a['id']]!.compareTo(order[b['id']]!);
+    });
     if ((data?['unassigned_count'] as num? ?? 0) > 0 &&
         !ownOnly &&
         ('noch zuordnen'.contains(query) || query.isEmpty)) {

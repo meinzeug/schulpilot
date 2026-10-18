@@ -26,6 +26,9 @@ async function tap(locator) {
       await page.waitForTimeout(220); return;
     }
     await page.mouse.move(page.viewportSize().width / 2, page.viewportSize().height / 2);
+    if (n === 0 && !await target.count()) {
+      await page.mouse.wheel(0, -4000); await page.waitForTimeout(250); continue;
+    }
     await page.mouse.wheel(0, box && box.y < 0 ? -250 : 250);
     await page.waitForTimeout(130);
   }
@@ -50,7 +53,8 @@ try {
   assert(account.normal_account && account.verified && state?.phase === 'prepared' &&
     /\+schulpilot-normal-qa-[a-f0-9]{12}@/.test(account.credentials.parent_username), 'own_artificial_album_required');
   const health = await (await fetch(base + '/api/health')).json();
-  assert.equal(health.version, '1.6.0', 'deploy_album_release_first');
+  const [major, minor] = health.version.split('.').map(Number);
+  assert(major > 1 || (major === 1 && minor >= 6), 'deploy_album_release_first');
   browser = await chromium.launch({headless: true, executablePath: '/opt/google/chrome/chrome', args: ['--no-sandbox']});
   context = await browser.newContext({viewport: {width: 390, height: 1000}, isMobile: true, hasTouch: true});
   page = await context.newPage();
@@ -84,6 +88,7 @@ try {
   await page.getByText('Heftfoto', {exact: true}).waitFor();
   await shot('zoom');
   await tap(button('Schließen'));
+  phase = 'album_grid_and_list';
   await tap(page.getByText('Kacheln', {exact: true}));
   await button('1–2 von 2').first().waitFor();
   await shot('pages-grid');
