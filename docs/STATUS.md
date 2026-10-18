@@ -1,4 +1,33 @@
-# Aktueller Stand · Design 1.4.2+32 · 18.10.2026
+# Laufender Zusatz · Foto-Vokabeln und Wörter-Menü · 18.10.2026
+
+1.4.3+33 ist lokal implementiert, noch nicht produktiv aktiviert. Wörtliche
+Wortpaare mit Übersetzung/Sprachbestätigung werden zusammen mit der Heftseite
+in den bestehenden Wortschatz übernommen. Unklare Paare bleiben zur Prüfung
+offen. Bereits gespeicherte Seiten nachträglich übernehmen, Textkorrekturen
+vor Speichern neu prüfen, „Wörter“ im regulären Kinder-/Elternmenü.
+Keine neue Migration, keine Anbieter-/Firebaseänderung und keine zusätzliche
+automatische KI. Einzelheiten: [LANGUAGE_LEARNING.md](LANGUAGE_LEARNING.md).
+
+Alle 309 Fluttertests einschließlich sechs neuer Material-Widgets bestanden;
+dabei echten Refreshfehler behoben:
+`LoadView.refresh` gab im setState-Callback einen Future zurück. Menü-/Assistent-
+Regressionen zuvor 42 bestanden. 35 gezielte PostgreSQLtests einschließlich
+Parallelität, Quellenrevision, Export und Löschung bestanden; finale Analyse
+und Ruff ohne Befund. Vollständiger PostgreSQLlauf: 804 bestanden, ein
+unveränderter echter CLI-Katalogtest meldete temporär 503. Separat ohne
+Limitänderung bestanden; danach alle 27 Tests seines Moduls in 6,04 Sekunden
+bestanden. Kein vollständig grüner einzelner Gesamtlauf behauptet. Web,
+signierte Direct-APK und Play-AAB 1.4.3+33 gebaut; Signatur/Zipalign und
+bundletool erfolgreich, Versionscode 33. APK 65.168.237 Bytes, SHA-256
+`39c3550d8b18a1061d26642a36fb88b43a172176fc805df276240d581cbeb925`.
+Geheimnisprüfung über Quellen, Web und beide Archive ohne Fund.
+Zusätzlicher Mischseiten-Test schützt Grammatikregeln vor Übernahme als
+vermeintliche Wortpaare. Erneuter vollständiger Backendlauf läuft.
+Nächste Aktion: Commit/Push, gesicherter Deploy, öffentliche Foto-Wortkette
+und natives OTA/Bedienung. Noch kein neuer
+Deployment-/Geräteerfolg behaupten. Live bleibt der folgende Release32.
+
+# Bereitgestellt · Design 1.4.2+32 · 18.10.2026
 
 **Implementiert:** gemeinsame Flächenhierarchie für alle drei Rollen auf Web
 und Android. Blaugraue Arbeitsfläche, weiße Cards mit sichtbaren Rahmen/Schatten,

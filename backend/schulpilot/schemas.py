@@ -131,12 +131,27 @@ class AssignmentCreate(Strict):
         return self
 
 
+class MaterialVocabularyPreview(Strict):
+    subject: str = Field(min_length=1, max_length=80)
+    topic: Short
+    content: str = Field(min_length=1, max_length=24000)
+
+
+class MaterialWords(Strict):
+    target_locale: Literal["en-GB", "en-US", "fr-FR", "es-ES"]
+    language_confirmed: Literal[True]
+    reverse: bool = False
+    revision: int = Field(ge=1)
+
+
 class MaterialConfirm(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
     content: str = Field(min_length=1, max_length=24000)
     homework: list[Annotated[str, Field(max_length=500)]] = Field(default_factory=list, max_length=20)
     uncertainties_resolved: Literal[True]
+    revision: int | None = Field(default=None, ge=1)
+    vocabulary: MaterialWords | None = None
 
 
 class Question(Strict):

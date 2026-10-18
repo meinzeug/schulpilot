@@ -77,6 +77,7 @@ Future<GoRouter> _open(
         '/admin/push',
         '/settings',
         '/bestellungen',
+        '/words',
         '/learn/child',
         '/library/child',
         '/after-school/child',
@@ -162,8 +163,8 @@ void main() {
           width < 720 ? findsOneWidget : findsNothing,
         );
         final labels = switch (role) {
-          'child' => ['Heute', 'Lernen', 'Hefte', 'Konto'],
-          'parent' => ['Familie', 'Tarif', 'Konto'],
+          'child' => ['Heute', 'Lernen', 'Wörter', 'Hefte', 'Konto'],
+          'parent' => ['Familie', 'Wörter', 'Tarif', 'Konto'],
           _ => [
             'Betrieb',
             'Einrichtung',
@@ -227,9 +228,9 @@ void main() {
 
   for (final entry in [
     ('/unit/unit', 1),
-    ('/vocabulary/child', 1),
-    ('/language-projects/child', 1),
-    ('/material/material', 2),
+    ('/vocabulary/child', 2),
+    ('/language-projects/child', 2),
+    ('/material/material', 3),
     ('/after-school/child', 0),
   ]) {
     testWidgets('Child context follows ${entry.$1} in tablet navigation', (

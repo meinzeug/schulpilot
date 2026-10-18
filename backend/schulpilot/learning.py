@@ -42,6 +42,8 @@ def record(db, child_id, kind, detail=None, unit_id=None):
 
 
 def material_data(material):
+    from .material_vocabulary import preview
+
     return {
         k: getattr(material, k)
         for k in (
@@ -64,8 +66,9 @@ def material_data(material):
             "extraction_provider",
             "extraction_model",
             "created",
+            "revision",
         )
-    }
+    } | {"vocabulary_preview": preview(material.subject, material.topic, material.content) if not material.synthetic else None}
 
 
 def assignment_data(assignment):

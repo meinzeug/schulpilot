@@ -1,5 +1,48 @@
 # Sprachlernen – fortsetzbarer Arbeitsstand
 
+## Foto → Wortschatz · Ausbau 18.10.2026
+
+Implementiert für 1.4.3+33, noch nicht als öffentlich abgenommen ausgeben:
+Der normale Fotoassistent zeigt erkannte wörtliche Wortpaare vor „Stimmt,
+weiter“ und lässt die Lernsprache/Variante bestätigen. Dieselbe Transaktion
+bestätigt die Quelle und übernimmt die sichtbaren Paare in die bestehenden
+Wortschatztabellen. Keine zusätzliche KI, kein Wörterbuch und kein Lernbeleg
+durch bloßes Speichern. Fehlende/mehrdeutige Bedeutungen bleiben als offener
+Import zum Prüfen erhalten. Nicht zugeordnete Zeilen werden ausgewiesen.
+Bei Textkorrektur zuerst eine neue reine Vorschau prüfen, dann bestätigen.
+
+`material_vocabulary.py` verarbeitet `=`, Tabulator, Markdown-Tabellen,
+ausgerichtete Spalten, Doppelpunkt und getrennten Gedankenstrich. Deutsche
+Spaltenreihenfolge wird anhand eindeutiger Überschriften erkannt; Wortart/
+Kontext nur aus ausdrücklich beschrifteten Zusatzspalten übernehmen. Keine
+erratene Zuordnung aus drei unbekannten Spalten. Erkannte Grammatikabschnitte
+einer gemischten Seite nicht als Vokabelpaare speichern; eine Regel wie
+„he, she, it: -s am Verb“ ist keine Übersetzung. Nicht eindeutig strukturierte
+Seiten behalten den bisherigen bewussten KI-Import mit Reservierung/Prüfung.
+GETs und der reine Vorschau-POST speichern keine Daten und starten keine KI.
+
+Bereits bestätigte Seiten bieten „Wörter übernehmen“. Der deterministische
+Schlüssel enthält Quelle, Revision, Locale, Richtung, Prüfstatus und Portion;
+Child-Sperre und bestehende Constraints serialisieren Wiederholungen und
+mehrere Geräte. Große Seiten bis 400 Paare in vorhandene 80er-Importe teilen;
+größere Seiten mit sichtbarem Fehler zurückweisen, nichts abschneiden.
+Eintrag, Identität, Revisionen, Quellenlöschung und Export benutzen unverändert
+die vorhandene Infrastruktur. Schema bleibt 0016, keine neue Migration.
+
+„Wörter“ ist ein regulärer Navigationspunkt in Seitenleiste, Rail und nativer
+unterer Navigation. Eltern wählen dort ein eigenes Kind; Betriebsadmins
+erhalten keinen privaten Wortschatzzugriff. Der alte Materiallink öffnet jetzt
+den passenden Quellenimport oder die schon vorhandene Sammlung.
+
+309 Fluttertests und 35 gezielte PostgreSQLtests bestanden. Im ersten gesamten
+Backendlauf 804 bestanden, ein bestehender echter Codex-Katalogtest meldete 503;
+danach separat und alle 27 Modultests bestanden, Limits unverändert. Nach der
+zusätzlichen Mischseiten-Regression erneuter Gesamtlauf gestartet. Analyse und
+Ruff sauber; Web, signierte Direct-APK und Play-AAB 1.4.3+33 gebaut. Signatur,
+Zipalign, bundletool und Geheimnisprüfung bestanden. Nächster Schritt:
+Commit/Push, gesichert bereitstellen und öffentlichen
+Foto-/Wortablauf, native Android-Bedienung, Export und Bereinigung prüfen.
+
 Stand: 17.10.2026. Ausgangspunkt main 7dd09f4, Flutter 1.3.0+28, Alembic 0014.
 
 ## Umsetzung

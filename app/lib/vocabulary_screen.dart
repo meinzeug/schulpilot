@@ -5,15 +5,13 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'lesson_voice.dart';
+import 'language_options.dart';
 import 'material_screen.dart';
+import 'material_words.dart';
 import 'ui.dart';
 
-const learningLocales = {
-  'en-GB': 'Englisch · Großbritannien',
-  'en-US': 'Englisch · USA',
-  'fr-FR': 'Französisch · Frankreich',
-  'es-ES': 'Spanisch · Spanien',
-};
+export 'language_options.dart';
+
 const languageSkills = {
   'recognition': 'Bedeutung erkennen',
   'recall': 'Wort abrufen',
@@ -40,6 +38,57 @@ String languageSkill(String skill) =>
       _ => skill,
     };
 
+class FamilyVocabularyScreen extends StatelessWidget {
+  final AppState state;
+  const FamilyVocabularyScreen(this.state, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    if (state.isChild) {
+      return VocabularyScreen(state, childId: state.user!['child_id']);
+    }
+    return PageFrame(
+      state: state,
+      title: 'Wörter deiner Kinder',
+      child: !state.isParent || state.familyId == null
+          ? const Notice('Bitte wähle zuerst deine Familie aus.')
+          : LoadView<Json>(
+              key: ValueKey('${state.user?['id']}:${state.familyId}'),
+              load: () => state.api.get('/families/${state.familyId}'),
+              builder: (family, _) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final child in family['children'] as List)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Panel(
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                            backgroundColor: mint,
+                            child: Icon(Icons.translate_rounded, color: teal),
+                          ),
+                          title: Text(
+                            child['display_name'],
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          subtitle: const Text('Wortschatz & Wiederholungen'),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () =>
+                              openRoute(context, '/vocabulary/${child['id']}'),
+                        ),
+                      ),
+                    ),
+                  if ((family['children'] as List).isEmpty)
+                    const Notice(
+                      'Lege zuerst einen Kinderzugang in deiner Familie an.',
+                    ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
 class VocabularyScreen extends StatefulWidget {
   final AppState state;
   final String childId;
@@ -64,6 +113,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   String locale = 'en-GB';
   int page = 1, generation = 0;
   bool busy = false, due = false;
+  bool sourceOffered = false;
   late String owner;
   Timer? poll;
   String? importRequestBody,
@@ -138,8 +188,74 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       if (imports.any((row) => ['queued', 'running'].contains(row['status']))) {
         poll = Timer(const Duration(seconds: 3), load);
       }
+      if (!sourceOffered &&
+          widget.materialId != null &&
+          (widget.state.isChild || widget.state.canManage)) {
+        sourceOffered = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (current) handleSource();
+        });
+      }
     } catch (e) {
       if (current && request == generation) setState(() => error = '$e');
+    }
+  }
+
+  Future<void> handleSource() async {
+    try {
+      final material = await widget.state.api.get(
+        '/materials/${widget.materialId}',
+      );
+      if (!mounted ||
+          !current ||
+          !(ModalRoute.of(context)?.isCurrent ?? true)) {
+        return;
+      }
+      if (material['confirmed'] != true) {
+        throw ApiError('Bitte prüfe zuerst deine Heftseite.');
+      }
+      if (material['vocabulary_preview'] is Map) {
+        final saved = await widget.state.api.get(
+          '/materials/${widget.materialId}/vocabulary',
+        );
+        if (!mounted ||
+            !current ||
+            !(ModalRoute.of(context)?.isCurrent ?? true)) {
+          return;
+        }
+        if ((saved['confirmed_words'] as num? ?? 0) +
+                (saved['review_words'] as num? ?? 0) ==
+            0) {
+          await transferPageWords(context, widget.state, material);
+          if (current) await load();
+        } else {
+          final rows = (saved['imports'] as List).map((r) => Json.from(r));
+          final row = rows.firstWhere(
+            (r) => r['status'] == 'review',
+            orElse: () => rows.first,
+          );
+          setState(() {
+            locale = row['target_locale'];
+            collection = row['collection_id'];
+          });
+          await load();
+          if (current && row['status'] == 'review') await reviewDialog(row);
+        }
+        return;
+      }
+      final rows = imports.where(
+        (row) => (row['source_revisions'] as List? ?? []).any(
+          (s) => s['id'] == widget.materialId,
+        ),
+      );
+      if (rows.isEmpty) {
+        // Explicit import dialog: opening this page never invokes a provider.
+        await importDialog();
+      } else if (rows.first['status'] == 'review') {
+        await reviewDialog(rows.first);
+      }
+    } catch (e) {
+      if (current) setState(() => error = '$e');
     }
   }
 

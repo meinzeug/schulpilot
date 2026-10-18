@@ -186,7 +186,26 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
 
 @router.put("/materials/{material_id}/confirm")
 def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated), db=Depends(get_db)):
-    material, _ = get_material(db, p, material_id, True)
+    from . import material_vocabulary
+
+    material, child = get_material(db, p, material_id, True)
+    lock_material_units(db, child.id, material_id)
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    material = db.get(Material, material_id, populate_existing=True)
+    if not material:
+        raise HTTPException(404, "Heftseite nicht mehr vorhanden.")
+    if data.revision is not None and data.revision != material.revision:
+        # A lost response can be replayed without another source/item revision.
+        if (data.vocabulary and data.vocabulary.revision == data.revision and material.confirmed
+                and material.revision == data.revision + 1
+                and all(getattr(data, k) == getattr(material, k) for k in ("subject", "topic", "content", "homework"))):
+            word_data = data.vocabulary.model_copy(update={"revision": material.revision})
+            result = material_vocabulary.transfer(db, p, child, material, word_data)
+            db.commit()
+            return material_data(material) | {"vocabulary_transfer": result}
+        raise HTTPException(409, "Diese Heftseite wurde inzwischen geändert. Bitte die aktuelle Seite neu laden.")
+    if data.vocabulary and data.vocabulary.revision != material.revision:
+        raise HTTPException(409, "Die Wortpaare gehören zu einer anderen Seitenrevision.")
     if p.user.role == "child" and material.confirmed:
         raise HTTPException(
             403,
@@ -238,8 +257,43 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
         "material_confirmed",
         {"subject": material.subject, "topic": material.topic, "homework_count": len(data.homework)},
     )
+    words = None
+    if data.vocabulary:
+        words = material_vocabulary.transfer(db, p, child, material,
+            data.vocabulary.model_copy(update={"revision": material.revision}))
     db.commit()
-    return material_data(material)
+    return material_data(material) | ({"vocabulary_transfer": words} if words is not None else {})
+
+
+@router.get("/materials/{material_id}/vocabulary")
+def material_words_status(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    from .material_vocabulary import source_status
+
+    material, _ = get_material(db, p, material_id)
+    return source_status(db, material)
+
+
+@router.post("/materials/{material_id}/vocabulary-preview")
+def material_words_preview(material_id: str, data: s.MaterialVocabularyPreview,
+                           p=Depends(authenticated), db=Depends(get_db)):
+    from .material_vocabulary import preview
+
+    get_material(db, p, material_id)
+    return {"preview": preview(data.subject, data.topic, data.content)}
+
+
+@router.post("/materials/{material_id}/vocabulary")
+def material_words(material_id: str, data: s.MaterialWords, p=Depends(authenticated), db=Depends(get_db)):
+    from .material_vocabulary import transfer
+
+    material, child = get_material(db, p, material_id, True)
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    material = db.get(Material, material_id, populate_existing=True)
+    if not material:
+        raise HTTPException(404, "Heftseite nicht mehr vorhanden.")
+    result = transfer(db, p, child, material, data)
+    db.commit()
+    return result
 
 
 @router.delete("/materials/{material_id}")

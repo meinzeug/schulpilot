@@ -821,7 +821,9 @@ class _LoadViewState<T> extends State<LoadView<T>> {
     if (widget.revision != oldWidget.revision) future = widget.load();
   }
 
-  void refresh() => setState(() => future = widget.load());
+  void refresh() => setState(() {
+    future = widget.load();
+  });
   @override
   Widget build(BuildContext context) => FutureBuilder<T>(
     future: future,
@@ -924,6 +926,12 @@ class WorkspaceShell extends StatelessWidget {
         'Lernen',
         '/learn/${state.user!['child_id']}',
       ),
+    if (!state.isAdmin)
+      (
+        Icons.translate_rounded,
+        'Wörter',
+        state.isChild ? '/vocabulary/${state.user!['child_id']}' : '/words',
+      ),
     if (state.isChild)
       (
         Icons.folder_open_rounded,
@@ -945,15 +953,20 @@ class WorkspaceShell extends StatelessWidget {
   int _selected(List<(IconData, String, String)> entries, String path) {
     final index = entries.indexWhere((entry) => path == entry.$3);
     if (index >= 0) return index;
+    if (!state.isAdmin &&
+        (path.startsWith('/vocabulary/') ||
+            path.startsWith('/language-projects/'))) {
+      return entries.indexWhere((entry) => entry.$2 == 'Wörter');
+    }
     if (state.isChild &&
         (path.startsWith('/unit/') ||
             path.startsWith('/progress/') ||
-            path.startsWith('/vocabulary/') ||
-            path.startsWith('/language-projects/') ||
             path.startsWith('/learning-preparation/'))) {
       return 1;
     }
-    if (state.isChild && path.startsWith('/material/')) return 2;
+    if (state.isChild && path.startsWith('/material/')) {
+      return entries.indexWhere((entry) => entry.$2 == 'Hefte');
+    }
     if (path == '/notifications') return entries.length - 1;
     return 0;
   }

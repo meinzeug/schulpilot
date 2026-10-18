@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'api.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'material_words.dart';
 
 Future<void> importMaterial(
   BuildContext context,
@@ -353,6 +354,116 @@ class _MaterialReviewState extends State<MaterialReview> {
   );
   bool editing = false, confirmedHere = false;
   bool changing = false;
+  String? wordLocale;
+  bool reverseWords = false;
+  Json? editedWordPreview;
+  String? previewSubject, previewTopic, previewContent;
+
+  bool get editedPreviewCurrent =>
+      previewSubject == subject.text &&
+      previewTopic == topic.text &&
+      previewContent == content.text;
+
+  Json? get wordPreview {
+    if (editedPreviewCurrent) return editedWordPreview;
+    final value = widget.data['vocabulary_preview'];
+    if (value is! Map ||
+        content.text != widget.data['content'] ||
+        topic.text != widget.data['topic'] ||
+        subject.text != widget.data['subject']) {
+      return null;
+    }
+    return Json.from(value);
+  }
+
+  String get selectedWordLocale {
+    final language = wordPreview?['language'];
+    if (wordLocale != null &&
+        (language == null || wordLocale!.startsWith('$language-'))) {
+      return wordLocale!;
+    }
+    return switch (language) {
+      'fr' => 'fr-FR',
+      'es' => 'es-ES',
+      _ => 'en-GB',
+    };
+  }
+
+  Json get wordConfirmation => {
+    'target_locale': selectedWordLocale,
+    'language_confirmed': true,
+    'reverse': reverseWords,
+    'revision': widget.data['revision'],
+  };
+
+  Widget wordPreviewPanel({bool saved = false}) => MaterialWordsPanel(
+    preview: wordPreview!,
+    locale: selectedWordLocale,
+    reverse: reverseWords,
+    actionLabel: saved ? 'Wörter übernehmen' : 'Stimmt, weiter',
+    onLocale: (value) => setState(() => wordLocale = value),
+    onReverse: () => setState(() => reverseWords = !reverseWords),
+  );
+
+  Widget savedWordPanel() => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: LoadView<Json>(
+      revision: widget.data['revision'],
+      load: () =>
+          widget.state.api.get('/materials/${widget.data['id']}/vocabulary'),
+      builder: (status, refresh) {
+        final stored = status['confirmed_words'] as int? ?? 0;
+        final pending = status['review_words'] as int? ?? 0;
+        final canWrite = widget.state.isChild || widget.state.canManage;
+        if (stored + pending == 0 && !canWrite) return const SizedBox.shrink();
+        return Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (stored + pending > 0) ...[
+                Text(
+                  '$stored Wörter gespeichert${pending > 0 ? ' · $pending noch prüfen' : ''}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if ((status['unpaired_lines'] as num? ?? 0) > 0)
+                  Text(
+                    '${status['unpaired_lines']} weitere Zeilen wurden nicht als Wortpaare übernommen.',
+                    style: const TextStyle(color: warningInk),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () => openRoute(
+                    context,
+                    '/vocabulary/${widget.data['child_id']}?material=${widget.data['id']}',
+                  ),
+                  icon: const Icon(Icons.translate_rounded),
+                  label: Text(pending > 0 ? 'Wörter prüfen' : 'Wörter öffnen'),
+                ),
+              ] else if (canWrite) ...[
+                wordPreviewPanel(saved: true),
+                const SizedBox(height: 12),
+                ActionButton(
+                  label: 'Wörter übernehmen',
+                  icon: Icons.playlist_add_check_rounded,
+                  onPressed: () async {
+                    final owner = widget.state.user?['id'];
+                    await widget.state.api.post(
+                      '/materials/${widget.data['id']}/vocabulary',
+                      wordConfirmation,
+                    );
+                    if (mounted && owner == widget.state.user?['id']) refresh();
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    ),
+  );
 
   Future<void> change(Future<void> Function() action) async {
     if (changing) return;
@@ -495,6 +606,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                   padding: const EdgeInsets.only(bottom: 18),
                   child: TextField(
                     controller: item.$1,
+                    onChanged: (_) => setState(() {}),
                     readOnly: synthetic || !canConfirm,
                     maxLines: item.$3,
                     decoration: InputDecoration(
@@ -509,38 +621,24 @@ class _MaterialReviewState extends State<MaterialReview> {
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
               if (canConfirm) ...[
+                if (wordPreview != null) ...[
+                  wordPreviewPanel(),
+                  const SizedBox(height: 16),
+                ],
                 const SizedBox(height: 12),
                 ActionButton(
                   label: d['confirmed']
                       ? 'Bestätigung speichern'
                       : 'Stimmt, weiter',
                   icon: Icons.check_rounded,
-                  onPressed: () => change(() async {
-                    await widget.state.api.put(
-                      '/materials/${d['id']}/confirm',
-                      {
-                        'subject': subject.text,
-                        'topic': topic.text,
-                        'content': content.text,
-                        'homework': homework.text
-                            .split('\n')
-                            .map((s) => s.trim())
-                            .where((s) => s.isNotEmpty)
-                            .toList(),
-                        'uncertainties_resolved': true,
-                      },
-                    );
-                    widget.onRefresh();
-                    if (context.mounted) {
-                      toast(context, 'Stoff bestätigt und gespeichert.');
-                    }
-                  }),
+                  onPressed: () => change(confirmPage),
                 ),
               ],
             ],
           ),
         ),
         const SizedBox(height: 22),
+        if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
         if (d['confirmed'] && widget.showUnitAction)
           Panel(
             color: mint,
@@ -599,19 +697,65 @@ class _MaterialReviewState extends State<MaterialReview> {
   }
 
   Future<void> confirmPage() async {
-    await widget.state.api.put('/materials/${widget.data['id']}/confirm', {
-      'subject': subject.text,
-      'topic': topic.text,
-      'content': content.text,
-      'homework': homework.text
-          .split('\n')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList(),
-      'uncertainties_resolved': true,
-    });
-    if (!mounted) return;
+    final d = widget.data;
+    final owner = widget.state.user?['id'];
+    if (d.containsKey('vocabulary_preview') &&
+        !editedPreviewCurrent &&
+        (subject.text != d['subject'] ||
+            topic.text != d['topic'] ||
+            content.text != d['content'])) {
+      final draftSubject = subject.text,
+          draftTopic = topic.text,
+          draftContent = content.text;
+      final response = await widget.state.api.post(
+        '/materials/${d['id']}/vocabulary-preview',
+        {'subject': draftSubject, 'topic': draftTopic, 'content': draftContent},
+      );
+      if (!mounted ||
+          owner != widget.state.user?['id'] ||
+          subject.text != draftSubject ||
+          topic.text != draftTopic ||
+          content.text != draftContent) {
+        return;
+      }
+      setState(() {
+        previewSubject = subject.text;
+        previewTopic = topic.text;
+        previewContent = content.text;
+        editedWordPreview = response['preview'] is Map
+            ? Json.from(response['preview'])
+            : null;
+      });
+      if (editedWordPreview != null) {
+        toast(context, 'Wortpaare aktualisiert. Bitte noch einmal prüfen.');
+        return;
+      }
+    }
+    final result = await widget.state.api.put(
+      '/materials/${widget.data['id']}/confirm',
+      {
+        'subject': subject.text,
+        'topic': topic.text,
+        'content': content.text,
+        'homework': homework.text
+            .split('\n')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList(),
+        'uncertainties_resolved': true,
+        if (widget.data['revision'] is int) 'revision': widget.data['revision'],
+        if (wordPreview != null) 'vocabulary': wordConfirmation,
+      },
+    );
+    if (!mounted || owner != widget.state.user?['id']) return;
     setState(() => confirmedHere = true);
+    if (result['vocabulary_transfer'] is Map) {
+      final words = result['vocabulary_transfer'];
+      toast(
+        context,
+        '${words['confirmed_words']} Wörter gespeichert${(words['review_words'] as num? ?? 0) > 0 ? ' · ${words['review_words']} noch prüfen' : ''}.',
+      );
+    }
     widget.onRefresh();
   }
 
@@ -756,6 +900,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TextField(
                         controller: field.$1,
+                        onChanged: (_) => setState(() {}),
                         maxLines: field.$3,
                         decoration: InputDecoration(
                           labelText: field.$2,
@@ -765,6 +910,10 @@ class _MaterialReviewState extends State<MaterialReview> {
                     ),
                 if (canConfirm) ...[
                   const SizedBox(height: 16),
+                  if (wordPreview != null) ...[
+                    wordPreviewPanel(),
+                    const SizedBox(height: 16),
+                  ],
                   if (uncertainties.isNotEmpty) ...[
                     const Text(
                       'Hier bitte genau hinschauen:',
@@ -790,6 +939,7 @@ class _MaterialReviewState extends State<MaterialReview> {
           const SizedBox(height: 12),
           deleteButton(),
         ],
+        if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
         if (confirmed && widget.showUnitAction) ...[
           const SizedBox(height: 20),
           ActionButton(

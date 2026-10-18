@@ -1,3 +1,24 @@
+SCHULPILOT – laufender Vokabel-Zusatz 1.4.3+33
+
+Stand 18.10.2026: lokal implementiert, noch nicht bereitgestellt. Fotoassistent
+zeigt wörtliche Wortpaare und Lernsprache; „Stimmt, weiter“ speichert Quelle
+und Wortschatz atomar. Offene Übersetzungen bleiben als Prüfimport erhalten.
+Gespeicherte Seiten nachträglich übernehmen; Wörter im regulären Kinder- und
+Elternmenü. Kein neuer Provideraufruf für eindeutig lesbare Paare, keine neue
+Migration (0016 bleibt). Bestehende KI-Importe weiterhin ausdrücklich starten.
+309 Fluttertests und 35 gezielte PostgreSQLtests bestanden; gemeinsame
+LoadView-Aktualisierung repariert. Analyse/Ruff sauber. Vollständiger PG-Lauf:
+804 bestanden, ein bestehender echter Codex-Katalogtest vorübergehend 503;
+separat ohne Limitänderung bestanden, danach alle 27 Modultests bestanden.
+Web, Direct-APK und Play-AAB 1.4.3+33 gebaut. Signatur/Zipalign, bundletool und
+Versionscode geprüft; Geheimnisprüfung ohne Fund. APK 65168237 Bytes, SHA-256
+39c3550d8b18a1061d26642a36fb88b43a172176fc805df276240d581cbeb925
+Fortsetzung: Commit/Push, gesicherter Deploy, normaler öffentlicher Foto-Wortablauf mit
+künstlichem Haushalt, natives OTA/Bedienung und Abschlussdokumentation.
+Keine Zugangsdaten in dieser Übergabe. Öffentlich aktuell weiterhin Release32.
+Gemischte Vokabel-/Grammatikseiten zusätzlich abgesichert; erneuter ganzer
+Backendlauf gestartet, Ergebnis in artifacts/vocabulary-all-pg-final.log.
+
 SCHULPILOT – Design 1.4.2+32 · bereitgestellt und tatsächlich geprüft
 
 Stand 18.10.2026. Dieser Abschnitt hat Vorrang vor der Historie unten.

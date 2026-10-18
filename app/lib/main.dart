@@ -139,6 +139,9 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path == '/settings' ||
           path == '/notifications' ||
           path == '/bestellungen' ||
+          path == '/words' ||
+          path.startsWith('/vocabulary/') ||
+          path.startsWith('/language-projects/') ||
           path.startsWith('/bestellen/') ||
           path.startsWith('/admin') ||
           path.startsWith('/child/') ||
@@ -165,6 +168,15 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         return '/admin/push';
       }
       if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
+      if ((path == '/words' ||
+              path.startsWith('/vocabulary/') ||
+              path.startsWith('/language-projects/')) &&
+          widget.state.isAdmin) {
+        return '/admin';
+      }
+      if (path == '/words' && widget.state.isChild) {
+        return '/vocabulary/${widget.state.user!['child_id']}';
+      }
       return null;
     },
     routes: [
@@ -293,6 +305,10 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         path: '/unit/:id',
         builder: (context, s) =>
             UnitScreen(widget.state, unitId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/words',
+        builder: (context, s) => FamilyVocabularyScreen(widget.state),
       ),
       GoRoute(
         path: '/vocabulary/:id',

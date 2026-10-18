@@ -1,5 +1,24 @@
 # Betrieb
 
+## Foto-Wortschatz 1.4.3+33
+
+Keine Schemaänderung, Datenbank bleibt auf 0016. Verwendet vorhandene private
+Wortschatztabellen und dieselben Quellen-/Export-/Löschwege. Wörtliche Übernahme
+im Bestätigungsvorgang benötigt keine weitere KI-Reservierung; unklare Paare
+bleiben offen. Bestehende manuelle und ausdrückliche KI-Importe bleiben erhalten.
+Vor Aktivierung erfolgreiche Sicherung prüfen. Kompatibler Rückweg auf
+`20261018T101528Z-505312c` ohne Schema-Downgrade; vorhandene Wörter/Antworten
+erhalten. APKs werden nicht automatisch heruntergestuft. Im alten Backend
+bleibt das neue Wörter-Menü bedienbar; das neue nachträgliche Übernehmen einer
+Seite fehlt dort. Vorwärtskorrektur bevorzugen.
+
+Abnahme nur mit dem eigenen regulären künstlichen Haushalt:
+`scripts/prepare_language_smoke.py`, `node qa/material_words.mjs --run`,
+nach tatsächlichem OTA `qa/android_material_words.py`, anschließend
+`qa/material_words_cleanup.py --run`. Private Checkpoints in artifacts bleiben
+0600 und außerhalb von Git. Fehlgeschlagene OCR-Aufträge nicht automatisch
+wiederholen. Aktivierten Release und reale Ergebnisse in STATUS/Handoff prüfen.
+
 ## Designrelease 1.4.2+32
 
 Gemeinsame Flutter-Gestaltung ohne Schemaänderung; Datenbank bleibt auf 0016.

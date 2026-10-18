@@ -163,6 +163,13 @@ def confirm_import(child_id: str, import_id: str, data: s.ImportConfirm,
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     lock_child(db, child)
     row = db.get(VocabularyImport, import_id, populate_existing=True)
+    result = confirm_import_record(db, p, child, row, data)
+    db.commit()
+    return result
+
+
+def confirm_import_record(db, p, child, row, data):
+    """Persist checked pairs in the caller's transaction, with Child locked."""
     if not row or row.child_id != child.id:
         raise HTTPException(404, "Wortimport nicht gefunden.")
     if row.target_locale != data.target_locale:
@@ -214,7 +221,6 @@ def confirm_import(child_id: str, import_id: str, data: s.ImportConfirm,
             record(db, child.id, "vocabulary_exposure", {"item_id": item.id, "revision": item.revision, "via": "pair_confirmation"})
     row.collection_id, row.pairs, row.status = collection.id, pairs, "confirmed"
     record(db, child.id, "vocabulary_confirmed", {"collection_id": collection.id, "count": len(data.pairs)})
-    db.commit()
     return import_data(db, row)
 
 
