@@ -1,6 +1,41 @@
+# PDF-Größenfehler behoben · 18.10.2026
+
+**Produktiv:** `961b1537dafc0ddb8d88a80ca95ab92db6d0b03c`, main gepusht,
+Release `20261018T142657Z-961b153`, Schema0018. Ursache: der zweite
+Content-Length-Check hatte trotz PDF-Uploadlimit noch64KiB erzwungen.
+Bereitgestellte234.106Byte-PDF auch auf Server isoliert korrekt gelesen
+(14 Einzelnoten/Schuljahr2026), keine Werte/Personenköpfe ausgegeben.
+Vor Fix mit künstlicher240KiB-PDF in öffentlichem Web413 reproduziert.
+Gemeinsame Größenpolicy für Header/Stream korrigiert; PDF selbst weiter6MiB,
+normale JSON-Endpunkte64KiB. Rechte/Bestätigung/Quoten unverändert.
+
+**Geprüft:**82 PostgreSQLtests83,20s inklusive normalem/gestreamtem größeren
+Upload, Dublettenschutz, großem Bestätigungspayload, alten JSON-Grenzen,
+Rechten, Noten/Migration und Fachgrundlage;17 Fluttertests, Analyse/Ruff/Diff
+sauber. Öffentlich390/1280px Dateidialog, Vorschau, manuelle Zuordnung,
+Übernahme und identischer Upload ohne weitere Noten bestanden. Native
+Flutter-APK35/API36 mit Systemdateidialog, ergänzter/geänderter PDF,
+bewusster Übernahme und App-Neustart erfolgreich; fünf eindeutige Noten/
+Quellpositionen. Export/Kindersperre/Null-KI-Nutzung geprüft, eigener künstlicher
+Haushalt regulär gelöscht, beide alten Sitzungen401, Zugangsdaten entfernt.
+Größere Originalfixtures jetzt dauerhaft im öffentlichen/nativen QA-Pfad.
+
+Keine Appquelländerung oder neue APK für diesen Backendfix: vorhandene signierte
+Web-/Android-/Play35-Artefakte unverändert. Native Kaltstartumgebung meldete
+zunächst alten Seed4, daher signierte APK35 mit adb install -r eingerichtet;
+**kein neuer OTA-Nachweis** daraus abgeleitet. HTTPS, Noten-Direktlink200 und
+öffentliche APK/Web-JS bytegenau geprüft. Backup success/Exit0, sieben Dienste
+aktiv, vorheriger Release20261018T132538Z-87f9cf6 als Rückweg vorhanden.
+Erster Stagingversuch vor Aktivierung abgebrochen wegen APK-Symlink im eigenen
+temporären Deployverzeichnis; mit regulärer Datei erfolgreich wiederholt.
+Deployment aus sauberem separatem Worktree, unfertige Katalogdatei nicht kopiert.
+Reproduktion/Ergebnisse: artifacts/grade-pdf-size-*.log, grade-pdf-*-result.json.
+Nutzer muss zuvor abgewiesene PDF erneut auswählen und ausdrücklich übernehmen;
+keine Roh-PDF gespeichert und keine private Note automatisch hinzugefügt.
+
 # In Umsetzung · Fachstamm/Katalog/Bildhefte · 18.10.2026
 
-**Fachgrundlage erledigt, noch nicht produktiv:** Migration0018 an0017,
+**Fachgrundlage seit PDF-Hotfix produktiv:** Migration0018 an0017,
 versionierter24-Fächer-Seed aus allen16 tatsächlichen Katalogfächern plus acht
 zusätzlichen Schulfächern. Alias-/Providerzuordnung und persönliche Fächer/
 Stufentypen getrennt. Additive Fachreferenzen für Material/Auftrag/Einheit/
@@ -26,8 +61,8 @@ KI-Pfade begrenzen und private Kontexte/Feedback integrieren. Danach tatsächlic
 Fach-/Lerntipp-/Albumoberflächen, Tests und gesicherter kombinierter Release.
 Alle16 Referenzcovers liegen erzeugt als PNG/optimierte WebP in
 artifacts/folder-covers mit Promptmanifest; Zusatzfächer brauchen noch Bilder.
-Produktiv bleibt geprüfter PDF-Release1.5.0+35, Schema0017,87f9cf6.
-Keinen Katalogimport, sichtbare neue Hefter oder neue Bereitstellung behaupten.
+Produktiv ist PDF-Hotfix1.5.0+35, Schema0018,961b153.
+Katalogimport und sichtbare neue Hefter sind weiterhin in Umsetzung.
 
 # Noten-PDFimport1.5.0+35 · bereitgestellt18.10.2026
 

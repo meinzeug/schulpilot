@@ -2,10 +2,10 @@
 
 ## Fortsetzbarer Stand18.10.2026
 
-Produktiv:1.5.0+35, Commit87f9cf6, Release20261018T132538Z-87f9cf6,
-Schema0017. PDF-Notenimport vollständig öffentlich und nativ geprüft.
-Dokumentations-/Prüfcommit7f48c42 enthält die Abnahme. Katalog-/Hefterausbau
-anschließend in Arbeit, noch nicht produktiv aktiviert.
+Produktiv:1.5.0+35, Commit961b153, Release20261018T142657Z-961b153,
+Schema0018. PDF-Größenfehler behoben und mit größeren künstlichen Dateien
+öffentlich/nativ geprüft. Fachgrundlage bereits produktiv; Katalogimport,
+Lerntipps und Bildhefter sind anschließend in Umsetzung. Siehe STATUS/Handoff.
 
 Die bereitgestellte ZIP unter `~/Downloads/Schulpilot_Sofatutor_ThemenDB.zip`
 wurde tatsächlich gelesen: README, INTEGRATION, normalisiertes catalog.json,
