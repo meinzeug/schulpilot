@@ -1,36 +1,74 @@
-# Katalog/Lerntipps1.7.0+38 · implementiert, vor Releaseabnahme
+# Katalog/Lerntipps1.7.0+38 · produktiv18.10.2026
 
-Vollständiger Katalog und elf additive Tabellen/Migration0019 implementiert,
-normaler Update-/Einrichtungsprozess importiert einmalig die gebundelte Fassung.
-Gemeinsame source-/revisionsgebundene Zuordnung, lokale Worker-Backfills mit
-Leases/Checkpoints, vorhandene KI-Aufträge mit höchstens zwölf validierten
-Kandidaten/erlaubten Fach-IDs ergänzt. Kein neuer Provider, keine weitere
-Modellanfrage auf GET, keine größere Quote. Klassen-/Sprachjahrsbelege und
-allgemeine Tipps getrennt; vier Leerlisten erhalten, Video/Lerntext korrekt.
-Private Auswahl/Feedback/Linkereignisse, Elternleserechte, Export/Löschung/
-Aufbewahrung erweitert. Links exakt HTTPS/Sofatutor, Referrer-Schutz und
-Wiederholen/Kopieren; kein Lernabschluss aus einem Linkaufruf.
+Produktcommit f04539fd5d959b7a5b082dacb1573a8d907b5379, main gepusht.
+Release20261018T181932Z-f04539f, Schema0019. Migration und vollständiger
+Katalogimport tatsächlich auf dem Server abgeschlossen.24 feste Fächer,
+16 Katalogfächer,126 Stufen/124 aktiv,1558 Themen,4188 Platzierungen,
+8227 Inhalte(7559 Videos/668 Lerntexte),9828 Themenbeziehungen,
+24459 Herkunftszeilen. Vier bestätigte leere Hauptlisten erhalten.
+Snapshot c67500bd581a16aaca394ab042c511836a91f223056445c51c4610778690b481.
+Lokale Zuordnungs-/Backfillaufträge beendet, keine fehlgeschlagenen Aufträge.
+Sicherung success/Exit0; API/DB-Worker/Codex/Caddy und drei andere Anwendungen
+aktiv. Vorheriger kompatibler Release20261018T155252Z-56f1112; Schema0019
+beim Code-Rückweg erhalten, keine neueren Antworten zurücksetzen.
 
-Flutter: gemeinsame aufklappbare Lerntipps in Album/Quellen/Lernrunde/Tutor/
-Aufträgen/Wochenplan, paginierte Themensuche und bekannter-Stufen-Filter;
-Eltern bestätigen Stufe bewusst, Quellenkorrektur wählt vorhandene Fächer.
-Kinder sehen ausdrücklich, dass Linkaufrufe der Familie sichtbar sind.
-Details und Import-/Rückwegbefehle: CATALOG_INTEGRATION.md.
+Vorhandene Bildhefter/echtes Fotoalbum mit Blättern/Zoom/Kacheln/Liste um
+quellgebundene Sofatutor-Lerntipps ergänzt. Derselbe Dienst in Quellen,
+Einheiten/Tutor/Aufträgen/Plan; paginierte Themenauswahl auch im leeren Fach,
+bekannte Stufe ausdrücklich, Sprachlernjahr nicht aus Schulklasse geraten.
+Eltern konfigurieren Stufen und sehen getrennte Linkereignisse. Links zählen
+weder als Übung noch als Videoabschluss. Keine privaten Texte/Zugänge an
+Sofatutor; HTTPS-Hosts/gespeicherte Parameter/kein Referrer geprüft.
+Keine zusätzlichen Modellaufrufe auf GET und kein neuer Anbieter/Sprachdienst.
 
-Geprüft:907 vollständige PostgreSQLtests495,91s,337 vollständige Fluttertests
-115s und Analyse erfolgreich. Danach neun betroffene Fluttertests/Analyse und
-öffentlicher Datenschutztest nach Textzusatz bestanden. Voller CSV-Abgleich:
-16/126/1558/8227,19603 Beziehungen,0 vorliegende Fehler/465 Hinweise.
-Quellen/alte Artefakte und beide dekomprimierten Katalogbündel gegen14 konkrete
-Geheimnisquellen geprüft:0 Treffer. Keine Abhängigkeiten aktualisiert.
+907 vollständige PostgreSQLtests495,91s;337 vollständige Fluttertests115s,
+Analyse/Ruff bestanden. Nach letzter Aliasprüfung44 gezielte PostgreSQLtests
+und nach Datenschutzhinweis neun Fluttertests/öffentlicher Datenschutztest
+erneut bestanden. Tatsächlicher CSV-Abgleich19603 Beziehungen,0 vorliegende
+Fehler/465 Hinweise. Web/Direct-APK/Play-AAB38 signiert gebaut, Paket/Version/
+Signatur/16-KB-Ausrichtung und bundletool1.18.3 geprüft; keine SDK-Updates.
+Quellen/Builds gegen16 konkrete Geheimnisse geprüft:0 Treffer; beide
+entpackten Metadatenbündel zusätzlich geprüft. Öffentliche HTTPS/API,
+Direktlinks/APK und Web-JavaScript bytegenau mit Build abgeglichen.
 
-Nach abschließender Prüfung eines Elternauftrags ohne Foto zusätzlich44 gezielte
-PostgreSQLtests35,49s bestanden; vorhandenes LabelMathe bleibt im privaten
-Schema wählbar. Noch NICHT gebaut/bereitgestellt:1.7.0+38. Tatsächlich weiterhin produktiv
-1.6.1+37/56f1112/Schema0018 wie nachfolgend dokumentiert. Nächste Schritte:
-Diff/Commit/Push, signierte Web-/Android-/Play-Builds, gesicherte Migration und
-Import, öffentliche normale künstliche Foto-/KI-/Lerntippkette, natives OTA/
-Bedienung, Export und reguläre Löschung des eigenen Testhaushalts.
+Öffentlicher Chrome390/1440px: normaler unabhängiger Kinderlogin, Fotoauswahl
+zweier künstlicher Seiten samt Zuschnitt, zwei echte reservierte Codex-OCRs,
+ausdrückliche Quellenbestätigung, reale Tutorantwort samt Quellenbelegen und
+echtes Tageslernpaket geprüft. Private Lösungen nicht an Kinder ausgeliefert.
+Lerntipps aus denselben Quellen und bekannter Klasse, externe Navigation mit
+ursprünglichen Themenparametern und leerem Referrer, Album/Zoom/Ansichten,
+normaler Elternlogin/Linkverlauf/exklusive Stufeneinstellung bestanden.
+Null JavaScriptfehler, null erfundene Attempts; insgesamt vier reservierte
+KI-Aufträge. Kein Wiedergabenachweis oder Notenversprechen abgeleitet.
+
+Reales natives OTA37->38 bestanden: automatischer Servercheck/Download,
+Hash/Paket/Signierer und Android-Installationsbestätigung; kein adb install
+für dieses Upgrade. Drei weitere Kalt-/Vordergrund-/Startprüfungen bestanden.
+Native reguläre Flutter-APK38/API36: dieselben eigenen privaten Fotos,
+Blättern/Zoom/Kacheln/Liste, Themenfilter für bekannte Stufe, Lerntipps,
+externer HTTPS-Browserintent, Sessionfortsetzung nach Neustart und Logout
+bestanden. Kein Videoabruf aus dem Browserintent abgeleitet. Danach regulärer
+Familienexport mit zwei Fotos, einer Einheit, einer Tutorfrage, vier privaten
+Tippkontexten/drei Linkereignissen und vier Verbrauchsbelegen geprüft.
+Null Attempts/Noten. Eigenen Haushalt regulär gelöscht; beide alten Sitzungen
+401, privater QA-Checkpoint entfernt, eigener Emulator beendet.
+Keine neue physische Geräte-, Audio-, Push- oder Play-Abnahme behauptet.
+
+APK artifacts/schulpilot-android.apk:66615438Bytes, SHA256
+18daaaa3329f8302c28d43b420760614dd2d697fa3f773d141d4da9ff54153a6.
+Web https://schulpilot.dorfspy.de ; Download /downloads/schulpilot-android.apk.
+Browser: normaler Login(/login) -> Hefte(/library/<eigene-Kind-ID>) ->
+Fachhefter -> Themen entdecken oder Lerntipps bei einer bestätigten Heftseite.
+Für weitere Tests eigenes künstliches Konto normal anmelden/erstellen;
+keine Passwörter/Sitzungen/Gerätetokens weitergeben. Testbelege in
+artifacts/catalog-{web,native,erasure}-result.json an denselben künstlichen
+Haushalt gebunden; keine privaten Kontodaten in diesen Übergabedateien.
+Weitere Cloud-/Gerätetests nur nach normalem eigenem Login. Keine neue
+Firebase-Freigabe, IAM-Änderung oder Zustellprüfung in dieser Katalogarbeit.
+
+GitHub-Actions39143922108 startete keine Jobs: Konto wegen eines
+Abrechnungsproblems gesperrt. Annotation117723783110 ausdrücklich geprüft.
+Lokale Tests/Builds und main-Push funktionieren; kein bezahltes Upgrade.
 
 # Fachhefter/Fotoalbum1.6.1+37 · produktiv geprüft18.10.2026
 

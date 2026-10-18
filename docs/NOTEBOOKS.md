@@ -78,5 +78,14 @@ Export/all26 privaten Fotos/keine Lernbelege geprüft, eigene Familie regulär
 gelöscht, alte Sitzungen401, geschützten Checkpoint entfernt, Emulator beendet.
 `scripts/prepare_notebook_smoke.py`, `qa/notebooks_web.mjs`,
 `qa/android_notebooks.py`, `qa/notebooks_cleanup.py`; aktuelle Releasewerte
-in STATUS/Handoff. Vollständiger Katalogimport/Lerntipps sind ein eigener noch offener
-Ausbau, siehe CATALOG_INTEGRATION.md; nicht mit der Fachhefteransicht gleichsetzen.
+in STATUS/Handoff. Vollständiger Katalogimport und gemeinsame Lerntipps sind seit1.7.0+38
+zusätzlich bereitgestellt und im normalen künstlichen Web-Fotoablauf geprüft;
+siehe CATALOG_INTEGRATION.md und den aktuellen Nachweis in STATUS/Handoff.
+
+Regression1.7.0+38: zwei neue künstliche Fotos tatsächlich im normalen
+Kinder-Fotoassistenten ausgewählt, zugeschnitten, abgegeben, mit reservierten
+OCR-Aufträgen erkannt und ausdrücklich bestätigt. Web390/1440px und reguläre
+native Flutter-APK38/API36: echtes Album/Blättern/Zoom/Kacheln/Liste bestanden,
+zusätzliche Lerntipps/Themenbrowser korrekt. Reales OTA37->38 und drei Startchecks,
+Neustart/Logout sowie Export/Löschung desselben Testhaushalts bestanden. Keine
+neuen KI-Aufträge durch Albumansichten; keine Linkaufrufe als Lernerfolg gezählt.

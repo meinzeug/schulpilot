@@ -2,15 +2,22 @@
 
 ## Stand 18.10.2026
 
-Produktiv ist weiterhin **1.6.1+37 / Schema0018**, Release
-`20261018T155252Z-56f1112`: feste Fächer und vollständige Bildhefter sind öffentlich
-und nativ geprüft. **1.7.0+38 / Migration0019 ist lokal implementiert, noch nicht
-bereitgestellt.** 43 gezielte PostgreSQLprüfungen einschließlich echter Migration
-und anschließend alle907 Backendtests (495,91s) bestanden;337 vollständige
-Fluttertests (115s) und Analyse erfolgreich. Nach dem abschließenden
-Datenschutzhinweis neun betroffene Fluttertests/Analyse sowie öffentlicher
-Datenschutztest erneut bestanden. Web/Android-Builds und Bereitstellung folgen.
-Aktuelle Freigabe/Build-/Geräteergebnisse werden in STATUS/Handoff nachgeführt.
+Produktiv **1.7.0+38 / Schema0019**, Produktcommit
+`f04539fd5d959b7a5b082dacb1573a8d907b5379`, Release
+`20261018T181932Z-f04539f`. Gesicherte Migration und tatsächlicher voller Import
+abgeschlossen. Alle907 Backendtests(495,91s),337 Fluttertests(115s),Analyse
+und44 gezielte Backendregressionen nach letzter Aliasprüfung bestanden.
+Neun Flutter-/öffentlicher Datenschutztest nach Datenschutzhinweis bestanden.
+Web/Direct-APK/Play-AAB38 signiert gebaut und öffentlich bytegleich geprüft.
+Normale künstliche Webkette mit zwei echten Codex-OCRs,Tutor und Tagespaket
+samt Lern-/Elternansichten bestanden. Reales OTA37->38 und drei Startchecks
+bestanden. Native reguläre Flutter-APK38/API36 mit Fotoalbum/Zoom/Ansichten, bekannter
+Stufe/Lerntipps, externem HTTPS-Browserintent, Sessionneustart und Logout
+bestanden. Anschließend Export mit allen vier privaten Tippkontexten/drei
+Linkereignissen und reguläre Familienlöschung geprüft; alte Sitzungen401,
+privater Konto-Checkpoint entfernt, eigener Emulator beendet. Einzelbelege
+in STATUS/Handoff. Keine physische Audio-/Push-/Play-Abnahme aus dieser
+Katalogerweiterung ableiten.
 
 ## Datenquelle und Umfang
 
@@ -199,3 +206,43 @@ vorhandene Antworten durch reale Migration. Neun neue Fluttertests einschließli
 320px/200%-Text/Tastatur, Themenpagination, Logout bei laufendem GET und Fachwahl.
 Vollständige Test-, Build-, öffentliche und native Nachweise nach Abschluss in
 STATUS/Handoff. Komponenten-/Mocktests sind keine echte Provider-/Geräteabnahme.
+
+## Reproduzierbare öffentliche Prüfung dieses Releases
+
+Nur mit eigenem künstlichem normalen Haushalt, vorhandenem autorisiertem
+SMTP-Testpostfach und eigenem API36-AVD; keine vorhandene echte Familie benutzen:
+
+```sh
+.venv/bin/python scripts/prepare_normal_ai_smoke.py
+node qa/catalog_web.mjs
+# Vorher signierte niedrigere Direct-Version im eigenen AVD; nach Release:
+.venv/bin/python qa/android_update.py --upgrade
+.venv/bin/python qa/android_update.py --check-starts
+.venv/bin/python qa/android_catalog.py
+.venv/bin/python qa/catalog_cleanup.py
+```
+
+Tatsächlicher Durchlauf: öffentliche Flutter-App390/1440px, normale Mailprüfung
+und unabhängiger Kinderlogin, Fotos auswählen/zuschneiden/abgeben, zwei echte
+reservierte OCR-Aufträge, ausdrückliches Bestätigen. Tutor und Paket über je
+einen normalen reservierten Codex-Auftrag, kein Anbieterretry. Auf GET kein
+Anbieteraufruf. Quellen-, Tutor- und Einheitentipps, private Lösungsschlüssel
+verborgen, ausschließlich gespeicherte Katalogadressen geöffnet; ursprüngliche
+Katalogparameter und leerer Referrer bei der Webnavigation geprüft. Sofatutor
+kann anschließend seine eigenen Login-/Canonical-Weiterleitungen ausführen.
+Externe Links erzeugten null Attempts. Eltern sehen denselben Fortschritt und
+den tatsächlichen Linkverlauf sowie ausschließlich elterliche Stufeneinstellung.
+Native38 prüfte denselben Haushalt nach echtem OTA37->38; drei Startprüfungen,
+Fotos/Zoom/Blättern/Übersichten, bekannter Klassenfilter, Lerntipps, Start des
+externen Browsers, Sessionneustart und Logout bestanden. Der native Intent ist
+kein Nachweis einer geladenen Videoseite oder Wiedergabe.
+
+Export ausschließlich im Speicher geprüft: zwei Fotos, eine vorbereitete Einheit,
+eine Tutorfrage, vier Tippkontexte, drei Linkereignisse, vier Verbrauchsbelege,
+keine Antworten oder Noten. Reguläre Familienlöschung, alte Eltern-/Kindersitzung
+401, privater Checkpoint entfernt, eigener Emulator beendet. Berichte unter
+artifacts/catalog-{web,native,erasure}-result.json enthalten nur bereinigte
+Prüffakten und dieselbe gehashte Datensatzbindung. Keine neue Pushzustellung,
+Audioabnahme, physische Geräteprüfung oder Play-Veröffentlichung durchgeführt.
+GitHub-Actions39143922108 startete wegen einer Kontosperre zur Abrechnung
+keine Jobs; lokale Tests und signierte Builds tatsächlich erfolgreich.
