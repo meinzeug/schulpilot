@@ -261,6 +261,8 @@ class _NotebookShelfState extends State<NotebookShelf> {
           TextField(
             controller: search,
             focusNode: searchFocus,
+            autocorrect: false,
+            enableSuggestions: false,
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => searchFocus.unfocus(),
             decoration: InputDecoration(

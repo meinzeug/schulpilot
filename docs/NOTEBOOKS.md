@@ -90,7 +90,7 @@ zusätzliche Lerntipps/Themenbrowser korrekt. Reales OTA37->38 und drei Startche
 Neustart/Logout sowie Export/Löschung desselben Testhaushalts bestanden. Keine
 neuen KI-Aufträge durch Albumansichten; keine Linkaufrufe als Lernerfolg gezählt.
 
-## Kompakte Hefter-Werkzeuge ab1.7.1+39
+## Kompakte Hefter-Werkzeuge ab1.7.1+39/1.7.2+40
 
 Die Startansicht zeigt eine einzelne Icon-Leiste statt permanenter Suchbox und
 mehrzeiliger Filter. Lupe öffnet die Suche bewusst; Schließen entfernt die Suche
@@ -101,3 +101,8 @@ Aktualisieren und im Elternzugang den Rückweg zum Lernüberblick. Alle Icons
 haben Tooltips/Zugänglichkeitsnamen und weiterhin ausreichend große Trefferflächen.
 Die Wörter bleiben im regulären Menü. Gespeicherte Suchbegriffe bleiben sichtbar,
 aber öffnen beim Wiederaufruf keine Tastatur. Ansichten/Filter bleiben reine GETs.
+
+Die Fachsuche verwendet ab40 keine Tastatur-Autokorrektur oder Vorschläge.
+Fachnamen dürfen beim Bestätigen der Suche nicht durch anderssprachige
+Wörterbuchvorschläge verändert werden; Texteingaben in Lernaufgaben bleiben
+von dieser Suchfeldeinstellung unberührt.

@@ -1,12 +1,31 @@
-# Kompakte Hefter1.7.1+39 · Umsetzung/Abnahme läuft
+# Folgekorrektur1.7.2+40 · noch nicht gebaut/bereitgestellt
 
-Nur UI und Versionsmetadaten geändert: eine Icon-Leiste, Suche bei Bedarf,
-Filterzustand sichtbar, Ansicht umschalten, Fotoaktion und weiteres Menü.
-Alle337 Flutterprüfungen73s und Analyse bestanden; außerdem drei bestehende
-Release-Policy-Tests auf isoliertem PostgreSQL bestanden. Aktuell produktiv
-weiterhin1.7.0+38 wie unten dokumentiert.
-Nächste Schritte: signierte Builds, gesicherte Bereitstellung, öffentliche und
-native Sichtprüfung mit eigenem künstlichem Konto, Export/Löschung, Commit/Push.
+Native APK39 zeigt die kompakte Leiste korrekt. Beim tatsächlichen Suchen
+korrigierte die englisch eingestellte Android-Tastatur „Biologie“ zu „Biologies“.
+Suchfeld deshalb gezielt ohne Autokorrektur/Vorschläge; keine Antwortfelder
+geändert. Bestehende337 Fluttertests/Browser-Abnahme auf39 bestanden; erneute26
+betroffene Prüfungen und Analyse für40 bestanden. Danach signierte Builds/Deployment,
+nativer Such-/Menütest und reguläre Löschung des eigenen künstlichen Kontos.
+Produktiv derzeit weiterhin1.7.1+39, wie nachfolgend dokumentiert.
+
+# Kompakte Hefter1.7.1+39 · produktiv, abschließende Sichtprüfung
+
+Produktcommitba21953424f601f56dff802e44e9649302fe16ca, main gepusht.
+Release20261018T195453Z-ba21953, Schema0019 unverändert; Backup success/Exit0,
+sieben Dienste aktiv. Vorheriger kompatibler Release20261018T181932Z-f04539f.
+Eine Icon-Leiste ersetzt die mehrzeilige Such-/Filterbox und doppelte
+Kopfaktionen. Suche nach eigener Aktion, sichtbarer Filterzustand, einzelner
+Ansichtswechsel, Fotoaktion und weiteres Menü; Tooltips/48px-Trefferflächen.
+337 Fluttertests73s/Analyse und drei Release-Policy-Tests auf isoliertem
+PostgreSQL bestanden. Web, signierte Direct-APK/Play-AAB39 gebaut und geprüft;
+öffentliche HTTPS/API, Web-JS und APK bytegenau abgeglichen. Geheimnisprüfung
+gegen16 tatsächliche Quellen:0 Treffer. Keine neue DB-Migration/SDK-Änderung.
+Öffentliche Sichtprüfung390/529/1440px: Hefter bereits unter300px sichtbar;
+abschließende Browserbedienung und natives OTA/Icons werden noch geprüft.
+Eigenes normales künstliches Konto bleibt bis zur anschließenden Löschung
+im geschützten ignorierten Checkpoint. Keine KI-Aufträge für diese UI-Abnahme.
+Nächste Aktion: Browser/native Ergebnisse prüfen, eigene Familie löschen,
+Prüfstand/Handoff aktualisieren und Abschlusscommit pushen.
 
 # Katalog/Lerntipps1.7.0+38 · produktiv18.10.2026
 
