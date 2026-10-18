@@ -2,10 +2,9 @@
 
 ## Fortsetzbarer Stand18.10.2026
 
-Produktiv:1.5.0+35, Commit961b153, Release20261018T142657Z-961b153,
-Schema0018. PDF-Größenfehler behoben und mit größeren künstlichen Dateien
-öffentlich/nativ geprüft. Fachgrundlage bereits produktiv; Katalogimport,
-Lerntipps und Bildhefter sind anschließend in Umsetzung. Siehe STATUS/Handoff.
+Produktiv:1.6.1+37, Commit56f1112, Release20261018T155252Z-56f1112,
+Schema0018. PDF-Größenfehler und vollständige Bildhefter/Fotoalbum öffentlich
+und nativ geprüft. Katalogimport/Lerntipps noch offen. Siehe STATUS/Handoff.
 
 Die bereitgestellte ZIP unter `~/Downloads/Schulpilot_Sofatutor_ThemenDB.zip`
 wurde tatsächlich gelesen: README, INTEGRATION, normalisiertes catalog.json,
@@ -72,7 +71,7 @@ Nummer bestätigen, niemals ein Sprachlernjahr aus der Schulklasse raten.
 
 ## Nächste konkrete Implementierung
 
-1. Grundlage ist produktiv; Bildhefter/Album1.6 sind gebaut und in Abnahme.
+1. Grundlage und Bildhefter/Album1.6.1 sind produktiv und öffentlich/nativ geprüft.
 2. Additive Katalogtabellen an0018 anschließen; normalisierte Metadaten und
    alle Herkunfts-/Prüfkennzeichen idempotent importieren. Validierte CSV als
    zusätzlichen Beziehungsabgleich verwenden, nicht als Fachstamm.

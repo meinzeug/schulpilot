@@ -1,5 +1,6 @@
 """Actual signed native Flutter album, own artificial photos and normal login."""
 
+import hashlib
 import json
 import re
 
@@ -24,7 +25,7 @@ def main():
     account = json.loads(PRIVATE.read_text())
     state = account.get("notebook_qa", {})
     require(account.get("normal_account") and account.get("verified") and
-            state.get("phase") == "web_passed_native_pending" and
+            state.get("phase") in ("web_passed_native_pending", "native_passed") and
             re.search(r"\+schulpilot-normal-qa-[a-f0-9]{12}@", account["credentials"]["parent_username"]),
             "own_actual_web_album_required")
     current = installed_code()
@@ -32,7 +33,8 @@ def main():
     require(current >= 36 and current == published['version_code'], "current_signed_album_apk_required")
     require(native.adb("emu", "avd", "name").decode().splitlines()[0] == "schulpilot-qa-api36", "own_avd_required")
     checks, phase = [], "native_child_login"
-    report = {"success": False, "installed_code": current, "native_flutter": True, "android_api": 36, "checks": checks}
+    report = {"success": False, "installed_code": current, "native_flutter": True, "android_api": 36, "checks": checks,
+              "dataset_key": hashlib.sha256(account['child_id'].encode()).hexdigest()}
     try:
         launch()
         native.wait_any(["Anmelden", "Willkommen zurück", "Heute"])

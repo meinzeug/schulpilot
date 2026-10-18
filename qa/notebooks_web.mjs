@@ -1,5 +1,6 @@
 // Actual deployed Flutter app, our artificial household and its own photographs.
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 import {readFile, writeFile, chmod} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
@@ -21,7 +22,9 @@ async function tap(locator) {
   const target = locator.first();
   for (let n = 0; n < 35; n++) {
     const box = await target.count() ? await target.boundingBox().catch(() => null) : null;
-    if (box && box.height && box.width && box.y >= 0 && box.y + box.height < page.viewportSize().height - 6) {
+    // Flutter's semantics rectangles can extend behind the fixed navigation.
+    // Scroll the actual content clear of that overlay before a physical click.
+    if (box && box.height && box.width && box.y >= 0 && box.y + box.height < page.viewportSize().height - 104) {
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       await page.waitForTimeout(220); return;
     }
@@ -38,6 +41,10 @@ async function type(locator, value) {
   await tap(locator); await page.keyboard.press('Control+A');
   await page.keyboard.type(value, {delay: 12});
   assert.equal(await locator.inputValue(), value);
+  // Commit through Flutter's editing bridge before clicking another control;
+  // a DOM inputValue alone can precede the framework's next frame.
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(300);
 }
 async function api(route) {
   const r = await context.request.get(base + '/api' + route, {headers: {'X-Schulpilot-Request': '1'}});
@@ -50,7 +57,7 @@ async function shot(name) {
 try {
   const account = JSON.parse(await readFile(privateFile, 'utf8'));
   const state = account.notebook_qa;
-  assert(account.normal_account && account.verified && state?.phase === 'prepared' &&
+  assert(account.normal_account && account.verified && ['prepared', 'web_passed_native_pending', 'native_passed'].includes(state?.phase) &&
     /\+schulpilot-normal-qa-[a-f0-9]{12}@/.test(account.credentials.parent_username), 'own_artificial_album_required');
   const health = await (await fetch(base + '/api/health')).json();
   const [major, minor] = health.version.split('.').map(Number);
@@ -89,10 +96,10 @@ try {
   await shot('zoom');
   await tap(button('Schließen'));
   phase = 'album_grid_and_list';
-  await tap(page.getByText('Kacheln', {exact: true}));
+  await tap(page.getByRole('checkbox', {name: 'Kacheln', exact: true}));
   await button('1–2 von 2').first().waitFor();
   await shot('pages-grid');
-  await tap(page.getByText('Liste', {exact: true}));
+  await tap(page.getByRole('checkbox', {name: 'Liste', exact: true}));
   await shot('pages-list');
   checks.push('authenticated_real_photos_turn_zoom_grid_and_list');
   phase = 'page_jump_across_metadata_batches';
@@ -140,16 +147,28 @@ try {
   const parentProgress = await api('/children/' + account.child_id + '/learning-progress');
   assert.deepEqual(parentProgress.totals, childProgress.totals);
   checks.push('normal_parent_login_same_subjects_and_no_invented_progress');
+  phase = 'offline_and_explicit_retry';
+  await context.setOffline(true);
+  await tap(button('Seiten aktualisieren'));
+  await page.getByText('Keine Verbindung zu SCHULPILOT. Bitte prüfe deine Internetverbindung und versuche es erneut.', {exact: true}).waitFor();
+  await shot('offline');
+  await context.setOffline(false);
+  await tap(button('Erneut laden'));
+  await button('1 von 2').first().waitFor();
+  checks.push('browser_offline_error_and_explicit_recovery');
   // No album operation is allowed to generate a model job, attempt or learning time.
   assert.equal(mutations.length, 0);
   assert.equal(errors.length, 0);
-  state.phase = 'web_passed_native_pending';
+  const latest = JSON.parse(await readFile(privateFile, 'utf8'));
+  assert.equal(latest.child_id, account.child_id);
+  state.phase = latest.notebook_qa.phase === 'native_passed' ? 'native_passed' : 'web_passed_native_pending';
   state.math_subject_id = math.id;
   account.notebook_qa = state;
   await writeFile(privateFile, JSON.stringify(account) + '\n', {mode: 0o600});
   await chmod(privateFile, 0o600);
   const report = {success: true, actual_public_flutter: true, checks, javascript_errors: errors.length,
-    album_mutations: mutations.length, own_photos: 26, additional_model_calls: 0, source_commit: health.source_commit};
+    album_mutations: mutations.length, own_photos: 26, additional_model_calls: 0, source_commit: health.source_commit,
+    dataset_key: createHash('sha256').update(account.child_id).digest('hex')};
   await writeFile(path.join(out, 'notebooks-web-result.json'), JSON.stringify(report) + '\n');
   console.log(JSON.stringify(report));
 } catch (e) {

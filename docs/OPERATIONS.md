@@ -1,5 +1,14 @@
 # Betrieb
 
+## Fachhefter1.6.1+37
+
+Aktiv20261018T155252Z-56f1112, Schema0018, Backup success/Exit0 und sieben
+Dienste geprüft. Rückweg auf20261018T152551Z-007c570 ohne Datenrücksicherung
+oder Schema-Downgrade; installierte APKs werden nicht heruntergestuft.
+Private Fotos bleiben in /var/lib/schulpilot, öffentliche Cover im Web-/APK-
+Bundle. Keine zusätzlichen Dienste. Tatsächliche Browser-/Android-/OTA-
+Abnahme und Testfamilienlöschung in STATUS/Handoff; Bedienung NOTEBOOKS.md.
+
 ## PDF-Notenimport1.5.0+35
 
 Aktiv20261018T132538Z-87f9cf6, Schema0017, Sicherung und Dienste geprüft.

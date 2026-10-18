@@ -1,46 +1,56 @@
-FACHHEFTER/FOTOALBUM1.6.1+37 – kompakt gebaut, in Abnahme
+FACHHEFTER/FOTOALBUM1.6.1+37 – produktiv und öffentlich/nativ geprüft
 
-Nach tatsächlicher öffentlicher390px-Sichtprüfung Leser kompakter gestaltet:
-Quelle zuerst, Suche auf Aktion, A4-Fotohöhe, belegte/ausgewählte Hefter vorne.
-Alle leeren Fächer weiter verfügbar.328 vollständige Fluttertests/Analyse,
-57 gezielte PostgreSQLtests erfolgreich; Backendlogik zuvor875 vollständige
-Tests bestanden. Web/Direct/Play37 neu gebaut, APK66320086Bytes, SHA256
-d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae
-Noch aktiv:Release20261018T152551Z-007c570/1.6.0+36/Schema0018, Backup success,
-sieben Dienste aktiv. OTA35->36 mit geprüftem Download/Systembestätigung,
-ohne adb install erfolgreich. Fotos/Zoom auf36 öffentlich bedient, weiterer
-QA-Lauf im Scrollhelfer abgebrochen und Helfer korrigiert, keine vollständige
-öffentliche/native Abnahme behauptet. Nächste Aktion:37 committen/pushen/
-bereitstellen, öffentliche eigene Testfamilie komplett bedienen, echtes
-OTA36->37, native Albumprüfung, Export/privaten Haushalt löschen.
-Geschützter Checkpoint weiterhin vorbereitet; keine Zugangsdaten übertragen.
-GitHub-CI39131505701:beide Jobs0 Schritte; gelesene Annotation Billing-Sperre.
-Vorherige36-Bauzahlen unten sind historisch, aktuellen37-Stand verwenden.
+Produktcommit56f1112eb7fe0c63db284ab72e4a917985faa708, main gepusht.
+Release20261018T155252Z-56f1112, Schema0018; Backup success/Exit0,
+sieben Dienste aktiv, vorheriger Release20261018T152551Z-007c570.
+https://schulpilot.dorfspy.de ; API /api. Normaler Login -> Hefte
+(/library/<eigene-Kind-ID>) -> Fachhefter
+(/library/<eigene-Kind-ID>/subject/<berechtigte-Fach-ID>).
+Eltern öffnen dasselbe Kind über ihren berechtigten Familienbereich.
+Keine Passwörter/Sitzungen oder Kinderinhalte an ChatGPT übermitteln.
 
-FACHHEFTER/FOTOALBUM1.6.0+36 – Zwischenstand
+24 feste Fächer mit eigenen realistischen Papphefterbildern plus neutraler
+Hefter; leere Fächer bleiben öffnbar. Kompaktes echtes Fotoalbum mit
+Wischen/Blättereffekt/Zoom, Suche/Filtern, Seitensprung und Kachel-/Liste.
+Quelle prüfen/Lernen und Alle Heftseiten bleiben erreichbar. Private Bilder
+nur authentifiziert und begrenzt laden, bei Logout entfernen. Kein zusätzlicher
+KI-Aufruf, keine Lernzeit oder Leistungsbuchung durch Lesen/Blättern.
 
-Fachübersicht mit25 erzeugten Coverassets (24 feste Fächer plus neutraler
-Hefter), echte private Fotos im Album mit Blättereffekt/Wischen/Zoom,
-Such-/Datums-/Statusfilter, Seitensprung, Kachel-/Listenübersicht. Leere Fächer
-bleiben öffnbar; bestehende „Alle Heftseiten“ und Textprüfung/Lernen erhalten.
-Stabile serverseitige Fachfilter/Aliase, Geschwisterschutz, keine KI oder
-Lernleistung durch Listen/Blättern; begrenztes Laden/Cacheeviction bei Logout.
-875 PostgreSQLtests511,43s,326 Fluttertests erfolgreich, anschließend17
-betroffene Tests plus Analyse nach letzter Kompatibilitätsprüfung bestanden.
-Web/Direct-APK/Play-AAB1.6.0+36 gebaut, noch nicht produktiv aktiviert.
-APK66320086Bytes, SHA256
-f36eac13642f37e35eb1474cd0e33ae148db6df7776d550a1cdd8d0c63e29e80
-Öffentliche/native Abnahme ausstehend. Eigener normal verifizierter künstlicher
-Haushalt mit26 normalen Fotouploads, zwei echten reservierten Codex-OCR-Jobs,
-zwei bestätigten Mathematikseiten/24 offenen Seiten vorbereitet. Kein privates
-Passwort/Token in Übergabe/Git. Emulator API36 wieder aktiv, installiert35.
-Nächste Aktion: Commit/Push, gesicherter Release, öffentliche Flutterprüfung,
-echtes OTA35->36, native Fotoalbumprüfung, Export und eigene Familienlöschung.
-Prüfpfade qa/notebooks_web.mjs, qa/android_notebooks.py, qa/notebooks_cleanup.py.
-Katalogimport/Lerntipps separat offen; Modellentwurf unverändert nach
-artifacts/wip/catalog_models.py ausgelagert, vor Migration0019 überarbeiten.
-Tatsächlich aktiv bleibt bis zur Abnahme PDF-Hotfix961b153/1.5.0+35/Schema0018.
-Details docs/NOTEBOOKS.md, docs/NOTEBOOK_ASSETS.json und docs/STATUS.md.
+875 vollständige PostgreSQLtests auf derselben Backendlogik,57 gezielte
+37-Regressionen;328 vollständige Fluttertests/Analyse/Ruff/Diff bestanden.
+Web/Direct/Play37 signiert gebaut und Android-Metadaten/Signatur/16-KB-
+Ausrichtung/bundletool geprüft. Öffentliche HTTPS/Artefakte bytegleich.
+Tatsächliche Chrome390/1440px-Prüfung mit normalem Kinder-/Elternlogin,
+leeren Fächern, Fotos/Zoom/Blättern/Übersichten und zweiter Metadatenseite,
+Netzverlust/erneutem Laden bestanden, null JavaScriptfehler/Album-Schreibaufrufe.
+Native reguläre Flutter-APK37/API36: Fotos, Blättern, Zoom, Übersichten,
+Seitensprung, Sessionfortsetzung nach Neustart und Logout bestanden.
+Tatsächliche automatische Updates35->36->37 mit Android-Bestätigung und
+Download-/Hash-/Paket-/Signaturprüfung ohne adb install; drei Startchecks37.
+Kein physischer Gerätetest, neue Audio-/Push-Abnahme oder Play-Veröffentlichung.
+
+Eigener künstlicher Haushalt mit26 normalen Foto-Uploads, zwei realen
+reservierten Codex-OCR-Jobs und zwei ausdrücklich bestätigten Mathematikseiten
+nach Export/Foto-/Null-Fortschrittsprüfung regulär gelöscht. Alte Eltern-/
+Kindersitzungen401, privater Checkpoint entfernt, eigener Emulator beendet.
+Keine Testzugänge oder Exporte für Übergabe. Reproduzierbare QA unter
+qa/notebooks_web.mjs, qa/android_notebooks.py, qa/notebooks_cleanup.py.
+
+APK artifacts/schulpilot-android.apk,66320086Bytes, SHA256
+ d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae
+Öffentlicher Download /downloads/schulpilot-android.apk vor/nach Login.
+Play-AAB artifacts/schulpilot-play.aab nur gebaut, nicht veröffentlicht.
+GitHub-Actions39133398904 fehlgeschlagen; konkret gelesene vorherige Annotation
+117687457475 meldet Billing-Kontosperre. Lokale Prüfungen und Push erfolgreich.
+
+Nächste konkrete Arbeit: Katalogtabellen/Migration0019, vollständiger
+idempotenter Sofatutor-Import, gemeinsamer präziser Matcher/Lerntipps im
+bestehenden Worker. Modellentwurf artifacts/wip/catalog_models.py noch
+unregistriert, Metadaten artifacts/sofatutor-input. Keine Umsetzung des
+Katalogmatchers aus den fertigen Fachheftern ableiten. Details STATUS,
+NOTEBOOKS, NOTEBOOK_ASSETS und CATALOG_INTEGRATION in docs/.
+Die älteren folgenden Abschnitte sind historische Abnahmen; aktuellen
+Release und Artefaktstand ausschließlich dem Kopf entnehmen.
 
 PDF-UPLOADFIX18.10.2026 – produktiv
 

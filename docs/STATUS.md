@@ -1,52 +1,62 @@
-# Fachhefter/Fotoalbum1.6.1+37 · kompakt gebaut, in Abnahme
+# Fachhefter/Fotoalbum1.6.1+37 · produktiv geprüft18.10.2026
 
-Kompakter Leser nach tatsächlicher390px-Sichtprüfung: Fachüberschrift/Zurück/
-Fotoaktion in einer Zeile, Suche erst auf eigene Aktion, Ansichten klar
-gruppiert, A4-angepasste Fotohöhe. Belegte und ausgewählte Hefter zuerst,
-alle leeren Fächer weiterhin sichtbar/öffnbar. Große Schrift/fehlendes Foto
-ohne Überlauf.328 vollständige Fluttertests, Analyse und57 gezielte
-PostgreSQLregressionen bestanden. Die unveränderte Backendlogik zuvor in875
-vollständigen PostgreSQLtests511,43s geprüft. Web/Direct/Play37 neu gebaut.
-APK66.320.086Bytes, SHA256
-d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae.
+Aktiv: Produktcommit `56f1112eb7fe0c63db284ab72e4a917985faa708`, main gepusht,
+Release `20261018T155252Z-56f1112`, Schema0018. Vorheriger Release
+`20261018T152551Z-007c570` als kompatibler Code-Rückweg; additives Schema
+behalten. Sicherung success/Exit0, sieben Dienste aktiv. Öffentliche HTTPS,
+Web-Direktlink, APK und Web-JS bytegenau geprüft. Andere Anwendungen erhalten.
 
-Zwischenrelease36/007c570 ist tatsächlich aktiv:20261018T152551Z-007c570,
-Schema0018, Backup success/Exit0 und sieben Dienste aktiv. Echtes OTA35->36
-mit automatischem geprüften Download und Android-Bestätigung erfolgreich,
-kein adb install für dieses Upgrade. Öffentliche eigene Fotos/Zoom auf36
-bedient; erster weiterer UI-Lauf brach im QA-Scrollhelfer ab, kein bestandener
-Gesamtlauf daraus abgeleitet. Helfer korrigiert, finale öffentliche/native
-Prüfung folgt auf37. GitHub-CI39131505701:beide Jobs0 Schritte, tatsächliche
-Annotation meldet Kontosperre wegen Billing. Lokale Prüfungen/Push erfolgreich.
+„Hefte“ zeigt24 feste Fächer mit eigenen fotorealistischen A4-Papphefterbildern
+und einen neutralen Hefter für private/unzugeordnete Inhalte.25 WebP-Assets,
+784.908Bytes samt bereinigtem Promptmanifest. Belegte/ausgewählte Fächer zuerst;
+auch leere Fächer bleiben sichtbar und öffnbar. Fachkarten, Suche und Liste.
+Echte private Fotos im kompakten Album, Wischen/Pfeile/Tastatur, Blättereffekt
+mit reduzierter Bewegung, Zoom, Filter, Seitensprung über Metadatenseiten,
+Kachel-/Listenübersicht. Bestehende Quellenprüfung und Lernen erhalten.
+Stabile Fach-IDs/Aliase, Geschwisterschutz und Kompatibilitätsprüfung gegen
+ignorierte Fachfilter alter Backends. Fotos begrenzt/lazy laden und bei
+Logout/Dispose verwerfen. Lesen erzeugt keine KI oder Lernleistung.
 
-Implementiert:24 feste Fächer mit eigenen fotorealistischen Papphefterbildern,
-zusätzlich neutraler eigener Hefter;25 echte WebP-Assets784.908Bytes samt
-bereinigtem Promptmanifest. Standard „Hefte“ jetzt Fachübersicht mit Suche,
-Meine-Fächer-Filter und Karten-/Listenansicht. Leere Fächer bleiben öffnbar.
-Fotoalbum mit echten privaten Fotos, Wischen/Pfeilen/Tastatur, Blättereffekt,
-reduzierter Bewegung, Zoom, Such-/Zeit-/Statusfiltern, Seitensprung und
-paginierten Foto-Kachel-/Listenübersichten. Bestehende Textprüfung/Lernen/
-„Alle Heftseiten“ erhalten. Server filtert stabile Fach-ID inklusive Aliasen;
-Geschwisterschutz und Clientprüfung gegen ignorierte Filter alter Backends.
-Fotos begrenzt/lazy dekodieren, bei Logout/Dispose verwerfen. Keine KI oder
-erfundene Lernleistung durch Lesen/Blättern.
+**Tatsächlich geprüft:**875 vollständige PostgreSQLtests511,43s auf derselben
+Backendlogik; für37 nochmals57 betroffene Regressionen42,96s.328 vollständige
+Fluttertests104s, Analyse, Ruff und Diff sauber. Web, signierte Direct-APK
+und Play-AAB37 gebaut; Signaturen/Android-Metadaten/16-KB-Ausrichtung sowie
+bundletool1.18.3 geprüft. Keine SDK-/Abhängigkeitsaktualisierung.
 
-**Geprüft:**875 vollständige PostgreSQLtests511,43s,326 vollständige
-Fluttertests; nach letzter alter-Backend-Absicherung17 betroffene Tests und
-Analyse erneut erfolgreich. Web/signierte Direct-APK/Play-AAB1.6.0+36 gebaut.
-APK66.320.086Bytes, SHA256
-f36eac13642f37e35eb1474cd0e33ae148db6df7776d550a1cdd8d0c63e29e80.
-Historische Bauzahlen36; finale37-Daten im Absatz oben.
+Öffentliche Flutter-App in Chrome390/1440px: unabhängiger Kinderlogin,
+Fächer ohne vorheriges Material, leeres Fach, echte Fotos/Blättern/Zoom,
+Kacheln/Liste, Sprung zur24. Seite über zweite Metadatenseite, normaler
+Elternlogin mit denselben Anzahlen/Null-Fortschritt, Netzverlust und bewusstes
+Erneutladen bestanden. Null JavaScriptfehler und null Album-Schreibanfragen.
+Native reguläre Flutter-APK37 im eigenen Android-API36-Emulator: dieselben
+Foto-/Übersichts-/Seitensprungfunktionen, App-Neustart und Logout bestanden.
+Echtes OTA35->36 und36->37 mit automatischem Download/Hash-/Paket-/Signaturcheck
+und Android-Installationsbestätigung, kein adb install für diese Upgrades.
+Auf37 drei tatsächliche Startprüfungen bestanden. Kein physischer Gerätetest
+oder neue Push-/Audio-/Play-Veröffentlichung daraus abgeleitet.
 
-Regulärer eigener künstlicher Haushalt vorbereitet:26 echte Foto-Uploads,
-zwei tatsächliche reservierte Codex-OCR-Jobs, zwei ausdrücklich bestätigte
-Mathematikseiten,24 noch unzugeordnete Seiten. Keine Datenbankinjektion,
-keine erfundenen Antworten. Geschützter Checkpoint außerhalb von Git für
-qa/notebooks_web.mjs, qa/android_notebooks.py, qa/notebooks_cleanup.py.
-Eigener API36-Emulator läuft, tatsächlich auf36 aktualisiert als OTA37-Basis.
-Docs/Details: NOTEBOOKS.md, NOTEBOOK_ASSETS.json.
-Katalogimport/Lerntipps weiterhin eigener offener Ausbau; unveränderter
-Modellentwurf in artifacts/wip/catalog_models.py, Archivmetadaten vorhanden.
+Eigener normal verifizierter künstlicher Haushalt:26 normale Foto-Uploads,
+zwei echte reservierte Codex-OCR-Aufträge, zwei bestätigte Mathematikseiten,
+24 ehrlich unzugeordnete Seiten. Keine Datenbankinjektion/erfundenen Antworten.
+Nach Web und Android Export/all26 privaten Fotos geprüft, genauzwei
+Verbrauchsbelege/keine Attempts oder Noten, Haushalt regulär gelöscht,
+beide alten Sitzungen401 und privater Konto-Checkpoint entfernt. Emulator
+beendet. QA-Berichte in artifacts/notebooks-{web,native,erasure}-result.json;
+Web/native Berichte vor Löschung an denselben künstlichen Haushalt gebunden.
+Flutter-Textfelder im Web-QA vor nächster Aktion über Tab/Frame abschließen;
+ein DOM-inputValue allein war kein sicherer Flutter-Eingabenachweis.
+
+APK: `artifacts/schulpilot-android.apk`,66.320.086Bytes, SHA256
+`d1389872e092cae2e1227b42f1791d9f22214678b5f571b27aa55dffbf6751ae`.
+Download vor/nach Login unter https://schulpilot.dorfspy.de verfügbar.
+GitHub-CI39133398904 fehlgeschlagen; vorherige konkret gelesene Annotation
+117687457475 nennt Kontosperre wegen Billing, Jobs ohne ausgeführte Schritte.
+Lokale Tests, Builds und Push funktionieren; keine erfolgreiche CI behauptet.
+
+**Offen/nächste Aktion:** vollständiger Sofatutor-Metadatenimport und gemeinsame
+Lerntipps, siehe CATALOG_INTEGRATION.md. Unregistrierter Modellentwurf weiterhin
+in artifacts/wip/catalog_models.py, nicht Teil dieses Releases. Bildhefter
+sind vollständig integriert und geprüft, nicht mit Katalogempfehlungen verwechseln.
 
 # PDF-Größenfehler behoben · 18.10.2026
 

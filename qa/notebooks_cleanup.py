@@ -1,5 +1,6 @@
 """Export and erase exactly the successfully exercised artificial album family."""
 
+import hashlib
 import io
 import json
 import re
@@ -21,8 +22,12 @@ def require(value):
 def main():
     account = json.loads(PRIVATE.read_text())
     require(account.get("normal_account") and account.get("verified") and
-            account.get("notebook_qa", {}).get("phase") == "native_passed" and
+            account.get("notebook_qa", {}).get("phase") in ('native_passed', 'web_passed_native_pending') and
             re.search(r"\+schulpilot-normal-qa-[a-f0-9]{12}@", account["credentials"]["parent_username"]))
+    expected = hashlib.sha256(account['child_id'].encode()).hexdigest()
+    for name in ('web', 'native'):
+        evidence = json.loads((ROOT/f'artifacts/notebooks-{name}-result.json').read_text())
+        require(evidence.get('success') and evidence.get('dataset_key') == expected)
     headers = {'X-Schulpilot-Request': '1', 'X-Client-Platform': 'native'}
     with httpx.Client(base_url=BASE, headers=headers, timeout=60) as parent, httpx.Client(base_url=BASE, headers=headers, timeout=30) as child:
         for role, client in (('parent', parent), ('child', child)):

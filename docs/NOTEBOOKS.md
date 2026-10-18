@@ -62,15 +62,21 @@ erfolgreich. Nach dem abschließenden Clientcheck gegen ignorierte Fachfilter
 älterer Backends die17 betroffenen Widgettests/Analyse erneut bestanden und
 Web/Direct-APK/Play-AAB neu gebaut. Anschließend für den kompakteren37-Leser
 alle328 Fluttertests/Analyse und57 Backendregressionen bestanden.
-Diese Komponentenprüfungen sind noch kein
-öffentlicher oder nativer Nachweis. Keine Abhängigkeiten/SDKs aktualisiert.
+Keine Abhängigkeiten/SDKs aktualisiert.
 
-Öffentliche Abnahme vorbereitet mit26 ausschließlich künstlichen Foto-
+Öffentliche/native Abnahme1.6.1+37 bestanden mit26 ausschließlich künstlichen Foto-
 Uploads über die normale API, zwei echten reservierten OCR-Aufträgen und
 ausdrücklicher Bestätigung zweier Mathematikseiten.24 Seiten bleiben ehrlich
 unzugeordnet; keine Datenbankinjektion, kein beliebiger Debug-Endpunkt, keine
-erfundenen Kinderantworten. Checkpoint geschützt außerhalb von Git.
-`scripts/prepare_notebook_smoke.py`, `qa/notebooks_web.mjs`; native Abnahme,
-reguläre Familienlöschung sowie tatsächlicher Release in STATUS/Handoff
-nachführen. Vollständiger Katalogimport/Lerntipps sind ein eigener noch offener
+erfundenen Kinderantworten. Chrome390/1440px mit normalem Kinder-/Elternlogin,
+Fotopaging/Zoom/Ansichten, Sprung über Metadatenseiten und Netzfehler mit
+expliziter Wiederaufnahme geprüft. Null JavaScriptfehler/Album-Schreibaufrufe.
+Native reguläre Flutter-APK37 im API36-Emulator mit Fotos/Blättern/Zoom,
+Ansichten, Seitensprung, App-Neustart und Logout bestanden. Reales OTA36->37
+und drei Startchecks bestanden; kein physischer Gerätetest daraus abgeleitet.
+Export/all26 privaten Fotos/keine Lernbelege geprüft, eigene Familie regulär
+gelöscht, alte Sitzungen401, geschützten Checkpoint entfernt, Emulator beendet.
+`scripts/prepare_notebook_smoke.py`, `qa/notebooks_web.mjs`,
+`qa/android_notebooks.py`, `qa/notebooks_cleanup.py`; aktuelle Releasewerte
+in STATUS/Handoff. Vollständiger Katalogimport/Lerntipps sind ein eigener noch offener
 Ausbau, siehe CATALOG_INTEGRATION.md; nicht mit der Fachhefteransicht gleichsetzen.
