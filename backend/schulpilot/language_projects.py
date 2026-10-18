@@ -8,6 +8,7 @@ from sqlalchemy import select
 from . import language_tasks as s
 from .db import (
     DB,
+    Audit,
     Child,
     Family,
     Job,
@@ -29,6 +30,7 @@ from .vocabulary import KEY, authority, current_sources, fingerprint, literal_pr
 
 router = APIRouter(tags=["Quellgebundene Sprachwerkstatt"])
 OWN_WORK = {"writing_feedback", "model_text", "translation", "email"}
+REQUEUE_ACTIONS = ("language_project.repair", "language_project.retry")
 GRAMMAR_MARKERS = {"simple_present": ("simple present", "he, she, it", "third person", "dritte person"),
                    "simple_past": ("simple past", "past tense", "vergangenheit"),
                    "progressive": ("progressive", "present continuous", "verlaufsform")}
@@ -49,7 +51,9 @@ def project_data(db, row, *, child_view=True):
             "goal": row.inputs["goal"], "draft": row.inputs["draft"], "source_revisions": row.source_revisions,
             "previous_id": row.previous_id, "created": row.created,
             "item_ids": row.inputs["item_ids"], "material_id": row.inputs.get("material_id"),
-            "can_continue": row.mode == "dialog" and row.step < 4 and row.status == "ready"}
+            "can_continue": row.mode == "dialog" and row.step < 4 and row.status == "ready",
+            "can_retry": bool(child_view and status == "failed" and job and job.status == "failed" and not row.unit_id and not row.result
+                              and not db.scalar(select(Audit.id).where(Audit.action.in_(REQUEUE_ACTIONS), Audit.target == row.id)))}
 
 
 def context(db, row):
@@ -158,6 +162,22 @@ def get_project(child_id: str, project_id: str, p=Depends(authenticated), db=Dep
     if not row or row.child_id != child_id:
         raise HTTPException(404, "Sprachprojekt nicht gefunden.")
     return project_data(db, row, child_view=p.user.role == "child")
+
+
+@router.post("/children/{child_id}/language-projects/{project_id}/retry", status_code=202)
+def retry_project(child_id: str, project_id: str, data: s.ProjectRetry, idempotency_key: str = KEY,
+                  p=Depends(child_user), db=Depends(get_db)):
+    from .language_repair import requeue
+
+    child_access(db, p, child_id)
+    row = db.get(LanguageProject, project_id)
+    if not row or row.child_id != child_id:
+        raise HTTPException(404, "Sprachprojekt nicht gefunden.")
+    # The original failed job is the canonical operation key even if two
+    # devices use different request keys. A read/reload never reaches here.
+    requeue(db, project_id, data.failed_job_id, principal=p)
+    db.commit()
+    return project_data(db, row)
 
 
 def checked_output(raw, payload, row):

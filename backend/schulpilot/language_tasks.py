@@ -132,6 +132,10 @@ class ProjectRequest(Strict):
     language_confirmed: Literal[True]
 
 
+class ProjectRetry(Strict):
+    failed_job_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
 class LanguageGeneratedQuestion(Strict):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,60}$")
     type: Literal["choice", "short", "gap"]

@@ -189,6 +189,41 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
     }
   }
 
+  Future<void> retryProject(Json row) async {
+    if (!current || busy || !widget.state.isChild || row['can_retry'] != true) {
+      return;
+    }
+    final originRoute = ModalRoute.of(context);
+    FocusManager.instance.primaryFocus?.unfocus();
+    poll?.cancel();
+    generation++;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final body = {'failed_job_id': row['job_id']};
+      final encoded = jsonEncode(body);
+      if (requestBody != encoded) {
+        requestBody = encoded;
+        requestKey = vocabularyKey();
+      }
+      final result = await widget.state.api.post(
+        '$base/language-projects/${row['id']}/retry',
+        body,
+        {'Idempotency-Key': requestKey!},
+      );
+      requestBody = requestKey = null;
+      if (!current || originRoute?.isCurrent == false) return;
+      setState(() => project = result);
+      await load();
+    } catch (e) {
+      if (current) setState(() => error = '$e');
+    } finally {
+      if (current) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
@@ -513,8 +548,18 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
               if (row['error'] != null) Notice(row['error'], warning: true),
               if (row['status'] == 'failed')
                 const Text(
-                  'Dein Entwurf bleibt erhalten. Es wurden keine Ersatzaufgaben erfunden. Du kannst mit einer neuen bewussten Aktion neu beginnen.',
+                  'Deine Wörter und dein Entwurf bleiben gespeichert.',
                 ),
+              if (widget.state.isChild && row['can_retry'] == true) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: busy ? null : () => retryProject(row),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    busy ? 'Wird vorbereitet …' : 'Erneut vorbereiten',
+                  ),
+                ),
+              ],
               if ((row['draft'] ?? '').toString().isNotEmpty)
                 ExpansionTile(
                   title: const Text('Mein gespeicherter Versuch'),

@@ -1,19 +1,49 @@
 # Laufende Korrektur · Sprachwerkstatt · 18.10.2026
 
-Gezielt und auditierbar diagnostizierter Prüfauftrag: KI-Aufruf abgeschlossen,
-anschließend wegen nicht wörtlich passendem `source_excerpt` verworfen. Keine
-Einheit und keine Antworten angelegt. Quellen, Wörter und Sitzung sind aktuell.
-Korrektur implementiert: Belege aus bestätigten Wortpaaren vorab im privaten
-Anbieterschema festlegen, weiterhin serverseitig gegen Quelle und Revision
-prüfen. Alle **830 PostgreSQLtests** bestanden (895,56 s), darunter 24 neue
-Adapter-/Reparaturregressionen; alle **309 Fluttertests** bestanden. Statische
-Analyse, Ruff, Syntax-/Diffprüfung erfolgreich. Vorhandene signierte APK und
-Play-AAB 1.4.3+33 erneut validiert; kein Fluttercode und kein Schema geändert.
-Geheimnisprüfung: 404 Quelldateien/244 Archiveinträge gegen 16 tatsächliche
-Geheimnisquellen, kein Fund. Nächste Schritte: reguläres gesichertes Deployment,
-tatsächlicher künstlicher Prüfauftrag im Browser/native, genau ein auditierter
-Reparaturauftrag für das beauftragte Projekt. Alte Fehler und Verbrauch erhalten.
-Noch keine Bereitstellung oder erfolgreiche Wiederherstellung behauptet.
+**Zwischenstand / Fortsetzung:** Belegfix `9e53947` ist gepusht und als
+`20261018T121428Z-9e53947` öffentlich aktiv, Schema 0016. Sicherung erfolgreich,
+sieben Dienste aktiv; Web/APK unverändert bytegenau geprüft. Öffentliche Probe
+mit zehn eigenen künstlichen Wörtern: genau ein tatsächlicher Codex-Auftrag,
+fünf Aufgaben, eine gespeicherte Webantwort, Feedback nach Reload und gleicher
+Eltern-/Kinderfortschritt, keine JS-Laufzeitfehler. Keine privaten Lösungen
+vorab ausgeliefert. GitHub-CI 39118506744 startete wegen Kontosperre/Billing
+nicht; lokale 830 Backend-/309 Fluttertests erfolgreich.
+
+Die lokale Reparatur des beauftragten Projekts wurde **vor Reservierung** mit
+401 abgewiesen: seine frühere Kindersitzung wurde inzwischen abgemeldet.
+Keinen Sitzungseintrag reaktivieren/erfinden. Version 1.4.4+34 in Arbeit:
+geschützte ausdrückliche Wiederholung aus einer frischen eigenen Kindersitzung,
+gleicher Link, maximal ein zusätzlicher normal reservierter Auftrag; alte
+Fehler/Verbrauch unverändert. Code/Tests neu prüfen, APK/Web bauen und ausrollen.
+Native Probe abgeschlossen: installierte Flutter-APK33 im API36-Emulator,
+Webantwort fortgesetzt und vier weitere Aufgaben beantwortet. Exakt fünf
+Attempts/Reviewereignisse, konsistenter Eltern-/Kinderfortschritt, Export und
+Löschung bestanden; Kontodatei entfernt, alte Sitzungen 401. Der anfängliche
+System-UI-ANR wurde beendet; keine physische Telefon-/Audioabnahme behaupten.
+Neue 313 Fluttertests und Analyse bestanden. Vollständiger PostgreSQLlauf:
+838 bestanden, ein bestehender echter CLI-Metadatentest vorübergehend 503;
+anschließend alle 27 Tests dieses Moduls bestanden (8,82 s). Erneuter voller
+Lauf läuft noch. Web, signierte Direct-APK und Play-AAB 1.4.4+34 gebaut,
+Signatur/Zipalign und bundletool bestanden. APK 65.168.233 Bytes, SHA-256
+`6e9e1321bb6580ee34559918afadf3275376ca5bfb2e2823be2fe3a09f9d9316`.
+Geheimnisprüfung: 405 Quelldateien/244 Archiveinträge, 14 reale Geheimnisquellen,
+kein Fund. Keine Änderung von Provider-/Such-/Zeitgrenzen.
+
+Danach beauftragte Folgearbeiten (noch nicht begonnen):
+1. Eltern-Notenimport aus `~/Downloads/Elternportal_fuxNoten.pdf`, aktuelles
+   Schuljahr, wiederholbarer Import mit Erkennung bereits vorhandener Noten.
+2. `~/Downloads/Schulpilot_Sofatutor_ThemenDB.zip` tatsächlich untersuchen und
+   importieren; zentraler vorab vorhandener Fachstamm, kontrollierte
+   Altdatenmigration und gemeinsame quell-/stufengetreue Lerntipps integrieren.
+
+3. Bildbasierte A4-Papphefter je Fach, echtes privates Fotoalbum mit
+   Blättern sowie Listen-/Kachelansichten. Zentralen Fachstamm weiterverwenden.
+PDF und Sofatutor-ZIP liegen jetzt vor. Archiv 1.5 tatsächlich geprüft:
+16 Fächer, 126 Stufen (124 aktive und zwei Legacy), 1.558 Themen, 7.559 Videos,
+668 Lerntexte, 19.603 bestätigte Video-Zuordnungszeilen. Noch nicht importiert.
+PDF lokal ohne KI untersucht; 14 Einzelnoten in sechs Fächern erkannt,
+Summen-/Schnittspalten ausgeschlossen, kein individuelles Bewertungsdatum.
+Keine Notenwerte oder Namen in Logs/Git übernehmen.
 
 # Aktueller Stand · Foto-Vokabeln 1.4.3+33 · 18.10.2026
 

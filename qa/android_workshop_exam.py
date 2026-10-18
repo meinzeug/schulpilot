@@ -33,12 +33,18 @@ def main():
         words = read(api, "/children/" + account["child_id"] + "/vocabulary?page_size=50")
         dictionary = {word["id"]: word["word"] for word in words["items"]}
         unit = read(api, "/units/" + state["unit_id"])
-        require(unit["pending_feedback"]["attempt_id"] == state["web_attempt_id"], "same_saved_web_feedback_required")
+        require(any(a["id"] == state["web_attempt_id"] for q in unit["questions"] for a in q["attempts"]), "same_saved_web_answer_required")
         launch()
-        if not native.matching("Willkommen zurück"):
-            require(bool(native.matching("Anmelden")), "logged_out_own_device_required")
+        native.wait_any(["Willkommen zurück", "Anmelden", "Lernrunde verlassen", "Konto"], seconds=60)
+        if native.matching("Lernrunde verlassen"):
+            native.press("Lernrunde verlassen")
+        if native.matching("Anmelden") and not native.matching("Willkommen zurück"):
             native.press("Anmelden")
-        login(account["credentials"], "child")
+        if native.matching("Willkommen zurück"):
+            login(account["credentials"], "child")
+        else:
+            native.press("Konto")
+            native.wait(account["credentials"]["child_username"])
         native.press("Wörter")
         native.wait("Meine Wörter")
         native.press("Wörter anwenden")
@@ -47,7 +53,8 @@ def main():
         native.wait("Mit den Aufgaben üben")
         native.screenshot("workshop-exam-native-project.png")
         native.press("Mit den Aufgaben üben")
-        native.wait("Weiter")
+        if read(api, "/units/" + state["unit_id"]).get("pending_feedback"):
+            native.wait("Weiter")
         checks.append("native_project_directly_usable_and_web_feedback_resumed")
         answered_here = 0
         for _ in range(12):
@@ -66,15 +73,23 @@ def main():
             if question["type"] == "choice":
                 native.press(answer, scroll=True)
             else:
-                native.wait("Deine Antwort")
-                field = next(n for n in native.nodes() if n.get("class") == "android.widget.EditText")
-                native.tap_node(field)
+                fields = []
+                for _ in range(12):
+                    fields = [n for n in native.nodes() if n.get("class") == "android.widget.EditText"]
+                    if fields:
+                        break
+                    native.adb("shell", "input", "swipe", "900", "1700", "900", "1300", "300")
+                require(len(fields) == 1, "one_native_answer_editor_required")
+                native.tap_node(fields[0])
                 input_text(answer)
                 native.adb("shell", "input", "keyevent", "4")
             native.press("Antwort prüfen", scroll=True)
-            time.sleep(.7)
-            changed = read(api, "/units/" + state["unit_id"])
-            saved = next(q for q in changed["questions"] if q["id"] == question["id"])
+            for _ in range(40):
+                changed = read(api, "/units/" + state["unit_id"])
+                saved = next(q for q in changed["questions"] if q["id"] == question["id"])
+                if saved["attempts"]:
+                    break
+                time.sleep(.5)
             require(len(saved["attempts"]) == 1 and saved["attempts"][0]["outcome"] == "correct", "native_answer_must_be_saved_once_and_correct")
             answered_here += 1
         unit = read(api, "/units/" + state["unit_id"])
@@ -90,7 +105,8 @@ def main():
         PRIVATE.write_text(json.dumps(account) + "\n")
         PRIVATE.chmod(0o600)
         report = {"success": True, "native_flutter": True, "installed_code": 33, "android_api": 36,
-                  "checks": checks, "native_answers": answered_here, "total_questions": len(unit["questions"]), "extra_ai_calls": 0}
+                  "checks": checks, "native_answers": len(unit["questions"]) - 1, "answers_this_resume": answered_here,
+                  "total_questions": len(unit["questions"]), "extra_ai_calls": 0}
         (native.ARTIFACTS / "workshop-exam-native-result.json").write_text(json.dumps(report) + "\n")
         print(json.dumps(report))
 

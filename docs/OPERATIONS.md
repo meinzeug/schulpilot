@@ -2,15 +2,20 @@
 
 ## Sprachwerkstatt-Korrektur · 18.10.2026
 
-Belegbindung im bestehenden Backend, keine Schema-/Clientänderung. Migration
-bleibt 0016, Web und signierte APK/AAB 1.4.3+33 bleiben unverändert bedienbar.
+Belegfix 9e53947 als 20261018T121428Z-9e53947 aktiv. Ergänzung 1.4.4+34
+erlaubt eine ausdrückliche Wiederaufnahme aus einer frischen Kindersitzung.
+Keine Migration: Schema bleibt 0016, ältere Clients bleiben bedienbar.
 Vor Aktivierung regulär sichern und nur SCHULPILOT-Dienste erneuern.
-Kompatibler Code-Rückweg auf `20261018T112557Z-48add35`, zusätzliche Aufträge
+Kompatibler Code-Rückweg auf `20261018T121428Z-9e53947`, zusätzliche Aufträge
 erst kontrolliert abarbeiten; keine Datenrücksicherung und kein Schema-Downgrade.
 
 Lokaler einmaliger Reparaturweg für ausdrücklich beauftragte Fehler steht in
 LANGUAGE_LEARNING.md. Alte Job-/Verbrauchsbelege erhalten, normale Reservierung
-und Worker verwenden. Keine öffentliche Umgehung und kein automatischer Retry.
+und Worker verwenden. Kein ungeschützter Operatorendpunkt und kein automatischer Retry. Der normale
+authentifizierte Kinder-POST verlangt eine neue bewusste Aktion; lokale
+Reparatur und Kinderaktion zusammen höchstens ein Zusatzauftrag je Projekt.
+Abgemeldete Sitzung niemals reaktivieren; nach normalem Login ursprünglichen
+Projektlink öffnen und „Erneut vorbereiten“ wählen.
 Abnahme: eigenes normales künstliches Konto vorbereiten mit
 `scripts/prepare_language_smoke.py`; nach gesichertem Deployment
 `node qa/workshop_exam.mjs --run --expected-commit <vollständiger Produktcommit>`,

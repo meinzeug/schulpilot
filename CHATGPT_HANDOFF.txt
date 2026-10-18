@@ -1,19 +1,41 @@
-SCHULPILOT – laufende Sprachwerkstatt-Korrektur · 18.10.2026
+SCHULPILOT – Sprachwerkstatt-Korrektur · 18.10.2026
 
-Vorrangiger Arbeitsstand: gezielt beauftragter Prüfauftrag scheiterte nach
-erfolgreicher KI-Antwort am wörtlichen Beleg. Quellen/Wörter/Sitzung aktuell,
-keine Einheit angelegt. Private Kinderdaten nicht in diese Übergabe übernehmen.
-Korrektur bindet source_excerpt im Anbieterschema an bestätigte Wortpaare;
-nach Transport weiter Wortzuordnung und sämtliche Workerprüfungen erzwingen.
-Lokaler einmaliger Reparaturweg mit Audit, normalen Grenzen und Erhalt des
-ursprünglichen Fehlers/Verbrauchs. Keine neue öffentliche Reparatur-API.
-Alle 830 PostgreSQLtests (24 neu) und 309 Fluttertests bestanden; Analyse,
-Ruff, Syntax-/Diff-/Geheimnisprüfung erfolgreich. APK/AAB 1.4.3+33 erneut
-validiert und unverändert; kein neuer Flutterbuild und keine Migration nötig.
-Öffentliche künstliche Browser-/native Prüfung und Reparatur noch ausstehend.
-Fortsetzung: docs/LANGUAGE_LEARNING.md und docs/OPERATIONS.md. Privates eigenes
-Prüfkonto liegt nur unter artifacts/.school-day-qa-account.json (0600).
-Keine erfolgreiche Bereitstellung/Reparatur aus diesem Zwischenstand ableiten.
+Belegfix 9e53947085a7045f82d0c7ee74fa3d9fcbc7ad83 gepusht und als
+20261018T121428Z-9e53947 öffentlich aktiv. Schema 0016, Sicherung erfolgreich,
+sieben vorhandene Dienste aktiv, öffentliche APK/Webbundle bytegenau geprüft.
+KI-Belege vor Erzeugung an bestätigte Wortpaare binden und anschließend weiter
+Wort-ID, Quellenrevision, Sitzung und Lösung prüfen. Keine Ersatzaufgaben.
+Eigener künstlicher regulärer Haushalt: genau ein tatsächlicher Codex-Auftrag,
+zehn bestätigte Wörter, fünf Prüfaufgaben. Eine Webantwort, vier native
+Android-Antworten, Feedback nach Reload und Fortsetzung, keine privaten
+Lösungsschlüssel vorab. Eltern/Kind sehen dieselben fünf bearbeiteten Aufgaben.
+Export: zehn Wörter, ein Projekt/eine KI-Nutzung, fünf Attempts und fünf
+referenzierte Reviewereignisse. Eigenen Haushalt normal gelöscht, alte
+Sitzungen 401, private Kontodatei entfernt. Keine reale Audio-/Telefonabnahme.
+
+Das gezielt beauftragte echte Projekt ist weiterhin fehlgeschlagen: seine alte
+Kindersitzung wurde inzwischen abgemeldet. Lokale Reparatur wurde vor
+Reservierung korrekt mit 401 gesperrt; keine Sitzung reaktiviert, keine
+Kinderantworten verändert. Ergänzung 1.4.4+34 in Prüfung: frischer normaler
+Kinderlogin -> ursprünglicher Projektlink -> „Erneut vorbereiten“. Genau ein
+bewusster normal reservierter Zusatzauftrag; frühere Fehler/Verbrauch erhalten.
+Kein ungeschützter Operatorzugang und keine automatische Wiederholung.
+Aktuelle Tests/Build-/Deploymentfreigabe in docs/STATUS.md nachführen.
+Belegfix: 830 PostgreSQL-/309 Fluttertests bestanden. Wiederaufnahme:
+313 Fluttertests/Analyse bestanden; 838 PostgreSQLtests bestanden, ein
+bestehender CLI-Metadatentest vorübergehend 503, alle 27 Modultests danach
+bestanden. Erneuter Gesamtlauf läuft noch. Web/signierte Direct-APK/Play-AAB
+1.4.4+34 gebaut, Signatur/Zipalign/bundletool geprüft. APK 65168233 Bytes,
+SHA-256 6e9e1321bb6580ee34559918afadf3275376ca5bfb2e2823be2fe3a09f9d9316.
+GitHub-CI39118506744 wegen Kontosperre/Abrechnung ohne Schritte abgewiesen;
+kein erfolgreicher gehosteter CI-Lauf. Normale Anmeldung selbst durchführen,
+keine Passwörter/Sitzungen/Tokens an ChatGPT übergeben.
+
+Weitere beauftragte Arbeit: wiederholbarer Fuxnoten-PDFimport (Datei vorhanden),
+Sofatutor-Katalog/Fachstamm/Lerntipps (ZIP jetzt vorhanden und untersucht),
+anschließend Bildhefter/Fotoalbum/Listenschalter. Nichts davon bereits als
+implementiert ausgeben. Fortsetzung: docs/STATUS.md, LANGUAGE_LEARNING.md,
+OPERATIONS.md. Private Inhalte niemals in diese Übergabe übernehmen.
 
 SCHULPILOT – Foto-Vokabeln 1.4.3+33 · bereitgestellt
 

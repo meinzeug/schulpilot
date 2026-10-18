@@ -18,24 +18,37 @@ Lösung, Hilfe, Grammatik und Providerrevision. Keine gelockerte Sach-/Mathe-
 Bewertung und keine Ersatzaufgaben nach einem KI-Fehler. Bestehende gespeicherte
 Einheiten/Antworten behalten ihre Belege und Bewertung.
 
-Nur lokaler Operator: `python -m schulpilot.language_repair --project <id>
---failed-job <id> --confirmed-code-fix` darf nach beauftragter Diagnose und
-nachgewiesener Korrektur genau einen neuen Reparaturauftrag normal reservieren.
-Mit produktiver Dienstumgebung als Benutzer `schulpilot` ausführen; niemals
-Umgebungsdatei/Schlüssel ausgeben. Kein öffentlicher Reparaturendpunkt. Sperre
-des Kindes, aktueller Sitzungs-/Quellen-/Tarifcheck und Audit
-`language_project.repair` verhindern doppelte Reservierung auch parallel.
-Frühere Job-/Verbrauchszeilen bleiben unverändert. Das bisher fehlgeschlagene
-Projekt ohne Einheit erhält denselben Link mit neuem Auftrag; vorhandene
-Übungen oder Antworten dürfen nicht ersetzt werden. Ein wiederholter CLI-
-Aufruf mit demselben ursprünglichen Fehlerauftrag liest nur das Resultat.
-Kein zweiter Reparaturversuch pro Projekt und keine automatische Wiederholung.
+Die bewusste Aktion „Erneut vorbereiten“ verwendet
+`POST /children/{child}/language-projects/{project}/retry` mit aktuellem
+Kinderlogin und ursprünglicher Fehlerauftrag-ID. Kein Öffnen, GET oder Reload
+startet die KI. Ein nach Abmeldung widerrufener Zugang bleibt widerrufen;
+ausschließlich diese neue ausdrückliche Aktion bindet die aktuelle eigene
+Sitzung. Eltern, Geschwister, andere Familien und Betriebsadmins können den
+Kinderauftrag nicht starten. `can_retry` ist eine reine Leseprojektion.
 
-Arbeitsstand: alle 830 PostgreSQLtests (darunter 24 neue Adapter-/Reparaturtests)
-und 309 Fluttertests bestanden. Analyse/Ruff/Syntax-/Geheimnisprüfung erfolgreich.
-Unveränderte signierte APK und Play-AAB erneut validiert, Schema 0016 erhalten.
-Öffentliche Browser-/native Abnahme und Produktivreparatur noch ausstehend;
-echte Ergebnisse und aktivierten Release in STATUS/Handoff nachführen.
+Nur lokaler Operator: `python -m schulpilot.language_repair --project <id>
+--failed-job <id> --confirmed-code-fix` ist ein getrennter auditierter Weg nach
+beauftragtem Codefix. Mit produktiver Dienstumgebung als Benutzer `schulpilot`
+ausführen; niemals Umgebungsdatei/Schlüssel ausgeben. Keine ungeschützte
+Operatorschnittstelle. Beide Wege zusammen erlauben höchstens einen zusätzlichen
+normal reservierten Auftrag je fehlgeschlagenem Projekt. Child-Sperre,
+deterministische Job-ID und Audit serialisieren mehrere Geräte; wiederholte
+Anfragen lesen das vorhandene Resultat. Fehlender Tarif, geänderte Quellen,
+gelöschte Wörter, laufender Auftrag oder widerrufene neue Sitzung sperren die
+Übernahme. Alte Fehler/Versuchszähler/Verbrauch und vorhandene Antworten bleiben
+erhalten; keine automatische Wiederholung oder Ersatzübung.
+
+Tatsächliche öffentliche Abnahme des Belegfixes: eigener regulärer künstlicher
+Haushalt, zehn manuell bestätigte Wörter, genau ein Codex-Auftrag mit fünf
+Prüfaufgaben. Erste Antwort im Web, vier weitere in nativer Flutter-APK33 auf
+API36; Feedback nach Reload/Neustart, fünf identische Eltern-/Kinderaufgaben,
+ein Reviewereignis je Attempt. Lösungen nicht vorab ausgeliefert. Export und
+Löschung des eigenen Haushalts bestanden, alte Sitzungen danach 401, private
+Kontodatei entfernt. Kein physisches Telefon und keine Audioabnahme.
+Das beauftragte echte Projekt ist wegen zwischenzeitlicher Abmeldung noch
+nicht erneut erzeugt: keine Sitzung heimlich reaktivieren. Frisch anmelden und
+am ursprünglichen Link ausdrücklich „Erneut vorbereiten“ wählen.
+Aktivierte Releases und abschließende Regressionen: STATUS/Handoff.
 
 ## Foto → Wortschatz · Ausbau 18.10.2026
 

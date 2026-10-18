@@ -40,6 +40,7 @@ async function reveal(locator, modal=false) {
     await page.mouse.move(page.viewportSize().width-25,page.viewportSize().height-150);
     await page.mouse.wheel(0,box && box.y<top?-400:400); await page.waitForTimeout(140);
   }
+  if(phase!=='own_child_login') console.log(JSON.stringify({missing_control:target.toString()}));
   throw new Error('visible_workshop_control_missing');
 }
 async function tap(locator,modal=false) {
@@ -100,10 +101,14 @@ try {
   assert.equal(signed.user.child_id,account.child_id); await page.waitForURL(base+'/app');
   if(!state.project_id) {
     await checkpoint('explicit_exam_ui_action'); await open('/language-projects/'+account.child_id);
-    await tap(page.getByText('Wörter im Zusammenhang',{exact:true}));
-    await tap(page.getByText('Probe mit verdeckten Lösungen',{exact:true}),true);
+    await checkpoint('choose_exam_mode');
+    await tap(page.getByRole('button',{name:/Was möchtest du üben\?.*Wörter im Zusammenhang/s}));
+    await tap(page.getByRole('menuitem',{name:'Probe mit verdeckten Lösungen',exact:true}),true);
+    await checkpoint('set_exam_goal');
     await type(page.getByRole('textbox',{name:'Dein konkretes Lernziel'}),'Prüfe meine Schulwörter mit eindeutigen Wortlücken. Keine freien Sätze.');
+    await checkpoint('select_exam_words');
     for(const [word] of pairs) await tap(page.getByLabel(word,{exact:true}).or(page.getByText(word,{exact:true})));
+    await checkpoint('submit_exam');
     const project=await tapResponse(button('Mein Lernprojekt vorbereiten'),'/children/'+account.child_id+'/language-projects',202);
     createdHere=true;
     state.project_id=project.id; await checkpoint('one_reserved_exam_queued');
@@ -145,6 +150,7 @@ try {
   await writeFile(dir+'workshop-exam-web-result.json',JSON.stringify({success:true,checks,questions:unit.questions.length,project_posts:posts.length,additional_import_ai_calls:0,runtime_errors:0})+'\n');
   console.log(JSON.stringify({success:true,checks}));
 } catch(error) {
+  if(page && phase!=='own_child_login') await page.screenshot({path:dir+'workshop-exam-web-failure.png',timeout:15000}).catch(()=>{});
   await writeFile(dir+'workshop-exam-web-result.json',JSON.stringify({success:false,phase,error:process.argv.includes('--run')?error.message:'explicit_run_required'})+'\n');
   console.error(JSON.stringify({success:false,phase,error:error.message})); process.exitCode=1;
 } finally {await browser?.close();}
