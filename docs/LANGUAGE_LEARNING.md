@@ -1,5 +1,42 @@
 # Sprachlernen – fortsetzbarer Arbeitsstand
 
+## Belegbindung der Sprachwerkstatt · Korrektur 18.10.2026
+
+Ein gezielt freigegebener Prüfauftrag scheiterte nach abgeschlossener
+KI-Antwort: Der frei erzeugte `source_excerpt` war kein wörtlich passender
+Beleg. Es wurde keine Einheit angelegt. Nicht mit einer Anbieterunterbrechung,
+einer falschen Kinderantwort oder fehlendem Wortschatz gleichsetzen.
+
+`providers.bind_language_project_sources` bindet vor dem einzigen Aufruf
+Projekt-/Aufgabenbelege an die ausdrücklich bestätigten Paare `word = meaning`.
+Diese kanonische Darstellung belegt den bestätigten Wortschatz, nicht das
+Tabellenlayout eines Fotos. Auswahl der Wort-ID, Ziel-/Beispielsprache und
+ausdrücklich gewählter Aufgabenart ebenfalls im privaten Schema begrenzen.
+Nach dem Transport passende Beleg-/Wortzuordnung erneut prüfen; anschließend
+gelten sämtliche bisherigen Workerprüfungen für Quellenrevision, Sitzung,
+Lösung, Hilfe, Grammatik und Providerrevision. Keine gelockerte Sach-/Mathe-
+Bewertung und keine Ersatzaufgaben nach einem KI-Fehler. Bestehende gespeicherte
+Einheiten/Antworten behalten ihre Belege und Bewertung.
+
+Nur lokaler Operator: `python -m schulpilot.language_repair --project <id>
+--failed-job <id> --confirmed-code-fix` darf nach beauftragter Diagnose und
+nachgewiesener Korrektur genau einen neuen Reparaturauftrag normal reservieren.
+Mit produktiver Dienstumgebung als Benutzer `schulpilot` ausführen; niemals
+Umgebungsdatei/Schlüssel ausgeben. Kein öffentlicher Reparaturendpunkt. Sperre
+des Kindes, aktueller Sitzungs-/Quellen-/Tarifcheck und Audit
+`language_project.repair` verhindern doppelte Reservierung auch parallel.
+Frühere Job-/Verbrauchszeilen bleiben unverändert. Das bisher fehlgeschlagene
+Projekt ohne Einheit erhält denselben Link mit neuem Auftrag; vorhandene
+Übungen oder Antworten dürfen nicht ersetzt werden. Ein wiederholter CLI-
+Aufruf mit demselben ursprünglichen Fehlerauftrag liest nur das Resultat.
+Kein zweiter Reparaturversuch pro Projekt und keine automatische Wiederholung.
+
+Arbeitsstand: alle 830 PostgreSQLtests (darunter 24 neue Adapter-/Reparaturtests)
+und 309 Fluttertests bestanden. Analyse/Ruff/Syntax-/Geheimnisprüfung erfolgreich.
+Unveränderte signierte APK und Play-AAB erneut validiert, Schema 0016 erhalten.
+Öffentliche Browser-/native Abnahme und Produktivreparatur noch ausstehend;
+echte Ergebnisse und aktivierten Release in STATUS/Handoff nachführen.
+
 ## Foto → Wortschatz · Ausbau 18.10.2026
 
 Mit 1.4.3+33 bereitgestellt und mit ausschließlich künstlichen Inhalten geprüft:

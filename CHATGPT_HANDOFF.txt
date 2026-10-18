@@ -1,3 +1,20 @@
+SCHULPILOT – laufende Sprachwerkstatt-Korrektur · 18.10.2026
+
+Vorrangiger Arbeitsstand: gezielt beauftragter Prüfauftrag scheiterte nach
+erfolgreicher KI-Antwort am wörtlichen Beleg. Quellen/Wörter/Sitzung aktuell,
+keine Einheit angelegt. Private Kinderdaten nicht in diese Übergabe übernehmen.
+Korrektur bindet source_excerpt im Anbieterschema an bestätigte Wortpaare;
+nach Transport weiter Wortzuordnung und sämtliche Workerprüfungen erzwingen.
+Lokaler einmaliger Reparaturweg mit Audit, normalen Grenzen und Erhalt des
+ursprünglichen Fehlers/Verbrauchs. Keine neue öffentliche Reparatur-API.
+Alle 830 PostgreSQLtests (24 neu) und 309 Fluttertests bestanden; Analyse,
+Ruff, Syntax-/Diff-/Geheimnisprüfung erfolgreich. APK/AAB 1.4.3+33 erneut
+validiert und unverändert; kein neuer Flutterbuild und keine Migration nötig.
+Öffentliche künstliche Browser-/native Prüfung und Reparatur noch ausstehend.
+Fortsetzung: docs/LANGUAGE_LEARNING.md und docs/OPERATIONS.md. Privates eigenes
+Prüfkonto liegt nur unter artifacts/.school-day-qa-account.json (0600).
+Keine erfolgreiche Bereitstellung/Reparatur aus diesem Zwischenstand ableiten.
+
 SCHULPILOT – Foto-Vokabeln 1.4.3+33 · bereitgestellt
 
 Stand 18.10.2026; dieser Abschnitt hat Vorrang vor der Historie unten.

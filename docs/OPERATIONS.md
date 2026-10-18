@@ -1,5 +1,23 @@
 # Betrieb
 
+## Sprachwerkstatt-Korrektur · 18.10.2026
+
+Belegbindung im bestehenden Backend, keine Schema-/Clientänderung. Migration
+bleibt 0016, Web und signierte APK/AAB 1.4.3+33 bleiben unverändert bedienbar.
+Vor Aktivierung regulär sichern und nur SCHULPILOT-Dienste erneuern.
+Kompatibler Code-Rückweg auf `20261018T112557Z-48add35`, zusätzliche Aufträge
+erst kontrolliert abarbeiten; keine Datenrücksicherung und kein Schema-Downgrade.
+
+Lokaler einmaliger Reparaturweg für ausdrücklich beauftragte Fehler steht in
+LANGUAGE_LEARNING.md. Alte Job-/Verbrauchsbelege erhalten, normale Reservierung
+und Worker verwenden. Keine öffentliche Umgehung und kein automatischer Retry.
+Abnahme: eigenes normales künstliches Konto vorbereiten mit
+`scripts/prepare_language_smoke.py`; nach gesichertem Deployment
+`node qa/workshop_exam.mjs --run --expected-commit <vollständiger Produktcommit>`,
+danach `qa/android_workshop_exam.py` und `qa/workshop_exam_cleanup.py`.
+Fehlgeschlagene KI-Aufträge nicht durch erneuten Skriptstart neu erzeugen.
+Aktivierung und tatsächlich erzielte Ergebnisse in STATUS/Handoff nachlesen.
+
 ## Foto-Wortschatz 1.4.3+33
 
 Aktiviert am 18.10.2026: `20261018T112557Z-48add35`. Sicherung erfolgreich,

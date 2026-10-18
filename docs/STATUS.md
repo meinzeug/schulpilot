@@ -1,3 +1,20 @@
+# Laufende Korrektur · Sprachwerkstatt · 18.10.2026
+
+Gezielt und auditierbar diagnostizierter Prüfauftrag: KI-Aufruf abgeschlossen,
+anschließend wegen nicht wörtlich passendem `source_excerpt` verworfen. Keine
+Einheit und keine Antworten angelegt. Quellen, Wörter und Sitzung sind aktuell.
+Korrektur implementiert: Belege aus bestätigten Wortpaaren vorab im privaten
+Anbieterschema festlegen, weiterhin serverseitig gegen Quelle und Revision
+prüfen. Alle **830 PostgreSQLtests** bestanden (895,56 s), darunter 24 neue
+Adapter-/Reparaturregressionen; alle **309 Fluttertests** bestanden. Statische
+Analyse, Ruff, Syntax-/Diffprüfung erfolgreich. Vorhandene signierte APK und
+Play-AAB 1.4.3+33 erneut validiert; kein Fluttercode und kein Schema geändert.
+Geheimnisprüfung: 404 Quelldateien/244 Archiveinträge gegen 16 tatsächliche
+Geheimnisquellen, kein Fund. Nächste Schritte: reguläres gesichertes Deployment,
+tatsächlicher künstlicher Prüfauftrag im Browser/native, genau ein auditierter
+Reparaturauftrag für das beauftragte Projekt. Alte Fehler und Verbrauch erhalten.
+Noch keine Bereitstellung oder erfolgreiche Wiederherstellung behauptet.
+
 # Aktueller Stand · Foto-Vokabeln 1.4.3+33 · 18.10.2026
 
 **Implementiert und bereitgestellt:** Wörtliche

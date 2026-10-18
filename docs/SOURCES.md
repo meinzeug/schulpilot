@@ -1,5 +1,14 @@
 # Offizielle Quellen, geprüft am 14.10.2026
 
+Sprachwerkstatt-Belegkorrektur, 18.10.2026: ausschließlich bestehende
+JSON-Schema-/Workerpfade erweitert; keine Änderung der Provider-API,
+SDK-Versionen, Modelle, Suchrechte oder Preis-/Zeitgrenzen. Die konkreten
+Belege stammen aus den bereits bestätigten eigenen Wortpaaren. Künstliche
+Adapterregressionen prüfen OpenAI Responses, OpenRouter und den isolierten
+Codex-Worker getrennt; tatsächliche externe Abnahme und Grenzen stehen in
+STATUS/Handoff. Anbieterantwort und serverseitige Freigabe bleiben getrennte
+Prüfschritte; keine behauptete externe Validierung privater Kinderinhalte.
+
 Oberflächengestaltung, zusätzlich geprüft am 18.10.2026:
 
 - [W3C WCAG 2.2 – Textkontrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html):

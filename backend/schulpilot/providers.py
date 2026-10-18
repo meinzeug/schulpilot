@@ -315,6 +315,37 @@ def prune_schema(schema):
     return schema
 
 
+def bind_language_project_sources(schema, payload):
+    """Choose evidence from confirmed word pairs instead of inventing a quote.
+
+    Notebook tables need not use '='. The canonical pair is already an
+    explicitly confirmed source in the workshop, not a claimed photo quote.
+    Keep the existing worker's literal/source-revision checks as a second gate.
+    """
+    evidence = [
+        {"vocabulary_item_id": word["id"], "source_excerpt": f"{word['word']} = {word['meaning']}"}
+        for word in payload.get("words", [])
+    ]
+    if not evidence:
+        raise ProviderError("Bitte zuerst bestätigte Wörter für das Sprachprojekt auswählen.")
+    quotes = list(dict.fromkeys(item["source_excerpt"] for item in evidence))
+    schema["properties"]["source_excerpt"]["enum"] = quotes
+    question = schema["$defs"]["LanguageGeneratedQuestion"]["properties"]
+    question["source_excerpt"]["enum"] = quotes
+    question["vocabulary_item_id"]["enum"] = [item["vocabulary_item_id"] for item in evidence]
+    locales = list(dict.fromkeys(["de-DE", payload["target_locale"]]))
+    schema["properties"]["response_locale"]["enum"] = locales
+    question["cue_locale"]["enum"] = locales
+    mode = payload["mode"]
+    question["task_kind"]["enum"] = (
+        [mode] if mode in ("context_gap", "sentence_order", "grammar")
+        else ["context_gap", "sentence_order", "free_sentence"]
+    )
+    if mode == "sentence_order":
+        question["type"]["enum"] = ["short"]
+    return {**payload, "source_evidence": evidence}, quotes
+
+
 def indexed_choice_schema(schema):
     """Bind a generated choice to an option without repeating its text.
 
@@ -788,6 +819,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         if assigned_goals and len(assigned_goals) == len(payload["completed_questions"]):
             model_type = s.AssignedCoachingReviewOutput
     schema = strict_schema(model_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    language_quotes = None
+    if function == "language_project":
+        payload, language_quotes = bind_language_project_sources(schema, payload)
     if function == "coach":
         if excerpt_candidates is not None:
             schema["$defs"]["LearningGoal"]["properties"]["source_excerpt"]["enum"] = excerpt_candidates
@@ -808,6 +842,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     review_only = function == "coach" and bool(payload.get("defer_practice"))
     instructions = system_text(function, review_only=review_only)
+    if language_quotes is not None:
+        instructions += (
+            "\nsource_evidence enthält die wörtlichen, bereits bestätigten Wortpaare. "
+            "Wähle source_excerpt sowohl für das Projekt als auch für jede Aufgabe EXAKT "
+            "aus source_evidence; bei Aufgaben passend zur vocabulary_item_id. "
+            "Keine Überschrift, mehrere zusammengefügte Wortpaare, Auslassungszeichen, "
+            "Übersetzung oder Paraphrase als Zitat ausgeben. Die Schreibweise word = meaning "
+            "belegt den bestätigten Wortschatz, nicht das Layout der fotografierten Seite. "
+            "Weitere bestätigte Beispielsätze aus materials dürfen weiterhin verwendet werden."
+        )
     if config.provider == "codex":
         if settings.codex_web_search and function not in ("extract", "vocabulary_import"):
             instructions = instructions.replace(
@@ -1259,6 +1303,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):
             raise ProviderError("Ein vorgeschlagenes Lernziel verwendet keinen der wörtlichen Belege.")
+        if language_quotes is not None and (
+            data["source_excerpt"] not in language_quotes
+            or any(
+                question["source_excerpt"] not in {
+                    evidence["source_excerpt"] for evidence in payload["source_evidence"]
+                    if evidence["vocabulary_item_id"] == question["vocabulary_item_id"]
+                }
+                for question in data["questions"]
+            )
+        ):
+            raise ProviderError("Die Sprachaufgabe verwendet keinen passenden bestätigten Wortbeleg.")
         if review_only and data.get("next_unit") is not None:
             raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
         if block_count:
