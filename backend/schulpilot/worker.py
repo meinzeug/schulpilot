@@ -455,9 +455,20 @@ def maintenance():
                 db.delete(bucket)
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
-        from .db import LanguageProject, SchoolGrade, VocabularyCollection, VocabularyImport, VocabularyItem
+        from .db import (
+            GradeImport,
+            GradeSourceSlot,
+            LanguageProject,
+            SchoolGrade,
+            VocabularyCollection,
+            VocabularyImport,
+            VocabularyItem,
+        )
 
         db.execute(delete(SchoolGrade).where(SchoolGrade.created < int(now()) - 365 * 86400))
+        db.execute(delete(GradeImport).where(GradeImport.created < int(now()) - 7 * 86400, GradeImport.status == "preview"))
+        db.execute(delete(GradeImport).where(GradeImport.created < int(now()) - 365 * 86400))
+        db.execute(delete(GradeSourceSlot).where(GradeSourceSlot.created < int(now()) - 365 * 86400))
         for model in (LanguageProject, VocabularyImport, VocabularyItem, VocabularyCollection):
             db.execute(delete(model).where(model.created < int(now()) - 365 * 86400))
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))

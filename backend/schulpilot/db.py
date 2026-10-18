@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Column,
     Float,
     ForeignKey,
@@ -382,7 +383,9 @@ class SchoolGrade(Base):
     scale = Column(String(12), nullable=False)
     value = Column(Numeric(4, 2), nullable=False)
     weight = Column(Integer, default=1, nullable=False)
-    assessed_on = Column(String(10), nullable=False)
+    assessed_on = Column(String(10))
+    school_year_start = Column(Integer)
+    semester = Column(Integer)
     note = Column(String(500), default="", nullable=False)
     assignment_id = Column(ForeignKey("assignments.id", ondelete="SET NULL"))
     request_key = Column(String(80))
@@ -390,7 +393,36 @@ class SchoolGrade(Base):
     revision = Column(Integer, default=1, server_default="1", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
     updated = Column(Integer, default=lambda: int(now()), nullable=False)
-    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_grade_request"),)
+    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_grade_request"),
+                     CheckConstraint("assessed_on IS NOT NULL OR (school_year_start IS NOT NULL AND semester IS NOT NULL AND semester IN (1,2))", name="ck_grade_known_period"))
+
+
+class GradeImport(Base):
+    __tablename__ = "grade_imports"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    request_key = Column(String(80), nullable=False)
+    file_digest = Column(String(64), nullable=False)
+    school_year_start = Column(Integer, nullable=False)
+    entries = Column(JSON, nullable=False)
+    status = Column(String(16), nullable=False, default="preview")
+    confirmation_digest = Column(String(64))
+    result = Column(JSON)
+    created = Column(Integer, default=lambda: int(now()), nullable=False, index=True)
+    __table_args__ = (UniqueConstraint("child_id", "request_key", name="uq_grade_import_request"),)
+
+
+class GradeSourceSlot(Base):
+    __tablename__ = "grade_source_slots"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    grade_id = Column(ForeignKey("school_grades.id", ondelete="SET NULL"), unique=True)
+    slot_key = Column(String(64), nullable=False)
+    school_year_start = Column(Integer, nullable=False)
+    last_value = Column(String(20), nullable=False)
+    ignored = Column(Boolean, default=False, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("child_id", "slot_key", name="uq_grade_source_slot"),)
 
 
 class TutorTurn(Base):

@@ -1,3 +1,33 @@
+SCHULPILOT – Noten-PDFimport1.5.0+35 · Aktivierung vorbereitet
+
+18.10.2026. Elternbereich: Noten & Lernschwerpunkte -> PDF importieren ->
+Vorschau -> manuelle Überschneidungen/geänderte Quellwerte ausdrücklich klären
+-> Auswahl übernehmen. Kein KI-Aufruf und keine Speicherung der Roh-PDF.
+Fuxnoten-Raster lokal in begrenztem geheimnisfreiem Unterprozess auswerten;
+Ø-/Summenspalten auslassen, echte Einzeldaten nicht erfinden. Importierte
+Noten bleiben mit belegtem Schuljahr/Halbjahr ohne Einzeldatum gespeichert.
+Quellpositionen, Child-/Notensperren und atomare Bestätigung verhindern
+Duplikate bei weiteren Uploads und mehreren Geräten. Eigene Korrekturen und
+Löschungen erhalten; Notengewichtung innerhalb bestehender Lernzeitziele.
+
+Migration0017 folgt0016; grade_imports/grade_source_slots, optionale
+Periodenfelder an school_grades, nullable Datum mit Zeitraum-Constraint.
+Export/Kinderlöschung/Aufbewahrung erweitert. Vor Rückweg additives Schema
+behalten; Downgrade bei undatierten Noten wird sicher abgewiesen.
+861 PostgreSQLtests/318 Fluttertests, Analyse/Ruff bestanden;22 neue
+Backendprüfungen nach gemeinsamer Fixture-Auslagerung nochmals bestanden.
+Tatsächliche gelieferte PDF lokal geprüft:14 Einzelnoten, keine privaten
+Notenwerte/Namen ausgegeben; keine echten Inhalte in Git/externen Modellen.
+Web/Direct-APK/Play-AAB1.5.0+35 gebaut; Signatur/Zipalign/bundletool geprüft.
+APK65300445Bytes, SHA-256
+02df1d2f4279a08bd89ec9ee6d0f7910cf16f6bd22721585f5034a1bf856a667
+Öffentliche Aktivierung und echte Web-/native Dateiauswahl noch ausstehend.
+Eigener künstlicher regulärer Haushalt und drei künstliche PDF-Varianten
+vorbereitet; keine echte Familie dafür verwenden. Weiter qa/grade_pdf_web.mjs
+--run, danach native Dateiauswahl und Export/Löschung verifizieren.
+Details docs/GRADE_PDF_IMPORT.md, docs/STATUS.md. Keine Zugangsdaten weitergeben.
+Anschließend Sofatutor-Fachstamm/Katalog/Lerntipps und Papphefter-Album beauftragt.
+
 SCHULPILOT – Sprachwerkstatt 1.4.4+34 · bereitgestellt 18.10.2026
 
 Produktcommit 8ada817856e2789ea6e84300828be9975571b536, main gepusht.
@@ -33,7 +63,8 @@ Normale Anmeldung selbst durchführen. Keine Passwörter, Cookies, Tokens oder
 privaten Schlüssel an ChatGPT übermitteln. Kein ungeschützter Testversand.
 
 GitHub-CI39118506744 wegen bestehender Kontosperre/Abrechnung ohne Schritte
-abgewiesen. Neuer Produktlauf39121059397 failure, Annotation noch prüfen.
+abgewiesen. Neuer Produktlauf39121059397 ebenfalls null Schritte, gleiche gelesene
+Billing-Annotation.
 Lokale Tests, Builds, Produktpush und öffentliche Aktivierung verifiziert.
 Weitere beauftragte Arbeiten in Umsetzung: Fuxnoten-PDFimport; Sofatutor-
 Katalog/Fachstamm/Lerntipps (ZIP vorhanden/untersucht); Bildhefter/Fotoalbum.

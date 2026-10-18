@@ -1,4 +1,20 @@
-# Offizielle Quellen, geprüft am 14.10.2026
+# Offizielle Quellen und geprüfte Versionen
+
+PDF-Import, geprüft am 18.10.2026:
+
+- [pypdf6.21.1 Textauszug](https://pypdf.readthedocs.io/en/6.21.1/user/extract-text.html),
+  [Paketmetadaten](https://pypi.org/project/pypdf/6.21.1/): BSD-3-Clause,
+  reine lokale Text-/Koordinatenextraktion, keine OCR. Koordinaten sind nicht
+  für beliebige PDFs garantiert. Unser Import akzeptiert ausschließlich die
+  vollständig erkannte Fuxnoten-Rasterstruktur und bricht bei Unklarheit ab.
+  Verarbeitung in geheimnisfreiem Unterprozess mit Zeit-/Speicherlimit.
+- [Offizielles Flutter file_selector1.1.0](https://pub.dev/packages/file_selector/versions/1.1.0),
+  [openFile](https://pub.dev/documentation/file_selector/1.1.0/file_selector/openFile.html):
+  bewusste Auswahl einer PDF über nativen Dateidialog beziehungsweise Browser;
+  XTypeGroup mit PDF-MIME/Endung/UTI. Vorhandener image_picker bleibt für Fotos.
+  Nur notwendige neue Paket-/Plattformabhängigkeiten, keine SDK-Migration.
+
+## Bisherige Quellen
 
 Sprachwerkstatt-Belegkorrektur, 18.10.2026: ausschließlich bestehende
 JSON-Schema-/Workerpfade erweitert; keine Änderung der Provider-API,

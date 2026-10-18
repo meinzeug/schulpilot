@@ -13,7 +13,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import Field, model_validator
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import defer
 
 from . import schemas as s
@@ -35,7 +35,9 @@ class GradeInput(s.Strict):
     scale: Literal["grade_1_6", "points_0_15"] = "grade_1_6"
     value: Decimal = Field(ge=0, le=15, max_digits=4, decimal_places=2)
     weight: int = Field(default=1, ge=1, le=5)
-    assessed_on: date
+    assessed_on: date | None = None
+    school_year_start: int | None = Field(default=None, ge=2000, le=2200)
+    semester: Literal[1, 2] | None = None
     note: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")
@@ -45,6 +47,8 @@ class GradeInput(s.Strict):
             raise ValueError("Bitte ein Fach angeben.")
         if self.scale == "grade_1_6" and not 1 <= self.value <= 6:
             raise ValueError("Eine Note muss zwischen 1 und 6 liegen.")
+        if self.assessed_on is None and (self.school_year_start is None or self.semester is None):
+            raise ValueError("Bitte ein Datum oder das belegte Schulhalbjahr angeben.")
         return self
 
 
@@ -64,22 +68,25 @@ class GradeGoal(s.Strict):
 def grade_data(row):
     return {key: (float(row.value) if key == "value" else getattr(row, key)) for key in (
         "id", "subject", "topic", "kind", "scale", "value", "weight", "assessed_on", "note", "assignment_id",
-        "revision", "created", "updated",
-    )}
+        "revision", "created", "updated", "school_year_start", "semester",
+    )} | {"date_precision": "day" if row.assessed_on else "semester", "date_label": row.assessed_on or
+          f"{row.semester}. Halbjahr {row.school_year_start}/{row.school_year_start + 1}"}
 
 
 def focus_summary(db, child, *, today=None):
     from .learning import local_day
 
     today = today or local_day(child)
+    year = today.year if today.month >= 8 else today.year - 1
     recent = list(db.scalars(select(SchoolGrade).where(
-        SchoolGrade.child_id == child.id, SchoolGrade.assessed_on >= (today - timedelta(days=90)).isoformat(),
-        SchoolGrade.assessed_on <= today.isoformat(),
+        SchoolGrade.child_id == child.id, or_(and_(SchoolGrade.assessed_on >= (today - timedelta(days=90)).isoformat(),
+        SchoolGrade.assessed_on <= today.isoformat()), and_(SchoolGrade.assessed_on.is_(None),
+        SchoolGrade.school_year_start == year)),
     ).order_by(SchoolGrade.assessed_on.desc(), SchoolGrade.created.desc(), SchoolGrade.id.desc())))
     groups = {}
     for row in recent:
         group = groups.setdefault(subject_key(row.subject), [])
-        if len(group) < 5:
+        if row.assessed_on is None or len([r for r in group if r.assessed_on]) < 5:
             group.append(row)
     enabled = child.grade_planning_enabled
     result = []
@@ -90,7 +97,7 @@ def focus_summary(db, child, *, today=None):
 
         need = average(rows)
         trend = "not_enough_data"
-        if len(rows) >= 4:
+        if len(rows) >= 4 and all(r.assessed_on for r in rows):
             change = average(rows[:2]) - average(rows[2:4])
             trend = "declining" if change >= 0.15 else "improving" if change <= -0.15 else "stable"
         level = 2 if need >= 0.6 else 1 if need >= 0.4 or trend == "declining" else 0
@@ -102,6 +109,7 @@ def focus_summary(db, child, *, today=None):
             "average": round(sum(float(r.value) * r.weight for r in rows) / sum(r.weight for r in rows), 2)
             if len(scales) == 1 else None,
             "latest_date": rows[0].assessed_on,
+            "undated_observations": sum(r.assessed_on is None for r in rows),
             "reason": "Mehr angeleitete Übung einplanen" if level == 2 else "Regelmäßig festigen" if level else "Im Plan ausgewogen berücksichtigen",
         })
     return sorted(result, key=lambda row: (-row["priority"], row["subject"].casefold()))
@@ -128,7 +136,7 @@ def owned_grade(db, child, grade_id, *, lock=False):
 def valid_date(child, value):
     from .learning import local_day
 
-    if value > local_day(child):
+    if value is not None and value > local_day(child):
         raise HTTPException(422, "Eine erhaltene Note kann nicht in der Zukunft liegen.")
 
 
@@ -163,14 +171,14 @@ def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
             "planning_enabled": child.grade_planning_enabled,
             "subjects": sorted(options, key=lambda name: (name.casefold(), name)),
             "focus": focus_summary(db, child),
-            "notice": "Der Schnitt gilt nur für diese Einträge, nicht als Zeugnisnote. Der Lernplan berücksichtigt höchstens fünf Noten je Fach aus 90 Tagen; bestehende Zeitziele und Elternaufträge bleiben erhalten."}
+            "notice": "Der Schnitt gilt nur für diese Einträge, nicht als Zeugnisnote. Im Plan zählen bis zu fünf datierte Noten je Fach aus 90 Tagen sowie undatierte PDF-Noten des aktuellen Schuljahres. Ohne Einzeldaten wird kein zeitlicher Trend behauptet. Zeitziele und Elternaufträge bleiben erhalten."}
 
 
 @router.post("/children/{child_id}/grades", status_code=201)
 def create_grade(child_id: str, data: GradeInput, idempotency_key: str | None = Header(None), p=Depends(parent), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=True)
     valid_date(child, data.assessed_on)
-    digest = hashlib.sha256(json.dumps(data.model_dump(mode="json") | {"value": format(data.value, ".2f")}, sort_keys=True).encode()).hexdigest()
+    digest = hashlib.sha256(json.dumps(data.model_dump(mode="json", exclude_none=True) | {"value": format(data.value, ".2f")}, sort_keys=True).encode()).hexdigest()
     if idempotency_key is not None:
         if not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", idempotency_key):
             raise HTTPException(422, "Bitte einen gültigen Anfrageschlüssel verwenden.")
@@ -181,7 +189,7 @@ def create_grade(child_id: str, data: GradeInput, idempotency_key: str | None = 
                 raise HTTPException(409, "Diese Anfrage wurde bereits mit anderen Angaben gespeichert. Bitte die Notenliste neu laden.")
             return grade_data(previous)
     rate_limit(db, "grade-save:" + p.user.id, 60, 60, commit=False)
-    row = SchoolGrade(child_id=child.id, **data.model_dump(exclude={"assessed_on"}), assessed_on=data.assessed_on.isoformat(),
+    row = SchoolGrade(child_id=child.id, **data.model_dump(exclude={"assessed_on"}), assessed_on=data.assessed_on.isoformat() if data.assessed_on else None,
                       request_key=idempotency_key, request_digest=digest if idempotency_key else None)
     db.add(row)
     db.flush()
@@ -191,15 +199,18 @@ def create_grade(child_id: str, data: GradeInput, idempotency_key: str | None = 
 
 
 @router.put("/children/{child_id}/grades/{grade_id}")
-def update_grade(child_id: str, grade_id: str, data: GradeUpdate, p=Depends(parent), db=Depends(get_db)):
+def update_grade(child_id: str, grade_id: str, data: GradeUpdate,
+                 capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"), p=Depends(parent), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=True)
     valid_date(child, data.assessed_on)
     row = owned_grade(db, child, grade_id, lock=True)
+    if row.assessed_on is None and "grade-pdf-v1" not in (capabilities or "").split(","):
+        raise HTTPException(409, "Bitte die App aktualisieren, um eine PDF-Note ohne Einzeldatum zu bearbeiten.")
     if row.revision != data.revision:
         raise HTTPException(409, "Die Note wurde inzwischen geändert. Bitte neu laden.")
     for key, value in data.model_dump(exclude={"revision", "assessed_on"}).items():
         setattr(row, key, value)
-    row.assessed_on, row.updated, row.revision = data.assessed_on.isoformat(), int(now()), row.revision + 1
+    row.assessed_on, row.updated, row.revision = data.assessed_on.isoformat() if data.assessed_on else None, int(now()), row.revision + 1
     audit(db, p.user.id, "grade.update", row.id)
     db.commit()
     return grade_data(row)

@@ -18,5 +18,7 @@
   "android_emulator": "37.2.12",
   "android_test_image": "7",
   "flutter_tts": "4.2.5",
-  "speech_to_text": "7.5.0"
+  "speech_to_text": "7.5.0",
+  "pypdf": "6.21.1",
+  "file_selector": "1.1.0"
 }

@@ -1,3 +1,37 @@
+# In Umsetzung · Noten-PDFimport1.5.0+35 · 18.10.2026
+
+**Erledigt:** lokale begrenzte Fuxnoten-Extraktion ohne KI, Vorschau/Übernahme im
+Elternbereich, stabile Quellpositionen, ausdrückliche Klärung manueller
+Überschneidungen/Änderungen, idempotente Bestätigung und Mehrgeräteschutz.
+Einzeldaten unbekannt: kein Datum erfinden, Schuljahr/Halbjahr anzeigen.
+Vorhandene Noten-/Lernplanfunktionen erhalten und undatierte Jahresnoten in
+abgeleitete Prioritäten aufnehmen, keinen Zeittrend daraus erfinden.
+Migration0017 an0016 angeschlossen, zwei private Tabellen und optionale
+Datums-/Periodenfelder; DB-Constraint sichert bekannten Zeitraum. Export,
+Kinderlöschung und Aufbewahrung erweitert. Details docs/GRADE_PDF_IMPORT.md.
+
+**Geprüft:** tatsächliche bereitgestellte PDF lokal gelesen; 14 Einzelnoten,
+sechs Fächer, keine Ø-/Summenspalten. Keine Namen/Notenwerte protokolliert,
+keine echte PDF oder Diagnosekopien in Git. Private Arbeitskopien gelöscht.
+60 gezielte PostgreSQLtests einschließlich echter Upgradeprüfung,
+Parallelität, Rechteentzug nach Parsing, Export/Löschung bestanden (39,00s).
+Vollständiger PostgreSQLlauf: **861 bestanden in602,73s**; alle **318
+Fluttertests** bestanden. Analyse/Ruff sauber. Nach Herauslösen des gemeinsamen
+künstlichen PDF-Fixtures nochmals alle22 neuen Backendtests bestanden.
+Ein neuer mobiler Widgettest brauchte nach Listenscroll einen Layoutframe;
+Test korrigiert, keine Produktlockerung. Web/signierte Direct-APK/Play-AAB
+1.5.0+35 gebaut, Signatur/Zipalign/bundletool und Versionscode35 geprüft.
+APK65.300.445Bytes, SHA-256
+`02df1d2f4279a08bd89ec9ee6d0f7910cf16f6bd22721585f5034a1bf856a667`.
+Geheimnisprüfung:416 Quelldateien/244 Archiveinträge gegen16 tatsächliche
+Geheimnisquellen, kein Fund. Noch kein PDF-Produktivdeployment.
+
+**Nächste Aktion:** Regression/Build/Geheimnisprüfung fertigstellen, committen,
+pushen und regulär gesichert deployen; künstliche PDF im öffentlichen Web und
+nativen Android-Dateidialog bedienen. Danach Sofatutor-Fachstamm/Katalog/
+Lerntipps, anschließend bildbasierte Papphefter mit echtem Fotoalbum.
+Elf eigene Hefterbilder sind bereits erzeugt, noch nicht eingebunden.
+
 # Sprachwerkstatt 1.4.4+34 · 18.10.2026
 
 **Bereitgestellt:** Produktcommit `8ada817856e2789ea6e84300828be9975571b536`,
@@ -34,7 +68,8 @@ um normalen frischen Kinderlogin und ausdrückliches „Erneut vorbereiten“ am
 ursprünglichen Link gebeten. Kein erfolgreich neu erzeugtes echtes Projekt
 behaupten, bevor dessen neuer Auftrag tatsächlich erfolgreich ist.
 GitHub-CI39118506744 wegen Kontosperre/Abrechnung ohne Schritte abgewiesen;
-Produktlauf39121059397 ebenfalls failure, separate Annotation noch prüfen.
+Produktlauf39121059397 ebenfalls ohne Schritte wegen derselben gelesenen
+Billing-Annotation abgewiesen.
 
 Danach beauftragte Folgearbeiten (noch nicht begonnen):
 1. Eltern-Notenimport aus `~/Downloads/Elternportal_fuxNoten.pdf`, aktuelles

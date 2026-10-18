@@ -426,6 +426,8 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 
 def export_child(db, child):
     from .db import (
+        GradeImport,
+        GradeSourceSlot,
         LanguageProject,
         NotificationRead,
         SchoolGrade,
@@ -445,6 +447,9 @@ def export_child(db, child):
     from .grades import grade_data
 
     result["school_grades"] = [grade_data(row) for row in db.scalars(select(SchoolGrade).where(SchoolGrade.child_id == child.id))]
+    for model in (GradeImport, GradeSourceSlot):
+        result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
+                                     for row in db.scalars(select(model).where(model.child_id == child.id))]
     units = [u["id"] for u in result["learning_units"]]
     result["attempts"] = [
         {c.name: getattr(row, c.name) for c in Attempt.__table__.columns}

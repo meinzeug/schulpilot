@@ -272,7 +272,10 @@ void main() {
       expect(body['direction'], 'de_to_target');
       expect(body['target_locale'], 'en-GB');
       expect(post.headers['Idempotency-Key'], isNotEmpty);
-      expect(post.headers['X-Schulpilot-Capabilities'], 'language-v1');
+      expect(
+        post.headers['X-Schulpilot-Capabilities']!.split(','),
+        contains('language-v1'),
+      );
     },
   );
 

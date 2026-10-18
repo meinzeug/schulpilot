@@ -39,7 +39,7 @@ class Api {
 
   Map<String, String> get headers => {
     'X-Schulpilot-Request': '1',
-    'X-Schulpilot-Capabilities': 'language-v1',
+    'X-Schulpilot-Capabilities': 'language-v1,grade-pdf-v1',
     if (!kIsWeb) 'X-Client-Platform': 'native',
     if (token != null) 'Authorization': 'Bearer $token',
   };
@@ -140,6 +140,36 @@ class Api {
     } catch (_) {
       throw ApiError(
         'Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.',
+      );
+    }
+  }
+
+  Future<Json> uploadGradePdf(
+    String childId,
+    Uint8List bytes,
+    String requestKey,
+  ) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$base/children/$childId/grade-imports'),
+    );
+    request.headers.addAll({...headers, 'Idempotency-Key': requestKey});
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: 'grades.pdf'),
+    );
+    try {
+      return Json.from(
+        decode(
+          await http.Response.fromStream(
+            await client.send(request).timeout(const Duration(seconds: 45)),
+          ).timeout(const Duration(seconds: 45)),
+        ),
+      );
+    } on ApiError {
+      rethrow;
+    } catch (_) {
+      throw ApiError(
+        'PDF konnte nicht hochgeladen werden. Bitte erneut versuchen.',
       );
     }
   }

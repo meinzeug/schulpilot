@@ -10,4 +10,5 @@ email-validator==2.3.0
 python-multipart==0.0.32
 cryptography==50.0.2
 alembic==1.20.0
+pypdf==6.21.1
 google-auth[requests]==2.62.0

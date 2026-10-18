@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'grade_import_screen.dart';
 import 'ui.dart';
 
 const gradeKinds = <String, String>{
@@ -143,6 +144,22 @@ class _GradesScreenState extends State<GradesScreen> {
     }
   }
 
+  Future<void> importPdf() async {
+    if (!manage || saving) return;
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (_) => GradePdfImport(
+        widget.state,
+        childId: widget.childId,
+        childName: data?['child_name'] ?? 'dein Kind',
+      ),
+    );
+    if (changed == true && current) {
+      widget.state.refreshState();
+      await load();
+    }
+  }
+
   Future<void> goal(Json grade) async {
     final accepted = await showDialog<bool>(
       context: context,
@@ -207,6 +224,12 @@ class _GradesScreenState extends State<GradesScreen> {
     state: widget.state,
     title: 'Noten & Lernschwerpunkte',
     actions: [
+      if (manage)
+        FilledButton.icon(
+          onPressed: saving ? null : importPdf,
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: const Text('PDF importieren'),
+        ),
       if (manage)
         OutlinedButton.icon(
           onPressed: saving ? null : () => edit(),
@@ -298,6 +321,14 @@ class _GradesScreenState extends State<GradesScreen> {
                             '${focus['observations']} aktuelle Einträge',
                             style: const TextStyle(color: muted, fontSize: 12),
                           ),
+                          if ((focus['undated_observations'] ?? 0) > 0)
+                            Text(
+                              '${focus['undated_observations']} davon ohne Einzeldatum · aktuelles Schuljahr',
+                              style: const TextStyle(
+                                color: muted,
+                                fontSize: 12,
+                              ),
+                            ),
                           const SizedBox(height: 8),
                           Text(
                             data!['planning_enabled'] == true
@@ -439,7 +470,7 @@ class _GradesScreenState extends State<GradesScreen> {
                       ),
                     ),
                     Text(
-                      '${gradeKinds[grade['kind']]} · ${grade['assessed_on']}',
+                      '${gradeKinds[grade['kind']]} · ${grade['date_label'] ?? grade['assessed_on']}',
                       style: const TextStyle(color: muted, fontSize: 13),
                     ),
                     if (grade['topic'] != '') Text(grade['topic']),
@@ -511,7 +542,8 @@ class GradeEditor extends StatefulWidget {
 class _GradeEditorState extends State<GradeEditor> {
   final form = GlobalKey<FormState>();
   late final TextEditingController subject, topic, value, note;
-  late String scale, kind, day;
+  late String scale, kind;
+  String? day;
   late int weight;
   late String? owner;
   late String requestKey;
@@ -534,10 +566,9 @@ class _GradeEditorState extends State<GradeEditor> {
     scale = g?['scale'] ?? 'grade_1_6';
     kind = g?['kind'] ?? 'test';
     weight = g?['weight'] ?? 1;
-    day =
-        g?['assessed_on'] ??
-        widget.today ??
-        DateTime.now().toIso8601String().substring(0, 10);
+    day = g != null
+        ? g['assessed_on'] as String?
+        : widget.today ?? DateTime.now().toIso8601String().substring(0, 10);
   }
 
   @override
@@ -567,6 +598,10 @@ class _GradeEditorState extends State<GradeEditor> {
         'kind': kind,
         'weight': weight,
         'assessed_on': day,
+        if (widget.grade?['school_year_start'] != null)
+          'school_year_start': widget.grade!['school_year_start'],
+        if (widget.grade?['semester'] != null)
+          'semester': widget.grade!['semester'],
         'note': note.text.trim(),
         if (widget.grade != null) 'revision': widget.grade!['revision'],
       };
@@ -676,9 +711,10 @@ class _GradeEditorState extends State<GradeEditor> {
                       );
                       final selected = await showDatePicker(
                         context: context,
-                        initialDate: DateTime.parse(day).isAfter(last)
+                        initialDate:
+                            DateTime.tryParse(day ?? '')?.isAfter(last) != false
                             ? last
-                            : DateTime.parse(day),
+                            : DateTime.parse(day!),
                         firstDate: DateTime(2000),
                         lastDate: last,
                       );
@@ -690,7 +726,11 @@ class _GradeEditorState extends State<GradeEditor> {
                       }
                     },
               icon: const Icon(Icons.calendar_month_outlined),
-              label: Text('Erhalten am $day'),
+              label: Text(
+                day == null
+                    ? 'Einzeldatum unbekannt · Datum ergänzen'
+                    : 'Erhalten am $day',
+              ),
             ),
             ExpansionTile(
               title: const Text('Weitere Angaben'),

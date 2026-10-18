@@ -16,6 +16,7 @@ from . import (
     commerce,
     families,
     google_login,
+    grade_imports,
     grades,
     installation,
     language_projects,
@@ -68,6 +69,10 @@ class ActualBodyLimit:
             return await self.app(scope, receive, send)
         path = scope.get("path", "")
         maximum = 12 * 1024 * 1024 if path.startswith("/api/children/") and path.endswith("/materials") else 64 * 1024
+        if path.startswith("/api/children/") and path.endswith("/grade-imports"):
+            maximum = 7 * 1024 * 1024
+        if path.startswith("/api/children/") and "/grade-imports/" in path and path.endswith("/confirm"):
+            maximum = 512 * 1024
         if path.startswith("/api/materials/") and path.endswith("/confirm"):
             maximum = 256 * 1024
         size = 0
@@ -214,6 +219,7 @@ for router in (
     learning.router,
     learning_progress.router,
     grades.router,
+    grade_imports.router,
     library.router,
     coaching.router,
     materials.router,
