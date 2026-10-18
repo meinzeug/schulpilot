@@ -1042,6 +1042,9 @@ def process(job_id):
 
             child = db.get(Child, job.child_id)
             usage_terms(db, db.get(Family, child.family_id), enforce=True)
+            from .catalog_ai import with_catalog_context
+
+            payload = with_catalog_context(db, child, payload)
             db.rollback()
         result = request_provider(ProviderConfig(**values), "coach", payload)
         with DB.begin() as db:
@@ -1061,6 +1064,12 @@ def process(job_id):
                 )
             verify_current_provider(db, unit, values, "coach")
             save_report(db, unit, item, result.data, sources, defer_practice=bool(job.payload.get("defer_practice")))
+            if result.catalog_assignment:
+                from .catalog_ai import remember
+
+                remember(db, "unit", unit, result.catalog_assignment)
+                if item.next_unit_id and (next_unit := db.get(LearningUnit, item.next_unit_id)):
+                    remember(db, "unit", next_unit, result.catalog_assignment)
             settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), result)
             job.status, job.finished, job.result = "completed", int(now()), {"unit_id": unit.id}
     except Exception as error:
@@ -1192,6 +1201,9 @@ def process_practice(job_id):
                 ][-120:]
             # Review observations belong in the report, not the new exercise request.
             payload.pop("completed_questions", None)
+            from .catalog_ai import with_catalog_context
+
+            payload = with_catalog_context(db, child, payload)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
         result = request_provider(ProviderConfig(**values), "unit", payload)
@@ -1228,6 +1240,10 @@ def process_practice(job_id):
                 practice_identity=(values["provider"], values["model"]),
                 record_review=False,
             )
+            if result.catalog_assignment and item.next_unit_id:
+                from .catalog_ai import remember
+
+                remember(db, "unit", db.get(LearningUnit, item.next_unit_id), result.catalog_assignment)
             settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), result)
             job.status, job.finished, job.result = "completed", int(now()), {"unit_id": item.next_unit_id}
     except Exception as error:

@@ -7,9 +7,11 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'learning_tips.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'material_words.dart';
+import 'subject_picker.dart';
 
 Future<void> importMaterial(
   BuildContext context,
@@ -611,16 +613,24 @@ class _MaterialReviewState extends State<MaterialReview> {
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 18),
-                  child: TextField(
-                    controller: item.$1,
-                    onChanged: (_) => setState(() {}),
-                    readOnly: synthetic || !canConfirm,
-                    maxLines: item.$3,
-                    decoration: InputDecoration(
-                      labelText: item.$2,
-                      alignLabelWithHint: true,
-                    ),
-                  ),
+                  child: item.$1 == subject
+                      ? SubjectField(
+                          widget.state,
+                          childId: d['child_id'],
+                          controller: subject,
+                          enabled: !synthetic && canConfirm,
+                          changed: () => setState(() {}),
+                        )
+                      : TextField(
+                          controller: item.$1,
+                          onChanged: (_) => setState(() {}),
+                          readOnly: synthetic || !canConfirm,
+                          maxLines: item.$3,
+                          decoration: InputDecoration(
+                            labelText: item.$2,
+                            alignLabelWithHint: true,
+                          ),
+                        ),
                 ),
               if ((d['homework'] as List).isEmpty)
                 const Text(
@@ -698,6 +708,14 @@ class _MaterialReviewState extends State<MaterialReview> {
           Padding(
             padding: const EdgeInsets.only(top: 20),
             child: deleteButton(),
+          ),
+        if (d['synthetic'] != true &&
+            ['review', 'confirmed'].contains(d['status']))
+          LearningTips(
+            widget.state,
+            childId: d['child_id'],
+            kind: 'material',
+            resourceId: d['id'],
           ),
       ],
     );
@@ -906,15 +924,23 @@ class _MaterialReviewState extends State<MaterialReview> {
                   ])
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: TextField(
-                        controller: field.$1,
-                        onChanged: (_) => setState(() {}),
-                        maxLines: field.$3,
-                        decoration: InputDecoration(
-                          labelText: field.$2,
-                          alignLabelWithHint: true,
-                        ),
-                      ),
+                      child: field.$1 == subject
+                          ? SubjectField(
+                              widget.state,
+                              childId: d['child_id'],
+                              controller: subject,
+                              enabled: !synthetic && canConfirm,
+                              changed: () => setState(() {}),
+                            )
+                          : TextField(
+                              controller: field.$1,
+                              onChanged: (_) => setState(() {}),
+                              maxLines: field.$3,
+                              decoration: InputDecoration(
+                                labelText: field.$2,
+                                alignLabelWithHint: true,
+                              ),
+                            ),
                     ),
                 if (canConfirm) ...[
                   const SizedBox(height: 16),
@@ -993,6 +1019,14 @@ class _MaterialReviewState extends State<MaterialReview> {
             ),
           ),
         ],
+        if (d['synthetic'] != true &&
+            ['review', 'confirmed'].contains(d['status']))
+          LearningTips(
+            widget.state,
+            childId: d['child_id'],
+            kind: 'material',
+            resourceId: d['id'],
+          ),
       ],
     );
   }

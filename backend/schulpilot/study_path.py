@@ -477,6 +477,9 @@ def process(job_id):
                 },
                 "previous_prompts": previous_prompts,
             }
+            from .catalog_ai import with_catalog_context
+
+            payload = with_catalog_context(db, child, payload)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.rollback()
         result = request_provider(ProviderConfig(**values), "unit", payload)
@@ -531,6 +534,10 @@ def process(job_id):
             db.flush()
             for material in items:
                 db.add(UnitSource(unit_id=unit.id, material_id=material.id, revision=material.revision))
+            if result.catalog_assignment:
+                from .catalog_ai import remember
+
+                remember(db, "unit", unit, result.catalog_assignment)
             value = copy.deepcopy(day.learning_plan)
             next(b for b in value["blocks"] if b["id"] == block["id"])["unit_id"] = unit.id
             day.learning_plan = value

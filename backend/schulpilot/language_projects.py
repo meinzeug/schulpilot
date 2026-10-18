@@ -266,6 +266,11 @@ def process(job_id):
             external_allowed(config)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             row.status = "running"
+            from .catalog_ai import with_catalog_context
+
+            payload = with_catalog_context(db, db.get(Child, row.child_id), payload | {
+                "materials": [source | {"subject": s.TARGETS[row.target_locale].split(" · ")[0],
+                    "topic": row.inputs["grammar_topic"] or row.inputs["goal"]} for source in payload["materials"]]})
             db.commit()
         result = request_provider(ProviderConfig(**values), "language_project", payload)
         with DB.begin() as db:
@@ -297,6 +302,10 @@ def process(job_id):
                 record(db, row.child_id, "explanation", {"via": "language_project", "project_id": row.id}, unit.id)
             for source in row.source_revisions:
                 db.add(UnitSource(unit_id=unit.id, material_id=source["id"], revision=source["revision"]))
+            if result.catalog_assignment:
+                from .catalog_ai import remember
+
+                remember(db, "unit", unit, result.catalog_assignment)
             row.unit_id = unit.id
             row.result = {"title": output.title, "response": output.response, "response_locale": output.response_locale,
                           "explanation": output.explanation, "source_excerpt": output.source_excerpt,

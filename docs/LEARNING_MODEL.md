@@ -57,3 +57,17 @@ Schulnoten und Notennotizen werden nicht automatisch an den KI-Anbieter übermit
 - [EEF, Teacher Feedback to Improve Pupil Learning, 2021](https://educationendowmentfoundation.org.uk/education-evidence/guidance-reports/feedback): gezieltes Feedback für den nächsten Lernschritt. Schlechte Rückmeldung kann schaden; eine KI-Ausgabe ist kein unabhängiger Wirksamkeitsnachweis.
 
 Diese Quellen wurden am 17.10.2026 tatsächlich geprüft. Sie begründen die Richtung des Lernablaufs, nicht die Wirksamkeit von SCHULPILOT oder exakt unsere Notenschwellen und Prüftagsregel. Fachliche Stichproben, Beobachtung mit Kindern und längerfristiger Vergleich realer Lernergebnisse bleiben erforderlich. Die Plattform kennt nur eingegebenen Schulstoff und erfasste Aktivitäten, weder den vollständigen Unterricht noch das Verständnis bei fehlender Nutzung.
+
+## Kontextbezogene externe Lerntipps
+
+Der feste Fachstamm und der versionierte Sofatutor-Navigationskatalog ergänzen
+bestätigten Unterrichtsstoff. Gemeinsame Zuordnung für Heft, Einheit, Tutor und
+Plan; wenige Vorschläge, korrigierbare persönliche Auswahl. Fachliche Passung
+und kuratierter Stufenbeleg sind verschiedene Prüfungen. Sprachlernjahre werden
+nicht aus Schulklassen abgeleitet. Details: CATALOG_INTEGRATION.md.
+
+Ein Linkaufruf ist eine eigene gespeicherte Aktion, kein angesehener Film,
+Verständnisnachweis, Attempt, Lernabschluss oder gebuchte Mindestlernzeit. Kinder
+sehen vor den Links, dass ihre Eltern diese Aufrufe einsehen können. Externe
+Seiten werden nicht überwacht. Ansehen/Lesen ersetzt keine spätere eigene
+Abrufaufgabe; neue Übungen bleiben an bestätigte Quellen und Lernziele gebunden.

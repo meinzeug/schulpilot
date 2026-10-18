@@ -1,12 +1,85 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'learning_tips.dart';
 import 'ui.dart';
 
 class DailyPlanPanel extends StatelessWidget {
   final Json plan;
   final bool childView;
-  const DailyPlanPanel({super.key, required this.plan, this.childView = false});
+  final AppState? state;
+  final String? childId;
+  const DailyPlanPanel({
+    super.key,
+    required this.plan,
+    this.childView = false,
+    this.state,
+    this.childId,
+  });
+
+  List<Json> tipContexts(dynamic day) => [
+    for (final item in day['items'] as List? ?? [])
+      if (['material', 'assignment', 'unit'].contains(item['kind']) &&
+          item['id'] is String)
+        Json.from(item),
+  ];
+
+  Future<void> openTips(BuildContext context, dynamic day) async {
+    if (state == null || childId == null) return;
+    final owner = state!.user?['id'];
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => AnimatedBuilder(
+        animation: state!,
+        builder: (_, _) => state!.user?['id'] != owner
+            ? const SizedBox.shrink()
+            : SafeArea(
+                child: SizedBox(
+                  height: MediaQuery.sizeOf(ctx).height * .8,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: ListView(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Lerntipps · ${_dayLabel(day['date'])}',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Schließen',
+                              onPressed: () => Navigator.pop(ctx),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                        for (final item in tipContexts(day).take(5)) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            '${item['subject']} · ${item['topic']}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          LearningTips(
+                            state!,
+                            childId: childId!,
+                            kind: item['kind'],
+                            resourceId: item['id'],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +97,10 @@ class DailyPlanPanel extends StatelessWidget {
       children: [
         for (final day in days)
           ListTile(
+            onTap:
+                state != null && childId != null && tipContexts(day).isNotEmpty
+                ? () => openTips(context, day)
+                : null,
             contentPadding: EdgeInsets.zero,
             leading: Icon(
               day['paused'] == true || day['free_day'] == true
@@ -42,11 +119,20 @@ class DailyPlanPanel extends StatelessWidget {
                         .toSet()
                         .join(' · '),
             ),
-            trailing: Text(
-              day['planned_minutes'] == 0
-                  ? '—'
-                  : 'ca. ${day['planned_minutes']} Min.',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  day['planned_minutes'] == 0
+                      ? '—'
+                      : 'ca. ${day['planned_minutes']} Min.',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (state != null &&
+                    childId != null &&
+                    tipContexts(day).isNotEmpty)
+                  const Icon(Icons.chevron_right_rounded, size: 18),
+              ],
             ),
           ),
         Text(

@@ -1,3 +1,37 @@
+# Katalog/Lerntipps1.7.0+38 · implementiert, vor Releaseabnahme
+
+Vollständiger Katalog und elf additive Tabellen/Migration0019 implementiert,
+normaler Update-/Einrichtungsprozess importiert einmalig die gebundelte Fassung.
+Gemeinsame source-/revisionsgebundene Zuordnung, lokale Worker-Backfills mit
+Leases/Checkpoints, vorhandene KI-Aufträge mit höchstens zwölf validierten
+Kandidaten/erlaubten Fach-IDs ergänzt. Kein neuer Provider, keine weitere
+Modellanfrage auf GET, keine größere Quote. Klassen-/Sprachjahrsbelege und
+allgemeine Tipps getrennt; vier Leerlisten erhalten, Video/Lerntext korrekt.
+Private Auswahl/Feedback/Linkereignisse, Elternleserechte, Export/Löschung/
+Aufbewahrung erweitert. Links exakt HTTPS/Sofatutor, Referrer-Schutz und
+Wiederholen/Kopieren; kein Lernabschluss aus einem Linkaufruf.
+
+Flutter: gemeinsame aufklappbare Lerntipps in Album/Quellen/Lernrunde/Tutor/
+Aufträgen/Wochenplan, paginierte Themensuche und bekannter-Stufen-Filter;
+Eltern bestätigen Stufe bewusst, Quellenkorrektur wählt vorhandene Fächer.
+Kinder sehen ausdrücklich, dass Linkaufrufe der Familie sichtbar sind.
+Details und Import-/Rückwegbefehle: CATALOG_INTEGRATION.md.
+
+Geprüft:907 vollständige PostgreSQLtests495,91s,337 vollständige Fluttertests
+115s und Analyse erfolgreich. Danach neun betroffene Fluttertests/Analyse und
+öffentlicher Datenschutztest nach Textzusatz bestanden. Voller CSV-Abgleich:
+16/126/1558/8227,19603 Beziehungen,0 vorliegende Fehler/465 Hinweise.
+Quellen/alte Artefakte und beide dekomprimierten Katalogbündel gegen14 konkrete
+Geheimnisquellen geprüft:0 Treffer. Keine Abhängigkeiten aktualisiert.
+
+Nach abschließender Prüfung eines Elternauftrags ohne Foto zusätzlich44 gezielte
+PostgreSQLtests35,49s bestanden; vorhandenes LabelMathe bleibt im privaten
+Schema wählbar. Noch NICHT gebaut/bereitgestellt:1.7.0+38. Tatsächlich weiterhin produktiv
+1.6.1+37/56f1112/Schema0018 wie nachfolgend dokumentiert. Nächste Schritte:
+Diff/Commit/Push, signierte Web-/Android-/Play-Builds, gesicherte Migration und
+Import, öffentliche normale künstliche Foto-/KI-/Lerntippkette, natives OTA/
+Bedienung, Export und reguläre Löschung des eigenen Testhaushalts.
+
 # Fachhefter/Fotoalbum1.6.1+37 · produktiv geprüft18.10.2026
 
 Aktiv: Produktcommit `56f1112eb7fe0c63db284ab72e4a917985faa708`, main gepusht,

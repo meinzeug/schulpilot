@@ -45,6 +45,7 @@ class Result:
     output_tokens: int | None = None
     cost_micros: int | None = None
     search_calls: int | None = None
+    catalog_assignment: dict | None = None
 
 
 SYSTEM = """Du bist SCHULPILOT, eine altersgerechte Lernbegleitung. Antworte auf Deutsch.
@@ -755,7 +756,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         if not image_bytes:
             raise ProviderError("Für die Materialerkennung fehlt das Foto.")
+        catalog_context = payload.get("catalog_context")
         payload = request_payload()
+        if catalog_context:
+            payload["catalog_context"] = catalog_context
     model_type = {
         "extract": s.ExtractionOutput,
         "package": s.PackageOutput,
@@ -818,7 +822,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 assigned_goals[question["question_id"]] = goal_id
         if assigned_goals and len(assigned_goals) == len(payload["completed_questions"]):
             model_type = s.AssignedCoachingReviewOutput
-    schema = strict_schema(model_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    catalog_context = payload.get("catalog_context")
+    response_type = model_type
+    if catalog_context:
+        from .catalog_ai import augmented_model
+
+        response_type = augmented_model(model_type)
+    schema = strict_schema(response_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    if catalog_context:
+        from .catalog_ai import constrain_schema
+
+        constrain_schema(schema, catalog_context)
     language_quotes = None
     if function == "language_project":
         payload, language_quotes = bind_language_project_sources(schema, payload)
@@ -842,6 +856,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     review_only = function == "coach" and bool(payload.get("defer_practice"))
     instructions = system_text(function, review_only=review_only)
+    if catalog_context:
+        from .catalog_ai import RULES
+
+        instructions += RULES
     if language_quotes is not None:
         instructions += (
             "\nsource_evidence enthält die wörtlichen, bereits bestätigten Wortpaare. "
@@ -1279,9 +1297,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
         if indexed_choices:
-            data = model_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
+            data = response_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
         else:
-            data = model_type.model_validate_json(text).model_dump()
+            data = response_type.model_validate_json(text).model_dump()
+        catalog_assignment = None
+        if catalog_context:
+            from .catalog_ai import checked_assignment
+
+            catalog_assignment = checked_assignment(data.pop("catalog_assignment"), catalog_context, data)
         if function == "extract":
             data = TranscriptionOutput.model_validate(data).as_material()
         if tasks and {(q["id"], q["learning_goal_id"]) for q in data["questions"]} != {
@@ -1379,7 +1402,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         search_count = raw.get("search_calls") if config.provider == "codex" else None
         if type(search_count) is not int or search_count < 0:
             search_count = None
-        return Result(data, input_tokens, output_tokens, cost, search_count)
+        return Result(data, input_tokens, output_tokens, cost, search_count, catalog_assignment)
     except ValidationError as error:
         # Only known schema field names and numeric positions, never input,
         # unknown extra keys, validator context or echoed provider content.

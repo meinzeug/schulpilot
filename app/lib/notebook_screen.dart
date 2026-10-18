@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'learning_tips.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
 import 'ui.dart';
@@ -39,6 +40,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   int stateRevision = 0;
   double swipeDistance = 0;
   bool loading = true, showSearch = false;
+  bool canManage = false;
   static const pageSize = 20;
   bool get current => mounted && widget.state.user?['id'] == owner;
   String get memoryKey => 'notebook:${widget.childId}:${widget.subjectId}';
@@ -128,6 +130,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
         '/children/${widget.childId}/subjects',
       );
       if (!current || request != generation) return;
+      canManage = result['can_manage'] == true;
       final candidates = [
         for (final r in result['items'] as List) Json.from(r),
       ];
@@ -429,11 +432,22 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
-              if (widget.state.isChild || widget.state.canManage)
+              if (widget.state.isChild || canManage)
                 IconButton(
                   tooltip: 'Heftfoto hinzufügen',
                   onPressed: addPhoto,
                   icon: const Icon(Icons.add_a_photo_outlined),
+                ),
+              if (widget.subjectId != 'unassigned')
+                IconButton(
+                  tooltip: 'Themen entdecken',
+                  onPressed: () => showTopicBrowser(
+                    context,
+                    widget.state,
+                    widget.childId,
+                    widget.subjectId,
+                  ),
+                  icon: const Icon(Icons.ondemand_video_outlined),
                 ),
             ],
           ),
@@ -568,7 +582,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                         }),
                         child: const Text('Alle Seiten zeigen'),
                       ),
-                    if (widget.state.isChild || widget.state.canManage)
+                    if (widget.state.isChild || canManage)
                       FilledButton.icon(
                         onPressed: addPhoto,
                         icon: const Icon(Icons.add_a_photo_outlined),
@@ -782,6 +796,13 @@ class _NotebookScreenState extends State<NotebookScreen> {
         ),
         const SizedBox(height: 8),
         pageControls(),
+        LearningTips(
+          widget.state,
+          key: ValueKey('tips:${item['id']}'),
+          childId: widget.childId,
+          kind: 'material',
+          resourceId: item['id'],
+        ),
       ],
     );
   }

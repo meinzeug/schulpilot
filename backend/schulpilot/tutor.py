@@ -394,6 +394,9 @@ def process(job_id):
                 raise ProviderError("Die KI-Einstellung wurde geändert. Kein anderer Anbieter wurde aufgerufen.")
             external_allowed(config)
             turn.status = "running"
+            from .catalog_ai import with_catalog_context
+
+            payload = with_catalog_context(db, child, payload)
             values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             db.commit()
         result = request_provider(ProviderConfig(**values), "tutor", payload)
@@ -441,6 +444,10 @@ def process(job_id):
             if reply["kind"] == "answer":
                 record_tutor_help(db, turn, ongoing_units, revisions)
             turn.status, turn.reply, turn.error = "ready", reply, None
+            if result.catalog_assignment:
+                from .catalog_ai import remember
+
+                remember(db, "tutor", turn, result.catalog_assignment)
             job.status, job.finished, job.result = "completed", int(now()), {"question_id": turn.id}
             settle(db, usage, result)
             record(db, child.id, "tutor_answer", {"turn_id": turn.id}, unit_id=turn.unit_id)

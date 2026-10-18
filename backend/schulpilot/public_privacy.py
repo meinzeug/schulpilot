@@ -42,6 +42,17 @@ PARAGRAPHS = (
         "beim nächsten täglichen Bereinigungslauf entfernt. Firebase Authentication wird nicht eingesetzt.",
     ),
     (
+        "Freiwillige Lerntipps von Sofatutor",
+        "Wir ordnen dem eigenen Lernstoff passende Themen aus einem lokal gespeicherten Katalog öffentlicher Titel und "
+        "Verweise zu. Begrenzte Fach- und Themenkandidaten können im bereits angeforderten KI-Auftrag mitgeprüft werden. "
+        "Persönliche Zuordnungen, Rückmeldungen und Linkaufrufe sind nur für das eigene Kind und die berechtigten Eltern "
+        "sichtbar und werden höchstens 365 Tage aufbewahrt; sie gehören zum Export und zur Kontolöschung. Erst beim eigenen "
+        "Klick wird Sofatutor im Browser oder einer vom Betriebssystem gewählten App geöffnet. Wir übermitteln dabei keine "
+        "Hefttexte, Fotos oder SCHULPILOT-Zugänge. Der externe Anbieter verarbeitet den Seitenaufruf nach seinen eigenen "
+        "Datenschutzregeln; eine Anmeldung und ein Abo können nötig sein. Ein Linkaufruf belegt weder Wiedergabe noch "
+        "Verständnis und wird nicht als gelöste Übung oder Lernzeit gebucht. Andere Webseiten werden nicht überwacht.",
+    ),
+    (
         "Materialien und KI-Lernbegleitung",
         "Fotos können vor dem Upload gedreht und zugeschnitten werden. Ausstehende zugeschnittene Fotos lassen sich auf "
         "dem eigenen Gerät für höchstens 24 Stunden fortsetzen (maximal acht Seiten und drei MB); Abmelden oder Entfernen "

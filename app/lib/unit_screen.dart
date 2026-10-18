@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'learning_tips.dart';
 import 'coaching_panel.dart';
 import 'lesson_voice.dart';
 import 'learning_room.dart';
@@ -844,6 +845,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget unitTips(Json u) => u['child_id'] is String
+      ? LearningTips(
+          state,
+          childId: u['child_id'],
+          kind: 'unit',
+          resourceId: u['id'],
+        )
+      : const SizedBox.shrink();
+
   Widget body(BuildContext context) {
     final u = unit!;
     final questions = u['questions'] as List;
@@ -874,6 +884,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ],
             ),
           ),
+          unitTips(u),
           const SizedBox(height: 20),
           if (u['status'] == 'completed') ...[
             if (u['round_kind'] == 'vocabulary')
@@ -932,9 +943,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return answerFeedback(context, u);
     }
     if (u['status'] == 'completed') {
-      return u['round_kind'] == 'vocabulary'
-          ? vocabularyResult(u)
-          : CoachingPanel(state: state, unit: u, refresh: load);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          u['round_kind'] == 'vocabulary'
+              ? vocabularyResult(u)
+              : CoachingPanel(state: state, unit: u, refresh: load),
+          unitTips(u),
+        ],
+      );
     }
     if (u['status'] != 'active') {
       return Panel(
@@ -989,6 +1006,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               alignment: Alignment.centerLeft,
               child: ReadAloudButton(text: u['explanation']),
             ),
+            if (!['spaced_review', 'study_recall'].contains(u['round_kind']))
+              unitTips(u),
             if (u['synthetic'] == true) ...[
               const SizedBox(height: 12),
               sampleNotice(u),

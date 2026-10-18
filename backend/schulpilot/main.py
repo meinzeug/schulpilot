@@ -22,6 +22,7 @@ from . import (
     language_projects,
     learning,
     learning_progress,
+    learning_tips,
     library,
     materials,
     notification_inbox,
@@ -244,6 +245,7 @@ for router in (
     vocabulary.router,
     language_projects.router,
     subjects.router,
+    learning_tips.router,
 ):
     app.include_router(router, prefix="/api")
 

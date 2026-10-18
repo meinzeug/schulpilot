@@ -749,6 +749,9 @@ class Audit(Base):
 
 Index("jobs_queue", Job.status, Job.created)
 
+# Register additive catalog tables after all referenced private models exist.
+from . import catalog_models  # noqa: E402,F401
+
 settings.data_dir.mkdir(parents=True, exist_ok=True)
 engine = create_engine(
     settings.database_url,
@@ -784,6 +787,10 @@ def init_db():
     from .installation import initialize
 
     initialize()
+    if settings.environment != "test":
+        from .catalog_import import ensure_bundled
+
+        ensure_bundled()
 
 
 def get_db():

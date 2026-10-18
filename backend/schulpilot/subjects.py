@@ -125,6 +125,20 @@ def settings(child_id: str, subject_id: str, data: SubjectSettings, p=Depends(pa
     subject = owned_subject(db, child, subject_id)
     if not subject.active:
         raise HTTPException(409, "Dieses Fach steht für neue Einstellungen nicht zur Verfügung.")
+    if data.level_type:
+        from .catalog_models import CatalogLevel
+        from .catalog_search import current_snapshot
+
+        snapshot = current_snapshot(db)
+        number = None if data.level_type == "vorschule" else data.level_number
+        if data.level_type == "vorschule" and data.level_number != 0:
+            raise HTTPException(422, "Vorschule hat keine Klassen- oder Lernjahrnummer.")
+        if snapshot and db.scalar(select(CatalogLevel.id).where(CatalogLevel.subject_id == subject.id,
+                CatalogLevel.snapshot_id == snapshot)) and not db.scalar(select(CatalogLevel.id).where(
+                    CatalogLevel.subject_id == subject.id, CatalogLevel.snapshot_id == snapshot,
+                    CatalogLevel.level_type == data.level_type,
+                    CatalogLevel.level_number.is_(None) if number is None else CatalogLevel.level_number == number)):
+            raise HTTPException(422, "Diese Stufe ist für dieses Fach nicht im Katalog belegt.")
     lock_child(db, child)
     row = db.get(ChildSubject, (child.id, subject.id))
     if (row.revision if row else 0) != data.revision:

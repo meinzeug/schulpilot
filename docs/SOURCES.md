@@ -169,3 +169,25 @@ Benachrichtigungsglocke und Android-Zustellung, geprüft am 17.10.2026:
 - [Android – Notification Channels](https://developer.android.com/develop/ui/compose/notifications/channels): Kanal beim Appstart anlegen, aktuellen Sperrstatus lesen und gezielt Systemeinstellungen öffnen. Eigene Kanalentscheidungen nicht überschreiben.
 - [Android – Notification Permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission): Android-13+-Erlaubnis bleibt eine bewusste Entscheidung auf dem Gerät.
 - [FCM – Android message priority](https://firebase.google.com/docs/cloud-messaging/android-message-priority): Hohe Transportpriorität für echte sichtbare Meldungen. Unsere Nachrichten bleiben gebündelt, neutral, kontogebunden und höchstens 60 Sekunden gültig. Projekt-/OAuth-/Validierungsnachweis und tatsächlich beobachtete Anzeige werden getrennt dokumentiert.
+
+## Sofatutor-Integration ·18.10.2026
+
+- Tatsächlich übergebene lokale Quelle: Downloads/Schulpilot_Sofatutor_ThemenDB.zip,
+  README/INTEGRATION, normalisiertes catalog.json1.5, validation,
+  combined_coverage_report und schulpilot_import/summary/all_subjects.csv.
+  SHA256/Umfang/Prüfgrenzen in CATALOG_INTEGRATION.md.8.227 unterschiedliche
+  Inhalte,19.603 CSV-Beziehungen,0 vorliegende Validierungsfehler und465 Hinweise.
+  Kein Nachweis des gesamten Anbieterkatalogs oder einer Wiedergabeberechtigung.
+- [SQLAlchemy2.1 – PostgreSQL Upserts](https://docs.sqlalchemy.org/en/21/dialects/postgresql.html#insert-on-conflict-upsert):
+  verwendete feste Version2.1.4 erhalten; Dialektinsert/excluded und atomare
+  Konfliktbehandlung, keine Abhängigkeitsmigration.
+- [PostgreSQL16 – Volltextindizes](https://www.postgresql.org/docs/16/textsearch-indexes.html):
+  vorhandene PostgreSQL16-Instanz, GIN auf to_tsvector('german',search_text),
+  keine neue Such-/Embeddinginfrastruktur. Sprachähnlichkeit ist kein Klassenbeleg.
+- Vorhandener url_launcher6.3.2 und url_launcher_web2.4.3 im fixierten lokalen
+  Paketquelltext geprüft: launchUrl/externalApplication, normale HTTPS-URLs,
+  Webfenster mit noopener,noreferrer. Projektspezifisches Caddy enthält bereits
+  Referrer-Policy:no-referrer. Keine Weitergabe privater Inhalte oder App-Zugänge.
+  Tatsächlich beobachtete Link-/Geräteprüfungen getrennt in STATUS/Handoff führen.
+  Offizielle Paketdokumentation zusätzlich geprüft:
+  [url_launcher6.3.2](https://pub.dev/packages/url_launcher/versions/6.3.2).

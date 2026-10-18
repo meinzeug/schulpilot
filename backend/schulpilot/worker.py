@@ -266,6 +266,9 @@ def process(job_id):
             variant = len(previous)
             config_values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
             function = job.kind
+            from .catalog_ai import with_catalog_context
+
+            payload = with_catalog_context(db, child, payload)
             if not synthetic or fixture:
                 from .commerce import usage_terms
 
@@ -382,6 +385,16 @@ def process(job_id):
                     unit.id,
                 )
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+            if result and result.catalog_assignment:
+                from .catalog_ai import remember
+
+                if job.kind == "extract" and material:
+                    remember(db, "material", material, result.catalog_assignment)
+                else:
+                    unit_ids = (job.result or {}).get("unit_ids") or [(job.result or {}).get("unit_id")]
+                    for unit_id in unit_ids:
+                        if unit_id and (saved_unit := db.get(LearningUnit, unit_id)):
+                            remember(db, "unit", saved_unit, result.catalog_assignment)
             if usage:
                 settle(db, usage, result)
             job.status = "completed"
@@ -474,6 +487,12 @@ def maintenance():
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
         db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))
+        from .catalog_models import CatalogRefresh, LearningTipContext, LearningTipInteraction
+
+        db.execute(delete(LearningTipInteraction).where(LearningTipInteraction.created < int(now()) - 365 * 86400))
+        db.execute(delete(LearningTipContext).where(LearningTipContext.created < int(now()) - 365 * 86400))
+        db.execute(delete(CatalogRefresh).where(CatalogRefresh.child_id.is_not(None),
+            CatalogRefresh.updated < int(now()) - 30 * 86400, CatalogRefresh.status != "queued"))
         db.execute(delete(SchoolDay).where(SchoolDay.created < int(now()) - 365 * 86400))
         db.execute(delete(Job).where(Job.created < int(now()) - 30 * 86400, Job.status.in_(["failed", "completed"])))
         # Also remove interrupted export files. Uploads have independent DB
@@ -580,7 +599,10 @@ def main():
                 with DB.begin() as db:
                     prepare_notifications(db)
             else:
-                time.sleep(1)
+                from .catalog_jobs import work_one as refresh_tips
+
+                if not refresh_tips():
+                    time.sleep(1)
         except Exception as exc:
             log.error("worker_error type=%s", type(exc).__name__)
             time.sleep(3)

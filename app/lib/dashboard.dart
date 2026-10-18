@@ -8,6 +8,7 @@ import 'api.dart';
 import 'coaching_panel.dart';
 import 'collection_screen.dart';
 import 'daily_plan_panel.dart';
+import 'learning_tips.dart';
 import 'preparation_card.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
@@ -905,7 +906,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 ),
               if ((plan['week'] as List? ?? []).isNotEmpty) ...[
                 heading('Die nächsten sieben Tage'),
-                DailyPlanPanel(plan: plan),
+                DailyPlanPanel(plan: plan, state: state, childId: child['id']),
               ],
               if ((data['mastery'] as List).isEmpty &&
                   (plan['later'] as List).isEmpty)
@@ -995,6 +996,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         ),
                         if (a['due'] != null) Text('Termin: ${a['due']}'),
                         Text(a['note'] ?? ''),
+                        LearningTips(
+                          state,
+                          childId: child['id'],
+                          kind: 'assignment',
+                          resourceId: a['id'],
+                        ),
                         if (state.canManage)
                           Wrap(
                             spacing: 12,
@@ -1509,7 +1516,12 @@ class _ChildHomeContent extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                DailyPlanPanel(plan: plan, childView: true),
+                DailyPlanPanel(
+                  plan: plan,
+                  childView: true,
+                  state: state,
+                  childId: child['id'],
+                ),
               ],
               for (final notice in plan['notices'] as List? ?? [])
                 Padding(

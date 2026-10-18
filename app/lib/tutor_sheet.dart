@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'learning_tips.dart';
 import 'lesson_voice.dart';
 import 'ui.dart';
 
@@ -584,6 +585,13 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               child: Tag('Nicht in deinen Heftseiten'),
             ),
           Text(answer, style: const TextStyle(fontSize: 17, height: 1.55)),
+          if (!collapsed && turn['source_changed'] != true)
+            LearningTips(
+              state,
+              childId: widget.childId,
+              kind: 'tutor',
+              resourceId: turn['id'],
+            ),
           Align(
             alignment: Alignment.centerLeft,
             child: ReadAloudButton(text: answer),
