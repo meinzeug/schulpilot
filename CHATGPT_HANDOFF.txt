@@ -1,3 +1,61 @@
+Kompakte Hefter1.7.2+40 – produktiv geprüft18.10.2026
+
+Aktueller Produktstand: Commit 1e644c2447a5ad2951d10c415ef6b123140e4a2b, main gepusht.
+Release 20261018T201730Z-1e644c2, Schema0019 unverändert. Vorheriger kompatibler
+Release20261018T195453Z-ba21953; beim Code-Rückweg additives Schema erhalten.
+Sicherung success/Exit0, sieben Dienste aktiv, projektspezifische Caddy-
+Konfiguration gesichert. Keine fremden Dienste oder Providergrenzen geändert.
+
+„Hefte“ zeigt eine kompakte Icon-Leiste: Suche erst nach eigener Aktion,
+Meine Fächer, Kacheln/Liste, Fotoimport und weiteres Menü. Tooltips und48px-
+Trefferflächen erhalten. Auf390/529px beginnt der erste Hefter bei224px,
+auf1440px bei249px. Wörter bleiben im regulären Menü. „Meine Fächer“ filtert
+jetzt ausschließlich nach vorhandenen Seiten: auch persönlich ausgewählte
+leere Fächer ausgeblendet, vorhandene unzugeordnete Seiten bleiben erreichbar.
+Ohne Filter vollständiger Fachstamm. Fachsuche ohne Tastatur-Autokorrektur.
+
+337 vollständige Fluttertests für die kompakte39-Basis bestanden; nach den
+Such-/Filterkorrekturen40 alle26 betroffenen Fluttertests und Analyse erneut
+bestanden. Drei Release-Policy-Tests auf isoliertem PostgreSQL bestanden.
+Web, reguläre signierte Direct-APK40 und Play-AAB40 gebaut. Signatur/Paket/
+Version/16-KB-Ausrichtung und tatsächliches AAB mit bundletool1.18.3 geprüft.
+Keine SDK-/Abhängigkeitsupdates oder neue Migration. Quellen/Builds gegen16
+konkrete Geheimnisquellen geprüft:0 Treffer. GitHub-Actions39153166860 konnte
+wegen Kontosperre durch ein Abrechnungsproblem keine Jobs starten; Annotation
+117750827826 geprüft. Lokale Prüfungen und main-Push funktionieren.
+
+Öffentlicher Chrome390/529/1440px: Kinder-/Elternlogin, kompakte Position,
+Suchfeld öffnen/eingeben/schließen, nur belegte Fächer, Listen-/Kachelwechsel,
+Menü/Aktualisieren/Alle Heftseiten/Elternrückweg bestanden.0 JavaScriptfehler,
+0 Schreibaufrufe durch Werkzeuge,0 zusätzliche KI-Aufträge. Zwei künstliche
+Fotos normal hochgeladen, ohne OCR/KI, ausschließlich eigener Testhaushalt.
+Reales natives OTA39->40: automatischer Servercheck, verifizierter Download,
+Android-Installationsbestätigung, kein adb install. Drei weitere Startchecks
+bestanden. Reguläre native Flutter-APK40/API36: kompakte Leiste, tatsächliche
+Suche mit englisch eingestellter Tastatur, leerer ausgewählter Hefter verborgen,
+unzugeordnete Seiten erreichbar, Ansichts-/Menüwechsel und Logout bestanden.
+Ein System-UI-ANR beim Emulatorstart erforderte Neustart der eigenen System-UI;
+native Prüfung anschließend erfolgreich. Kein physisches Gerät daraus ableiten.
+Export des eigenen künstlichen Haushalts mit zwei Fotos und null Lernantworten/
+KI-Verbrauchsbelegen geprüft; regulär gelöscht, beide alten Sitzungen401,
+privater Zugang entfernt und eigener Emulator beendet. Keine neue Audio-/Push-
+Zustellung, Play-Veröffentlichung oder Lernwirksamkeitsprüfung behauptet.
+
+Öffentliche HTTPS/API/Direktlinks, Web-JavaScript und APK bytegleich geprüft.
+APK artifacts/schulpilot-android.apk: 66681078Bytes, SHA256
+6f3634d8c49f01182d5bcdda358ae655bcc173e0f5450507d4e9e0e57e072169.
+Web https://schulpilot.dorfspy.de ; APK /downloads/schulpilot-android.apk.
+Browser: normaler Login -> Hefte -> Filter-Icon „Meine Fächer“; mit Inhalt
+sichtbar, ohne Inhalt verborgen. Ohne Filter bleiben alle Fächer öffnbar.
+Bereinigte Belege artifacts/notebook-toolbar-{web,native,erasure}-result.json,
+notebook-toolbar-public40.json und notebook-toolbar-ota39-to40.json.
+Nächste unabhängige Prüfung: persönlicher Alltagstest auf physischem Android;
+GitHub-Kontoinhaber muss die vorhandene Actions-Abrechnungssperre klären.
+
+Die nachfolgenden älteren Abschnitte sind historische Nachweise; bei
+Versionsständen gilt der aktuelle Abschnitt oben. Bestehende Firebase-/IAM-
+Nachweise und geschützte Speicherorte gelten mit ihrer jeweils genannten Prüfung.
+
 Katalog/Lerntipps1.7.0+38 · produktiv18.10.2026
 
 Produktcommit f04539fd5d959b7a5b082dacb1573a8d907b5379, main gepusht.

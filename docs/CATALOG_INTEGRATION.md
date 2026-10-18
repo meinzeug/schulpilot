@@ -2,7 +2,8 @@
 
 ## Stand 18.10.2026
 
-Produktiv **1.7.0+38 / Schema0019**, Produktcommit
+Katalog erstmals produktiv mit **1.7.0+38 / Schema0019**; aktueller
+Gesamtstand1.7.2+40 in STATUS/Handoff. Katalog-Produktcommit
 `f04539fd5d959b7a5b082dacb1573a8d907b5379`, Release
 `20261018T181932Z-f04539f`. Gesicherte Migration und tatsächlicher voller Import
 abgeschlossen. Alle907 Backendtests(495,91s),337 Fluttertests(115s),Analyse

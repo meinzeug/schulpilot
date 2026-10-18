@@ -108,3 +108,11 @@ Die Fachsuche verwendet ab40 keine Tastatur-Autokorrektur oder Vorschläge.
 Fachnamen dürfen beim Bestätigen der Suche nicht durch anderssprachige
 Wörterbuchvorschläge verändert werden; Texteingaben in Lernaufgaben bleiben
 von dieser Suchfeldeinstellung unberührt.
+
+Abnahme40:26 betroffene Fluttertests/Analyse sowie öffentliche Browserbedienung
+390/529/1440px und native Flutter-APK40/API36 bestanden. Erste Hefter bei224px
+(mobil),249px(desktop). Zwei normale künstliche Uploads ohne OCR geprüft;
+Minefilter verbirgt auch ausgewählte leere Fächer und erhält unzugeordnete
+Seiten. Reales OTA39->40 und drei Startchecks bestanden. Testhaushalt nach
+Export regulär gelöscht, alte Sitzungen401. Details/aktuelle Artefakte in
+STATUS/Handoff; keine physische Geräte-, Audio- oder Push-Abnahme abgeleitet.
