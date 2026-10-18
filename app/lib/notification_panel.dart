@@ -85,36 +85,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ),
                   for (final item in inbox.items)
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                      leading: Icon(
-                        item['kind'] == 'failed'
-                            ? Icons.info_outline_rounded
-                            : item['read'] == true
-                            ? Icons.notifications_none_rounded
-                            : Icons.notifications_active_outlined,
-                        color: item['read'] == true ? muted : teal,
-                      ),
-                      title: Text(
-                        item['title'],
-                        style: TextStyle(
-                          fontWeight: item['read'] == true
-                              ? FontWeight.w500
-                              : FontWeight.w700,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Material(
+                        color: item['read'] == true ? surfaceLow : mint,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: item['read'] == true ? surfaceBorder : teal,
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          leading: Icon(
+                            item['kind'] == 'failed'
+                                ? Icons.info_outline_rounded
+                                : item['read'] == true
+                                ? Icons.notifications_none_rounded
+                                : Icons.notifications_active_outlined,
+                            color: item['read'] == true ? muted : teal,
+                          ),
+                          title: Text(
+                            item['title'],
+                            style: TextStyle(
+                              fontWeight: item['read'] == true
+                                  ? FontWeight.w500
+                                  : FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () async {
+                            try {
+                              await inbox.markRead([item['id']]);
+                              if (context.mounted) context.go(item['route']);
+                            } catch (error) {
+                              if (context.mounted) {
+                                toast(context, error.toString());
+                              }
+                            }
+                          },
                         ),
                       ),
-                      subtitle: Text(
-                        '${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () async {
-                        try {
-                          await inbox.markRead([item['id']]);
-                          if (context.mounted) context.go(item['route']);
-                        } catch (error) {
-                          if (context.mounted) toast(context, error.toString());
-                        }
-                      },
                     ),
                   if (inbox.items.isNotEmpty)
                     const Padding(
@@ -371,8 +389,7 @@ class _NotificationPanelState extends State<NotificationPanel>
               ),
               const SizedBox(height: 16),
               ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(bottom: 16),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                 title: const Text('Zeiten & Auswahl'),
                 subtitle: Text('Ruhezeit: ${hour(start)}–${hour(end)}'),
                 children: [
@@ -526,7 +543,6 @@ class _NotificationPanelState extends State<NotificationPanel>
             if (devices.any((device) => device['current'] != true)) ...[
               const SizedBox(height: 12),
               ExpansionTile(
-                tilePadding: EdgeInsets.zero,
                 title: const Text('Weitere Geräte'),
                 children: [
                   for (final device in devices.where(

@@ -414,7 +414,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: const TextStyle(color: muted, fontSize: 12),
                   ),
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
                     title: const Text(
                       'Nutzung im Detail',
                       style: TextStyle(fontSize: 13),
@@ -1076,14 +1075,22 @@ class AdminOperationCards extends StatelessWidget {
                     width:
                         (constraints.maxWidth - (columns - 1) * 14) / columns,
                     child: Panel(
+                      tone: metric.$4 ? PanelTone.warning : PanelTone.neutral,
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            metric.$1,
-                            color: metric.$4 ? orange : teal,
-                            size: 24,
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: metric.$4 ? Colors.white : mint,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              metric.$1,
+                              color: metric.$4 ? warningInk : teal,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           Text(

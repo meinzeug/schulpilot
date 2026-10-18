@@ -54,19 +54,30 @@ class PracticeEvidence extends StatelessWidget {
               ),
             ])
               if (count(item.$1) > 0)
-                Container(
+                SurfaceInset(
+                  tone: switch (item.$1) {
+                    'independent_tasks' => PanelTone.success,
+                    'needs_practice_tasks' => PanelTone.warning,
+                    'uncertain_tasks' => PanelTone.info,
+                    _ => PanelTone.accent,
+                  },
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
-                  decoration: BoxDecoration(
-                    color: mint,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(item.$3, size: 17, color: teal),
+                      Icon(
+                        item.$3,
+                        size: 17,
+                        color: switch (item.$1) {
+                          'independent_tasks' => successInk,
+                          'needs_practice_tasks' => warningInk,
+                          'uncertain_tasks' => cyanInk,
+                          _ => teal,
+                        },
+                      ),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(

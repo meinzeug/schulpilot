@@ -1,4 +1,35 @@
-SCHULPILOT – Benachrichtigungen 1.4.1+31 · bereitgestellt und geprüft
+SCHULPILOT – Design 1.4.2+32 · Umsetzung und lokale Prüfung
+
+Aktueller Abschnitt hat Vorrang; Stand 18.10.2026.
+Gemeinsame Gestaltung für Kinder, Eltern und Admin auf Web/Android überarbeitet:
+sichtbar getrennte Flächen/Cards/Gruppen, stärkere Textkontraste, klare Buttons
+und Eingaben, Tastaturfokus, Status-/Antwortflächen, Glocke und Lernraum.
+303 Fluttertests inklusive acht Designprüfungen, Analyze/Ruff und drei
+Backend-Releaseprüfungen bestanden. Chrome-Vorschau des tatsächlichen Webbundles:
+23 Ansichten, alle Rollen, vier Breiten, null Laufzeitfehler/fehlgeschlagene
+Leseaufrufe. Ausschließlich künstliche Daten, keine externen KI-Aufrufe.
+Keine vollständige WCAG-/Screenreader- oder Lernwirksamkeitsabnahme behauptet.
+Keine Migration, Anbieter-/Firebasefreigaben und bestehende Rechte erhalten.
+Details/Quellen: docs/DESIGN_SYSTEM.md, docs/SOURCES.md, docs/STATUS.md.
+
+Buildstand: Web, signierte Direct-APK und Play-AAB 1.4.2+32 gebaut.
+Signatur/Zipalign und bundletool bestanden; 391 Quelldateien/244 Archiveinträge
+gegen 16 Geheimnisquellen geprüft, kein Fund.
+APK artifacts/schulpilot-android.apk, 64922473 Bytes, SHA-256
+88b5b6d7231a7481050e29395f74d65813c79e3a6b5a5c85627362d5f8d4e31d
+Play artifacts/schulpilot-play.aab, nicht im Store veröffentlicht.
+Fortsetzung: Commit, Deployment mit bestehender Sicherung; öffentliche
+Chrome-Abnahme und nativen
+API36-Emulator samt OTA und vier Aufgabenwidgets tatsächlich bedienen.
+Eigener geschützter Testdatensatz: artifacts/.design-qa-account.json.
+Keine Zugangsdaten weitergeben. Nach Prüfung qa/prepare_design_review.py --cleanup.
+Browser-Werkzeug qa/design_review.mjs, native Prüfung qa/android_design.py.
+
+Anschließend neuer Betreiberzusatz: Vokabeln aus bestätigten Heftseiten in den
+Wortschatz übernehmen und Wörter regulär im Menü erreichbar machen. Bestehende
+Quellen-, Sprach- und Eintragsbestätigungen sowie Revisionen erhalten.
+
+SCHULPILOT – Benachrichtigungen 1.4.1+31 · historischer geprüfter Release
 
 Dieser Abschnitt hat Vorrang vor der historischen Übergabe unten.
 Produktcommit dd6e30c09c41c1455f743c20ff5e26862bae298a, main gepusht.

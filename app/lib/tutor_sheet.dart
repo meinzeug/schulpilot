@@ -362,7 +362,6 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                         turnCard(turn, collapsed: turn != latest),
                     if (editable && turns.length > 1)
                       ExpansionTile(
-                        tilePadding: EdgeInsets.zero,
                         title: Text('Frühere Fragen (${turns.length - 1})'),
                         children: [
                           for (final turn
@@ -591,7 +590,6 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           ),
           if ((reply?['sources'] as List? ?? []).isNotEmpty)
             ExpansionTile(
-              tilePadding: EdgeInsets.zero,
               title: const Text('Wo steht das?'),
               children: [
                 for (final source in reply!['sources'] as List)
@@ -644,7 +642,6 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         padding: const EdgeInsets.all(16),
         child: collapsed
             ? ExpansionTile(
-                tilePadding: EdgeInsets.zero,
                 title: Text(turn['question'] ?? ''),
                 children: [content],
               )

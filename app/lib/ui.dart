@@ -5,13 +5,47 @@ import 'package:go_router/go_router.dart';
 import 'api.dart';
 import 'download_panel.dart';
 
-const ink = Color(0xFF17243C);
-const teal = Color(0xFF7047EB);
+// Shared light-surface palette. Cyan is an accent on navy, not a text color
+// on white. Keep secondary text opaque so nested surfaces preserve contrast.
+const ink = Color(0xFF14243D);
+const teal = Color(0xFF5936CB);
 const electric = Color(0xFF37D9EA);
-const mint = Color(0xFFEEF0FF);
-const cream = Color(0xFFF5F7FC);
+const mint = Color(0xFFEEE9FF);
+const cream = Color(0xFFE8EEF6);
 const orange = Color(0xFFF4AD54);
-const muted = Color(0xFF718096);
+const muted = Color(0xFF4C5F79);
+const surfaceLow = Color(0xFFF2F5FA);
+const surfaceBorder = Color(0xFFB8C6D9);
+const controlBorder = Color(0xFF7788A2);
+const cyanInk = Color(0xFF006575);
+const cyanSurface = Color(0xFFE2F5FA);
+const successInk = Color(0xFF16664C);
+const successSurface = Color(0xFFE5F5ED);
+const warningInk = Color(0xFF80500A);
+const warningSurface = Color(0xFFFFF1DA);
+const dangerInk = Color(0xFFA82D40);
+const dangerSurface = Color(0xFFFFF0F2);
+
+enum PanelTone { neutral, subtle, accent, info, success, warning, danger }
+
+Color panelColor(PanelTone tone) => switch (tone) {
+  PanelTone.neutral => Colors.white,
+  PanelTone.subtle => surfaceLow,
+  PanelTone.accent => mint,
+  PanelTone.info => cyanSurface,
+  PanelTone.success => successSurface,
+  PanelTone.warning => warningSurface,
+  PanelTone.danger => dangerSurface,
+};
+
+Color panelAccent(PanelTone tone) => switch (tone) {
+  PanelTone.neutral || PanelTone.subtle => controlBorder,
+  PanelTone.accent => teal,
+  PanelTone.info => cyanInk,
+  PanelTone.success => successInk,
+  PanelTone.warning => warningInk,
+  PanelTone.danger => dangerInk,
+};
 
 void openRoute(BuildContext context, String path) {
   if (kIsWeb) {
@@ -22,108 +56,278 @@ void openRoute(BuildContext context, String path) {
 }
 
 ThemeData appTheme() {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: teal,
-    surface: Colors.white,
-  ).copyWith(secondary: electric);
+  final scheme = ColorScheme.fromSeed(seedColor: teal, surface: Colors.white)
+      .copyWith(
+        primary: teal,
+        onPrimary: Colors.white,
+        primaryContainer: mint,
+        onPrimaryContainer: ink,
+        secondary: cyanInk,
+        onSecondary: Colors.white,
+        secondaryContainer: cyanSurface,
+        onSecondaryContainer: ink,
+        surface: Colors.white,
+        onSurface: ink,
+        onSurfaceVariant: muted,
+        surfaceContainerLowest: Colors.white,
+        surfaceContainerLow: surfaceLow,
+        surfaceContainer: cream,
+        surfaceContainerHigh: const Color(0xFFDDE5F1),
+        surfaceContainerHighest: const Color(0xFFD2DDEB),
+        outline: controlBorder,
+        outlineVariant: surfaceBorder,
+        error: dangerInk,
+        onError: Colors.white,
+        errorContainer: dangerSurface,
+        onErrorContainer: dangerInk,
+      );
+  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+  final rounded = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(14),
+  );
+  final focusSide = WidgetStateProperty.resolveWith<BorderSide>((states) {
+    if (states.contains(WidgetState.focused)) {
+      return const BorderSide(color: teal, width: 2.5);
+    }
+    return BorderSide(
+      color: states.contains(WidgetState.disabled)
+          ? surfaceBorder
+          : controlBorder,
+      width: 1.25,
+    );
+  });
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: cream,
-    textTheme: const TextTheme(
-      headlineLarge: TextStyle(
-        fontSize: 40,
-        fontWeight: FontWeight.w800,
-        color: ink,
-        height: 1.12,
-        letterSpacing: -1.3,
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 30,
-        fontWeight: FontWeight.w800,
-        color: ink,
-        letterSpacing: -.9,
-      ),
-      titleLarge: TextStyle(
-        fontSize: 21,
-        fontWeight: FontWeight.w700,
-        color: ink,
-        letterSpacing: -.4,
-      ),
-      bodyLarge: TextStyle(fontSize: 16, color: ink, height: 1.5),
-      bodyMedium: TextStyle(fontSize: 14, color: ink, height: 1.45),
-    ),
+    visualDensity: VisualDensity.standard,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    textTheme: base.textTheme
+        .apply(bodyColor: ink, displayColor: ink)
+        .copyWith(
+          headlineLarge: const TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.w800,
+            color: ink,
+            height: 1.12,
+            letterSpacing: -1.3,
+          ),
+          headlineMedium: const TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            color: ink,
+            letterSpacing: -.9,
+          ),
+          titleLarge: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: ink,
+            letterSpacing: -.4,
+          ),
+          titleMedium: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: ink,
+            height: 1.4,
+          ),
+          bodyLarge: const TextStyle(fontSize: 16, color: ink, height: 1.55),
+          bodyMedium: const TextStyle(fontSize: 15, color: ink, height: 1.5),
+          bodySmall: const TextStyle(fontSize: 12, color: muted, height: 1.5),
+          labelLarge: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
+      foregroundColor: ink,
+      shape: Border(bottom: BorderSide(color: surfaceBorder)),
     ),
-    dividerTheme: const DividerThemeData(
-      color: Color(0xFFE8EDF6),
-      thickness: 1,
-    ),
+    dividerTheme: const DividerThemeData(color: surfaceBorder, thickness: 1),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFF8FAFE),
-      floatingLabelStyle: const TextStyle(color: teal),
+      fillColor: surfaceLow,
+      labelStyle: const TextStyle(color: muted, fontSize: 14),
+      hintStyle: const TextStyle(color: muted, fontSize: 14),
+      helperStyle: const TextStyle(color: muted),
+      errorStyle: const TextStyle(color: dangerInk),
+      prefixIconColor: muted,
+      suffixIconColor: muted,
+      floatingLabelStyle: const TextStyle(
+        color: teal,
+        fontWeight: FontWeight.w700,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE1E7F2)),
+        borderSide: const BorderSide(color: controlBorder, width: 1.25),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE1E7F2)),
+        borderSide: const BorderSide(color: controlBorder, width: 1.25),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: teal, width: 1.5),
+        borderSide: const BorderSide(color: teal, width: 2.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: dangerInk, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: dangerInk, width: 2.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: teal,
-        foregroundColor: Colors.white,
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-        minimumSize: const Size(48, 52),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
+      style:
+          FilledButton.styleFrom(
+            backgroundColor: teal,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: const Color(0xFFDEE5F0),
+            disabledForegroundColor: muted,
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+            minimumSize: const Size(48, 52),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            shape: rounded,
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.focused)
+                  ? const BorderSide(color: Colors.white, width: 2.5)
+                  : BorderSide.none,
+            ),
+          ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: ink,
+        backgroundColor: Colors.white,
+        disabledForegroundColor: muted,
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        side: const BorderSide(color: Color(0xFFDDE4F0)),
-      ),
+        shape: rounded,
+      ).copyWith(side: focusSide),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style:
+          TextButton.styleFrom(
+            foregroundColor: teal,
+            disabledForegroundColor: muted,
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            shape: rounded,
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.focused)
+                  ? const BorderSide(color: teal, width: 2.5)
+                  : BorderSide.none,
+            ),
+          ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style:
+          IconButton.styleFrom(
+            foregroundColor: muted,
+            minimumSize: const Size(48, 48),
+            shape: rounded,
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.focused)
+                  ? const BorderSide(color: teal, width: 2.5)
+                  : BorderSide.none,
+            ),
+          ),
     ),
     cardTheme: CardThemeData(
-      elevation: 0,
+      elevation: 2,
+      shadowColor: ink.withValues(alpha: .14),
+      surfaceTintColor: Colors.transparent,
       margin: EdgeInsets.zero,
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: Color(0xFFE6EBF4)),
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: surfaceBorder),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
-      indicatorColor: mint,
-      labelTextStyle: WidgetStateProperty.all(
-        const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: teal,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected) ? Colors.white : muted,
+          size: 23,
+        ),
       ),
-      height: 72,
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontSize: 12,
+          color: states.contains(WidgetState.selected) ? teal : muted,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w800
+              : FontWeight.w600,
+        ),
+      ),
+      height: 76,
+    ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: teal,
+      unselectedLabelColor: muted,
+      labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      indicatorColor: teal,
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: surfaceBorder,
+    ),
+    expansionTileTheme: ExpansionTileThemeData(
+      backgroundColor: surfaceLow,
+      collapsedBackgroundColor: surfaceLow,
+      textColor: ink,
+      collapsedTextColor: ink,
+      iconColor: teal,
+      collapsedIconColor: muted,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: controlBorder),
+      ),
+      collapsedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: surfaceBorder),
+      ),
+      tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      clipBehavior: Clip.antiAlias,
     ),
     chipTheme: ChipThemeData(
-      side: BorderSide.none,
-      backgroundColor: mint,
-      selectedColor: const Color(0xFFDFE2FF),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      side: WidgetStateBorderSide.resolveWith(
+        (states) => BorderSide(
+          color:
+              states.contains(WidgetState.focused) ||
+                  states.contains(WidgetState.selected)
+              ? teal
+              : controlBorder,
+          width: states.contains(WidgetState.focused) ? 2.5 : 1,
+        ),
+      ),
+      backgroundColor: Colors.white,
+      selectedColor: mint,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       labelStyle: const TextStyle(
-        color: ink,
+        color: teal,
         fontSize: 12,
         fontWeight: FontWeight.w600,
       ),
@@ -132,18 +336,64 @@ ThemeData appTheme() {
         fontSize: 12,
         fontWeight: FontWeight.w600,
       ),
-      checkmarkColor: ink,
+      checkmarkColor: teal,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: teal,
-      linearTrackColor: Color(0xFFE3E6FB),
-      linearMinHeight: 6,
+      linearTrackColor: Color(0xFFD5DFEE),
+      linearMinHeight: 8,
       borderRadius: BorderRadius.all(Radius.circular(6)),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: ink,
+      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      actionTextColor: electric,
+      closeIconColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      dragHandleColor: controlBorder,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: surfaceBorder),
+      ),
+      textStyle: const TextStyle(color: ink, fontSize: 14),
+    ),
+    dataTableTheme: const DataTableThemeData(
+      headingRowColor: WidgetStatePropertyAll(surfaceLow),
+      headingTextStyle: TextStyle(color: ink, fontWeight: FontWeight.w700),
+      dataTextStyle: TextStyle(color: ink, fontSize: 14),
+      dividerThickness: 1,
+    ),
+    listTileTheme: const ListTileThemeData(
+      textColor: ink,
+      iconColor: muted,
+      selectedColor: teal,
+      subtitleTextStyle: TextStyle(color: muted, fontSize: 13, height: 1.45),
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: ink,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     ),
   );
 }
@@ -184,17 +434,26 @@ Widget brand({bool light = false}) => FittedBox(
 class Panel extends StatelessWidget {
   final Widget child;
   final Color? color;
+  final PanelTone tone;
   final EdgeInsets padding;
   const Panel({
     super.key,
     required this.child,
     this.color,
+    this.tone = PanelTone.neutral,
     this.padding = const EdgeInsets.all(24),
   });
   @override
   Widget build(BuildContext context) => Card(
     semanticContainer: false,
-    color: color,
+    color: color ?? panelColor(tone),
+    elevation: tone == PanelTone.subtle ? 0 : null,
+    shape: tone == PanelTone.neutral
+        ? null
+        : RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: panelAccent(tone).withValues(alpha: .45)),
+          ),
     child: Padding(
       padding:
           MediaQuery.sizeOf(context).width < 600 &&
@@ -203,6 +462,33 @@ class Panel extends StatelessWidget {
           : padding,
       child: child,
     ),
+  );
+}
+
+/// An inset group inside a card, without another raised white card.
+class SurfaceInset extends StatelessWidget {
+  final Widget child;
+  final PanelTone tone;
+  final EdgeInsets padding;
+  const SurfaceInset({
+    super.key,
+    required this.child,
+    this.tone = PanelTone.subtle,
+    this.padding = const EdgeInsets.all(16),
+  });
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: padding,
+    decoration: BoxDecoration(
+      color: panelColor(tone),
+      border: Border.all(
+        color: tone == PanelTone.subtle || tone == PanelTone.neutral
+            ? surfaceBorder
+            : panelAccent(tone).withValues(alpha: .45),
+      ),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: child,
   );
 }
 
@@ -225,11 +511,11 @@ class FocusCard extends StatelessWidget {
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: electric.withValues(alpha: .3)),
+      border: Border.all(color: const Color(0xFF526B94)),
       boxShadow: [
         BoxShadow(
-          color: teal.withValues(alpha: .12),
-          blurRadius: 24,
+          color: ink.withValues(alpha: .18),
+          blurRadius: 20,
           offset: const Offset(0, 8),
         ),
       ],
@@ -301,22 +587,29 @@ class FocusCard extends StatelessWidget {
               const SizedBox(height: 24),
               FilledButtonTheme(
                 data: FilledButtonThemeData(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: electric,
-                    foregroundColor: const Color(0xFF101B31),
-                    minimumSize: const Size(48, 52),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 16,
-                    ),
-                    textStyle: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
+                  style:
+                      FilledButton.styleFrom(
+                        backgroundColor: electric,
+                        foregroundColor: const Color(0xFF101B31),
+                        minimumSize: const Size(48, 52),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 16,
+                        ),
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ).copyWith(
+                        side: WidgetStateProperty.resolveWith(
+                          (states) => states.contains(WidgetState.focused)
+                              ? const BorderSide(color: ink, width: 2.5)
+                              : BorderSide.none,
+                        ),
+                      ),
                 ),
                 child: action,
               ),
@@ -382,16 +675,22 @@ class Notice extends StatelessWidget {
     margin: const EdgeInsets.symmetric(vertical: 8),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: warning ? const Color(0xFFFFF1DE) : mint,
-      borderRadius: BorderRadius.circular(12),
+      color: warning ? warningSurface : cyanSurface,
+      border: Border.all(
+        color: (warning ? warningInk : cyanInk).withValues(alpha: .45),
+      ),
+      borderRadius: BorderRadius.circular(14),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: warning ? const Color(0xFF8B571D) : teal),
+        Icon(icon, size: 20, color: warning ? warningInk : cyanInk),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 13, height: 1.5)),
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 14, color: ink, height: 1.5),
+          ),
         ),
       ],
     ),
@@ -407,6 +706,7 @@ class Tag extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
     decoration: BoxDecoration(
       color: color,
+      border: Border.all(color: surfaceBorder),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
@@ -444,11 +744,7 @@ class _ActionButtonState extends State<ActionButton> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (busy)
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
+          const SizedBox(width: 18, height: 18, child: _ButtonProgress())
         else if (widget.icon != null)
           Icon(widget.icon, size: 19),
         if (busy || widget.icon != null) const SizedBox(width: 9),
@@ -470,6 +766,15 @@ class _ActionButtonState extends State<ActionButton> {
         ? OutlinedButton(onPressed: busy ? null : pressed, child: child)
         : FilledButton(onPressed: busy ? null : pressed, child: child);
   }
+}
+
+class _ButtonProgress extends StatelessWidget {
+  const _ButtonProgress();
+  @override
+  Widget build(BuildContext context) => CircularProgressIndicator(
+    strokeWidth: 2,
+    color: DefaultTextStyle.of(context).style.color,
+  );
 }
 
 void showError(BuildContext context, Object error) =>
@@ -680,13 +985,29 @@ class WorkspaceShell extends StatelessWidget {
             ),
       bottomNavigationBar: desktop
           ? null
-          : NavigationBar(
-              selectedIndex: selected,
-              onDestinationSelected: (i) => context.go(entries[i].$3),
-              destinations: [
-                for (final entry in entries)
-                  NavigationDestination(icon: Icon(entry.$1), label: entry.$2),
-              ],
+          : DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: surfaceBorder)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0F14243D),
+                    blurRadius: 16,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: NavigationBar(
+                selectedIndex: selected,
+                onDestinationSelected: (i) => context.go(entries[i].$3),
+                destinations: [
+                  for (final entry in entries)
+                    NavigationDestination(
+                      icon: Icon(entry.$1),
+                      label: entry.$2,
+                    ),
+                ],
+              ),
             ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -722,14 +1043,18 @@ class WorkspaceShell extends StatelessWidget {
                             ? 36
                             : desktop
                             ? 28
+                            : width < 360
+                            ? 16
                             : 20,
                         desktop ? 32 : 24,
                         sidebar
                             ? 36
                             : desktop
                             ? 28
+                            : width < 360
+                            ? 16
                             : 20,
-                        24,
+                        32,
                       ),
                       child: Center(
                         child: ConstrainedBox(
@@ -846,13 +1171,11 @@ class _WorkspaceSidebar extends StatelessWidget {
                 for (var i = 0; i < entries.length; i++)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Material(
-                      color: i == selected
-                          ? const Color(0xFF303A60)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(14),
+                    child: _NavigationSurface(
+                      selected: i == selected,
                       child: ListTile(
                         selected: i == selected,
+                        focusColor: Colors.transparent,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                         ),
@@ -889,6 +1212,38 @@ class _WorkspaceSidebar extends StatelessWidget {
   );
 }
 
+class _NavigationSurface extends StatefulWidget {
+  final bool selected;
+  final Widget child;
+  const _NavigationSurface({required this.selected, required this.child});
+  @override
+  State<_NavigationSurface> createState() => _NavigationSurfaceState();
+}
+
+class _NavigationSurfaceState extends State<_NavigationSurface> {
+  bool focused = false;
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    onFocusChange: (value) => setState(() => focused = value),
+    child: Material(
+      color: focused
+          ? const Color(0xFF354B70)
+          : widget.selected
+          ? const Color(0xFF303A60)
+          : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: focused || widget.selected ? electric : Colors.transparent,
+          width: focused ? 2.5 : 1,
+        ),
+      ),
+      child: widget.child,
+    ),
+  );
+}
+
 class _WorkspaceRail extends StatelessWidget {
   final List<(IconData, String, String)> entries;
   final int selected;
@@ -904,7 +1259,18 @@ class _WorkspaceRail extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Image.asset('assets/brand/schulpilot-mark.png', width: 34),
+            child: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: cyanSurface,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Image.asset(
+                'assets/brand/schulpilot-mark.png',
+                width: 34,
+                excludeFromSemantics: true,
+              ),
+            ),
           ),
           Expanded(
             child: NavigationRail(
@@ -964,7 +1330,7 @@ class _WorkspaceHeader extends StatelessWidget {
     padding: EdgeInsets.symmetric(horizontal: compact ? 28 : 36),
     decoration: const BoxDecoration(
       color: Colors.white,
-      border: Border(bottom: BorderSide(color: Color(0xFFE2E7F0))),
+      border: Border(bottom: BorderSide(color: surfaceBorder)),
     ),
     child: Row(
       children: [
@@ -1044,9 +1410,24 @@ class NotificationBell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state.inbox,
-    builder: (context, _) => IconButton(
+    builder: (context, _) => IconButton.outlined(
       key: const ValueKey('notification-bell'),
       tooltip: state.isAdmin ? 'Push-Status' : 'Benachrichtigungen',
+      style:
+          IconButton.styleFrom(
+            backgroundColor: surfaceLow,
+            foregroundColor: ink,
+            side: const BorderSide(color: controlBorder),
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => BorderSide(
+                color: states.contains(WidgetState.focused)
+                    ? teal
+                    : controlBorder,
+                width: states.contains(WidgetState.focused) ? 2.5 : 1,
+              ),
+            ),
+          ),
       onPressed: () =>
           context.go(state.isAdmin ? '/admin/push' : '/notifications'),
       icon: Badge(
@@ -1071,7 +1452,14 @@ class _WorkspaceHeading extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null)
-            Text(title!, style: Theme.of(context).textTheme.headlineMedium),
+            Semantics(
+              header: true,
+              child: Text(
+                title!,
+                style: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontSize: constraints.maxWidth < 500 ? 28 : 32),
+              ),
+            ),
           if (subtitle?.isNotEmpty == true)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -1118,12 +1506,15 @@ Widget heading(String title, {String? subtitle, Widget? trailing}) => Padding(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: ink,
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                ),
               ),
             ),
             if (subtitle != null)
@@ -1150,7 +1541,14 @@ Widget stat(String value, String label, IconData icon, {Color color = mint}) =>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: teal, size: 22),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: teal, size: 22),
+            ),
             const SizedBox(height: 15),
             Text(
               value,

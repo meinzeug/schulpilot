@@ -321,9 +321,8 @@ class _GradesScreenState extends State<GradesScreen> {
                     ),
                   ),
                 ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
                   title: const Text('Wie wird das berücksichtigt?'),
-                  childrenPadding: const EdgeInsets.only(bottom: 16),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   children: [
                     Text(
                       data!['notice'],

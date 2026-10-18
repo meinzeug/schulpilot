@@ -1033,13 +1033,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Material(
-                            color: choice == option ? mint : Colors.white,
+                            color: choice == option ? mint : surfaceLow,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                               side: BorderSide(
-                                color: choice == option
-                                    ? teal
-                                    : const Color(0xFFD7DFED),
+                                color: choice == option ? teal : controlBorder,
                                 width: choice == option ? 2 : 1,
                               ),
                             ),
@@ -1503,6 +1501,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Panel(
+          tone: correct
+              ? PanelTone.success
+              : uncertain
+              ? PanelTone.info
+              : PanelTone.warning,
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1518,21 +1521,32 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 6),
-              if (q['type'] == 'match')
-                for (var i = 0; i < (q['options'] as List).length; i++)
-                  Text(
-                    '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
-                    style: const TextStyle(fontSize: 17),
-                  )
-              else
-                Text(
-                  answer,
-                  key: const ValueKey('feedback-own-answer'),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              SurfaceInset(
+                tone: PanelTone.neutral,
+                child: q['type'] == 'match'
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (
+                            var i = 0;
+                            i < (q['options'] as List).length;
+                            i++
+                          )
+                            Text(
+                              '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
+                              style: const TextStyle(fontSize: 17),
+                            ),
+                        ],
+                      )
+                    : Text(
+                        answer,
+                        key: const ValueKey('feedback-own-answer'),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
               const SizedBox(height: 18),
               const Divider(),
               const SizedBox(height: 12),
@@ -1547,7 +1561,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       correct
                           ? Icons.check_circle_rounded
                           : Icons.lightbulb_outline_rounded,
-                      color: correct ? teal : const Color(0xFF92621A),
+                      color: correct
+                          ? successInk
+                          : uncertain
+                          ? cyanInk
+                          : warningInk,
                       size: 28,
                     ),
                     const SizedBox(width: 10),
@@ -1590,7 +1608,6 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 const SizedBox(height: 16),
                 if (correct)
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
                     title: const Text('Warum das stimmt'),
                     children: [
                       Text(
@@ -1644,7 +1661,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Widget inlineHelp(Json u, Json q) => Panel(
     key: hintTop,
-    color: mint,
+    tone: PanelTone.accent,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

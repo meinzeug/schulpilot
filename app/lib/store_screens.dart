@@ -748,7 +748,6 @@ class _PaymentCheckFormState extends State<PaymentCheckForm> {
 
   @override
   Widget build(BuildContext context) => ExpansionTile(
-    tilePadding: EdgeInsets.zero,
     title: Text(
       widget.refund
           ? 'Extern gebuchte Erstattung erfassen'

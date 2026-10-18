@@ -384,7 +384,6 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                           ),
                         ],
                         ExpansionTile(
-                          tilePadding: EdgeInsets.zero,
                           initiallyExpanded: [
                             'writing_feedback',
                             'model_text',
@@ -518,7 +517,6 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                 ),
               if ((row['draft'] ?? '').toString().isNotEmpty)
                 ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
                   title: const Text('Mein gespeicherter Versuch'),
                   children: [SelectableText(row['draft'])],
                 ),
@@ -555,7 +553,6 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                   ),
                 if (result['source_excerpt'] != null)
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
                     title: const Text('Beleg im bestätigten Stoff'),
                     children: [Text(result['source_excerpt'])],
                   ),

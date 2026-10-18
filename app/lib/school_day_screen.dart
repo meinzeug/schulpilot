@@ -585,7 +585,6 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             ],
             const SizedBox(height: 18),
             ExpansionTile(
-              tilePadding: EdgeInsets.zero,
               title: const Text(
                 'Mehr zu diesem Tag',
                 style: TextStyle(fontSize: 13, color: muted),
@@ -1125,7 +1124,6 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           ),
         const SizedBox(height: 18),
         ExpansionTile(
-          tilePadding: EdgeInsets.zero,
           title: const Text('Was ist im Paket?'),
           children: [
             for (final group in preview?['groups'] as List? ?? [])
@@ -1672,7 +1670,6 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 ),
               ],
               ExpansionTile(
-                tilePadding: EdgeInsets.zero,
                 title: Text('Heftseiten dieses Tages (${pages.length})'),
                 children: [
                   for (final page in pages)

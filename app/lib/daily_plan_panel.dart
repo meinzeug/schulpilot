@@ -93,7 +93,8 @@ class LearningGoalPanel extends StatelessWidget {
     final required = plan['goal_required'] != false;
     final dailyMet = plan['daily_goal_met'] == true;
     final weeklyMet = plan['weekly_goal_met'] == true;
-    return Panel(
+    return SurfaceInset(
+      tone: dailyMet && required ? PanelTone.success : PanelTone.subtle,
       padding: EdgeInsets.all(compact ? 16 : 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

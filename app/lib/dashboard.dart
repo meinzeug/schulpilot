@@ -115,6 +115,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
               Panel(
+                tone: PanelTone.info,
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +326,7 @@ class _ParentStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Panel(
-    color: highlighted ? mint : null,
+    tone: highlighted ? PanelTone.accent : PanelTone.neutral,
     padding: const EdgeInsets.all(20),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -777,13 +778,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 PreparationCard(childId: child['id'], preparation: preparation),
               const SizedBox(height: 24),
               ExpansionTile(
-                tilePadding: EdgeInsets.zero,
                 leading: const Icon(Icons.insights_rounded, color: teal),
                 title: const Text('Rückblick auf sieben Tage'),
                 subtitle: Text(
                   '${data['week_summary']['completed_units']} Einheiten · ${data['week_summary']['hints_used']} Hinweise',
                 ),
-                childrenPadding: const EdgeInsets.only(bottom: 14),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
@@ -1646,10 +1646,9 @@ class _ChildHomeDisclosure extends StatelessWidget {
     child: Panel(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
         leading: Icon(icon, color: teal, size: 22),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        childrenPadding: const EdgeInsets.only(bottom: 16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: [child],
       ),
     ),
@@ -2304,7 +2303,6 @@ Future<void> preferencesDialog(
                         ),
                         const SizedBox(height: 8),
                         ExpansionTile(
-                          tilePadding: EdgeInsets.zero,
                           title: const Text('Fächer auf Tage verteilen'),
                           subtitle: const Text('Ohne Auswahl: alle Lerntage'),
                           children: [

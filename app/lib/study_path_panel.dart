@@ -454,7 +454,6 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               ],
               const SizedBox(height: 10),
               ExpansionTile(
-                tilePadding: EdgeInsets.zero,
                 title: const Text('Alle Etappen'),
                 children: [
                   for (final block in blocks)

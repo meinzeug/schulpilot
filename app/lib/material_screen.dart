@@ -170,7 +170,6 @@ class _CropDialogState extends State<CropDialog> {
             ),
             const SizedBox(height: 16),
             ExpansionTile(
-              tilePadding: EdgeInsets.zero,
               title: const Text('Bild zuschneiden'),
               children: [
                 for (final item in [
@@ -722,7 +721,6 @@ class _MaterialReviewState extends State<MaterialReview> {
                 ),
                 if (longText)
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
                     title: const Text('Ganzen Text lesen'),
                     children: [
                       Text(content.text, style: const TextStyle(height: 1.5)),

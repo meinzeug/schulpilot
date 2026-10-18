@@ -53,12 +53,11 @@ class LearningProgressPanel extends StatelessWidget {
               ),
             ),
           ExpansionTile(
-            tilePadding: EdgeInsets.zero,
             title: const Text(
               'Was bleibt über mehrere Tage hängen?',
               style: TextStyle(fontSize: 13),
             ),
-            childrenPadding: const EdgeInsets.only(bottom: 12),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             children: [
               const Text(
                 'Deine Übungen sind oben mitgezählt. Neue Aufgaben ohne Hilfe an späteren Tagen zeigen zusätzlich, was du noch weißt.',
@@ -450,7 +449,6 @@ class _ChildCoachingPanel extends StatelessWidget {
                 ],
                 if ((coach?['reason'] as String? ?? '').isNotEmpty)
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
                     title: const Text('Was ist passiert?'),
                     children: [Text(coach!['reason'])],
                   ),
@@ -539,7 +537,6 @@ class _ChildCoachingPanel extends StatelessWidget {
                     ),
                     if (coach?['practice_error'] != null)
                       ExpansionTile(
-                        tilePadding: EdgeInsets.zero,
                         title: const Text('Was ist passiert?'),
                         children: [Text(coach!['practice_error'])],
                       ),

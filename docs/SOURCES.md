@@ -1,5 +1,21 @@
 # Offizielle Quellen, geprüft am 14.10.2026
 
+Oberflächengestaltung, zusätzlich geprüft am 18.10.2026:
+
+- [W3C WCAG 2.2 – Textkontrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html):
+  4,5:1 für normalen und 3:1 für großen Text; auch Hinweis-/Platzhaltertexte
+  berücksichtigen. Grenzwerte nicht aufrunden.
+- [W3C WCAG 2.2 – Nicht-Text-Kontrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html):
+  notwendige Erkennungsmerkmale und Zustände mit 3:1. Dekorative Card-Rahmen
+  nicht mit notwendigen Eingabefeldgrenzen gleichsetzen.
+- [W3C – sichtbarer Fokus](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html):
+  Tastaturfokus sichtbar halten. Implementierung, Flächenhierarchie und Grenzen
+  der tatsächlichen Prüfung: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
+- APIs gegen den bereits fixierten Flutter-3.47.7-Quellstand geprüft:
+  `button_style.dart`, `chip.dart`, `tab_bar_theme.dart`, `accessibility.dart`.
+  ButtonStyle.side als Zustandswert auflösen; ChipTheme.side verwendet den
+  dokumentierten WidgetStateBorderSide-Pfad. Keine SDK-/Paketmigration.
+
 Sprachlernen, ergänzend geprüft am 17.10.2026:
 
 - [flutter_tts 4.2.5](https://pub.dev/packages/flutter_tts/versions/4.2.5) und

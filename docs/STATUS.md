@@ -1,4 +1,42 @@
-# Aktueller Stand · Benachrichtigungen 1.4.1+31 · 17.10.2026
+# Aktueller Stand · Design 1.4.2+32 · 18.10.2026
+
+**Implementiert:** gemeinsame Flächenhierarchie für alle drei Rollen auf Web
+und Android. Blaugraue Arbeitsfläche, weiße Cards mit sichtbaren Rahmen/Schatten,
+eingelagerte Gruppen, stärkere Textkontraste, klare Eingaben und Buttons,
+Tastaturfokus, aufgeklappte Details, Statusflächen und hervorgehobene Glocke.
+Der Lernraum trennt Kopf, Aufgabe, eigene Antwort, Rückmeldung und Aktionsbereich.
+Familienübersicht und Admin-Status verwenden dieselben Komponenten.
+Details: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
+
+**Geprüft:** 303 Flutter-Tests einschließlich acht neuer Designprüfungen bestanden;
+60 gezielte vorhandene Rollen-/Kinder-/Glockentests zuvor bestanden.
+Tatsächliche Fokusrahmen, Text-/Steuerelementfarben und gerenderte Kontrast-
+und Beschriftungsprüfungen bei 320/390/1440 px, normaler/doppelter Schrift.
+Analyze und Ruff ohne Befund. Drei Backend-Releaseprüfungen bestanden;
+keine fachliche Backendänderung außer Versionsnummer, keine Migration.
+Weiß/Violett 7,461:1, Sekundärtext/Arbeitsfläche 5,587:1;
+Kontrollrand/Arbeitsfläche 3,087:1. Keine pauschale WCAG-Zertifizierung.
+
+**Fortsetzungsstand:** lokale Chrome-Vorschau des tatsächlichen Web-Releasebundles
+über Loopback geprüft: 23 Ansichten, alle Rollen, 320/390/960/1440 px,
+null Laufzeitfehler/fehlgeschlagene API-Leseaufrufe. Ausschließlich eigener
+künstlicher Haushalt und Admin-Betriebsmetadaten; keine externe KI.
+Web, signierte Direct-APK und Play-AAB gebaut; Signatur/Zipalign und bundletool
+bestanden, beide Android-Artefakte mit Versionscode 32. Geheimnisprüfung über
+391 Quelldateien/244 Archiveinträge gegen 16 tatsächliche Geheimnisquellen:
+kein Fund. APK 64.922.473 Bytes, SHA-256
+`88b5b6d7231a7481050e29395f74d65813c79e3a6b5a5c85627362d5f8d4e31d`.
+Nächste Aktion: Produktcommit, bestehendes Deployment mit Sicherung,
+öffentliche Chrome-Abnahme sowie OTA/echte native Emulator-Bedienung.
+`qa/prepare_design_review.py` hält den eigenen künstlichen Datensatz geschützt
+und wiederaufnehmbar; abschließend mit `--cleanup` löschen.
+
+**Danach ausdrücklich beauftragter Zusatz:** erkannte Vokabelseiten bis zu
+Wortpaaren in der bestehenden Wortschatzdatenbank führen und „Wörter“ als
+regulären Menüeintrag anbieten. Quellen-/Sprachbestätigung und Revisionen
+erhalten; keine ungeprüften Ergänzungen als Unterrichtsstoff übernehmen.
+
+# Bisheriger Stand · Benachrichtigungen 1.4.1+31 · 17.10.2026
 
 **Öffentlich aktiviert:** Produktcommit `dd6e30c09c41c1455f743c20ff5e26862bae298a`,
 Release `20261017T202938Z-dd6e30c`, Migration 0015 → 0016. Backend/Web und reguläre

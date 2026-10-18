@@ -1,5 +1,17 @@
 # Betrieb
 
+## Designrelease 1.4.2+32
+
+Gemeinsame Flutter-Gestaltung ohne Schemaänderung; Datenbank bleibt auf 0016.
+Keine Provider-, Sitzungs-, Firebase- oder Familienänderung durch den Release.
+Vor Aktivierung die reguläre Sicherung mit Result=success prüfen.
+Vorheriger Code: `20261017T202938Z-dd6e30c`; mit `--rollback-compatible`
+reaktivierbar, additive Tabelle 0016 erhalten. Keine Datenrücksicherung und kein
+Schema-Downgrade für eine Gestaltungskorrektur. Installierte APKs werden nicht
+automatisch heruntergestuft; eine Vorwärtskorrektur bevorzugen.
+Aktivierung und tatsächliche Abnahme erst nach den Ergebnissen in STATUS/Handoff
+als erfolgt behandeln. Detailregeln: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
+
 ## Benachrichtigungsrelease 1.4.1+31
 
 Migration 0016 ergänzt ausschließlich private Lesemarkierungen in

@@ -37,112 +37,142 @@ class LearningRoom extends StatelessWidget {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     const phases = ['Verstehen', 'Üben', 'Rückblick'];
     final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1.4;
-    final header = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 2, 8, 0),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Lernrunde verlassen',
-                onPressed: onLeave,
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-              Expanded(
-                child: Text(
-                  keyboard
-                      ? '${phases[phase]}${progress == null ? '' : ' · $progress'}'
-                      : title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              if (onPause != null)
-                TextButton.icon(
-                  onPressed: onPause,
-                  icon: const Icon(Icons.pause_rounded, size: 20),
-                  label: const Text('Pause'),
-                ),
-            ],
-          ),
-        ),
-        if (!keyboard)
+    final header = Container(
+      padding: const EdgeInsets.only(bottom: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: surfaceBorder)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            padding: const EdgeInsets.fromLTRB(4, 2, 8, 0),
             child: Row(
               children: [
-                for (var index = 0; index < phases.length; index++)
-                  Expanded(
-                    child: Semantics(
-                      selected: phase == index,
-                      label:
-                          '${index + 1}. ${phases[index]}${phase == index
-                              ? ', jetzt'
-                              : index < phase
-                              ? ', abgeschlossen'
-                              : ', danach'}',
-                      child: ExcludeSemantics(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            right: index == phases.length - 1 ? 0 : 8,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Container(
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: index <= phase
-                                      ? teal
-                                      : const Color(0xFFD9DFEC),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                phases[index],
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: phase == index
-                                      ? FontWeight.w800
-                                      : FontWeight.w500,
-                                  color: phase == index
-                                      ? ink
-                                      : const Color(0xFF53617A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                IconButton(
+                  tooltip: 'Lernrunde verlassen',
+                  onPressed: onLeave,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    keyboard
+                        ? '${phases[phase]}${progress == null ? '' : ' · $progress'}'
+                        : title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
                     ),
+                  ),
+                ),
+                if (onPause != null)
+                  TextButton.icon(
+                    onPressed: onPause,
+                    icon: const Icon(Icons.pause_rounded, size: 20),
+                    label: const Text('Pause'),
                   ),
               ],
             ),
           ),
-        if (clock != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: clock!,
-          ),
-        if (!keyboard && progress != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
-            child: Text(
-              progress!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF53617A),
-                fontWeight: FontWeight.w700,
+          if (!keyboard)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              child: Row(
+                children: [
+                  for (var index = 0; index < phases.length; index++)
+                    Expanded(
+                      child: Semantics(
+                        selected: phase == index,
+                        label:
+                            '${index + 1}. ${phases[index]}${phase == index
+                                ? ', jetzt'
+                                : index < phase
+                                ? ', abgeschlossen'
+                                : ', danach'}',
+                        child: ExcludeSemantics(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              right: index == phases.length - 1 ? 0 : 8,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Container(
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: index < phase
+                                        ? successInk
+                                        : index == phase
+                                        ? teal
+                                        : controlBorder,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      index < phase
+                                          ? Icons.check_circle_rounded
+                                          : index == phase
+                                          ? Icons.radio_button_checked_rounded
+                                          : Icons
+                                                .radio_button_unchecked_rounded,
+                                      size: 14,
+                                      color: index < phase
+                                          ? successInk
+                                          : index == phase
+                                          ? teal
+                                          : muted,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        phases[index],
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          height: 1.15,
+                                          fontWeight: phase == index
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
+                                          color: phase == index ? teal : muted,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-          ),
-      ],
+          if (clock != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: clock!,
+            ),
+          if (!keyboard && progress != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+              child: Text(
+                progress!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF53617A),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
     final Widget? help = onHelp == null
         ? null
@@ -187,7 +217,14 @@ class LearningRoom extends StatelessWidget {
                   DecoratedBox(
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(top: BorderSide(color: Color(0xFFE1E7F2))),
+                      border: Border(top: BorderSide(color: surfaceBorder)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x1414243D),
+                          blurRadius: 18,
+                          offset: Offset(0, -4),
+                        ),
+                      ],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
