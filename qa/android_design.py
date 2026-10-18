@@ -69,7 +69,14 @@ def main():
             unit = read(api, "/units/" + data["unit_id"])
             require(unit["synthetic"] and unit["provider"] == "synthetic", "fixed_synthetic_unit_required")
             launch()
-            login(credentials, "child")
+            if native.matching("Willkommen zurück"):
+                login(credentials, "child")
+            else:
+                # An interrupted visual run may leave this exact fixture logged
+                # in. Check its visible account identity before touching it.
+                native.press("Konto")
+                native.wait(credentials["child_username"])
+                native.press("Heute")
             native.screenshot("design-native-child-home.png")
             checks.append("native_child_login_and_today")
             native.press("Benachrichtigungen")
@@ -79,12 +86,29 @@ def main():
             native.press("Hefte")
             native.screenshot("design-native-notebooks.png")
             native.press("Heute")
-            native.press("Jetzt lernen", scroll=True)
-            native.wait("Weiter zu den Übungen")
-            native.screenshot("design-native-understand.png")
-            native.press("Weiter zu den Übungen", scroll=True)
+            action, _ = native.wait_any(("Rückmeldung ansehen", "Jetzt lernen", "Weiterlernen", "Freiwillig üben"))
+            native.press(action, scroll=True)
+            if not unit["introduction_seen"]:
+                native.wait("Weiter zu den Übungen")
+                native.screenshot("design-native-understand.png")
+                native.press("Weiter zu den Übungen", scroll=True)
             phase = "fixed_structured_tasks"
             for q in unit["questions"]:
+                print(json.dumps({"design_native_task_type": q["type"]}), flush=True)
+                if q["attempts"]:
+                    require(len(q["attempts"]) == 1 and q["attempts"][0]["outcome"] == "correct", "only_own_single_answer_may_be_resumed")
+                    # The interrupted run already performed this answer. Resume
+                    # its persisted feedback rather than submit it a second time.
+                    native.wait("Richtig!")
+                    native.adb("shell", "am", "force-stop", native.PACKAGE)
+                    launch()
+                    native.wait("Rückmeldung ansehen")
+                    native.press("Rückmeldung ansehen", scroll=True)
+                    native.wait("Richtig!")
+                    native.screenshot("design-native-feedback-restored.png")
+                    native.press("Weiter")
+                    checks.extend(["saved_feedback_visible_after_native_restart", "native_" + q["type"] + "_answer_and_explicit_feedback"])
+                    continue
                 # All answers are our fixed fixture, obtained only with its parent.
                 if q["type"] == "choice":
                     native.press(q["answer"], scroll=True)
@@ -112,15 +136,19 @@ def main():
                 if q["type"] == "choice":
                     native.adb("shell", "am", "force-stop", native.PACKAGE)
                     launch()
-                    state, _ = native.wait_any(("Richtig!", "Weiterlernen"))
-                    if state == "Weiterlernen":
-                        native.press("Weiterlernen", scroll=True)
+                    state, _ = native.wait_any(("Richtig!", "Rückmeldung ansehen"))
+                    if state == "Rückmeldung ansehen":
+                        native.press("Rückmeldung ansehen", scroll=True)
                     native.wait("Richtig!")
                     checks.append("saved_feedback_visible_after_native_restart")
                 current = read(api, "/units/" + data["unit_id"])
                 saved = next(item for item in current["questions"] if item["id"] == q["id"])
                 require(len(saved["attempts"]) == 1 and saved["attempts"][0]["outcome"] == "correct", "one_saved_answer_required")
-                native.press("Zum Rückblick" if current["status"] == "completed" else "Weiter")
+                if current["status"] == "completed":
+                    action, _ = native.wait_any(("Ergebnis ansehen", "Zum Rückblick"))
+                    native.press(action)
+                else:
+                    native.press("Weiter")
                 checks.append("native_" + q["type"] + "_answer_and_explicit_feedback")
             phase = "review_and_parent"
             time.sleep(2)

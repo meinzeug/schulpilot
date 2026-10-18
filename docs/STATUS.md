@@ -17,19 +17,35 @@ keine fachliche Backendänderung außer Versionsnummer, keine Migration.
 Weiß/Violett 7,461:1, Sekundärtext/Arbeitsfläche 5,587:1;
 Kontrollrand/Arbeitsfläche 3,087:1. Keine pauschale WCAG-Zertifizierung.
 
-**Fortsetzungsstand:** lokale Chrome-Vorschau des tatsächlichen Web-Releasebundles
-über Loopback geprüft: 23 Ansichten, alle Rollen, 320/390/960/1440 px,
-null Laufzeitfehler/fehlgeschlagene API-Leseaufrufe. Ausschließlich eigener
-künstlicher Haushalt und Admin-Betriebsmetadaten; keine externe KI.
+**Öffentlich aktiviert:** Produktcommit `505312c3e0949545be9f119e22b69c74cac7b1fc`,
+Release `20261018T101528Z-505312c`, Schema unverändert 0016.
 Web, signierte Direct-APK und Play-AAB gebaut; Signatur/Zipalign und bundletool
 bestanden, beide Android-Artefakte mit Versionscode 32. Geheimnisprüfung über
 391 Quelldateien/244 Archiveinträge gegen 16 tatsächliche Geheimnisquellen:
 kein Fund. APK 64.922.473 Bytes, SHA-256
 `88b5b6d7231a7481050e29395f74d65813c79e3a6b5a5c85627362d5f8d4e31d`.
-Nächste Aktion: Produktcommit, bestehendes Deployment mit Sicherung,
-öffentliche Chrome-Abnahme sowie OTA/echte native Emulator-Bedienung.
-`qa/prepare_design_review.py` hält den eigenen künstlichen Datensatz geschützt
-und wiederaufnehmbar; abschließend mit `--cleanup` löschen.
+Sicherung Result=success/Exit=0, sieben bestehende Dienste aktiv. Gültiges HTTPS,
+HTTP 308, sieben Direktlinks 200, vier private APIs anonym 401. Öffentliche
+APK und Webbundle stimmen bytegenau mit den lokalen Releaseartefakten überein.
+Chrome auf öffentlichem HTTPS: 24 Ansichten aller Rollen bei vier Breiten,
+null Laufzeitfehler/fehlgeschlagene API-Leseaufrufe. Vorgängige Loopback-Vorschau
+mit 23 Ansichten und Farbzählung zusätzlich geprüft. Kein externer KI-Aufruf.
+Reales OTA 31 → 32 über Android-Systembestätigung erfolgreich, kein adb install;
+anschließend drei Kalt-/Warmstart-Updatechecks erfolgreich.
+Native Flutter-APK32 im API36-Emulator: eigener Kinderlogin, sichtbare Glocke,
+Heftsammlung, Verstehen und alle vier Aufgabenformen tatsächlich bedient.
+Eingaben mit offener Tastatur, grüne Rückmeldung, explizites Weitergehen,
+App-Neustart und Wiederaufnahme derselben Rückmeldung geprüft. Eltern sehen
+exakt vier gespeicherte Antworten; native Elternansicht und Logout geprüft.
+Ältere Prüfskriptbezeichnungen an „Rückmeldung ansehen“/„Ergebnis ansehen“
+angepasst; keine zusätzliche Antwort zum Wiederaufnehmen gesendet.
+Eigener künstlicher Haushalt danach gelöscht, private Kontodatei entfernt.
+Keine physische Telefon-, Audio-, Screenreader- oder Lernwirksamkeitsabnahme.
+Aktuell nächste Aktion: den unten ausdrücklich beauftragten Vokabel-Zusatz umsetzen.
+
+GitHub-Push von 505312c nach main erfolgreich. Cloud-CI-Lauf 39110829970 startete
+laut GitHub-Annotation wegen bestehender Kontosperre/Abrechnungsproblem nicht;
+keinen fehlgeschlagenen Test daraus ableiten. Lokale Prüfungen siehe oben.
 
 **Danach ausdrücklich beauftragter Zusatz:** erkannte Vokabelseiten bis zu
 Wortpaaren in der bestehenden Wortschatzdatenbank führen und „Wörter“ als

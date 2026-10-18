@@ -1,33 +1,59 @@
-SCHULPILOT – Design 1.4.2+32 · Umsetzung und lokale Prüfung
+SCHULPILOT – Design 1.4.2+32 · bereitgestellt und tatsächlich geprüft
 
-Aktueller Abschnitt hat Vorrang; Stand 18.10.2026.
+Stand 18.10.2026. Dieser Abschnitt hat Vorrang vor der Historie unten.
+Produktcommit 505312c3e0949545be9f119e22b69c74cac7b1fc, main gepusht.
+Release 20261018T101528Z-505312c, Schema unverändert 0016.
+Web https://schulpilot.dorfspy.de ; API /api.
+Sicherung Result=success/Exit=0, sieben vorhandene Dienste aktiv. HTTPS gültig,
+HTTP 308, sieben Direktlinks 200, vier private APIs anonym 401. Öffentliche
+APK und Webbundle stimmen bytegenau mit den lokalen Artefakten überein.
+
 Gemeinsame Gestaltung für Kinder, Eltern und Admin auf Web/Android überarbeitet:
 sichtbar getrennte Flächen/Cards/Gruppen, stärkere Textkontraste, klare Buttons
 und Eingaben, Tastaturfokus, Status-/Antwortflächen, Glocke und Lernraum.
 303 Fluttertests inklusive acht Designprüfungen, Analyze/Ruff und drei
-Backend-Releaseprüfungen bestanden. Chrome-Vorschau des tatsächlichen Webbundles:
-23 Ansichten, alle Rollen, vier Breiten, null Laufzeitfehler/fehlgeschlagene
-Leseaufrufe. Ausschließlich künstliche Daten, keine externen KI-Aufrufe.
+Backend-Releaseprüfungen bestanden. Öffentliche Chrome-Abnahme: 24 Ansichten,
+alle Rollen, 320/390/960/1440 px, null Laufzeitfehler/fehlgeschlagene Leseaufrufe.
+Vorgängige Loopback-Vorschau und tatsächliche Farbpixel zusätzlich geprüft.
+Ausschließlich künstlicher Haushalt; kein externer KI-Aufruf.
 Keine vollständige WCAG-/Screenreader- oder Lernwirksamkeitsabnahme behauptet.
 Keine Migration, Anbieter-/Firebasefreigaben und bestehende Rechte erhalten.
-Details/Quellen: docs/DESIGN_SYSTEM.md, docs/SOURCES.md, docs/STATUS.md.
+Details: docs/DESIGN_SYSTEM.md, docs/SOURCES.md, docs/STATUS.md.
 
-Buildstand: Web, signierte Direct-APK und Play-AAB 1.4.2+32 gebaut.
-Signatur/Zipalign und bundletool bestanden; 391 Quelldateien/244 Archiveinträge
-gegen 16 Geheimnisquellen geprüft, kein Fund.
+Web, signierte Direct-APK und Play-AAB 1.4.2+32 gebaut. Signatur/Zipalign,
+Versionscode und bundletool bestanden. Geheimnisprüfung: 391 Quelldateien,
+244 Archiveinträge gegen 16 tatsächliche Geheimnisquellen, kein Fund.
 APK artifacts/schulpilot-android.apk, 64922473 Bytes, SHA-256
 88b5b6d7231a7481050e29395f74d65813c79e3a6b5a5c85627362d5f8d4e31d
+Download https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
 Play artifacts/schulpilot-play.aab, nicht im Store veröffentlicht.
-Fortsetzung: Commit, Deployment mit bestehender Sicherung; öffentliche
-Chrome-Abnahme und nativen
-API36-Emulator samt OTA und vier Aufgabenwidgets tatsächlich bedienen.
-Eigener geschützter Testdatensatz: artifacts/.design-qa-account.json.
-Keine Zugangsdaten weitergeben. Nach Prüfung qa/prepare_design_review.py --cleanup.
-Browser-Werkzeug qa/design_review.mjs, native Prüfung qa/android_design.py.
 
-Anschließend neuer Betreiberzusatz: Vokabeln aus bestätigten Heftseiten in den
-Wortschatz übernehmen und Wörter regulär im Menü erreichbar machen. Bestehende
-Quellen-, Sprach- und Eintragsbestätigungen sowie Revisionen erhalten.
+Tatsächliches OTA 31 -> 32 über den Android-Systeminstaller, kein adb install.
+Drei anschließende Kalt-/Warmstart-Updatechecks erfolgreich.
+API36-Emulator: eigener Kinderlogin, Glocke ohne Push-Opt-in, Hefte, Verstehen,
+alle vier Aufgabenwidgets und positive gespeicherte Rückmeldung bedient.
+Tastatur verdeckt die Hauptaktion nicht. Kaltstart, Wiederaufnahme derselben
+Rückmeldung und explizites Weitergehen geprüft. Exakt vier gespeicherte Antworten
+im Elternüberblick; native Elternansicht und Logout geprüft. Prüfskript an die
+bereits vorhandenen Beschriftungen Rückmeldung ansehen/Ergebnis ansehen angepasst.
+Eigener künstlicher Testhaushalt gelöscht und private Kontodatei entfernt.
+Keine neue Firebase-Zustell-, Mikrofon- oder physische Smartphoneprüfung.
+
+Normale Browseranmeldung: /login, danach /app, /settings, /notifications.
+Eltern: Familienübersicht -> Kind -> Lernverlauf/Noten/Vorgaben.
+Kinder: Heute, Lernen, Hefte; in der aktiven Runde eigener klarer Rückweg.
+Admin: /admin und /admin/push, ausschließlich Betriebsmetadaten.
+Keine Zugangsdaten, Cookies, Tokens oder privaten Schlüssel weitergeben.
+Rückweg: 20261017T202938Z-dd6e30c mit --rollback-compatible, Schema 0016 erhalten.
+Kein tatsächlicher produktiver Rollback. Physisches Telefon und Screenreader
+bleiben optional gesondert zu prüfen; keine WCAG-Gesamtzertifizierung.
+GitHub Actions 39110829970 startete wegen Kontosperre/Abrechnungsproblem nicht.
+Lokale Prüfungen und Deployment erfolgreich; Cloud-CI benötigt Betreiberaktion.
+
+Nächster ausdrücklich beauftragter Ausbau: Vokabeln aus Heftseiten mit Übersetzung
+in die vorhandene Wortschatzdatenbank führen und Wörter im regulären Menü
+anbieten. Bestehende Quellen-/Sprachbestätigung, Revisionen, Rechte und Kosten-
+reservierung erhalten. Noch nicht als in 1.4.2 umgesetzt ausgeben.
 
 SCHULPILOT – Benachrichtigungen 1.4.1+31 · historischer geprüfter Release
 
