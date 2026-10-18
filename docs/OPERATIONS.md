@@ -2,8 +2,8 @@
 
 ## Sprachwerkstatt-Korrektur · 18.10.2026
 
-Belegfix 9e53947 als 20261018T121428Z-9e53947 aktiv. Ergänzung 1.4.4+34
-erlaubt eine ausdrückliche Wiederaufnahme aus einer frischen Kindersitzung.
+Aktiver Release 20261018T125246Z-8ada817, Produktcommit8ada817.
+Belegfix und Ergänzung 1.4.4+34 erlauben eine ausdrückliche Wiederaufnahme aus einer frischen Kindersitzung.
 Keine Migration: Schema bleibt 0016, ältere Clients bleiben bedienbar.
 Vor Aktivierung regulär sichern und nur SCHULPILOT-Dienste erneuern.
 Kompatibler Code-Rückweg auf `20261018T121428Z-9e53947`, zusätzliche Aufträge

@@ -1,33 +1,40 @@
-# Laufende Korrektur · Sprachwerkstatt · 18.10.2026
+# Sprachwerkstatt 1.4.4+34 · 18.10.2026
 
-**Zwischenstand / Fortsetzung:** Belegfix `9e53947` ist gepusht und als
-`20261018T121428Z-9e53947` öffentlich aktiv, Schema 0016. Sicherung erfolgreich,
-sieben Dienste aktiv; Web/APK unverändert bytegenau geprüft. Öffentliche Probe
-mit zehn eigenen künstlichen Wörtern: genau ein tatsächlicher Codex-Auftrag,
-fünf Aufgaben, eine gespeicherte Webantwort, Feedback nach Reload und gleicher
-Eltern-/Kinderfortschritt, keine JS-Laufzeitfehler. Keine privaten Lösungen
-vorab ausgeliefert. GitHub-CI 39118506744 startete wegen Kontosperre/Billing
-nicht; lokale 830 Backend-/309 Fluttertests erfolgreich.
+**Bereitgestellt:** Produktcommit `8ada817856e2789ea6e84300828be9975571b536`,
+main gepusht, Release `20261018T125246Z-8ada817`, Schema 0016.
+Sicherung Result=success/Exit=0, sieben bestehende Dienste aktiv, HTTPS gültig,
+öffentliche APK und Webbundle bytegenau geprüft; Direktlinks 200.
+Belegfix und sichere ausdrückliche Wiederaufnahme nach erneutem Kinderlogin
+implementiert. Beide Reparaturwege zusammen höchstens ein normal reservierter
+Zusatzauftrag. Keine alte Sitzung reaktivieren; alte Fehler/Verbrauch erhalten.
 
-Die lokale Reparatur des beauftragten Projekts wurde **vor Reservierung** mit
-401 abgewiesen: seine frühere Kindersitzung wurde inzwischen abgemeldet.
-Keinen Sitzungseintrag reaktivieren/erfinden. Version 1.4.4+34 in Arbeit:
-geschützte ausdrückliche Wiederholung aus einer frischen eigenen Kindersitzung,
-gleicher Link, maximal ein zusätzlicher normal reservierter Auftrag; alte
-Fehler/Verbrauch unverändert. Code/Tests neu prüfen, APK/Web bauen und ausrollen.
-Native Probe abgeschlossen: installierte Flutter-APK33 im API36-Emulator,
-Webantwort fortgesetzt und vier weitere Aufgaben beantwortet. Exakt fünf
-Attempts/Reviewereignisse, konsistenter Eltern-/Kinderfortschritt, Export und
-Löschung bestanden; Kontodatei entfernt, alte Sitzungen 401. Der anfängliche
-System-UI-ANR wurde beendet; keine physische Telefon-/Audioabnahme behaupten.
-Neue 313 Fluttertests und Analyse bestanden. Vollständiger PostgreSQLlauf:
-838 bestanden, ein bestehender echter CLI-Metadatentest vorübergehend 503;
-anschließend alle 27 Tests dieses Moduls bestanden (8,82 s). Erneuter voller
-Lauf läuft noch. Web, signierte Direct-APK und Play-AAB 1.4.4+34 gebaut,
-Signatur/Zipalign und bundletool bestanden. APK 65.168.233 Bytes, SHA-256
+**Geprüft:** alle 839 PostgreSQLtests bestanden (432,00 s), 313 Fluttertests,
+Analyse/Ruff/Syntax-/Diffprüfung bestanden. Erster Backendlauf: 838 bestanden,
+bestehender tatsächlicher Codex-Metadatentest vorübergehend 503; danach alle
+27 Modultests und erneuter vollständiger Lauf bestanden. Grenzen unverändert.
+Web/signierte Direct-APK/Play-AAB 1.4.4+34 gebaut, Signatur/Zipalign/bundletool
+geprüft. APK 65.168.233 Bytes, SHA-256
 `6e9e1321bb6580ee34559918afadf3275376ca5bfb2e2823be2fe3a09f9d9316`.
-Geheimnisprüfung: 405 Quelldateien/244 Archiveinträge, 14 reale Geheimnisquellen,
-kein Fund. Keine Änderung von Provider-/Such-/Zeitgrenzen.
+Geheimnisprüfung: 405 Quelldateien/244 Archiveinträge gegen 14 tatsächliche
+Geheimnisquellen, kein Fund. Tatsächliches Android-OTA33->34 mit
+Systembestätigung, ohne adb install, danach drei Kalt-/Warmstartchecks bestanden.
+Rückweg `20261018T121428Z-9e53947`, keine DB-Rücksicherung/Schemaänderung nötig.
+
+**Öffentliche Lernprobe:** eigener künstlicher regulärer Haushalt, zehn
+bestätigte Wörter, genau ein Codex-Auftrag, fünf validierte Prüfaufgaben.
+Erste Antwort im Web, vier weitere in nativer Flutter-APK33/API36 fortgesetzt;
+Feedback nach Reload, keine Lösungsschlüssel vorab, fünf identische Aufgaben
+bei Kind/Eltern. Export mit genau fünf Attempts/Reviewereignissen, einem Projekt
+und einer KI-Nutzung geprüft; Haushalt normal gelöscht, alte Sitzungen401,
+private Kontodatei entfernt. Keine neue Audio-/physische Telefonabnahme.
+
+**Echter Prüfauftrag:** ursprüngliche Kindersitzung inzwischen abgemeldet,
+lokaler Reparaturversuch vor Reservierung korrekt mit401 gesperrt. Betreiber
+um normalen frischen Kinderlogin und ausdrückliches „Erneut vorbereiten“ am
+ursprünglichen Link gebeten. Kein erfolgreich neu erzeugtes echtes Projekt
+behaupten, bevor dessen neuer Auftrag tatsächlich erfolgreich ist.
+GitHub-CI39118506744 wegen Kontosperre/Abrechnung ohne Schritte abgewiesen;
+Produktlauf39121059397 ebenfalls failure, separate Annotation noch prüfen.
 
 Danach beauftragte Folgearbeiten (noch nicht begonnen):
 1. Eltern-Notenimport aus `~/Downloads/Elternportal_fuxNoten.pdf`, aktuelles

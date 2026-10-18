@@ -1,41 +1,44 @@
-SCHULPILOT – Sprachwerkstatt-Korrektur · 18.10.2026
+SCHULPILOT – Sprachwerkstatt 1.4.4+34 · bereitgestellt 18.10.2026
 
-Belegfix 9e53947085a7045f82d0c7ee74fa3d9fcbc7ad83 gepusht und als
-20261018T121428Z-9e53947 öffentlich aktiv. Schema 0016, Sicherung erfolgreich,
-sieben vorhandene Dienste aktiv, öffentliche APK/Webbundle bytegenau geprüft.
-KI-Belege vor Erzeugung an bestätigte Wortpaare binden und anschließend weiter
-Wort-ID, Quellenrevision, Sitzung und Lösung prüfen. Keine Ersatzaufgaben.
-Eigener künstlicher regulärer Haushalt: genau ein tatsächlicher Codex-Auftrag,
-zehn bestätigte Wörter, fünf Prüfaufgaben. Eine Webantwort, vier native
-Android-Antworten, Feedback nach Reload und Fortsetzung, keine privaten
-Lösungsschlüssel vorab. Eltern/Kind sehen dieselben fünf bearbeiteten Aufgaben.
-Export: zehn Wörter, ein Projekt/eine KI-Nutzung, fünf Attempts und fünf
-referenzierte Reviewereignisse. Eigenen Haushalt normal gelöscht, alte
-Sitzungen 401, private Kontodatei entfernt. Keine reale Audio-/Telefonabnahme.
+Produktcommit 8ada817856e2789ea6e84300828be9975571b536, main gepusht.
+Release20261018T125246Z-8ada817, Schema0016. Sicherung success/Exit0,
+sieben Dienste aktiv, gültiges HTTPS, APK/Webbundle bytegenau geprüft.
+Web https://schulpilot.dorfspy.de ; API /api.
+Belegbindung und bewusste Wiederaufnahme aus frischer Kindersitzung aktiv.
+Fehlgeschlagenen ursprünglichen Projektlink nach normalem Kinderlogin öffnen,
+„Erneut vorbereiten“ wählen; maximal ein normal reservierter Zusatzauftrag.
+Alte Sitzung wurde abgemeldet: nicht reaktiviert, lokale Reparatur vor
+Reservierung401. Noch keine erfolgreiche Wiederherstellung des echten
+beauftragten Projekts behaupten. Keine Kinderantworten manipuliert.
 
-Das gezielt beauftragte echte Projekt ist weiterhin fehlgeschlagen: seine alte
-Kindersitzung wurde inzwischen abgemeldet. Lokale Reparatur wurde vor
-Reservierung korrekt mit 401 gesperrt; keine Sitzung reaktiviert, keine
-Kinderantworten verändert. Ergänzung 1.4.4+34 in Prüfung: frischer normaler
-Kinderlogin -> ursprünglicher Projektlink -> „Erneut vorbereiten“. Genau ein
-bewusster normal reservierter Zusatzauftrag; frühere Fehler/Verbrauch erhalten.
-Kein ungeschützter Operatorzugang und keine automatische Wiederholung.
-Aktuelle Tests/Build-/Deploymentfreigabe in docs/STATUS.md nachführen.
-Belegfix: 830 PostgreSQL-/309 Fluttertests bestanden. Wiederaufnahme:
-313 Fluttertests/Analyse bestanden; 838 PostgreSQLtests bestanden, ein
-bestehender CLI-Metadatentest vorübergehend 503, alle 27 Modultests danach
-bestanden. Erneuter Gesamtlauf läuft noch. Web/signierte Direct-APK/Play-AAB
-1.4.4+34 gebaut, Signatur/Zipalign/bundletool geprüft. APK 65168233 Bytes,
-SHA-256 6e9e1321bb6580ee34559918afadf3275376ca5bfb2e2823be2fe3a09f9d9316.
-GitHub-CI39118506744 wegen Kontosperre/Abrechnung ohne Schritte abgewiesen;
-kein erfolgreicher gehosteter CI-Lauf. Normale Anmeldung selbst durchführen,
-keine Passwörter/Sitzungen/Tokens an ChatGPT übergeben.
+839 PostgreSQLtests/313 Fluttertests bestanden, Analyse/Ruff/Diff/Syntax sauber.
+Ein anfänglicher bestehender echter CLI-Metadatentest503 wurde separat mit
+allen27 Modultests und erneutem Gesamtlauf erfolgreich geprüft; Limits erhalten.
+Web/Direct-APK/Play-AAB gebaut, Signatur/Zipalign/bundletool bestanden.
+APK artifacts/schulpilot-android.apk,65168233Bytes, SHA-256
+6e9e1321bb6580ee34559918afadf3275376ca5bfb2e2823be2fe3a09f9d9316
+Download https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play artifacts/schulpilot-play.aab, nicht im Store veröffentlicht.
+Tatsächliches OTA33->34 mit Systembestätigung ohne adb install, drei
+Kalt-/Warmstartprüfungen bestanden. Rückweg20261018T121428Z-9e53947.
 
-Weitere beauftragte Arbeit: wiederholbarer Fuxnoten-PDFimport (Datei vorhanden),
-Sofatutor-Katalog/Fachstamm/Lerntipps (ZIP jetzt vorhanden und untersucht),
-anschließend Bildhefter/Fotoalbum/Listenschalter. Nichts davon bereits als
-implementiert ausgeben. Fortsetzung: docs/STATUS.md, LANGUAGE_LEARNING.md,
-OPERATIONS.md. Private Inhalte niemals in diese Übergabe übernehmen.
+Eigener künstlicher regulärer Haushalt: zehn Wörter, genau ein Codex-Auftrag,
+fünf Prüfaufgaben. Eine Webantwort/vier native Android-Antworten, Feedback
+nach Reload/Fortsetzung und konsistenter Eltern-/Kinderfortschritt geprüft.
+Export/Löschung bestanden: zehn Wörter/ein Projekt/eine Nutzung/fünf Attempts
+und eindeutig referenzierte Reviewereignisse. Alte Sitzungen401, private
+Kontodatei entfernt. Keine reale Audio-/Telefon-/neue Push-Zustellprüfung.
+Browser: /login -> eigenes Kind -> Wörter -> Sprachwerkstatt; Eltern /words.
+Normale Anmeldung selbst durchführen. Keine Passwörter, Cookies, Tokens oder
+privaten Schlüssel an ChatGPT übermitteln. Kein ungeschützter Testversand.
+
+GitHub-CI39118506744 wegen bestehender Kontosperre/Abrechnung ohne Schritte
+abgewiesen. Neuer Produktlauf39121059397 failure, Annotation noch prüfen.
+Lokale Tests, Builds, Produktpush und öffentliche Aktivierung verifiziert.
+Weitere beauftragte Arbeiten in Umsetzung: Fuxnoten-PDFimport; Sofatutor-
+Katalog/Fachstamm/Lerntipps (ZIP vorhanden/untersucht); Bildhefter/Fotoalbum.
+Fortsetzung docs/STATUS.md, LANGUAGE_LEARNING.md, OPERATIONS.md.
+Keine Zugangsdaten oder private Lerninhalte in dieser Übergabe.
 
 SCHULPILOT – Foto-Vokabeln 1.4.3+33 · bereitgestellt
 
