@@ -3,7 +3,10 @@
 Native APK39 zeigt die kompakte Leiste korrekt. Beim tatsächlichen Suchen
 korrigierte die englisch eingestellte Android-Tastatur „Biologie“ zu „Biologies“.
 Suchfeld deshalb gezielt ohne Autokorrektur/Vorschläge; keine Antwortfelder
-geändert. Bestehende337 Fluttertests/Browser-Abnahme auf39 bestanden; erneute26
+geändert. Zusätzlich Nutzerpräzisierung: „Meine Fächer“ ausschließlich nach
+page_count>0, auch ausgewählte leere Fächer ausblenden. Unzugeordnete vorhandene
+Seiten bleiben sichtbar. Erste unveröffentlichte40-Artefakte werden dafür
+vor Bereitstellung neu gebaut. Bestehende337 Fluttertests/Browser-Abnahme auf39 bestanden; erneute26
 betroffene Prüfungen und Analyse für40 bestanden. Danach signierte Builds/Deployment,
 nativer Such-/Menütest und reguläre Löschung des eigenen künstlichen Kontos.
 Produktiv derzeit weiterhin1.7.1+39, wie nachfolgend dokumentiert.

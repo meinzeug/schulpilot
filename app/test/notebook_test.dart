@@ -39,10 +39,10 @@ Json subjects() => {
       'cover_key': 'biologie',
       'page_count': 0,
       'review_count': 0,
-      'selected': false,
+      'selected': true,
     },
   ],
-  'unassigned_count': 0,
+  'unassigned_count': 2,
 };
 
 Json pages(http.Request request, {bool photos = true}) {
@@ -217,6 +217,8 @@ void main() {
         expect(find.byType(TextField), findsNothing);
         await tap(tester, find.byTooltip('Meine Fächer'));
         expect(find.text('Biologie'), findsNothing);
+        expect(find.text('Mathematik'), findsOneWidget);
+        expect(find.text('Noch zuordnen'), findsOneWidget);
         await tap(tester, find.byTooltip('Meine Fächer'));
         await tap(tester, find.byTooltip('Liste'));
         expect(find.byType(GridView), findsNothing);

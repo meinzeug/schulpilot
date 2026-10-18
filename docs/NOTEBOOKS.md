@@ -94,8 +94,10 @@ neuen KI-Aufträge durch Albumansichten; keine Linkaufrufe als Lernerfolg gezäh
 
 Die Startansicht zeigt eine einzelne Icon-Leiste statt permanenter Suchbox und
 mehrzeiliger Filter. Lupe öffnet die Suche bewusst; Schließen entfernt die Suche
-und gibt den Platz wieder frei. „Meine Fächer“ bleibt als sichtbar ausgewählter
-Filter erhalten. Ein Icon schaltet zwischen Kacheln und Liste um, die Kamera
+und gibt den Platz wieder frei. „Meine Fächer“ zeigt als sichtbar ausgewählter
+Filter ausschließlich Hefter mit vorhandenen Seiten. Auch ausgewählte
+Unterrichtsfächer bleiben bei null Seiten ausgeblendet; die Ablage
+„Noch zuordnen“ bleibt bei vorhandenen Seiten erreichbar. Ein Icon schaltet zwischen Kacheln und Liste um, die Kamera
 führt zum bisherigen Fotoimport. Das Menü bündelt Alle Heftseiten, Wörter,
 Aktualisieren und im Elternzugang den Rückweg zum Lernüberblick. Alle Icons
 haben Tooltips/Zugänglichkeitsnamen und weiterhin ausreichend große Trefferflächen.

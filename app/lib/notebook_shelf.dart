@@ -141,9 +141,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
     final visible = items
         .where(
           (r) =>
-              (!ownOnly ||
-                  r['selected'] == true ||
-                  (r['page_count'] as num? ?? 0) > 0) &&
+              (!ownOnly || (r['page_count'] as num? ?? 0) > 0) &&
               '${r['title']}'.toLowerCase().contains(query),
         )
         .toList();
@@ -158,7 +156,6 @@ class _NotebookShelfState extends State<NotebookShelf> {
       return group != 0 ? group : order[a['id']]!.compareTo(order[b['id']]!);
     });
     if ((data?['unassigned_count'] as num? ?? 0) > 0 &&
-        !ownOnly &&
         ('noch zuordnen'.contains(query) || query.isEmpty)) {
       visible.add({
         'id': 'unassigned',
@@ -299,7 +296,11 @@ class _NotebookShelfState extends State<NotebookShelf> {
           Panel(
             child: Column(
               children: [
-                const Text('Hier passt gerade kein Fach.'),
+                Text(
+                  ownOnly && query.isEmpty
+                      ? 'Deine Hefte sind noch leer.'
+                      : 'Hier passt gerade kein Fach.',
+                ),
                 TextButton(
                   onPressed: () {
                     setState(() {
