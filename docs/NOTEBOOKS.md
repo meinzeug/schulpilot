@@ -89,3 +89,15 @@ native Flutter-APK38/API36: echtes Album/Blättern/Zoom/Kacheln/Liste bestanden,
 zusätzliche Lerntipps/Themenbrowser korrekt. Reales OTA37->38 und drei Startchecks,
 Neustart/Logout sowie Export/Löschung desselben Testhaushalts bestanden. Keine
 neuen KI-Aufträge durch Albumansichten; keine Linkaufrufe als Lernerfolg gezählt.
+
+## Kompakte Hefter-Werkzeuge ab1.7.1+39
+
+Die Startansicht zeigt eine einzelne Icon-Leiste statt permanenter Suchbox und
+mehrzeiliger Filter. Lupe öffnet die Suche bewusst; Schließen entfernt die Suche
+und gibt den Platz wieder frei. „Meine Fächer“ bleibt als sichtbar ausgewählter
+Filter erhalten. Ein Icon schaltet zwischen Kacheln und Liste um, die Kamera
+führt zum bisherigen Fotoimport. Das Menü bündelt Alle Heftseiten, Wörter,
+Aktualisieren und im Elternzugang den Rückweg zum Lernüberblick. Alle Icons
+haben Tooltips/Zugänglichkeitsnamen und weiterhin ausreichend große Trefferflächen.
+Die Wörter bleiben im regulären Menü. Gespeicherte Suchbegriffe bleiben sichtbar,
+aber öffnen beim Wiederaufruf keine Tastatur. Ansichten/Filter bleiben reine GETs.

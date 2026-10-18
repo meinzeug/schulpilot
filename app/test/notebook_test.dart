@@ -197,6 +197,32 @@ void main() {
         );
         expect(requests, hasLength(1));
         expect(requests.single.url.path.endsWith('/subjects'), isTrue);
+        expect(find.byType(TextField), findsNothing);
+        expect(
+          tester.getSize(find.byKey(const ValueKey('notebook-toolbar'))).height,
+          lessThanOrEqualTo(64),
+        );
+        expect(
+          tester.getTopLeft(find.byType(NotebookCover).first).dy,
+          lessThan(300),
+        );
+        await tap(tester, find.byTooltip('Fach suchen'));
+        await tester.enterText(find.byType(TextField), 'Biologie');
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pumpAndSettle();
+        expect(find.text('Mathematik'), findsNothing);
+        expect(find.byType(NotebookCover), findsOneWidget);
+        expect(find.text('Biologie'), findsWidgets);
+        await tap(tester, find.byTooltip('Suche schließen'));
+        expect(find.byType(TextField), findsNothing);
+        await tap(tester, find.byTooltip('Meine Fächer'));
+        expect(find.text('Biologie'), findsNothing);
+        await tap(tester, find.byTooltip('Meine Fächer'));
+        await tap(tester, find.byTooltip('Liste'));
+        expect(find.byType(GridView), findsNothing);
+        await tap(tester, find.byTooltip('Kacheln'));
+        expect(find.byType(GridView), findsOneWidget);
+        expect(requests, hasLength(1));
         await tap(tester, find.text('Biologie'));
         expect(
           requests

@@ -1,3 +1,13 @@
+# Kompakte Hefter1.7.1+39 · Umsetzung/Abnahme läuft
+
+Nur UI und Versionsmetadaten geändert: eine Icon-Leiste, Suche bei Bedarf,
+Filterzustand sichtbar, Ansicht umschalten, Fotoaktion und weiteres Menü.
+Alle337 Flutterprüfungen73s und Analyse bestanden; außerdem drei bestehende
+Release-Policy-Tests auf isoliertem PostgreSQL bestanden. Aktuell produktiv
+weiterhin1.7.0+38 wie unten dokumentiert.
+Nächste Schritte: signierte Builds, gesicherte Bereitstellung, öffentliche und
+native Sichtprüfung mit eigenem künstlichem Konto, Export/Löschung, Commit/Push.
+
 # Katalog/Lerntipps1.7.0+38 · produktiv18.10.2026
 
 Produktcommit f04539fd5d959b7a5b082dacb1573a8d907b5379, main gepusht.

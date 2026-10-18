@@ -31,30 +31,19 @@ class CollectionScreen extends StatelessWidget {
         ? 'Meine Hefte'
         : 'Heftseiten',
     actions: [
-      TextButton.icon(
-        onPressed: () => openRoute(context, '/vocabulary/$childId'),
-        icon: const Icon(Icons.translate_rounded),
-        label: const Text('Wörter'),
-      ),
+      if (learning)
+        TextButton.icon(
+          onPressed: () => openRoute(context, '/vocabulary/$childId'),
+          icon: const Icon(Icons.translate_rounded),
+          label: const Text('Wörter'),
+        ),
       if (learning)
         TextButton.icon(
           onPressed: () => openRoute(context, '/progress/$childId'),
           icon: const Icon(Icons.insights_rounded),
           label: const Text('Lernstand'),
         ),
-      if (!learning && (state.isChild || state.canManage))
-        OutlinedButton.icon(
-          onPressed: () async {
-            if (state.isChild) {
-              openRoute(context, '/after-school/$childId');
-            } else {
-              await importMaterial(context, state, childId);
-            }
-          },
-          icon: const Icon(Icons.add_a_photo_outlined),
-          label: const Text('Neue Heftfotos'),
-        ),
-      if (!state.isChild)
+      if (learning && !state.isChild)
         TextButton.icon(
           onPressed: () => openRoute(context, '/child/$childId'),
           icon: const Icon(Icons.arrow_back_rounded),
@@ -73,6 +62,19 @@ class CollectionScreen extends StatelessWidget {
             key: ValueKey('shelf:${state.user?['id']}:$childId'),
             childId: childId,
             allPages: PagedCollection(state, childId: childId),
+            onAddPhoto: state.isChild || state.canManage
+                ? () async {
+                    if (state.isChild) {
+                      openRoute(context, '/after-school/$childId');
+                    } else {
+                      try {
+                        await importMaterial(context, state, childId);
+                      } catch (error) {
+                        if (context.mounted) showError(context, error);
+                      }
+                    }
+                  }
+                : null,
           ),
   );
 }

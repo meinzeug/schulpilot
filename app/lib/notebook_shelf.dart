@@ -8,11 +8,13 @@ class NotebookShelf extends StatefulWidget {
   final AppState state;
   final String childId;
   final Widget allPages;
+  final VoidCallback? onAddPhoto;
   const NotebookShelf(
     this.state, {
     super.key,
     required this.childId,
     required this.allPages,
+    this.onAddPhoto,
   });
   @override
   State<NotebookShelf> createState() => _NotebookShelfState();
@@ -20,10 +22,11 @@ class NotebookShelf extends StatefulWidget {
 
 class _NotebookShelfState extends State<NotebookShelf> {
   final search = TextEditingController();
+  final searchFocus = FocusNode();
   late final String? owner;
   Json? data;
   String? error;
-  bool list = false, ownOnly = false, allPages = false;
+  bool list = false, ownOnly = false, allPages = false, showSearch = false;
   int generation = 0;
   int stateRevision = 0;
   bool get current => mounted && widget.state.user?['id'] == owner;
@@ -39,6 +42,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
     list = saved?['list'] == true;
     ownOnly = saved?['own_only'] == true;
     search.text = saved?['q'] ?? '';
+    showSearch = search.text.isNotEmpty;
     load();
   }
 
@@ -49,7 +53,9 @@ class _NotebookShelfState extends State<NotebookShelf> {
         data = null;
         error = null;
         search.clear();
+        showSearch = false;
       });
+      searchFocus.unfocus();
     } else if (current && stateRevision != widget.state.revision) {
       stateRevision = widget.state.revision;
       load();
@@ -61,6 +67,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
     generation++;
     widget.state.removeListener(identityChanged);
     search.dispose();
+    searchFocus.dispose();
     super.dispose();
   }
 
@@ -90,6 +97,22 @@ class _NotebookShelfState extends State<NotebookShelf> {
 
   void open(Json item) =>
       openRoute(context, '/library/${widget.childId}/subject/${item['id']}');
+
+  void toggleSearch() {
+    if (showSearch) {
+      searchFocus.unfocus();
+      setState(() {
+        showSearch = false;
+        search.clear();
+      });
+      remember();
+    } else {
+      setState(() => showSearch = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (current && showSearch) searchFocus.requestFocus();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,67 +170,115 @@ class _NotebookShelfState extends State<NotebookShelf> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Panel(
-          tone: PanelTone.subtle,
-          child: Column(
+        Container(
+          key: const ValueKey('notebook-toolbar'),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: surfaceBorder),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TextField(
-                controller: search,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                decoration: const InputDecoration(
-                  hintText: 'Fach suchen',
-                  prefixIcon: Icon(Icons.search_rounded),
+              IconButton(
+                tooltip: 'Fach suchen',
+                isSelected: showSearch,
+                onPressed: toggleSearch,
+                icon: const Icon(Icons.search_rounded),
+              ),
+              IconButton(
+                tooltip: 'Meine Fächer',
+                isSelected: ownOnly,
+                style: IconButton.styleFrom(
+                  backgroundColor: ownOnly ? mint : Colors.transparent,
+                  foregroundColor: ownOnly ? teal : muted,
                 ),
-                onChanged: (_) {
-                  setState(() {});
+                onPressed: () {
+                  setState(() => ownOnly = !ownOnly);
                   remember();
                 },
+                icon: const Icon(Icons.filter_alt_outlined),
+                selectedIcon: const Icon(Icons.filter_alt_rounded),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  FilterChip(
-                    label: const Text('Meine Fächer'),
-                    selected: ownOnly,
-                    onSelected: (value) {
-                      setState(() => ownOnly = value);
-                      remember();
-                    },
+              IconButton(
+                tooltip: list ? 'Kacheln' : 'Liste',
+                onPressed: () {
+                  searchFocus.unfocus();
+                  setState(() => list = !list);
+                  remember();
+                },
+                icon: Icon(
+                  list ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                ),
+              ),
+              if (widget.onAddPhoto != null)
+                IconButton(
+                  tooltip: 'Neue Heftfotos',
+                  onPressed: widget.onAddPhoto,
+                  color: teal,
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'Weitere Optionen',
+                onOpened: searchFocus.unfocus,
+                onSelected: (value) {
+                  if (!current) return;
+                  switch (value) {
+                    case 'pages':
+                      setState(() => allPages = true);
+                    case 'words':
+                      openRoute(context, '/vocabulary/${widget.childId}');
+                    case 'refresh':
+                      load();
+                    case 'overview':
+                      openRoute(context, '/child/${widget.childId}');
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'pages',
+                    child: Text('Alle Heftseiten'),
                   ),
-                  for (final mode in [
-                    (false, 'Kacheln', Icons.grid_view_rounded),
-                    (true, 'Liste', Icons.view_list_rounded),
-                  ])
-                    ChoiceChip(
-                      label: Text(mode.$2),
-                      avatar: Icon(mode.$3, size: 19),
-                      showCheckmark: false,
-                      selected: list == mode.$1,
-                      onSelected: (_) {
-                        setState(() => list = mode.$1);
-                        remember();
-                      },
+                  const PopupMenuItem(value: 'words', child: Text('Wörter')),
+                  const PopupMenuItem(
+                    value: 'refresh',
+                    child: Text('Hefter aktualisieren'),
+                  ),
+                  if (!widget.state.isChild)
+                    const PopupMenuItem(
+                      value: 'overview',
+                      child: Text('Zum Lernüberblick'),
                     ),
-                  TextButton(
-                    onPressed: () => setState(() => allPages = true),
-                    child: const Text('Alle Heftseiten'),
-                  ),
-                  IconButton(
-                    tooltip: 'Hefter aktualisieren',
-                    onPressed: load,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
                 ],
+                icon: const Icon(Icons.more_horiz_rounded),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        if (showSearch) ...[
+          const SizedBox(height: 10),
+          TextField(
+            controller: search,
+            focusNode: searchFocus,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => searchFocus.unfocus(),
+            decoration: InputDecoration(
+              hintText: 'Fach suchen',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                tooltip: 'Suche schließen',
+                onPressed: toggleSearch,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ),
+            onChanged: (_) {
+              setState(() {});
+              remember();
+            },
+          ),
+        ],
+        const SizedBox(height: 12),
         if (error != null) ...[
           Notice(error!, warning: true),
           Align(
