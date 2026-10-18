@@ -111,3 +111,11 @@ erhalten und Vorwärtskorrektur bevorzugen; alte Clients kennen den Importbutton
 nicht. Datenbank-Downgrade auf0016 wird bei undatierten Noten abgewiesen, statt
 Bewertungsdaten zu erfinden oder Noten zu löschen. Tatsächlich aktivierter
 Release, vollständige Test-/Buildzahlen und Web-/native Abnahme: STATUS/Handoff.
+
+Tatsächliche Abnahme18.10.2026: öffentlicher Chrome und native Flutter-APK35
+im API36-Emulator, Systemdateiauswahl, Wiederholungsimport, manuelle Zuordnung,
+Quelle ergänzen/ändern, Reload/Neustart und Export/Löschung bestanden.
+Prüfablauf: `scripts/prepare_grade_smoke.py`, `node qa/grade_pdf_web.mjs --run`,
+`qa/android_grade_pdf.py`, `qa/grade_pdf_cleanup.py`. Nur eigener künstlicher
+Haushalt; geschützte Checkpoints außerhalb von Git, keine echte Geräteabnahme
+behauptet.

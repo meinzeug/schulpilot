@@ -1,5 +1,14 @@
 # Betrieb
 
+## PDF-Notenimport1.5.0+35
+
+Aktiv20261018T132538Z-87f9cf6, Schema0017, Sicherung und Dienste geprüft.
+PDFs ausschließlich lokal; kein zusätzlicher Dienst oder Provider. Migration,
+Aufbewahrung und sichere Rückweggrenzen: [GRADE_PDF_IMPORT.md](GRADE_PDF_IMPORT.md).
+Reproduzierbare öffentliche/native Prüfung und tatsächliche Ergebnisse in
+STATUS/Handoff. Künstlichen Haushalt nach Exportprüfung normal löschen.
+
+
 ## Sprachwerkstatt-Korrektur · 18.10.2026
 
 Aktiver Release 20261018T125246Z-8ada817, Produktcommit8ada817.

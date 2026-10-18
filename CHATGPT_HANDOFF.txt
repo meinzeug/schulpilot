@@ -1,32 +1,47 @@
-SCHULPILOT – Noten-PDFimport1.5.0+35 · Aktivierung vorbereitet
+SCHULPILOT – Noten-PDFimport1.5.0+35 · bereitgestellt18.10.2026
 
-18.10.2026. Elternbereich: Noten & Lernschwerpunkte -> PDF importieren ->
-Vorschau -> manuelle Überschneidungen/geänderte Quellwerte ausdrücklich klären
--> Auswahl übernehmen. Kein KI-Aufruf und keine Speicherung der Roh-PDF.
-Fuxnoten-Raster lokal in begrenztem geheimnisfreiem Unterprozess auswerten;
-Ø-/Summenspalten auslassen, echte Einzeldaten nicht erfinden. Importierte
-Noten bleiben mit belegtem Schuljahr/Halbjahr ohne Einzeldatum gespeichert.
-Quellpositionen, Child-/Notensperren und atomare Bestätigung verhindern
-Duplikate bei weiteren Uploads und mehreren Geräten. Eigene Korrekturen und
-Löschungen erhalten; Notengewichtung innerhalb bestehender Lernzeitziele.
+Produktcommit87f9cf68962385cd1dd7c996eacdd02dde6e3462, main gepusht.
+Release20261018T132538Z-87f9cf6, Schema0017, Sicherung success/Exit0,
+sieben Dienste aktiv, HTTPS und APK/Webbundle bytegenau geprüft.
+Öffentlich https://schulpilot.dorfspy.de ; API /api.
+Eltern: /login -> eigenes Kind -> Noten (/grades/<eigene-Kind-ID>) ->
+PDF importieren -> Vorschau/Zuordnung -> Auswahl übernehmen. Nur normale
+sichere Anmeldung verwenden, keine Passwörter/Sitzungen an ChatGPT weitergeben.
+Fuxnoten-Raster lokal ohne KI lesen. Stabile Quellpositionen, Vorschau-Revision
+und atomare Bestätigung verhindern Duplikate; manuelle Überschneidungen und
+geänderte Werte ausdrücklich bestätigen. Keine Roh-PDF speichern, keine
+Bewertungsdaten oder Gewichte erfinden. Schuljahr/Halbjahr bleiben bei
+unbekanntem Einzeldatum erhalten. Datierte Altnoten und Lernziele unverändert.
+Migration0017, Export/Löschung/Aufbewahrung dokumentiert in GRADE_PDF_IMPORT.md.
+Rückweg additive Datenbank erhalten; Downgrade bei undatierten Noten gesperrt.
 
-Migration0017 folgt0016; grade_imports/grade_source_slots, optionale
-Periodenfelder an school_grades, nullable Datum mit Zeitraum-Constraint.
-Export/Kinderlöschung/Aufbewahrung erweitert. Vor Rückweg additives Schema
-behalten; Downgrade bei undatierten Noten wird sicher abgewiesen.
-861 PostgreSQLtests/318 Fluttertests, Analyse/Ruff bestanden;22 neue
-Backendprüfungen nach gemeinsamer Fixture-Auslagerung nochmals bestanden.
-Tatsächliche gelieferte PDF lokal geprüft:14 Einzelnoten, keine privaten
-Notenwerte/Namen ausgegeben; keine echten Inhalte in Git/externen Modellen.
-Web/Direct-APK/Play-AAB1.5.0+35 gebaut; Signatur/Zipalign/bundletool geprüft.
-APK65300445Bytes, SHA-256
+861 PostgreSQLtests/318 Fluttertests, Analyse/Ruff/Diff bestanden. Tatsächlicher
+PostgreSQL-Upgrade und Downgradeschutz geprüft. Gelieferte echte PDF nur lokal
+analysiert, keine privaten Werte/Namen/Dateien in Git oder externen Modellen.
+Öffentlicher Browser: echte Dateiauswahl, manuelle Zuordnung, vier Noten,
+identische PDF erneut -> null zusätzliche; Reload,390/1280px, null JS-Fehler.
+Native Flutter-APK35/API36: Systemdateidialog, eine neue Note, ausdrückliche
+Quellwertaktualisierung, App-Neustart und gespeicherte Noten. Exaktfünf Noten/
+fünf Quellenpositionen, keine KI-Nutzung/erfundene Übung. Kind darf private
+Noten nicht lesen. Export aller neuen Tabellen geprüft, eigener künstlicher
+Haushalt normal gelöscht, alte Sitzungen401, private Kontodatei entfernt.
+Keine physische Telefon-/Audio-/neue Push-Zustellprüfung daraus ableiten.
+Web, Direct-APK, Play-AAB gebaut; Signatur/Zipalign/bundletool geprüft.
+APK artifacts/schulpilot-android.apk,65300445Bytes, SHA-256
 02df1d2f4279a08bd89ec9ee6d0f7910cf16f6bd22721585f5034a1bf856a667
-Öffentliche Aktivierung und echte Web-/native Dateiauswahl noch ausstehend.
-Eigener künstlicher regulärer Haushalt und drei künstliche PDF-Varianten
-vorbereitet; keine echte Familie dafür verwenden. Weiter qa/grade_pdf_web.mjs
---run, danach native Dateiauswahl und Export/Löschung verifizieren.
-Details docs/GRADE_PDF_IMPORT.md, docs/STATUS.md. Keine Zugangsdaten weitergeben.
-Anschließend Sofatutor-Fachstamm/Katalog/Lerntipps und Papphefter-Album beauftragt.
+Download https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play artifacts/schulpilot-play.aab, keine Store-Veröffentlichung.
+Tatsächliches OTA34->35 ohne adb install und drei Startchecks bestanden.
+GitHub-CI39123259701:null Schritte wegen gelesener Kontosperre/Billing-
+Annotation; lokale Prüfungen und Push erfolgreich. Betreiber muss Sperre klären.
+
+Nächste Umsetzung: Sofatutor-Fachstamm/Katalog/Lerntipps und Bildhefter mit
+echtem Fotoalbum. ZIP vorhanden,16 Referenzcovers erzeugt und noch nicht
+produktseitig eingebunden; Details/Dateien in docs/STATUS.md.
+Originaler echter Sprachwerkstatt-Auftrag hat noch keinen neuen Job:
+normal frisch im Kinderkonto anmelden und am ursprünglichen Link ausdrücklich
+„Erneut vorbereiten“ klicken. Nicht als bereits wiederhergestellt ausgeben.
+Keine privaten Kinderdaten/Zugangsdaten in dieser Übergabe.
 
 SCHULPILOT – Sprachwerkstatt 1.4.4+34 · bereitgestellt 18.10.2026
 

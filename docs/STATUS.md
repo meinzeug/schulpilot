@@ -1,36 +1,67 @@
-# In Umsetzung · Noten-PDFimport1.5.0+35 · 18.10.2026
+# Noten-PDFimport1.5.0+35 · bereitgestellt18.10.2026
 
-**Erledigt:** lokale begrenzte Fuxnoten-Extraktion ohne KI, Vorschau/Übernahme im
-Elternbereich, stabile Quellpositionen, ausdrückliche Klärung manueller
-Überschneidungen/Änderungen, idempotente Bestätigung und Mehrgeräteschutz.
-Einzeldaten unbekannt: kein Datum erfinden, Schuljahr/Halbjahr anzeigen.
-Vorhandene Noten-/Lernplanfunktionen erhalten und undatierte Jahresnoten in
-abgeleitete Prioritäten aufnehmen, keinen Zeittrend daraus erfinden.
-Migration0017 an0016 angeschlossen, zwei private Tabellen und optionale
-Datums-/Periodenfelder; DB-Constraint sichert bekannten Zeitraum. Export,
-Kinderlöschung und Aufbewahrung erweitert. Details docs/GRADE_PDF_IMPORT.md.
+**Produktiv aktiv:** Produktcommit `87f9cf68962385cd1dd7c996eacdd02dde6e3462`,
+main gepusht, Release `20261018T132538Z-87f9cf6`, Schema0017.
+Sicherung success/Exit0, sieben bestehende Dienste aktiv. Gültiges HTTPS,
+öffentliche APK/Webbundle bytegenau verglichen; Noten-Direktlink200.
+Web https://schulpilot.dorfspy.de ; API unter/api, keine neuen Dienste.
+APK35 enthält den echten nativen Android-Dateidialog, kein WebView.
 
-**Geprüft:** tatsächliche bereitgestellte PDF lokal gelesen; 14 Einzelnoten,
-sechs Fächer, keine Ø-/Summenspalten. Keine Namen/Notenwerte protokolliert,
-keine echte PDF oder Diagnosekopien in Git. Private Arbeitskopien gelöscht.
-60 gezielte PostgreSQLtests einschließlich echter Upgradeprüfung,
-Parallelität, Rechteentzug nach Parsing, Export/Löschung bestanden (39,00s).
-Vollständiger PostgreSQLlauf: **861 bestanden in602,73s**; alle **318
-Fluttertests** bestanden. Analyse/Ruff sauber. Nach Herauslösen des gemeinsamen
-künstlichen PDF-Fixtures nochmals alle22 neuen Backendtests bestanden.
-Ein neuer mobiler Widgettest brauchte nach Listenscroll einen Layoutframe;
-Test korrigiert, keine Produktlockerung. Web/signierte Direct-APK/Play-AAB
-1.5.0+35 gebaut, Signatur/Zipalign/bundletool und Versionscode35 geprüft.
-APK65.300.445Bytes, SHA-256
+**Implementiert:** lokale begrenzte Fuxnoten-Extraktion ohne KI, Vorschau und
+Übernahme im Elternbereich. Quellpositionen wiedererkennen, manuelle
+Überschneidungen und geänderte Werte ausdrücklich klären, atomare/idempotente
+Bestätigung. Unbekannte Bewertungsdaten bleibenNULL mit Schuljahr/Halbjahr;
+keine Ø-/Summennoten importieren. Bestehende Datumswerte, Korrekturen,
+Löschungen und Lernziele erhalten. Export/Aufbewahrung/Kinderlöschung erweitert.
+Migration0017 an0016 angeschlossen. Details docs/GRADE_PDF_IMPORT.md.
+
+**Prüfungen:**861 PostgreSQLtests bestanden in602,73s, alle318 Fluttertests,
+Analyse/Ruff/Diff/Syntax bestanden. Darunter22 neue Backendtests mit echtem
+PostgreSQL-Upgrade, alten datierten Noten, sicherem Downgradeschutz,
+Parallelität, Rechteentzug nach Parsing, Export/Löschung; nach gemeinsamem
+Fixture-Refactoring nochmals22 bestanden. Reale gelieferte PDF ausschließlich
+lokal analysiert:14 Einzelnoten/sechs Fächer, keine Namen/Notenwerte ausgegeben,
+keine echte PDF in Git/externen Modellen; private Diagnosekopien entfernt.
+
+**Tatsächlich öffentlich bedient:** normaler eigener künstlicher Haushalt,
+Browser-Dateiauswahl einer künstlichen A1-PDF, vorhandene manuelle Note
+zugeordnet, drei neue übernommen. Wiederholter Upload:vier bestehende,
+null zusätzliche Noten. Feedback/Reload,390/1280px und null JS-Fehler geprüft.
+Native Flutter-APK35/API36: Android-Systemdateiauswahl, neue fünfte Note aus
+aktualisierter PDF, geänderten Quellwert ausdrücklich übernommen, Neustart,
+Sitzungsfortsetzung und gespeicherte Noten geprüft. Exaktfünf Noten und fünf
+Quellpositionen, keine KI-Nutzung oder erfundene Übungsantworten. Eltern/Kind
+haben konsistentnull Übungsaufgaben, Kind darf private Noten nicht lesen.
+Export enthält alle neuen Tabellen; eigenen Haushalt normal gelöscht,
+alte Sitzungen401, private Kontodatei entfernt. Keine physische Telefonprüfung.
+Reproduzierbar: scripts/prepare_grade_smoke.py, qa/grade_pdf_web.mjs --run,
+qa/android_grade_pdf.py, qa/grade_pdf_cleanup.py. Roh-PDFs niemals an KI senden.
+
+Web/signierte Direct-APK/Play-AAB1.5.0+35 gebaut, Signatur/Zipalign/bundletool
+und Versionscode geprüft. APK65.300.445Bytes, SHA-256
 `02df1d2f4279a08bd89ec9ee6d0f7910cf16f6bd22721585f5034a1bf856a667`.
-Geheimnisprüfung:416 Quelldateien/244 Archiveinträge gegen16 tatsächliche
-Geheimnisquellen, kein Fund. Noch kein PDF-Produktivdeployment.
+Tatsächliches OTA34->35 mit Systembestätigung, ohne adb install; danach drei
+Kalt-/Warmstartchecks bestanden. Geheimnisprüfung gegen16 tatsächliche Quellen
+vor Testkontolöschung ohne Fund; finalen bereinigten Scan nachführen.
+Rückweg20261018T125246Z-8ada817: additives Schema erhalten, Vorwärtskorrektur
+bevorzugen; Downgrade mit undatierten Noten absichtlich gesperrt.
+GitHub-CI39123259701:beide Jobs null Schritte, gelesene Annotation weiterhin
+Kontosperre/Abrechnung. Produktpush und lokale/öffentliche Tests erfolgreich.
 
-**Nächste Aktion:** Regression/Build/Geheimnisprüfung fertigstellen, committen,
-pushen und regulär gesichert deployen; künstliche PDF im öffentlichen Web und
-nativen Android-Dateidialog bedienen. Danach Sofatutor-Fachstamm/Katalog/
-Lerntipps, anschließend bildbasierte Papphefter mit echtem Fotoalbum.
-Elf eigene Hefterbilder sind bereits erzeugt, noch nicht eingebunden.
+**Fortsetzung:** Sofatutor-ZIP liegt vor und ist geprüft. Nächste Migration0018
+an0017 anschließen: zentraler Fachstamm vor Upload, kontrollierte Alias-/
+Referenzmigration, kompletter idempotenter Katalogimport, quell-/stufentreue
+Lerntipps in vorhandenen Ansichten. Danach beziehungsweise gemeinsam
+Bildhefter/Fotoalbum/Listenschalter integrieren. Alle16 Referenz-Fachbilder
+sind mit eingebautem Imagegen erzeugt, in artifacts/folder-covers gespeichert
+(PNG und optimierte WebP, zusammen528KB), noch nicht ins Produkt eingebunden.
+Prompts und Quellenpfade stehen dort in generation-manifest.json; keine
+bestehenden Bilder überschrieben. Zusätzliche vorhandene Schulfächer erhalten.
+
+Echter Sprachwerkstatt-Prüfauftrag weiterhin unverändert fehlgeschlagen:
+auditierte Metadatenkontrolle bestätigte keinen neuen Job/keine Einheit.
+Frischer normaler Kinderlogin und ausdrückliches „Erneut vorbereiten“ sind
+weiter nötig; keine alte Sitzung reaktiviert. Unabhängige Arbeit fortsetzen.
 
 # Sprachwerkstatt 1.4.4+34 · 18.10.2026
 
