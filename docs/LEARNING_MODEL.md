@@ -100,6 +100,9 @@ unterschieden. Bausteine starten eine neue Eingabe, STT bleibt unterstützte Ein
 Erkennen/Schreiben/Hören/Abruf bleiben getrennte Belege. Der Client zeigt kurze
 Abschnitte gespeicherter Erklärungen; Bruchbalken veranschaulichen bei geöffneter
 Hilfe kleine Additionen. Das ist eine Gestaltungshilfe, kein Wirksamkeitsnachweis.
+Mathematische Zahlenbrüche erscheinen im Flutter-Client als gestapelter Zähler
+und Nenner. Das gilt auch für OCR-Schreibweisen mit Abstand, Unicode-Bruchzeichen
+und einfache numerische LaTeX-Brüche; Datum, URL und Dezimalzahl bleiben Text.
 
 Erkannte Aufgaben sind zunächst Vorschläge: Überschrift/Ausdruck zusammen,
 Beispiel/unklar/Hausaufgabe ausdrücklich wählen. Nur bewusst bestätigte Hausaufgaben

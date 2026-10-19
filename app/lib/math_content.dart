@@ -12,11 +12,50 @@ class MathText extends Text {
     super.textAlign,
     super.semanticsLabel,
   });
+  // Fractions can arrive from OCR and language models in several equivalent
+  // forms. Parse only explicit numeric forms; do not interpret arbitrary
+  // expressions, dates with three components, URLs, or decimal numbers.
   static final fraction = RegExp(
-    r'(?<![\w/])((?:−|-)?\d{1,5})\s*/\s*([1-9]\d{0,4})(?![\w/])',
+    r'(?<![\w/])(?:'
+    r'\\(?:d|t)?frac\s*\{\s*((?:−|-)?\d{1,5})\s*\}\s*'
+    r'\{\s*([1-9]\d{0,4})\s*\}'
+    r'|((?:−|-)?\d{1,5})\s*[/⁄∕]\s*([1-9]\d{0,4})'
+    r'|([¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])'
+    r')(?![\w/])',
+    unicode: true,
   );
-  static String spoken(String value) =>
-      value.replaceAllMapped(fraction, (m) => '${m[1]} durch ${m[2]}');
+
+  static const _vulgarFractions = <String, (String, String)>{
+    '¼': ('1', '4'),
+    '½': ('1', '2'),
+    '¾': ('3', '4'),
+    '⅐': ('1', '7'),
+    '⅑': ('1', '9'),
+    '⅒': ('1', '10'),
+    '⅓': ('1', '3'),
+    '⅔': ('2', '3'),
+    '⅕': ('1', '5'),
+    '⅖': ('2', '5'),
+    '⅗': ('3', '5'),
+    '⅘': ('4', '5'),
+    '⅙': ('1', '6'),
+    '⅚': ('5', '6'),
+    '⅛': ('1', '8'),
+    '⅜': ('3', '8'),
+    '⅝': ('5', '8'),
+    '⅞': ('7', '8'),
+  };
+
+  static (String, String) parts(Match match) {
+    if (match[1] != null) return (match[1]!, match[2]!);
+    if (match[3] != null) return (match[3]!, match[4]!);
+    return _vulgarFractions[match[5]!]!;
+  }
+
+  static String spoken(String value) => value.replaceAllMapped(fraction, (m) {
+    final (numerator, denominator) = parts(m);
+    return '$numerator durch $denominator';
+  });
   @override
   Widget build(BuildContext context) {
     final value = data!;
@@ -27,12 +66,13 @@ class MathText extends Text {
       if (match.start > end) {
         spans.add(TextSpan(text: value.substring(end, match.start)));
       }
+      final (numerator, denominator) = parts(match);
       spans.add(
         WidgetSpan(
           alignment: PlaceholderAlignment.middle,
           child: FractionNotation(
-            numerator: match[1]!,
-            denominator: match[2]!,
+            numerator: numerator,
+            denominator: denominator,
             style: base,
           ),
         ),
@@ -76,7 +116,8 @@ class FractionNotation extends StatelessWidget {
                 child: Text(numerator, style: style),
               ),
               Container(
-                height: 1.6,
+                height: 2,
+                margin: const EdgeInsets.symmetric(vertical: 1),
                 color: style?.color ?? Theme.of(context).colorScheme.onSurface,
               ),
               Padding(
