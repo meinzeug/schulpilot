@@ -1187,11 +1187,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     children: [
                       heading('Zeitlicher Verlauf'),
                       for (final a in activities.where(
-                        (a) => ![
-                          'active_time',
-                          'vocabulary_exposure',
-                          'language_stimulus',
-                        ].contains(a['kind']),
+                        (a) => !technicalActivity(a['kind']),
                       ))
                         Padding(
                           padding: const EdgeInsets.only(bottom: 14),
@@ -1224,22 +1220,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                             ],
                           ),
                         ),
-                      if (activities.any(
-                        (a) => [
-                          'active_time',
-                          'vocabulary_exposure',
-                          'language_stimulus',
-                        ].contains(a['kind']),
-                      ))
+                      if (activities.any((a) => technicalActivity(a['kind'])))
                         ExpansionTile(
                           title: const Text('Technische Ereignisse'),
                           children: [
                             for (final a in activities.where(
-                              (a) => [
-                                'active_time',
-                                'vocabulary_exposure',
-                                'language_stimulus',
-                              ].contains(a['kind']),
+                              (a) => technicalActivity(a['kind']),
                             ))
                               ListTile(
                                 dense: true,
@@ -1863,6 +1849,14 @@ List<dynamic> _pendingMaterials(Json data) => (data['materials'] as List? ?? [])
               )),
     )
     .toList();
+
+bool technicalActivity(String kind) =>
+    [
+      'active_time',
+      'vocabulary_exposure',
+      'language_stimulus',
+    ].contains(kind) ||
+    activityLabel(kind) == kind;
 
 String activityLabel(String kind) => switch (kind) {
   'unit_started' => 'Einheit begonnen oder fortgesetzt',

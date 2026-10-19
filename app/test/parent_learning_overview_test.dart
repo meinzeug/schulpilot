@@ -83,6 +83,7 @@ Future<({AppState state, GoRouter router})> mountParent(
   double width = 390,
   String permission = 'owner',
   bool familyHome = false,
+  List<Json> activities = const [],
 }) async {
   await tester.binding.setSurfaceSize(Size(width, 844));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -98,6 +99,19 @@ Future<({AppState state, GoRouter router})> mountParent(
                 reason:
                     'Viewing a parent overview cannot generate or start work.',
               );
+              if (request.url.path.endsWith('/activity')) {
+                return jsonResponse(activities);
+              }
+              if (request.url.path.endsWith('/learning')) {
+                return jsonResponse({
+                  'items': [],
+                  'subjects': [],
+                  'total': 0,
+                  'pages': 1,
+                  'page': 1,
+                  'date': '2026-10-19',
+                });
+              }
               if (request.url.path == '/api/families/own-family') {
                 return jsonResponse({
                   'id': 'own-family',
@@ -434,6 +448,35 @@ void main() {
       expect(requests, isEmpty);
       await tapText(tester, 'Abbrechen');
       await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'E10 unmapped technical events remain behind the disclosure and reading never writes',
+    (tester) async {
+      final requests = <http.Request>[];
+      await mountParent(
+        tester,
+        parentOverview(),
+        requests,
+        activities: [
+          {
+            'kind': 'active_time',
+            'created': 1792407600,
+            'detail': {'seconds': 20},
+          },
+          {'kind': 'feedback_pending', 'created': 1792407601, 'detail': {}},
+          {'kind': 'answer', 'created': 1792407602, 'detail': {}},
+        ],
+      );
+      await tapText(tester, 'Verlauf');
+      expect(find.text('active_time'), findsNothing);
+      expect(find.text('feedback_pending'), findsNothing);
+      expect(find.textContaining('Antwort gespeichert'), findsOneWidget);
+      await tapText(tester, 'Technische Ereignisse');
+      expect(find.text('active_time'), findsOneWidget);
+      expect(find.text('feedback_pending'), findsOneWidget);
+      expect(requests.every((r) => r.method == 'GET'), isTrue);
+      expect(tester.takeException(), isNull);
     },
   );
 }
