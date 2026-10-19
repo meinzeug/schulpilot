@@ -205,9 +205,19 @@ def feedback_resume_id(db, child_id, *, include_language=True):
     )
 
 
+def unit_source_texts(db, unit):
+    references = list(db.scalars(select(UnitSource).where(UnitSource.unit_id == unit.id)))
+    if not references and unit.material_id:
+        source = db.get(Material, unit.material_id)
+        return [source.content] if source and source.child_id == unit.child_id and source.confirmed and source.revision == unit.source_revision else []
+    return [material.content for ref in references
+            if (material := db.get(Material, ref.material_id)) and material.child_id == unit.child_id and material.confirmed and material.revision == ref.revision]
+
+
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import coaching
 
+    sources = unit_source_texts(db, unit)
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
     history = {}
@@ -251,7 +261,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         from .subject_content import legacy_presentation, public_presentation
 
         closed = "feedback_explanation" in value
-        value["presentation"] = public_presentation(q.get("presentation") or legacy_presentation(q),
+        value["presentation"] = public_presentation(q.get("presentation") or legacy_presentation(q, sources),
             closed=include_answers or closed, hints=value["hints_used"])
         questions.append(value)
     return {
@@ -265,6 +275,8 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "questions": questions,
         "pending_feedback": pending_feedback(unit, attempts, events),
         "supports_recheck": True,
+        "supports_question_explanation": True,
+        "supports_detailed_feedback": True,
         "content_version": 1,
         "supports_answer_idempotency": True,
         "status": unit.status,
@@ -1146,12 +1158,17 @@ def heartbeat(unit_id: str, data: s.HeartbeatRequest | None = None, p=Depends(ch
 
 
 @router.post("/units/{unit_id}/explanation")
-def explanation(unit_id: str, p=Depends(child_user), db=Depends(get_db)):
-    unit = get_unit(db, p, unit_id, True)
+def explanation(unit_id: str, data: s.ExplanationRequest | None = None, p=Depends(child_user), db=Depends(get_db)):
+    unit = get_unit(db, p, unit_id, True, True)
     rate_limit(db, "explain:" + p.user.id, 30)
-    record(db, unit.child_id, "explanation", {"text": unit.explanation}, unit.id)
+    q = question(unit, data.question_id) if data else None
+    text = q["explanation"] if q else unit.explanation
+    record(db, unit.child_id, "explanation", {"text": text, **({"question_id": q["id"]} if q else {})}, unit.id)
     db.commit()
-    return {"explanation": unit.explanation}
+    from .subject_content import legacy_presentation, public_presentation
+
+    return {"explanation": text, "question_id": q["id"] if q else None,
+            "presentation": public_presentation(q.get("presentation") or legacy_presentation(q, unit_source_texts(db, unit)), closed=True) if q else None}
 
 
 @router.post("/units/{unit_id}/introduction")
@@ -1366,7 +1383,8 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     if previous and (previous[-1].outcome in ("correct", "uncertain") or len(previous) >= 3):
         raise HTTPException(409, "Diese Aufgabe wurde bereits abgeschlossen.")
     explained = bool(
-        db.scalar(select(Activity.id).where(Activity.unit_id == unit.id, Activity.kind == "explanation"))
+        any(not e.detail.get("question_id") or e.detail.get("question_id") == question_id
+            for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")))
     )
     had_hint = any(
         e.detail.get("question_id") == question_id
@@ -1513,7 +1531,9 @@ def acknowledge_feedback(
 def feedback(unit_id: str, data: s.FeedbackRequest, p=Depends(child_user), db=Depends(get_db)):
     unit = get_unit(db, p, unit_id, True)
     rate_limit(db, "feedback:" + p.user.id, 10)
-    record(db, unit.child_id, "feedback", {"kind": data.kind}, unit.id)
+    if data.question_id:
+        question(unit, data.question_id)
+    record(db, unit.child_id, "feedback", {"kind": data.kind, "question_id": data.question_id}, unit.id)
     db.commit()
     return {
         "message": "Deine Rückmeldung wurde gespeichert und wird bei der nächsten Einheit berücksichtigt. Das Lernziel bleibt erhalten."

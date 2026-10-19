@@ -58,7 +58,7 @@ PROFILES = {
     "Spanisch": ("forms", "picture_words"),
     "Latein": ("forms", "picture_words"),
     "Deutsch als Zweitsprache": ("forms", "picture_words", "sentence", "position"),
-    "Biologie": ("plant", "food_chain"),
+    "Biologie": ("plant", "food_chain", "forms"),
     "Geographie": ("compass", "water_cycle"),
     "Geschichte": ("timeline", "statements"),
     "Physik": ("reflection", "circuit"),
@@ -208,11 +208,19 @@ class Graphic(Bounded):
         "beside",
         "clockwise",
         "counterclockwise",
+        "roots",
+        "pollination",
     ]
 
     @model_validator(mode="after")
     def coherent(self):
         n, labels = self.numbers, self.labels
+        if self.variant in ("roots", "pollination") and self.disclosure != "solution":
+            raise ValueError("Diese erklärenden Funktionsschemata dürfen keine Antwort vorwegnehmen.")
+        if self.variant == "roots" and self.kind != "plant":
+            raise ValueError("Wurzelfunktion benötigt das Pflanzenmodell.")
+        if self.variant == "pollination" and (self.kind != "forms" or len(labels) != 2):
+            raise ValueError("Bestäubung und Befruchtung sind zwei getrennte Erklärungsschritte.")
         if self.marks and (
             self.kind != "sentence" or self.disclosure == "given" or any(m.index >= len(labels) for m in self.marks)
         ):
@@ -351,6 +359,8 @@ class Presentation(Bounded):
 
 
 RULES = """\nFachdarstellung presentation ist optional (sonst null), version1. Verwende nur bereitgestellte graphic_kinds.
+Bei ausdrücklich belegtem Pflanzenaufbau plant verwenden. Wurzelaufnahme und Halt können mit variant roots erklärt werden.
+Bestäubung und Befruchtung als zwei getrennte Schritte mit forms/variant pollination zeigen, nur mit wörtlich belegten Beschriftungen und disclosure solution.
 Satzmarkierungen marks geben Bausteinindex und ausdrücklich belegte Subjekt-/Prädikatrolle an; nur hint/solution, nie als vorweggenommene Lösung.
 Zahnrad-variant nennt die ausdrücklich vorgegebene Anfangsdrehrichtung clockwise/counterclockwise.
 Keine beliebigen SVG/HTML/Bilder/Koordinaten. Grafik nur wenn sie das konkrete Lernziel erklärt; keine Dekoration.
@@ -477,11 +487,27 @@ def public_presentation(value, *, closed=False, hints=0):
     }
 
 
-def legacy_presentation(question):
-    """Safe vector fallback for old *explicitly given* geometry, never inferred answers."""
+def legacy_presentation(question, sources=None):
+    """Finite legacy diagrams: given geometry or source-bound, gated biology explanation."""
     prompt = question["prompt"]
     if not re.search(r"Dreieck", prompt, re.I):
-        return None
+        explanation = question.get("explanation", "")
+        context = prompt + "\n" + explanation
+        evidence = "\n".join(sources or [])
+        if (re.search(r"wurzel", context, re.I) and re.search(r"wasser|veranker|halt", context, re.I)
+                and all(re.search(term, evidence, re.I) for term in (r"wurzel", r"wasser", r"veranker|halt"))):
+            block = Graphic(kind="plant", title="Erklärschema: Die Wurzel", disclosure="solution",
+                source_excerpt=explanation[:500], labels=["Blüte", "Blatt", "Stängel", "Wurzel"],
+                numbers=[], connections=[], unit="", variant="roots")
+        elif (re.search(r"bestäub|befrucht", context, re.I) and all(re.search(term, evidence, re.I)
+                 for term in (r"bestäub", r"befrucht", r"pollen", r"narbe", r"eizelle"))):
+            block = Graphic(kind="forms", title="Erklärschema: Von der Bestäubung zur Befruchtung", disclosure="solution",
+                source_excerpt=explanation[:500], labels=["Bestäubung: Pollen gelangt auf die Narbe.",
+                    "Befruchtung: Eine männliche Keimzelle verschmilzt mit der Eizelle."],
+                numbers=[], connections=[Connection(start=0, end=1, relation="next")], unit="", variant="pollination")
+        else:
+            return None
+        return Presentation(version=1, evidence_kind="knowledge", blocks=[block]).model_dump()
     base = re.search(r"\bg\s*=\s*(\d+(?:[.,]\d+)?)\s*(cm|m)\b", prompt)
     height = re.search(r"\bh\s*=\s*(\d+(?:[.,]\d+)?)\s*(cm|m)\b", prompt)
     if not base or not height or base[2] != height[2]:

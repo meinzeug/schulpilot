@@ -4,6 +4,23 @@ Stand 19.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächli
 
 ## Fachliche Darstellung und offene Bewertung
 
+Build44: Bruchaddition lässt gleich große Ganze, Erweitern und Zusammenführen
+in drei bewusst gesteuerten Schritten betrachten. Farben werden durch A/B und
+verbale Teilanzahlen ergänzt. Der Hilfedialog bekommt die konkrete Frage samt
+Zahlen; seine Hilfe zählt nur für diese Frage. Alte globale Erklärungseinträge
+behalten ihre ursprüngliche Bedeutung. Gespeicherte Unterstützungsgründe werden
+bei Kind und Eltern angezeigt, fehlende Legacydetails ehrlich benannt.
+Die lokale Nennerfehlerregel liefert erst einen Denkhinweis, nicht sofort das
+Ergebnis. Gleichwertige Bruchwerte und ausdrücklich verlangte Form bleiben
+getrennte Prüfungen.
+
+Wurzel- und Bestäubungsschemata sind endliche, fachlich kuratierte
+Erklärkomponenten. Alteinheiten erhalten sie nur mit passenden bestätigten
+Quellenrevisionen und passender Aufgabenerklärung. Sie werden ausschließlich als
+`solution` nach bewusster Erklärung oder abgeschlossener Antwort gezeigt. Kein
+zusätzlicher Anbieteraufruf, kein automatisch aktivierter Biologiekurs. Für
+andere Themen wird keine beliebige Grafik behauptet.
+
 Aufgaben dürfen ergänzend eine versionierte `presentation` mit höchstens vier festen Inhaltsblöcken tragen. Jeder Block enthält einen wörtlichen Quellbeleg, einen Darstellungstyp aus dem Fachprofil und eine Offenlegungsstufe: `given`, gestufter Hinweis oder `solution`. Der Provider liefert keine freien Grafikkoordinaten, SVGs oder Netzwerkbilder. Backend-Schemata prüfen Fachtyp, Zahlen, Beschriftungen und fachliche Beziehungen vor dem Speichern; der Client stellt dieselben Daten als Flutter-Vektor, Tabelle oder Wortkarte dar und gibt eine verbale Bildbeschreibung an assistive Technologien weiter. Lösungen und Hinweise werden erst nach dem passenden Schritt projiziert.
 
 Fachlich prüfbare Mathematik verwendet exakte Wertvergleiche. Eine gleichwertige Bruchantwort wie `6/16` gilt wie `3/8`, sofern die Aufgabe nicht ausdrücklich kürzen lässt. Bei einem ausdrücklich verlangten Format bleibt der Inhalt als richtig und die Form separat bewertbar. Andere Fächer erhalten keine globale Ähnlichkeitstoleranz. Reflexion, kreative Entscheidungen, Religion und körperliche Ausführung zählen nicht als eindeutig richtiges Können; sie bleiben als eigener Beitrag nachvollziehbar.

@@ -315,3 +315,19 @@ werden; keine Notenversprechen. Quellen:
 [EEF Feedback](https://educationendowmentfoundation.org.uk/education-evidence/guidance-reports/feedback).
 Babbel- und sofatutor-Beobachtungen sind Anregungen zu Interaktionen, keine
 Behauptung über deren interne Algorithmen oder kopierte Kursinhalte.
+## Praxistestkorrektur · 19.10.2026 · Build 44
+
+Englische Einzelwörter mit kleinem Anfangsbuchstaben dürfen bei Schreib- und
+Abrufaufgaben auch wie ein Satz groß beginnen (`Swimming pool`). Diese begrenzte
+Regel verändert weder innere Großbuchstaben noch Eigennamen, Akzente oder deutsche
+Nomen. `sentence_initial_optional=false` hält ein ausdrückliches Schreibziel
+streng; die Rückmeldung nennt dann den tatsächlich abweichenden Buchstaben.
+Bestehende gespeicherte Antworten werden nicht umgeschrieben. Neue Antworten
+tragen `language_rule_v2`; ursprüngliche Bewertungen und Hilfen bleiben erhalten.
+
+Die Einzelprüfung unterscheidet Stimmt, Korrigieren, Nicht übernehmen und Weiß
+ich noch nicht. Zurückgestellte Importpaare bleiben als eigener privater
+Prüfentwurf mit denselben Quellenrevisionen erhalten. Bestätigen ist atomar und
+wiederholbar, keine zusätzliche KI. Neue Capability `supports_deferred_pairs`
+verhindert stillen Verlust bei einem alten Backend. Foto-Paare bleiben ohne
+Übernahme auf ihrer gespeicherten Seite erreichbar.

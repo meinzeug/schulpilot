@@ -13,6 +13,7 @@ import 'preparation_card.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
 import 'practice_evidence.dart';
+import 'tutor_sheet.dart';
 import 'ui.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -1397,7 +1398,7 @@ class _ChildHomeContent extends StatelessWidget {
                 ? 'Deine letzte Antwort'
                 : next['topic'] ?? 'Mit deinem Stoff weiter',
             subtitle:
-                '$obligation${next['subject']}${progress == null ? '' : '\n$progress'}${details['estimated_minutes'] is num ? '\nEtwa ${details['estimated_minutes']} Minuten' : ''}',
+                '$obligation${next['subject']}${progress == null ? '' : '\n$progress'}${details['estimated_minutes'] is num ? '\nEtwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
             icon: Icons.auto_stories_rounded,
             action: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1587,12 +1588,13 @@ class _ChildHomeContent extends StatelessWidget {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: () => showLearningMessage(
+            onPressed: () => showHomeHelp(
               context,
               state,
               childId: child['id'],
-              kind: 'help',
-              title: 'Ich brauche Hilfe',
+              unitId: next != null && next['kind'] == 'unit'
+                  ? next['id']
+                  : null,
               refresh: refresh,
             ),
             icon: const Icon(Icons.volunteer_activism_outlined, size: 21),
@@ -1676,7 +1678,7 @@ class _ChildHomeContent extends StatelessWidget {
           childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
           children: const [
             Text(
-              'Deine Heftseiten, Aufgaben, Antworten und Hilfewünsche in Schulpilot.',
+              'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in Schulpilot.',
               style: TextStyle(color: muted, fontSize: 13),
             ),
           ],
@@ -2091,6 +2093,94 @@ Widget messages(
   ],
 );
 
+Future<void> showHomeHelp(
+  BuildContext context,
+  AppState state, {
+  required String childId,
+  String? unitId,
+  required VoidCallback refresh,
+}) async {
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Wobei brauchst du Hilfe?',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+            ),
+            for (final option in [
+              ('explain', 'Etwas erklären lassen', Icons.lightbulb_outline),
+              ('task', 'Eine Aufgabe verstehen', Icons.help_outline),
+              ('technical', 'Etwas funktioniert nicht', Icons.build_outlined),
+              ('parents', 'Meine Eltern fragen', Icons.family_restroom),
+            ])
+              ListTile(
+                leading: Icon(option.$3),
+                title: Text(option.$2),
+                onTap: () => Navigator.pop(ctx, option.$1),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (!context.mounted || choice == null) return;
+  if (choice == 'parents') {
+    await showLearningMessage(
+      context,
+      state,
+      childId: childId,
+      kind: 'help',
+      title: 'Meine Eltern fragen',
+      refresh: refresh,
+    );
+  } else if (choice == 'explain' && unitId != null) {
+    await showTutorSheet(context, state, childId: childId, unitId: unitId);
+  } else if (choice == 'technical') {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Gespeicherten Stand neu laden'),
+        content: const Text(
+          'Prüfe deine Internetverbindung. Lade dann den Stand neu. Geprüfte Antworten und gespeicherte Heftseiten bleiben erhalten.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Zurück'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              refresh();
+            },
+            child: const Text('Erneut laden'),
+          ),
+        ],
+      ),
+    );
+  } else {
+    openRoute(
+      context,
+      choice == 'explain'
+          ? '/library/$childId'
+          : unitId != null
+          ? '/unit/$unitId'
+          : '/learn/$childId',
+    );
+    if (choice == 'explain') {
+      toast(context, 'Öffne eine Heftseite und tippe auf „Frag nach“.');
+    }
+  }
+}
+
 Future<void> showLearningMessage(
   BuildContext context,
   AppState state, {
@@ -2099,23 +2189,29 @@ Future<void> showLearningMessage(
   required String title,
   required VoidCallback refresh,
 }) async {
-  final controller = TextEditingController();
   final help = kind == 'help';
+  final controller = TextEditingController(
+    text: help ? 'Ich brauche Unterstützung beim Lernen.' : '',
+  );
   await showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(help ? 'Hilfe von deinen Eltern' : title),
       content: SizedBox(
         width: 420,
-        child: TextField(
-          controller: controller,
-          maxLines: 3,
-          maxLength: 1000,
-          decoration: InputDecoration(
-            labelText: help
-                ? 'Deine Frage (freiwillig)'
-                : 'Was möchtest du sagen?',
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('An: Deine berechtigten Eltern'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              maxLength: 1000,
+              decoration: const InputDecoration(labelText: 'Deine Nachricht'),
+            ),
+          ],
         ),
       ),
       actions: [

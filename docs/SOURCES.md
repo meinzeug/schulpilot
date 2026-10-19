@@ -1,5 +1,15 @@
 # Offizielle Quellen und geprüfte Versionen
 
+Praxistestkorrekturen, geprüft am 19.10.2026:
+
+- [RHS: How plants absorb water](https://www.rhs.org.uk/advice/understanding-plants/how-plants-absorb-water):
+  Wasseraufnahme an Wurzeln. [RHS Qualifikationslehrplan](https://www.rhs.org.uk/education-learning/pdf/qualifications/level-2/q-qao-qualification-specification-level-2-popg.pdf):
+  Bestäubung und Befruchtung getrennt, Verschmelzung der Keimzellen. Eigene
+  endliche Flutter-Vektorskizzen, keine fremden Bilder übernommen.
+- Keine SDK-, Provider-, Audio- oder Datenbankmigration in Build44. Neue
+  Metadaten/Capabilities sind additiv; bisherige Clients und Antworten bleiben
+  erhalten. Prüfmatrix und Grenzen: [PRACTICE_REVIEW_2026_10_19.md](PRACTICE_REVIEW_2026_10_19.md).
+
 PDF-Import, geprüft am 18.10.2026:
 
 - [pypdf6.21.1 Textauszug](https://pypdf.readthedocs.io/en/6.21.1/user/extract-text.html),

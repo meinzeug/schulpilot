@@ -72,7 +72,7 @@ class PreparationCard extends StatelessWidget {
             title,
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-          subtitle: Text('${preparation['date'] ?? ''} · $action'),
+          subtitle: Text('${schoolDate(preparation['date'])} · $action'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: open,
         ),

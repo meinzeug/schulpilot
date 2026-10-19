@@ -1,3 +1,18 @@
+Arbeitsstand · Praxistestkorrekturen Build44
+
+Implementierung P01–P12: docs/PRACTICE_REVIEW_2026_10_19.md.
+323 Flutter- und268 PostgreSQL-Regressionen sowie55 PDF-/Noten-/Migrationstests
+bestanden. Wortbewertung, Frageerklärung, Hilfengründe, Bruch-/Biologiemodelle,
+Fotovorschau, Wortbestätigung und Themenbündelung überarbeitet. Öffentliche
+PDF500 mit künstlichen249.521Bytes reproduziert; versehentliche ORM-Spalte
+GradeImport.source_blocks entfernt. Kein Datenbankeingriff nötig.
+Signierter Build44 und anschließende öffentliche QA sind in Arbeit. Eigene
+künstliche Familie wird über qa/prepare_design_review.py verwaltet; privater
+Checkpoint ausschließlich in artifacts/.design-qa-account.json. Nach Abschluss
+mit --cleanup löschen. Keine Zugangsdaten weitergeben.
+
+Vorheriger verifizierter Stand (historisch):
+
 Aktueller Produktionsstand · 19.10.2026
 
 App 1.9.0+43 läuft unter https://schulpilot.dorfspy.de als Release

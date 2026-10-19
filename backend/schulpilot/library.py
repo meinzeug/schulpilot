@@ -217,6 +217,25 @@ def unit_summaries(db, ids):
     return result
 
 
+def group_learning_items(items):
+    """Group presentation only; every distinct round and date remains available."""
+    groups, result = {}, []
+    for item in items:
+        eligible = item["kind"] in ("unit", "review") and not item.get("mandatory") and item.get("status") not in ("active", "paused", "completed")
+        if not eligible:
+            result.append(item)
+            continue
+        key = tuple(" ".join(item.get(field, "").split()).casefold() for field in ("subject", "topic"))
+        if key not in groups:
+            group = {**item, "kind": "topic_group", "entries": [], "group_count": 0}
+            groups[key] = group
+            result.append(group)
+        group = groups[key]
+        group["entries"].append(dict(item))
+        group["group_count"] += 1
+    return [item["entries"][0] if item.get("group_count") == 1 else item for item in result]
+
+
 @router.get("/children/{child_id}/learning")
 def learning_list(
     child_id: str,
@@ -226,6 +245,7 @@ def learning_list(
     sort: Sort = "subject",
     page: int = Query(1, ge=1, le=1000000),
     page_size: int = Query(20, ge=1, le=50),
+    group_topics: bool = False,
     p=Depends(authenticated),
     db=Depends(get_db),
     capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities"),
@@ -329,6 +349,8 @@ def learning_list(
                         stamps[(kind, id)] = created
         for item in items:
             item["created"] = stamps.get((item["kind"], item["id"]), 0)
+        if group_topics:
+            items = group_learning_items(items)
         # Display sorting never changes the plan or its primary next action.
         if sort == "subject":
             items.sort(
@@ -339,8 +361,12 @@ def learning_list(
         pagination = bounds(len(items), page, page_size)
         offset = (pagination["page"] - 1) * page_size
         items = items[offset : offset + page_size]
-        summaries = unit_summaries(db, [item["id"] for item in items if item["kind"] == "unit"])
-        items = [item | summaries.get(item["id"], {}) if item["kind"] == "unit" else item for item in items]
+        flat = [entry for item in items for entry in (item["entries"] if item["kind"] == "topic_group" else [item])]
+        summaries = unit_summaries(db, [item["id"] for item in flat if item["kind"] == "unit"])
+        def enrich(item):
+            return item | summaries.get(item["id"], {}) if item["kind"] == "unit" else item
+        items = [{**item, "entries": [enrich(entry) for entry in item["entries"]]}
+                 if item["kind"] == "topic_group" else enrich(item) for item in items]
     return {
         **pagination,
         "items": items,

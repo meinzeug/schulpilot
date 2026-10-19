@@ -111,7 +111,11 @@ class LearningProgressPanel extends StatelessWidget {
                         ),
                       ],
                       MathText(
-                        '${goal['successful_check_days']} spätere Prüftage',
+                        counted(
+                          goal['successful_check_days'],
+                          'späterer Prüftag',
+                          'spätere Prüftage',
+                        ),
                         style: const TextStyle(color: muted, fontSize: 12),
                       ),
                     ],
@@ -720,6 +724,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                           '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
                           '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe oder erneut' : ''}',
                         ),
+                        AnswerSupport(Json.from(attempt)),
                         AssessmentTrail(
                           attempt['assessment_history'] as List? ?? [],
                         ),
@@ -878,6 +883,9 @@ class _SavedQuestionResult extends StatelessWidget {
     if (attempts.isEmpty) return const SizedBox.shrink();
     final last = attempts.last;
     final outcome = last['outcome'];
+    final reasons = (last['evaluation']?['support_reasons'] as List? ?? []);
+    final retryOnly =
+        reasons.isNotEmpty && reasons.every((r) => r == 'another_attempt');
     final assisted =
         attempts.any((a) => a['assisted'] == true) ||
         (question['hints_used'] as num? ?? 0) > 0;
@@ -887,6 +895,8 @@ class _SavedQuestionResult extends StatelessWidget {
         ? 'Prüfung offen'
         : outcome == 'incorrect'
         ? 'Weiter üben'
+        : retryOnly
+        ? 'Im weiteren Versuch gelöst'
         : assisted
         ? 'Mit Hilfe gelöst'
         : attempts.length > 1
@@ -903,6 +913,7 @@ class _SavedQuestionResult extends StatelessWidget {
           ),
           MathText('Deine Antwort: ${last['answer']}'),
           MathText(label),
+          AnswerSupport(Json.from(last)),
           if (question['feedback_explanation'] != null)
             MathText(question['feedback_explanation']),
         ],

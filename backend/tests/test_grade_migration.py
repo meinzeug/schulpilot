@@ -7,8 +7,40 @@ import uuid
 from pathlib import Path
 
 import pytest
-from schulpilot.db import Child, Family, SchoolGrade, User, engine
-from sqlalchemy import text
+from schulpilot.db import Base, Child, Family, GradeImport, SchoolGrade, User, engine
+from sqlalchemy import inspect, select, text
+
+
+def test_head_migration_matches_mapped_columns_and_grade_import_is_readable():
+    """create_all fixtures hide ORM columns accidentally absent from migrations."""
+    if engine.dialect.name != "postgresql":
+        pytest.skip("Requires the disposable PostgreSQL migration runner")
+    assert (engine.url.database or "").endswith("_test")
+    schema = "grade_head_" + uuid.uuid4().hex
+    with engine.begin() as con:
+        con.execute(text(f'CREATE SCHEMA "{schema}"'))
+    env = {**os.environ, "DATABASE_URL": os.environ["TEST_DATABASE_URL"], "ENVIRONMENT": "test",
+           "PGOPTIONS": f"-c search_path={schema}"}
+    config = Path(__file__).resolve().parents[1] / "alembic.ini"
+    try:
+        subprocess.run([sys.executable, "-m", "alembic", "-c", str(config), "upgrade", "head"],
+                       env=env, capture_output=True, check=True)
+        with engine.begin() as con:
+            con.execute(text(f'SET LOCAL search_path TO "{schema}"'))
+            inspector = inspect(con)
+            for name, table in Base.metadata.tables.items():
+                actual = {column["name"] for column in inspector.get_columns(name, schema=schema)}
+                assert set(table.columns.keys()) <= actual, f"Mapped columns absent from migrated {name}"
+            con.execute(Family.__table__.insert().values(id="f", name="Synthetic", synthetic=True))
+            con.execute(User.__table__.insert().values(id="u", username="synthetic", display_name="Synthetic",
+                        role="child", password_hash="SYNTHETIC-HASH", verified=True))
+            con.execute(Child.__table__.insert().values(id="c", family_id="f", user_id="u", grade=6, subjects=[]))
+            con.execute(GradeImport.__table__.insert().values(id="i", child_id="c", request_key="synthetic-import",
+                        file_digest="a" * 64, school_year_start=2026, entries=[]))
+            assert con.execute(select(GradeImport).where(GradeImport.id == "i")).first() is not None
+    finally:
+        with engine.begin() as con:
+            con.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
 
 def test_real_postgres_grade_upgrade_preserves_dated_rows_and_unknown_dates():

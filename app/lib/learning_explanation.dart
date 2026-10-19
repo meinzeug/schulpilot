@@ -25,14 +25,14 @@ class _LearningExplanationState extends State<LearningExplanation> {
         .toList();
     final chunks = <String>[];
     for (final paragraph in paragraphs) {
-      if (paragraph.length <= 600) {
+      if (paragraph.length <= 280) {
         chunks.add(paragraph);
       } else {
         var chunk = '';
         for (final sentence in paragraph.split(
           RegExp(r'(?<=[.!?])\s+(?=[A-ZÄÖÜ])'),
         )) {
-          if (chunk.isNotEmpty && chunk.length + sentence.length > 500) {
+          if (chunk.isNotEmpty && chunk.length + sentence.length > 300) {
             chunks.add(chunk);
             chunk = '';
           }
@@ -65,8 +65,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
             ReadAloudButton(text: MathText.spoken(chunks[current]), slow: true),
           ],
         ),
-        if (widget.prompt != null && current == 0)
-          FractionSumDiagram(prompt: widget.prompt!),
+        FractionSumDiagram(prompt: widget.prompt ?? chunks[current]),
         if (chunks.length > 1)
           Wrap(
             alignment: WrapAlignment.spaceBetween,
@@ -92,15 +91,27 @@ class _LearningExplanationState extends State<LearningExplanation> {
 }
 
 /// A worked fraction example; only display after the explanation is opened.
-class FractionSumDiagram extends StatelessWidget {
+class FractionSumDiagram extends StatefulWidget {
   final String prompt;
   const FractionSumDiagram({super.key, required this.prompt});
+
+  @override
+  State<FractionSumDiagram> createState() => _FractionSumDiagramState();
+}
+
+class _FractionSumDiagramState extends State<FractionSumDiagram> {
+  int stage = 0;
+  @override
+  void didUpdateWidget(FractionSumDiagram oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.prompt != widget.prompt) stage = 0;
+  }
 
   @override
   Widget build(BuildContext context) {
     final match = RegExp(
       r'(\d{1,2})\s*/\s*([1-9]\d?)\s*\+\s*(\d{1,2})\s*/\s*([1-9]\d?)',
-    ).firstMatch(prompt);
+    ).firstMatch(widget.prompt);
     if (match == null) return const SizedBox.shrink();
     final a = int.parse(match[1]!),
         b = int.parse(match[2]!),
@@ -114,11 +125,17 @@ class FractionSumDiagram extends StatelessWidget {
         second < 0) {
       return const SizedBox.shrink();
     }
-    Widget bar(int filled, String label, {int split = 0}) => Padding(
+    Widget bar(
+      int filled,
+      String label, {
+      int split = 0,
+      int? divisions,
+      String mark = 'A',
+    }) => Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Semantics(
         label:
-            '$label: $filled von $denominator gleich großen Teilen markiert.',
+            '$label: $filled von ${divisions ?? denominator} gleich großen Teilen markiert.',
         child: ExcludeSemantics(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,7 +149,7 @@ class FractionSumDiagram extends StatelessWidget {
                 height: 32,
                 child: Row(
                   children: [
-                    for (var i = 0; i < denominator; i++)
+                    for (var i = 0; i < (divisions ?? denominator); i++)
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
@@ -142,6 +159,17 @@ class FractionSumDiagram extends StatelessWidget {
                                 ? cyanInk
                                 : teal,
                             border: Border.all(color: muted, width: .7),
+                          ),
+                          child: Center(
+                            child: i < filled
+                                ? Text(
+                                    split > 0 && i >= split ? 'B' : mark,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                    ),
+                                  )
+                                : null,
                           ),
                         ),
                       ),
@@ -158,16 +186,51 @@ class FractionSumDiagram extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Gleiche Einteilung, gleiche Menge',
+          Text(
+            [
+              '1 · Zwei gleich große Ganze',
+              '2 · Gleich große Stücke',
+              '3 · Anteile zusammenführen',
+            ][stage],
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          bar(first, '$a/$b = $first/$denominator'),
-          bar(second, '$c/$d = $second/$denominator'),
-          bar(
-            first + second,
-            'Zusammen: ${first + second}/$denominator',
-            split: first,
+          if (stage == 0) ...[
+            bar(a, 'A: $a/$b', divisions: b),
+            bar(c, 'B: $c/$d', divisions: d, mark: 'B'),
+          ] else if (stage == 1) ...[
+            bar(first, 'A: $a/$b = $first/$denominator'),
+            bar(second, 'B: $c/$d = $second/$denominator', mark: 'B'),
+            Text(
+              'Beim Erweitern werden die Stücke kleiner. Die markierte Menge bleibt gleich.',
+            ),
+          ] else ...[
+            bar(
+              first + second,
+              'A + B: ${first + second}/$denominator',
+              split: first,
+            ),
+            const Text(
+              'A und B markieren die beiden Anteile – zusätzlich zur Farbe.',
+            ),
+          ],
+          Wrap(
+            spacing: 8,
+            children: [
+              if (stage > 0)
+                TextButton.icon(
+                  onPressed: () => setState(() => stage--),
+                  icon: const Icon(Icons.chevron_left),
+                  label: const Text('Zurück'),
+                ),
+              if (stage < 2)
+                FilledButton.icon(
+                  onPressed: () => setState(() => stage++),
+                  icon: const Icon(Icons.chevron_right),
+                  label: Text(
+                    stage == 0 ? 'Gleich einteilen' : 'Anteile zusammenlegen',
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 10),
           const Text(

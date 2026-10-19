@@ -343,7 +343,12 @@ class HeartbeatRequest(Strict):
 
 
 class FeedbackRequest(Strict):
-    kind: Literal["too_easy", "too_hard", "unclear"]
+    kind: Literal["too_easy", "too_hard", "unclear", "answer_seems_right", "solution_seems_wrong", "display_unclear"]
+    question_id: str | None = Field(default=None, max_length=60)
+
+
+class ExplanationRequest(Strict):
+    question_id: str = Field(min_length=1, max_length=60)
 
 
 class MessageRequest(Strict):

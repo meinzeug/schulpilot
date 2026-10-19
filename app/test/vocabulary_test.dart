@@ -87,6 +87,7 @@ Future<(AppState, GoRouter)> open(
                     'target_locale': body['target_locale'],
                     'title': body['title'],
                     'status': 'review',
+                    'supports_deferred_pairs': true,
                     'pairs': [
                       for (final pair in body['pairs'])
                         {
@@ -172,6 +173,30 @@ Future<void> tap(WidgetTester tester, Finder finder) async {
 
 void main() {
   testWidgets(
+    'Uncertain words remain in a separate review instead of becoming confirmed',
+    (tester) async {
+      final requests = <http.Request>[];
+      await open(tester, requests, width: 390);
+      await tap(tester, find.text('Wörter hinzufügen'));
+      final fields = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(fields.last, 'dog = Hund\nschool = Schule');
+      await tap(tester, find.text('Wortpaare prüfen'));
+      await tap(tester, find.text('Stimmt').first);
+      await tap(tester, find.text('Weiß ich noch nicht').last);
+      await tap(tester, find.text('Stimmt, Wörter speichern'));
+      final body = jsonDecode(
+        requests.lastWhere((r) => r.url.path.endsWith('/confirm')).body,
+      );
+      expect(body['pairs'].single['word'], 'dog');
+      expect(body['deferred_pairs'].single['word'], 'school');
+      expect(requests.where((r) => r.method == 'POST'), hasLength(2));
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'Manual word wizard confirms a corrected pair without auto starting a round',
     (tester) async {
       final requests = <http.Request>[];
@@ -184,8 +209,9 @@ void main() {
       await tester.enterText(fields.last, 'dog = Hund\nschool = Schule');
       await tap(tester, find.text('Wortpaare prüfen'));
       expect(find.text('Stimmen deine Wörter?'), findsOneWidget);
-      final remove = find.text('Wort weglassen');
+      final remove = find.text('Nicht übernehmen');
       await tap(tester, remove.first);
+      await tap(tester, find.text('Stimmt').last);
       await tap(tester, find.text('Stimmt, Wörter speichern'));
       final writes = requests.where((r) => r.method == 'POST').toList();
       expect(writes.length, 2);

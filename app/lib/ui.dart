@@ -1696,3 +1696,13 @@ Future<bool> confirmDialog(
       ),
     ) ??
     false;
+
+String counted(num count, String singular, String plural) =>
+    '$count ${count == 1 ? singular : plural}';
+String schoolDate(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+  if (date == null || date.year < 2000 || date.year > 2100) {
+    return 'Termin noch offen';
+  }
+  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+}

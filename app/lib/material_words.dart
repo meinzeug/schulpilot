@@ -111,6 +111,7 @@ class MaterialWordsPanel extends StatefulWidget {
 class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
   final selected = <String>{};
   final edits = <String, Json>{};
+  final decisions = <String, String>{};
   List<Json> get pairs =>
       (widget.preview['pairs'] as List).map((p) => Json.from(p)).toList();
   @override
@@ -121,6 +122,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
         oldWidget.reverse != widget.reverse) {
       selected.clear();
       edits.clear();
+      decisions.clear();
     }
   }
 
@@ -250,6 +252,48 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                 ),
               ],
             ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: !canSelect
+                      ? null
+                      : () {
+                          setState(() {
+                            selected.add(key);
+                            decisions[key] = 'confirmed';
+                          });
+                          emit();
+                        },
+                  child: const Text('Stimmt'),
+                ),
+                TextButton(
+                  onPressed: widget.enabled ? () => correct(original) : null,
+                  child: const Text('Korrigieren'),
+                ),
+                for (final option in [
+                  ('skip', 'Nicht übernehmen'),
+                  ('later', 'Weiß ich noch nicht'),
+                ])
+                  TextButton(
+                    onPressed: !widget.enabled
+                        ? null
+                        : () {
+                            setState(() {
+                              selected.remove(key);
+                              decisions[key] = option.$1;
+                            });
+                            emit();
+                          },
+                    child: Text(option.$2),
+                  ),
+              ],
+            ),
+            if (decisions[key] == 'later')
+              const Text(
+                'Bleibt in deiner Heftseite. Du kannst das Wort später prüfen.',
+              ),
             if (original['source_text'] != null)
               ExpansionTile(
                 dense: true,
@@ -276,7 +320,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${selected.length} Wörter ausgewählt',
+            '${counted(selected.length, 'Wort', 'Wörter')} ausgewählt',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const Text(

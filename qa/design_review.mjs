@@ -88,7 +88,9 @@ async function inspect(page, role, width, route, label) {
 
 try {
   const health = await (await fetch(apiBase + '/api/health')).json();
-  if (!preview) assert.equal(health.version, '1.4.2', 'deploy_design_release_before_review');
+  const manifest = JSON.parse(await readFile(path.join(out, 'android-release.json'), 'utf8'));
+  if (!preview) assert.equal(health.version, manifest.version, 'deploy_design_release_before_review');
+  report.version_code = manifest.version_code;
   report.source_commit = health.source_commit;
   const {context: parent, account} = await contextFor('parent');
   const familyResponse = await parent.request.get(apiBase + '/api/families/' + account.families[0].id, {headers});

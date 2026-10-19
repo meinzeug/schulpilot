@@ -1,4 +1,4 @@
-"""Actual signed Flutter APK32 on our emulator, fixed artificial tasks only.
+"""Actual signed Flutter release APK on our emulator, fixed artificial tasks only.
 
 Run prepare_design_review.py and the real OTA update first. No Firebase sends,
 new provider calls, account creation or arbitrary app-private-storage access.
@@ -55,9 +55,10 @@ def read(api, route):
 def main():
     data = json.loads(PRIVATE.read_text())
     credentials = data["credentials"]
-    require(installed_code() == 32, "upgrade_to_signed_apk32_first")
+    expected = json.loads((native.ARTIFACTS / "android-release.json").read_text())["version_code"]
+    require(installed_code() == expected, "upgrade_to_current_signed_apk_first")
     checks = []
-    report = {"installed_code": 32, "android_api": 36, "native_flutter": True, "checks": checks, "external_ai_calls": 0}
+    report = {"installed_code": expected, "android_api": 36, "native_flutter": True, "checks": checks, "external_ai_calls": 0}
     phase = "own_fixture_login"
     try:
         with httpx.Client(base_url=native.BASE, headers=native.HEADERS, timeout=30) as api:

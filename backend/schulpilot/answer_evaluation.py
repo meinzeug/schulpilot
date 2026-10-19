@@ -8,10 +8,31 @@ unknown prose stays uncertain rather than being accepted by similarity.
 import re
 import unicodedata
 from fractions import Fraction
+from math import gcd
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
 VERSION = "subject_rules_v2"
+
+
+def fraction_addition_hint(question, answer):
+    """Recognize a denominator-sum mistake, without showing the full solution."""
+    if question.get("language") or re.search(r"zähler|nenner|faktor|teiler", question["prompt"], re.I):
+        return []
+    expression = re.search(r"(\d{1,3})\s*/\s*([1-9]\d{0,2})\s*\+\s*(\d{1,3})\s*/\s*([1-9]\d{0,2})", question["prompt"])
+    supplied, key = fraction_parts(answer), fraction_parts(question["answer"])
+    if not expression or not supplied or not key:
+        return []
+    a, b, c, d = map(int, expression.groups())
+    total = Fraction(a, b) + Fraction(c, d)
+    if total != Fraction(*key) or total == Fraction(*supplied) or supplied[1] != b + d:
+        return []
+    denominator = b * d // gcd(b, d)
+    return [
+        f"Der Nenner {b + d} entsteht aus {b} + {d}. Beim Addieren zählst du die Nenner nicht zusammen. Teile beide Ganzen zuerst gleich ein.",
+        f"Beide Brüche brauchen gleich große Teile. Überlege, wie du beide mit dem Nenner {denominator} schreiben kannst.",
+        "Erweitere jeden Bruch: Multipliziere seinen Zähler und Nenner mit derselben Zahl. Danach addierst du nur die Zähler.",
+    ]
 
 
 def normalized(value):
@@ -75,6 +96,8 @@ def triangle_area(question, answer):
     if not re.search(r"fläch", question["prompt"], re.I) or not (p := legacy_presentation(question)):
         return None
     block = p["blocks"][0]
+    if block["kind"] != "triangle":
+        return None
     g, h = (Fraction(str(n)) for n in block["numbers"])
     expected = g * h / 2
     def quantity(text):
@@ -129,6 +152,8 @@ def evaluate(question, answer):
         from .language_evaluation import evaluate as language_evaluate
 
         return language_evaluate(question, answer)
+    if hints := fraction_addition_hint(question, answer):
+        return result("incorrect", hints[0])
     form = expanded_fraction(question["prompt"]) if question["type"] in ("choice", "gap", "short") else None
     if form and (supplied := fraction_parts(answer)) is not None:
         value_ok = Fraction(*supplied) == Fraction(*form)

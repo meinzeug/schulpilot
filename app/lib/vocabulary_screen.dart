@@ -460,6 +460,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     final pairs = (row['pairs'] as List)
         .map((pair) => Json.from(pair))
         .toList();
+    final decisions = <int, String>{};
     String? issue;
     bool saving = false;
     final saved = await showDialog<bool>(
@@ -475,64 +476,83 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '${learningLocales[row['target_locale']]} · ${pairs.length} Wörter',
+                    '${learningLocales[row['target_locale']]} · ${counted(pairs.length, 'Wort', 'Wörter')}',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
-                  for (var index = 0; index < pairs.length; index++) ...[
-                    if ((pairs[index]['uncertainty'] ?? '')
-                        .toString()
-                        .isNotEmpty)
-                      Notice(pairs[index]['uncertainty'], warning: true),
-                    TextFormField(
-                      key: ValueKey('word-${identityHashCode(pairs[index])}'),
-                      initialValue: pairs[index]['word'],
-                      maxLength: 200,
-                      decoration: const InputDecoration(
-                        labelText: 'Wort oder Wendung',
-                      ),
-                      onChanged: (v) => pairs[index]['word'] = v,
-                    ),
-                    TextFormField(
-                      key: ValueKey(
-                        'meaning-${identityHashCode(pairs[index])}',
-                      ),
-                      initialValue: pairs[index]['meaning'],
-                      maxLength: 200,
-                      decoration: const InputDecoration(
-                        labelText: 'Konkrete Bedeutung',
-                      ),
-                      onChanged: (v) => pairs[index]['meaning'] = v,
-                    ),
-                    TextFormField(
-                      key: ValueKey(
-                        'context-${identityHashCode(pairs[index])}',
-                      ),
-                      initialValue: pairs[index]['context'],
-                      maxLength: 500,
-                      decoration: const InputDecoration(
-                        labelText: 'Kontext, falls mehrdeutig',
-                      ),
-                      onChanged: (v) => pairs[index]['context'] = v,
-                    ),
-                    if ((pairs[index]['uncertainty'] ?? '')
-                        .toString()
-                        .isNotEmpty)
-                      TextButton(
-                        onPressed: () =>
-                            update(() => pairs[index]['uncertainty'] = ''),
-                        child: const Text('Unklare Stelle geklärt'),
-                      ),
-                    if (pairs.length > 1)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => update(() => pairs.removeAt(index)),
-                          child: const Text('Wort weglassen'),
+                  for (var index = 0; index < pairs.length; index++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SurfaceInset(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              '${pairs[index]['word']} → ${pairs[index]['meaning']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if ((pairs[index]['uncertainty'] ?? '')
+                                .toString()
+                                .isNotEmpty)
+                              Notice(
+                                '${pairs[index]['uncertainty']}',
+                                warning: true,
+                              ),
+                            if (decisions[index] == 'edit') ...[
+                              for (final field in [
+                                ('word', 'Wort oder Wendung', 200),
+                                ('meaning', 'Was bedeutet das Wort?', 200),
+                                (
+                                  'context',
+                                  'Ein Beispielsatz, wenn du möchtest',
+                                  500,
+                                ),
+                              ])
+                                TextFormField(
+                                  initialValue: pairs[index][field.$1] ?? '',
+                                  maxLength: field.$3,
+                                  decoration: InputDecoration(
+                                    labelText: field.$2,
+                                  ),
+                                  onChanged: (v) => pairs[index][field.$1] = v,
+                                ),
+                            ],
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final action in [
+                                  ('confirm', 'Stimmt'),
+                                  ('edit', 'Korrigieren'),
+                                  ('skip', 'Nicht übernehmen'),
+                                  ('later', 'Weiß ich noch nicht'),
+                                ])
+                                  ChoiceChip(
+                                    label: Text(action.$2),
+                                    selected: decisions[index] == action.$1,
+                                    onSelected: saving
+                                        ? null
+                                        : (_) => update(() {
+                                            decisions[index] = action.$1;
+                                            if (action.$1 == 'confirm') {
+                                              pairs[index]['uncertainty'] = '';
+                                            }
+                                          }),
+                                  ),
+                              ],
+                            ),
+                            if (decisions[index] == null ||
+                                decisions[index] == 'later')
+                              const Text(
+                                'Bleibt zum späteren Prüfen erhalten.',
+                                style: TextStyle(color: muted, fontSize: 13),
+                              ),
+                          ],
                         ),
                       ),
-                    const Divider(height: 28),
-                  ],
+                    ),
                   if (issue != null) Notice(issue!, warning: true),
                 ],
               ),
@@ -552,10 +572,32 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                         issue = null;
                       });
                       try {
+                        final confirmed = [
+                          for (var i = 0; i < pairs.length; i++)
+                            if (decisions[i] == 'confirm') pairs[i],
+                        ];
+                        final deferred = [
+                          for (var i = 0; i < pairs.length; i++)
+                            if (!['confirm', 'skip'].contains(decisions[i]))
+                              pairs[i],
+                        ];
+                        if (confirmed.isEmpty) {
+                          throw ApiError(
+                            'Wähle mindestens ein Wort mit „Stimmt“. Oder prüfe die ganze Liste später.',
+                          );
+                        }
+                        if (deferred.isNotEmpty &&
+                            row['supports_deferred_pairs'] != true) {
+                          throw ApiError(
+                            'Bitte aktualisiere die App, um einzelne Wörter zurückzustellen. Deine Liste bleibt erhalten.',
+                          );
+                        }
                         await widget.state.api.post(
                           '$base/imports/${row['id']}/confirm',
                           {
-                            'pairs': pairs,
+                            'pairs': confirmed,
+                            if (row['supports_deferred_pairs'] == true)
+                              'deferred_pairs': deferred,
                             'target_locale': row['target_locale'],
                             'language_confirmed': true,
                           },
@@ -733,7 +775,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     controller: meaning,
                     maxLength: 200,
                     decoration: const InputDecoration(
-                      labelText: 'Konkrete Bedeutung',
+                      labelText: 'Was bedeutet das Wort?',
                     ),
                   ),
                   TextField(
@@ -863,7 +905,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     const SizedBox(height: 12),
                     if (data != null)
                       Text(
-                        '${data!['summary']['confirmed_words']} bestätigte Wörter · ${data!['summary']['due_words']} zum Wiederholen · ${data!['summary']['new_words']} neu',
+                        '${counted(data!['summary']['confirmed_words'] as int, 'bestätigtes Wort', 'bestätigte Wörter')} · ${data!['summary']['due_words']} zum Wiederholen · ${data!['summary']['new_words']} neu',
                       ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -1187,7 +1229,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Seite $page · ${data!['pagination']['total']} Wörter',
+                        'Seite $page · ${counted(data!['pagination']['total'] as int, 'Wort', 'Wörter')}',
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -1214,7 +1256,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                       '${languageSkill(skill['skill'])} · ${languageDirection(skill['direction'])}',
                     ),
                     subtitle: Text(
-                      '${skill['practiced_words']} Wörter geübt · ${skill['due_words']} fällig · ${skill['needs_clarification']} zu klären',
+                      '${counted(skill['practiced_words'] as int, 'Wort', 'Wörter')} geübt · ${skill['due_words']} fällig · ${skill['needs_clarification']} zu klären',
                     ),
                   ),
                 TextButton(

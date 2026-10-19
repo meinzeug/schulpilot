@@ -29,6 +29,11 @@ def next_hint(question, previous_answer, shown):
             candidates.extend(h for h in question["hints"] if part['label'].casefold() in h.casefold())
             candidates.append(f"Vergleiche das Körpermerkmal von „{part['label']}“ mit den Klassen in deiner Erklärung.")
     if question.get("language") and previous_answer:
+        from .language_evaluation import evaluate
+
+        evaluation = evaluate(question, previous_answer)
+        if evaluation["dimensions"].get("capitalization") == "incorrect":
+            candidates.append(evaluation["reason"])
         meta = question["language"]
         expected = question["answer"]
         if meta.get("skill") == "spelling" and len(expected) == len(previous_answer) + 1:
@@ -36,6 +41,10 @@ def next_hint(question, previous_answer, shown):
                 if normalized(expected[:i] + expected[i+1:]) == normalized(previous_answer):
                     candidates.append(f"Prüfe die Schreibung: An Stelle {i+1} fehlt noch ein „{character}“. Ergänze es in deiner Antwort.")
                     break
+    if not question.get("language") and previous_answer:
+        from .answer_evaluation import fraction_addition_hint
+
+        candidates.extend(fraction_addition_hint(question, previous_answer))
     if wrong is None:
         candidates.extend(question["hints"])
     candidates.extend(["Gemeinsamer Schritt: " + question["explanation"][:600],

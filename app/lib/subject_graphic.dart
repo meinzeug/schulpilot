@@ -103,8 +103,12 @@ class SubjectGraphic extends StatelessWidget {
         variant == 'centuries'
             ? 'Zeitachse von Jahr ${number(n[0])} bis ${number(n[1])}; es gibt kein Jahr null.'
             : 'Zeitachse: ${labels.join(' → ')}.',
-      'plant' => 'Pflanzenschema von oben nach unten: ${labels.join(', ')}.',
-      'forms' => 'Beispiele aus der Heftseite.',
+      'plant' =>
+        'Pflanzenschema von oben nach unten: ${labels.join(', ')}.${variant == 'roots' ? ' Die Wurzel liegt im Boden, nimmt Wasser auf und verankert die Pflanze. Der Pfeil zeigt Wasser zur Wurzel.' : ''}',
+      'forms' =>
+        variant == 'pollination'
+            ? 'Erklärschritte zum Heftstoff.'
+            : 'Beispiele aus der Heftseite.',
       'filtration' => 'Trichter mit Filterpapier über einem Auffanggefäß. Feste Teilchen bleiben im Filter; Flüssigkeit läuft in das Gefäß. Gelöste Stoffe können mit der Flüssigkeit durch den Filter gelangen.',
       'bar_chart' =>
         'Balkendiagramm mit Nullpunkt: ${[for (var i = 0; i < labels.length; i++) '${labels[i]}: ${number(n[i])}'].join('; ')}.',
@@ -206,7 +210,38 @@ class SubjectGraphic extends StatelessWidget {
                     ),
                 ],
               ),
-            if (kind == 'forms')
+            if (kind == 'forms' && block['variant'] == 'pollination')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final step in labels.indexed) ...[
+                    Semantics(
+                      image: true,
+                      label: step.$2,
+                      child: ExcludeSemantics(
+                        child: SizedBox(
+                          height: 100,
+                          child: CustomPaint(
+                            painter: PollinationPainter(step.$1),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (step.$1 > 0)
+                      const Icon(
+                        Icons.arrow_downward_rounded,
+                        semanticLabel: 'Danach',
+                      ),
+                    SurfaceInset(
+                      child: Text(
+                        '${step.$1 + 1}. ${step.$2}',
+                        style: const TextStyle(fontSize: 17),
+                      ),
+                    ),
+                  ],
+                ],
+              )
+            else if (kind == 'forms')
               labels.map(formPair).every((pair) => pair != null)
                   ? Table(
                       border: TableBorder.all(color: surfaceBorder),
@@ -338,10 +373,21 @@ class SubjectGraphic extends StatelessWidget {
                 ),
             ],
             const SizedBox(height: 8),
-            if (kind == 'picture_words' || kind == 'mindmap')
+            if (kind == 'picture_words' || kind == 'mindmap' || kind == 'plant')
               for (var i = 0; i < labels.length; i++)
                 Text('${i + 1}: ${labels[i]}'),
-            MathText(text, style: const TextStyle(fontSize: 15, height: 1.45)),
+            if (vectorKinds.contains(kind))
+              ExcludeSemantics(
+                child: MathText(
+                  text,
+                  style: const TextStyle(fontSize: 15, height: 1.45),
+                ),
+              )
+            else
+              MathText(
+                text,
+                style: const TextStyle(fontSize: 15, height: 1.45),
+              ),
             if (kind == 'timeline' && block['variant'] == 'centuries') ...[
               const SizedBox(height: 8),
               for (
@@ -728,7 +774,16 @@ class SubjectVectorPainter extends CustomPainter {
         }
         canvas.drawCircle(c, 9, p);
         for (var i = -2; i <= 2; i++) {
-          line(Offset(c.dx, h * 0.76), Offset(c.dx + i * 18, h * 0.96));
+          line(
+            Offset(c.dx, h * 0.76),
+            Offset(c.dx + i * 18, h * 0.96),
+            data['variant'] == 'roots' ? accent : p,
+          );
+        }
+        if (data['variant'] == 'roots') {
+          line(Offset(4, h * .74), Offset(w - 4, h * .74));
+          text('Boden', Offset(4, h * .74 - 18 * textScale - 4));
+          arrow(Offset(8, h * .89), Offset(c.dx - 35, h * .89), accent);
         }
         for (var i = 0; i < 4; i++) {
           final y = [c.dy, h * 0.48, h * 0.65, h * 0.88][i];
@@ -1030,4 +1085,52 @@ class _FlowOutline extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FlowOutline old) => old.role != role;
+}
+
+/// Fixed schematic: pollen to stigma, then fusion of male and female cells.
+class PollinationPainter extends CustomPainter {
+  final int step;
+  PollinationPainter(this.step);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = ink
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final fill = Paint()..color = mint;
+    final y = size.height / 2, left = size.width * .2, right = size.width * .8;
+    if (step == 0) {
+      canvas.drawCircle(Offset(left, y), 15, fill);
+      canvas.drawCircle(Offset(left, y), 15, p);
+      for (final offset in [
+        const Offset(-5, -5),
+        const Offset(6, -3),
+        const Offset(0, 6),
+      ]) {
+        canvas.drawCircle(Offset(left, y) + offset, 2, Paint()..color = ink);
+      }
+      canvas.drawPath(
+        Path()
+          ..moveTo(right - 22, y - 14)
+          ..quadraticBezierTo(right, y + 12, right + 22, y - 14)
+          ..moveTo(right, y)
+          ..lineTo(right, y + 38),
+        p,
+      );
+    } else {
+      canvas.drawCircle(Offset(left - 16, y), 8, p);
+      canvas.drawCircle(Offset(left + 18, y), 20, p);
+      canvas.drawCircle(Offset(right, y), 24, fill);
+      canvas.drawCircle(Offset(right, y), 24, p);
+      canvas.drawCircle(Offset(right, y), 9, p);
+    }
+    final start = Offset(size.width * .4, y), end = Offset(size.width * .6, y);
+    canvas.drawLine(start, end, p);
+    canvas.drawLine(end, end + const Offset(-9, -6), p);
+    canvas.drawLine(end, end + const Offset(-9, 6), p);
+  }
+
+  @override
+  bool shouldRepaint(PollinationPainter oldDelegate) =>
+      step != oldDelegate.step;
 }

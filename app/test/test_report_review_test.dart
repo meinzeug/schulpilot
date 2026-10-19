@@ -99,6 +99,12 @@ void main() {
       );
       expect(find.text('Schritt 1 von 2'), findsOneWidget);
       expect(find.text('Dann die Zähler addieren.'), findsNothing);
+      await tester.ensureVisible(find.text('Gleich einteilen'));
+      await tester.tap(find.text('Gleich einteilen'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Anteile zusammenlegen'));
+      await tester.tap(find.text('Anteile zusammenlegen'));
+      await tester.pumpAndSettle();
       expect(
         find.bySemanticsLabel(RegExp('3 von 8 gleich großen Teilen')),
         findsOneWidget,

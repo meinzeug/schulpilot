@@ -15,6 +15,7 @@ import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'math_content.dart';
 import 'subject_graphic.dart';
+import 'practice_evidence.dart';
 
 class UnitScreen extends StatefulWidget {
   final AppState state;
@@ -546,14 +547,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ? null
               : Semantics(
                   liveRegion: true,
-                  child: MathText(
-                    actionError is ApiError
-                        ? (actionError as ApiError).message
-                        : 'Das hat gerade nicht geklappt. Versuch es noch einmal.',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF8D3D25),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        actionError is ApiError
+                            ? (actionError as ApiError).message
+                            : 'Das hat gerade nicht geklappt. Deine Antworten bleiben gespeichert.',
+                        style: const TextStyle(fontSize: 14, color: dangerInk),
+                      ),
+                      TextButton.icon(
+                        onPressed: actionBusy
+                            ? null
+                            : () async {
+                                await load();
+                                if (mounted && error == null) {
+                                  setState(() => actionError = null);
+                                }
+                              },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Gespeicherten Stand laden'),
+                      ),
+                    ],
                   ),
                 ),
           child: content,
@@ -952,6 +967,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             MathText(
                               'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
                             ),
+                            AnswerSupport(Json.from(a)),
                             AssessmentTrail(
                               a['assessment_history'] as List? ?? [],
                             ),
@@ -1236,8 +1252,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
           ],
           if (bank.isNotEmpty) ...[
-            const Text(
-              'Tippe die Bausteine in der passenden Reihenfolge an. Du kannst den Satz danach bearbeiten.',
+            Text(
+              meta['skill'] == 'spelling'
+                  ? 'Tippe die Buchstaben der Reihe nach an. Du kannst das Wort danach bearbeiten.'
+                  : 'Tippe die Wörter der Reihe nach an. Du kannst den Satz danach bearbeiten.',
             ),
             Wrap(
               spacing: 8,
@@ -1245,6 +1263,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               children: [
                 for (final entry in bank.indexed)
                   ActionChip(
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
                     label: MathText(entry.$2),
                     onPressed: actionBusy || usedBank.contains(entry.$1)
                         ? null
@@ -1265,6 +1284,26 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       text.clear();
                     }),
               child: const Text('Neu zusammensetzen'),
+            ),
+            TextButton.icon(
+              onPressed: actionBusy || usedBank.isEmpty
+                  ? null
+                  : () => setState(() {
+                      final index = usedBank.last;
+                      final suffix =
+                          '${usedBank.length > 1 ? bankJoiner : ''}${bank[index]}';
+                      if (text.text.endsWith(suffix)) {
+                        text.text = text.text.substring(
+                          0,
+                          text.text.length - suffix.length,
+                        );
+                        usedBank.remove(index);
+                      } else {
+                        usedBank.clear();
+                      }
+                    }),
+              icon: const Icon(Icons.undo_rounded),
+              label: const Text('Letzten Baustein zurück'),
             ),
           ],
           if (meta['skill'] == 'spelling' && bank.isEmpty)
@@ -1765,6 +1804,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   style: const TextStyle(fontSize: 15),
                 ),
               ],
+              if ((q['attempts'] as List? ?? []).isNotEmpty)
+                AnswerSupport(Json.from((q['attempts'] as List).last)),
               AssessmentTrail(
                 (q['attempts'] as List? ?? []).lastOrNull?['assessment_history']
                         as List? ??
@@ -2051,7 +2092,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Future<void> showExplanation(BuildContext context, Json u) async {
     final requestedOwner = ownerId;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
-    final data = await state.api.post('/units/${u['id']}/explanation');
+    final q = currentQuestion;
+    final data = await state.api.post(
+      '/units/${u['id']}/explanation',
+      u['supports_question_explanation'] == true && q != null
+          ? {'question_id': q['id']}
+          : null,
+    );
     if (!context.mounted || !requestIsCurrent(u['id'], requestedOwner)) return;
     await showDialog(
       context: context,
@@ -2064,7 +2111,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             children: [
               LearningExplanation(
                 text: data['explanation'],
-                prompt: currentQuestion?['prompt'],
+                prompt: data['question_id'] != null && q != null
+                    ? q['prompt']
+                    : null,
+              ),
+              SubjectPresentation(
+                data['presentation'] is Map
+                    ? Json.from(data['presentation'])
+                    : null,
               ),
             ],
           ),
@@ -2151,9 +2205,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     await showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -2170,6 +2225,23 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ),
               ('too_hard', 'Zu schwer', Icons.sentiment_dissatisfied_outlined),
               ('unclear', 'Ich verstehe sie nicht', Icons.help_outline_rounded),
+              if (u['supports_detailed_feedback'] == true) ...[
+                (
+                  'answer_seems_right',
+                  'Meine Antwort scheint richtig',
+                  Icons.fact_check_outlined,
+                ),
+                (
+                  'solution_seems_wrong',
+                  'Die Lösung scheint falsch',
+                  Icons.report_outlined,
+                ),
+                (
+                  'display_unclear',
+                  'Die Darstellung ist unklar',
+                  Icons.visibility_outlined,
+                ),
+              ],
             ])
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(
@@ -2183,6 +2255,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     if (!requestIsCurrent(u['id'], requestedOwner)) return;
                     await state.api.post('/units/${u['id']}/feedback', {
                       'kind': item.$1,
+                      if (u['supports_detailed_feedback'] == true &&
+                          currentQuestion != null)
+                        'question_id': currentQuestion!['id'],
                     });
                     if (!requestIsCurrent(u['id'], requestedOwner)) return;
                     if (sheet.mounted) Navigator.pop(sheet);

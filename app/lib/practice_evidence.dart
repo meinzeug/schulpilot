@@ -3,6 +3,44 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'ui.dart';
 
+/// Reasons from the saved attempt, shared by child and parent result views.
+List<String> supportReasonLabels(Json attempt) {
+  final reasons = (attempt['evaluation']?['support_reasons'] as List? ?? [])
+      .cast<String>();
+  const labels = {
+    'hint': 'Ein Aufgabenhinweis wurde verwendet.',
+    'explanation': 'Eine Erklärung wurde vor der Antwort geöffnet.',
+    'another_attempt': 'Die Aufgabe wurde in einem weiteren Versuch gelöst.',
+    'recent_solution':
+        'Das Wort oder die Lösung war kurz vorher als Vorlage zu sehen.',
+    'speech_transcript': 'Die Antwort wurde eingesprochen; das prüft keine eigene Rechtschreibung.',
+  };
+  return [
+    for (final reason in reasons)
+      if (labels.containsKey(reason)) labels[reason]!,
+    if (reasons.isEmpty && attempt['assisted'] == true) 'Für diesen älteren Versuch wurde Unterstützung erfasst. Der genaue Anlass ist nicht getrennt gespeichert.',
+  ];
+}
+
+class AnswerSupport extends StatelessWidget {
+  final Json attempt;
+  const AnswerSupport(this.attempt, {super.key});
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final label in supportReasonLabels(attempt))
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            label,
+            style: const TextStyle(color: muted, fontSize: 14),
+          ),
+        ),
+    ],
+  );
+}
+
 /// Counts of saved work, never a percentage claiming to measure knowledge.
 class PracticeEvidence extends StatelessWidget {
   final Json evidence;

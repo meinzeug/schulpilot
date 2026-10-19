@@ -271,7 +271,11 @@ void main() {
     await tester.ensureVisible(find.text('Ich brauche Hilfe'));
     await tester.tap(find.text('Ich brauche Hilfe'));
     await tester.pumpAndSettle();
-    expect(find.text('Deine Frage (freiwillig)'), findsOneWidget);
+    expect(requests.where((r) => r.method == 'POST'), isEmpty);
+    await tester.tap(find.text('Meine Eltern fragen'));
+    await tester.pumpAndSettle();
+    expect(find.text('An: Deine berechtigten Eltern'), findsOneWidget);
+    expect(find.text('Deine Nachricht'), findsOneWidget);
     await tester.tap(find.text('Um Hilfe bitten'));
     await tester.pumpAndSettle();
 

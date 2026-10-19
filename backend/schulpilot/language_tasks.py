@@ -16,6 +16,7 @@ SKILLS = {"recognition", "recall", "spelling", "listening", "sentence", "grammar
 class EvaluationPolicy(Strict):
     version: Literal[1] = 1
     case_sensitive: bool = True
+    sentence_initial_optional: bool | None = None
     apostrophe_equivalent: bool = False
     terminal_punctuation_optional: bool = False
     closed_answers: bool = True
@@ -92,6 +93,7 @@ class ImportRequest(Strict):
 
 class ImportConfirm(Strict):
     pairs: list[WordPair] = Field(min_length=1, max_length=80)
+    deferred_pairs: list[WordPair] = Field(default_factory=list, max_length=80)
     target_locale: TargetLocale
     language_confirmed: Literal[True]
 

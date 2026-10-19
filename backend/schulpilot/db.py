@@ -457,7 +457,6 @@ class GradeImport(Base):
     school_year_start = Column(Integer, nullable=False)
     entries = Column(JSON, nullable=False)
     status = Column(String(16), nullable=False, default="preview")
-    source_blocks = Column(JSON, default=list, server_default="[]", nullable=False)
     confirmation_digest = Column(String(64))
     result = Column(JSON)
     created = Column(Integer, default=lambda: int(now()), nullable=False, index=True)

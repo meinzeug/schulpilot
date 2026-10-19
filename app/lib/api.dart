@@ -45,12 +45,17 @@ class Api {
   };
 
   dynamic decode(http.Response response) {
+    if (response.statusCode == 204 && response.bodyBytes.isEmpty) {
+      return <String, dynamic>{};
+    }
     dynamic data;
     try {
       data = jsonDecode(utf8.decode(response.bodyBytes));
     } catch (_) {
       throw ApiError(
-        'Der Server hat keine lesbare Antwort geliefert. Bitte später erneut versuchen.',
+        response.statusCode >= 500
+            ? 'Die Verbindung wurde unterbrochen. Deine bisherigen Antworten bleiben gespeichert. Tippe auf Erneut laden.'
+            : 'Die Antwort konnte gerade nicht geladen werden. Lade den gespeicherten Stand in der App erneut.',
         response.statusCode,
       );
     }

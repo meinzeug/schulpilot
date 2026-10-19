@@ -170,6 +170,7 @@ class _PagedCollectionState extends State<PagedCollection> {
   }
 
   Json query() => {
+    if (simpleLearning) 'group_topics': true,
     'q': search.text.trim(),
     'subject': subject,
     'status': status,
@@ -766,7 +767,34 @@ class _PagedCollectionState extends State<PagedCollection> {
           ),
         );
       }
-      widgets.add(_tile(item));
+      if (item['kind'] == 'topic_group') {
+        final entries = (item['entries'] as List).cast<Json>();
+        widgets.add(
+          Panel(
+            child: ExpansionTile(
+              title: Text(
+                item['topic'],
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '${counted(entries.length, 'Runde', 'Runden')} zu diesem Thema · zum Auswählen öffnen',
+              ),
+              children: [
+                for (final entry in entries.indexed)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (entry.$1 == 0) const Tag('Nächste empfohlene Runde'),
+                      _tile(entry.$2),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        widgets.add(_tile(item));
+      }
     }
     return widgets;
   }

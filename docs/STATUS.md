@@ -1,3 +1,23 @@
+# Praxistestkorrekturen · Build44 vorbereitet
+
+Kernänderungen und vollständige Befundliste P01–P12 stehen in
+[docs/PRACTICE_REVIEW_2026_10_19.md](PRACTICE_REVIEW_2026_10_19.md).
+Zielbezogene Wortbewertung, aufgabenbezogene Erklärung/Hilfengründe, schrittweise
+Bruchmodelle, quellgebundene Biologie-Schemata, sichere interne Fotovorschau,
+Einzelprüfung mit zurückgestellten Wörtern und gebündelte Themenrunden sind
+implementiert. PDF500 mit künstlichem öffentlichen Upload reproduziert:
+unbenutzte versehentliche ORM-Spalte entfernt. Keine Datenmigration erforderlich;
+Schema0022 bleibt erhalten. Keine Kontingente oder echten Familiendaten geändert.
+
+Bestanden:268 PostgreSQL-Regressionsprüfungen, zusätzlich55 Noten-/PDF-/echte
+Migrationsprüfungen;323 Fluttertests, danach39 Unterstützung-/Zeitregressionen
+und neun neue Visual-/Interaktionstests erneut. Ruff und Flutteranalyse ohne
+Befund. Reale Schrift,320/1280px und200% Textgröße visuell geprüft. Release44
+wird signiert gebaut; Produktivrollout und öffentliche Prüfungen stehen noch aus.
+Kein physischer Audio-/Screenreadernachweis und keine neue externe KI-Abnahme.
+
+## Vorheriger verifizierter Produktionsstand
+
 # Produktionsstand · 19.10.2026
 
 ## Aktive Version

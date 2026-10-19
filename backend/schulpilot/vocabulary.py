@@ -61,7 +61,8 @@ def import_data(db, row):
         status, error = "failed", job.error if job else "Auftrag nicht mehr verfügbar. Bitte neu vorbereiten."
     return {"id": row.id, "target_locale": row.target_locale, "title": row.title, "status": status,
             "pairs": row.pairs if status in ("review", "confirmed") else [], "error": error,
-            "source_revisions": row.source_revisions, "collection_id": row.collection_id, "job_id": row.job_id}
+            "source_revisions": row.source_revisions, "collection_id": row.collection_id, "job_id": row.job_id,
+            "supports_deferred_pairs": True}
 
 
 @router.get("/language-capabilities")
@@ -175,14 +176,19 @@ def confirm_import_record(db, p, child, row, data):
     if row.target_locale != data.target_locale:
         raise HTTPException(409, "Die Lernsprache hat sich geändert. Bitte einen neuen Import beginnen.")
     pairs = [pair.model_dump() for pair in data.pairs]
+    deferred = [pair.model_dump() for pair in data.deferred_pairs]
+    pending = db.scalar(select(VocabularyImport).where(VocabularyImport.child_id == child.id,
+        VocabularyImport.request_key == "deferred-" + row.id))
     if row.status == "confirmed":
-        if row.pairs != pairs:
+        if row.pairs != pairs or (pending.request_digest if pending else fingerprint([])) != fingerprint(deferred):
             raise HTTPException(409, "Bereits bestätigte Wörter einzeln revisionsgebunden korrigieren.")
         return import_data(db, row)
     if row.status != "review":
         raise HTTPException(409, "Die Worterkennung ist noch nicht zum Prüfen bereit.")
     current_sources(db, child.id, row.source_revisions)
     checked_pairs(data.pairs)
+    if {fingerprint(pair) for pair in pairs} & {fingerprint(pair) for pair in deferred}:
+        raise HTTPException(422, "Ein Wort kann nicht zugleich bestätigt und zurückgestellt werden.")
     collection = VocabularyCollection(id=uid(), child_id=child.id, title=row.title, target_locale=row.target_locale)
     db.add(collection)
     db.flush()
@@ -220,6 +226,11 @@ def confirm_import_record(db, p, child, row, data):
         if p.user.role == "child":
             record(db, child.id, "vocabulary_exposure", {"item_id": item.id, "revision": item.revision, "via": "pair_confirmation"})
     row.collection_id, row.pairs, row.status = collection.id, pairs, "confirmed"
+    if deferred:
+        db.add(VocabularyImport(child_id=child.id, user_id=row.user_id, session_id=row.session_id,
+            request_key="deferred-" + row.id, request_digest=fingerprint(deferred), target_locale=row.target_locale,
+            title=row.title[:140] + " · später prüfen", text=row.text, source_revisions=row.source_revisions,
+            pairs=deferred, status="review"))
     record(db, child.id, "vocabulary_confirmed", {"collection_id": collection.id, "count": len(data.pairs)})
     return import_data(db, row)
 
@@ -354,7 +365,8 @@ def task_for(item, data, index, alternatives):
     if data.skill == "listening" and not reverse:
         raise HTTPException(422, "Hören übt Lernsprache → Deutsch. Für Englisch schreiben die Schreibübung wählen.")
     policy = s.EvaluationPolicy(criterion={"recognition": "meaning", "recall": "meaning", "spelling": "spelling", "listening": "listening"}[data.skill],
-                                case_sensitive=not reverse, apostrophe_equivalent=True)
+                                case_sensitive=data.skill == "spelling" or not reverse, apostrophe_equivalent=True,
+                                sentence_initial_optional=not reverse and item.target_locale in ("en-GB", "en-US"))
     meta = s.LanguageTask(target_locale=item.target_locale, answer_locale="de-DE" if reverse else item.target_locale,
         task_kind=kind, skill=data.skill, direction=data.direction, vocabulary_item_id=item.id, vocabulary_revision=item.revision,
         source_revisions=item.source_revisions, evaluation_policy=policy, stimulus=item.word if data.skill == "listening" else "",
@@ -371,8 +383,8 @@ def task_for(item, data, index, alternatives):
                        "Was bedeutet dieses Wort auf Deutsch?" if reverse else f"Schreibe das Wort aus deinem Heft auf {s.TARGETS[item.target_locale].split(' · ')[0]}:"),
             "options": options if data.skill == "recognition" else [], "answer": expected,
             "accepted": [] if data.skill == "recognition" else item.meaning_variants if reverse else item.variants,
-            "hints": ["Denk an die bestätigte Bedeutung im genannten Zusammenhang.",
-                      f"Die gesuchte Antwort beginnt mit „{expected[0]}“ und hat {len(expected.split())} Wort/Wörter."],
+            "hints": [f"Gesucht ist {'die deutsche Bedeutung' if reverse else 'das Wort für „' + item.meaning + '“'}." + (f" Denk an: {context_text}" if context_text else ""),
+                      f"Die Antwort beginnt mit „{expected[0]}“ und besteht aus {len(expected.split())} {'Wort' if len(expected.split()) == 1 else 'Wörtern'}."],
             "explanation": f"{item.word} bedeutet hier: {item.meaning}.", "language": meta.model_dump(),
             "language_feedback": [{"locale": item.target_locale, "text": item.word}, {"locale": "de-DE", "text": item.meaning}]}
 
