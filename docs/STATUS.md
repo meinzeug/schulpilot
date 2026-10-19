@@ -1,5 +1,15 @@
 # Fachtest 19.10.2026 · produktiv bereitgestellt
 
+## Heftseiten löschen und Lernzeituhr · 19.10.2026
+
+Löschaktionen in Album-, Kachel- und Listenansicht sowie „Alle Heftseiten“ ergänzt; die bereits bestehende Materialdetail-Aktion bleibt erhalten. Eltern benötigen verwaltende Familienrechte, Kinder können nur noch nicht bestätigte Seiten entfernen. Feste Testbeispiele zeigen keine Löschaktion. Löschen fragt nach und weist darauf hin, dass vorhandene Übungen erhalten bleiben. Nach Erfolg wird die Liste aktualisiert und ein leeres Heft korrekt angezeigt. Die Backend-Löschroute bleibt die maßgebliche Rechteprüfung.
+
+Die Lernzeitanzeige verwendet Klartext statt des Bruch-Renderers; `6:25 / 20:00` bleibt damit eine Zeitangabe.
+
+Gezielte Flutter-Regressionen: 39 bestanden; `flutter analyze --no-pub` ohne Befund. Web-Releasebuild und Direct-Debug-APK erfolgreich. Der Webbuild zeigt die bereits bekannten Wasm-Trockenlaufhinweise des gepinnten `flutter_tts`; regulärer Webbuild ist erfolgreich. Backend: 38 Tests bestanden, 2 übersprungen; Ruff ohne Befund. Kein reales Familienkonto verändert.
+
+Noch nicht produktiv ausgerollt: Live steht weiterhin Version `1.9.0+42`. Die Prüfung am 19.10. ergab 411 MiB freien Serverspeicher (99 % Belegung); zusätzlich zum neuen Release wären eine Sicherung und neue Web-/Android-Artefakte nötig. Ohne dokumentierte Aufbewahrungs-/Kapazitätsentscheidung wird weder Speicher freigeräumt noch ein Rollout riskiert. Commit und Push enthalten den Code; für Produktion ist zuerst ausreichend sicherer Speicherplatz herzustellen.
+
 Am 19.10.2026 wurde App `1.9.0+42` aus Codecommit
 `8850ec9b1441b66a50ce9b1fd8a39323f55477af` als Release
 `20261019T153515Z-8850ec9` auf `https://schulpilot.dorfspy.de` aktiviert.

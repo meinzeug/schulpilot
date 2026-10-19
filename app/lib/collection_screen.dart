@@ -104,6 +104,7 @@ class _PagedCollectionState extends State<PagedCollection> {
   Timer? debounce;
   Json? data;
   String? error, subject, opening;
+  String? deletingMaterial;
   String status = 'all', sort = 'subject', section = 'ready';
   DateTimeRange? dates;
   int page = 1, pageSize = 20, generation = 0;
@@ -455,6 +456,39 @@ class _PagedCollectionState extends State<PagedCollection> {
       if (mounted && active) showError(context, e);
     } finally {
       if (active) setState(() => opening = null);
+    }
+  }
+
+  bool canDeleteMaterial(Json item) =>
+      !widget.learning &&
+      widget.onSelect == null &&
+      item['fixed_example'] == false &&
+      ((widget.state.isParent && widget.state.canManage) ||
+          (widget.state.isChild && item['confirmed'] != true));
+
+  Future<void> deleteMaterial(Json item) async {
+    if (!canDeleteMaterial(item) || deletingMaterial != null) return;
+    if (!await confirmDialog(
+      context,
+      'Heftseite löschen?',
+      'Foto und erkannter Text werden gelöscht. Bereits entstandene Übungen bleiben erhalten.',
+    )) {
+      return;
+    }
+    if (!active || !mounted) return;
+    setState(() => deletingMaterial = item['id']);
+    try {
+      await widget.state.api.delete('/materials/${item['id']}');
+      if (!active || !mounted) return;
+      // The server clamps an emptied last page to the preceding page.
+      await load(scroll: true);
+      if (!active || !mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Heftseite gelöscht.')));
+    } catch (error) {
+      if (active && mounted) showError(context, error);
+    } finally {
+      if (active && mounted) setState(() => deletingMaterial = null);
     }
   }
 
@@ -875,7 +909,21 @@ class _PagedCollectionState extends State<PagedCollection> {
               ],
             ),
           ),
-          trailing: opening == item['id']
+          trailing: deletingMaterial == item['id']
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : canDeleteMaterial(item)
+              ? IconButton(
+                  tooltip: 'Heftseite löschen',
+                  onPressed: deletingMaterial != null
+                      ? null
+                      : () => deleteMaterial(item),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                )
+              : opening == item['id']
               ? const SizedBox(
                   width: 22,
                   height: 22,

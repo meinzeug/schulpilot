@@ -181,6 +181,21 @@ String unitClock(WidgetTester tester) => tester
     .data!;
 
 void main() {
+  testWidgets('Time displays never enter the inline fraction renderer', (
+    tester,
+  ) async {
+    final h = await openUnit(tester, (_) async {
+      return reply(timedUnit(seconds: 385));
+    });
+    final clock = tester.widget<Text>(
+      find.byKey(const ValueKey('learning-day-clock')),
+    );
+    expect(clock.data, 'Heute 6:25 / 20:00');
+    expect(find.text('Noch 13:35 Min.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await h.close();
+  });
+
   testWidgets(
     'Web and native clocks preserve a positive twenty-minute goal and remaining duration',
     (tester) async {
@@ -188,7 +203,10 @@ void main() {
         return reply(timedUnit(status: 'completed', seconds: 0));
       });
       expect(find.text('Heute 0:00 / 20:00'), findsOneWidget);
-      expect(find.text('Tagesziel noch offen · Noch 20:00 Min.'), findsOneWidget);
+      expect(
+        find.text('Tagesziel noch offen · Noch 20:00 Min.'),
+        findsOneWidget,
+      );
       expect(find.text('Diese Einheit 2:00'), findsOneWidget);
       expect(find.text('Heute 0:00 / 0:00'), findsNothing);
       expect(find.text('Tagesminimum geschafft'), findsNothing);

@@ -46,6 +46,7 @@ Json listing({
         'subject': 'Deutsch',
         'confirmed': true,
         'synthetic': true,
+        'fixed_example': false,
         'created': 1700000000 + n,
         if (learning) ...{
           'kind': 'unit',
@@ -63,6 +64,8 @@ Future<(AppState, GoRouter)> open(
   Future<http.Response> Function(http.Request) respond, {
   double width = 320,
   bool learning = false,
+  bool parent = false,
+  bool canManage = false,
   AppState? existing,
 }) async {
   tester.view.physicalSize = Size(width, 900);
@@ -77,12 +80,21 @@ Future<(AppState, GoRouter)> open(
             client: MockClient(respond),
           ),
         )
-        ..user = {
-          'id': 'own-user',
-          'role': 'child',
-          'child_id': 'child',
-          'display_name': 'Beispiel',
-        });
+        ..familyId = parent ? 'family' : null
+        ..user = parent
+            ? {
+                'id': 'own-parent',
+                'role': 'parent',
+                'families': [
+                  {'id': 'family', 'permission': canManage ? 'owner' : 'view'},
+                ],
+              }
+            : {
+                'id': 'own-user',
+                'role': 'child',
+                'child_id': 'child',
+                'display_name': 'Beispiel',
+              });
   final router = GoRouter(
     initialLocation: learning ? '/learn/child' : '/library/child',
     routes: [
@@ -154,6 +166,60 @@ void main() {
       },
     );
   }
+
+  testWidgets('All pages exposes managed deletion and refreshes the list', (
+    tester,
+  ) async {
+    final requests = <http.Request>[];
+    var total = 21;
+    await open(
+      tester,
+      (request) async {
+        requests.add(request);
+        if (request.method == 'DELETE') {
+          total--;
+          return reply({'message': 'deleted'});
+        }
+        return reply(
+          listing(
+            page: int.parse(request.url.queryParameters['page']!),
+            total: total,
+          ),
+        );
+      },
+      parent: true,
+      canManage: true,
+      width: 320,
+    );
+    expect(find.byTooltip('Heftseite löschen'), findsNWidgets(20));
+    await tap(tester, find.byTooltip('Heftseite löschen').first);
+    expect(find.text('Heftseite löschen?'), findsOneWidget);
+    await tap(tester, find.text('Bestätigen'));
+    expect(
+      requests.where((request) => request.method == 'DELETE').single.url.path,
+      '/api/materials/m0',
+    );
+    expect(find.text('1–20 von 20 Seiten'), findsOneWidget);
+    expect(find.text('Heftseite gelöscht.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Read-only parents do not receive destructive controls', (
+    tester,
+  ) async {
+    await open(
+      tester,
+      (_) async => reply(listing(total: 1)),
+      parent: true,
+      canManage: false,
+      width: 320,
+    );
+    expect(find.byTooltip('Heftseite löschen'), findsNothing);
+    expect(find.text('Eigene Heftseite'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('Subject and search reset the page and combine on the server', (
     tester,

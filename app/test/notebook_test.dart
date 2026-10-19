@@ -23,7 +23,7 @@ http.Response jsonReply(Object data) => http.Response(
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
-Json subjects() => {
+Json subjects({bool canManage = false}) => {
   'items': [
     {
       'id': mathId,
@@ -43,20 +43,21 @@ Json subjects() => {
     },
   ],
   'unassigned_count': 2,
+  'can_manage': canManage,
 };
 
-Json pages(http.Request request, {bool photos = true}) {
+Json pages(
+  http.Request request, {
+  bool photos = true,
+  Set<String> deleted = const {},
+}) {
   final page = int.parse(request.url.queryParameters['page'] ?? '1');
   final empty = request.url.queryParameters['subject_id'] == bioId;
-  final total = empty ? 0 : 47;
+  final total = empty ? 0 : 47 - deleted.length;
   final first = (page - 1) * 20;
-  return {
-    'total': total,
-    'pages': empty ? 1 : 3,
-    'page': page,
-    'page_size': 20,
-    'items': [
-      for (var n = first; n < first + 20 && n < total; n++)
+  final available = [
+    for (var n = 0; n < 47; n++)
+      if (!empty && !deleted.contains('page$n'))
         {
           'id': 'page$n',
           'title': 'Notiz $n',
@@ -65,9 +66,16 @@ Json pages(http.Request request, {bool photos = true}) {
           'created': 1700000000 + n,
           'revision': 1,
           'has_image': photos,
+          'fixed_example': false,
           'subject_id': request.url.queryParameters['subject_id'],
         },
-    ],
+  ];
+  return {
+    'total': total,
+    'pages': empty ? 1 : 3,
+    'page': page,
+    'page_size': 20,
+    'items': available.skip(first).take(20).toList(),
   };
 }
 
@@ -78,6 +86,8 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
   double textScale = 1,
   bool reducedMotion = false,
   bool photos = true,
+  bool parent = false,
+  bool canManage = false,
   bool settle = true,
   Future<http.Response> Function(http.Request)? respond,
 }) async {
@@ -93,10 +103,10 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
             base: 'https://example.invalid/api',
             client: MockClient((r) async {
               requests.add(r);
-              expect(r.method, 'GET');
               if (respond != null) return respond(r);
+              expect(r.method, 'GET');
               if (r.url.path.endsWith('/subjects')) {
-                return jsonReply(subjects());
+                return jsonReply(subjects(canManage: canManage));
               }
               if (r.url.path.endsWith('/image')) {
                 return http.Response.bytes(
@@ -109,12 +119,21 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
             }),
           ),
         )
-        ..user = {
-          'id': 'own-child-user',
-          'role': 'child',
-          'child_id': 'child',
-          'display_name': 'Beispiel',
-        };
+        ..familyId = parent ? 'family' : null
+        ..user = parent
+            ? {
+                'id': 'own-parent-user',
+                'role': 'parent',
+                'families': [
+                  {'id': 'family', 'permission': canManage ? 'owner' : 'view'},
+                ],
+              }
+            : {
+                'id': 'own-child-user',
+                'role': 'child',
+                'child_id': 'child',
+                'display_name': 'Beispiel',
+              };
   final router = GoRouter(
     initialLocation: shelf
         ? '/library/child'
@@ -299,6 +318,67 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'Page deletion is visible in album, tiles and list, then refreshes',
+    (tester) async {
+      final deleted = <String>{};
+      final requests = <http.Request>[];
+      await open(
+        tester,
+        respond: (request) async {
+          requests.add(request);
+          if (request.method == 'DELETE') {
+            deleted.add(request.url.path.split('/').last);
+            return jsonReply({'message': 'deleted'});
+          }
+          if (request.url.path.endsWith('/subjects')) {
+            return jsonReply(subjects());
+          }
+          if (request.url.path.endsWith('/image')) {
+            return http.Response.bytes(
+              Uint8List.fromList(img.encodePng(img.Image(width: 4, height: 4))),
+              200,
+              headers: {'content-type': 'image/png'},
+            );
+          }
+          return jsonReply(pages(request, deleted: deleted));
+        },
+      );
+      expect(find.text('Seite löschen'), findsNothing); // confirmed page
+      await tap(tester, find.byTooltip('Nächste Seite'));
+      expect(find.text('Seite löschen'), findsOneWidget); // child review page
+      await tap(tester, find.text('Kacheln'));
+      expect(find.byTooltip('Heftseite löschen'), findsOneWidget);
+      await tap(tester, find.text('Liste'));
+      expect(find.byTooltip('Heftseite löschen'), findsOneWidget);
+      await tap(tester, find.byTooltip('Heftseite löschen'));
+      expect(find.text('Heftseite löschen?'), findsOneWidget);
+      await tap(tester, find.text('Bestätigen'));
+      expect(deleted, {'page1'});
+      expect(find.text('Heftseite gelöscht.'), findsOneWidget);
+      expect(find.text('1–20 von 46'), findsWidgets);
+      expect(
+        requests.where((request) => request.method == 'DELETE').single.url.path,
+        '/api/materials/page1',
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Parents can delete managed pages; read-only parents cannot', (
+    tester,
+  ) async {
+    await open(tester, parent: true, canManage: true);
+    expect(find.text('Seite löschen'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, parent: true, canManage: false);
+    expect(find.text('Seite löschen'), findsNothing);
+    expect(find.byTooltip('Heftseite löschen'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('Large text and reduced motion keep controls usable at320px', (
     tester,

@@ -800,7 +800,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             const Icon(Icons.timer_outlined, size: 17, color: teal),
             const SizedBox(width: 7),
             Expanded(
-              child: MathText(
+              child: Text(
                 measured == null
                     ? 'Diese Einheit ${clockText(currentUnit)}'
                     : required
@@ -830,13 +830,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ],
         ),
         if (measured != null)
-          MathText(
+          Text(
             'Diese Einheit ${clockText(currentUnit)}',
             key: const ValueKey('learning-unit-clock'),
             style: const TextStyle(fontSize: 12, color: Color(0xFF53617A)),
           ),
         if (required)
-          MathText(
+          Text(
             stateText,
             key: const ValueKey('learning-goal-state'),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),

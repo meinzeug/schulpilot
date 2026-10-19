@@ -64,6 +64,7 @@ def test_all_1205_pages_can_be_read_without_duplicates_or_private_bodies(api, ho
         assert sum(s["count"] for s in data["subjects"]) == 1205
         for item in data["items"]:
             assert not {"content", "path", "homework", "uncertainties", "extraction_model"} & item.keys()
+            assert item["fixed_example"] is False
         seen.extend(item["id"] for item in data["items"])
     assert len(set(seen)) == len(seen) == 1205
     last = list_pages(api, child["id"], page=1000000, page_size=50)
@@ -71,6 +72,32 @@ def test_all_1205_pages_can_be_read_without_duplicates_or_private_bodies(api, ho
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(Job)) == 0
         assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+def test_library_marks_fixed_examples_without_exposing_fixture_ids(api, household):
+    _, child = household
+    with DB.begin() as db:
+        db.add_all(
+            [
+                Material(
+                    child_id=child["id"],
+                    title="Normale Testseite",
+                    synthetic=True,
+                    fixture_id=None,
+                ),
+                Material(
+                    child_id=child["id"],
+                    title="Festes Testbeispiel",
+                    synthetic=True,
+                    fixture_id="private-fixture-identifier",
+                ),
+            ]
+        )
+    items = list_pages(api, child["id"], sort="newest")["items"]
+    by_title = {item["title"]: item for item in items}
+    assert by_title["Normale Testseite"]["fixed_example"] is False
+    assert by_title["Festes Testbeispiel"]["fixed_example"] is True
+    assert all("fixture_id" not in item for item in items)
 
 
 def test_subject_status_search_and_stable_creation_sort_combine(api, household):

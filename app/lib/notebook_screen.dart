@@ -40,6 +40,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   int stateRevision = 0;
   double swipeDistance = 0;
   bool loading = true, showSearch = false;
+  bool deleting = false;
   bool canManage = false;
   static const pageSize = 20;
   bool get current => mounted && widget.state.user?['id'] == owner;
@@ -220,6 +221,39 @@ class _NotebookScreenState extends State<NotebookScreen> {
     if (next ~/ pageSize != batch) {
       data = null;
       load();
+    }
+  }
+
+  bool canDelete(Json item) =>
+      !deleting &&
+      item['fixed_example'] == false &&
+      ((widget.state.isParent && canManage) ||
+          (widget.state.isChild && item['confirmed'] != true));
+
+  Future<void> deletePage(Json item) async {
+    if (!canDelete(item)) return;
+    if (!await confirmDialog(
+      context,
+      'Heftseite löschen?',
+      'Foto und erkannter Text werden gelöscht. Bereits entstandene Übungen bleiben erhalten.',
+    )) {
+      return;
+    }
+    if (!current || !mounted) return;
+    setState(() => deleting = true);
+    try {
+      await widget.state.api.delete('/materials/${item['id']}');
+      if (!current || !mounted) return;
+      // Keeping the same position displays the next page. If this was the
+      // final page, load() clamps to the new last page (or the empty state).
+      await load();
+      if (!current || !mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Heftseite gelöscht.')));
+    } catch (error) {
+      if (current && mounted) showError(context, error);
+    } finally {
+      if (current && mounted) setState(() => deleting = false);
     }
   }
 
@@ -792,6 +826,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       icon: const Icon(Icons.zoom_in_rounded),
                       label: const Text('Vergrößern'),
                     ),
+                  if (canDelete(item))
+                    OutlinedButton.icon(
+                      onPressed: () => deletePage(item),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      label: const Text('Seite löschen'),
+                    ),
+                  if (deleting)
+                    const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                 ],
               ),
             ],
@@ -877,79 +923,135 @@ class _NotebookScreenState extends State<NotebookScreen> {
         : const Center(
             child: Icon(Icons.description_outlined, size: 40, color: muted),
           );
-    return Semantics(
-      button: true,
-      label:
-          'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
-      onTap: select,
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: surfaceBorder),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: select,
-          child: list
-              ? Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 70, height: 96, child: photo),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              pageTitle(item),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+    final canRemove = canDelete(item);
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: surfaceBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: list
+          ? Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  SizedBox(width: 70, height: 96, child: photo),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      label:
+                          'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
+                      child: InkWell(
+                        onTap: select,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pageTitle(item),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              pageDate(item),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: muted,
+                              const SizedBox(height: 6),
+                              Text(
+                                pageDate(item),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: muted,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      const Icon(Icons.chevron_right_rounded),
-                    ],
+                    ),
                   ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  if (canRemove)
+                    IconButton(
+                      tooltip: 'Heftseite löschen',
+                      onPressed: deleting ? null : () => deletePage(item),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                  if (!canRemove) const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      label:
+                          'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
+                      child: InkWell(
+                        onTap: select,
+                        borderRadius: BorderRadius.circular(12),
+                        child: photo,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      Expanded(child: photo),
-                      const SizedBox(height: 10),
-                      Text(
-                        pageTitle(item),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      Expanded(
+                        child: Semantics(
+                          button: true,
+                          label:
+                              'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
+                          child: InkWell(
+                            onTap: select,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    pageTitle(item),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    pageDate(item),
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        pageDate(item),
-                        maxLines: 2,
-                        style: const TextStyle(fontSize: 11, color: muted),
-                      ),
+                      if (canRemove)
+                        IconButton(
+                          tooltip: 'Heftseite löschen',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: deleting ? null : () => deletePage(item),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                        ),
                     ],
                   ),
-                ),
-        ),
-      ),
+                ],
+              ),
+            ),
     );
   }
 }

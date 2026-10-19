@@ -53,7 +53,13 @@ def material_summary(material, school_date=None):
             "synthetic",
             "created",
         )
-    } | {"school_date": school_date, "has_image": bool(material.path)}
+    } | {
+        "school_date": school_date,
+        "has_image": bool(material.path),
+        # Keep fixture IDs private while allowing the client to avoid offering
+        # destructive controls for fixed examples in the live test family.
+        "fixed_example": bool(material.fixture_id),
+    }
 
 
 MATERIAL_FIELDS = (
@@ -66,6 +72,7 @@ MATERIAL_FIELDS = (
     Material.subject_id,
     Material.revision,
     Material.path,
+    Material.fixture_id,
     Material.topic,
     Material.status,
     Material.confirmed,
