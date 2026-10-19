@@ -2,11 +2,12 @@
 
 import json
 import re
+import time
 
 import android_smoke as native
 import httpx
 from android_design import login, require
-from android_update import installed_code, launch
+from android_update import installed_code, launch, wait_until
 
 
 def main():
@@ -47,21 +48,26 @@ def main():
                 overview = parent.get('/children/' + checkpoint['child_id'] + '/overview?compact=true').raise_for_status().json()
                 first = overview['plan']['today'][0]
                 require(first['kind'] == 'unit' and first['id'] == unit_id, 'own_paused_unit_must_be_next')
-                action, _ = native.wait_any(('Weiterlernen', 'Freiwillig weiterlernen', 'Jetzt lernen'))
-                native.press(action, scroll=True)
+                action, _ = native.wait_any(('Lernrunde verlassen', 'Weiterlernen', 'Freiwillig weiterlernen', 'Jetzt lernen'))
+                if action != 'Lernrunde verlassen':
+                    native.press(action, scroll=True)
                 entry, _ = native.wait_any(('Lernen fortsetzen', 'Antwort prüfen'))
                 if entry == 'Lernen fortsetzen':
                     native.press('Lernen fortsetzen', scroll=True)
                 native.wait('Antwort prüfen')
-                require(any(n.get('checked') == 'true' for n in native.matching(expected)), 'saved_choice_not_checked')
+                # Secure-storage restoration completes after the first frame.
+                # Observe the stable selected control, not just its first paint.
+                wait_until(lambda: any(n.get('checked') == 'true' for n in native.matching(expected)), seconds=25)
                 native.screenshot('adaptive-native-restored-choice-' + str(iteration) + '.png')
                 native.press('Pause')
                 native.wait('Lernen fortsetzen')
                 if iteration == 0:
                     native.adb('shell', 'settings', 'put', 'system', 'font_scale', '2.0')
+                    time.sleep(2)  # Wait for Android's configuration relaunch.
                     native.adb('shell', 'am', 'force-stop', native.PACKAGE)
+                    time.sleep(1)
                     launch()
-                    native.wait('Heute')
+                    native.wait_any(('Heute', 'Lernrunde verlassen'))
             after = parent.get('/units/' + unit_id).raise_for_status().json()
             require(not any(q['attempts'] for q in after['questions']), 'draft_must_not_be_an_answer')
             native.press('Lernrunde verlassen')

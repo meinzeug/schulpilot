@@ -88,6 +88,11 @@ def process(job_id):
             if signature != job.payload["signature"]:
                 raise ProviderError("Die Quellen oder Antworten wurden geändert.")
             config = job_config(db, job, "unit")
+            usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+            if not usage or (usage.provider, usage.model, usage.config_revision) != (
+                config.provider, config.model, config.revision
+            ):
+                raise ProviderError("Die KI-Einstellung wurde seit Auftragserstellung geändert. Bitte den aktuellen Lernschritt öffnen.")
             external_allowed(config)
             values = {c.name: getattr(config, c.name) for c in config.__table__.columns}
             payload.update(review=True, practice_kind="check", focus_goal_ids=job.payload["focus_goal_ids"],

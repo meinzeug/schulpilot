@@ -211,9 +211,10 @@ def feedback_resume_id(db, child_id, *, include_language=True):
 
 def unit_source_texts(db, unit):
     references = list(db.scalars(select(UnitSource).where(UnitSource.unit_id == unit.id)))
-    if not references and unit.material_id:
-        source = db.get(Material, unit.material_id)
-        return [source.content] if source and source.child_id == unit.child_id and source.confirmed and source.revision == unit.source_revision else []
+    # A legacy material_id is not a revision snapshot. LearningUnit has no
+    # source_revision field, and today's confirmed text cannot safely stand in
+    # for the material used by an older exercise. Keep the exercise readable,
+    # but only derive source-bound graphics from explicit matching references.
     return [material.content for ref in references
             if (material := db.get(Material, ref.material_id)) and material.child_id == unit.child_id and material.confirmed and material.revision == ref.revision]
 

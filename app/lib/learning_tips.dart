@@ -213,6 +213,7 @@ class LearningTips extends StatefulWidget {
   final String childId, kind, resourceId;
   final String? questionId;
   final Future<void> Function()? beforeOpen;
+  final VoidCallback? onReturnToTask;
   final bool initiallyExpanded;
   const LearningTips(
     this.state, {
@@ -222,6 +223,7 @@ class LearningTips extends StatefulWidget {
     required this.resourceId,
     this.questionId,
     this.beforeOpen,
+    this.onReturnToTask,
     this.initiallyExpanded = false,
   });
   @override
@@ -391,6 +393,37 @@ class _LearningTipsState extends State<LearningTips>
   Widget mediaReturn(Json media) {
     final item = {'id': media['content_id'], 'topic_id': media['topic_id']};
     final opened = media['status'] == 'opened';
+    if (!widget.state.isChild) {
+      final status = switch (media['status']) {
+        'watched' => 'Vom Kind als angesehen bestätigt.',
+        'skipped' => 'Vom Kind übersprungen.',
+        'not_helpful' => 'Vom Kind als nicht hilfreich gemeldet.',
+        'broken' =>
+          'Das Kind hat ein Problem mit dem Link oder Zugang gemeldet.',
+        _ => 'Vom Kind geöffnet.',
+      };
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Panel(
+          tone: PanelTone.accent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Lerntipp im Lernverlauf',
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(status),
+              const SizedBox(height: 8),
+              const Text(
+                'Ob der Inhalt geholfen hat, zeigen spätere eigene Antworten.',
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Panel(
@@ -434,7 +467,14 @@ class _LearningTipsState extends State<LearningTips>
                   'Beende zuerst diese Runde. Danach gibt es neue Aufgaben passend zu deinen Antworten.',
                 ),
               TextButton(
-                onPressed: () => Navigator.maybePop(context),
+                onPressed: () {
+                  final callback = widget.onReturnToTask;
+                  if (callback != null) {
+                    callback();
+                  } else {
+                    setState(() => expanded = false);
+                  }
+                },
                 child: const Text('Zur gespeicherten Aufgabe'),
               ),
               if (media['status'] == 'watched')
@@ -518,8 +558,7 @@ class _LearningTipsState extends State<LearningTips>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (widget.state.isChild &&
-                        data?['state'] == 'ready' &&
+                    if (data?['state'] == 'ready' &&
                         data?['media_return'] is Map)
                       mediaReturn(Json.from(data!['media_return'])),
                     if (loading) const LinearProgressIndicator(minHeight: 3),

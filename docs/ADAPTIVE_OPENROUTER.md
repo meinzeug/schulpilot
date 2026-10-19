@@ -1,6 +1,6 @@
 # Zustandsbehaftete Lernbegleitung und OpenRouter
 
-Stand: 19.10.2026, Erweiterung für 1.10.0+47, additive Migration 0023.
+Stand: 19.10.2026, Erweiterung für 1.10.0+48, additive Migration 0023.
 Tatsächliche Bereitstellung und abschließende Testergebnisse: STATUS.md und
 CHATGPT_HANDOFF.txt. Ein Build oder API-Schlüssel ist keine Anbieterfreigabe.
 
@@ -99,6 +99,9 @@ Job. Die ursprüngliche Runde wird pausiert; Entwurf/Antworten bleiben erhalten.
 Ein gespeicherter Vorbereitungsstand erscheint nach Neustart direkt als nächste
 Aktion; die ursprüngliche Aufgabe bleibt ausdrücklich weiter erreichbar.
 Die öffentliche Demo darf diesen Pfad nicht für externe freie Eingaben nutzen.
+Der Rückweg bleibt bei inline angezeigten Tipps in der Lernrunde und schließt
+im Hilfe-Dialog nur den Dialog. Eltern sehen den Medienstatus als Leseinformation,
+einschließlich der Kennzeichnung von „angesehen“ als Selbstauskunft.
 Für allgemeine Altthemen ohne belegte Lernziele muss zuerst die bestehende Runde
 mit Rückblick beendet werden. Fehlgeschlagene Vorbereitung bleibt sichtbar;
 kein automatischer Retry. Diese Einschränkung wird im Dialog erklärt.
@@ -161,6 +164,10 @@ bei fehlgeschlagener Fach-/Schemaprüfung abgerechnet. Fehlende Usage hält die 
 Reservierung. Metadaten-Abgleich höchstens dreimal per Generation-ID, ohne neue
 Inferenz. Sicher vor Transport abgewiesene Größenüberschreitung ist als nicht
 gesendet erkennbar. Settlement ist idempotent.
+Beim Metadatenabgleich werden erst geeignete, fällige Generationen ausgewählt und
+danach begrenzt gesperrt. Alte Vorgänge ohne Generation-ID oder mit ausgeschöpften
+Versuchen können neuere Abrechnungen nicht blockieren. Ungültige historische
+Kennungen behalten ihre Kostenreservierung und starten keinen HTTP-Aufruf.
 
 Echte Guthabenbelege separat im Admin-Kostenbereich erfassen: erworbenes Guthaben
 und tatsächliche Kaufgebühr. Es erfolgt **kein Kauf**. Die Gebühr wird FIFO und
@@ -271,6 +278,7 @@ Geprüft am19.10.2026:
 - https://openrouter.ai/docs/guides/features/zdr
 - https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
 - https://openrouter.ai/docs/guides/best-practices/prompt-caching
+- https://openrouter.ai/docs/guides/features/response-caching
 - https://openrouter.ai/docs/api/api-reference/generations/get-request-&-usage-metadata-for-a-generation
 - https://openrouter.ai/pricing
 - https://openrouter.ai/openai/gpt-6-luna

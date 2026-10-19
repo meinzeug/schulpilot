@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from decimal import ROUND_CEILING, Decimal, InvalidOperation
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from .db import ChildCostBucket, CreditPurchase, Usage, now
 from .security import insert_ignore
@@ -148,13 +148,23 @@ def reconcile_one():
     # Release the fee row/credit locks before claiming an unrelated metadata
     # reconciliation. Two workers must never acquire Usage locks in reverse.
     with DB.begin() as db:
-        rows = list(db.scalars(select(Usage).where(Usage.provider == "openrouter", Usage.cost_micros.is_(None),
-            Usage.status != "reserved").order_by(Usage.created, Usage.id).limit(100).with_for_update(skip_locked=True)))
-        row = next((r for r in rows if identifier((r.telemetry or {}).get("generation_id"))
-            and (r.telemetry or {}).get("reconcile_attempts", 0) < 3
-            and (r.telemetry or {}).get("reconcile_after", 0) <= now()), None)
+        generation = Usage.telemetry["generation_id"].as_string()
+        # Filter before LIMIT: old unknown costs without a usable generation or
+        # with exhausted attempts must never starve newer billable requests.
+        row = db.scalar(select(Usage).where(
+            Usage.provider == "openrouter", Usage.cost_micros.is_(None), Usage.status != "reserved",
+            generation.is_not(None), func.length(generation).between(1, 180),
+            func.coalesce(Usage.telemetry["reconcile_attempts"].as_integer(), 0) < 3,
+            func.coalesce(Usage.telemetry["reconcile_after"].as_float(), 0) <= now(),
+        ).order_by(Usage.created, Usage.id).limit(1).with_for_update(skip_locked=True))
         if not row:
             return False
+        if not identifier(row.telemetry.get("generation_id")):
+            # Malformed historical metadata is not a cost of zero. Keep its
+            # hold, stop retrying it and continue with later rows next tick.
+            row.telemetry = {**row.telemetry, "reconcile_attempts": 3,
+                "reconcile_error": "invalid_generation_id"}
+            return True
         config = db.get(ProviderConfig, 1)
         if config.provider != "openrouter" or not (settings.openrouter_api_key or config.encrypted_key):
             return False

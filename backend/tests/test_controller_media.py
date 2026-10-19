@@ -9,7 +9,19 @@ from schulpilot import controller_jobs
 from schulpilot.catalog_import import import_catalog
 from schulpilot.catalog_jobs import refresh_context
 from schulpilot.catalog_models import LearningTipInteraction
-from schulpilot.db import DB, Activity, Attempt, Family, Job, LearningMemory, LearningUnit, Material, Session, Usage
+from schulpilot.db import (
+    DB,
+    Activity,
+    Attempt,
+    Family,
+    Job,
+    LearningMemory,
+    LearningUnit,
+    Material,
+    ProviderConfig,
+    Session,
+    Usage,
+)
 from schulpilot.learning_controller import generation_guard
 from schulpilot.model_routing import job_config
 from schulpilot.providers import Result
@@ -179,6 +191,35 @@ def test_generation_guard_ignores_draft_changes_but_rejects_new_learning_decisio
             'controller_guard': before}, idempotency='stale-plan-test')
         with pytest.raises(HTTPException):
             job_config(db, job)
+
+
+def test_changed_legacy_provider_configuration_never_reaches_transport(media_unit, monkeypatch):
+    client, unit_id, _, _, child = media_unit
+    returned(client, unit_id, child['id'])
+    job_id = ask_check(client, unit_id)
+    with DB.begin() as db:
+        config = db.get(ProviderConfig, 1)
+        assert not config.routing_policy  # Revision binding also applies outside the new mix.
+        config.model = 'different-synthetic-model'
+        config.revision += 1
+    calls = []
+
+    def must_not_call(config, function, payload):
+        calls.append(function)
+        raise AssertionError('Changed provider configuration reached transport')
+
+    monkeypatch.setattr(controller_jobs, 'request_provider', must_not_call)
+    process_next()
+    assert calls == []
+    with DB() as db:
+        job = db.get(Job, job_id)
+        assert job.status == 'failed'
+        assert 'KI-Einstellung' in job.error
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
+        usage = db.scalar(select(Usage).where(Usage.job_id == job_id))
+        assert usage.model != 'different-synthetic-model'
+        assert usage.status == 'failed_unknown'
+        assert usage.cost_micros is None
 
 
 def test_public_demo_cannot_turn_media_return_into_an_arbitrary_external_call(media_unit):

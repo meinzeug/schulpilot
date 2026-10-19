@@ -1146,6 +1146,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           resourceId: u['id'],
           questionId: currentQuestion?['id'],
           beforeOpen: saveDraft,
+          onReturnToTask: () => unawaited(
+            perform(() async {
+              if (u['status'] == 'active' && u['introduction_seen'] == false) {
+                await finishIntroduction(u);
+              } else {
+                revealStep();
+              }
+            }),
+          ),
         )
       : const SizedBox.shrink();
 
@@ -2405,6 +2414,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             resourceId: u['id'],
             questionId: currentQuestion?['id'],
             beforeOpen: saveDraft,
+            onReturnToTask: () => Navigator.pop(context),
             initiallyExpanded: true,
           ),
         ),
