@@ -6,27 +6,30 @@ import hashlib
 import json
 import math
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 
 import httpx
 from fastapi import HTTPException
 from pydantic import ValidationError
-from sqlalchemy import update
+from sqlalchemy import select, update
+from sqlalchemy import text as sql_text
 
 from . import schemas as s
 from .config import runtime_settings, settings
-from .db import ProviderConfig, Usage, UsageBucket
+from .db import ProviderConfig, RateBucket, Usage, UsageBucket
 from .security import decrypt, insert_ignore, rate_limit
 from .tutor_schemas import TUTOR_SYSTEM, TutorOutput
 
 
 class ProviderError(Exception):
-    def __init__(self, message, *, code=None):
+    def __init__(self, message, *, code=None, billing_result=None):
         from .job_failures import CODES, message_code
 
         super().__init__(message)
         self.code = code if code in CODES else message_code(message)
+        self.billing_result = billing_result
 
 
 def openrouter_failure(error):
@@ -50,6 +53,9 @@ class Result:
     cost_micros: int | None = None
     search_calls: int | None = None
     catalog_assignment: dict | None = None
+    telemetry: dict | None = None
+    cost_source: str = "legacy_estimate"
+    action_proposal: dict | None = None
 
 
 SYSTEM = """Du bist SCHULPILOT, eine altersgerechte Lernbegleitung. Antworte auf Deutsch.
@@ -580,6 +586,10 @@ def validate_factual_package(data, payload):
 
 
 def config_for_function(config, function):
+    from .model_routing import enabled, select_route
+
+    if enabled(config):
+        return select_route(config, function)
     values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
     if function == "extract" and config.extraction_model:
         values["model"] = config.extraction_model
@@ -600,7 +610,16 @@ def routing_fingerprint(config):
     return hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def external_allowed(config, image=False, synthetic_fixture=False):
+def external_allowed(config, image=False, synthetic_fixture=False, *, operator_probe=False):
+    from .model_routing import enabled, validate_ready
+
+    if config.provider == "openrouter" and config.routing_policy and not enabled(config):
+        raise ProviderError("Der Modellmix ist ausgeschaltet. Gespeicherte Übungen bleiben nutzbar.")
+
+    try:
+        validate_ready(config, image=image, synthetic=bool(synthetic_fixture))
+    except HTTPException as error:
+        raise ProviderError(str(error.detail)) from None
     if config.emergency_stop:
         raise ProviderError("Kostenpflichtige KI-Aufrufe sind durch den Notfallstopp gesperrt.")
     if config.provider == "disabled" or not config.model:
@@ -623,6 +642,7 @@ def external_allowed(config, image=False, synthetic_fixture=False):
                     and config.output_per_million_micros == 0
                 )
                 or (config.provider == "codex" and settings.codex_approved)
+                or (config.provider == "openrouter" and (settings.synthetic_paid_probe or operator_probe) and enabled(config))
             )
         ):
             raise ProviderError(
@@ -637,7 +657,7 @@ def external_allowed(config, image=False, synthetic_fixture=False):
         raise ProviderError(
             "Externe Verarbeitung ist bis zur dokumentierten Datenschutz- und Minderjährigenfreigabe gesperrt."
         )
-    if not config.structured_capable or (image and not config.image_capable) or not config.capability_evidence:
+    if (not config.structured_capable and not (synthetic_fixture and (settings.synthetic_paid_probe or operator_probe))) or (image and not config.image_capable) or not config.capability_evidence:
         raise ProviderError(
             "Benötigte Modellfähigkeiten sind nicht bestätigt. Bitte Verbindung und Bild-/Schemaausgabe prüfen."
         )
@@ -648,15 +668,34 @@ def external_allowed(config, image=False, synthetic_fixture=False):
             raise ProviderError("Codex ist experimentell: isolierter Worker und Nutzungsfreigabe fehlen.")
         if settings.codex_auth_mode not in ("api_key", "account"):
             raise ProviderError("Die Codex-Authentifizierung ist nicht korrekt eingerichtet.")
-    elif not config.encrypted_key:
+    elif not config.encrypted_key and not (config.provider == "openrouter" and settings.openrouter_api_key):
         raise ProviderError("Kein Provider-Schlüssel eingerichtet.")
 
 
-def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
+def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, probe_tier=None):
     from .commerce import usage_terms
+    from .model_routing import enabled, features_for, policy_hash, select_route, selection
+
+    key = policy_hash([family.id, child_id, job_id, function])
+    if db.bind.dialect.name == "postgresql":
+        db.execute(sql_text("SELECT pg_advisory_xact_lock(:key)"), {"key": int(key[:15], 16)})
+    else:
+        # SQLite has no row/advisory locks: acquire its write transaction before
+        # reading the idempotency claim. Production uses PostgreSQL above.
+        insert_ignore(db, RateBucket, {"id": "reservation:" + key, "count": 0,
+            "expires": int(time.time()) + 3600})
+    previous = db.scalar(select(Usage).where(Usage.reservation_key == key))
+    if previous:
+        return previous
 
     family_bucket, family_calls, family_budget = usage_terms(db, family, enforce=True)
-    config = config_for_function(db.get(ProviderConfig, 1), function)
+    base_config = db.get(ProviderConfig, 1)
+    config = select_route(base_config, function, features_for(db, child_id, job_id)) if enabled(base_config) else config_for_function(base_config, function)
+    if probe_tier:
+        if not (synthetic_fixture and settings.synthetic_paid_probe and enabled(base_config)):
+            raise HTTPException(403, "Explizite Testmodellwahl ist nur im begrenzten künstlichen Prüfpfad erlaubt.")
+        config = select_route(base_config, function, snapshot={"policy_hash": policy_hash(base_config.routing_policy),
+            "tier": probe_tier, "reason": "synthetic_reference_comparison"})
     try:
         external_allowed(config, function == "extract", synthetic_fixture)
     except ProviderError as e:
@@ -675,10 +714,14 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
         )
     period = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m")
     ids = [f"global:{period}", family_bucket]
-    for name, calls, budget in [
+    limits = [
         (ids[0], 1_000_000, config.global_limit_micros),
         (ids[1], family_calls, family_budget),
-    ]:
+    ]
+    if synthetic_fixture and settings.synthetic_paid_probe and config.provider == "openrouter" and not config.model.endswith(":free"):
+        ids.append("openrouter-evaluation-20261019")
+        limits.append((ids[-1], 1000, 250_000))
+    for name, calls, budget in limits:
         insert_ignore(
             db,
             UsageBucket,
@@ -713,21 +756,54 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False):
         function=function,
         reserved_micros=config.reserve_micros,
         bucket_ids=ids,
+        route_snapshot=selection(config),
+        reservation_key=key,
     )
+    from .ai_accounting import reserve_child
+
+    reserve_child(db, usage, usage.route_snapshot)
+    from .db import Job
+    from .learning_controller import generation_guard
+
+    job = db.get(Job, job_id)
+    unit_id = (job.payload or {}).get("unit_id") if job else None
+    guard = generation_guard(db, unit_id) if unit_id else None
+    if guard:
+        job.payload = {**job.payload, "controller_guard": guard}
     db.add(usage)
     db.flush()
     return usage
 
 
 def settle(db, usage, result=None, failed=False):
-    usage.status = "failed_unknown" if failed else "completed"
+    persistent = isinstance(usage, Usage)
+    if persistent:
+        db.flush()
+        usage = db.scalar(select(Usage).where(Usage.id == usage.id).with_for_update().execution_options(populate_existing=True))
+        if usage.settlement_version:
+            return
+        usage.settlement_version = 1
+    known = result is not None and result.cost_micros is not None
+    if persistent and result:
+        usage.telemetry = result.telemetry or {}
+        usage.cost_source = result.cost_source
+    # Token estimates are kept apart from billed amounts, including operator
+    # probes which have no child Usage row.
+    if result and getattr(usage, "provider", None) == "openrouter" and result.cost_source not in ("reported", "generation", "cancelled"):
+        usage.estimated_micros = result.cost_micros
+        known = result.cost_micros == 0 and result.input_tokens == 0 and result.output_tokens == 0
+        if not known:
+            usage.cost_source = "unknown"
+    usage.status = ("failed_billed" if known else "failed_unknown") if failed else "completed"
+    if failed and result and result.cost_source == "cancelled":
+        usage.status = "failed_not_sent"
     if result:
         usage.input_tokens = result.input_tokens
         usage.output_tokens = result.output_tokens
-        usage.cost_micros = result.cost_micros
+        usage.cost_micros = result.cost_micros if known else None
         if hasattr(usage, "search_calls"):
             usage.search_calls = result.search_calls
-    if result and result.cost_micros is not None:
+    if known:
         for name in usage.bucket_ids:
             db.execute(
                 update(UsageBucket)
@@ -742,9 +818,15 @@ def settle(db, usage, result=None, failed=False):
             config = db.get(ProviderConfig, 1)
             config.emergency_stop = True
             config.status = "Preisobergrenze überschritten. Notfallstopp wurde aktiviert. Abrechnung prüfen."
+    if persistent:
+        from .ai_accounting import settle_child
+
+        settle_child(db, usage)
 
 
 def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False, private_probe=False):
+    started = time.monotonic()
+    billing_result = None
     if synthetic_fixture:
         from .fixtures import FIXTURE_ID, PACKAGE_FIXTURE_ID, trusted_payload, worksheet
 
@@ -754,7 +836,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             fixture_id = PACKAGE_FIXTURE_ID
         payload = trusted_payload(function, fixture_id)
         image_bytes = worksheet(fixture_id) if function == "extract" else None
-    external_allowed(config, bool(image_bytes), synthetic_fixture)
+    external_allowed(config, bool(image_bytes), synthetic_fixture, operator_probe=private_probe)
     if function == "extract":
         from .extraction import request_payload
 
@@ -834,11 +916,20 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             model_type = s.AssignedCoachingReviewOutput
     catalog_context = payload.get("catalog_context")
     response_type = model_type
+    controller_proposal = function == "coach" and bool(payload.get("learning_goals")) and bool(payload.get("controller_context"))
+    if controller_proposal:
+        from .learning_controller import proposal_model
+
+        response_type = proposal_model(response_type)
     if catalog_context:
         from .catalog_ai import augmented_model
 
-        response_type = augmented_model(model_type)
+        response_type = augmented_model(response_type)
     schema = strict_schema(response_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    if controller_proposal:
+        proposal = schema["$defs"]["ActionProposal"]["properties"]
+        proposal["question_ids"]["items"]["enum"] = [q["question_id"] for q in payload["completed_questions"]]
+        proposal["learning_goal_id"] = {"anyOf": [{"type": "string", "enum": [g["id"] for g in payload["learning_goals"]]}, {"type": "null"}]}
     if visual_functions and "Presentation" in schema.get("$defs", {}):
         schema["$defs"]["Presentation"]["properties"]["blocks"]["maxItems"] = 2
     if visual_functions and "Graphic" in schema.get("$defs", {}):
@@ -880,6 +971,19 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     review_only = function == "coach" and bool(payload.get("defer_practice"))
     instructions = system_text(function, review_only=review_only)
+    if controller_proposal:
+        instructions += ("\nErgänze einen begrenzten next_step-Vorschlag am vorhandenen Lernziel mit vorhandenen question_ids als Belegen. "
+            "Die kurze Begründung ist eine Entscheidungserklärung, kein interner Gedankengang. "
+            "Bei unklarer fester Prüfung clarify_assessment; bei Fehlern gezielt erklären/anders darstellen; "
+            "nach Hilfe mit einer neuen Aufgabe prüfen; bei selbstständigem Erfolg Anwendung oder späteren Abruf vorschlagen. "
+            "Keine Diagnose, erfundenen Hilfen, Termine, Links oder Datenbank-/Werkzeugbefehle. "
+            "Verbindliche Entscheidung und Kostenfreigabe bleiben beim Server.")
+    if payload.get("controller_next_step"):
+        instructions += ("\ncontroller_next_step ist ein serverseitig zugelassener Lernvorschlag. "
+            "Bei transfer eine neue kleine Anwendung derselben bestätigten Regel; bei visual_example eine andere "
+            "geprüfte Darstellung in explanation; bei review_prerequisite nur ausdrücklich belegte Voraussetzungen "
+            "innerhalb der angeforderten Ziele prüfen. Die festen practice_tasks, math_tasks und Quellen bleiben verbindlich. "
+            "Keine bereits gezeigte Antwort als neuen selbstständigen Abruf ausgeben.")
     if visual_functions:
         instructions += subject_content.RULES
     if catalog_context:
@@ -1138,14 +1242,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     worst = (
         0
         if account_billing
-        else math.ceil(
-            (bound * config.input_per_million_micros + config.max_output_tokens * config.output_per_million_micros)
-            / 1_000_000
-        )
+        else (bound * config.input_per_million_micros + config.max_output_tokens * config.output_per_million_micros + 999_999) // 1_000_000
     )
     if worst > config.reserve_micros:
         raise ProviderError(
-            "Material überschreitet die konfigurierte konservative Kostenreservierung. Material kürzen oder Preisobergrenze prüfen."
+            "Material überschreitet die konfigurierte konservative Kostenreservierung. Material kürzen oder Preisobergrenze prüfen.",
+            billing_result=Result({}, 0, 0, 0, telemetry={"pre_dispatch": True}, cost_source="cancelled"),
         )
     if config.provider == "codex":
         worker_request = {
@@ -1175,7 +1277,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Der Codex-Lernworker ist nicht erreichbar. Bitte die Verbindung im Betrieb prüfen."
             ) from None
     else:
-        key = decrypt(config.encrypted_key)
+        key = settings.openrouter_api_key if config.provider == "openrouter" and settings.openrouter_api_key else decrypt(config.encrypted_key)
         headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
         if config.provider == "openai":
             content = [{"type": "input_text", "text": user_text}]
@@ -1197,6 +1299,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             }
             url = "https://api.openai.com/v1/responses"
         elif config.provider == "openrouter":
+            from .model_routing import selection
+
+            route = selection(config)
+            # Documented request-level opt-out overrides response-cache presets.
+            headers["X-OpenRouter-Cache"] = "false"
             content = [{"type": "text", "text": user_text}]
             if image_data:
                 image_url = {"url": "data:image/jpeg;base64," + image_data}
@@ -1210,11 +1317,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 if "upstream=" in config.capability_evidence
                 else ""
             )
-            if not upstream:
+            if not upstream and not route:
                 raise ProviderError(
                     "OpenRouter benötigt einen ausdrücklich freigegebenen upstream=<slug> im Fähigkeitsnachweis."
                 )
-            if synthetic_fixture or config.model.endswith(":free"):
+            if config.model.endswith(":free"):
                 verify_free_endpoint(config.model, upstream, bool(image_data))
             body = {
                 "model": config.model,
@@ -1231,21 +1338,36 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "temperature": 0,
                 "messages": [{"role": "system", "content": instructions}, {"role": "user", "content": content}],
                 "provider": {
-                    "only": [upstream],
+                    "only": route["route"]["upstreams"] if route else [upstream],
                     "allow_fallbacks": False,
                     "require_parameters": True,
-                    "data_collection": "allow" if synthetic_fixture and not private_probe else "deny",
-                    "zdr": bool(config.openrouter_require_zdr) if not synthetic_fixture or private_probe else False,
+                    "data_collection": "deny" if route else "allow" if synthetic_fixture and not private_probe else "deny",
+                    "zdr": True if route else bool(config.openrouter_require_zdr) if not synthetic_fixture or private_probe else False,
                 },
                 "response_format": {
                     "type": "json_schema",
                     "json_schema": {"name": "schulpilot", "strict": True, "schema": schema},
                 },
             }
-            if synthetic_fixture or config.model.endswith(":free"):
+            if config.model.endswith(":free"):
                 body["provider"]["max_price"] = {"prompt": 0, "completion": 0, "request": 0}
                 body["reasoning"] = {"enabled": False, "exclude": True}
-            url = "https://openrouter.ai/api/v1/chat/completions"
+            else:
+                body.pop("temperature", None)
+                body["provider"]["max_price"] = {
+                    "prompt": config.input_per_million_micros / 1_000_000,
+                    "completion": config.output_per_million_micros / 1_000_000,
+                    "request": 0,
+                }
+                body["reasoning"] = {"effort": "medium", "exclude": True}
+                # No search, audio, plugins, stored completions or hidden
+                # cross-family prompt-cache keys. No cache saving assumed.
+                body["store"] = False
+                if config.model.startswith("openai/gpt-6"):
+                    body["prompt_cache_options"] = {"mode": "explicit"}
+            region = route.get("region", "standard")
+            host = {"standard": "openrouter.ai", "eu": "eu.openrouter.ai", "us": "us.openrouter.ai"}[region]
+            url = "https://" + host + "/api/v1/chat/completions"
         else:
             raise ProviderError("Unbekannter Anbieter.")
         try:
@@ -1280,6 +1402,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             ) from None
         if not isinstance(raw, dict):
             raise ValueError("invalid envelope")
+        if config.provider == "openrouter":
+            from .ai_accounting import response_metrics
+
+            billing_result = Result({}, **response_metrics(raw, (time.monotonic() - started) * 1000,
+                response.headers.get("x-request-id")))
         # OpenRouter can return HTTP 200 with only an error after generation
         # has started. An HTTP success is not a completed learning response.
         if config.provider == "openrouter" and raw.get("error") is not None:
@@ -1342,6 +1469,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     omit_absent_presentations(item)
 
         omit_absent_presentations(data)
+        action_proposal = None
+        if controller_proposal:
+            from .learning_controller import checked_proposal
+
+            action_proposal = checked_proposal(data.pop("next_step"), payload)
         catalog_assignment = None
         if catalog_context:
             from .catalog_ai import checked_assignment
@@ -1425,17 +1557,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             and math.isfinite(reported)
             and reported >= 0
         ):
-            cost = math.ceil(reported * 1_000_000)
+            from .ai_accounting import micros
+
+            cost = micros(reported)
         elif (
             not account_billing
             and isinstance(input_tokens, int)
             and isinstance(output_tokens, int)
             and min(input_tokens, output_tokens) >= 0
         ):
-            cost = math.ceil(
-                (input_tokens * config.input_per_million_micros + output_tokens * config.output_per_million_micros)
-                / 1_000_000
-            )
+            cost = (input_tokens * config.input_per_million_micros + output_tokens * config.output_per_million_micros + 999_999) // 1_000_000
             if config.provider == "codex":
                 # The worker reports hosted search separately from model tokens.
                 search_calls = raw.get("search_calls")
@@ -1446,7 +1577,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         search_count = raw.get("search_calls") if config.provider == "codex" else None
         if type(search_count) is not int or search_count < 0:
             search_count = None
-        return Result(data, input_tokens, output_tokens, cost, search_count, catalog_assignment)
+        if billing_result:
+            billing_result.data, billing_result.catalog_assignment = data, catalog_assignment
+            billing_result.action_proposal = action_proposal
+            if billing_result.cost_micros is None:
+                billing_result.cost_micros, billing_result.cost_source = cost, "estimate"
+            return billing_result
+        return Result(data, input_tokens, output_tokens, cost, search_count, catalog_assignment, action_proposal=action_proposal)
+    except ProviderError as error:
+        error.billing_result = billing_result
+        raise
     except ValidationError as error:
         # Only known schema field names and numeric positions, never input,
         # unknown extra keys, validator context or echoed provider content.
@@ -1478,11 +1618,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         ]
         raise ProviderError(
             "Die KI-Ausgabe erfüllt die Aufgabenprüfung nicht. Es wurden keine Ersatzaufgaben erstellt. Prüfstellen: "
-            + ", ".join(locations)
+            + ", ".join(locations), billing_result=billing_result,
         ) from None
     except (ValueError, KeyError, IndexError, TypeError):
         raise ProviderError(
-            "Die KI-Ausgabe ist unvollständig, abgelehnt oder nicht als sichere Aufgabenstruktur validierbar. Es wurden keine erfundenen Ersatzaufgaben erstellt."
+            "Die KI-Ausgabe ist unvollständig, abgelehnt oder nicht als sichere Aufgabenstruktur validierbar. Es wurden keine erfundenen Ersatzaufgaben erstellt.",
+            billing_result=billing_result,
         ) from None
 
 

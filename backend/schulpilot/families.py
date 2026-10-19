@@ -437,10 +437,13 @@ def delete_account(data: s.ConfirmPassword, p=Depends(parent), db=Depends(get_db
 def export_child(db, child):
     from .catalog_models import CatalogRefresh, LearningTipContext, LearningTipInteraction
     from .db import (
+        ChildCostBucket,
         ChildSubject,
         GradeImport,
         GradeSourceSlot,
         LanguageProject,
+        LearningEvent,
+        LearningMemory,
         NotificationRead,
         SchoolGrade,
         VocabularyAction,
@@ -453,6 +456,9 @@ def export_child(db, child):
     )
 
     result = {"child": child_data(db, child), "grade_settings": {"planning_enabled": child.grade_planning_enabled}}
+    for model in (LearningMemory, LearningEvent, ChildCostBucket):
+        result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
+            for row in db.scalars(select(model).where(model.child_id == child.id))]
     for model in (LearningTipContext, LearningTipInteraction, CatalogRefresh):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
             for row in db.scalars(select(model).where(model.child_id == child.id))]

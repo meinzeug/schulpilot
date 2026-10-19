@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'ai_cost_panel.dart';
 import 'app_version.dart';
 import 'codex_model_picker.dart';
 import 'dashboard.dart';
@@ -847,6 +848,8 @@ class _AdminScreenState extends State<AdminScreen> {
                   builder: (data, _) => AdminOperationCards(data),
                 ),
                 const SizedBox(height: 20),
+                AiCostPanel(widget.state),
+                const SizedBox(height: 20),
                 Panel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -882,7 +885,14 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
           _AdminSection(
             offstage: section != 1,
-            child: ProviderForm(widget.state, config, onRefresh: refresh),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ProviderForm(widget.state, config, onRefresh: refresh),
+                const SizedBox(height: 20),
+                AiRoutingPanel(widget.state),
+              ],
+            ),
           ),
           _AdminSection(
             offstage: section != 2,

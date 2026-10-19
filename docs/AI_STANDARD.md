@@ -1,3 +1,13 @@
+# Neuer Auftrag19.10.2026: OpenRouter-Modellmix
+
+Der neue Ausbau führt den expliziten OpenRouter-Mix ein. Umsetzung, technische
+Prüfungen, Kostenmessung, verbleibende Datenschutzvoraussetzungen und sicherer
+Operatorwechsel: [ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Tatsächlich
+aktiver Provider und Produktionsstand stehen in STATUS.md; Code-Deployment
+schaltet bestehende Codex-Konfigurationen nicht automatisch um.
+
+## Historischer Free-/Codex-Standard
+
 # Änderung am 15.10.2026
 
 Der Betreiber hat den dauerhaften Wechsel auf Codex CLI mit `--search` beauftragt. Der folgende Free-Standard dokumentiert den früheren Betrieb und dessen bewusste Konfigurationsentscheidung. Für die aktuelle Codex-Auswahl, eigene Anmeldung und technische Aktivierung gilt [CODEX.md](CODEX.md). Kein automatischer Providerfallback.

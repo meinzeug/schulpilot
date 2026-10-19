@@ -276,7 +276,7 @@ def test_operator_probe_is_durable_bounded_and_accounts_for_global_usage(api, mo
     def provider(config, function, payload, **kwargs):
         assert payload == {} and kwargs == {"synthetic_fixture": True, "private_probe": True}
         calls.append(function)
-        return Result({}, 30, 20, 0)
+        return Result({}, 30, 20, 0, cost_source="reported")
 
     monkeypatch.setattr(operator_probe, "request_provider", provider)
     queued = api.post("/api/setup/provider/probe")
@@ -331,7 +331,7 @@ def test_operator_probe_does_not_approve_a_changed_provider_configuration(api, m
         with DB.begin() as db:
             current = db.get(ProviderConfig, 1)
             current.revision += 1
-        return Result({}, 30, 20, 0)
+        return Result({}, 30, 20, 0, cost_source="reported")
 
     monkeypatch.setattr(operator_probe, "request_provider", changed)
     job_id = api.post("/api/setup/provider/probe").json()["id"]

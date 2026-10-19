@@ -19,7 +19,7 @@ from .catalog_models import (
     LearningTipInteraction,
 )
 from .catalog_search import MATCHER_VERSION, current_snapshot, incompatible, known_class_topics, search_topics
-from .db import get_db, now
+from .db import Attempt, LearningMemory, get_db, now
 from .security import authenticated, child_access, family_access, rate_limit
 from .subjects import owned_subject, subject_data
 from .vocabulary import lock_child
@@ -113,6 +113,7 @@ def projection(db, p, child, kind, resource, *, limit=3):
         "recommended": [],
         "additional": [],
         "has_more": False,
+        "supports_media_return": True,
     }
     if not snapshot:
         return base
@@ -131,6 +132,10 @@ def projection(db, p, child, kind, resource, *, limit=3):
         "source_confirmed": kind != "material" or resource.confirmed,
         "can_respond": p.user.role == "child" or family_access(db, p, child.family_id)[1].permission != "view",
     }
+    if kind == "unit":
+        memory = db.get(LearningMemory, resource.id)
+        media = (memory.working or {}).get("media") if memory else None
+        base["media_return"] = media if media and (p.user.role == "parent" or media.get("user_id") == p.user.id) else None
     # A delayed local job must not expose stale links as a current recommendation.
     if not source["ready"]:
         return base | {"state": "source_changed"}
@@ -185,6 +190,22 @@ def projection(db, p, child, kind, resource, *, limit=3):
         if m["topic_id"] in ids
     ]
     contents = contents_for(db, child, source["subject_id"], ids, limit, source["title"] + "\n" + source["content"])
+    if kind == "unit":
+        from .learning_controller import decide
+
+        action, _ = decide(db, resource)
+        focused = action["resources"]
+        by_id = {item["id"]: item for item in focused + contents["recommended"] + contents["additional"]}
+        ordered = list(dict.fromkeys(item["id"] for item in focused + contents["recommended"] + contents["additional"]))
+        selected_items = [by_id[key] for key in ordered][:limit]
+        contents["recommended"] = [item for item in selected_items if item["relation"] == "known_level"]
+        contents["additional"] = [item for item in selected_items if item["relation"] != "known_level"]
+        existing = {row["id"] for row in rows}
+        for item in focused:
+            if item["topic_id"] not in existing:
+                rows.append({"id": item["topic_id"], "title": item["topic_title"], "quality": "suggestion",
+                    "context_ref": "learning_support", "known_level": item["relation"] == "known_level", "empty_curated": False})
+                existing.add(item["topic_id"])
     recent_links = []
     if p.user.role == "parent":
         recent_links = [
@@ -204,6 +225,11 @@ def projection(db, p, child, kind, resource, *, limit=3):
     qualities = {row["id"]: row["quality"] for row in rows}
     for item in contents["recommended"] + contents["additional"]:
         item["match_quality"] = qualities.get(item["topic_id"], "suggestion")
+    rejected_contents = {event.content_id for event in db.scalars(select(LearningTipInteraction).where(
+        LearningTipInteraction.context_id == context.id, LearningTipInteraction.kind.in_(["broken", "not_helpful"])))
+        if event.data.get("source_fingerprint") == source["source_fingerprint"]}
+    for key in ("recommended", "additional"):
+        contents[key] = [item for item in contents[key] if item["id"] not in rejected_contents]
     return base | {
         "state": "ready",
         "selection_needs_confirmation": stale,
@@ -332,14 +358,15 @@ def selection(
 
 class Interaction(s.Strict):
     request_key: str = Field(min_length=8, max_length=80)
-    kind: Literal["open", "not_relevant"]
+    kind: Literal["open", "not_relevant", "watched", "skipped", "not_helpful", "broken"]
     revision: int | None = Field(default=None, ge=1)
     content_id: str | None = Field(default=None, max_length=100)
     topic_id: str = Field(min_length=1, max_length=100)
+    question_id: str | None = Field(default=None, max_length=60)
 
     @model_validator(mode="after")
     def needs_content(self):
-        if self.kind == "open" and not self.content_id:
+        if self.kind in ("open", "watched", "skipped", "not_helpful", "broken") and not self.content_id:
             raise ValueError("Der gespeicherte Inhaltsverweis fehlt.")
         return self
 
@@ -349,6 +376,14 @@ def interaction(
     child_id: str, kind: ResourceKind, resource_id: str, data: Interaction, p=Depends(authenticated), db=Depends(get_db)
 ):
     child, resource = owned_resource(db, p, child_id, kind, resource_id, write=data.kind != "open")
+    if data.kind not in ("open", "not_relevant") and (p.user.role != "child" or kind != "unit"):
+        raise HTTPException(403, "Diese Rückmeldung gehört zum eigenen Kinder-Lernschritt.")
+    if kind == "unit":
+        from .learning import get_unit, question
+
+        resource = get_unit(db, p, resource_id, lock=True)
+        if data.question_id:
+            question(resource, data.question_id)
     if db.bind.dialect.name == "postgresql":
         db.execute(
             text("SELECT pg_advisory_xact_lock(:key)"),
@@ -376,8 +411,7 @@ def interaction(
     ):
         raise HTTPException(422, "Dieser Verweis gehört nicht zu den aktuellen Lerntipps.")
     source = context_source(db, kind, resource)
-    db.add(
-        LearningTipInteraction(
+    event = LearningTipInteraction(
             child_id=child.id,
             user_id=p.user.id,
             context_id=view["context_id"],
@@ -385,9 +419,44 @@ def interaction(
             kind=data.kind,
             request_key=data.request_key,
             request_digest=digest,
-            data={"topic_id": data.topic_id, "source_fingerprint": source["source_fingerprint"]},
+            data={"topic_id": data.topic_id, "source_fingerprint": source["source_fingerprint"], "question_id": data.question_id},
         )
-    )
+    if data.kind not in ("open", "not_relevant"):
+        opened = db.scalar(select(LearningTipInteraction).where(
+            LearningTipInteraction.context_id == view["context_id"], LearningTipInteraction.user_id == p.user.id,
+            LearningTipInteraction.content_id == data.content_id, LearningTipInteraction.kind == "open"
+        ).order_by(LearningTipInteraction.created.desc(), LearningTipInteraction.id.desc()).limit(1))
+        if not opened or opened.data.get("source_fingerprint") != source["source_fingerprint"]:
+            raise HTTPException(409, "Öffne zuerst den aktuellen Lerntipp.")
+        if data.question_id != opened.data.get("question_id"):
+            raise HTTPException(409, "Diese Rückmeldung gehört zu einer anderen Aufgabe. Bitte den ursprünglichen Lerntipp öffnen.")
+        event.data = {**event.data, "open_id": opened.id}
+        duplicate = next((r for r in db.scalars(select(LearningTipInteraction).where(
+            LearningTipInteraction.context_id == view["context_id"], LearningTipInteraction.user_id == p.user.id,
+            LearningTipInteraction.content_id == data.content_id, LearningTipInteraction.kind == data.kind))
+            if r.data.get("open_id") == opened.id), None)
+        if duplicate:
+            return {"saved": True, "kind": duplicate.kind}
+    db.add(event)
+    db.flush()
+    if kind == "unit" and p.user.role == "child" and data.kind != "not_relevant":
+        from .learning_controller import observe
+
+        media = {"content_id": data.content_id, "topic_id": data.topic_id, "question_id": data.question_id,
+            "status": "opened" if data.kind == "open" else data.kind, "user_id": p.user.id,
+            "interaction_id": event.id, "source_fingerprint": source["source_fingerprint"]}
+        media["open_id"] = event.id if data.kind == "open" else event.data["open_id"]
+        if data.kind == "watched" and resource.status in ("active", "paused"):
+            answered = db.scalar(select(Attempt.id).where(Attempt.unit_id == resource.id,
+                Attempt.question_id == data.question_id, Attempt.outcome.in_(["correct", "uncertain"])))
+            if data.question_id and not answered:
+                from .learning import record
+
+                record(db, child.id, "explanation", {"question_id": data.question_id,
+                    "via": "self_reported_media", "interaction_id": event.id}, resource.id)
+        observe(db, resource, "media_opened" if data.kind == "open" else "media_returned", "media:" + event.id,
+            ["tip_interaction:" + event.id], working_patch={"media": media,
+                "media_return": data.kind in ("watched", "skipped", "not_helpful", "broken")})
     db.commit()
     return {"saved": True, "kind": data.kind}
 

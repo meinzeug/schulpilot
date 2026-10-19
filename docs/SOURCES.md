@@ -1,5 +1,7 @@
 # Offizielle Quellen und geprüfte Versionen
 
+Ausbau19.10.2026: OpenRouter-Routing, ZDR, Medium-Reasoning, Gebühren, Cache-Opt-out und Generation-Abgleich anhand der offiziellen Dokumentation geprüft. Konkrete Links, Endpunktpreise, Messwerte und Grenzen in [ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Keine SDK-/Paketaktualisierung; Flutter3.47.7/Dart3.13.5 und bestehende Backend-Abhängigkeiten bleiben fixiert. Schema0023 additiv.
+
 Praxistestkorrekturen, geprüft am 19.10.2026:
 
 - [RHS: How plants absorb water](https://www.rhs.org.uk/advice/understanding-plants/how-plants-absorb-water):

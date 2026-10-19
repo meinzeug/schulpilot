@@ -321,6 +321,7 @@ class ParentLearningBrief extends StatelessWidget {
     final day = data['day_summary'] as Map? ?? {};
     final plan = data['plan'] as Map? ?? {};
     final next = (plan['today'] as List? ?? []).firstOrNull;
+    final guidance = data['learning_guidance'] as Map?;
     final independent = (evidence['independent_tasks'] as num? ?? 0).toInt();
     final open = (evidence['uncertain_tasks'] as num? ?? 0).toInt();
     final help = (day['help_requests'] as num? ?? 0).toInt();
@@ -337,6 +338,8 @@ class ParentLearningBrief extends StatelessWidget {
         'Das übernimmt die App',
         open > 0
             ? 'Für $open offene Bewertungen gibt es eine Antwortprüfung in der Lernrunde. Offen bedeutet nicht falsch.'
+            : guidance != null
+            ? '${guidance['subject']} · ${guidance['topic']}: ${guidance['title']}. ${guidance['reason']}'
             : next is Map
             ? 'Als Nächstes: ${next['subject']} · ${next['topic']}. Die Übungen kommen in kleinen Runden.'
             : 'Gespeicherten Stoff in kleinen Runden üben und später erneut abrufen.',

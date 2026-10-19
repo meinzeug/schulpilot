@@ -1,5 +1,12 @@
 # Betrieb
 
+## Adaptive Lernbegleitung / OpenRouter, Schema0023
+
+Operatoranleitung, Geldbeträge/Gebührenbelege, Datenschutzrouten, begrenzte Probe
+und Rückweg in [ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Aktive Version,
+Backup und tatsächliche Abnahme ausschließlich STATUS.md/Handoff entnehmen.
+Keine zusätzlichen Dienste oder Firebase-Änderungen.
+
 ## Fachhefter1.6.1+37
 
 Aktiv20261018T155252Z-56f1112, Schema0018, Backup success/Exit0 und sieben

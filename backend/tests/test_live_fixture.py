@@ -77,8 +77,9 @@ def test_fixture_rejects_private_edits_and_records_real_provider(api, monkeypatc
                 10,
                 20,
                 0,
+                cost_source="reported",
             )
-        return providers.Result(sample_unit(), 20, 100, 0)
+        return providers.Result(sample_unit(), 20, 100, 0, cost_source="reported")
 
     monkeypatch.setattr("schulpilot.worker.request_provider", response)
     q = api.post(f"/api/materials/{material['id']}/extract", headers={"Idempotency-Key": "extract"}).json()

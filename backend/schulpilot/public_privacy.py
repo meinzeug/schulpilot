@@ -50,7 +50,9 @@ PARAGRAPHS = (
         "Klick wird Sofatutor im Browser oder einer vom Betriebssystem gewählten App geöffnet. Wir übermitteln dabei keine "
         "Hefttexte, Fotos oder SCHULPILOT-Zugänge. Der externe Anbieter verarbeitet den Seitenaufruf nach seinen eigenen "
         "Datenschutzregeln; eine Anmeldung und ein Abo können nötig sein. Ein Linkaufruf belegt weder Wiedergabe noch "
-        "Verständnis und wird nicht als gelöste Übung oder Lernzeit gebucht. Andere Webseiten werden nicht überwacht.",
+        "Verständnis und wird nicht als gelöste Übung oder Lernzeit gebucht. Eine eigene Rückmeldung wie „angesehen“ "
+        "bleibt eine Selbstauskunft; danach angebotene neue Übungen prüfen den bestätigten Unterrichtsstoff. "
+        "Andere Webseiten werden nicht überwacht.",
     ),
     (
         "Materialien und KI-Lernbegleitung",
@@ -58,11 +60,15 @@ PARAGRAPHS = (
         "dem eigenen Gerät für höchstens 24 Stunden fortsetzen (maximal acht Seiten und drei MB); Abmelden oder Entfernen "
         "löscht diese lokale Warteschlange. Der Server entfernt Bildmetadaten. Persönliche Angaben im Bild müssen vor dem "
         "Upload zugeschnitten werden. Private Bilder sind ausschließlich nach Anmeldung und Berechtigungsprüfung abrufbar. "
+        "Noch nicht abgegebene Antwortentwürfe werden zur Wiederaufnahme in der eigenen Sitzung gespeichert. "
+        "Zusätzlich hält das eigene Gerät höchstens acht Entwürfe für 24 Stunden; Abmelden entfernt sie. "
         "Die freigegebene KI-Verarbeitung nutzt den vom Betreiber ausgewählten Anbieter: OpenAI, OpenRouter oder die "
         "isolierte Codex-Anbindung von OpenAI. Der konkret verwendete Anbieter wird am Lerninhalt angezeigt. Namen, Passwörter und Familienkennungen "
         "werden dafür nicht benötigt. Verarbeitet werden bestätigte Unterrichtsinhalte und bei der Lernbegleitung Aufgaben, "
         "Antworten, Fehlversuche und Hinweise. Die Anbieterwahl erfolgt serverseitig; es gibt keine heimlichen Providerwechsel. "
-        "Die zusätzliche Zero-Data-Retention-Anforderung ist im beauftragten OpenRouter-Free-Standard nicht aktiviert. Eine vollständige "
+        "Der optionale bezahlte OpenRouter-Modellmix erzwingt geprüfte ZDR-Upstreams, ausgeschlossene Datennutzung und "
+        "freigegebene Modelle; er benötigt zusätzlich eine dokumentierte Prüfung der OpenRouter-Kontoeinstellungen. "
+        "Im älteren OpenRouter-Free-Standard war die zusätzliche Zero-Data-Retention-Anforderung nicht aktiviert. Eine vollständige "
         "Löschung bei allen beteiligten Anbietern allein aufgrund einer API-Einstellung wird nicht behauptet. "
         "Der öffentliche Testraum verwendet ausschließlich künstliche Daten und wird nach 24 Stunden gelöscht.",
     ),
@@ -86,7 +92,7 @@ PARAGRAPHS = (
         "Konto-, Lern- und Familiendaten liegen in der eigenen Datenbank auf dem SCHULPILOT-Server bei Hetzner. "
         "Private Materialien und Datenbank sind nicht öffentlich zugänglich. Sitzungen sind widerrufbar und Passwörter "
         "werden mit Argon2id gehasht. Materialien, Aufgaben, Antworten, Aktivitäten, Heftfragen, Wortlisten, Wiederholungsstände, "
-        "Sprachprojekte mit eigenen Entwürfen, Schulnoteneinträge und Nachrichten werden höchstens "
+        "Sprachprojekte, Lernposition, eigene Antwortentwürfe, begründete nächste Schritte, Schulnoteneinträge und Nachrichten werden höchstens "
         "365 Tage gespeichert; technische Aufträge 30 Tage; abgelaufene Zugangstokens und Sitzungen weitere sieben Tage; "
         "tägliche Backups 14 Tage. Backups werden vor einer Wiederherstellung mit zwischenzeitlichen Löschungen abgeglichen. "
         "Technische Betriebsprotokolle enthalten keine Fotos, vollständigen Kinderantworten oder Zugangsdaten.",

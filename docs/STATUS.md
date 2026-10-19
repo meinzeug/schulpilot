@@ -1,3 +1,29 @@
+# Ausbau in Abschlussprüfung · 1.10.0+45 · 19.10.2026
+
+Zustandsbehaftete Lernbegleitung, revisionsgebundene Antwortentwürfe, Medienrückkehr
+mit neuer bewusster Zweierprobe und OpenRouter-Modellmix/Kostenkontrolle implementiert.
+Migration0023 additiv. Architektur, Abnahmegrenzen, zehn Szenarien und Betrieb:
+[ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Bereinigte echte Messwerte in
+OPENROUTER_EVALUATION_2026_10_19.json.
+
+Aktiv vor diesem Release: weiterhin der unten dokumentierte Build44/Codex.
+Schlüssel aus ~/or.txt sicher ausschließlich serverseitig hinterlegt; kein
+Providerwechsel allein dadurch. OpenRouter-Inhaltslogging/Datenfreigabe im Konto
+noch nicht überprüfbar; neuer bezahlter Mix deshalb nicht für echte Daten aktiviert.
+Modellmetadaten und 25 kleine künstliche Antworten ersetzen keine volle
+Fünf-Fächer-/Astra-/Unter13-Freigabe.
+
+Zwischenprüfungen: vollständiger PostgreSQL-Lauf1074 bestanden, zwei veraltete
+Mock-/Textannahmen identifiziert und angepasst; kompletter Nachlauf läuft.
+110/57 gezielte PostgreSQL-Regressionen einschließlich neuer Zustände und Kosten
+bestanden. Flutter567 bestanden, nach lokaler Entwurfsserialisierung weitere47
+bestanden; kompletter abschließender Nachlauf läuft. Analyse/Ruff/Compile/Diff-
+und Schlüsselprüfung bestanden. Web, signierte Direct-APK und Play-AAB gebaut;
+letzter Wiederholungsbuild und anschließende echte HTTPS-/Emulatorabnahme laufen.
+Noch kein erfolgreicher Deploy von Build45 behauptet.
+
+## Vorheriger verifizierter Produktionsstand
+
 # Produktionsstand · 19.10.2026 · App1.9.0+44
 
 Öffentlich unter https://schulpilot.dorfspy.de verifiziert. Aktiver Release

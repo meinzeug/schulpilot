@@ -22,6 +22,7 @@ def main():
             "probe-private-route",
             "configure-codex",
             "probe-codex",
+            "configure-openrouter-mix",
         ],
     )
     parser.add_argument("--username", default="")
@@ -31,6 +32,11 @@ def main():
         help="Passwort ausschließlich über Standard-Eingabe lesen (lokale Automation)",
     )
     args = parser.parse_args()
+    if args.command == "configure-openrouter-mix":
+        from .openrouter_setup import configure
+
+        configure()
+        return
     if args.command == "configure-codex":
         from .codex_setup import configure
 

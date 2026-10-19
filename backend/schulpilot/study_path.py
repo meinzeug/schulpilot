@@ -31,7 +31,8 @@ from .db import (
     uid,
 )
 from .learning import record
-from .providers import ProviderError, config_for_function, request_provider, reserve, settle, source_excerpt_candidates
+from .model_routing import job_config
+from .providers import ProviderError, request_provider, reserve, settle, source_excerpt_candidates
 from .school_day import get_day, pages, planning_fingerprint
 from .security import authenticated, child_user, rate_limit
 
@@ -442,7 +443,7 @@ def process(job_id):
             if not job or job.status != "running":
                 return
             day, child, block, items = job_context(db, job)
-            config = config_for_function(db.get(ProviderConfig, 1), "unit")
+            config = job_config(db, job, "unit")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
@@ -508,7 +509,7 @@ def process(job_id):
             from .commerce import usage_terms
             from .providers import external_allowed
 
-            current_config = config_for_function(db.get(ProviderConfig, 1), "unit")
+            current_config = job_config(db, job, "unit")
             if (
                 current_config.revision != values["revision"]
                 or current_config.provider != values["provider"]
@@ -564,5 +565,5 @@ def process(job_id):
                 job.status, job.error, job.finished = "failed", reason[:500], int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result, failed=True)
+                    settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
         log.warning("study_block_failed type=%s", type(error).__name__)

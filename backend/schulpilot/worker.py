@@ -40,9 +40,10 @@ from .db import (
 from .families import remove_family, unlink_uploads
 from .fixtures import FIXTURE_ID, LIVE_FIXTURE_IDS, PACKAGE_FIXTURE_ID
 from .learning import record
+from .model_routing import job_config
 from .notifications import deliver_one
 from .notifications import prepare as prepare_notifications
-from .providers import ProviderError, config_for_function, request_provider, settle
+from .providers import ProviderError, request_provider, settle
 from .synthetic import sample_unit
 
 log = logging.getLogger("schulpilot.worker")
@@ -97,14 +98,15 @@ def process(job_id):
 
         process_language(job_id)
         return
-    if kind in ("coach", "coach_practice", "study_block", "tutor"):
-        from . import coaching, study_path, tutor
+    if kind in ("coach", "coach_practice", "study_block", "tutor", "controller_check"):
+        from . import coaching, controller_jobs, study_path, tutor
 
         {
             "coach": coaching.process,
             "coach_practice": coaching.process_practice,
             "study_block": study_path.process,
             "tutor": tutor.process,
+            "controller_check": controller_jobs.process,
         }[kind](job_id)
         return
     result = None
@@ -145,7 +147,7 @@ def process(job_id):
                     return
             elif job.kind == "unit":
                 source_pages = unit_sources(db, job)
-            config = config_for_function(db.get(ProviderConfig, 1), job.kind)
+            config = job_config(db, job, job.kind)
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage and (
                 usage.provider != config.provider
@@ -294,6 +296,7 @@ def process(job_id):
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
+            job_config(db, job)
             if not db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade)).rowcount:
                 return
             validate_job(db, job)
@@ -422,7 +425,7 @@ def process(job_id):
                 job.finished = int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result, failed=True)
+                    settle(db, usage, result or getattr(exc, "billing_result", None), failed=True)
         log.warning("job_failed id=%s type=%s", job_id, type(exc).__name__)
 
 
@@ -466,6 +469,10 @@ def maintenance():
         db.execute(delete(RateBucket).where(RateBucket.expires < int(now())))
         # Operational metadata, not invoices or private learning content.
         db.execute(delete(Usage).where(Usage.created < int(now()) - 90 * 86400))
+        from .db import ChildCostBucket
+
+        period_cutoff = datetime.fromtimestamp(now() - 90 * 86400, timezone.utc).strftime("%Y-%m")
+        db.execute(delete(ChildCostBucket).where(ChildCostBucket.period < period_cutoff))
         db.execute(delete(Audit).where(Audit.created < int(now()) - 180 * 86400))
         current_month = datetime.now(timezone.utc)
         oldest_period = f"{current_month.year - 1:04d}-{current_month.month:02d}"
@@ -596,6 +603,9 @@ def main():
             advance_one()
             if now() - last_maintenance > 60:
                 maintenance()
+                from .ai_accounting import reconcile_one
+
+                reconcile_one()
                 last_maintenance = now()
             with DB() as db:
                 job_id = claim(db)

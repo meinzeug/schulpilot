@@ -1,3 +1,24 @@
+Ausbau1.10.0+45 in Abschlussprüfung · 19.10.2026
+
+Zuerst docs/STATUS.md und docs/ADAPTIVE_OPENROUTER.md lesen. Neue Migration0023,
+Controller-/Entwurfs-/Sofatutor-Rückkehrpfade, OpenRouter-Routing und Abrechnung
+sind implementiert. Kein neuer Dienst oder Firebase-Umbau. Nur eigene künstliche
+Familien für Tests verwenden; keine echten Kinderantworten erzeugen.
+
+Vor Bereitstellung unverändert live: unten dokumentierter Build44 mit Codex.
+OPENROUTER_API_KEY liegt sicher in /etc/schulpilot/environment aus lokaler ~/or.txt.
+Keine Schlüsselausgabe und keine Übernahme in Flutter/Git. Der neue bezahlte Mix
+bleibt ohne Prüfung der Konto-Inhaltsprotokollierung und vollständige technische
+Probe nicht für echte Daten aktiviert. API-Zugriff und Guthaben wurden geprüft;
+25 verwertbare künstliche Antworten kosten laut Usage0,065440USD, unbekannte
+Abbrüche/Reservierungen bleiben getrennt. Keine vollständige Live-Fachabnahme.
+
+Builds/Regressionen und geplante eigene HTTPS-/Android-Abnahme laufen. Ergebnisse
+nach Abschluss am Anfang dieser Datei aktualisieren; keine Zustell-/Audio-/
+Produktionsfreigabe aus diesem Zwischenstand ableiten.
+
+Vorheriger abgeschlossener Handoff:
+
 Aktueller verifizierter Stand · 19.10.2026 · App1.9.0+44
 
 Website: https://schulpilot.dorfspy.de

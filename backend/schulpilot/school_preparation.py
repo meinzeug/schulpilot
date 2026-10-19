@@ -14,10 +14,10 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import load_only
 
 from .commerce import usage_terms
-from .db import DB, Child, Family, Job, Material, ProviderConfig, SchoolDay, Session, Usage, User, now, uid
+from .db import DB, Child, Family, Job, Material, SchoolDay, Session, Usage, User, now, uid
 from .fixtures import DAY_FIXTURE_IDS, LIVE_FIXTURE_IDS
 from .learning import record
-from .providers import ProviderError, Result, config_for_function, external_allowed, reserve, settle
+from .providers import ProviderError, Result, external_allowed, reserve, settle
 from .security import Principal, child_access, digest, rate_limit
 
 MAX_ATTEMPTS = 2
@@ -105,7 +105,9 @@ def validate_job(db, job):
         raise ProviderError("Dieser Vorbereitungsauftrag ist nicht mehr aktuell.")
     child, family = authority(db, day, state)
     _check_sources(db, day, state)
-    config = config_for_function(db.get(ProviderConfig, 1), job.kind)
+    from .model_routing import job_config
+
+    config = job_config(db, job)
     material = db.get(Material, job.payload.get("material_id"))
     fixture = bool(material and material.fixture_id in LIVE_FIXTURE_IDS and material.synthetic and family.synthetic)
     external_allowed(config, image=job.kind == "extract", synthetic_fixture=fixture)

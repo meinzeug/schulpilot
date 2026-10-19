@@ -709,6 +709,7 @@ class ProviderConfig(Base):
     max_output_tokens = Column(Integer, default=4000, nullable=False)
     global_limit_micros = Column(Integer, default=10_000_000, nullable=False)
     status = Column(String(500), default="Nicht konfiguriert", nullable=False)
+    routing_policy = Column(JSON, default=dict, server_default="{}", nullable=False)
 
 
 class UsageBucket(Base):
@@ -738,6 +739,68 @@ class Usage(Base):
     reserved_micros = Column(Integer, nullable=False)
     bucket_ids = Column(JSON, nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
+    route_snapshot = Column(JSON, default=dict, server_default="{}", nullable=False)
+    telemetry = Column(JSON, default=dict, server_default="{}", nullable=False)
+    cost_source = Column(String(24), default="unknown", server_default="unknown", nullable=False)
+    settlement_version = Column(Integer, default=0, server_default="0", nullable=False)
+    estimated_micros = Column(Integer)
+    child_budget_id = Column(String(80))
+    reserved_eur_micros = Column(Integer)
+    charged_eur_micros = Column(Integer)
+    allocated_fee_micros = Column(Integer)
+    reservation_key = Column(String(64), unique=True)
+
+
+class ChildCostBucket(Base):
+    __tablename__ = "child_cost_buckets"
+    id = Column(String(80), primary_key=True)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    period = Column(String(7), nullable=False)
+    calls = Column(Integer, default=0, nullable=False)
+    encumbered_eur_micros = Column(Integer, default=0, nullable=False)
+    known_eur_micros = Column(Integer, default=0, nullable=False)
+    unknown_calls = Column(Integer, default=0, nullable=False)
+
+
+class CreditPurchase(Base):
+    """Operator-recorded credit receipts; fees allocated only as credit is used."""
+
+    __tablename__ = "credit_purchases"
+    id = Column(String(64), primary_key=True)
+    credits_micros = Column(Integer, nullable=False)
+    fee_micros = Column(Integer, nullable=False)
+    consumed_micros = Column(Integer, default=0, nullable=False)
+    allocated_fee_micros = Column(Integer, default=0, nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class LearningMemory(Base):
+    """Working memory only; attempts remain the authoritative learning evidence."""
+
+    __tablename__ = "learning_memory"
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), primary_key=True)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    revision = Column(Integer, default=1, nullable=False)
+    plan_revision = Column(Integer, default=1, nullable=False)
+    source_signature = Column(String(64), nullable=False)
+    working = Column(JSON, default=dict, nullable=False)
+    decision = Column(JSON, default=dict, nullable=False)
+    updated = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class LearningEvent(Base):
+    __tablename__ = "learning_controller_events"
+    id = Column(String(32), primary_key=True, default=uid)
+    unit_id = Column(ForeignKey("learning_units.id", ondelete="CASCADE"), nullable=False, index=True)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_key = Column(String(100), nullable=False)
+    digest = Column(String(64), nullable=False)
+    kind = Column(String(32), nullable=False)
+    evidence = Column(JSON, nullable=False)
+    decision = Column(JSON, nullable=False)
+    strategy_version = Column(String(32), nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("unit_id", "event_key", name="uq_controller_event"),)
 
 
 class Job(Base):

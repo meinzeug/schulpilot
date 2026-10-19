@@ -35,6 +35,7 @@ from .db import (
     now,
     uid,
 )
+from .model_routing import job_config
 from .providers import ProviderError, config_for_function, external_allowed, request_provider, reserve, settle
 from .security import child_user, rate_limit
 
@@ -1154,7 +1155,7 @@ def process(job_id):
                 raise ProviderError(
                     "Quellen, Antworten oder Elternvorgaben wurden geändert. Bitte die aktuelle Lernbegleitung anfordern."
                 )
-            config = config_for_function(db.get(ProviderConfig, 1), "coach")
+            config = job_config(db, job, "coach")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
@@ -1175,14 +1176,22 @@ def process(job_id):
             from .catalog_ai import with_catalog_context
 
             payload = with_catalog_context(db, child, payload)
+            from .model_routing import enabled
+
+            if enabled(config):
+                from .learning_controller import projection
+
+                session = projection(db, unit)
+                payload["controller_context"] = {"strategy_version": session["strategy_version"],
+                    "action": session["action"], "observations": session["observations"]}
             db.rollback()
         result = request_provider(ProviderConfig(**values), "coach", payload)
         with DB.begin() as db:
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
+            unit = db.scalar(select(LearningUnit).where(LearningUnit.id == job.payload["unit_id"]).with_for_update())
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
-            unit = db.get(LearningUnit, job.payload["unit_id"])
             item = db.get(UnitCoaching, unit.id) if unit else None
             if not unit or not item or item.job_id != job.id or context(db, unit)[0] != job.payload["signature"]:
                 raise ProviderError(
@@ -1192,8 +1201,12 @@ def process(job_id):
                 raise ProviderError(
                     "Die verfügbare Lernzeit wurde während der Auswertung geändert. Bitte den aktuellen Plan öffnen."
                 )
-            verify_current_provider(db, unit, values, "coach")
+            verify_current_provider(db, unit, values, "coach", job)
             save_report(db, unit, item, result.data, sources, defer_practice=bool(job.payload.get("defer_practice")))
+            if result.action_proposal:
+                from .learning_controller import accept_proposal
+
+                accept_proposal(db, unit, result.action_proposal, job.id)
             if result.catalog_assignment:
                 from .catalog_ai import remember
 
@@ -1217,7 +1230,7 @@ def process(job_id):
                     item.status, item.reason = "failed", reason[:500]
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result, failed=True)
+                    settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
         log.warning("coach_failed type=%s", type(error).__name__)
 
 
@@ -1292,7 +1305,7 @@ def process_practice(job_id):
                 raise ProviderError(
                     "Die Quellen oder der nächste Lernschritt wurden geändert. Bitte den aktuellen Lernplan öffnen."
                 )
-            config = config_for_function(db.get(ProviderConfig, 1), "unit")
+            config = job_config(db, job, "unit")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
@@ -1314,6 +1327,15 @@ def process_practice(job_id):
                     "content": "\n\n".join(m["content"] for m in payload["materials"]),
                 },
             )
+            from .db import LearningMemory
+
+            memory = db.get(LearningMemory, unit.id)
+            proposal = (memory.working or {}).get("model_proposal") if memory else None
+            if proposal and proposal.get("status") == "accepted":
+                # A validated model suggestion shapes this explicitly requested
+                # round; it cannot change goals, canonical answers or the budget.
+                payload["controller_next_step"] = {k: proposal[k] for k in
+                    ("kind", "learning_goal_id", "expected_result", "on_success", "on_error")}
             if unit.school_day_id:
                 # A day can contain several independent stage chains. New
                 # practice must also avoid questions from those other stages.
@@ -1360,7 +1382,7 @@ def process_practice(job_id):
             for review in data["question_reviews"]:
                 review.pop("assessment_kind", None)
             data["next_unit"] = result.data
-            verify_current_provider(db, unit, values, "unit")
+            verify_current_provider(db, unit, values, "unit", job)
             save_report(
                 db,
                 unit,
@@ -1388,14 +1410,14 @@ def process_practice(job_id):
                 job.status, job.error, job.finished = "failed", reason[:500], int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
-                    settle(db, usage, result, failed=True)
+                    settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
         log.warning("coach_practice_failed type=%s", type(error).__name__)
 
 
-def verify_current_provider(db, unit, values, function):
+def verify_current_provider(db, unit, values, function, job):
     from .commerce import usage_terms
 
-    current = config_for_function(db.get(ProviderConfig, 1), function)
+    current = job_config(db, job, function)
     if (current.revision, current.provider, current.model) != (values["revision"], values["provider"], values["model"]):
         raise ProviderError("Die KI-Einstellungen wurden während der Vorbereitung geändert.")
     external_allowed(current)

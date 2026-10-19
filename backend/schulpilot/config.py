@@ -18,11 +18,13 @@ class Settings:
     smtp_from: str = os.getenv("SMTP_FROM", "")
     smtp_mode: str = os.getenv("SMTP_MODE", "starttls")
     master_key: str = os.getenv("MASTER_KEY", "")
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
     real_data_approved: bool = os.getenv("REAL_DATA_APPROVED", "false") == "true"
     privacy_evidence: str = os.getenv("PRIVACY_EVIDENCE", "")
     synthetic_demo: bool = os.getenv("SYNTHETIC_DEMO", "true") == "true"
     synthetic_ai_enabled: bool = os.getenv("SYNTHETIC_AI_ENABLED", "false") == "true"
     synthetic_ai_daily_limit: int = int(os.getenv("SYNTHETIC_AI_DAILY_LIMIT", "40"))
+    synthetic_paid_probe: bool = os.getenv("SYNTHETIC_PAID_PROBE", "false") == "true"
     fcm_service_account_file: str = os.getenv("FCM_SERVICE_ACCOUNT_FILE", "")
     fcm_service_account_json: str = ""
     fcm_public_config: str = os.getenv("FCM_PUBLIC_CONFIG", "")

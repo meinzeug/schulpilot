@@ -27,7 +27,8 @@ from .db import (
     uid,
 )
 from .learning import record
-from .providers import ProviderError, Result, config_for_function, external_allowed, request_provider, reserve, settle
+from .model_routing import job_config
+from .providers import ProviderError, Result, external_allowed, request_provider, reserve, settle
 from .security import Principal, authenticated, child_access, child_user, digest, rate_limit
 from .tutor_schemas import TutorOutput, TutorQuestion, TutorScope
 
@@ -397,7 +398,7 @@ def process(job_id):
             signature, payload, revisions = context(db, child, turn)
             if signature != job.payload["signature"]:
                 raise ProviderError("Die Frage, Heftseiten oder Lernvorgaben wurden geändert. Bitte frage erneut.")
-            config = config_for_function(db.get(ProviderConfig, 1), "tutor")
+            config = job_config(db, job, "tutor")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
@@ -445,7 +446,7 @@ def process(job_id):
             child, _ = authority(db, turn, job.payload["family_id"])
             if context(db, child, turn)[0] != job.payload["signature"]:
                 raise ProviderError("Die Frage, Heftseiten oder Lernvorgaben wurden geändert. Bitte frage erneut.")
-            config = config_for_function(db.get(ProviderConfig, 1), "tutor")
+            config = job_config(db, job, "tutor")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
@@ -482,7 +483,7 @@ def process(job_id):
                 turn.status, turn.error, turn.reply = "failed", reason[:500], None
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
-                settle(db, usage, result, failed=True)
+                settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
 
 
 def purge_source_turns(db, material_ids, *, child_id=None):

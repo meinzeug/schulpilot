@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-19",
+  "synthetic_only": true,
+  "budget_cap_usd": "0.25",
+  "models": {
+    "openai/gpt-6-luna": {
+      "reserved_requests": 22,
+      "known_billed_requests": 21,
+      "billed_micros_usd": 13350,
+      "unknown_cost_requests": 1,
+      "input_tokens": 46382,
+      "completion_tokens_including_reasoning": 17404,
+      "reasoning_tokens_subset": 8373,
+      "cached_tokens": 0,
+      "p50_ms": 11689,
+      "p95_ms": 16799
+    },
+    "openai/gpt-6.1-sol": {
+      "reserved_requests": 5,
+      "known_billed_requests": 4,
+      "billed_micros_usd": 52090,
+      "unknown_cost_requests": 1,
+      "input_tokens": 10680,
+      "completion_tokens_including_reasoning": 3073,
+      "reasoning_tokens_subset": 195,
+      "cached_tokens": 0,
+      "p50_ms": 15325,
+      "p95_ms": 21984
+    }
+  },
+  "billed_inference_micros_usd": 65440,
+  "held_micros_usd_including_unknown": 195440,
+  "actual_purchase_fees": null,
+  "actual_eur_cost": null,
+  "scenarios_are_hypotheses": true,
+  "scenario_tokens_per_call": {
+    "input": 4000,
+    "completion_including_reasoning": 1500
+  },
+  "scenario_mix": {
+    "luna": ".70",
+    "sol": ".28",
+    "astra": ".02"
+  },
+  "scenarios": [
+    {
+      "name": "normal_24_days_20_calls",
+      "calls_all_subjects_and_background_total": 480,
+      "inference_usd": "4.5816000",
+      "with_standard_fee_5_5_percent_usd": "4.8335880000",
+      "with_business_fee_8_percent_usd": "4.948128000"
+    },
+    {
+      "name": "exam_14_normal_10_intensive_days",
+      "calls_all_subjects_and_background_total": 680,
+      "inference_usd": "6.4906000",
+      "with_standard_fee_5_5_percent_usd": "6.8475830000",
+      "with_business_fee_8_percent_usd": "7.009848000"
+    },
+    {
+      "name": "intensive_24_days_40_calls",
+      "calls_all_subjects_and_background_total": 960,
+      "inference_usd": "9.1632000",
+      "with_standard_fee_5_5_percent_usd": "9.6671760000",
+      "with_business_fee_8_percent_usd": "9.896256000"
+    }
+  ],
+  "limits": [
+    "No human learning-effectiveness trial",
+    "No Astra inference tested",
+    "No complete five-subject end-to-end model comparison",
+    "One upstream error with unknown cost; one historical pre-dispatch hold conservatively retained",
+    "Images are represented in reported OCR usage, not an invented extra flat image fee",
+    "No prompt-cache saving measured; actual fees/FX and sustained traffic are unverified"
+  ]
+}

@@ -14,6 +14,7 @@ from . import (
     auth,
     coaching,
     commerce,
+    controller_jobs,
     families,
     google_login,
     grade_imports,
@@ -21,6 +22,7 @@ from . import (
     installation,
     language_projects,
     learning,
+    learning_controller,
     learning_progress,
     learning_tips,
     library,
@@ -29,6 +31,7 @@ from . import (
     notifications,
     public_privacy,
     releases,
+    routing_admin,
     school_day,
     study_path,
     subjects,
@@ -246,6 +249,9 @@ for router in (
     language_projects.router,
     subjects.router,
     learning_tips.router,
+    learning_controller.router,
+    controller_jobs.router,
+    routing_admin.router,
 ):
     app.include_router(router, prefix="/api")
 

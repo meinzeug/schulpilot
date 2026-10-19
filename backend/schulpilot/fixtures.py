@@ -8,12 +8,17 @@ import io
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from .evaluation_corpus import CASES
+from .audit_fixtures import cases
+from .audit_fixtures import image as audit_image
+from .evaluation_corpus import CASES as ORIGINAL_CASES
+
+CASES = ORIGINAL_CASES | cases()
 
 FIXTURE_ID = "fractions-v1"
 DAY_FIXTURE_IDS = ("fractions-day-1-v1", "fractions-day-2-v1")
 PACKAGE_FIXTURE_ID = "fractions-day-package-v1"
-LIVE_FIXTURE_IDS = (FIXTURE_ID, *DAY_FIXTURE_IDS, *CASES)
+LIVE_FIXTURE_IDS = (FIXTURE_ID, *DAY_FIXTURE_IDS, *ORIGINAL_CASES)
+AUDIT_FIXTURE_IDS = tuple(cases())
 CONTENT = (
     "Ein Bruch beschreibt Teile eines Ganzen. Der Nenner steht unter dem Bruchstrich "
     "und gibt an, in wie viele gleich große Teile das Ganze geteilt wird. "
@@ -30,9 +35,11 @@ SECOND_PAGE_CONTENT = (
 
 
 def worksheet(fixture_id=FIXTURE_ID):
-    if fixture_id not in LIVE_FIXTURE_IDS:
+    if fixture_id not in (*LIVE_FIXTURE_IDS, *AUDIT_FIXTURE_IDS):
         raise ValueError("Unknown server-owned fixture")
     if fixture_id in CASES:
+        if CASES[fixture_id].get("audit_page"):
+            return audit_image(CASES[fixture_id]["audit_page"])
         return evaluation_worksheet(CASES[fixture_id])
     image = Image.new("RGB", (1120, 760), "white")
     draw = ImageDraw.Draw(image)
@@ -96,7 +103,7 @@ def evaluation_worksheet(case):
 
 
 def trusted_payload(function, fixture_id=FIXTURE_ID):
-    if fixture_id not in (*LIVE_FIXTURE_IDS, PACKAGE_FIXTURE_ID):
+    if fixture_id not in (*LIVE_FIXTURE_IDS, *AUDIT_FIXTURE_IDS, PACKAGE_FIXTURE_ID):
         raise ValueError("Unknown server-owned fixture")
     result = {
         "function": function,

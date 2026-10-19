@@ -17,7 +17,8 @@ def config_data(config):
         for c in ProviderConfig.__table__.columns
         if c.name not in ("encrypted_key", "id")
     }
-    result["has_key"] = bool(config.encrypted_key)
+    result["has_key"] = bool(config.encrypted_key or (config.provider == "openrouter" and settings.openrouter_api_key))
+    result["key_source"] = "environment" if config.provider == "openrouter" and settings.openrouter_api_key else "encrypted_settings"
     site = runtime_settings()
     result["real_data_gate"] = bool(site.real_data_approved and site.privacy_evidence)
     result["codex_isolated_worker"] = bool(settings.codex_socket and settings.codex_approved)
@@ -158,14 +159,14 @@ def provider_check(actor, db):
         from .codex_setup import worker_health
 
         status = worker_health()["status"]
-    elif config.provider in ("openai", "openrouter") and config.encrypted_key:
+    elif config.provider in ("openai", "openrouter") and (config.encrypted_key or (config.provider == "openrouter" and settings.openrouter_api_key)):
         url = (
             "https://api.openai.com/v1/models" if config.provider == "openai" else "https://openrouter.ai/api/v1/models"
         )
         try:
             response = httpx.get(
                 url,
-                headers={"Authorization": "Bearer " + decrypt(config.encrypted_key)},
+                headers={"Authorization": "Bearer " + (settings.openrouter_api_key if config.provider == "openrouter" and settings.openrouter_api_key else decrypt(config.encrypted_key))},
                 timeout=10,
                 follow_redirects=False,
             )

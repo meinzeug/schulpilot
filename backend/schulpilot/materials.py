@@ -255,6 +255,16 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
     material.confirmed = True
     material.confirmation_digest = confirmation_digest
     material.status = "confirmed"
+    if source_changed:
+        from .learning_controller import observe
+
+        db.flush()
+        units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id,
+            (LearningUnit.material_id == material.id) | LearningUnit.id.in_(
+                select(UnitSource.unit_id).where(UnitSource.material_id == material.id))).order_by(LearningUnit.id)))
+        for unit in units:
+            observe(db, unit, "material_revised", "source:" + material.id + ":" + str(material.revision),
+                ["material:" + material.id + ":" + str(material.revision)])
     tasks = material_tasks.apply_decisions(db, material, child, data.task_decisions, source_changed=source_changed)
     material.task_decisions = [row.model_dump(mode="json") for row in data.task_decisions]
     record(
@@ -355,7 +365,7 @@ def lock_material_units(db, child_id, material_id):
     )
 
 
-def enqueue(db, p, child, kind, payload, idempotency):
+def enqueue(db, p, child, kind, payload, idempotency, *, commit=True):
     if not idempotency or len(idempotency) > 80:
         raise HTTPException(422, "Ein eindeutiger Idempotency-Key (max. 80 Zeichen) ist erforderlich.")
     key = p.user.id + ":" + idempotency
@@ -368,7 +378,8 @@ def enqueue(db, p, child, kind, payload, idempotency):
         payload["assignment_revision"] = db.get(Assignment, payload["assignment_id"]).revision
     existing = db.scalar(select(Job).where(Job.idempotency == key))
     if existing:
-        if existing.child_id != child.id or existing.kind != kind or existing.payload != payload:
+        comparable = {k: v for k, v in existing.payload.items() if k != "controller_guard"}
+        if existing.child_id != child.id or existing.kind != kind or comparable != payload:
             raise HTTPException(409, "Dieser Anfrageschlüssel wurde bereits für einen anderen Auftrag verwendet.")
         return {"id": existing.id, "status": existing.status}
     rate_limit(db, "job:" + p.user.id, 30, 60, commit=False)
@@ -395,7 +406,8 @@ def enqueue(db, p, child, kind, payload, idempotency):
             kind,
             synthetic_fixture=bool(material and material.fixture_id in LIVE_FIXTURE_IDS and family.synthetic),
         )
-    db.commit()
+    if commit:
+        db.commit()
     return {"id": job.id, "status": job.status}
 
 

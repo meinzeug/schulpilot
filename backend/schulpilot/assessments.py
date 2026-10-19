@@ -74,6 +74,9 @@ def recheck(db, unit, question, actor_id):
     db.add(audit)
     attempt.outcome, attempt.evaluation = assessment["outcome"], assessment
     db.flush()
+    from .learning_controller import observe
+
+    observe(db, unit, "assessment_corrected", "assessment:" + audit.id, ["attempt:" + attempt.id, "assessment:" + audit.id])
     rebuild_mastery(db, child, unit.subject, unit.topic)
     # A corrected verdict must not leave an obsolete parent alarm or repair
     # reason behind. Preserve already generated exercises and original dates;

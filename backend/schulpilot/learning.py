@@ -38,7 +38,11 @@ def local_day(child):
 
 
 def record(db, child_id, kind, detail=None, unit_id=None):
-    db.add(Activity(child_id=child_id, kind=kind, detail=detail or {}, unit_id=unit_id))
+    activity = Activity(child_id=child_id, kind=kind, detail=detail or {}, unit_id=unit_id)
+    db.add(activity)
+    from .learning_controller import activity_recorded
+
+    activity_recorded(db, activity)
 
 
 def material_data(material):
@@ -216,6 +220,7 @@ def unit_source_texts(db, unit):
 
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from . import coaching
+    from .learning_controller import projection as session_projection
 
     sources = unit_source_texts(db, unit)
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
@@ -277,6 +282,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "supports_recheck": True,
         "supports_question_explanation": True,
         "supports_detailed_feedback": True,
+        "learning_session": session_projection(db, unit, include_draft=not include_answers),
         "content_version": 1,
         "supports_answer_idempotency": True,
         "status": unit.status,
@@ -888,6 +894,19 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         }
     else:
         material_count = None
+    # Existing plan is authoritative. This small, read-only bridge neither
+    # rebuilds a plan nor generates content during login or page navigation.
+    next_item = (current_plan["today"] or current_plan.get("voluntary", []))[:1]
+    guidance = None
+    if next_item and next_item[0]["kind"] == "unit":
+        from .learning_controller import projection
+
+        next_unit = db.get(LearningUnit, next_item[0]["id"])
+        if next_unit and next_unit.child_id == child.id:
+            action = projection(db, next_unit)["action"]
+            guidance = {"unit_id": next_unit.id, "title": action["title"], "reason": action["reason"],
+                "kind": action["kind"], "subject": next_unit.subject, "topic": next_unit.topic,
+                "estimated_minutes": next_item[0]["estimated_minutes"]}
     return {
         "child": child_data(db, child),
         "school_days": [
@@ -900,6 +919,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
             for d in days
         ],
         "plan": current_plan,
+        "learning_guidance": guidance,
         "daily_capture": capture,
         "feedback_resume": feedback_resume,
         "learning_preparation": {"id": preparing_unit.id, "status": preparing_unit.status} if preparing_unit else None,
@@ -1070,6 +1090,8 @@ def start(unit_id: str, p=Depends(child_user), db=Depends(get_db),
         return unit_data(db, unit)
     if reason := learning_block(db, unit):
         raise HTTPException(409, reason)
+    if unit.status == "active":
+        return unit_data(db, unit)
     child = db.get(Child, unit.child_id)
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
     if assignment and assignment.scheduled_for and assignment.scheduled_for > local_day(child).isoformat():
@@ -1273,6 +1295,10 @@ def learning_block(db, unit):
                 if not item or not item.confirmed or item.revision != meta.get("vocabulary_revision"):
                     return "Ein Wort wurde korrigiert. Bitte eine neue Runde aus den bestätigten Wörtern beginnen."
         return None
+    from .learning_controller import source_state
+
+    if not source_state(db, unit)[1]:
+        return "Der Lernstoff wurde geändert. Deine bisherigen Antworten bleiben gespeichert. Prüfe zuerst die aktuelle Heftseite oder den Lernauftrag."
     child = db.get(Child, unit.child_id)
     today = local_day(child)
     if unit.not_before and unit.not_before > today.isoformat():
@@ -1529,8 +1555,8 @@ def acknowledge_feedback(
 
 @router.post("/units/{unit_id}/feedback")
 def feedback(unit_id: str, data: s.FeedbackRequest, p=Depends(child_user), db=Depends(get_db)):
-    unit = get_unit(db, p, unit_id, True)
-    rate_limit(db, "feedback:" + p.user.id, 10)
+    unit = get_unit(db, p, unit_id, True, True)
+    rate_limit(db, "feedback:" + p.user.id, 10, commit=False)
     if data.question_id:
         question(unit, data.question_id)
     record(db, unit.child_id, "feedback", {"kind": data.kind, "question_id": data.question_id}, unit.id)

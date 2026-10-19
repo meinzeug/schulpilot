@@ -111,7 +111,14 @@ class TipContentCard extends StatelessWidget {
   final Json item;
   final VoidCallback? onReject;
   final Future<void> Function()? onOpened;
-  const TipContentCard(this.item, {super.key, this.onReject, this.onOpened});
+  final Future<void> Function()? beforeOpen;
+  const TipContentCard(
+    this.item, {
+    super.key,
+    this.onReject,
+    this.onOpened,
+    this.beforeOpen,
+  });
   @override
   Widget build(BuildContext context) {
     final text = item['content_type'] == 'learning_text';
@@ -171,6 +178,7 @@ class TipContentCard extends StatelessWidget {
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () async {
+                unawaited(beforeOpen?.call());
                 if (await openSofatutor(context, item['url'] ?? '')) {
                   // A link action is separate from learning/completion. Opening a
                   // website cannot establish playback or comprehension.
@@ -203,18 +211,25 @@ class TipContentCard extends StatelessWidget {
 class LearningTips extends StatefulWidget {
   final AppState state;
   final String childId, kind, resourceId;
+  final String? questionId;
+  final Future<void> Function()? beforeOpen;
+  final bool initiallyExpanded;
   const LearningTips(
     this.state, {
     super.key,
     required this.childId,
     required this.kind,
     required this.resourceId,
+    this.questionId,
+    this.beforeOpen,
+    this.initiallyExpanded = false,
   });
   @override
   State<LearningTips> createState() => _LearningTipsState();
 }
 
-class _LearningTipsState extends State<LearningTips> {
+class _LearningTipsState extends State<LearningTips>
+    with WidgetsBindingObserver {
   late final String? owner;
   Json? data;
   String? error;
@@ -235,6 +250,9 @@ class _LearningTipsState extends State<LearningTips> {
     owner = widget.state.user?['id'];
     revision = widget.state.revision;
     widget.state.addListener(changed);
+    WidgetsBinding.instance.addObserver(this);
+    expanded = widget.initiallyExpanded;
+    if (expanded) load();
   }
 
   @override
@@ -271,7 +289,13 @@ class _LearningTipsState extends State<LearningTips> {
   void dispose() {
     generation++;
     widget.state.removeListener(changed);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && current && expanded) load();
   }
 
   Future<void> load() async {
@@ -304,11 +328,11 @@ class _LearningTipsState extends State<LearningTips> {
   }
 
   Future<void> action(Json item, String kind) async {
-    if (!current || (writing && kind == 'not_relevant')) return;
+    if (!current || (writing && kind != 'open')) return;
     final identity =
         '${widget.resourceId}:${data?['revision']}:$kind:${item['id']}';
     final key = pendingKeys.putIfAbsent(identity, tipRequestKey);
-    if (kind == 'not_relevant') setState(() => writing = true);
+    if (kind != 'open') setState(() => writing = true);
     try {
       await widget.state.api.post('$path/interactions', {
         'request_key': key,
@@ -316,12 +340,110 @@ class _LearningTipsState extends State<LearningTips> {
         'kind': kind,
         'content_id': item['id'],
         'topic_id': item['topic_id'],
+        if (data?['supports_media_return'] == true)
+          'question_id': kind == 'open' || kind == 'not_relevant'
+              ? widget.questionId
+              : data?['media_return']?['question_id'] ?? widget.questionId,
       });
       pendingKeys.remove(identity);
-      if (kind == 'not_relevant' && current) await load();
+      if (current) await load();
     } finally {
-      if (current && kind == 'not_relevant') setState(() => writing = false);
+      if (current && kind != 'open') setState(() => writing = false);
     }
+  }
+
+  Future<void> checkAfterMedia() async {
+    if (!current || writing) return;
+    setState(() => writing = true);
+    try {
+      final session = await widget.state.api.get(
+        '/units/${widget.resourceId}/learning-session',
+      );
+      final result = await widget.state.api.post(
+        '/units/${widget.resourceId}/learning-session/check',
+        {
+          'request_key': tipRequestKey(),
+          'revision': session['revision'],
+          'kind': 'check_understanding',
+        },
+      );
+      if (mounted && current) {
+        openRoute(
+          context,
+          '/learning-preparation/${widget.childId}/${result['id']}',
+        );
+      }
+    } catch (e) {
+      if (mounted && current) showError(context, e);
+    } finally {
+      if (current) setState(() => writing = false);
+    }
+  }
+
+  Future<void> returnAction(Json item, String kind) async {
+    try {
+      await action(item, kind);
+    } catch (e) {
+      if (mounted && current) showError(context, e);
+    }
+  }
+
+  Widget mediaReturn(Json media) {
+    final item = {'id': media['content_id'], 'topic_id': media['topic_id']};
+    final opened = media['status'] == 'opened';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Panel(
+        tone: PanelTone.accent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              opened ? 'Zurück vom Lerntipp?' : 'Jetzt selbst ausprobieren',
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              opened
+                  ? 'Sag kurz, ob du ihn ansehen konntest.'
+                  : 'Eine neue kleine Runde zeigt, was dir geholfen hat.',
+            ),
+            const SizedBox(height: 12),
+            if (opened) ...[
+              FilledButton(
+                onPressed: writing ? null : () => returnAction(item, 'watched'),
+                child: const Text('Ich habe ihn angesehen'),
+              ),
+              OutlinedButton(
+                onPressed: writing ? null : () => returnAction(item, 'skipped'),
+                child: const Text('Ohne Video weiterlernen'),
+              ),
+              TextButton(
+                onPressed: writing ? null : () => returnAction(item, 'broken'),
+                child: const Text('Link oder Zugang klappt nicht'),
+              ),
+            ] else ...[
+              FilledButton.icon(
+                onPressed: writing ? null : checkAfterMedia,
+                icon: const Icon(Icons.psychology_alt_outlined),
+                label: const Text('Mit 2 neuen Aufgaben prüfen'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.maybePop(context),
+                child: const Text('Zur gespeicherten Aufgabe'),
+              ),
+              if (media['status'] == 'watched')
+                TextButton(
+                  onPressed: writing
+                      ? null
+                      : () => returnAction(item, 'not_helpful'),
+                  child: const Text('Ich brauche eine andere Erklärung'),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> selectTopics() async {
@@ -391,6 +513,10 @@ class _LearningTipsState extends State<LearningTips> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (widget.state.isChild &&
+                        data?['state'] == 'ready' &&
+                        data?['media_return'] is Map)
+                      mediaReturn(Json.from(data!['media_return'])),
                     if (loading) const LinearProgressIndicator(minHeight: 3),
                     if (error != null) Notice(error!, warning: true),
                     if (data?['state'] == 'pending')
@@ -430,6 +556,7 @@ class _LearningTipsState extends State<LearningTips> {
                         ),
                       TipContentCard(
                         item,
+                        beforeOpen: widget.beforeOpen,
                         onOpened: () => action(item, 'open'),
                         onReject: data?['can_respond'] != true || writing
                             ? null

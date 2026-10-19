@@ -153,3 +153,27 @@ def test_unknown_stored_goal_is_rejected_before_any_provider_request(coach_trans
     with pytest.raises(ProviderError, match="gespeicherte Aufgabe"):
         request_provider(config, "coach", payload)
     assert calls == []
+
+
+def test_controller_proposal_uses_the_same_coach_request_and_private_bounded_schema(coach_transport):
+    config, payload, output, calls = coach_transport
+    payload['controller_context'] = {'strategy_version': 'school-controller-1'}
+    output['next_step'] = {'kind': 'transfer', 'learning_goal_id': 'g2', 'question_ids': ['expand'],
+        'reason': 'Nach der selbstständigen Lösung eine neue Anwendung prüfen.', 'expected_result': 'Eigene neue Antwort.',
+        'on_success': 'schedule_review', 'on_error': 'hint'}
+    result = request_provider(config, 'coach', payload)
+    assert len(calls) == 1 and result.action_proposal == output['next_step']
+    assert 'next_step' not in result.data
+    schema = calls[0]['text']['format']['schema']
+    assert schema['$defs']['ActionProposal']['properties']['question_ids']['items']['enum'] == ['expand', 'reduce']
+    assert 'tools' not in calls[0]
+
+
+def test_controller_proposal_rejects_unknown_evidence_even_if_shape_is_valid(coach_transport):
+    config, payload, output, _ = coach_transport
+    payload['controller_context'] = {'strategy_version': 'school-controller-1'}
+    output['next_step'] = {'kind': 'transfer', 'learning_goal_id': 'g2', 'question_ids': ['other-child-question'],
+        'reason': 'Ein fremder Beleg ist nicht zulässig.', 'expected_result': 'Eigene neue Antwort.',
+        'on_success': 'schedule_review', 'on_error': 'hint'}
+    with pytest.raises(ProviderError):
+        request_provider(config, 'coach', payload)

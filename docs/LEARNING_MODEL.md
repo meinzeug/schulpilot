@@ -2,6 +2,18 @@
 
 Stand 19.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächlich bestätigten Unterrichtsmaterials. Schulnoten geben einen zusätzlichen Hinweis auf Schwerpunkte. Sie ersetzen weder die Beobachtung beim Üben noch eine fachliche Diagnose durch Lehrkräfte. Verbesserte Schulnoten sind ein Ziel, keine zugesicherte Wirkung der Software.
 
+
+## Zustandsbehaftete Steuerung ab Build45
+
+Der zentrale Controller verbindet vorhandene Quellen, Lernziele, Attempt-Belege,
+Planung und Ressourcen. Ablauf, endlicher Aktionsraum, Datenschutz und zehn
+Szenarien stehen in [ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md).
+Antwortentwürfe, betrachtete Medien und Modellvorschläge sind keine Kompetenz-
+belege. Selbst gemeldetes Ansehen einer Erklärung wird bei der zugehörigen
+noch offenen Aufgabe als Hilfe erfasst. Neue Anschlussfragen benötigen eine
+eigene bewusste Aktion und Reservierung; vorherige Antworten bleiben unverändert.
+Eine abgeschlossene Runde darf unabhängig vom offenen Zeitminimum enden.
+
 ## Fachliche Darstellung und offene Bewertung
 
 Build44: Bruchaddition lässt gleich große Ganze, Erweitern und Zusammenführen

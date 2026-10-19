@@ -209,7 +209,7 @@ def test_invalid_review_is_rejected_and_only_one_explicit_retry_is_allowed(norma
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(Job)) == 2
         assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
-        assert all(u.status == "failed_unknown" and u.cost_micros == 0 for u in db.scalars(select(Usage)))
+        assert all(u.status == "failed_billed" and u.cost_micros == 0 for u in db.scalars(select(Usage)))
 
 
 @pytest.mark.parametrize("contradiction", [False, True])

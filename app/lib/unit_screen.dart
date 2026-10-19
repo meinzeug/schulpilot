@@ -37,6 +37,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Timer? timer;
   Timer? liveClock;
   Timer? coachingPoll;
+  Timer? draftTimer;
+  bool savingDraft = false, draftOffline = false, draftConflict = false;
+  String? savedDraftSignature;
+  String? pendingDraftKey, pendingDraftSignature;
   bool loading = false;
   late DateTime lastInteraction;
   bool visible = true;
@@ -141,6 +145,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       helpExpanded = clockDetails = actionBusy = false;
       actionError = null;
       ownerId = state.user?['id'];
+      savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
+      draftOffline = draftConflict = false;
       needsTimeBaseline = true;
       breakDismissed = false;
       clockAnchor = null;
@@ -165,6 +171,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    draftTimer?.cancel();
+    unawaited(saveDraft());
     WidgetsBinding.instance.removeObserver(this);
     state.removeListener(accountChanged);
     timer?.cancel();
@@ -182,7 +190,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     needsTimeBaseline = true;
     if (visible) {
       lastInteraction = interactionNow;
-      unawaited(beat());
+      unawaited(load());
+    } else {
+      unawaited(saveDraft());
     }
   }
 
@@ -194,6 +204,175 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     lastInteraction = stamp;
     if (idle) unawaited(beat());
+    scheduleDraft();
+  }
+
+  void scheduleDraft() {
+    if (!state.isChild || updatingDraft || awaitingContinue || draftConflict) {
+      return;
+    }
+    draftTimer?.cancel();
+    draftTimer = Timer(
+      const Duration(milliseconds: 900),
+      () => unawaited(saveDraft()),
+    );
+  }
+
+  Json? draftSnapshot() {
+    final q = currentQuestion;
+    if (!state.isChild ||
+        q == null ||
+        done(q) ||
+        awaitingContinue ||
+        unit?['learning_session'] is! Map ||
+        !['active', 'paused'].contains(unit?['status'])) {
+      return null;
+    }
+    final answer = q['type'] == 'choice'
+        ? choice ?? ''
+        : q['type'] == 'match'
+        ? (q['options'] as List).map((label) => matches[label] ?? '').join(';')
+        : text.text;
+    return {
+      'question_id': q['id'],
+      'answer': answer,
+      'input_method': speechAnswer ? 'speech' : 'typed',
+    };
+  }
+
+  Future<void> saveDraft() async {
+    final snapshot = draftSnapshot();
+    if (snapshot == null || savingDraft || draftConflict || ownerId == null) {
+      return;
+    }
+    final id = widget.unitId, owner = ownerId!;
+    final signature = snapshot.toString();
+    if (signature == savedDraftSignature) return;
+    final session = Json.from(unit!['learning_session']);
+    savingDraft = true;
+    try {
+      if (pendingDraftSignature != signature) {
+        pendingDraftSignature = signature;
+        pendingDraftKey = tipRequestKey();
+      }
+      await state.learningDrafts.save(owner, id, {
+        ...snapshot,
+        'source_signature': session['source_signature'],
+      });
+      if (!requestIsCurrent(id, owner)) {
+        if (state.user?['id'] != owner) {
+          await state.learningDrafts.remove(owner, id);
+        }
+        return;
+      }
+      final value = await state.api.put('/units/$id/learning-session/draft', {
+        ...snapshot,
+        'request_key': pendingDraftKey,
+        'revision': session['draft_revision'] ?? 0,
+      });
+      if (requestIsCurrent(id, owner)) {
+        setState(() {
+          unit!['learning_session'] = value;
+          savedDraftSignature = signature;
+          draftOffline = false;
+        });
+      }
+    } catch (e) {
+      if (requestIsCurrent(id, owner)) {
+        setState(() {
+          draftConflict = e is ApiError && e.status == 409;
+          draftOffline = !draftConflict;
+        });
+      }
+    } finally {
+      savingDraft = false;
+      if (requestIsCurrent(id, owner) &&
+          !draftOffline &&
+          !draftConflict &&
+          draftSnapshot()?.toString() != savedDraftSignature) {
+        scheduleDraft();
+      }
+    }
+  }
+
+  Future<void> restoreDraft(Json data) async {
+    if (!state.isChild ||
+        data['learning_session'] is! Map ||
+        ownerId == null ||
+        awaitingContinue) {
+      return;
+    }
+    final id = widget.unitId, owner = ownerId!;
+    final session = Json.from(data['learning_session']);
+    final server = session['working_memory']?['draft'];
+    final local = await state.learningDrafts.get(owner, id);
+    if (!requestIsCurrent(id, owner) ||
+        text.text.isNotEmpty ||
+        choice != null ||
+        matches.isNotEmpty) {
+      return;
+    }
+    final useLocal =
+        local != null &&
+        local['source_signature'] == session['source_signature'] &&
+        (local['saved_ms'] as num? ?? 0) >
+            (session['updated'] as num? ?? 0) * 1000;
+    final draft = useLocal
+        ? local
+        : server is Map
+        ? Json.from(server)
+        : null;
+    final q = currentQuestion;
+    if (draft == null ||
+        q == null ||
+        done(q) ||
+        draft['question_id'] != q['id']) {
+      return;
+    }
+    final answer = draft['answer']?.toString() ?? '';
+    updatingDraft = true;
+    setState(() {
+      if (q['type'] == 'choice') {
+        if ((q['options'] as List).contains(answer)) choice = answer;
+      } else if (q['type'] == 'match') {
+        final values = answer.split(';'), labels = q['options'] as List;
+        for (var i = 0; i < labels.length && i < values.length; i++) {
+          if (values[i].isNotEmpty) matches[labels[i]] = values[i];
+        }
+      } else {
+        text.text = answer;
+      }
+      speechAnswer = draft['input_method'] == 'speech';
+      if (!useLocal) savedDraftSignature = draftSnapshot()?.toString();
+    });
+    updatingDraft = false;
+  }
+
+  Future<void> resolveDraft({required bool keepMine}) async {
+    final id = widget.unitId, owner = ownerId;
+    if (!state.isChild || owner == null || savingDraft) return;
+    final latest = await state.api.get('/units/$id');
+    if (!requestIsCurrent(id, owner)) return;
+    if (!keepMine) {
+      await state.learningDrafts.remove(owner, id);
+      if (!requestIsCurrent(id, owner)) return;
+      updatingDraft = true;
+      text.clear();
+      choice = null;
+      matches = {};
+      updatingDraft = false;
+    }
+    setState(() {
+      unit = latest;
+      restoreFeedback(latest);
+      draftConflict = draftOffline = false;
+      savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
+    });
+    if (keepMine) {
+      await saveDraft();
+    } else {
+      await restoreDraft(latest);
+    }
   }
 
   void draftChanged() {
@@ -207,6 +386,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     timer?.cancel();
     liveClock?.cancel();
     coachingPoll?.cancel();
+    draftTimer?.cancel();
     needsTimeBaseline = true;
     updatingDraft = true;
     text.clear();
@@ -234,6 +414,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final next = currentQuestion;
     if (next?['id'] == questionId) return;
     questionId = next?['id'];
+    savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
+    draftOffline = draftConflict = false;
     speechAnswer = false;
     languageBank = null;
     usedBank.clear();
@@ -413,6 +595,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           error = null;
         });
         watchCoaching();
+        await restoreDraft(data);
         if (needsTimeBaseline) await beat();
       }
     } catch (e) {
@@ -624,8 +807,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       label = u['status'] == 'paused' ? 'Lernen fortsetzen' : 'Einheit starten';
       action = () => startUnit(u);
     } else if (u['introduction_seen'] == false) {
-      label = 'Weiter zu den Übungen';
-      action = () => finishIntroduction(u);
+      final checkFirst =
+          u['learning_session']?['action']?['kind'] == 'check_prior';
+      label = checkFirst ? 'Erst selbst probieren' : 'Weiter zu den Übungen';
+      action = checkFirst
+          ? () => controllerAction(u, 'check_prior')
+          : () => finishIntroduction(u);
     } else if (question == null) {
       label = 'Rückblick laden';
       action = load;
@@ -683,6 +870,24 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       restoreFeedback(data);
     });
     revealStep();
+  }
+
+  Future<void> controllerAction(Json u, String kind) async {
+    final id = u['id'] as String, owner = ownerId;
+    final session = await state.api.get('/units/$id/learning-session');
+    if (!requestIsCurrent(id, owner)) return;
+    final data = await state.api.post('/units/$id/learning-session/action', {
+      'request_key': tipRequestKey(),
+      'revision': session['revision'],
+      'kind': kind,
+    });
+    if (requestIsCurrent(id, owner)) {
+      setState(() {
+        unit = data;
+        restoreFeedback(data);
+      });
+      revealStep();
+    }
   }
 
   Future<void> acknowledgeFeedback() async {
@@ -893,6 +1098,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           childId: u['child_id'],
           kind: 'unit',
           resourceId: u['id'],
+          questionId: currentQuestion?['id'],
+          beforeOpen: saveDraft,
         )
       : const SizedBox.shrink();
 
@@ -1044,6 +1251,32 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       );
     }
     if (u['introduction_seen'] == false) {
+      if (u['learning_session']?['action']?['kind'] == 'check_prior') {
+        return Panel(
+          tone: PanelTone.info,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.psychology_alt_outlined, size: 40, color: teal),
+              const SizedBox(height: 16),
+              const Text(
+                'Was weißt du schon?',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Probiere die erste Aufgabe. Wenn du Hilfe brauchst, gehen wir einen Schritt zusammen.',
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => showExplanation(context, u),
+                icon: const Icon(Icons.auto_stories_outlined),
+                label: const Text('Erst die Erklärung ansehen'),
+              ),
+            ],
+          ),
+        );
+      }
       return Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1071,6 +1304,40 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (draftConflict)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Notice(
+                'Diese Aufgabe wurde auf einem anderen Gerät geändert. Welche Eingabe möchtest du behalten?',
+                warning: true,
+              ),
+              OutlinedButton(
+                onPressed: actionBusy
+                    ? null
+                    : () => perform(() => resolveDraft(keepMine: false)),
+                child: const Text('Gespeicherte Eingabe laden'),
+              ),
+              TextButton(
+                onPressed: actionBusy
+                    ? null
+                    : () => perform(() => resolveDraft(keepMine: true)),
+                child: const Text('Meine Eingabe hier behalten'),
+              ),
+            ],
+          ),
+        if (draftOffline)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Notice('Dein Entwurf bleibt auf diesem Gerät.'),
+              TextButton.icon(
+                onPressed: savingDraft ? null : saveDraft,
+                icon: const Icon(Icons.sync),
+                label: const Text('Eingabe jetzt speichern'),
+              ),
+            ],
+          ),
         if (u['break_recommended'] == true && !breakDismissed) ...[
           breakRecommendation(u),
           const SizedBox(height: 12),
@@ -1939,6 +2206,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           stages: const {'hint1', 'hint2', 'hint3'},
         ),
         const SizedBox(height: 8),
+        if (u['learning_session']?['action']?['reason_code'] ==
+            'denominators_added')
+          const Text(
+            'Vergleiche gleich große Teile: Beim Addieren bleibt der gemeinsame Nenner stehen.',
+          ),
         Wrap(
           spacing: 8,
           runSpacing: 4,
@@ -1953,6 +2225,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               onPressed: actionBusy ? null : () => perform(() => moreHelp(u)),
               child: const Text('Mehr Hilfe'),
             ),
+            if ((u['learning_session']?['action']?['resources'] as List? ?? [])
+                .isNotEmpty)
+              TextButton.icon(
+                onPressed: () => showTips(u),
+                icon: const Icon(Icons.ondemand_video_outlined),
+                label: const Text('Andere Erklärung ansehen'),
+              ),
           ],
         ),
       ],
@@ -1985,6 +2264,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   'explanation',
                   'Erklärung ansehen',
                   Icons.auto_stories_outlined,
+                ),
+                (
+                  'tips',
+                  'Passendes Erklärvideo',
+                  Icons.ondemand_video_outlined,
                 ),
                 if (u['synthetic'] != true &&
                     u['source_material_ids']?.isNotEmpty == true)
@@ -2019,6 +2303,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return;
     }
     switch (selected) {
+      case 'tips':
+        await showTips(u);
       case 'explanation':
         await showExplanation(context, u);
       case 'tutor':
@@ -2033,6 +2319,31 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       case 'difficulty':
         await showTaskFeedback(context, u);
     }
+  }
+
+  Future<void> showTips(Json u) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: .85,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: LearningTips(
+            state,
+            childId: u['child_id'],
+            kind: 'unit',
+            resourceId: u['id'],
+            questionId: currentQuestion?['id'],
+            beforeOpen: saveDraft,
+            initiallyExpanded: true,
+          ),
+        ),
+      ),
+    );
+    if (mounted) await load();
   }
 
   Widget breakRecommendation(Json u) => Panel(
@@ -2069,6 +2380,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final id = u['id'];
     final requestedOwner = ownerId;
     noteInteraction();
+    await saveDraft();
     await beat();
     if (!requestIsCurrent(id, requestedOwner)) return;
     final data = await state.api.post('/units/$id/pause');

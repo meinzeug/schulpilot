@@ -8,6 +8,7 @@ import 'push_client.dart';
 import 'notification_inbox.dart';
 import 'pending_uploads.dart';
 import 'lesson_voice.dart';
+import 'learning_drafts.dart';
 
 import 'transport.dart' if (dart.library.js_interop) 'transport_web.dart';
 
@@ -214,6 +215,7 @@ class AppState extends ChangeNotifier {
   final Api api;
   final FlutterSecureStorage storage;
   late final PendingUploads pendingUploads = PendingUploads(storage);
+  late final LearningDraftStore learningDrafts = LearningDraftStore(storage);
   late final PushClient push = PushClient(api);
   late final NotificationInbox inbox = NotificationInbox(api);
   Json? user;
@@ -302,6 +304,7 @@ class AppState extends ChangeNotifier {
       inbox.clear();
       await push.forget();
       await pendingUploads.clear();
+      await learningDrafts.clear();
     }
     user = Map<String, dynamic>.from(response['user']);
     if (!kIsWeb && response['token'] != null) {
@@ -354,6 +357,7 @@ class AppState extends ChangeNotifier {
     recoveredPhoto = null;
     recoveredPhotos.clear();
     await pendingUploads.clear();
+    await learningDrafts.clear();
     if (!kIsWeb) {
       await storage.delete(key: 'session');
       await storage.delete(key: 'camera_child');

@@ -24,7 +24,8 @@ from .db import (
     uid,
 )
 from .learning import record
-from .providers import ProviderError, config_for_function, external_allowed, request_provider, reserve, settle
+from .model_routing import job_config
+from .providers import ProviderError, external_allowed, request_provider, reserve, settle
 from .security import authenticated, child_access, child_user, rate_limit
 from .vocabulary import KEY, authority, current_sources, fingerprint, literal_present, lock_child, normalized
 
@@ -259,7 +260,7 @@ def process(job_id):
             authority(db, row, job.payload["family_id"])
             payload = context(db, row)
             signature = fingerprint([payload, db.get(Child, row.child_id).preferences])
-            config = config_for_function(db.get(ProviderConfig, 1), "language_project")
+            config = job_config(db, job, "language_project")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (config.provider, config.model, config.revision):
                 raise ProviderError("Die KI-Einstellung wurde geändert. Bitte neu vorbereiten.")
@@ -284,7 +285,7 @@ def process(job_id):
             authority(db, row, job.payload["family_id"])
             if signature != fingerprint([context(db, row), db.get(Child, row.child_id).preferences]):
                 raise ProviderError("Wörter, Quellen oder Lernvorgaben wurden geändert. Bitte neu vorbereiten.")
-            config = config_for_function(db.get(ProviderConfig, 1), "language_project")
+            config = job_config(db, job, "language_project")
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if not usage or (usage.provider, usage.model, usage.config_revision) != (config.provider, config.model, config.revision):
                 raise ProviderError("Die KI-Einstellung wurde während der Verarbeitung geändert.")
@@ -326,4 +327,4 @@ def process(job_id):
                 row.status, row.error = "failed", reason[:500]
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
             if usage:
-                settle(db, usage, result, failed=True)
+                settle(db, usage, result or getattr(error, "billing_result", None), failed=True)
