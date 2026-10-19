@@ -8,7 +8,7 @@ from collections import Counter
 from sqlalchemy import func, literal_column, select
 
 from .catalog_models import CatalogLevel, CatalogPlacement, CatalogState, CatalogTopic
-from .db import ChildSubject
+from .db import ChildSubject, Subject
 
 MATCHER_VERSION = "tips-v2"
 STOP = set(
@@ -196,6 +196,10 @@ def search_topics(db, subject_id, query="", *, page=1, page_size=20, child=None,
                 )
             )
         )
+    subject = db.get(Subject, subject_id)
+    query_hint = None
+    if subject and subject.title == "Deutsch als Zweitsprache" and query.strip().casefold() in {"auf", "unter", "über", "neben", "vor", "hinter", "zwischen", "wo ist", "wo liegt"}:
+        query, query_hint = "Präpositionen", "Passende Themen zu Ortsangaben wie auf, unter und neben."
     if query.strip():
         if db.bind.dialect.name == "postgresql":
             conditions.append(
@@ -220,4 +224,4 @@ def search_topics(db, subject_id, query="", *, page=1, page_size=20, child=None,
     class_ids = known_class_topics(db, child, subject_id, [r["id"] for r in result]) if child else set()
     for row in result:
         row["known_level"] = row["id"] in class_ids
-    return {"items": result, "total": total, "page": page, "page_size": page_size, "has_known_level": bool(level[0])}
+    return {"items": result, "total": total, "page": page, "page_size": page_size, "has_known_level": bool(level[0]), "query_hint": query_hint}

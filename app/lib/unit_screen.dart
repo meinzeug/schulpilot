@@ -13,6 +13,8 @@ import 'learning_next_step.dart';
 import 'vocabulary_screen.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'math_content.dart';
+import 'subject_graphic.dart';
 
 class UnitScreen extends StatefulWidget {
   final AppState state;
@@ -242,6 +244,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     matches = {};
     hint = null;
     helpExpanded = false;
+    final shownHints = next?['shown_hints'] as List? ?? [];
+    if (shownHints.isNotEmpty) {
+      hint = shownHints.last['text'];
+      hintExhausted = shownHints.length >= 3;
+      helpExpanded = true;
+    }
     updatingDraft = true;
     text.clear();
     // A resumed matching exercise retains its last submitted pairs. This is
@@ -465,7 +473,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (state.user?['id'] != ownerId) {
       return const Scaffold(
         body: SafeArea(
-          child: Center(child: Text('Bitte melde dich erneut an.')),
+          child: Center(child: MathText('Bitte melde dich erneut an.')),
         ),
       );
     }
@@ -496,7 +504,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (state.user?['id'] != ownerId) {
       return const Scaffold(
         body: SafeArea(
-          child: Center(child: Text('Bitte melde dich erneut an.')),
+          child: Center(child: MathText('Bitte melde dich erneut an.')),
         ),
       );
     }
@@ -538,7 +546,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ? null
               : Semantics(
                   liveRegion: true,
-                  child: Text(
+                  child: MathText(
                     actionError is ApiError
                         ? (actionError as ApiError).message
                         : 'Das hat gerade nicht geklappt. Versuch es noch einmal.',
@@ -579,6 +587,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       ? choice != null
       : question['type'] == 'match'
       ? matches.length == (question['options'] as List).length
+      : expectsFraction(question)
+      ? RegExp(r'^-?\d+\s*/\s*[1-9]\d*$').hasMatch(text.text.trim())
       : text.text.trim().isNotEmpty;
 
   Widget? primaryAction(Json u) {
@@ -625,7 +635,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ? Icons.check_rounded
                     : Icons.arrow_forward_rounded,
               ),
-        label: Text(actionBusy ? 'Bitte warten …' : label),
+        label: MathText(actionBusy ? 'Bitte warten …' : label),
       ),
     );
   }
@@ -790,7 +800,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             const Icon(Icons.timer_outlined, size: 17, color: teal),
             const SizedBox(width: 7),
             Expanded(
-              child: Text(
+              child: MathText(
                 measured == null
                     ? 'Diese Einheit ${clockText(currentUnit)}'
                     : required
@@ -820,13 +830,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ],
         ),
         if (measured != null)
-          Text(
+          MathText(
             'Diese Einheit ${clockText(currentUnit)}',
             key: const ValueKey('learning-unit-clock'),
             style: const TextStyle(fontSize: 12, color: Color(0xFF53617A)),
           ),
         if (required)
-          Text(
+          MathText(
             stateText,
             key: const ValueKey('learning-goal-state'),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -844,9 +854,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               key: const ValueKey('learning-day-progress'),
             ),
           if (!required && measured != null)
-            Text(stateText, style: const TextStyle(fontSize: 12)),
+            MathText(stateText, style: const TextStyle(fontSize: 12)),
           const SizedBox(height: 6),
-          Text(
+          MathText(
             clockOffline
                 ? 'Zeit pausiert · Verbindung fehlt'
                 : clockRunning
@@ -897,7 +907,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 heading('Erklärung in dieser Einheit'),
-                Text(u['explanation']),
+                MathText(u['explanation']),
               ],
             ),
           ),
@@ -920,7 +930,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   children: [
                     Tag(typeLabel(q['type'])),
                     const SizedBox(height: 12),
-                    Text(
+                    MathText(
                       q['prompt'],
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
@@ -939,7 +949,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            MathText(
                               'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
                             ),
                             AssessmentTrail(
@@ -949,14 +959,19 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     const Divider(height: 28),
-                    Text('Aufgabenerklärung: ${q['explanation']}'),
+                    SubjectPresentation(
+                      q['presentation'] is Map
+                          ? Json.from(q['presentation'])
+                          : null,
+                    ),
+                    MathText('Aufgabenerklärung: ${q['explanation']}'),
                     const SizedBox(height: 12),
-                    Text(
+                    MathText(
                       '${q['hints_used']} Hinweise genutzt. Verfügbare Hinweise:',
                       style: const TextStyle(fontSize: 12, color: muted),
                     ),
                     for (final h in q['hints'] as List)
-                      Text('• $h', style: const TextStyle(fontSize: 13)),
+                      MathText('• $h', style: const TextStyle(fontSize: 13)),
                   ],
                 ),
               ),
@@ -991,14 +1006,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               color: teal,
             ),
             const SizedBox(height: 16),
-            Text(
+            MathText(
               u['status'] == 'paused'
                   ? 'Deine Runde wartet auf dich.'
                   : 'Bereit für deine Runde?',
               style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
-            Text(
+            MathText(
               u['status'] == 'paused'
                   ? 'Geprüfte Antworten sind gespeichert.'
                   : '${questions.length} Aufgaben · Schritt für Schritt',
@@ -1035,7 +1050,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     final q = currentQuestion;
     if (q == null) {
-      return const Panel(child: Text('Deine Antworten sind gespeichert.'));
+      return const Panel(child: MathText('Deine Antworten sind gespeichert.'));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1054,6 +1069,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               questionPrompt(q),
+              SubjectPresentation(
+                q['presentation'] is Map ? Json.from(q['presentation']) : null,
+                stages: const {'given'},
+              ),
               if (q['language'] is Map) languagePrompt(q),
               const SizedBox(height: 18),
               if (q['type'] == 'choice')
@@ -1081,7 +1100,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             child: RadioListTile<String>(
                               value: option,
                               enabled: !actionBusy,
-                              title: Text(
+                              title: MathText(
                                 option,
                                 style: const TextStyle(fontSize: 17),
                               ),
@@ -1104,7 +1123,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
+                        MathText(
                           pair,
                           style: const TextStyle(
                             fontSize: 17,
@@ -1120,7 +1139,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           icon: const Icon(Icons.swap_horiz_rounded),
                           label: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Text(
+                            child: MathText(
                               matches[pair] ?? 'Was passt dazu?',
                               style: const TextStyle(fontSize: 16),
                             ),
@@ -1130,16 +1149,25 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ),
                   ),
               if (q['type'] == 'short' || q['type'] == 'gap') ...[
-                TextField(
-                  key: ValueKey('answer-${q['id']}'),
-                  controller: text,
-                  readOnly: actionBusy,
-                  maxLength: q['type'] == 'short' ? 500 : 200,
-                  minLines: 1,
-                  maxLines: q['type'] == 'short' ? 4 : 2,
-                  scrollPadding: const EdgeInsets.all(20),
-                  decoration: const InputDecoration(labelText: 'Deine Antwort'),
-                ),
+                if (expectsFraction(q))
+                  FractionAnswerInput(
+                    key: ValueKey('fraction-${q['id']}'),
+                    controller: text,
+                    readOnly: actionBusy,
+                  )
+                else
+                  TextField(
+                    key: ValueKey('answer-${q['id']}'),
+                    controller: text,
+                    readOnly: actionBusy,
+                    maxLength: q['type'] == 'short' ? 500 : 200,
+                    minLines: 1,
+                    maxLines: q['type'] == 'short' ? 4 : 2,
+                    scrollPadding: const EdgeInsets.all(20),
+                    decoration: const InputDecoration(
+                      labelText: 'Deine Antwort',
+                    ),
+                  ),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: VoiceInputButton(
@@ -1173,14 +1201,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           if (meta['generated_example'] == true)
             const Tag('Erzeugtes Übungsbeispiel'),
           if (cue.isNotEmpty) ...[
-            Text(
+            MathText(
               cue,
               style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
             ),
             ReadAloudButton(text: cue, locale: meta['cue_locale'] ?? 'de-DE'),
           ],
           if ((meta['context'] ?? '').toString().isNotEmpty)
-            Text('Kontext: ${meta['context']}'),
+            MathText('Kontext: ${meta['context']}'),
           if (meta['skill'] == 'listening') ...[
             Wrap(
               spacing: 8,
@@ -1217,7 +1245,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               children: [
                 for (final entry in bank.indexed)
                   ActionChip(
-                    label: Text(entry.$2),
+                    label: MathText(entry.$2),
                     onPressed: actionBusy || usedBank.contains(entry.$1)
                         ? null
                         : () {
@@ -1318,17 +1346,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
-              Text(
+              MathText(
                 '${questions.length} Aufgaben bearbeitet · $independent beim ersten Versuch ohne Hilfe richtig',
               ),
               const SizedBox(height: 8),
-              Text(
+              MathText(
                 (result['skills'] as List? ?? [])
                     .map((skill) => languageSkills[skill] ?? skill)
                     .join(' · '),
               ),
               if (result['next_due'] != null)
-                Text('Wieder üben: ${result['next_due']}'),
+                MathText('Wieder üben: ${result['next_due']}'),
               const SizedBox(height: 12),
               const Text(
                 'Heute geübt. Später probierst du diese Wörter noch einmal ohne Vorlage.',
@@ -1358,7 +1386,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Expanded(
-        child: Text(
+        child: MathText(
           q['prompt'],
           style: const TextStyle(
             fontSize: 22,
@@ -1367,7 +1395,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
         ),
       ),
-      ReadAloudButton(text: q['prompt'], iconOnly: true),
+      ReadAloudButton(text: MathText.spoken(q['prompt']), iconOnly: true),
     ],
   );
 
@@ -1386,7 +1414,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Text(
+              child: MathText(
                 'Was passt zu „$pair“?',
                 style: const TextStyle(
                   fontSize: 21,
@@ -1404,7 +1432,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       for (final value in (q['choices'] as List).reversed)
                         RadioListTile<String>(
                           value: value,
-                          title: Text(
+                          title: MathText(
                             value,
                             style: const TextStyle(fontSize: 17),
                           ),
@@ -1436,7 +1464,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Widget sampleNotice(Json u) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: Text(
+    child: MathText(
       u['provider'] == 'synthetic'
           ? 'Beispielübung · ohne KI erstellt.'
           : 'Beispielstoff · mit KI erstellte Übungen.',
@@ -1460,6 +1488,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (requestIsCurrent(id, requestedOwner)) {
       setState(() {
         hint = data['hint'];
+        if (data['presentation'] is Map) {
+          q['presentation'] = Json.from(data['presentation']);
+        }
+        q['hints_used'] = data['hints_used'];
         hintRequestKey = null;
         hintExhausted = data['exhausted'] == true;
         helpExpanded = true;
@@ -1545,7 +1577,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final uncertain = answerOutcome == 'uncertain';
     final lastEvaluation =
         (q['attempts'] as List? ?? []).lastOrNull?['evaluation'] as Map?;
-    final title = correct
+    final openContribution = lastEvaluation?['method'] == 'open_learning_v1';
+    final title = openContribution
+        ? 'Deine Idee ist gespeichert.'
+        : correct
         ? 'Richtig!'
         : uncertain
         ? 'Noch nicht sicher bewertet'
@@ -1573,6 +1608,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               questionPrompt(q),
+              SubjectPresentation(
+                q['presentation'] is Map ? Json.from(q['presentation']) : null,
+                stages: const {'given'},
+              ),
               const SizedBox(height: 18),
               const Text(
                 'Deine Antwort',
@@ -1637,7 +1676,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                     const SizedBox(width: 8),
                                   ],
                                   Expanded(
-                                    child: Text(
+                                    child: MathText(
                                       '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
                                       style: const TextStyle(fontSize: 17),
                                     ),
@@ -1647,7 +1686,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             ),
                         ],
                       )
-                    : Text(
+                    : MathText(
                         answer,
                         key: const ValueKey('feedback-own-answer'),
                         style: const TextStyle(
@@ -1679,7 +1718,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
+                      child: MathText(
                         title,
                         style: const TextStyle(
                           fontSize: 23,
@@ -1691,18 +1730,18 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 10),
-              if (uncertain)
+              if (uncertain && !openContribution)
                 const Text(
                   'Deine Antwort ist gespeichert. Die Prüfung ist offen – das bedeutet nicht, dass du falsch liegst.',
                   style: TextStyle(fontSize: 16),
                 )
               else if (!correct)
-                Text(
+                MathText(
                   closed ? 'Diese Aufgabe kommt später noch einmal dran.' : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',
                   style: const TextStyle(fontSize: 16),
                 )
               else if (answerAssisted)
-                Text(
+                MathText(
                   q['language'] is Map &&
                           ((q['attempts'] as List)
                                           .last['evaluation']?['support_reasons']
@@ -1721,7 +1760,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               if (lastEvaluation?['reason'] is String) ...[
                 const SizedBox(height: 8),
-                Text(
+                MathText(
                   lastEvaluation!['reason'],
                   style: const TextStyle(fontSize: 15),
                 ),
@@ -1731,7 +1770,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         as List? ??
                     [],
               ),
-              if (uncertain && state.isChild) ...[
+              if (uncertain && !openContribution && state.isChild) ...[
                 const SizedBox(height: 12),
                 if (u['supports_recheck'] == true && q['language'] is! Map)
                   OutlinedButton.icon(
@@ -1773,13 +1812,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   label: const Text('Mit der Lernhilfe klären'),
                 ),
               ],
+              SubjectPresentation(
+                q['presentation'] is Map ? Json.from(q['presentation']) : null,
+                stages: const {'solution'},
+              ),
               if (explanation?.trim().isNotEmpty == true) ...[
                 const SizedBox(height: 16),
                 if (correct)
                   ExpansionTile(
                     title: const Text('Warum das stimmt'),
                     children: [
-                      Text(
+                      MathText(
                         explanation!,
                         style: const TextStyle(fontSize: 17, height: 1.5),
                       ),
@@ -1790,7 +1833,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ],
                   )
                 else ...[
-                  Text(
+                  MathText(
                     explanation!,
                     style: const TextStyle(fontSize: 17, height: 1.5),
                   ),
@@ -1839,16 +1882,21 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             const Icon(Icons.lightbulb_outline_rounded, color: teal),
             const SizedBox(width: 8),
             const Expanded(
-              child: Text(
+              child: MathText(
                 'Dein Tipp',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ),
-            if (hint != null) ReadAloudButton(text: hint!, iconOnly: true),
+            if (hint != null)
+              ReadAloudButton(text: MathText.spoken(hint!), iconOnly: true),
           ],
         ),
         if (hint != null)
-          Text(hint!, style: const TextStyle(fontSize: 17, height: 1.5)),
+          MathText(hint!, style: const TextStyle(fontSize: 17, height: 1.5)),
+        SubjectPresentation(
+          q['presentation'] is Map ? Json.from(q['presentation']) : null,
+          stages: const {'hint1', 'hint2', 'hint3'},
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -1886,7 +1934,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             children: [
               const Padding(
                 padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                child: Text(
+                child: MathText(
                   'Was hilft dir jetzt?',
                   style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
                 ),
@@ -1913,7 +1961,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ])
                 ListTile(
                   leading: Icon(option.$3, color: teal),
-                  title: Text(option.$2),
+                  title: MathText(option.$2),
                   minVerticalPadding: 12,
                   onTap: () => Navigator.pop(sheet, option.$1),
                 ),
@@ -1956,7 +2004,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
         ),
         const SizedBox(height: 6),
-        Text('${u['break_minutes'] ?? 5} Minuten Pause tun gut.'),
+        MathText('${u['break_minutes'] ?? 5} Minuten Pause tun gut.'),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -2045,7 +2093,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Es geht um ${u['topic']}.'),
+                MathText('Es geht um ${u['topic']}.'),
                 const SizedBox(height: 16),
                 TextField(
                   controller: note,
@@ -2109,7 +2157,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
+              child: MathText(
                 'Wie ist die Aufgabe für dich?',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
@@ -2129,7 +2177,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   vertical: 8,
                 ),
                 leading: Icon(item.$3, color: teal),
-                title: Text(item.$2),
+                title: MathText(item.$2),
                 onTap: () async {
                   try {
                     if (!requestIsCurrent(u['id'], requestedOwner)) return;

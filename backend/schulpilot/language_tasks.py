@@ -6,10 +6,10 @@ from pydantic import Field, model_validator
 
 from .schemas import Strict
 
-Locale = Literal["en-GB", "en-US", "fr-FR", "es-ES", "de-DE"]
-TargetLocale = Literal["en-GB", "en-US", "fr-FR", "es-ES"]
+Locale = Literal["en-GB", "en-US", "fr-FR", "es-ES", "de-DE", "la"]
+TargetLocale = Literal["en-GB", "en-US", "fr-FR", "es-ES", "la"]
 TARGETS = {"en-GB": "Englisch · Großbritannien", "en-US": "Englisch · USA",
-           "fr-FR": "Französisch · Frankreich", "es-ES": "Spanisch · Spanien"}
+           "fr-FR": "Französisch · Frankreich", "es-ES": "Spanisch · Spanien", "la": "Latein · Schulwortschatz"}
 SKILLS = {"recognition", "recall", "spelling", "listening", "sentence", "grammar", "writing"}
 
 

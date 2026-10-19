@@ -13,7 +13,7 @@ from .grades import subject_key
 from .security import authenticated, child_access
 
 router = APIRouter(tags=["Lernstand nach Fächern"])
-COUNTERS = ("practiced_tasks", "attempts", "independent_tasks", "assisted_tasks", "needs_practice_tasks", "uncertain_tasks")
+COUNTERS = ("practiced_tasks", "attempts", "independent_tasks", "assisted_tasks", "needs_practice_tasks", "uncertain_tasks", "reflection_tasks")
 
 
 def read_ledger(db, child_id, unit_ids=None):
@@ -29,6 +29,7 @@ def read_ledger(db, child_id, unit_ids=None):
             Attempt.outcome,
             Attempt.assisted,
             Attempt.created,
+            func.coalesce(Attempt.evaluation["method"].as_string(), "").label("evaluation_method"),
             func.count().over(partition_by=partition).label("attempts"),
             func.row_number().over(partition_by=partition, order_by=(Attempt.created.desc(), Attempt.id.desc())).label("position"),
         )
@@ -36,6 +37,7 @@ def read_ledger(db, child_id, unit_ids=None):
         .where(*conditions)
         .subquery()
     )
+    reflection = latest.c.evaluation_method == "open_learning_v1"
     correct = latest.c.outcome == "correct"
     independent = and_(correct, latest.c.assisted.is_(False), latest.c.attempts == 1)
     fields = [LearningUnit.id, LearningUnit.subject, LearningUnit.topic, LearningUnit.status,
@@ -48,7 +50,8 @@ def read_ledger(db, child_id, unit_ids=None):
             func.sum(case((independent, 1), else_=0)).label("independent_tasks"),
             func.sum(case((and_(correct, ~independent), 1), else_=0)).label("assisted_tasks"),
             func.sum(case((latest.c.outcome == "incorrect", 1), else_=0)).label("needs_practice_tasks"),
-            func.sum(case((latest.c.outcome.not_in(("correct", "incorrect")), 1), else_=0)).label("uncertain_tasks"),
+            func.sum(case((and_(latest.c.outcome.not_in(("correct", "incorrect")), ~reflection), 1), else_=0)).label("uncertain_tasks"),
+            func.sum(case((reflection, 1), else_=0)).label("reflection_tasks"),
             func.max(latest.c.created).label("last_activity"),
         )
         .join(latest, latest.c.unit_id == LearningUnit.id)

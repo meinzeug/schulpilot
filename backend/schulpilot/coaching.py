@@ -57,6 +57,7 @@ def observations(db, unit):
             "expected_answer": q["answer"],
             "accepted": q["accepted"],
             "task_explanation": q["explanation"],
+            "evidence_kind": (q.get("presentation") or {}).get("evidence_kind", "knowledge"),
             "attempts": [
                 {"answer": a.answer, "outcome": a.outcome, "assisted": a.assisted}
                 for a in attempts
@@ -356,7 +357,13 @@ def progress(db, unit, *, ledger=None):
     except ProviderError:
         sources_current = False
         state = "source_changed"
+    from .subject_content import open_learning_unit
+
+    open_contribution = open_learning_unit(unit)
+    if open_contribution:
+        state, secure, dates = "reflection", False, []
     labels = {
+        "reflection": "Eigene Gedanken festgehalten",
         "learning": "Gelernt – jetzt selbstständig prüfen",
         "checking": "Eine neue Abrufprobe steht bereit",
         "needs_practice": "Gezielt weiter üben",
@@ -366,6 +373,7 @@ def progress(db, unit, *, ledger=None):
         "source_changed": "Lernstoff geändert oder entfernt – gemeinsam neu prüfen",
     }
     return {
+        "evidence_kind": "reflection" if open_contribution else "knowledge",
         "root_unit_id": root.id,
         "latest_unit_id": latest.id,
         "subject": root.subject,
@@ -550,13 +558,40 @@ def context(db, unit):
         else None
     )
     completed_questions = observations(db, unit)
+    learning_goals = goals_for(db, unit)
+    if not learning_goals:
+        candidates = source_goals(materials, unit.subject, unit.topic)
+        # Complete the audited mixed fraction/triangle catalogue only when the
+        # general area rule is literally present. Never attach a fraction goal
+        # to a geometry question merely because it shares the same unit.
+        if unit.subject.casefold() in ("mathematik", "mathe") and len(candidates) < 4:
+            for material in materials:
+                text = material["content"]
+                match = re.search(r"(?i)(?:A|fläche)\s*=\s*(?:g\s*[*·×]\s*h|h\s*[*·×]\s*g)\s*/\s*2", text)
+                if match and "dreieck" in text.casefold():
+                    start = max(0, text.rfind("\n", 0, match.start()) + 1)
+                    if re.search(r"nicht|falsch|fehler", text[start:match.start()], re.I):
+                        continue
+                    candidates.append({"id":f"g{len(candidates)+1}", "label":"Fläche eines Dreiecks berechnen", "source_excerpt":text[start:start+350]})
+                    break
+        candidate_ids = {goal["id"] for goal in candidates}
+        # A fraction-only catalogue must never prescribe the entire mixed
+        # fraction/geometry round. Let the same reserved review propose quoted
+        # goals for the complete source instead; stored catalogues remain binding.
+        if candidates and all(fraction_task_goal(q["prompt"], candidates) in candidate_ids for q in unit.questions):
+            learning_goals = candidates
+            # Assignment is based on the confirmed rule and the stored prompt,
+            # restored by question ID in the adapter; no model-selected IDs.
+            for observation, question in zip(completed_questions, unit.questions, strict=True):
+                if observation["learning_goal_id"] is None:
+                    observation["learning_goal_id"] = fraction_task_goal(question["prompt"], candidates)
     snapshot = {
         "materials": materials,
         "goal": goal,
         "preferences": child.preferences,
         "questions": unit.questions,
         "observations": completed_questions,
-        "learning_goals": goals_for(db, unit) or source_goals(materials, unit.subject, unit.topic),
+        "learning_goals": learning_goals,
     }
     signature = hashlib.sha256(json.dumps(snapshot, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     _, chain = root_and_units(db, unit)
@@ -628,6 +663,11 @@ def report_projection(db, unit, stored):
 
 
 def view(db, unit):
+    from .subject_content import open_learning_unit
+
+    if open_learning_unit(unit):
+        return {"status":"local", "local_only":True, "can_retry":False,
+                "reason":"Eigene Gedanken oder Beschreibungen sind gespeichert. Daraus wird keine gemessene Fähigkeit abgeleitet."}
     item = db.get(UnitCoaching, unit.id)
     if not item:
         return None
@@ -700,6 +740,11 @@ def fraction_task_signature(prompt):
 
 
 def fraction_task_goal(prompt, goals):
+    from .subject_content import legacy_presentation
+
+    geometry = next((g["id"] for g in goals if g["label"] == "Fläche eines Dreiecks berechnen"), None)
+    if geometry and re.search(r"fläch", prompt, re.I) and legacy_presentation({"prompt":prompt}):
+        return geometry
     labels = ("Zähler und Nenner benennen", "Brüche addieren", "Brüche kürzen", "Brüche erweitern")
     known = {g["label"]: g["id"] for g in goals if g["label"] in labels}
     if not known:
@@ -1004,6 +1049,10 @@ def schedule(unit_id, *, automatic=False):
             unit = db.get(LearningUnit, unit_id)
             if not unit or unit.status != "completed":
                 raise HTTPException(409, "Bitte die Einheit zuerst abschließen.")
+            from .subject_content import open_learning_unit
+
+            if open_learning_unit(unit):
+                return view(db, unit)
             if unit.round_kind == "vocabulary":
                 return {"status": "not_needed", "reason": "Sprachrunden verwenden ihre gespeicherte Sprachbewertung und Wiedervorlage."}
             db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))

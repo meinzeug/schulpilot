@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from schulpilot.db import Attempt, Child, Family, LearningUnit, Material, User, engine
+from schulpilot.db import Attempt, Child, Family, LearningUnit, User, engine
 from sqlalchemy import text
 
 
@@ -45,16 +45,28 @@ def test_postgres_catalog_upgrade_keeps_private_sources_answers_and_stable_subje
             db.execute(Child.__table__.insert().values(id="c", family_id="f", user_id="u", grade=6))
             subject = db.scalar(text("SELECT id FROM subjects WHERE key='mathematik'"))
             db.execute(
-                Material.__table__.insert().values(
-                    id="m",
-                    child_id="c",
-                    title="Synthetic",
-                    subject="Mathe",
-                    subject_id=subject,
-                    topic="Brüche",
-                    content="Artificial source",
-                    confirmed=True,
-                )
+                text(
+                    "INSERT INTO materials "
+                    "(id, child_id, title, status, subject, subject_id, topic, content, "
+                    "uncertainties, homework, confirmed, synthetic, created) "
+                    "VALUES (:id, :child_id, :title, :status, :subject, :subject_id, :topic, "
+                    ":content, :uncertainties, :homework, :confirmed, :synthetic, :created)"
+                ),
+                {
+                    "id": "m",
+                    "child_id": "c",
+                    "title": "Synthetic",
+                    "status": "confirmed",
+                    "subject": "Mathe",
+                    "subject_id": subject,
+                    "topic": "Brüche",
+                    "content": "Artificial source",
+                    "uncertainties": "[]",
+                    "homework": "[]",
+                    "confirmed": True,
+                    "synthetic": False,
+                    "created": 1,
+                },
             )
             db.execute(
                 LearningUnit.__table__.insert().values(

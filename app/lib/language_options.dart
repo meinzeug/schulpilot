@@ -3,4 +3,5 @@ const learningLocales = {
   'en-US': 'Englisch · USA',
   'fr-FR': 'Französisch · Frankreich',
   'es-ES': 'Spanisch · Spanien',
+  'la': 'Latein · Schulwortschatz',
 };

@@ -53,7 +53,10 @@ def counts():
 def confirm_payload(content, revision):
     return {"subject": "Englisch", "topic": "Vokabeln", "content": content, "homework": [],
             "uncertainties_resolved": True, "revision": revision,
-            "vocabulary": {"target_locale": "en-GB", "language_confirmed": True, "revision": revision}}
+            "vocabulary": {"target_locale": "en-GB", "language_confirmed": True, "revision": revision,
+                "selections": [{**{k: pair.get(k, "") for k in ("key", "word", "meaning", "context", "part_of_speech")},
+                                "confirmed": True} for pair in preview("Englisch", "Vokabeln", content)["pairs"]
+                               if not pair["uncertainty"]]}}
 
 
 def test_photo_confirmation_saves_words_and_open_meaning_in_one_transaction(api, household):
@@ -71,7 +74,7 @@ def test_photo_confirmation_saves_words_and_open_meaning_in_one_transaction(api,
     assert response.status_code == 200, response.text
     result = response.json()
     assert result["vocabulary_transfer"]["confirmed_words"] == 3
-    assert result["vocabulary_transfer"]["review_words"] == 1
+    assert result["vocabulary_transfer"]["review_words"] == 0  # Unselected ambiguity stays on the source, never becomes a word.
     with DB() as db:
         words = list(db.scalars(select(VocabularyItem).where(VocabularyItem.child_id == child["id"])))
         assert {word.word for word in words} == {"apple", "school", "lamp"}
@@ -130,9 +133,12 @@ def test_old_client_confirmation_and_later_takeover_missing_translation_and_revi
     assert api.post(f"/api/materials/{material}/vocabulary", json={**data, "target_locale": "fr-FR"}).status_code == 422
     result = api.post(f"/api/materials/{material}/vocabulary", json=data)
     assert result.status_code == 200, result.text
-    assert result.json()["confirmed_words"] == 2 and result.json()["review_words"] == 1
+    assert result.json()["confirmed_words"] == 0 and result.json()["review_words"] == 3
+    selected = confirm_payload(content, revision)["vocabulary"]["selections"]
+    checked = api.post(f"/api/materials/{material}/vocabulary", json={**data, "selections": selected})
+    assert checked.status_code == 200 and checked.json()["confirmed_words"] == 2
     pending = next(row for row in result.json()["imports"] if row["status"] == "review")
-    assert pending["pairs"][0]["meaning"] == "" and pending["pairs"][0]["uncertainty"]
+    assert any(not pair["meaning"] and pair["uncertainty"] for pair in pending["pairs"])
 
 
 def test_large_checked_page_is_batched_without_losing_words(api, household):

@@ -10,12 +10,14 @@ class LearningNextStep extends StatefulWidget {
   final String childId;
   final String? currentUnitId;
   final String title;
+  final bool showGoal;
   const LearningNextStep({
     super.key,
     required this.state,
     required this.childId,
     this.currentUnitId,
     this.title = 'So geht’s weiter',
+    this.showGoal = true,
   });
 
   @override
@@ -118,7 +120,7 @@ class _LearningNextStepState extends State<LearningNextStep> {
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
-        if (minimumOpen) ...[
+        if (minimumOpen && widget.showGoal) ...[
           Text(
             remaining == null
                 ? 'Dein Tagesziel ist noch offen.'

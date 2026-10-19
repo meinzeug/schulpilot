@@ -11,13 +11,15 @@ import 'package:schulpilot/material_screen.dart';
 import 'package:schulpilot/ui.dart';
 
 Json proposal({bool edited = false}) => {
-  'version': 1,
+  'version': 2,
+  'requires_pair_confirmation': true,
   'language': 'en',
   'unpaired_lines': 0,
   'pairs': [
-    {'word': 'apple', 'meaning': 'Apfel', 'uncertainty': ''},
-    {'word': 'book', 'meaning': 'Buch', 'uncertainty': ''},
-    if (edited) {'word': 'house', 'meaning': 'Haus', 'uncertainty': ''},
+    {'key': 'a' * 24, 'word': 'apple', 'meaning': 'Apfel', 'uncertainty': ''},
+    {'key': 'b' * 24, 'word': 'book', 'meaning': 'Buch', 'uncertainty': ''},
+    if (edited)
+      {'key': 'c' * 24, 'word': 'house', 'meaning': 'Haus', 'uncertainty': ''},
   ],
 };
 
@@ -73,11 +75,14 @@ Future<void> open(
               }
               if (request.url.path.endsWith('/confirm')) {
                 final body = jsonDecode(request.body);
-                expect(body['vocabulary']['target_locale'], 'en-GB');
-                expect(body['vocabulary']['language_confirmed'], true);
-                expect(body['vocabulary']['revision'], saved ? 2 : 1);
+                if (body['vocabulary'] != null) {
+                  expect(body['vocabulary']['target_locale'], 'en-GB');
+                  expect(body['vocabulary']['language_confirmed'], true);
+                  expect(body['vocabulary']['revision'], saved ? 2 : 1);
+                }
                 expect(body['revision'], saved ? 2 : 1);
-                count = (body['content'] as String).contains('house') ? 3 : 2;
+                count =
+                    (body['vocabulary']?['selections'] as List? ?? []).length;
                 material = {
                   ...material,
                   'confirmed': true,
@@ -154,10 +159,15 @@ void main() {
       (tester) async {
         final requests = <http.Request>[];
         await open(tester, requests, width: width);
-        expect(find.text('2 Wörter übernehmen'), findsOneWidget);
+        expect(find.text('0 Wörter ausgewählt'), findsOneWidget);
         expect(find.text('Lernsprache bestätigen'), findsOneWidget);
-        expect(find.byType(Checkbox), findsNothing);
+        expect(find.byType(Checkbox), findsNWidgets(2));
         expect(requests.every((r) => r.method == 'GET'), true);
+        for (var i = 0; i < 2; i++) {
+          await tester.ensureVisible(find.byType(Checkbox).at(i));
+          await tester.tap(find.byType(Checkbox).at(i));
+          await tester.pumpAndSettle();
+        }
         await tap(tester, 'Stimmt, weiter');
         expect(requests.where((r) => r.method == 'PUT'), hasLength(1));
         expect(requests.where((r) => r.method == 'POST'), isEmpty);
@@ -173,6 +183,11 @@ void main() {
       final requests = <http.Request>[];
       await open(tester, requests, saved: true);
       expect(requests.every((r) => r.method == 'GET'), true);
+      for (var i = 0; i < 2; i++) {
+        await tester.ensureVisible(find.byType(Checkbox).at(i));
+        await tester.tap(find.byType(Checkbox).at(i));
+        await tester.pumpAndSettle();
+      }
       await tap(tester, 'Wörter übernehmen');
       expect(
         requests.where((r) => r.method == 'POST').single.url.path,
@@ -200,7 +215,12 @@ void main() {
         requests.where((r) => r.method == 'POST').single.url.path,
         '/api/materials/page/vocabulary-preview',
       );
-      expect(find.text('3 Wörter übernehmen'), findsOneWidget);
+      expect(find.text('0 Wörter ausgewählt'), findsOneWidget);
+      for (var i = 0; i < 3; i++) {
+        await tester.ensureVisible(find.byType(Checkbox).at(i));
+        await tester.tap(find.byType(Checkbox).at(i));
+        await tester.pumpAndSettle();
+      }
       await tap(tester, 'Stimmt, weiter');
       expect(requests.where((r) => r.method == 'PUT'), hasLength(1));
       expect(find.text('3 Wörter gespeichert'), findsOneWidget);
@@ -208,6 +228,17 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('Save page only never submits unchecked words', (tester) async {
+    final requests = <http.Request>[];
+    await open(tester, requests);
+    await tap(tester, 'Nur Heftseite speichern');
+    final body = jsonDecode(
+      requests.where((r) => r.method == 'PUT').single.body,
+    );
+    expect(body.containsKey('vocabulary'), false);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('Read-only parent sees the source without a takeover action', (
     tester,
   ) async {

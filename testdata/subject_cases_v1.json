@@ -1,0 +1,2125 @@
+{
+  "version": 1,
+  "provenance": "Curated synthetic regression based on the 48 audit image topics; these are not OCR outputs or live results.",
+  "cases": [
+    {
+      "id": "MAT01",
+      "subject": "Mathematik",
+      "source": "1/4 + 1/8 = 3/8.",
+      "question": {
+        "id": "mat01",
+        "type": "short",
+        "prompt": "Berechne 1/4 + 1/8.",
+        "answer": "3/8",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "1/4 + 1/8 = 3/8.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "application",
+          "blocks": [
+            {
+              "kind": "fraction",
+              "title": "Gleich große Teile",
+              "disclosure": "given",
+              "source_excerpt": "1/4 + 1/8 = 3/8.",
+              "labels": [],
+              "numbers": [
+                1,
+                4
+              ],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MAT02",
+      "subject": "Mathematik",
+      "source": "Ein Dreieck hat die Fläche A = g * h / 2.",
+      "question": {
+        "id": "mat02",
+        "type": "short",
+        "prompt": "Ein Dreieck hat g = 6 cm und h = 3 cm. Wie groß ist seine Fläche?",
+        "answer": "9 cm²",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Ein Dreieck hat die Fläche A = g * h / 2.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "application",
+          "blocks": [
+            {
+              "kind": "triangle",
+              "title": "Grundseite und Höhe",
+              "disclosure": "given",
+              "source_excerpt": "Ein Dreieck hat g = 6 cm und h = 3 cm. Wie groß ist seine Fläche?",
+              "labels": [],
+              "numbers": [
+                6,
+                3
+              ],
+              "connections": [],
+              "unit": "cm",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "BIO01",
+      "subject": "Biologie",
+      "source": "Blüte, Blatt, Stängel, Wurzel. Die Wurzel nimmt Wasser und Mineralstoffe auf.",
+      "question": {
+        "id": "bio01",
+        "type": "choice",
+        "prompt": "Welche Aufgabe hat die Wurzel?",
+        "answer": "Wasser und Mineralstoffe aufnehmen",
+        "options": [
+          "Wasser und Mineralstoffe aufnehmen",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Blüte, Blatt, Stängel, Wurzel. Die Wurzel nimmt Wasser und Mineralstoffe auf.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "plant",
+              "title": "Zum Heftinhalt",
+              "disclosure": "given",
+              "source_excerpt": "Blüte, Blatt, Stängel, Wurzel. Die Wurzel nimmt Wasser und Mineralstoffe auf.",
+              "labels": [
+                "Blüte",
+                "Blatt",
+                "Stängel",
+                "Wurzel"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "BIO02",
+      "subject": "Biologie",
+      "source": "Gras → Kaninchen → Fuchs. Der Pfeil zeigt von der Nahrung zum Fresser.",
+      "question": {
+        "id": "bio02",
+        "type": "choice",
+        "prompt": "Wer frisst in dieser Kette das Kaninchen?",
+        "answer": "Fuchs",
+        "options": [
+          "Fuchs",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Gras → Kaninchen → Fuchs. Der Pfeil zeigt von der Nahrung zum Fresser.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "food_chain",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Gras → Kaninchen → Fuchs. Der Pfeil zeigt von der Nahrung zum Fresser.",
+              "labels": [
+                "Gras",
+                "Kaninchen",
+                "Fuchs"
+              ],
+              "numbers": [],
+              "connections": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "relation": "food_to_eater"
+                },
+                {
+                  "start": 1,
+                  "end": 2,
+                  "relation": "food_to_eater"
+                }
+              ],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "DEU01",
+      "subject": "Deutsch",
+      "source": "Der Hund bellt. Der Hund ist das Subjekt.",
+      "question": {
+        "id": "deu01",
+        "type": "choice",
+        "prompt": "Welcher Satzteil ist in „Der Hund bellt.“ das Subjekt?",
+        "answer": "Der Hund",
+        "options": [
+          "Der Hund",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Der Hund bellt. Der Hund ist das Subjekt.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "sentence",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Der Hund bellt. Der Hund ist das Subjekt.",
+              "labels": [
+                "Der Hund",
+                "bellt."
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "",
+              "marks": [
+                {
+                  "index": 0,
+                  "role": "subject"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "DEU02",
+      "subject": "Deutsch",
+      "source": "Mia sagt: „Ich komme gleich.“ Ben fragt: „Wo ist mein Buch?“",
+      "question": {
+        "id": "deu02",
+        "type": "choice",
+        "prompt": "Wer fragt nach dem Buch?",
+        "answer": "Ben",
+        "options": [
+          "Ben",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Mia sagt: „Ich komme gleich.“ Ben fragt: „Wo ist mein Buch?“",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "speech",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Mia sagt: „Ich komme gleich.“ Ben fragt: „Wo ist mein Buch?“",
+              "labels": [
+                "Mia sagt: „Ich komme gleich.“",
+                "Ben fragt: „Wo ist mein Buch?“"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ENG01",
+      "subject": "Englisch",
+      "source": "Simple Past: go → went; see → saw; buy → bought. Yesterday bedeutet gestern.",
+      "question": {
+        "id": "eng01",
+        "type": "choice",
+        "prompt": "Welche Simple-Past-Form gehört zu go?",
+        "answer": "went",
+        "options": [
+          "went",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Simple Past: go → went; see → saw; buy → bought. Yesterday bedeutet gestern.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forms",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Simple Past: go → went; see → saw; buy → bought. Yesterday bedeutet gestern.",
+              "labels": [
+                "go → went",
+                "see → saw",
+                "buy → bought"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ENG02",
+      "subject": "Englisch",
+      "source": "Present Progressive: am/is/are + Verb-ing. She is reading. They are playing.",
+      "question": {
+        "id": "eng02",
+        "type": "choice",
+        "prompt": "Welche Form von be passt zu „She ... reading“?",
+        "answer": "is",
+        "options": [
+          "is",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Present Progressive: am/is/are + Verb-ing. She is reading. They are playing.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forms",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Present Progressive: am/is/are + Verb-ing. She is reading. They are playing.",
+              "labels": [
+                "She is reading.",
+                "They are playing."
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GEO01",
+      "subject": "Geographie",
+      "source": "Norden oben, Osten rechts, Süden unten, Westen links.",
+      "question": {
+        "id": "geo01",
+        "type": "choice",
+        "prompt": "Welche Himmelsrichtung liegt auf dem Kompass rechts?",
+        "answer": "Osten",
+        "options": [
+          "Osten",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Norden oben, Osten rechts, Süden unten, Westen links.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "compass",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Norden oben, Osten rechts, Süden unten, Westen links.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GEO02",
+      "subject": "Geographie",
+      "source": "Verdunstung → Kondensation → Niederschlag → Sammlung.",
+      "question": {
+        "id": "geo02",
+        "type": "choice",
+        "prompt": "Was folgt in diesem Kreislauf auf die Kondensation?",
+        "answer": "Niederschlag",
+        "options": [
+          "Niederschlag",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Verdunstung → Kondensation → Niederschlag → Sammlung.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "water_cycle",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Verdunstung → Kondensation → Niederschlag → Sammlung.",
+              "labels": [
+                "Verdunstung",
+                "Kondensation",
+                "Niederschlag",
+                "Sammlung"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GES01",
+      "subject": "Geschichte",
+      "source": "Das 1. Jahrhundert umfasst die Jahre 1 bis 100; das 6. Jahrhundert 501 bis 600.",
+      "question": {
+        "id": "ges01",
+        "type": "choice",
+        "prompt": "Welche Jahre gehören zum 6. Jahrhundert?",
+        "answer": "501 bis 600",
+        "options": [
+          "501 bis 600",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Das 1. Jahrhundert umfasst die Jahre 1 bis 100; das 6. Jahrhundert 501 bis 600.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "timeline",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Das 1. Jahrhundert umfasst die Jahre 1 bis 100; das 6. Jahrhundert 501 bis 600.",
+              "labels": [],
+              "numbers": [
+                1,
+                600
+              ],
+              "connections": [],
+              "unit": "",
+              "variant": "centuries"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GES02",
+      "subject": "Geschichte",
+      "source": "Vereinfachtes Ständemodell: Geistliche, Adlige und Bauern. Die Gesellschaft war vielfältiger als dieses Modell.",
+      "question": {
+        "id": "ges02",
+        "type": "choice",
+        "prompt": "Was für eine Darstellung ist das Ständemodell?",
+        "answer": "ein vereinfachtes Modell",
+        "options": [
+          "ein vereinfachtes Modell",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Vereinfachtes Ständemodell: Geistliche, Adlige und Bauern. Die Gesellschaft war vielfältiger als dieses Modell.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "statements",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Vereinfachtes Ständemodell: Geistliche, Adlige und Bauern. Die Gesellschaft war vielfältiger als dieses Modell.",
+              "labels": [
+                "Geistliche",
+                "Adlige",
+                "Bauern"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "PHY01",
+      "subject": "Physik",
+      "source": "Einfallswinkel und Reflexionswinkel werden zum Lot gemessen und sind gleich groß. Der Einfallswinkel beträgt 30°.",
+      "question": {
+        "id": "phy01",
+        "type": "choice",
+        "prompt": "Der Einfallswinkel zum Lot beträgt 30°. Wie groß ist der Reflexionswinkel?",
+        "answer": "30°",
+        "options": [
+          "30°",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Einfallswinkel und Reflexionswinkel werden zum Lot gemessen und sind gleich groß. Der Einfallswinkel beträgt 30°.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "reflection",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Einfallswinkel und Reflexionswinkel werden zum Lot gemessen und sind gleich groß. Der Einfallswinkel beträgt 30°.",
+              "labels": [],
+              "numbers": [
+                30
+              ],
+              "connections": [],
+              "unit": "°",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "PHY02",
+      "subject": "Physik",
+      "source": "Ist der Schalter geschlossen, ist der Stromkreis verbunden. Ist er offen, ist die Leitung unterbrochen.",
+      "question": {
+        "id": "phy02",
+        "type": "choice",
+        "prompt": "Welcher Schalterzustand unterbricht die Leitung?",
+        "answer": "offen",
+        "options": [
+          "offen",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Ist der Schalter geschlossen, ist der Stromkreis verbunden. Ist er offen, ist die Leitung unterbrochen.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "circuit",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Ist der Schalter geschlossen, ist der Stromkreis verbunden. Ist er offen, ist die Leitung unterbrochen.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "open"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CHE01",
+      "subject": "Chemie",
+      "source": "Fest: Teilchen sind eng und regelmäßig angeordnet. Flüssig: eng und unregelmäßig. Gasförmig: weit auseinander.",
+      "question": {
+        "id": "che01",
+        "type": "choice",
+        "prompt": "Wie sind die Teilchen im festen Stoff angeordnet?",
+        "answer": "eng und regelmäßig",
+        "options": [
+          "eng und regelmäßig",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Fest: Teilchen sind eng und regelmäßig angeordnet. Flüssig: eng und unregelmäßig. Gasförmig: weit auseinander.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "particles",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Fest: Teilchen sind eng und regelmäßig angeordnet. Flüssig: eng und unregelmäßig. Gasförmig: weit auseinander.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "solid"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CHE02",
+      "subject": "Chemie",
+      "source": "Sand bleibt im Filterpapier. Wasser und gelöstes Salz gelangen in das Auffanggefäß.",
+      "question": {
+        "id": "che02",
+        "type": "choice",
+        "prompt": "Welcher Stoff bleibt als Rückstand im Filter?",
+        "answer": "Sand",
+        "options": [
+          "Sand",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Sand bleibt im Filterpapier. Wasser und gelöstes Salz gelangen in das Auffanggefäß.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "filtration",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Sand bleibt im Filterpapier. Wasser und gelöstes Salz gelangen in das Auffanggefäß.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "DAZ01",
+      "subject": "Deutsch als Zweitsprache",
+      "source": "der Tisch → die Tische; die Lampe → die Lampen; das Buch → die Bücher.",
+      "question": {
+        "id": "daz01",
+        "type": "choice",
+        "prompt": "Wie lautet die Mehrzahl von „das Buch“?",
+        "answer": "die Bücher",
+        "options": [
+          "die Bücher",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "der Tisch → die Tische; die Lampe → die Lampen; das Buch → die Bücher.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forms",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "der Tisch → die Tische; die Lampe → die Lampen; das Buch → die Bücher.",
+              "labels": [
+                "der Tisch → die Tische",
+                "die Lampe → die Lampen",
+                "das Buch → die Bücher"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "DAZ02",
+      "subject": "Deutsch als Zweitsprache",
+      "source": "Der Ball liegt unter dem Tisch. Ein anderer Ball liegt neben dem Tisch.",
+      "question": {
+        "id": "daz02",
+        "type": "choice",
+        "prompt": "Welche Ortsangabe bezeichnet eine tiefere Position als die Tischplatte?",
+        "answer": "unter dem Tisch",
+        "options": [
+          "unter dem Tisch",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Der Ball liegt unter dem Tisch. Ein anderer Ball liegt neben dem Tisch.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "position",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Der Ball liegt unter dem Tisch. Ein anderer Ball liegt neben dem Tisch.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "below"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ETH01",
+      "subject": "Ethik",
+      "source": "Mia und Ben können dieselbe Situation unterschiedlich erleben. Beide Perspektiven dürfen erklärt werden.",
+      "question": {
+        "id": "eth01",
+        "type": "short",
+        "prompt": "Wie könnten Mia und Ben die Situation unterschiedlich erleben?",
+        "answer": "unterschiedliche Gedanken erklären",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Mia und Ben können dieselbe Situation unterschiedlich erleben. Beide Perspektiven dürfen erklärt werden.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "reflection",
+          "blocks": [
+            {
+              "kind": "perspectives",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Mia und Ben können dieselbe Situation unterschiedlich erleben. Beide Perspektiven dürfen erklärt werden.",
+              "labels": [
+                "Mia",
+                "Ben"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ETH02",
+      "subject": "Ethik",
+      "source": "Eine Begründung erklärt eine Meinung, zum Beispiel: Ich warte, weil alle an die Reihe kommen sollen.",
+      "question": {
+        "id": "eth02",
+        "type": "short",
+        "prompt": "Warum wäre es in dieser Situation fair, zu warten?",
+        "answer": "eigene begründete Idee",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Eine Begründung erklärt eine Meinung, zum Beispiel: Ich warte, weil alle an die Reihe kommen sollen.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "reflection",
+          "blocks": [
+            {
+              "kind": "perspectives",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Eine Begründung erklärt eine Meinung, zum Beispiel: Ich warte, weil alle an die Reihe kommen sollen.",
+              "labels": [
+                "Ich warte",
+                "weil alle an die Reihe kommen sollen"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "FRA01",
+      "subject": "Französisch",
+      "source": "rouge = rot; bleu = blau; vert = grün; jaune = gelb.",
+      "question": {
+        "id": "fra01",
+        "type": "choice",
+        "prompt": "Welche deutsche Bedeutung hat bleu?",
+        "answer": "blau",
+        "options": [
+          "blau",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "rouge = rot; bleu = blau; vert = grün; jaune = gelb.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "picture_words",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "rouge = rot; bleu = blau; vert = grün; jaune = gelb.",
+              "labels": [
+                "rouge",
+                "bleu",
+                "vert",
+                "jaune"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "FRA02",
+      "subject": "Französisch",
+      "source": "un livre = ein Buch; une table = ein Tisch; un chat = eine Katze; une maison = ein Haus.",
+      "question": {
+        "id": "fra02",
+        "type": "choice",
+        "prompt": "Was bedeutet une maison?",
+        "answer": "ein Haus",
+        "options": [
+          "ein Haus",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "un livre = ein Buch; une table = ein Tisch; un chat = eine Katze; une maison = ein Haus.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "picture_words",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "un livre = ein Buch; une table = ein Tisch; un chat = eine Katze; une maison = ein Haus.",
+              "labels": [
+                "un livre",
+                "une table",
+                "un chat",
+                "une maison"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GEM01",
+      "subject": "Gemeinschaftskunde",
+      "source": "Die Abstimmung ergibt: A hat 7 Stimmen, B hat 5 Stimmen. Das Diagramm beginnt bei 0.",
+      "question": {
+        "id": "gem01",
+        "type": "choice",
+        "prompt": "Welcher Vorschlag hat mehr Stimmen?",
+        "answer": "A",
+        "options": [
+          "A",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Die Abstimmung ergibt: A hat 7 Stimmen, B hat 5 Stimmen. Das Diagramm beginnt bei 0.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "bar_chart",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Die Abstimmung ergibt: A hat 7 Stimmen, B hat 5 Stimmen. Das Diagramm beginnt bei 0.",
+              "labels": [
+                "A",
+                "B"
+              ],
+              "numbers": [
+                7,
+                5
+              ],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GEM02",
+      "subject": "Gemeinschaftskunde",
+      "source": "Das Buch hat 80 Seiten. Das ist eine überprüfbare Aussage. Ich finde das Buch spannend. Das ist eine Meinung.",
+      "question": {
+        "id": "gem02",
+        "type": "choice",
+        "prompt": "Welche Aussage nennt eine persönliche Meinung?",
+        "answer": "Ich finde das Buch spannend.",
+        "options": [
+          "Ich finde das Buch spannend.",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Das Buch hat 80 Seiten. Das ist eine überprüfbare Aussage. Ich finde das Buch spannend. Das ist eine Meinung.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "statements",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Das Buch hat 80 Seiten. Das ist eine überprüfbare Aussage. Ich finde das Buch spannend. Das ist eine Meinung.",
+              "labels": [
+                "Das Buch hat 80 Seiten.",
+                "Ich finde das Buch spannend."
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "INF01",
+      "subject": "Informatik",
+      "source": "Start → Zahl 3 eingeben → verdoppeln → Ergebnis 6 ausgeben → Ende.",
+      "question": {
+        "id": "inf01",
+        "type": "choice",
+        "prompt": "Was wird nach dem Eingeben mit der Zahl gemacht?",
+        "answer": "verdoppeln",
+        "options": [
+          "verdoppeln",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Start → Zahl 3 eingeben → verdoppeln → Ergebnis 6 ausgeben → Ende.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "flowchart",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Start → Zahl 3 eingeben → verdoppeln → Ergebnis 6 ausgeben → Ende.",
+              "labels": [
+                "Start",
+                "Zahl 3 eingeben",
+                "verdoppeln",
+                "Ergebnis 6 ausgeben",
+                "Ende"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "INF02",
+      "subject": "Informatik",
+      "source": "Die Binärzahl 101 hat die Stellenwerte 4, 2 und 1. Ihr Wert ist 5.",
+      "question": {
+        "id": "inf02",
+        "type": "choice",
+        "prompt": "Welchen Wert hat die Binärzahl 101?",
+        "answer": "5",
+        "options": [
+          "5",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Die Binärzahl 101 hat die Stellenwerte 4, 2 und 1. Ihr Wert ist 5.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "place_values",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Die Binärzahl 101 hat die Stellenwerte 4, 2 und 1. Ihr Wert ist 5.",
+              "labels": [],
+              "numbers": [
+                1,
+                0,
+                1
+              ],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "KRE01",
+      "subject": "Kreativität und Bewegung",
+      "source": "Start → zwei Schritte vor → klatschen → zwei Schritte zurück → Ende.",
+      "question": {
+        "id": "kre01",
+        "type": "short",
+        "prompt": "Beschreibe die Bewegungsfolge, ohne dass wir deine Ausführung messen.",
+        "answer": "eigene Beschreibung",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Start → zwei Schritte vor → klatschen → zwei Schritte zurück → Ende.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "movement",
+          "blocks": [
+            {
+              "kind": "movement",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Start → zwei Schritte vor → klatschen → zwei Schritte zurück → Ende.",
+              "labels": [
+                "Start",
+                "zwei Schritte vor",
+                "klatschen",
+                "zwei Schritte zurück",
+                "Ende"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "KRE02",
+      "subject": "Kreativität und Bewegung",
+      "source": "Kreis, Dreieck, Kreis, Dreieck. Die Formen wechseln sich ab.",
+      "question": {
+        "id": "kre02",
+        "type": "choice",
+        "prompt": "Welche Form folgt im Muster auf das zweite Dreieck?",
+        "answer": "Kreis",
+        "options": [
+          "Kreis",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Kreis, Dreieck, Kreis, Dreieck. Die Formen wechseln sich ab.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "pattern",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Kreis, Dreieck, Kreis, Dreieck. Die Formen wechseln sich ab.",
+              "labels": [
+                "Kreis",
+                "Dreieck",
+                "Kreis",
+                "Dreieck"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "KUN01",
+      "subject": "Kunst",
+      "source": "Im Farbmodell RYB sind Rot, Gelb und Blau die Grundfarben. Orange, Grün und Violett liegen dazwischen.",
+      "question": {
+        "id": "kun01",
+        "type": "choice",
+        "prompt": "Welches Farbmodell wird hier behandelt?",
+        "answer": "RYB",
+        "options": [
+          "RYB",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Im Farbmodell RYB sind Rot, Gelb und Blau die Grundfarben. Orange, Grün und Violett liegen dazwischen.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "colour_wheel",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Im Farbmodell RYB sind Rot, Gelb und Blau die Grundfarben. Orange, Grün und Violett liegen dazwischen.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "RYB"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "KUN02",
+      "subject": "Kunst",
+      "source": "Vordergrund, Mittelgrund, Hintergrund. Diese Begriffe beschreiben Bildebenen.",
+      "question": {
+        "id": "kun02",
+        "type": "choice",
+        "prompt": "Welche Bildebene liegt zwischen Vordergrund und Hintergrund?",
+        "answer": "Mittelgrund",
+        "options": [
+          "Mittelgrund",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Vordergrund, Mittelgrund, Hintergrund. Diese Begriffe beschreiben Bildebenen.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "layers",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Vordergrund, Mittelgrund, Hintergrund. Diese Begriffe beschreiben Bildebenen.",
+              "labels": [
+                "Vordergrund",
+                "Mittelgrund",
+                "Hintergrund"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LAT01",
+      "subject": "Latein",
+      "source": "aqua = Wasser; terra = Erde; sol = Sonne; amicus = Freund; amica = Freundin.",
+      "question": {
+        "id": "lat01",
+        "type": "choice",
+        "prompt": "Was bedeutet aqua?",
+        "answer": "Wasser",
+        "options": [
+          "Wasser",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "aqua = Wasser; terra = Erde; sol = Sonne; amicus = Freund; amica = Freundin.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forms",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "aqua = Wasser; terra = Erde; sol = Sonne; amicus = Freund; amica = Freundin.",
+              "labels": [
+                "aqua = Wasser",
+                "terra = Erde",
+                "sol = Sonne",
+                "amicus = Freund",
+                "amica = Freundin"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LAT02",
+      "subject": "Latein",
+      "source": "esse = sein; sum = ich bin; es = du bist; est = er/sie/es ist.",
+      "question": {
+        "id": "lat02",
+        "type": "choice",
+        "prompt": "Welche Form von esse bedeutet ich bin?",
+        "answer": "sum",
+        "options": [
+          "sum",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "esse = sein; sum = ich bin; es = du bist; est = er/sie/es ist.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forms",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "esse = sein; sum = ich bin; es = du bist; est = er/sie/es ist.",
+              "labels": [
+                "esse = sein",
+                "sum = ich bin",
+                "es = du bist",
+                "est = er/sie/es ist"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LER01",
+      "subject": "Lerntechniken",
+      "source": "Frage: Was nimmt die Wurzel auf? Erst selbst antworten, dann die Rückseite mit der Lösung aufdecken.",
+      "question": {
+        "id": "ler01",
+        "type": "choice",
+        "prompt": "Was tust du vor dem Aufdecken der Rückseite?",
+        "answer": "erst selbst antworten",
+        "options": [
+          "erst selbst antworten",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Frage: Was nimmt die Wurzel auf? Erst selbst antworten, dann die Rückseite mit der Lösung aufdecken.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "flashcard",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Frage: Was nimmt die Wurzel auf? Erst selbst antworten, dann die Rückseite mit der Lösung aufdecken.",
+              "labels": [
+                "Was nimmt die Wurzel auf?",
+                "Erst selbst antworten"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LER02",
+      "subject": "Lerntechniken",
+      "source": "Pflanze: Wurzel, Stängel, Blatt, Blüte. Eine Mindmap verbindet die Begriffe mit dem Hauptthema.",
+      "question": {
+        "id": "ler02",
+        "type": "choice",
+        "prompt": "Welches Hauptthema steht im Zentrum dieser Mindmap?",
+        "answer": "Pflanze",
+        "options": [
+          "Pflanze",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Pflanze: Wurzel, Stängel, Blatt, Blüte. Eine Mindmap verbindet die Begriffe mit dem Hauptthema.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "mindmap",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Pflanze: Wurzel, Stängel, Blatt, Blüte. Eine Mindmap verbindet die Begriffe mit dem Hauptthema.",
+              "labels": [
+                "Pflanze",
+                "Wurzel",
+                "Stängel",
+                "Blatt",
+                "Blüte"
+              ],
+              "numbers": [],
+              "connections": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "relation": "branch"
+                },
+                {
+                  "start": 0,
+                  "end": 2,
+                  "relation": "branch"
+                },
+                {
+                  "start": 0,
+                  "end": 3,
+                  "relation": "branch"
+                },
+                {
+                  "start": 0,
+                  "end": 4,
+                  "relation": "branch"
+                }
+              ],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MUS01",
+      "subject": "Musik",
+      "source": "Im Bezug auf Viertelschläge: ganze Note 4, halbe Note 2, Viertelnote 1.",
+      "question": {
+        "id": "mus01",
+        "type": "choice",
+        "prompt": "Wie viele Viertelschläge dauert die halbe Note?",
+        "answer": "2",
+        "options": [
+          "2",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Im Bezug auf Viertelschläge: ganze Note 4, halbe Note 2, Viertelnote 1.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "notes",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Im Bezug auf Viertelschläge: ganze Note 4, halbe Note 2, Viertelnote 1.",
+              "labels": [],
+              "numbers": [
+                4,
+                2,
+                1
+              ],
+              "connections": [],
+              "unit": "Schläge",
+              "variant": "quarters"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MUS02",
+      "subject": "Musik",
+      "source": "Die weißen Tasten heißen im Deutschen C D E F G A H C. Schwarze Tasten sind in Zweier- und Dreiergruppen angeordnet.",
+      "question": {
+        "id": "mus02",
+        "type": "choice",
+        "prompt": "Wie heißt im Deutschen die weiße Taste nach A?",
+        "answer": "H",
+        "options": [
+          "H",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Die weißen Tasten heißen im Deutschen C D E F G A H C. Schwarze Tasten sind in Zweier- und Dreiergruppen angeordnet.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "keyboard",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Die weißen Tasten heißen im Deutschen C D E F G A H C. Schwarze Tasten sind in Zweier- und Dreiergruppen angeordnet.",
+              "labels": [
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "A",
+                "H",
+                "C"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "REL01",
+      "subject": "Religion",
+      "source": "Beispiele: Christentum – Kirche; Judentum – Synagoge; Islam – Moschee. Es gibt innerhalb jeder Tradition Unterschiede.",
+      "question": {
+        "id": "rel01",
+        "type": "choice",
+        "prompt": "Welches Gebäude gehört in diesen Beispielen zum Judentum?",
+        "answer": "Synagoge",
+        "options": [
+          "Synagoge",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Beispiele: Christentum – Kirche; Judentum – Synagoge; Islam – Moschee. Es gibt innerhalb jeder Tradition Unterschiede.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "traditions",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Beispiele: Christentum – Kirche; Judentum – Synagoge; Islam – Moschee. Es gibt innerhalb jeder Tradition Unterschiede.",
+              "labels": [
+                "Christentum – Kirche",
+                "Judentum – Synagoge",
+                "Islam – Moschee"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "REL02",
+      "subject": "Religion",
+      "source": "In christlichen Traditionen erinnert Weihnachten an Jesu Geburt und Ostern an seine Auferstehung.",
+      "question": {
+        "id": "rel02",
+        "type": "choice",
+        "prompt": "Woran erinnert Weihnachten in christlichen Traditionen?",
+        "answer": "Jesu Geburt",
+        "options": [
+          "Jesu Geburt",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "In christlichen Traditionen erinnert Weihnachten an Jesu Geburt und Ostern an seine Auferstehung.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "traditions",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "In christlichen Traditionen erinnert Weihnachten an Jesu Geburt und Ostern an seine Auferstehung.",
+              "labels": [
+                "Weihnachten",
+                "Ostern"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SAC01",
+      "subject": "Sachunterricht",
+      "source": "Die fünf hier behandelten Sinne: Sehen, Hören, Riechen, Schmecken, Tasten.",
+      "question": {
+        "id": "sac01",
+        "type": "choice",
+        "prompt": "Mit welchem Sinn nehmen wir Geräusche wahr?",
+        "answer": "Hören",
+        "options": [
+          "Hören",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Die fünf hier behandelten Sinne: Sehen, Hören, Riechen, Schmecken, Tasten.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "senses",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Die fünf hier behandelten Sinne: Sehen, Hören, Riechen, Schmecken, Tasten.",
+              "labels": [
+                "Sehen",
+                "Hören",
+                "Riechen",
+                "Schmecken",
+                "Tasten"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SAC02",
+      "subject": "Sachunterricht",
+      "source": "Frühling → Sommer → Herbst → Winter → Frühling. In Deutschland werden die Tage im Frühling länger.",
+      "question": {
+        "id": "sac02",
+        "type": "choice",
+        "prompt": "Welche Jahreszeit folgt auf den Sommer?",
+        "answer": "Herbst",
+        "options": [
+          "Herbst",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Frühling → Sommer → Herbst → Winter → Frühling. In Deutschland werden die Tage im Frühling länger.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "seasons",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Frühling → Sommer → Herbst → Winter → Frühling. In Deutschland werden die Tage im Frühling länger.",
+              "labels": [
+                "Frühling",
+                "Sommer",
+                "Herbst",
+                "Winter"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SPA01",
+      "subject": "Spanisch",
+      "source": "1 uno; 2 dos; 3 tres; 4 cuatro; 5 cinco.",
+      "question": {
+        "id": "spa01",
+        "type": "choice",
+        "prompt": "Welche Zahl bedeutet tres?",
+        "answer": "3",
+        "options": [
+          "3",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "1 uno; 2 dos; 3 tres; 4 cuatro; 5 cinco.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forms",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "1 uno; 2 dos; 3 tres; 4 cuatro; 5 cinco.",
+              "labels": [
+                "1 uno",
+                "2 dos",
+                "3 tres",
+                "4 cuatro",
+                "5 cinco"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SPA02",
+      "subject": "Spanisch",
+      "source": "el sol = die Sonne; la luna = der Mond; la casa = das Haus; el libro = das Buch.",
+      "question": {
+        "id": "spa02",
+        "type": "choice",
+        "prompt": "Was bedeutet la luna?",
+        "answer": "der Mond",
+        "options": [
+          "der Mond",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "el sol = die Sonne; la luna = der Mond; la casa = das Haus; el libro = das Buch.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "picture_words",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "el sol = die Sonne; la luna = der Mond; la casa = das Haus; el libro = das Buch.",
+              "labels": [
+                "el sol",
+                "la luna",
+                "la casa",
+                "el libro"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SPO01",
+      "subject": "Sport",
+      "source": "Werfen: vorbereiten → werfen → ausschwingen. Das Beschreiben belegt keine gemessene Wurfausführung.",
+      "question": {
+        "id": "spo01",
+        "type": "choice",
+        "prompt": "Was folgt im Ablauf auf das Werfen?",
+        "answer": "ausschwingen",
+        "options": [
+          "ausschwingen",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Werfen: vorbereiten → werfen → ausschwingen. Das Beschreiben belegt keine gemessene Wurfausführung.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "movement",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Werfen: vorbereiten → werfen → ausschwingen. Das Beschreiben belegt keine gemessene Wurfausführung.",
+              "labels": [
+                "vorbereiten",
+                "werfen",
+                "ausschwingen"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "SPO02",
+      "subject": "Sport",
+      "source": "Fairplay heißt Regeln beachten, zuhören und andere respektieren. Es gibt mehrere passende Ideen.",
+      "question": {
+        "id": "spo02",
+        "type": "short",
+        "prompt": "Wie könntest du in einem Streit fair reagieren?",
+        "answer": "eigene begründete Idee",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Fairplay heißt Regeln beachten, zuhören und andere respektieren. Es gibt mehrere passende Ideen.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "reflection",
+          "blocks": [
+            {
+              "kind": "fairplay",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Fairplay heißt Regeln beachten, zuhören und andere respektieren. Es gibt mehrere passende Ideen.",
+              "labels": [
+                "Regeln beachten",
+                "zuhören",
+                "andere respektieren"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "TEC01",
+      "subject": "Technik",
+      "source": "Drei direkt gekoppelte Zahnräder A, B, C: Benachbarte Räder drehen entgegengesetzt. A und C drehen gleich herum.",
+      "question": {
+        "id": "tec01",
+        "type": "choice",
+        "prompt": "Drei direkt gekoppelte Zahnräder A, B und C. A dreht im Uhrzeigersinn. Welche Räder drehen sich gleich herum?",
+        "answer": "A und C",
+        "options": [
+          "A und C",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Drei direkt gekoppelte Zahnräder A, B, C: Benachbarte Räder drehen entgegengesetzt. A und C drehen gleich herum.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "gears",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Drei direkt gekoppelte Zahnräder A, B und C. A dreht im Uhrzeigersinn. Welche Räder drehen sich gleich herum?",
+              "labels": [
+                "A",
+                "B",
+                "C"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "clockwise"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "TEC02",
+      "subject": "Technik",
+      "source": "Zug: Kräfte ziehen nach außen. Druck: Kräfte wirken nach innen auf den Körper.",
+      "question": {
+        "id": "tec02",
+        "type": "choice",
+        "prompt": "Wie heißt die Belastung mit nach außen gerichteten Kräften?",
+        "answer": "Zug",
+        "options": [
+          "Zug",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Zug: Kräfte ziehen nach außen. Druck: Kräfte wirken nach innen auf den Körper.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "forces",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Zug: Kräfte ziehen nach außen. Druck: Kräfte wirken nach innen auf den Körper.",
+              "labels": [],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": "pull"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "WIR01",
+      "subject": "Wirtschaft",
+      "source": "Einnahmen +10 €. Ausgaben -4 € und -2 €. Rest 4 €.",
+      "question": {
+        "id": "wir01",
+        "type": "choice",
+        "prompt": "Wie viel Geld bleibt nach diesen Ausgaben?",
+        "answer": "4 €",
+        "options": [
+          "4 €",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Einnahmen +10 €. Ausgaben -4 € und -2 €. Rest 4 €.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "money",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Einnahmen +10 €. Ausgaben -4 € und -2 €. Rest 4 €.",
+              "labels": [
+                "Einnahmen",
+                "Ausgaben",
+                "Ausgaben",
+                "Rest"
+              ],
+              "numbers": [
+                10,
+                -4,
+                -2,
+                4
+              ],
+              "connections": [],
+              "unit": "€",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "WIR02",
+      "subject": "Wirtschaft",
+      "source": "Waren sind zum Beispiel Brot und ein Fahrrad. Dienstleistungen sind zum Beispiel Haarschnitt und Fahrradreparatur.",
+      "question": {
+        "id": "wir02",
+        "type": "choice",
+        "prompt": "Was ist hier eine Dienstleistung?",
+        "answer": "Fahrradreparatur",
+        "options": [
+          "Fahrradreparatur",
+          "Das Gegenteil der beschriebenen Eigenschaft",
+          "Die Heftstelle enthält diese Behauptung nicht"
+        ],
+        "accepted": [],
+        "hints": [
+          "Lies die passende Heftstelle.",
+          "Vergleiche die wichtigen Merkmale.",
+          "Schau dir das Beispiel im Heft noch einmal an."
+        ],
+        "explanation": "Waren sind zum Beispiel Brot und ein Fahrrad. Dienstleistungen sind zum Beispiel Haarschnitt und Fahrradreparatur.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "statements",
+              "title": "Zum Heftinhalt",
+              "disclosure": "solution",
+              "source_excerpt": "Waren sind zum Beispiel Brot und ein Fahrrad. Dienstleistungen sind zum Beispiel Haarschnitt und Fahrradreparatur.",
+              "labels": [
+                "Brot",
+                "Fahrrad",
+                "Haarschnitt",
+                "Fahrradreparatur"
+              ],
+              "numbers": [],
+              "connections": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

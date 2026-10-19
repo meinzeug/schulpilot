@@ -725,12 +725,14 @@ class ActionButton extends StatefulWidget {
   final Future<void> Function() onPressed;
   final IconData? icon;
   final bool secondary;
+  final bool enabled;
   const ActionButton({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
     this.secondary = false,
+    this.enabled = true,
   });
   @override
   State<ActionButton> createState() => _ActionButtonState();
@@ -763,8 +765,14 @@ class _ActionButtonState extends State<ActionButton> {
     }
 
     return widget.secondary
-        ? OutlinedButton(onPressed: busy ? null : pressed, child: child)
-        : FilledButton(onPressed: busy ? null : pressed, child: child);
+        ? OutlinedButton(
+            onPressed: busy || !widget.enabled ? null : pressed,
+            child: child,
+          )
+        : FilledButton(
+            onPressed: busy || !widget.enabled ? null : pressed,
+            child: child,
+          );
   }
 }
 

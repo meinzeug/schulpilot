@@ -516,6 +516,7 @@ def run(body):
     gateway_token = secrets.token_urlsafe(32)
     state = {"calls": 0, "usage": None, "search_calls": None, "completed": False, "http_status": None}
     call_lock = threading.Lock()
+    state["failure_code"] = "unknown"
 
     class Gateway(BaseHTTPRequestHandler):
         def log_message(self, *_):
@@ -646,9 +647,8 @@ def run(body):
                     or not output.exists()
                     or output.stat().st_size > 200_000
                 ):
-                    raise HTTPException(
-                        502, "Codex lieferte keine abgeschlossene gültige Ausgabe. Keine automatische Wiederholung."
-                    )
+                    state["failure_code"] = "invalid_output" if state["completed"] else "provider_unavailable"
+                    raise HTTPException(502, "Codex lieferte keine abgeschlossene gültige Ausgabe. Keine automatische Wiederholung.", headers={"X-Schulpilot-Failure": state["failure_code"]})
                 if (
                     type(state["search_calls"]) is not int
                     or state["search_calls"] < 0
@@ -664,8 +664,12 @@ def run(body):
                     "search_calls": state["search_calls"],
                     "web_search": body["web_search"],
                 }
-            except (subprocess.TimeoutExpired, ValueError, OSError):
-                raise HTTPException(502, "Isolierter Codex-Aufruf fehlgeschlagen.") from None
+            except subprocess.TimeoutExpired:
+                state["failure_code"] = "provider_timeout"
+                raise HTTPException(502, "Der begrenzte Codex-Aufruf hat sein Zeitlimit erreicht.", headers={"X-Schulpilot-Failure":"provider_timeout"}) from None
+            except (ValueError, OSError):
+                state["failure_code"] = "invalid_output"
+                raise HTTPException(502, "Isolierter Codex-Aufruf fehlgeschlagen.", headers={"X-Schulpilot-Failure":"invalid_output"}) from None
             finally:
                 persist_refreshed_auth(home, original)
     finally:
@@ -674,6 +678,7 @@ def run(body):
             "upstream_calls": state["calls"],
             "cli_exit": state.get("cli_exit"),
             "parameter": state.get("parameter", "unknown"),
+            "failure_code": state["failure_code"],
         }
         gateway.shutdown()
         gateway.server_close()

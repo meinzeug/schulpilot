@@ -3,6 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
+from .subject_content import Presentation, SourceBlock
+
 Short = Annotated[str, Field(min_length=1, max_length=160)]
 
 
@@ -137,11 +139,23 @@ class MaterialVocabularyPreview(Strict):
     content: str = Field(min_length=1, max_length=24000)
 
 
+class MaterialWordSelection(Strict):
+    key: str = Field(pattern=r"^[a-f0-9]{24}$")
+    word: str = Field(min_length=1, max_length=200)
+    meaning: str = Field(min_length=1, max_length=200)
+    context: str = Field(default="", max_length=500)
+    part_of_speech: str = Field(default="", max_length=40)
+    confirmed: Literal[True]
+
+
 class MaterialWords(Strict):
-    target_locale: Literal["en-GB", "en-US", "fr-FR", "es-ES"]
+    target_locale: Literal["en-GB", "en-US", "fr-FR", "es-ES", "la"]
     language_confirmed: Literal[True]
     reverse: bool = False
     revision: int = Field(ge=1)
+    # Missing on older clients: keep suggestions in review, never silently
+    # promote OCR candidates into confirmed vocabulary.
+    selections: list[MaterialWordSelection] | None = Field(default=None, max_length=400)
 
 
 class MaterialTaskDecision(Strict):
@@ -162,6 +176,8 @@ class MaterialConfirm(Strict):
 
 
 class Question(Strict):
+    presentation: Presentation | None = None
+
     @model_validator(mode="before")
     @classmethod
     def decode_choice_labels(cls, value):
@@ -231,6 +247,8 @@ class UnitOutput(Strict):
 
 
 class ExtractionOutput(Strict):
+    source_blocks: list[SourceBlock] = Field(default_factory=list, max_length=80)
+
     legibility: Literal["readable", "partial", "unreadable"] = "readable"
     subject: str = Field(max_length=80)
     topic: str = Field(max_length=160)
@@ -240,6 +258,8 @@ class ExtractionOutput(Strict):
 
     @model_validator(mode="after")
     def readable_content(self):
+        if self.source_blocks and "\n\n".join(b.text for b in self.source_blocks) != self.content:
+            raise ValueError("Abschnittsrollen gehören nicht zur wörtlichen Abschrift.")
         if self.legibility == "unreadable":
             if not self.uncertainties or self.homework or self.content.strip():
                 raise ValueError(
@@ -310,7 +330,7 @@ class UnitCreate(Strict):
 class AnswerRequest(Strict):
     request_id: str | None = Field(default=None, min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
     input_method: Literal["typed", "speech"] = "typed"
-    answer: str = Field(max_length=1000)
+    answer: str = Field(min_length=1, max_length=1000)
     guided_feedback: bool = False
 
 

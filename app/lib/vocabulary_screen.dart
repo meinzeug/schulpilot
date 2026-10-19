@@ -1123,10 +1123,20 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                               : 'Selbst eingetragen',
                           style: const TextStyle(fontSize: 12, color: muted),
                         ),
-                        for (final state in item['reviews'] as List)
-                          Text(
-                            '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'Antwort noch offen' : 'wieder am ${friendlyDate(state['due'])}'}',
-                            style: const TextStyle(fontSize: 13),
+                        if ((item['reviews'] as List).isNotEmpty)
+                          ExpansionTile(
+                            tilePadding: EdgeInsets.zero,
+                            title: Text(
+                              '${(item['reviews'] as List).length} Lernmodi · Stand ansehen',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            children: [
+                              for (final state in item['reviews'] as List)
+                                Text(
+                                  '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'Antwort noch offen' : 'wieder am ${friendlyDate(state['due'])}'}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                            ],
                           ),
                         if (!widget.state.isChild ||
                             revealed.contains(item['id']))

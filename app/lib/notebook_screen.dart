@@ -375,7 +375,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   Future<void> addPhoto() async {
     if (widget.state.isChild) {
-      openRoute(context, '/after-school/${widget.childId}');
+      openRoute(
+        context,
+        '/after-school/${widget.childId}?capture=1${widget.subjectId == 'unassigned' ? '' : '&subject=${Uri.encodeComponent(widget.subjectId)}'}',
+      );
       return;
     }
     try {

@@ -22,7 +22,11 @@ from .tutor_schemas import TUTOR_SYSTEM, TutorOutput
 
 
 class ProviderError(Exception):
-    pass
+    def __init__(self, message, *, code=None):
+        from .job_failures import CODES, message_code
+
+        super().__init__(message)
+        self.code = code if code in CODES else message_code(message)
 
 
 def openrouter_failure(error):
@@ -804,6 +808,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         )
         if math_examples:
             payload = {**payload, "math_tasks": math_examples}
+    from . import subject_content
+
+    visual_functions = function in ("unit", "package", "coach")
+    if visual_functions:
+        subjects = [payload.get("required_subject", ""), *[g.get("subject", "") for g in payload.get("selected_groups", [])]]
+        payload = {**payload, "content_context": subject_content.generation_context(subjects)}
     excerpt_candidates = None
     if function == "coach" and not payload.get("learning_goals"):
         excerpt_candidates = source_excerpt_candidates(payload)
@@ -829,6 +839,20 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         response_type = augmented_model(model_type)
     schema = strict_schema(response_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    if visual_functions and "Presentation" in schema.get("$defs", {}):
+        schema["$defs"]["Presentation"]["properties"]["blocks"]["maxItems"] = 2
+    if visual_functions and "Graphic" in schema.get("$defs", {}):
+        kinds = payload["content_context"]["graphic_kinds"]
+        if kinds:
+            schema["$defs"]["Graphic"]["properties"]["kind"]["enum"] = kinds
+    if function == "coach" and payload.get("learning_goals"):
+        # Partial/legacy assignment still needs a closed set. Previously only
+        # fully assigned questions omitted the model-selected ID; a model could
+        # select g3 for a prescribed two-goal catalogue.
+        for definition in schema.get("$defs", {}).values():
+            goal_field = definition.get("properties", {}).get("learning_goal_id")
+            if goal_field is not None:
+                goal_field["enum"] = sorted(known_goals)
     if catalog_context:
         from .catalog_ai import constrain_schema
 
@@ -856,6 +880,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     review_only = function == "coach" and bool(payload.get("defer_practice"))
     instructions = system_text(function, review_only=review_only)
+    if visual_functions:
+        instructions += subject_content.RULES
     if catalog_context:
         from .catalog_ai import RULES
 
@@ -1237,7 +1263,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 413: "Die reservierte Obergrenze reicht für Material und Websuche nicht aus. Bitte die Kostenkonfiguration prüfen.",
                 502: "Codex hat keine abgeschlossene gültige Lernantwort geliefert. Deine gespeicherten Inhalte bleiben erhalten.",
             }.get(response.status_code, "Der Codex-Lernworker muss vom Betreiber geprüft werden.")
-            raise ProviderError(message)
+            code = response.headers.get("X-Schulpilot-Failure")
+            raise ProviderError(message, code=code)
         # Provider error bodies can contain secrets or private echoed content.
         raise ProviderError(
             f"KI-Anbieter meldet HTTP {response.status_code}. Schlüssel, Modell, Freigabe oder Kontingent prüfen."
@@ -1300,6 +1327,21 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             data = response_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
         else:
             data = response_type.model_validate_json(text).model_dump()
+        # A new optional field must not mutate legacy stored questions by
+        # serializing an absent presentation as `null`. Explicit presentations
+        # remain in the model output and pass the same validation below.
+        def omit_absent_presentations(value):
+            if isinstance(value, dict):
+                for key, item in list(value.items()):
+                    if key == "presentation" and item is None:
+                        del value[key]
+                    else:
+                        omit_absent_presentations(item)
+            elif isinstance(value, list):
+                for item in value:
+                    omit_absent_presentations(item)
+
+        omit_absent_presentations(data)
         catalog_assignment = None
         if catalog_context:
             from .catalog_ai import checked_assignment
@@ -1373,6 +1415,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             for review in data["question_reviews"]:
                 if review["question_id"] in assigned_goals:
                     review["learning_goal_id"] = assigned_goals[review["question_id"]]
+        if visual_functions:
+            subject_content.validate_output(data, payload)
         cost = None
         reported = usage.get("cost") if config.provider == "openrouter" else None
         if (

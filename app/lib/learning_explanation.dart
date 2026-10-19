@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'lesson_voice.dart';
 import 'ui.dart';
+import 'math_content.dart';
 
 /// The same saved explanation, presented in readable steps, never new AI text.
 class LearningExplanation extends StatefulWidget {
@@ -46,13 +47,13 @@ class _LearningExplanationState extends State<LearningExplanation> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (chunks.length > 1) ...[
-          Text(
+          MathText(
             'Schritt ${current + 1} von ${chunks.length}',
             style: const TextStyle(color: muted, fontSize: 13),
           ),
           const SizedBox(height: 10),
         ],
-        Text(
+        MathText(
           chunks[current],
           style: const TextStyle(fontSize: 18, height: 1.55),
         ),
@@ -60,8 +61,8 @@ class _LearningExplanationState extends State<LearningExplanation> {
         Wrap(
           spacing: 8,
           children: [
-            ReadAloudButton(text: chunks[current]),
-            ReadAloudButton(text: chunks[current], slow: true),
+            ReadAloudButton(text: MathText.spoken(chunks[current])),
+            ReadAloudButton(text: MathText.spoken(chunks[current]), slow: true),
           ],
         ),
         if (widget.prompt != null && current == 0)
@@ -122,7 +123,10 @@ class FractionSumDiagram extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+              MathText(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 6),
               SizedBox(
                 height: 32,

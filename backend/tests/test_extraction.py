@@ -48,6 +48,7 @@ def transcription(**changes):
 
 def material(**changes):
     return {
+        "source_blocks": [],
         "legibility": "readable",
         "subject": "Mathematik",
         "topic": "Brüche kürzen",
@@ -106,6 +107,7 @@ def test_blocks_preserve_every_word_order_equation_and_original_mistake():
     assert BODY in result["content"] and "3/9 = 1/3\n6/12 = 1/2" in result["content"]
     assert result["content"].endswith("Sichtbarer Fehler: 1 + 1 = 3")
     assert set(result) == set(material())
+    assert result["source_blocks"] == [{**b, "purpose": "unknown"} for b in data["blocks"]]
 
 
 @pytest.mark.parametrize(
@@ -235,7 +237,7 @@ def test_actual_request_is_ocr_only_and_returns_all_literal_blocks(api, househol
     result = request_provider(
         config, "extract", {"grade": 6, "recent_outcomes": ["private previous answer"], "material": None}, photo
     )
-    assert result.data == material()
+    assert {k:v for k,v in result.data.items() if k != "source_blocks"} == {k:v for k,v in material().items() if k != "source_blocks"}
     assert len(captured) == 1
     body = captured[0]
     instructions = (
@@ -285,7 +287,7 @@ def test_fixed_demo_fixture_keeps_its_server_image_and_discards_free_inputs(api,
     result = request_provider(
         config, "extract", {"content": "untrusted caller replacement"}, b"untrusted-image", synthetic_fixture=True
     )
-    assert result.data == material() and len(calls) == 1
+    assert {k:v for k,v in result.data.items() if k != "source_blocks"} == {k:v for k,v in material().items() if k != "source_blocks"} and len(calls) == 1
     content = calls[0]["messages"][1]["content"]
     assert json.loads(content[0]["text"]) == request_payload()
     assert base64.b64decode(content[1]["image_url"]["url"].split(",", 1)[1]) == worksheet()

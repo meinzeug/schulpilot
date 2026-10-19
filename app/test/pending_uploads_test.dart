@@ -79,4 +79,24 @@ void main() {
     await clearing;
     expect(await queue.read('owner'), isEmpty);
   });
+  test('File receipts retain unaccepted selections across restart and are account-bound', () async {
+    final queue = PendingUploads(storage);
+    await queue.receipt('owner', 'f1', {
+      'child': 'c',
+      'day': 'd',
+      'name': 'page1.png',
+      'stage': 'not_accepted',
+      'reason': 'Auswahlgrenze',
+    });
+    final restored = await PendingUploads(storage).receipts('owner');
+    expect(restored.single['stage'], 'not_accepted');
+    expect(restored.single.containsKey('image'), false);
+    await queue.receipt('owner', 'f1', {'stage': 'saved', 'material_id': 'm'});
+    expect((await queue.receipts('owner')).single['material_id'], 'm');
+    expect(await queue.receipts('other'), isEmpty);
+    expect(await queue.receipts('owner'), isEmpty);
+    await queue.receipt('owner', 'f2', {'stage': 'selected'});
+    await queue.clear();
+    expect(await queue.receipts('owner'), isEmpty);
+  });
 }

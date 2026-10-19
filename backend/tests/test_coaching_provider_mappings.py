@@ -137,6 +137,7 @@ def test_legacy_questions_keep_strict_goal_schema_and_existing_assignments(coach
     result = request_provider(config, "coach", payload)
     schema = calls[0]["text"]["format"]["schema"]
     assert "learning_goal_id" in schema["$defs"]["QuestionReview"]["required"]
+    assert schema["$defs"]["QuestionReview"]["properties"]["learning_goal_id"]["enum"] == ["g1", "g2"]
     assert result.data["question_reviews"][1]["learning_goal_id"] == "g2"
     bad = copy.deepcopy(output)
     bad["question_reviews"][0].pop("learning_goal_id")

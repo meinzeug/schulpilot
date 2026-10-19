@@ -68,7 +68,9 @@ def test_voluntary_normal_rounds_after_minimum_on_free_day_and_different_roots_a
         assert rounds["totals"]["practiced_tasks"] == 4
         assert all("questions" not in row and "answer" not in row and "prompt" not in row for row in rounds["items"])
         overview = child.get(f"/api/children/{demo['child_id']}/overview?compact=true").json()
-        assert overview["plan"]["free_day"] and overview["plan"]["daily_goal_met"]
+        assert overview["plan"]["free_day"] and not overview["plan"]["goal_required"]
+        assert not overview["plan"]["daily_goal_met"]  # No daily target on a free day.
+        assert overview["plan"]["daily_active_seconds"] == 600
         # Empty, prepared rounds must not appear as performed work.
         assert unit_id not in {row["id"] for row in rounds["items"]}
 

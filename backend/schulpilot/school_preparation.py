@@ -207,8 +207,16 @@ def preparation_data(db, day, child=None):
             )
         elif state.get("phase") == "package":
             can_retry = state.get("package_attempts", {}).get(_fingerprint(current), 0) < MAX_ATTEMPTS
+    from .job_failures import generation_availability, message_code
+
+    blocker = generation_availability(db, db.get(Family, child.family_id), "extract" if state.get("phase") == "extract" else "package") if can_retry else None
+    if blocker:
+        can_retry = False
+    error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
     return {
         "status": status,
+        "error_code": error_code if error else None,
+        "retry_blocker": blocker,
         "phase": state.get("phase"),
         "completed_pages": sum(m.status in ("review", "confirmed", "unreadable") for m in source_pages),
         "total_pages": len(source_pages),
@@ -477,7 +485,9 @@ def advance(day_id):
             db.refresh(day)
             state = _state(day)
             if state.get("run_id") == run_id and state.get("status") == "processing":
-                _write(day, state, status="blocked", error=message[:500])
+                from .job_failures import failure_code
+
+                _write(day, state, status="blocked", error=message[:500], error_code=failure_code(error))
 
 
 def advance_one():

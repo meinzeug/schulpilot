@@ -244,6 +244,9 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
                 "Das synthetische Beispiel hat einen festen Beispieltext ohne notierte Hausaufgaben. Freie Eingaben sind hier nicht als KI-Demo auswertbar.",
             )
     source_changed = material.confirmed and any(getattr(data, k) != getattr(material, k) for k in ("subject", "topic", "content", "homework"))
+    if data.content != material.content:
+        # A corrected text invalidates advisory OCR roles; never reuse stale classification.
+        material.source_blocks = []
     for key in ("subject", "topic", "content", "homework"):
         setattr(material, key, getattr(data, key))
     # Transcription confirmation is not a subject-quality certificate. Keep
@@ -261,7 +264,7 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
         {"subject": material.subject, "topic": material.topic, "homework_count": len(data.homework)},
     )
     words = None
-    if data.vocabulary:
+    if data.vocabulary and (data.vocabulary.selections is not None or material_vocabulary.preview(material.subject, material.topic, material.content, material.source_blocks)):
         words = material_vocabulary.transfer(db, p, child, material,
             data.vocabulary.model_copy(update={"revision": material.revision}))
     db.commit()
@@ -516,5 +519,6 @@ def job_view(job_id: str, p=Depends(authenticated), db=Depends(get_db)):
         "status": job.status,
         "result": job.result,
         "error": job.error,
+        "error_code": job.error_code,
         "attempts": job.attempts,
     }

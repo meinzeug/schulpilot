@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -577,6 +578,7 @@ class _MaterialReviewState extends State<MaterialReview> {
   String? wordLocale;
   bool reverseWords = false;
   Json? editedWordPreview;
+  List<Json> selectedWords = [];
   String? previewSubject, previewTopic, previewContent;
 
   bool get editedPreviewCurrent =>
@@ -605,6 +607,7 @@ class _MaterialReviewState extends State<MaterialReview> {
     return switch (language) {
       'fr' => 'fr-FR',
       'es' => 'es-ES',
+      'la' => 'la',
       _ => 'en-GB',
     };
   }
@@ -614,15 +617,35 @@ class _MaterialReviewState extends State<MaterialReview> {
     'language_confirmed': true,
     'reverse': reverseWords,
     'revision': widget.data['revision'],
+    'selections': selectedWords,
   };
 
+  Future<void> savePageOnly() async {
+    setState(() => selectedWords = []);
+    await confirmPage();
+  }
+
+  Widget saveWithoutWords() => TextButton.icon(
+    onPressed: () => change(savePageOnly),
+    icon: const Icon(Icons.description_outlined),
+    label: const Text('Nur Heftseite speichern'),
+  );
+
   Widget wordPreviewPanel({bool saved = false}) => MaterialWordsPanel(
+    key: ValueKey(jsonEncode([wordPreview, selectedWordLocale, reverseWords])),
     preview: wordPreview!,
     locale: selectedWordLocale,
     reverse: reverseWords,
     actionLabel: saved ? 'Wörter übernehmen' : 'Stimmt, weiter',
-    onLocale: (value) => setState(() => wordLocale = value),
-    onReverse: () => setState(() => reverseWords = !reverseWords),
+    onLocale: (value) => setState(() {
+      wordLocale = value;
+      selectedWords = [];
+    }),
+    onReverse: () => setState(() {
+      reverseWords = !reverseWords;
+      selectedWords = [];
+    }),
+    onSelections: (value) => setState(() => selectedWords = value),
   );
 
   Widget savedWordPanel() => Padding(
@@ -668,13 +691,16 @@ class _MaterialReviewState extends State<MaterialReview> {
                 ActionButton(
                   label: 'Wörter übernehmen',
                   icon: Icons.playlist_add_check_rounded,
+                  enabled: selectedWords.isNotEmpty,
                   onPressed: () async {
                     final owner = widget.state.user?['id'];
                     await widget.state.api.post(
                       '/materials/${widget.data['id']}/vocabulary',
                       wordConfirmation,
                     );
-                    if (mounted && owner == widget.state.user?['id']) refresh();
+                    if (mounted && owner == widget.state.user?['id']) {
+                      refresh();
+                    }
                   },
                 ),
               ],
@@ -861,6 +887,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                   icon: Icons.check_rounded,
                   onPressed: () => change(confirmPage),
                 ),
+                if (wordPreview != null) saveWithoutWords(),
               ],
             ],
           ),
@@ -978,7 +1005,9 @@ class _MaterialReviewState extends State<MaterialReview> {
           .toList(),
       'uncertainties_resolved': true,
       if (widget.data['revision'] is int) 'revision': widget.data['revision'],
-      if (wordPreview != null) 'vocabulary': wordConfirmation,
+      if (wordPreview?['requires_pair_confirmation'] == true &&
+          selectedWords.isNotEmpty)
+        'vocabulary': wordConfirmation,
     };
     if (d['supports_task_confirmation'] == true && d['synthetic'] != true) {
       final preview = await widget.state.api.post(
@@ -1204,6 +1233,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                     icon: Icons.check_rounded,
                     onPressed: () => change(confirmPage),
                   ),
+                  if (wordPreview != null) saveWithoutWords(),
                 ] else if (confirmed) ...[
                   const SizedBox(height: 14),
                   const Tag('Text übernommen'),

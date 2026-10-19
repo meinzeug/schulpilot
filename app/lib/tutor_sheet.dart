@@ -7,6 +7,7 @@ import 'api.dart';
 import 'learning_tips.dart';
 import 'lesson_voice.dart';
 import 'ui.dart';
+import 'math_content.dart';
 
 Future<void> showTutorSheet(
   BuildContext context,
@@ -333,7 +334,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                   const Icon(Icons.lightbulb_outline_rounded, color: teal),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
+                    child: MathText(
                       editable ? 'Frag zu deinem Stoff' : 'Fragen zum Stoff',
                       style: const TextStyle(
                         fontSize: 21,
@@ -373,7 +374,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                     if (latest == null && readError == null)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Text(
+                        child: MathText(
                           editable
                               ? 'Was möchtest du besser verstehen?'
                               : 'Hier sind noch keine Fragen gespeichert.',
@@ -387,7 +388,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                         turnCard(turn, collapsed: turn != latest),
                     if (editable && turns.length > (parentTurn == null ? 1 : 2))
                       ExpansionTile(
-                        title: Text(
+                        title: MathText(
                           'Frühere Fragen (${turns.length - (parentTurn == null ? 1 : 2)})',
                         ),
                         children: [
@@ -444,7 +445,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                           starter,
                                           related: latest,
                                         ),
-                                  label: Text(starter),
+                                  label: MathText(starter),
                                 ),
                             ],
                           ),
@@ -452,7 +453,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                           Row(
                             children: [
                               const Expanded(
-                                child: Text(
+                                child: MathText(
                                   'Zu deiner letzten Antwort',
                                   style: TextStyle(color: muted, fontSize: 12),
                                 ),
@@ -538,7 +539,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                   ),
                                 )
                               : const Icon(Icons.arrow_upward_rounded),
-                          label: Text(
+                          label: MathText(
                             sending
                                 ? 'Wird gesendet …'
                                 : answering
@@ -592,7 +593,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!collapsed) ...[
-          Text(
+          MathText(
             turn['question'] ?? '',
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
@@ -612,7 +613,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
             style: TextStyle(color: muted, fontSize: 12),
           ),
         ] else if (turn['status'] == 'failed') ...[
-          Text(
+          MathText(
             turn['error'] as String? ??
                 'Die Antwort ist gerade nicht verfügbar.',
           ),
@@ -643,7 +644,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               alignment: Alignment.centerLeft,
               child: Tag('Ergänzendes Grundwissen · nicht aus deinem Heft'),
             ),
-          Text(answer, style: const TextStyle(fontSize: 17, height: 1.55)),
+          MathText(answer, style: const TextStyle(fontSize: 17, height: 1.55)),
           if (!collapsed && turn['source_changed'] != true)
             LearningTips(
               state,
@@ -665,17 +666,17 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        MathText(
                           source['label'] ?? 'Deine Heftseite',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         if (source['reference_title'] is String)
-                          Text(
+                          MathText(
                             'Grundwissen nach ${source['reference_title']}',
                             style: const TextStyle(fontSize: 13, color: muted),
                           ),
                         const SizedBox(height: 5),
-                        Text(
+                        MathText(
                           '„${source['quote']}“',
                           style: const TextStyle(color: muted),
                         ),
@@ -689,7 +690,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               (reply?['next_question'] as String? ?? '').isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(
+              child: MathText(
                 reply!['next_question'],
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
@@ -702,7 +703,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               onPressed: hasPending || sending || unconfirmed != null
                   ? null
                   : () => useStarter('', related: turn),
-              child: Text(
+              child: MathText(
                 turn['source_changed'] == true
                     ? 'Neu dazu fragen'
                     : 'Dazu nachfragen',
@@ -718,7 +719,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         padding: const EdgeInsets.all(16),
         child: collapsed
             ? ExpansionTile(
-                title: Text(turn['question'] ?? ''),
+                title: MathText(turn['question'] ?? ''),
                 children: [content],
               )
             : content,

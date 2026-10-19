@@ -85,7 +85,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
   String? error, reviewId;
   String progress = '';
   bool loading = true, working = false, fetching = false;
-  List<Json> pendingPhotos = [];
+  List<Json> pendingPhotos = [], importReceipts = [];
   Timer? poll;
   late String? actor = widget.state.user?['id'];
   int generation = 0;
@@ -129,6 +129,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       error = reviewId = null;
       progress = '';
       pendingPhotos = [];
+      importReceipts = [];
       loading = true;
       fetching = working = false;
       preparationKeys.clear();
@@ -162,6 +163,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         setState(() {
           day = null;
           pendingPhotos = [];
+          importReceipts = [];
           error = reviewId = null;
         });
       }
@@ -244,17 +246,25 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     final owner = state.user?['id'] as String?;
     if (owner == null) return;
     final stored = await state.pendingUploads.read(owner);
+    final receipts = await state.pendingUploads.receipts(owner);
     final targetDay = widget.dayId ?? day?['id'];
     if (mounted && ownerMatches && state.user?['id'] == owner) {
-      setState(
-        () => pendingPhotos = stored
+      setState(() {
+        importReceipts = receipts
+            .where(
+              (r) =>
+                  r['child'] == widget.childId &&
+                  (targetDay == null || r['day'] == targetDay),
+            )
+            .toList();
+        pendingPhotos = stored
             .where(
               (e) =>
                   e['child'] == widget.childId &&
                   (targetDay == null || e['day'] == targetDay),
             )
-            .toList(),
-      );
+            .toList();
+      });
     }
   }
 
@@ -266,13 +276,20 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       (e) => e['child'] == widget.childId && e['day'] == day?['id'],
     )) {
       if (!mounted || state.user?['id'] != owner) return;
-      await state.api.upload(
+      final saved = await state.api.upload(
         widget.childId,
         base64Decode(photo['image']),
         schoolDayId: photo['day'],
         uploadKey: photo['key'],
       );
       if (state.user?['id'] != owner) return;
+      if (photo['receipt'] != null) {
+        await state.pendingUploads.receipt(owner, photo['receipt'], {
+          'stage': 'saved',
+          'material_id': saved['id'],
+          'reason': '',
+        });
+      }
       await state.pendingUploads.remove(owner, photo['key']);
       await refreshPending();
     }
@@ -339,6 +356,80 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     }
   }
 
+  Future<void> receipt(String id, Json value) async {
+    if (!ownerMatches || day == null) return;
+    await state.pendingUploads.receipt(state.user!['id'], id, {
+      'child': widget.childId,
+      'day': day!['id'],
+      ...value,
+    });
+    await refreshPending();
+  }
+
+  Widget importStatus() {
+    if (importReceipts.isEmpty) return const SizedBox.shrink();
+    final missing = importReceipts
+        .where((r) => r['stage'] == 'not_accepted')
+        .length;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Panel(
+        child: ExpansionTile(
+          key: ValueKey('import-${importReceipts.length}-$missing'),
+          initiallyExpanded: missing > 0,
+          title: Text(
+            missing > 0
+                ? '$missing Fotos noch nicht übernommen'
+                : 'Deine Fotoauswahl',
+          ),
+          children: [
+            for (final row in importReceipts)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      row['name'] ?? 'Heftfoto',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(receiptStatus(row)),
+                    if ((row['reason'] as String? ?? '').isNotEmpty)
+                      Text(
+                        row['reason'],
+                        style: const TextStyle(color: warningInk),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String receiptStatus(Json row) {
+    final page = pages.where((p) => p['id'] == row['material_id']).firstOrNull;
+    if (page != null) {
+      return page['confirmed'] == true
+          ? 'Gespeichert · erkannt · geprüft'
+          : page['status'] == 'review'
+          ? 'Gespeichert · erkannt · noch zu prüfen'
+          : page['status'] == 'unreadable'
+          ? 'Gespeichert · Foto nicht lesbar'
+          : 'Gespeichert · Erkennung noch offen';
+    }
+    return switch (row['stage']) {
+      'selected' => 'Ausgewählt',
+      'cropped' => 'Zugeschnitten',
+      'queued' =>
+        'Zugeschnitten · auf diesem Gerät gesichert · noch nicht gesendet',
+      'saved' => 'Auf dem Server gespeichert',
+      'not_accepted' => 'Nicht übernommen',
+      _ => 'Bitte Status prüfen',
+    };
+  }
+
   Future<void> capture(ImageSource source, {bool recovered = false}) async {
     if (!ownerMatches || !allowUploads) return;
     final status = await state.api.get('/status');
@@ -354,14 +445,37 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       await state.storage.write(key: 'camera_child', value: widget.childId);
     }
     if (source == ImageSource.gallery) {
-      final remaining =
-          ((day!['max_pages'] as int) - pages.length - pendingPhotos.length)
-              .clamp(0, PendingUploads.maxPages);
+      final available =
+          (day!['max_pages'] as int) - pages.length - pendingPhotos.length;
+      final remaining = available.clamp(0, PendingUploads.maxPages);
       if (remaining == 0) {
         throw ApiError(
-          'Bitte gespeicherte Fotos zuerst senden oder entfernen.',
+          available <= 0
+              ? 'Heute sind alle ${day!['max_pages']} Plätze belegt. Deine Seiten bleiben gespeichert. Du kannst morgen weitere Fotos hinzufügen.'
+              : 'Bitte gespeicherte Fotos zuerst senden oder entfernen.',
         );
       }
+      if (!mounted) return;
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Fotos auswählen'),
+          content: Text(
+            'Bis zu $remaining Fotos auf einmal. Pro Schultag sind ${day!['max_pages']} Seiten möglich. Auf dem Gerät passen höchstens 8 Fotos oder 3 MB in den Zwischenspeicher. Weitere Fotos kannst du danach hinzufügen.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Fotos auswählen'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true || !mounted || !ownerMatches) return;
       final files = await ImagePicker().pickMultiImage(
         maxWidth: 3200,
         maxHeight: 3200,
@@ -370,23 +484,71 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         limit: remaining > 1 ? remaining : 2,
       );
       if (nativeAndroid) await state.storage.delete(key: 'camera_child');
-      for (final file in files.take(remaining)) {
+      final keys = [
+        for (var i = 0; i < files.length; i++)
+          'file-${DateTime.now().microsecondsSinceEpoch}-$i-${Random.secure().nextInt(1 << 30)}',
+      ];
+      for (var i = 0; i < files.length; i++) {
+        await receipt(keys[i], {
+          'name': files[i].name,
+          'stage': i < remaining ? 'selected' : 'not_accepted',
+          'reason': i < remaining
+              ? ''
+              : 'In dieser Auswahl sind höchstens $remaining Fotos möglich. Bitte danach erneut auswählen.',
+        });
+      }
+      Object? firstError;
+      bool canSend = true;
+      for (var i = 0; i < files.length && i < remaining; i++) {
         if (!mounted || !ownerMatches) return;
-        final raw = await file.readAsBytes();
-        if (!mounted || !ownerMatches) return;
-        final bytes = await cropMaterialPhoto(context, raw);
-        if (bytes != null && mounted && ownerMatches) {
+        try {
+          setState(
+            () => progress =
+                'Foto ${i + 1} von ${files.length.clamp(0, remaining)} zuschneiden',
+          );
+          final raw = await files[i].readAsBytes();
+          if (!mounted || !ownerMatches) return;
+          final bytes = await cropMaterialPhoto(context, raw);
+          if (!mounted || !ownerMatches) return;
+          if (bytes == null) {
+            await receipt(keys[i], {
+              'stage': 'not_accepted',
+              'reason': 'Zuschnitt abgebrochen. Die Originaldatei ist weiterhin auf deinem Gerät.',
+            });
+            continue;
+          }
+          await receipt(keys[i], {'stage': 'cropped'});
           await ensureCollecting();
           await state.pendingUploads.add(
             state.user!['id'],
             widget.childId,
             day!['id'],
             bytes,
+            receiptId: keys[i],
           );
-          await refreshPending();
+          await receipt(keys[i], {'stage': 'queued'});
+          if (canSend) {
+            try {
+              await sendPending();
+            } catch (e) {
+              firstError ??= e;
+              canSend = false;
+              await receipt(keys[i], {
+                'stage': 'queued',
+                'reason': 'Noch nicht gesendet. Foto bleibt auf diesem Gerät.',
+              });
+            }
+          }
+        } catch (e) {
+          firstError ??= e;
+          await receipt(keys[i], {
+            'stage': 'not_accepted',
+            'reason': e is ApiError ? e.message : 'Diese Datei konnte nicht übernommen werden. Bitte erneut auswählen.',
+          });
         }
       }
-      if (mounted && ownerMatches) await sendPending();
+      await refreshPending();
+      if (firstError != null) throw firstError;
       return;
     }
     if (!mounted || !ownerMatches) return;
@@ -395,13 +557,28 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         : await pickMaterialPhoto(context, source);
     if (nativeAndroid) await state.storage.delete(key: 'camera_child');
     if (bytes == null || !mounted || !ownerMatches) return;
+    final receiptId =
+        'camera-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 30)}';
+    await receipt(receiptId, {'name': 'Neues Heftfoto', 'stage': 'cropped'});
     await ensureCollecting();
-    await state.pendingUploads.add(
-      state.user!['id'],
-      widget.childId,
-      day!['id'],
-      bytes,
-    );
+    try {
+      await state.pendingUploads.add(
+        state.user!['id'],
+        widget.childId,
+        day!['id'],
+        bytes,
+        receiptId: receiptId,
+      );
+      await receipt(receiptId, {'stage': 'queued'});
+    } catch (e) {
+      await receipt(receiptId, {
+        'stage': 'not_accepted',
+        'reason': e is ApiError
+            ? e.message
+            : 'Das Foto konnte nicht gespeichert werden.',
+      });
+      rethrow;
+    }
     await refreshPending();
     if (recovered) {
       state.recoveredPhoto = state.recoveredPhotos.isEmpty
@@ -556,6 +733,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             ActionButton(label: 'Noch einmal versuchen', onPressed: load),
           ] else ...[
             if (error != null) Notice(error!, warning: true),
+            importStatus(),
             if (day!['synthetic'] == true)
               const Padding(
                 padding: EdgeInsets.only(bottom: 12),
@@ -696,15 +874,27 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     final message =
         preparation?['error'] as String? ?? day?['last_error'] as String?;
     final canRetry = preparation?['can_retry'] == true;
+    final blocker = preparation?['retry_blocker'] as Map?;
+    final code = blocker?['code'] ?? preparation?['error_code'];
+    final explanation =
+        blocker?['message'] as String? ??
+        switch (code) {
+          'quota_exhausted' => 'Dein Lernumfang ist gerade aufgebraucht. Gespeicherte Aufgaben und Erklärungen bleiben nutzbar.',
+          'provider_timeout' => 'Die KI hat länger gebraucht als erlaubt. Deine Heftseiten sind da.',
+          'invalid_output' => 'Die KI hat unvollständige Aufgaben geliefert. Wir haben sie nicht übernommen.',
+          'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
+          'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
+          'source_changed' =>
+            'Eine Heftseite wurde geändert. Prüfe zuerst die aktuelle Seite.',
+          _ => canRetry ? 'Du kannst die Vorbereitung noch einmal starten.' : 'Deine Seiten bleiben gespeichert. Vorhandene Runden findest du unter Lernen.',
+        };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FocusCard(
           eyebrow: 'Deine Fotos sind gespeichert',
           title: 'Das hat noch nicht geklappt',
-          subtitle: canRetry
-              ? 'Du kannst die Vorbereitung noch einmal starten.'
-              : 'Bitte frage deine Eltern, wenn du Hilfe brauchst.',
+          subtitle: explanation,
           action: ActionButton(
             label: canRetry ? 'Erneut vorbereiten' : 'Zur Startseite',
             icon: canRetry ? Icons.refresh_rounded : Icons.home_outlined,
@@ -787,7 +977,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               ),
               const SizedBox(height: 10),
               const Text(
-                'Eine Seite pro Foto. Namen vorher abschneiden.',
+                'Eine Seite pro Foto. Bis zu 24 Seiten am Tag. Namen vorher abschneiden.',
                 style: TextStyle(color: muted),
               ),
               const SizedBox(height: 20),
@@ -1327,6 +1517,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           const SizedBox(height: 24),
           if (loading) const Center(child: CircularProgressIndicator()),
           if (error != null) Notice(error!, warning: true),
+          importStatus(),
           if (error != null && state.isChild && !working)
             TextButton(
               onPressed: () => run(() async {

@@ -322,3 +322,17 @@ ungeprüfte Fixturezahlen. Keine Zugangsdaten oder Exporte in der Übergabe.
 125 betroffene Backendtests nach dem letzten Fix grün; vollständiger932er-Lauf,
 346 Fluttertests, Builds und tatsächliche Web-/native Abnahme im Handoff.
 GitHub-CI-Abrechnungssperre und97% Laufwerksbelegung sind dokumentiert.
+
+## Fachtest19.10.2026 · lokale Schemaänderung0022
+
+`0022_subject_content_blocks` ergänzt `materials.source_blocks` und ein
+begrenztes `jobs.error_code`; vorhandene Quelltexte, Einheiten und Antworten
+werden nicht umgeschrieben. Die Migration und der Bestandserhalt wurden in einem
+isolierten PostgreSQL16-Schema getestet. Sie ist noch nicht in Produktion
+angewendet. Eine spätere Aktivierung muss den üblichen `scripts/deploy.sh`-Pfad
+mit vorab geprüften Sicherungen, angehaltenen SCHULPILOT-Diensten und dokumentiertem
+kompatiblem Rückweg verwenden. Keine direkte SQL-Ausführung auf Familiendaten.
+
+Die lokalen Fachfixtures sind künstlich und ersetzen keinen externen Providerlauf,
+öffentlichen Browserlauf oder Android-Gerätetest. Der zugehörige Befundstatus und
+die Grenzen stehen in `docs/FACHTEST_2026_10_19.md`.

@@ -6,6 +6,7 @@ import 'learning_next_step.dart';
 import 'practice_evidence.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'math_content.dart';
 
 class LearningProgressPanel extends StatelessWidget {
   final Json progress;
@@ -13,6 +14,25 @@ class LearningProgressPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (progress['evidence_kind'] == 'reflection') {
+      return Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Eigene Gedanken festgehalten',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            ),
+            const SizedBox(height: 12),
+            if (progress['practice'] is Map)
+              PracticeEvidence(Json.from(progress['practice'])),
+            const Text(
+              'Deine Gedanken und Beschreibungen bleiben gespeichert. Sie sind kein Test deiner Gefühle oder körperlichen Fähigkeiten.',
+            ),
+          ],
+        ),
+      );
+    }
     final checkedDays = (progress['successful_check_days'] as num? ?? 0)
         .toInt();
     final requiredDays = (progress['required_check_days'] as num? ?? 3).toInt();
@@ -23,7 +43,7 @@ class LearningProgressPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          MathText(
             '${progress['subject']} · ${progress['topic']}',
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
           ),
@@ -31,7 +51,7 @@ class LearningProgressPanel extends StatelessWidget {
           if (practice is Map)
             PracticeEvidence(Json.from(practice))
           else
-            Text(
+            MathText(
               progress['completed_rounds'] is num
                   ? '${progress['completed_rounds']} Runden bearbeitet'
                   : 'Deine bearbeiteten Runden bleiben gespeichert.',
@@ -48,7 +68,7 @@ class LearningProgressPanel extends StatelessWidget {
           if (progress['next_review'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(
+              child: MathText(
                 'Wiederholen: ${progress['next_review']}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
@@ -65,11 +85,11 @@ class LearningProgressPanel extends StatelessWidget {
                 style: TextStyle(color: muted, fontSize: 13),
               ),
               const SizedBox(height: 12),
-              Text(
+              MathText(
                 '$checkedDays von $requiredDays Prüftagen',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              Text(
+              MathText(
                 'Wiederholungen über mindestens $minimumSpan Tage',
                 style: const TextStyle(color: muted, fontSize: 12),
               ),
@@ -79,7 +99,7 @@ class LearningProgressPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      MathText(
                         goal['label'],
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
@@ -90,7 +110,7 @@ class LearningProgressPanel extends StatelessWidget {
                           compact: true,
                         ),
                       ],
-                      Text(
+                      MathText(
                         '${goal['successful_check_days']} spätere Prüftage',
                         style: const TextStyle(color: muted, fontSize: 12),
                       ),
@@ -193,7 +213,7 @@ class CoachingPanel extends StatelessWidget {
                       : 'KI-Rückblick auf deine Antworten',
                 ),
                 const SizedBox(height: 14),
-                Text(report['summary'] ?? ''),
+                MathText(report['summary'] ?? ''),
                 if ((report['strengths'] as List? ?? []).isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text(
@@ -201,7 +221,7 @@ class CoachingPanel extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   for (final item in report['strengths'] as List)
-                    Text('• $item'),
+                    MathText('• $item'),
                 ],
                 if ((report['practice_focus'] as List? ?? []).isNotEmpty) ...[
                   const SizedBox(height: 16),
@@ -210,12 +230,12 @@ class CoachingPanel extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   for (final item in report['practice_focus'] as List)
-                    Text('• $item'),
+                    MathText('• $item'),
                 ],
                 const SizedBox(height: 18),
-                Text(report['explanation'] ?? ''),
+                MathText(report['explanation'] ?? ''),
                 const Divider(height: 32),
-                Text(coach['reason'] ?? ''),
+                MathText(coach['reason'] ?? ''),
                 const SizedBox(height: 14),
                 if (state.isChild && coach['next_unit_id'] != null)
                   ActionButton(
@@ -232,7 +252,7 @@ class CoachingPanel extends StatelessWidget {
                 if (coach['next_review'] != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
-                    child: Text(
+                    child: MathText(
                       'Später erneut abrufen: ${coach['next_review']}',
                     ),
                   ),
@@ -245,7 +265,7 @@ class CoachingPanel extends StatelessWidget {
                   ),
                 if (coach['assessment_notice'] != null) ...[
                   const SizedBox(height: 16),
-                  Text(
+                  MathText(
                     coach['assessment_notice'],
                     style: const TextStyle(fontSize: 12, color: muted),
                   ),
@@ -265,7 +285,7 @@ class CoachingPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      MathText(
                         (unit['questions'] as List).firstWhere(
                           (q) => q['id'] == review['question_id'],
                           orElse: () => {'prompt': 'Gespeicherte Aufgabe'},
@@ -277,7 +297,7 @@ class CoachingPanel extends StatelessWidget {
                         const Tag(
                           'KI-Einschätzung · ursprüngliche Bewertung bleibt unklar',
                         ),
-                      Text(review['feedback']),
+                      MathText(review['feedback']),
                     ],
                   ),
                 ),
@@ -333,7 +353,10 @@ class _ChildCoachingPanel extends StatelessWidget {
     final fallback =
         ready && decision != 'parent_help' && !hasPractice ||
         coach != null && !ready && !pending && coach?['can_retry'] != true;
-    final headingText = !ready
+    final localOnly = coach?['local_only'] == true;
+    final headingText = localOnly
+        ? 'Deine Gedanken sind festgehalten.'
+        : !ready
         ? 'Dein Rückblick'
         : switch (decision) {
             'repair' => 'Diesen Schritt üben wir weiter.',
@@ -359,7 +382,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
+                    child: MathText(
                       headingText,
                       style: const TextStyle(
                         fontSize: 22,
@@ -372,7 +395,7 @@ class _ChildCoachingPanel extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               if (questions.isNotEmpty) ...[
-                Text(
+                MathText(
                   '${facts.answered} von ${questions.length} Aufgaben bearbeitet',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
@@ -390,6 +413,11 @@ class _ChildCoachingPanel extends StatelessWidget {
                       _RoundFact(
                         '${facts.assisted} unterstützt / erneut',
                         Icons.lightbulb_outline_rounded,
+                      ),
+                    if (facts.contributions > 0)
+                      _RoundFact(
+                        '${facts.contributions} eigene Beiträge',
+                        Icons.chat_bubble_outline_rounded,
                       ),
                     if (facts.uncertain > 0)
                       _RoundFact(
@@ -415,7 +443,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
               ],
-              if (!fallback) _DayGoalLine(unit['learning_time'] as Map?),
+              // The round result describes learning, not a repeated time deficit.
               if (coach == null) ...[
                 const Text('Schauen wir auf deine gespeicherten Antworten.'),
                 const SizedBox(height: 18),
@@ -431,10 +459,21 @@ class _ChildCoachingPanel extends StatelessWidget {
                 const SizedBox(height: 6),
                 const Text('Deine Antworten bleiben gespeichert.'),
                 _later(context),
+              ] else if (localOnly) ...[
+                const Text(
+                  'Danke für deinen eigenen Beitrag. Du kannst jetzt eine Pause machen.',
+                ),
+                for (final question in questions)
+                  _SavedQuestionResult(Json.from(question)),
               ] else if (!ready) ...[
-                const Text('Dein Rückblick ist gerade nicht verfügbar.'),
+                const Text('Dein Ergebnis ist gespeichert.'),
                 const SizedBox(height: 8),
-                const Text('Deine Antworten bleiben gespeichert.'),
+                const Text(
+                  'Die zusätzliche KI-Erklärung fehlt gerade. Das zeigen deine Antworten:',
+                ),
+                const SizedBox(height: 12),
+                for (final question in unit['questions'] as List? ?? [])
+                  _SavedQuestionResult(Json.from(question)),
                 if (coach?['can_retry'] == true) ...[
                   const SizedBox(height: 18),
                   ActionButton(
@@ -451,7 +490,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                 if ((coach?['reason'] as String? ?? '').isNotEmpty)
                   ExpansionTile(
                     title: const Text('Was ist passiert?'),
-                    children: [Text(coach!['reason'])],
+                    children: [MathText(coach!['reason'])],
                   ),
               ] else ...[
                 if (coach?['provider'] == 'synthetic') ...[
@@ -462,7 +501,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                   const SizedBox(height: 12),
                 ],
                 if (highlight != null) ...[
-                  Text(highlight.toString()),
+                  MathText(highlight.toString()),
                   const SizedBox(height: 18),
                 ],
                 if (facts.uncertain > 0) ...[
@@ -541,12 +580,12 @@ class _ChildCoachingPanel extends StatelessWidget {
                     if (coach?['practice_error'] != null)
                       ExpansionTile(
                         title: const Text('Was ist passiert?'),
-                        children: [Text(coach!['practice_error'])],
+                        children: [MathText(coach!['practice_error'])],
                       ),
                   ],
                 if (coach?['next_review'] != null) ...[
                   const SizedBox(height: 14),
-                  Text(
+                  MathText(
                     'Später wiederholen: ${_reviewDate(coach!['next_review'])}',
                     style: const TextStyle(color: muted, fontSize: 13),
                   ),
@@ -555,12 +594,22 @@ class _ChildCoachingPanel extends StatelessWidget {
             ],
           ),
         ),
+        if (!pending && !practicePending)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: OutlinedButton.icon(
+              onPressed: () => openRoute(context, '/app'),
+              icon: const Icon(Icons.pause_rounded),
+              label: const Text('Pause machen'),
+            ),
+          ),
         if (fallback && childId is String) ...[
           const SizedBox(height: 18),
           LearningNextStep(
             state: state,
             childId: childId,
             currentUnitId: unit['id'],
+            showGoal: false,
           ),
         ],
         if (ready && (report['explanation'] as String? ?? '').isNotEmpty)
@@ -570,7 +619,7 @@ class _ChildCoachingPanel extends StatelessWidget {
             title: const Text('Erklärung ansehen'),
             childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
             children: [
-              Text(report['explanation']),
+              MathText(report['explanation']),
               ReadAloudButton(text: report['explanation']),
             ],
           ),
@@ -584,14 +633,14 @@ class _ChildCoachingPanel extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(report['summary'] ?? ''),
+                  MathText(report['summary'] ?? ''),
                   if (strengths.isNotEmpty) ...[
                     const SizedBox(height: 14),
                     const Text(
                       'Das klappt schon',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    for (final item in strengths) Text('• $item'),
+                    for (final item in strengths) MathText('• $item'),
                   ],
                   if (focus.isNotEmpty) ...[
                     const SizedBox(height: 14),
@@ -599,15 +648,15 @@ class _ChildCoachingPanel extends StatelessWidget {
                       'Das üben wir weiter',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    for (final item in focus) Text('• $item'),
+                    for (final item in focus) MathText('• $item'),
                   ],
                   if ((coach?['reason'] as String? ?? '').isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    Text(coach!['reason']),
+                    MathText(coach!['reason']),
                   ],
                   if (coach?['assessment_notice'] != null) ...[
                     const SizedBox(height: 14),
-                    Text(
+                    MathText(
                       coach!['assessment_notice'],
                       style: const TextStyle(color: muted, fontSize: 12),
                     ),
@@ -628,7 +677,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      MathText(
                         questions.firstWhere(
                           (q) => q['id'] == review['question_id'],
                           orElse: () => {'prompt': 'Deine Aufgabe'},
@@ -640,7 +689,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                         const Tag('KI-Vorschlag · Antwort bleibt unklar'),
                         const SizedBox(height: 8),
                       ],
-                      Text(review['feedback']),
+                      MathText(review['feedback']),
                     ],
                   ),
                 ),
@@ -654,7 +703,7 @@ class _ChildCoachingPanel extends StatelessWidget {
             childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
             children: [
               for (final question in questions) ...[
-                Text(
+                MathText(
                   question['prompt'] ?? 'Deine Aufgabe',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
@@ -667,7 +716,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        MathText(
                           '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
                           '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe oder erneut' : ''}',
                         ),
@@ -761,12 +810,17 @@ class _RoundFacts {
       assisted = 0,
       uncertain = 0,
       practice = 0,
-      unclassified = 0;
+      unclassified = 0,
+      contributions = 0;
   _RoundFacts(List questions) {
     for (final question in questions) {
       final attempts = question['attempts'] as List? ?? [];
       if (attempts.isEmpty) continue;
       answered++;
+      if (attempts.last['evaluation']?['method'] == 'open_learning_v1') {
+        contributions++;
+        continue;
+      }
       final correct = attempts
           .where((attempt) => attempt['outcome'] == 'correct')
           .toList();
@@ -805,7 +859,7 @@ class _RoundFact extends StatelessWidget {
         Icon(icon, size: 16, color: teal),
         const SizedBox(width: 6),
         Flexible(
-          child: Text(
+          child: MathText(
             label,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
@@ -815,27 +869,44 @@ class _RoundFact extends StatelessWidget {
   );
 }
 
-class _DayGoalLine extends StatelessWidget {
-  final Map? time;
-  const _DayGoalLine(this.time);
-
+class _SavedQuestionResult extends StatelessWidget {
+  final Json question;
+  const _SavedQuestionResult(this.question);
   @override
   Widget build(BuildContext context) {
-    final remaining = time?['daily_remaining_seconds'];
-    String? text;
-    if (time?['goal_required'] == true && time?['daily_goal_met'] == true) {
-      text = 'Tagesziel erreicht.';
-    } else if (time?['goal_required'] == true &&
-        remaining is num &&
-        remaining > 0) {
-      text = remaining < 60
-          ? 'Tagesziel: noch ${remaining.ceil()} Sek.'
-          : 'Tagesziel: noch ${(remaining / 60).ceil()} Min.';
-    }
-    if (text == null) return const SizedBox.shrink();
+    final attempts = question['attempts'] as List? ?? [];
+    if (attempts.isEmpty) return const SizedBox.shrink();
+    final last = attempts.last;
+    final outcome = last['outcome'];
+    final assisted =
+        attempts.any((a) => a['assisted'] == true) ||
+        (question['hints_used'] as num? ?? 0) > 0;
+    final label = last['evaluation']?['method'] == 'open_learning_v1'
+        ? 'Eigener Beitrag · ohne Richtig/Falsch-Wertung'
+        : outcome == 'uncertain'
+        ? 'Prüfung offen'
+        : outcome == 'incorrect'
+        ? 'Weiter üben'
+        : assisted
+        ? 'Mit Hilfe gelöst'
+        : attempts.length > 1
+        ? 'Im erneuten Versuch gelöst'
+        : 'Selbstständig gelöst';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(text, style: const TextStyle(color: muted, fontSize: 13)),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MathText(
+            question['prompt'] ?? '',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          MathText('Deine Antwort: ${last['answer']}'),
+          MathText(label),
+          if (question['feedback_explanation'] != null)
+            MathText(question['feedback_explanation']),
+        ],
+      ),
     );
   }
 }

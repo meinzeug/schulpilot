@@ -1,6 +1,14 @@
 # Vom Schulstoff zum nachvollziehbaren Lernweg
 
-Stand 17.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächlich bestätigten Unterrichtsmaterials. Schulnoten geben einen zusätzlichen Hinweis auf Schwerpunkte. Sie ersetzen weder die Beobachtung beim Üben noch eine fachliche Diagnose durch Lehrkräfte. Verbesserte Schulnoten sind ein Ziel, keine zugesicherte Wirkung der Software.
+Stand 19.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächlich bestätigten Unterrichtsmaterials. Schulnoten geben einen zusätzlichen Hinweis auf Schwerpunkte. Sie ersetzen weder die Beobachtung beim Üben noch eine fachliche Diagnose durch Lehrkräfte. Verbesserte Schulnoten sind ein Ziel, keine zugesicherte Wirkung der Software.
+
+## Fachliche Darstellung und offene Bewertung
+
+Aufgaben dürfen ergänzend eine versionierte `presentation` mit höchstens vier festen Inhaltsblöcken tragen. Jeder Block enthält einen wörtlichen Quellbeleg, einen Darstellungstyp aus dem Fachprofil und eine Offenlegungsstufe: `given`, gestufter Hinweis oder `solution`. Der Provider liefert keine freien Grafikkoordinaten, SVGs oder Netzwerkbilder. Backend-Schemata prüfen Fachtyp, Zahlen, Beschriftungen und fachliche Beziehungen vor dem Speichern; der Client stellt dieselben Daten als Flutter-Vektor, Tabelle oder Wortkarte dar und gibt eine verbale Bildbeschreibung an assistive Technologien weiter. Lösungen und Hinweise werden erst nach dem passenden Schritt projiziert.
+
+Fachlich prüfbare Mathematik verwendet exakte Wertvergleiche. Eine gleichwertige Bruchantwort wie `6/16` gilt wie `3/8`, sofern die Aufgabe nicht ausdrücklich kürzen lässt. Bei einem ausdrücklich verlangten Format bleibt der Inhalt als richtig und die Form separat bewertbar. Andere Fächer erhalten keine globale Ähnlichkeitstoleranz. Reflexion, kreative Entscheidungen, Religion und körperliche Ausführung zählen nicht als eindeutig richtiges Können; sie bleiben als eigener Beitrag nachvollziehbar.
+
+Für den Fachtest vom 19.10.2026 sind24 Fachprofile und je zwei lokale synthetische Quellfälle in `testdata/subject_cases_v1.json` festgehalten. Sie prüfen Schema, Quellenbindung, festgelegte Bewertung und Flutter-Layout bei schmaler/weiter Ansicht sowie100/200% Textskalierung. Diese Fixtures sind weder OCR-Nachweis noch vollständige Live-KI- oder Lernwirksamkeitsabnahme; der genaue Stand steht in [FACHTEST_2026_10_19.md](FACHTEST_2026_10_19.md).
 
 ## Der durchgängige Ablauf
 

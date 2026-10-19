@@ -69,7 +69,7 @@ def material_data(material):
             "created",
             "revision",
         )
-    } | {"vocabulary_preview": preview(material.subject, material.topic, material.content) if not material.synthetic else None,
+    } | {"vocabulary_preview": preview(material.subject, material.topic, material.content, material.source_blocks) if not material.synthetic else None,
          "task_preview": task_preview(material.content, material.homework, material.task_decisions),
          "confirmed_tasks": [row["text"] for row in task_preview(material.content, material.homework, material.task_decisions)
                              if row["classification"] == "homework" and any(
@@ -237,7 +237,9 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
             for a in attempts
             if a.question_id == q["id"]
         ]
-        value["hints_used"] = len([e for e in events if e.kind == "hint" and e.detail.get("question_id") == q["id"]])
+        shown = [e for e in events if e.kind == "hint" and e.detail.get("question_id") == q["id"]]
+        value["hints_used"] = len(shown)
+        value["shown_hints"] = [{"number":e.detail.get("number"), "text":e.detail.get("text", "")} for e in sorted(shown,key=lambda e:(e.created,e.id))]
         if (
             unit.status == "completed"
             or len(value["attempts"]) >= 3
@@ -246,6 +248,11 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
             value["feedback_explanation"] = q["explanation"]
             if q.get("language_feedback"):
                 value["language_feedback"] = q["language_feedback"]
+        from .subject_content import legacy_presentation, public_presentation
+
+        closed = "feedback_explanation" in value
+        value["presentation"] = public_presentation(q.get("presentation") or legacy_presentation(q),
+            closed=include_answers or closed, hints=value["hints_used"])
         questions.append(value)
     return {
         "id": unit.id,
@@ -258,6 +265,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         "questions": questions,
         "pending_feedback": pending_feedback(unit, attempts, events),
         "supports_recheck": True,
+        "content_version": 1,
         "supports_answer_idempotency": True,
         "status": unit.status,
         "synthetic": unit.synthetic,
@@ -304,6 +312,8 @@ def vocabulary_result(db, unit):
 
 
 def language_capability(unit, capabilities):
+    if any(q.get("presentation") for q in unit.questions) and "visual-v1" not in (capabilities or "").split(","):
+        raise HTTPException(426, "Diese Runde enthält neue Lernbilder. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if any(q.get("language") for q in unit.questions) and not language_supported(capabilities):
         raise HTTPException(426, "Für diese Sprachrunde bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
 
@@ -1175,7 +1185,8 @@ def hint(unit_id: str, question_id: str, p=Depends(child_user), db=Depends(get_d
             if replay.detail.get("question_id") != question_id:
                 raise HTTPException(409, "Dieser Hinweisschlüssel gehört zu einer anderen Aufgabe.")
             return {"hint": replay.detail["text"], "hints_used": replay.detail["number"],
-                    "exhausted": replay.detail["number"] >= 3}
+                    "exhausted": replay.detail["number"] >= 3,
+                    "presentation": hint_presentation(q, replay.detail["number"])}
     if unit.status not in ("active", "paused"):
         raise HTTPException(409, "Diese Runde ist abgeschlossen. Du kannst die gespeicherte Erklärung im Rückblick lesen.")
     previous = db.scalar(select(Attempt).where(Attempt.unit_id == unit.id, Attempt.question_id == question_id)
@@ -1198,7 +1209,18 @@ def hint(unit_id: str, question_id: str, p=Depends(child_user), db=Depends(get_d
     record(db, unit.child_id, "hint", {"question_id": question_id, "text": text,
                                      "number": len(shown)+1, "request_key": idempotency_key}, unit.id)
     db.commit()
-    return {"hint": text, "hints_used": len(shown)+1, "exhausted": len(shown)+1 >= 3}
+    return {"hint": text, "hints_used": len(shown)+1, "exhausted": len(shown)+1 >= 3,
+            "presentation": hint_presentation(q, len(shown)+1)}
+
+
+def hint_presentation(q, count):
+    from .subject_content import legacy_presentation, public_presentation
+
+    private = q.get("presentation") or legacy_presentation(q)
+    if private and not q.get("presentation") and count:
+        private["blocks"].append({**private["blocks"][0], "disclosure": "hint1",
+                                  "title": "Das Dreieck ist die Hälfte des Rechtecks"})
+    return public_presentation(private, hints=count)
 
 
 def normalized(text):
@@ -1242,6 +1264,13 @@ def learning_block(db, unit):
 
     if reason := continuation_block(db, unit, child, check_sources=False):
         return reason
+    if any(q.get("presentation") for q in unit.questions):
+        try:
+            from .coaching import context
+
+            context(db, unit)
+        except Exception:
+            return "Eine Heftseite wurde geändert. Bitte zuerst den aktuellen Lernstoff prüfen."
     if unit.round_kind in ("study_block", "study_recall"):
         from .coaching import context
         from .study_path import block_reason
@@ -1412,7 +1441,9 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         unit.status = "completed"
         unit.completed = int(now())
         unit.heartbeat = None
-        if unit.round_kind != "vocabulary":
+        from .subject_content import open_learning_unit
+
+        if unit.round_kind != "vocabulary" and not open_learning_unit(unit):
             update_mastery(db, unit, attempts)
         # An exercise is evidence of practice. Only a parent can close the
         # binding goal; a single completed unit cannot establish full mastery.

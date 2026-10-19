@@ -1,3 +1,36 @@
+Fachtest · 19.10.2026 · lokaler Stand, noch nicht ausgeliefert
+
+Die vollständige Befundliste und Fachmatrix stehen in
+docs/FACHTEST_2026_10_19.md. Die Protokolle beziehen sich auf Live 1.8.0+41;
+die Zuordnung der dort genannten Revision zum Livebetrieb war nicht nachgewiesen.
+Der weiterhin bestätigte öffentliche Release bleibt 20261019T065608Z-863d4f9,
+Schema 0021. Lokal ist App 1.9.0+42 vorbereitet, Backend-Migration 0022 ist additiv
+und wurde nur in isoliertem PostgreSQL geprüft. Nichts wurde an Produktionsdaten,
+Familienkontingenten oder externen Providern geändert.
+
+48 künstliche Fälle (2 je 24 Fächer) prüfen strukturierten Inhalt, Antwortregel,
+Offenlegung und lokale Flutterdarstellung. Kein vollständiger Live-KI- oder
+Foto-OCR-Durchlauf aller Fächer. Aus dem historischen Test: 24 Bilder gespeichert,
+18 Quellen bestätigt, nur Mathematik mit 2 Aufgaben vollständig beantwortet;
+Paketvorbereitung brach zweimal ab, späteres Kontingent blockierte weitere
+Aufträge. Rückblickfehler mit unbekannter Lernziel-ID wurde lokal reproduziert.
+Absichtliche Fehler sind keine Aussage über die Fähigkeiten des Kindes.
+
+Lokaler Stand: Backend-Gesamttest auf isoliertem PostgreSQL: 1.037 bestanden mit 3
+Starlette/Alembic-Warnungen; Flutter-Gesamttest: 544 bestanden. Flutter-Analyse,
+Ruff, Python-Compile und Diff-/Geheimnisprüfung sind ohne Befund. Web, signierte
+Direct-APK 1.9.0+42 und Play-AAB wurden gebaut. APK-Paket/Version, Signatur und
+16-KB-Ausrichtung sind geprüft. Bundletool 1.18.3 validiert das AAB mit Paket
+`de.dorfspy.schulpilot`, Version 1.9.0+42 und Mindest-API 24; seine Signatur
+stimmt mit der Releasepolicy überein. `jarsigner` nennt die erwartete
+selbstsignierte Zertifikatskette und den fehlenden Zeitstempel als Warnungen.
+Lokale Artefakte: `artifacts/schulpilot-android.apk`,
+`artifacts/schulpilot-play.aab`; Web-Build `app/build/web/`.
+Der normale Webbuild war erfolgreich; die fest gepinnten TTS-/Firebase-Plugins
+melden Wasm-/Kotlin-Migrationshinweise. Kein physischer Android-, Mikrofon-,
+TTS- oder Screenreadertest, keine sichtbare Pushzustellung und kein externer
+KI-Paketlauf in dieser Arbeit. Eine Bereitstellung wurde nicht vorgenommen.
+
 Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
 
 Beide vollständigen HTML-Protokolle einschließlich aller Details, Anhänge und
@@ -7,9 +40,9 @@ keine Diagnose echter Fähigkeiten. Keine echte Familie oder ihre Daten verände
 
 Öffentlich geprüft: https://schulpilot.dorfspy.de ; eigene API /api.
 Aktiver Produktcode: 863d4f9ef7a9d6671b6d3bc3ff8e06d3177dadfc, main gepusht.
-Release 20261019T065608Z-863d4f9, Schema0021 tatsächlich ausgelesen.
+Release 20261019T065608Z-863d4f9, Schema 0021 tatsächlich ausgelesen.
 Vorheriger kompatibler Release: 20261019T063153Z-8990410. Bei Code-Rückweg
-Schema0021 und neuere Antworten erhalten; kein Downgrade oder DB-Zurücksetzen.
+Schema 0021 und neuere Antworten erhalten; kein Downgrade oder DB-Zurücksetzen.
 Additive Migration0020: versionierte Bewertungs-Audithistorie.
 Additive Migration0021: Herkunft/Entscheidungen der Aufgaben und Nachrichtenbezug.
 Sicherung Result=success/Exit0; sieben Dienste aktiv, Caddy gesichert/geprüft.

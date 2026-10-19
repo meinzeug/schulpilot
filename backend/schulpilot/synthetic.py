@@ -90,7 +90,9 @@ def sample_unit(variant=0, difficulty="normal"):
             },
         ],
     }
-    return UnitOutput.model_validate(data).model_dump()
+    # Keep generated legacy fixtures in the same shape as stored legacy units:
+    # absent optional presentation blocks stay absent rather than becoming null.
+    return UnitOutput.model_validate(data).model_dump(exclude_none=True)
 
 
 @router.post("/demo", status_code=201)

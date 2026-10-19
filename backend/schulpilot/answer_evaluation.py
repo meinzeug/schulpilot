@@ -55,6 +55,8 @@ def arithmetic(question, answer):
         return result("incorrect", "Die beiden Brüche haben noch nicht denselben Wert.")
     try:
         fraction_result(prompt, answer, [], question_type=question["type"])
+        if expression and re.search(r"\b(?:kürze\s+(?:das\s+ergebnis\s+)?vollständig|vollständig\s+gekürzt|vollständig\s+kürzen)\b", prompt, re.I) and supplied != (expected.numerator, expected.denominator):
+            raise ValueError("fully reduced result")
         denominator = re.search(r"\b(?:als\s+)?bruch\s+mit\s+(?:dem\s+)?nenner\s+(\d{1,4})\b", prompt, re.I)
         if denominator and supplied[1] != int(denominator[1]):
             raise ValueError("requested denominator")
@@ -64,7 +66,34 @@ def arithmetic(question, answer):
     equivalent = supplied != key
     return result("correct", (f"Das stimmt: {answer.strip()} ist genauso viel wie {question['answer']}."
                               if equivalent else "Wert und verlangte Darstellung stimmen."),
-                  form="correct" if instruction or denominator else "not_requested")
+                  form="correct" if instruction or denominator or re.search(r"vollständig", prompt, re.I) else "not_requested")
+
+
+def triangle_area(question, answer):
+    from .subject_content import legacy_presentation
+
+    if not re.search(r"fläch", question["prompt"], re.I) or not (p := legacy_presentation(question)):
+        return None
+    block = p["blocks"][0]
+    g, h = (Fraction(str(n)) for n in block["numbers"])
+    expected = g * h / 2
+    def quantity(text):
+        match = re.fullmatch(r"\s*(\d+(?:[.,]\d+)?)(?:\s*(cm|m)(?:²|\^2|2))?\s*", text)
+        return (Fraction(match[1].replace(",", ".")), match[2]) if match else None
+    key, supplied = quantity(question["answer"]), quantity(answer)
+    if not key or key[0] != expected:
+        return result("uncertain", "Die gespeicherte Musterlösung passt nicht zur Dreiecksfläche. Die Prüfung ist offen.")
+    if not supplied:
+        return None
+    if supplied[0] == g * h:
+        return result("incorrect", "Grundseite mal Höhe ergibt die Rechteckfläche. Das Dreieck ist die Hälfte davon. Welcher Schritt fehlt noch?")
+    if supplied[0] != expected:
+        return result("incorrect", "Prüfe erst Grundseite mal senkrechte Höhe. Danach halbierst du das Ergebnis.")
+    if supplied[1] and supplied[1] != block["unit"]:
+        return result("incorrect", "Der Zahlenwert stimmt; prüfe die Flächeneinheit.", content="correct", form="incorrect")
+    if re.search(r"mit\s+(?:der\s+)?einheit|in\s+(?:cm|m)(?:²|\^2|2)", question["prompt"], re.I) and not supplied[1]:
+        return result("incorrect", "Der Zahlenwert stimmt. Ergänze noch die verlangte Flächeneinheit.", content="correct", form="incorrect")
+    return result("correct", "Du hast Grundseite und senkrechte Höhe multipliziert und das Ergebnis halbiert.")
 
 
 def closed_concept(question, answer):
@@ -92,6 +121,10 @@ def closed_concept(question, answer):
 
 
 def evaluate(question, answer):
+    if (question.get("presentation") or {}).get("evidence_kind") in ("reflection", "creative", "self_report", "movement"):
+        return result("uncertain", "Deine Idee ist gespeichert. Gefühle, kreative Ideen oder körperliche Ausführung werden hier nicht als richtig oder falsch gemessen.", method="open_learning_v1")
+    if checked := triangle_area(question, answer):
+        return checked
     if question.get("language"):
         from .language_evaluation import evaluate as language_evaluate
 

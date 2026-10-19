@@ -274,7 +274,10 @@ void main() {
     (tester) async {
       final fixture = _Fixture(_unit());
       await _open(tester, fixture);
-      expect(find.text('Tagesziel: noch 2 Min.'), findsOneWidget);
+      expect(
+        find.text('Tagesziel: noch 2 Min.'),
+        findsNothing,
+      ); // Time remains on Today/clock, not repeated as the round's result.
       expect(find.text('Selbst ausprobieren'), findsOneWidget);
       expect(find.text('Weiterlernen'), findsNothing);
       expect(fixture.requests, isEmpty);

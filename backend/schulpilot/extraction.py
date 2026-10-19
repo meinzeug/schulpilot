@@ -14,6 +14,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import Field, model_validator
 
 from . import schemas as s
+from .subject_content import SourceBlock
 
 MAX_IMAGE_PIXELS = 16_000_000
 
@@ -44,16 +45,15 @@ homework enthält ausschließlich ausdrücklich als Hausaufgabe/Auftrag notierte
 Eine alleinstehende Überschrift (z.B. 'Probeaufgabe:') ist keine Hausaufgabe.
 Überschrift, Aufgabennummer und zugehörige Rechenzeilen als EINEN zusammenhängenden Eintrag erhalten.
 Probeaufgaben, Beispiele und Unterrichtsübungen ohne ausdrücklichen Hausaufgabenvermerk NICHT in homework aufnehmen.
-Alle Listen/Felder vollständig als JSON nach dem Schema ausgeben. Keine zusätzlichen Quellen erfinden."""
+Alle Listen/Felder vollständig als JSON nach dem Schema ausgeben. Keine zusätzlichen Quellen erfinden.
+purpose klassifiziert nur den sichtbaren Abschnitt: translation nur ausdrücklich bilinguale Wortlisten,
+inflection für Grundform/gebeugte Form derselben Sprache, rule für Grammatik, example für Beispielsätze,
+diagram für Beschriftungen/Zeitachsen, metadata für Seitenfooter/Testhinweise, sonst unknown.
+Bei Unklarheit unknown wählen; die Rolle ist kein Nachweis einer richtigen Übersetzung."""
 
 
-class TranscriptionBlock(s.Strict):
-    kind: Literal["heading", "paragraph", "list", "formula", "table", "diagram_text"]
-    text: str = Field(
-        min_length=1,
-        max_length=12000,
-        description="Vollständiger wörtlicher sichtbarer Text dieses Bereichs, keine Zusammenfassung oder Beschreibung.",
-    )
+class TranscriptionBlock(SourceBlock):
+    """Literal visible block with a conservative, advisory document role."""
 
 
 class TranscriptionOutput(s.Strict):
@@ -84,6 +84,7 @@ class TranscriptionOutput(s.Strict):
             content="\n\n".join(block.text for block in self.blocks),
             uncertainties=self.uncertainties,
             homework=self.homework,
+            source_blocks=[block.model_dump() for block in self.blocks],
         ).model_dump()
 
 

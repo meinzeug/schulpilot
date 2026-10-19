@@ -354,7 +354,7 @@ def test_private_failure_health_never_contains_echoed_payload_or_credentials(log
         worker.run(job())
     assert len(calls) == 1
     assert worker.health()["last_failure"] == {
-        "http_status": 400, "upstream_calls": 1, "cli_exit": 1, "parameter": "max_tool_calls",
+        "http_status": 400, "upstream_calls": 1, "cli_exit": 1, "parameter": "max_tool_calls", "failure_code":"provider_unavailable",
     }
     rendered = json.dumps(worker.health())
     assert "SYNTHETIC" not in rendered and "Bearer" not in rendered and "PRIVATE" not in rendered

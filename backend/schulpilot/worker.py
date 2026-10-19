@@ -335,7 +335,7 @@ def process(job_id):
                     data = validate_material(data, image_bytes)
                 except IncompleteTranscription as error:
                     raise ProviderError(str(error)) from None
-                for key in ("subject", "topic", "content", "uncertainties", "homework", "legibility"):
+                for key in ("subject", "topic", "content", "uncertainties", "homework", "legibility", "source_blocks"):
                     setattr(material, key, data[key])
                 material.status = "unreadable" if data["legibility"] == "unreadable" else "review"
                 material.extraction_provider = config_values["provider"]
@@ -415,7 +415,10 @@ def process(job_id):
             job = db.get(Job, job_id)
             if job:
                 job.status = "failed"
+                from .job_failures import failure_code
+
                 job.error = message[:500]
+                job.error_code = failure_code(exc)
                 job.finished = int(now())
                 usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
                 if usage:
@@ -432,6 +435,7 @@ def maintenance():
         stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240)))
         for job in stale:
             job.status = "failed"
+            job.error_code = "interrupted"
             job.error = "Worker wurde unterbrochen. Kein automatischer Wiederholungsversuch; mögliche Kosten bleiben reserviert."
             job.finished = int(now())
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))

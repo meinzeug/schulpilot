@@ -799,9 +799,16 @@ class _TopicBrowserState extends State<TopicBrowser> {
                       ),
                     ],
                   ),
+                  if (widget.selected != null && chosen.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Text(
+                        'Wähle ein passendes Thema oder schließe die Suche.',
+                      ),
+                    ),
                   if (widget.selected != null)
                     FilledButton(
-                      onPressed: loading
+                      onPressed: loading || chosen.isEmpty
                           ? null
                           : () => Navigator.pop(context, chosen),
                       child: const Text('Auswahl übernehmen'),

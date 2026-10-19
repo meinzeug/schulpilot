@@ -46,6 +46,11 @@ class PracticeEvidence extends StatelessWidget {
                 'mit Hilfe gelöst',
                 Icons.lightbulb_outline_rounded,
               ),
+              (
+                'reflection_tasks',
+                'eigene Beiträge',
+                Icons.chat_bubble_outline_rounded,
+              ),
               ('needs_practice_tasks', 'weiter üben', Icons.replay_rounded),
               (
                 'uncertain_tasks',

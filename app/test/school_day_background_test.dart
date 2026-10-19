@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:image/image.dart' as image;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -40,7 +43,7 @@ class PreparationServer {
   Json preparation;
   bool archived = false, realUploads = false, aiAvailable = true;
   int reads = 0, starts = 0, submissions = 0, savedForLater = 0, postponed = 0;
-  int minutes = 8;
+  int minutes = 8, uploads = 0;
   final requests = <String>[];
   final keys = <String>[];
   List<Json> units = [];
@@ -148,6 +151,12 @@ class PreparationServer {
     }
     if (request.url.path.endsWith('/status')) {
       return response({'real_data_enabled': true, 'ai_available': aiAvailable});
+    }
+    if (request.method == 'POST' && request.url.path.endsWith('/materials')) {
+      uploads++;
+      final page = source(uploads, status: 'uploaded');
+      pages.add(page);
+      return response(page, 201);
     }
     throw StateError('Unexpected synthetic test request');
   }
@@ -588,6 +597,13 @@ void main() {
       );
       await settleUi(tester);
       await tapText(tester, 'Fotos auswählen');
+      expect(pickerCalls, 0);
+      expect(
+        find.textContaining('Pro Schultag sind 24 Seiten möglich'),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Fotos auswählen'));
+      await settleUi(tester);
       expect(pickerCalls, 1);
       expect(server.submissions, 0);
       expect(find.textContaining('gerade nicht erreichbar'), findsNothing);
@@ -680,6 +696,84 @@ void main() {
       expect(find.text('Künstliche Bruchaufgabe 1'), findsNothing);
       expect(server.submissions, 0);
       expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Ten selected files retain eight saved receipts and two clear rejections',
+    (tester) async {
+      mobile(tester);
+      final dir = await tester.runAsync(
+        () => Directory.systemTemp.createTemp('schulpilot-gallery-'),
+      );
+      addTearDown(() => dir!.delete(recursive: true));
+      final paths = <String>[];
+      await tester.runAsync(() async {
+        for (var i = 0; i < 10; i++) {
+          final photo = image.Image(width: 30, height: 40);
+          photo.setPixelRgb(i + 1, 1, 20, 40, 60);
+          final file = File('${dir!.path}/page-$i.png');
+          await file.writeAsBytes(image.encodePng(photo));
+          paths.add(file.path);
+        }
+      });
+      const picker = MethodChannel('plugins.flutter.io/image_picker');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        picker,
+        (call) async => paths,
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          picker,
+          null,
+        ),
+      );
+      final server = PreparationServer(pages: [])..realUploads = true;
+      final state = server.state();
+      final navigation = router(state);
+      addTearDown(navigation.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+      );
+      await settleUi(tester);
+      await tapText(tester, 'Fotos auswählen');
+      await tester.tap(find.widgetWithText(FilledButton, 'Fotos auswählen'));
+      for (var i = 0; i < 8; i++) {
+        for (
+          var wait = 0;
+          wait < 40 && find.text('Zuschnitt übernehmen').evaluate().isEmpty;
+          wait++
+        ) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 30)),
+          );
+          await settleUi(tester);
+        }
+        expect(
+          find.text('Zuschnitt übernehmen'),
+          findsOneWidget,
+          reason: 'crop ${i + 1}',
+        );
+        await tester.tap(find.text('Zuschnitt übernehmen'));
+        await tester.pump(const Duration(milliseconds: 80));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+        await settleUi(tester);
+      }
+      for (var wait = 0; wait < 30 && server.uploads < 8; wait++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 30)),
+        );
+        await settleUi(tester);
+      }
+      expect(server.uploads, 8);
+      final receipts = await state.pendingUploads.receipts('kid');
+      expect(receipts, hasLength(10));
+      expect(receipts.where((r) => r['stage'] == 'saved'), hasLength(8));
+      expect(receipts.where((r) => r['stage'] == 'not_accepted'), hasLength(2));
+      expect(server.submissions, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
     },
   );
 }

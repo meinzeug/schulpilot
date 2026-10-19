@@ -10,7 +10,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import load_only
 
 from . import schemas as s
-from .db import Job, LanguageProject, Message, NotificationRead, User, VocabularyImport, get_db, now
+from .db import (
+    Job,
+    LanguageProject,
+    Material,
+    Message,
+    NotificationRead,
+    SchoolDay,
+    User,
+    VocabularyImport,
+    get_db,
+    now,
+)
 from .notifications import children_for
 from .security import audit, authenticated, rate_limit
 
@@ -62,6 +73,7 @@ def recent_events(db, user, current=None):
         "interest": "Ein neuer Lernwunsch",
         "plan_change": "Ein Wunsch zum Lernplan",
     }
+    seen_preparations = set()
     for row in db.scalars(
         select(Message)
         .options(load_only(Message.id, Message.child_id, Message.created, Message.kind, Message.sender_id, Message.context))
@@ -89,7 +101,22 @@ def recent_events(db, user, current=None):
             route = f"/after-school/{row.child_id}?day={context['day_id']}"
         elif row.kind == "preparation":
             route = f"/after-school/{row.child_id}/history"
-        add("message:" + row.id, row.child_id, row.created, titles[row.kind], route, row.kind)
+        title = titles[row.kind]
+        if row.kind == "preparation" and context.get("day_id"):
+            day_id = context["day_id"]
+            day = db.get(SchoolDay, day_id)
+            if not day or day.child_id != row.child_id or day_id in seen_preparations:
+                continue
+            seen_preparations.add(day_id)
+            source_rows = list(db.execute(select(Material.subject).where(Material.school_day_id == day_id, Material.child_id == row.child_id)))
+            count = len(source_rows)
+            subjects = sorted({r.subject for r in source_rows if r.subject})
+            prefix = f"{count} Heftseite{'n' if count != 1 else ''}" + (" · " + ", ".join(subjects[:2]) if subjects else "")
+            current_status = (day.preparation or {}).get("status")
+            suffix = {"needs_review":"Bitte prüfen", "needs_photo":"Ein Foto neu aufnehmen", "processing":"Wird vorbereitet",
+                      "ready":"Lernpaket bereit", "saved":"Für später gespeichert", "failed":"Vorbereitung noch offen", "blocked":"Vorbereitung noch offen"}.get(current_status, "Heftseiten öffnen")
+            title = f"{prefix} · {suffix}"
+        add("message:" + row.id, row.child_id, row.created, title, route, row.kind)
 
     for model, kind, title in (
         (LanguageProject, "language_ready", "Deine Sprachübung ist bereit"),

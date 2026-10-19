@@ -1,4 +1,38 @@
-Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
+# Fachtest 19.10.2026 · aktueller lokaler Arbeitsstand
+
+Noch nicht bereitgestellt. Öffentlicher Stand bleibt Release
+`20261019T065608Z-863d4f9`, App `1.8.0+41`, Schema `0021`. Im Arbeitsbaum ist
+Migration `0022` vorbereitet und die App-Version auf `1.9.0+42` gesetzt; die
+Migration ist nur auf isoliertem PostgreSQL getestet. Kein echter Familien- oder
+Kinderinhalt geändert, kein Produktionskontingent geändert und in diesem Auftrag
+kein Provider aufgerufen. Der genaue Testlauf/Fachumfang steht in
+`docs/FACHTEST_2026_10_19.md`.
+
+Umgesetzt im lokalen Code: sichere Einzelbestätigung von Vokabelpaaren; sichtbare
+Datei-Uploadstatus; klassifizierte Vorbereitungsfehler; stabile
+Lernzielzuordnungen und Ergebniszusammenfassung aus gespeicherten Antworten;
+exakte Bruchnotation/-eingabe; quellgebundene Fachgrafiken für 24 Fächer mit
+getrennter Offenlegung; inhaltliche Dreiecksfehlerhilfe; passende Pause-/Zeit-/
+Statusdarstellung. 48 künstliche Quellenfälle prüfen Schema, Renderer und
+Antwortregel. Sie beweisen weder OCR noch Providerqualität oder vollständige
+Live-Fachabdeckung.
+
+Flutter-Gesamttest: 544 bestanden; Analyse ohne Befund. Backend-Gesamttest auf
+isoliertem PostgreSQL: 1.037 bestanden, 3 Warnungen aus Starlette/Alembic. Ruff,
+Python-Compile und Diff-/Geheimnisprüfung ohne Befund. Web, signierte Direct-APK
+1.9.0+42 und Play-AAB wurden lokal gebaut. Die APK wurde auf Paket/Version,
+Signatur und 16-KB-Ausrichtung geprüft; das AAB besteht den ZIP-Integritätstest.
+Bundletool 1.18.3 validiert das AAB und meldet Paket `de.dorfspy.schulpilot`,
+Version 1.9.0+42 und Mindest-API 24; AAB-Signatur stimmt mit der Releasepolicy
+überein. `jarsigner -verify` nennt die erwartete selbstsignierte
+Zertifikatskette und fehlenden Zeitstempel als Warnungen. Der normale Webbuild
+war erfolgreich; Wasm-Trockenlauf und Gradle nennen
+bekannte Warnungen der fest gepinnten TTS-/Firebase-Plugins. Physischer Android-,
+Audio- und Screenreader-Test sowie Live-Providerlauf wurden nicht durchgeführt.
+Keine automatische Produktionsbereitstellung: dieser Auftrag erteilt dafür
+keine neue Freigabe.
+
+# Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
 
 Beide vollständigen HTML-Protokolle einschließlich aller Details, Anhänge und
 JSON-Testdaten gelesen. Vollständige Befundliste mit 32 Befunden und allen
@@ -7,9 +41,9 @@ keine Diagnose echter Fähigkeiten. Keine echte Familie oder ihre Daten verände
 
 Öffentlich geprüft: https://schulpilot.dorfspy.de ; eigene API /api.
 Aktiver Produktcode: 863d4f9ef7a9d6671b6d3bc3ff8e06d3177dadfc, main gepusht.
-Release 20261019T065608Z-863d4f9, Schema0021 tatsächlich ausgelesen.
+Release 20261019T065608Z-863d4f9, Schema 0021 tatsächlich ausgelesen.
 Vorheriger kompatibler Release: 20261019T063153Z-8990410. Bei Code-Rückweg
-Schema0021 und neuere Antworten erhalten; kein Downgrade oder DB-Zurücksetzen.
+Schema 0021 und neuere Antworten erhalten; kein Downgrade oder DB-Zurücksetzen.
 Additive Migration0020: versionierte Bewertungs-Audithistorie.
 Additive Migration0021: Herkunft/Entscheidungen der Aufgaben und Nachrichtenbezug.
 Sicherung Result=success/Exit0; sieben Dienste aktiv, Caddy gesichert/geprüft.
