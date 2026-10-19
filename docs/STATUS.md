@@ -1,4 +1,4 @@
-# Fachtest 19.10.2026 · produktiv bereitgestellt
+# Produktionsstand · 19.10.2026
 
 ## Heftseiten löschen und Lernzeituhr · 19.10.2026
 
@@ -6,9 +6,11 @@ Löschaktionen in Album-, Kachel- und Listenansicht sowie „Alle Heftseiten“ 
 
 Die Lernzeitanzeige verwendet Klartext statt des Bruch-Renderers; `6:25 / 20:00` bleibt damit eine Zeitangabe.
 
-Gezielte Flutter-Regressionen: 39 bestanden; `flutter analyze --no-pub` ohne Befund. Web-Releasebuild und Direct-Debug-APK erfolgreich. Der Webbuild zeigt die bereits bekannten Wasm-Trockenlaufhinweise des gepinnten `flutter_tts`; regulärer Webbuild ist erfolgreich. Backend: 38 Tests bestanden, 2 übersprungen; Ruff ohne Befund. Kein reales Familienkonto verändert.
+Gezielte Flutter-Regressionen: 39 bestanden; `flutter analyze --no-pub` ohne Befund. Backend für die Löschrechte: 38 Tests bestanden, 2 übersprungen; Ruff ohne Befund. Kein reales Familienkonto verändert.
 
-Noch nicht produktiv ausgerollt: Live steht weiterhin Version `1.9.0+42`. Die Prüfung am 19.10. ergab 411 MiB freien Serverspeicher (99 % Belegung); zusätzlich zum neuen Release wären eine Sicherung und neue Web-/Android-Artefakte nötig. Ohne dokumentierte Aufbewahrungs-/Kapazitätsentscheidung wird weder Speicher freigeräumt noch ein Rollout riskiert. Commit und Push enthalten den Code; für Produktion ist zuerst ausreichend sicherer Speicherplatz herzustellen.
+Vor dem neuen Rollout war Live auf `1.9.0+42`, Release `20261019T153515Z-8850ec9`. Auf dem Server wurden 72 alte Schulpilot-Code-Releases gelöscht; das aktive Release `20261019T153515Z-8850ec9`, sein Rückweg `20261019T065608Z-863d4f9` sowie die Sicherungen blieben erhalten. `/opt/schulpilot/releases` sank von 17 GB auf 511 MiB. Der freie Serverspeicher stieg von 411 MiB auf 17 GB (54 % Belegung); `/var/backups/schulpilot` blieb bei 435 MiB. API, Worker und Caddy blieben aktiv; `/api/health` meldete weiter den erwarteten aktiven Commit.
+
+Die nächste direkte Android-Version wurde auf `1.9.0+43` angehoben. Der signierte Releasebuild und die Deploymentprüfung laufen für Commit `df3f3d9` mit der sicheren automatischen Release-Aufbewahrung. Der Produktionsstand wird nach dem öffentlichen Healthcheck und APK-Abgleich aktualisiert.
 
 Am 19.10.2026 wurde App `1.9.0+42` aus Codecommit
 `8850ec9b1441b66a50ce9b1fd8a39323f55477af` als Release

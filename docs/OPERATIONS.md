@@ -142,6 +142,16 @@ Eine leere Datenbank öffnet beim ersten Webaufruf den einmaligen Einrichtungsas
 
 Nach Tests und Web-Build aus dem Repository: `bash scripts/deploy.sh`. Das Script legt ausschließlich Projektressourcen an, lädt einen eigenen Release hoch, installiert exakt `requirements.lock`, sichert Caddy und prüft die ergänzte Konfiguration. Bei einer bestehenden Installation erstellt es vor Aktivierung eine neue Projektsicherung und kontrolliert den Diensterfolg. Eigene API und Worker werden vor der Migration angehalten; danach wird nochmals gesichert, damit während des Anhaltens fertiggestellte Antworten und Aufträge enthalten sind. Anschließend werden die Migration ausgeführt, beide Dienste aktiviert und Caddy neu geladen. Healthcheck lokal und anschließend über HTTPS. Die erstmalige Zertifikatsausstellung darf mit begrenzten GET-Wiederholungen abgewartet werden. Änderungen am Datenbankschema benötigen eine zum Rückweg passende Migration; ein Code-Rollback ersetzt keine Datenrücksicherung.
 
+Nach erfolgreichem öffentlichen Healthcheck führt das Deployment
+`deploy/prune_releases.py --apply` aus. Die Routine behält ausschließlich die
+Ziele von `/opt/schulpilot/current` und `/opt/schulpilot/previous`, prüft die
+laufenden SCHULPILOT-Prozesse und bricht bei unbekannten Einträgen oder
+Mountpoints ab. Der Standardaufruf ohne `--apply` ist ein Dry-run. Entfernt
+werden nur alte immutable Code-/Web-Releases; `/var/lib/schulpilot`, Backups,
+Konfigurationen und andere Anwendungen bleiben unberührt. Damit bleibt der
+dokumentierte unmittelbare Code-Rückweg erhalten, ohne unbeschränkt viele
+historische Kopien auf dem Server anzusammeln.
+
 Die Caddy-Hauptdatei erhält lediglich `import /etc/caddy/schulpilot.caddy`. Das Fragment übernimmt `/api` einschließlich Unterpfaden; alle anderen Direktlinks fallen auf Flutter `index.html` zurück. Statische Ressourcen kommen vom eigenen Server, ohne externes Flutter-CDN. Let’s Encrypt wird über Caddy ACME HTTP-01 bezogen und automatisch erneuert; HTTP leitet per 308 auf HTTPS. Die bestehende Caddy-Version bleibt erhalten.
 
 Dienste: `schulpilot-api.service`, `schulpilot-worker.service`, `schulpilot-backup.timer`. Automatischer Start und Neustart bei Ausfall; unprivilegierte API/Worker, schreibgeschützter Anwendungscode, geschütztes Home, minimale Fähigkeiten, getrennte Speicherlimits. Keine vollständigen Anfragen/Antworten in Zugriffslogs. `systemctl status`, `/api/health` und `journalctl -u schulpilot-api -u schulpilot-worker` dienen der Diagnose. Ein eigener Prozess-Watchdog und eine unabhängige HTTPS-Prüfung auf dem zweiten Host sind vorbereitet; Einrichtung und tatsächlicher Prüfstand stehen unten beziehungsweise in STATUS.md.
