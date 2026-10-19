@@ -37,6 +37,8 @@ def prepare(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
     from .materials import enqueue
 
     unit = get_unit(db, p, unit_id, True, True)
+    if unit.synthetic:
+        raise HTTPException(409, "Für eine neue Lernprobe brauchst du eigene bestätigte Heftseiten. Die Beispielrunde bleibt gespeichert.")
     memory = db.get(LearningMemory, unit.id)
     media = (memory.working or {}).get("media") if memory else None
     if not media or media.get("status") not in ("watched", "not_helpful", "broken", "skipped") or media.get("user_id") != p.user.id:
@@ -80,7 +82,7 @@ def process(job_id):
                 return
             authority(db, job)
             unit = db.get(LearningUnit, job.payload["unit_id"])
-            if not unit or unit.child_id != job.child_id:
+            if not unit or unit.child_id != job.child_id or unit.synthetic:
                 raise ProviderError("Die ursprüngliche Lernrunde fehlt.")
             signature, payload, sources = context(db, unit)
             if signature != job.payload["signature"]:

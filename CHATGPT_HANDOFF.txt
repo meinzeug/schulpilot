@@ -1,23 +1,36 @@
-Ausbau1.10.0+45 in Abschlussprüfung · 19.10.2026
+SCHULPILOT1.10.0+46 · Abschlussbereitstellung läuft · 19.10.2026
 
-Zuerst docs/STATUS.md und docs/ADAPTIVE_OPENROUTER.md lesen. Neue Migration0023,
-Controller-/Entwurfs-/Sofatutor-Rückkehrpfade, OpenRouter-Routing und Abrechnung
-sind implementiert. Kein neuer Dienst oder Firebase-Umbau. Nur eigene künstliche
-Familien für Tests verwenden; keine echten Kinderantworten erzeugen.
+Code und Migration0023 fertig; Build46-Web, signierte Direct-APK und Play-AAB
+gebaut.1081 PostgreSQL-Tests,54 gezielte Abschlussregressionen und570 Fluttertests
+bestanden. Architektur, Zustände, zehn Szenarien, Messwerte, Konfiguration und
+Grenzen: docs/ADAPTIVE_OPENROUTER.md und docs/STATUS.md.
 
-Vor Bereitstellung unverändert live: unten dokumentierter Build44 mit Codex.
-OPENROUTER_API_KEY liegt sicher in /etc/schulpilot/environment aus lokaler ~/or.txt.
-Keine Schlüsselausgabe und keine Übernahme in Flutter/Git. Der neue bezahlte Mix
-bleibt ohne Prüfung der Konto-Inhaltsprotokollierung und vollständige technische
-Probe nicht für echte Daten aktiviert. API-Zugriff und Guthaben wurden geprüft;
-25 verwertbare künstliche Antworten kosten laut Usage0,065440USD, unbekannte
-Abbrüche/Reservierungen bleiben getrennt. Keine vollständige Live-Fachabnahme.
+Verifiziert live vor letztem46-Deploy:20261019T194301Z-cdad42d(Build45), Schema0023.
+24 Browseransichten und native Android36-Runde mit vier Aufgabentypen erfolgreich.
+Echtes Update44→45, eigene Entwurfs-/Eltern-Leseprüfung und249.521Byte-PDF-Import
+mit drei Noten und Duplikatschutz bestanden. Keine externen KI-Aufrufe dafür.
 
-Builds/Regressionen und geplante eigene HTTPS-/Android-Abnahme laufen. Ergebnisse
-nach Abschluss am Anfang dieser Datei aktualisieren; keine Zustell-/Audio-/
-Produktionsfreigabe aus diesem Zwischenstand ableiten.
+OPENROUTER_API_KEY liegt ausschließlich in /etc/schulpilot/environment, lokale
+Quelle ~/or.txt. Key-Authentifizierung/Guthaben und Azure-ZDR-Angebot geprüft.
+Noch aktiv: Codex/gpt-6-luna; Mix nicht heimlich umgeschaltet. Für echte Daten
+fehlen noch Kontoinhaltslogging-/Datenfreigabeprüfung und technische Probe der
+aktuellen vollständigen Modellmix-Konfiguration. Kein Schlüssel in diesem Handoff.
+25 kleine künstliche OpenRouter-Antworten:0,065440USD Usage,0,195440USD einschließlich
+offener Reservierungen. Gebühren/FX tatsächlich unbekannt, Astra ungetestet.
+
+Normale Browseranmeldung auf /login; eigene Familien unter /app, Betrieb unter
+/admin, KI und Kosten dort in den geschützten Abschnitten. Eigene Kinder:
+Lernen → gespeicherte Runde; Entwürfe beim Pausieren wieder aufnehmen.
+Bei Lerntipp-Rückkehr: angesehen/übersprungen/Problem ausdrücklich rückmelden,
+bei vorhandenen belegten Zielen zwei neue Aufgaben bewusst anfordern.
+Noch unbewertete Altthemen zuerst mit bestehendem Rückblick abschließen.
+Keine echten Familien für Tests ändern. Nachtest nur mit eigener künstlicher
+Familie, normale sichere Anmeldung. Private Kontocheckpoints niemals weitergeben.
+Noch ausstehend: echte Ton-/Mikrofon-/TalkBack-/physische Gerätetests und kompletter
+Fünf-Fächer-Ablauf mit freigegebener OpenRouter-Produktionsroute.
 
 Vorheriger abgeschlossener Handoff:
+
 
 Aktueller verifizierter Stand · 19.10.2026 · App1.9.0+44
 

@@ -18,6 +18,7 @@ from .db import (
     Assignment,
     Attempt,
     Child,
+    Job,
     LearningEvent,
     LearningMemory,
     LearningUnit,
@@ -258,11 +259,17 @@ def projection(db, unit, *, include_draft=True):
     working = dict(memory.working) if memory else {}
     if not include_draft:
         working.pop("draft", None)  # Unsubmitted input is not a parent activity.
+    pending = db.get(Job, working.get("pending_check_job_id")) if working.get("pending_check_job_id") else None
+    preparation = None
+    if pending and pending.child_id == unit.child_id and pending.kind == "controller_check" and pending.payload.get("unit_id") == unit.id:
+        following = db.get(LearningUnit, (pending.result or {}).get("unit_id")) if (pending.result or {}).get("unit_id") else None
+        if not following or following.status != "completed":
+            preparation = {"id": pending.id, "status": pending.status, "unit_id": following.id if following else None}
     return {"version": 1, "strategy_version": STRATEGY, "revision": memory.revision if memory else 0,
         "updated": memory.updated if memory else 0, "draft_revision": working.get("draft_revision", 0),
         "plan_revision": memory.plan_revision if memory else 0, "source_signature": data["source_signature"],
         "source_valid": data["source_valid"], "action": decision,
-        "working_memory": working,
+        "working_memory": working, "preparation": preparation,
         "observations": {"answered_tasks": len({a.question_id for a in data["attempts"]}),
             "attempts": len(data["attempts"]), "misconceptions": data["misconceptions"],
             "independent_first_answers": sum(len(values) == 1 and values[0].outcome == "correct" and not values[0].assisted

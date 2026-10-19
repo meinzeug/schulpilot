@@ -84,6 +84,9 @@ def test_two_new_questions_are_explicit_metered_and_resume_original_draft(media_
         'question_id': 'sum', 'answer': '2/', 'revision': state['draft_revision']}).status_code == 200
     job_id = ask_check(client, unit_id)
     assert ask_check(client, unit_id) == job_id
+    assert client.get(endpoint(unit_id)).json()['preparation'] == {'id': job_id, 'status': 'queued', 'unit_id': None}
+    overview = client.get(f"/api/children/{child['id']}/overview?compact=true").json()
+    assert overview['learning_preparation']['id'] == job_id
     calls = []
     def generate(config, function, payload):
         assert function == 'unit' and payload['review'] and payload['practice_kind'] == 'check'
@@ -109,6 +112,7 @@ def test_two_new_questions_are_explicit_metered_and_resume_original_draft(media_
         assert db.get(LearningMemory, unit_id).working['draft']['answer'] == '2/'
         assert db.scalar(select(func.count()).select_from(Usage).where(Usage.job_id == job_id)) == 1
         assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+    assert client.get(endpoint(unit_id)).json()['preparation']['unit_id'] == followup.id
     assert len(calls) == 1
 
 
@@ -175,3 +179,17 @@ def test_generation_guard_ignores_draft_changes_but_rejects_new_learning_decisio
             'controller_guard': before}, idempotency='stale-plan-test')
         with pytest.raises(HTTPException):
             job_config(db, job)
+
+
+def test_public_demo_cannot_turn_media_return_into_an_arbitrary_external_call(media_unit):
+    client, unit_id, _, _, child = media_unit
+    path, _ = returned(client, unit_id, child['id'])
+    with DB.begin() as db:
+        db.get(LearningUnit, unit_id).synthetic = True
+    assert client.get(path).json()['media_return'] is None
+    state = client.get(endpoint(unit_id)).json()
+    response = client.post(endpoint(unit_id) + '/check', json={'kind': 'check_understanding',
+        'request_key': 'demo-no-external-001', 'revision': state['revision']})
+    assert response.status_code == 409
+    with DB() as db:
+        assert not db.scalar(select(Job.id)) and not db.scalar(select(Usage.id))

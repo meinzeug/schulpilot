@@ -22,7 +22,10 @@ def configure():
     raw = sys.stdin.read(65537)
     if len(raw.encode()) > 65536:
         raise SystemExit('Configuration exceeds 64 KiB')
-    data = Configuration.model_validate_json(raw)
+    try:
+        data = Configuration.model_validate_json(raw)
+    except ValueError:
+        raise SystemExit('Invalid routing configuration; use the documented schema. Input is not printed.') from None
     if not settings.openrouter_api_key:
         raise SystemExit('OPENROUTER_API_KEY must already exist in the protected server environment')
     policy = data.policy.model_dump()

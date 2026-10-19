@@ -423,11 +423,16 @@ class _LearningTipsState extends State<LearningTips>
                 child: const Text('Link oder Zugang klappt nicht'),
               ),
             ] else ...[
-              FilledButton.icon(
-                onPressed: writing ? null : checkAfterMedia,
-                icon: const Icon(Icons.psychology_alt_outlined),
-                label: const Text('Mit 2 neuen Aufgaben prüfen'),
-              ),
+              if (media['check_available'] != false)
+                FilledButton.icon(
+                  onPressed: writing ? null : checkAfterMedia,
+                  icon: const Icon(Icons.psychology_alt_outlined),
+                  label: const Text('Mit 2 neuen Aufgaben prüfen'),
+                )
+              else
+                const Text(
+                  'Beende zuerst diese Runde. Danach gibt es neue Aufgaben passend zu deinen Antworten.',
+                ),
               TextButton(
                 onPressed: () => Navigator.maybePop(context),
                 child: const Text('Zur gespeicherten Aufgabe'),

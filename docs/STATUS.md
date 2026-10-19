@@ -1,28 +1,38 @@
-# Ausbau in Abschlussprüfung · 1.10.0+45 · 19.10.2026
+# Ausbau1.10.0+46 · 19.10.2026 · Bereit zur Abschlussbereitstellung
 
-Zustandsbehaftete Lernbegleitung, revisionsgebundene Antwortentwürfe, Medienrückkehr
-mit neuer bewusster Zweierprobe und OpenRouter-Modellmix/Kostenkontrolle implementiert.
-Migration0023 additiv. Architektur, Abnahmegrenzen, zehn Szenarien und Betrieb:
-[ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Bereinigte echte Messwerte in
-OPENROUTER_EVALUATION_2026_10_19.json.
+Build45 bereits öffentlich als20261019T194301Z-cdad42d verifiziert; Migration0023,
+Backup success, API/Worker/Codex/Caddy aktiv. Aufbauend darauf ist Build46 fertig
+gebaut: verbesserte Wiederaufnahme vorbereiteter Medien-Lernproben und zusätzlicher
+Schutz der öffentlichen Demo. Bereitstellung46 und Nachtest folgen unmittelbar.
 
-Aktiv vor diesem Release: weiterhin der unten dokumentierte Build44/Codex.
-Schlüssel aus ~/or.txt sicher ausschließlich serverseitig hinterlegt; kein
-Providerwechsel allein dadurch. OpenRouter-Inhaltslogging/Datenfreigabe im Konto
-noch nicht überprüfbar; neuer bezahlter Mix deshalb nicht für echte Daten aktiviert.
-Modellmetadaten und 25 kleine künstliche Antworten ersetzen keine volle
-Fünf-Fächer-/Astra-/Unter13-Freigabe.
+Gesamtnachlauf1081 PostgreSQL-Tests bestanden, danach54 gezielte Regressionen
+für die abschließenden Zustands-/Demogrenzen.570 Fluttertests bestanden; Analyse,
+Ruff, Compile, Diff-/Schlüsselprüfung erfolgreich. Web, signierte Direct-APK und
+Play-AAB46 gebaut; Paket, Signierer, Version, Hash und16KB-Ausrichtung verifiziert.
+Bekannte TTS-Wasm-/Kotlin-Plugin- sowie Starlette/Alembic-Hinweise bleiben.
 
-Zwischenprüfungen: vollständiger PostgreSQL-Lauf1074 bestanden, zwei veraltete
-Mock-/Textannahmen identifiziert und angepasst; kompletter Nachlauf läuft.
-110/57 gezielte PostgreSQL-Regressionen einschließlich neuer Zustände und Kosten
-bestanden. Flutter567 bestanden, nach lokaler Entwurfsserialisierung weitere47
-bestanden; kompletter abschließender Nachlauf läuft. Analyse/Ruff/Compile/Diff-
-und Schlüsselprüfung bestanden. Web, signierte Direct-APK und Play-AAB gebaut;
-letzter Wiederholungsbuild und anschließende echte HTTPS-/Emulatorabnahme laufen.
-Noch kein erfolgreicher Deploy von Build45 behauptet.
+Auf45 tatsächlich geprüft:24 öffentliche Rollen-/Browseransichten320–1440px,
+Android36 mit nativem Flutter, unabhängiger Kinder-/Elternlogin, vier Aufgabentypen
+und Feedback nach Neustart; vier konsistente Elternantworten. Echtes automatisches
+Download-/Installationsupdate44→45 über Android-Bestätigung, ohne adb-Install.
+Eigene künstliche HTTPS-Entwürfe über Pause erhalten, Speichern idempotent, normale
+Elternansichten ohne ungesendeten Entwurf und ohne Zeit-/Antwort-/Fortschritts-
+änderung. Künstliche249.521Byte-PDF:201, drei Noten, erneuter Import ohne Dubletten.
+Diese Abnahmen erzeugten keine externen KI-Aufrufe und keine echten Kinderdaten.
+
+Neue Controller-/Sofatutor-/Modellmix-/Budgetabläufe und Operatoranleitung:
+ADAPTIVE_OPENROUTER.md. Schlüssel aus ~/or.txt ausschließlich serverseitig in
+/etc/schulpilot/environment(root:schulpilot0640). Kein automatischer Providerwechsel.
+Aktiv bleibt Codex/gpt-6-luna. OpenRouter-Mix noch nicht für echte Daten aktiviert:
+Kontoinhaltslogging/Datenfreigabe und vollständige aktuelle Bild-/Aufgaben-/
+Paketabnahme der konkreten Route fehlen.25 verwertbare künstliche OpenRouter-
+Antworten:0,065440USD erfasst, mit offenen Reservierungen0,195440USD gebunden.
+Kein Astra-Inferenztest, kein vollständiger Fünf-Fächer-Livevergleich und kein
+Nachweis von EUR-Monatskosten oder garantierter Lernwirksamkeit. Keine physische
+Handy-, hörbare TTS-/Mikrofon- oder TalkBack-Abnahme.
 
 ## Vorheriger verifizierter Produktionsstand
+
 
 # Produktionsstand · 19.10.2026 · App1.9.0+44
 

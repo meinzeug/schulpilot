@@ -817,7 +817,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         feedback_resume = None
     preparing_unit = db.scalar(
         select(Job).options(load_only(Job.id, Job.status))
-        .where(Job.child_id == child.id, Job.kind == "unit", Job.status.in_(["queued", "running"]))
+        .where(Job.child_id == child.id, Job.kind.in_(["unit", "controller_check"]), Job.status.in_(["queued", "running"]))
         .order_by(Job.created, Job.id).limit(1)
     )
     ledger = read_ledger(db, child.id)

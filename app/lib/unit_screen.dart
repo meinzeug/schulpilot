@@ -609,7 +609,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   void watchCoaching() {
     if (unit?['coaching']?['status'] == 'pending' ||
-        ['queued', 'running'].contains(unit?['coaching']?['practice_status'])) {
+        ['queued', 'running'].contains(unit?['coaching']?['practice_status']) ||
+        [
+          'queued',
+          'running',
+        ].contains(unit?['learning_session']?['preparation']?['status'])) {
       coachingPoll ??= Timer.periodic(const Duration(seconds: 3), (_) {
         if (visible && routeVisible && state.user?['id'] == ownerId) load();
       });
@@ -792,6 +796,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Widget? primaryAction(Json u) {
     if (u['status'] == 'completed' && !awaitingContinue) return null;
     final question = currentQuestion;
+    final preparation = u['learning_session']?['preparation'];
     late String label;
     late Future<void> Function() action;
     var enabled = true;
@@ -803,6 +808,18 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ? 'Ergebnis ansehen'
           : 'Weiter';
       action = acknowledgeFeedback;
+    } else if (u['status'] == 'paused' &&
+        preparation is Map &&
+        ['queued', 'running', 'completed'].contains(preparation['status'])) {
+      label = preparation['status'] == 'completed'
+          ? 'Neue Lernprobe starten'
+          : 'Vorbereitung ansehen';
+      action = () async {
+        openRoute(
+          context,
+          '/learning-preparation/${u['child_id']}/${preparation['id']}',
+        );
+      };
     } else if (u['status'] != 'active') {
       label = u['status'] == 'paused' ? 'Lernen fortsetzen' : 'Einheit starten';
       action = () => startUnit(u);
@@ -1217,6 +1234,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       );
     }
     if (u['status'] != 'active') {
+      final preparation = u['learning_session']?['preparation'];
+      final prepared =
+          preparation is Map && preparation['status'] == 'completed';
+      final preparing =
+          preparation is Map &&
+          ['queued', 'running'].contains(preparation['status']);
       return Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1231,17 +1254,32 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             const SizedBox(height: 16),
             MathText(
               u['status'] == 'paused'
-                  ? 'Deine Runde wartet auf dich.'
+                  ? prepared
+                        ? 'Deine neue Lernprobe ist bereit.'
+                        : preparing
+                        ? 'Deine Lernprobe wird vorbereitet.'
+                        : 'Deine Runde wartet auf dich.'
                   : 'Bereit für deine Runde?',
               style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
             MathText(
               u['status'] == 'paused'
-                  ? 'Geprüfte Antworten sind gespeichert.'
+                  ? prepared || preparing
+                        ? 'Deine bisherige Runde und Eingabe bleiben gespeichert.'
+                        : 'Geprüfte Antworten sind gespeichert.'
                   : '${questions.length} Aufgaben · Schritt für Schritt',
               style: const TextStyle(fontSize: 16),
             ),
+            if (prepared || preparing) ...[
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: actionBusy
+                    ? null
+                    : () => perform(() => startUnit(u)),
+                child: const Text('Mit der bisherigen Aufgabe weiter'),
+              ),
+            ],
             if (u['synthetic'] == true) ...[
               const SizedBox(height: 12),
               sampleNotice(u),

@@ -139,6 +139,35 @@ void main() {
 
   for (final scale in [1.0, 2.0]) {
     testWidgets(
+      'Prepared media check resumes after restart without discarding the old draft at $scale',
+      (tester) async {
+        final server = SavedRound(
+          status: 'paused',
+          questions: [question('cat', type: 'short')],
+        );
+        server.value['learning_session'] =
+            session(answer: 'Noch nicht abgegeben')
+              ..['preparation'] = {
+                'id': 'saved-job',
+                'status': 'completed',
+                'unit_id': 'next-unit',
+              };
+        final h = await openRound(tester, server, textScale: scale);
+        expect(find.text('Deine neue Lernprobe ist bereit.'), findsOneWidget);
+        expect(find.text('Neue Lernprobe starten'), findsOneWidget);
+        final original = find.text('Mit der bisherigen Aufgabe weiter');
+        await tester.ensureVisible(original);
+        await tester.tap(original);
+        await tester.pumpAndSettle();
+        expect(server.starts, 1);
+        expect(server.answers, 0);
+        expect(find.text('Noch nicht abgegeben'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await h.close();
+      },
+    );
+
+    testWidgets(
       'Prior knowledge is one explicit bounded next step at 320px / $scale',
       (tester) async {
         final server = SavedRound();

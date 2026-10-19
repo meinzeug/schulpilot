@@ -1,6 +1,6 @@
 # Zustandsbehaftete Lernbegleitung und OpenRouter
 
-Stand: 19.10.2026, Erweiterung für 1.10.0+45, additive Migration 0023.
+Stand: 19.10.2026, Erweiterung für 1.10.0+46, additive Migration 0023.
 Tatsächliche Bereitstellung und abschließende Testergebnisse: STATUS.md und
 CHATGPT_HANDOFF.txt. Ein Build oder API-Schlüssel ist keine Anbieterfreigabe.
 
@@ -91,6 +91,9 @@ zurückgestellt. Videoaufrufe erzeugen weder Kompetenz noch Aktivitätszeit.
 Nach Rückkehr: gespeicherte Aufgabe weiter bearbeiten oder **bewusst zwei neue
 Aufgaben prüfen**. Genau ein Job je Öffnung, wiederholter POST liefert denselben
 Job. Die ursprüngliche Runde wird pausiert; Entwurf/Antworten bleiben erhalten.
+Ein gespeicherter Vorbereitungsstand erscheint nach Neustart direkt als nächste
+Aktion; die ursprüngliche Aufgabe bleibt ausdrücklich weiter erreichbar.
+Die öffentliche Demo darf diesen Pfad nicht für externe freie Eingaben nutzen.
 Für allgemeine Altthemen ohne belegte Lernziele muss zuerst die bestehende Runde
 mit Rückblick beendet werden. Fehlgeschlagene Vorbereitung bleibt sichtbar;
 kein automatischer Retry. Diese Einschränkung wird im Dialog erklärt.
@@ -231,7 +234,10 @@ Löschung/Export enthalten Gedächtnis, Ereignisse und Kinderkosten. Lerndaten
 365Tage, Usage90Tage; alte Kinderkostenmonate passend bereinigt. Keine privaten
 Daten in technische Logs. Rückweg über den vorhandenen vorherigen Release ohne
 Schema-Downgrade; neue Tabellen bleiben erhalten. Vorwärtskorrektur bevorzugen.
-Kein altes Datenbankbackup über neuere Antworten oder Löschjournale schreiben.
+Vor Rückkehr auf älteren Code zunächst den KI-Notfallstopp aktivieren und die
+frühere Anbieterwahl geschützt wiederherstellen; alte Versionen kennen die neuen
+Kinderbudget-/Demogrenzen nicht. Kein altes Datenbankbackup über neuere Antworten
+oder Löschjournale schreiben.
 
 ## Zehn Controller-Szenarien
 

@@ -97,16 +97,17 @@ def main():
             # has become the day's recommended next action.
             native.press("Lernen")
             native.press(unit["topic"], scroll=True)
-            action, _ = native.wait_any(("Weiter zu den Übungen", "Antwort prüfen", "Rückmeldung ansehen", "Einheit starten", "Lernen fortsetzen", "Jetzt lernen", "Weiterlernen", "Freiwillig üben"))
-            if action == "Weiter zu den Übungen":
+            introduction_actions = ("Erst selbst probieren", "Weiter zu den Übungen")
+            action, _ = native.wait_any((*introduction_actions, "Antwort prüfen", "Rückmeldung ansehen", "Einheit starten", "Lernen fortsetzen", "Jetzt lernen", "Weiterlernen", "Freiwillig üben"))
+            if action in introduction_actions:
                 native.screenshot("design-native-understand.png")
                 native.press(action)
             elif action != "Antwort prüfen":
                 native.press(action, scroll=True)
-            if action not in ("Weiter zu den Übungen", "Antwort prüfen") and not unit["introduction_seen"]:
-                native.wait("Weiter zu den Übungen")
+            if action not in (*introduction_actions, "Antwort prüfen") and not unit["introduction_seen"]:
+                introduction_action, _ = native.wait_any(introduction_actions)
                 native.screenshot("design-native-understand.png")
-                native.press("Weiter zu den Übungen", scroll=True)
+                native.press(introduction_action, scroll=True)
             phase = "fixed_structured_tasks"
             for q in unit["questions"]:
                 print(json.dumps({"design_native_task_type": q["type"]}), flush=True)

@@ -113,7 +113,7 @@ def projection(db, p, child, kind, resource, *, limit=3):
         "recommended": [],
         "additional": [],
         "has_more": False,
-        "supports_media_return": True,
+        "supports_media_return": kind == "unit" and not resource.synthetic,
     }
     if not snapshot:
         return base
@@ -135,7 +135,17 @@ def projection(db, p, child, kind, resource, *, limit=3):
     if kind == "unit":
         memory = db.get(LearningMemory, resource.id)
         media = (memory.working or {}).get("media") if memory else None
-        base["media_return"] = media if media and (p.user.role == "parent" or media.get("user_id") == p.user.id) else None
+        base["media_return"] = media if media and base["supports_media_return"] and (
+            p.user.role == "parent" or media.get("user_id") == p.user.id) else None
+        if base["media_return"]:
+            from .coaching import context as coaching_context
+            from .providers import ProviderError
+
+            try:
+                available = bool(coaching_context(db, resource)[1]["learning_goals"])
+            except (ProviderError, HTTPException):
+                available = False
+            base["media_return"] = {**media, "check_available": available}
     # A delayed local job must not expose stale links as a current recommendation.
     if not source["ready"]:
         return base | {"state": "source_changed"}
