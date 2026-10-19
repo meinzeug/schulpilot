@@ -17,10 +17,10 @@ veröffentlicht oder mit Bundletool geprüft; `jarsigner` meldet „jar verified
 mit bekannten Warnungen zu selbstsigniertem Zertifikat, Zeitstempel und
 Stream-Konsistenz.
 
-72 veraltete Releases wurden gelöscht. Nach dem Rollout bleiben nur `current`
-und `previous` übrig. Aktueller Serverstand: 17 GB frei (54 % belegt), Releases
-512 MiB, Backups 470 MiB. Keine anderen Anwendungen, Familieninhalte,
-Kontingente oder Provider wurden verändert.
+72 veraltete Releases wurden vor dem Rollout gelöscht; danach entfernte die neue
+Routine ein weiteres. Es bleiben nur `current` und `previous` übrig. Aktueller
+Serverstand: 17 GB frei (54 % belegt), Releases 512 MiB, Backups 470 MiB. Keine
+anderen Anwendungen, Familieninhalte, Kontingente oder Provider wurden verändert.
 
 Gezielte Regressionen: 39 Fluttertests bestanden, `flutter analyze` ohne Befund;
 42 Backendtests bestanden, 2 übersprungen, eine bekannte Starlette/httpx-Warnung.
