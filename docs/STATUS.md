@@ -1,11 +1,30 @@
-# Fachtest 19.10.2026 · aktueller lokaler Arbeitsstand
+# Fachtest 19.10.2026 · produktiv bereitgestellt
 
-Noch nicht bereitgestellt. Öffentlicher Stand bleibt Release
-`20261019T065608Z-863d4f9`, App `1.8.0+41`, Schema `0021`. Im Arbeitsbaum ist
-Migration `0022` vorbereitet und die App-Version auf `1.9.0+42` gesetzt; die
-Migration ist nur auf isoliertem PostgreSQL getestet. Kein echter Familien- oder
-Kinderinhalt geändert, kein Produktionskontingent geändert und in diesem Auftrag
-kein Provider aufgerufen. Der genaue Testlauf/Fachumfang steht in
+Am 19.10.2026 wurde App `1.9.0+42` aus Codecommit
+`8850ec9b1441b66a50ce9b1fd8a39323f55477af` als Release
+`20261019T153515Z-8850ec9` auf `https://schulpilot.dorfspy.de` aktiviert.
+Die vorherige Version ist `20261019T065608Z-863d4f9`; das Datenbankschema
+`0022` ist auf dem Server bestätigt. Die vorgeschaltete Datenbanksicherung
+meldete `Result=success`, Exitstatus `0`. API, Worker, isolierter Codex-Worker
+und Caddy laufen.
+
+Der Produktions-Healthcheck meldet Version `1.9.0` und den erwarteten
+Quellcommit. Startseite, Login, Hefte und ein Sprachprojekt-Direktlink liefern
+HTTP `200`. Das öffentliche `main.dart.js` ist bytegleich mit dem gebauten
+Webbundle. `/api/app-release` meldet Direct-APK Version `1.9.0`, Build `42`;
+der vollständige öffentliche APK-Download (67.615.154 Bytes) stimmt mit dem
+lokalen Manifest überein (SHA-256
+`e45d32ec5eb1fc3ef27bcb6b99f16944e84f2f6034d6d9944434316b95f86513`). Der
+Play-AAB wurde gebaut, aber nicht in der Play Console veröffentlicht.
+Für das frisch gebaute AAB gab es in diesem Rollout keinen separaten
+Bundletool-Validierungslauf; Play-Veröffentlichungsreife ist damit nicht
+nachgewiesen.
+
+Der Server hat nach dem Rollout nur noch rund 411 MiB frei (99 % Belegung).
+Es wurden keine alten Releases oder Sicherungen entfernt; eine kontrollierte
+Aufbewahrungs-/Kapazitätsentscheidung ist vor dem nächsten Release nötig.
+Kein echter Familieninhalt, Produktionskontingent oder Provider wurde für
+diesen Build geändert. Fachumfang und Testgrenzen stehen in
 `docs/FACHTEST_2026_10_19.md`.
 
 Umgesetzt im lokalen Code: sichere Einzelbestätigung von Vokabelpaaren; sichtbare
@@ -17,20 +36,20 @@ Statusdarstellung. 48 künstliche Quellenfälle prüfen Schema, Renderer und
 Antwortregel. Sie beweisen weder OCR noch Providerqualität oder vollständige
 Live-Fachabdeckung.
 
-Flutter-Gesamttest: 544 bestanden; Analyse ohne Befund. Backend-Gesamttest auf
+Flutter-Gesamttest für den ausgelieferten Stand: 547 bestanden; Analyse ohne Befund. Backend-Gesamttest auf
 isoliertem PostgreSQL: 1.037 bestanden, 3 Warnungen aus Starlette/Alembic. Ruff,
 Python-Compile und Diff-/Geheimnisprüfung ohne Befund. Web, signierte Direct-APK
 1.9.0+42 und Play-AAB wurden lokal gebaut. Die APK wurde auf Paket/Version,
-Signatur und 16-KB-Ausrichtung geprüft; das AAB besteht den ZIP-Integritätstest.
-Bundletool 1.18.3 validiert das AAB und meldet Paket `de.dorfspy.schulpilot`,
-Version 1.9.0+42 und Mindest-API 24; AAB-Signatur stimmt mit der Releasepolicy
-überein. `jarsigner -verify` nennt die erwartete selbstsignierte
-Zertifikatskette und fehlenden Zeitstempel als Warnungen. Der normale Webbuild
+Signatur und 16-KB-Ausrichtung geprüft. Beim frisch gebauten AAB meldet
+`jarsigner` „jar verified“, zugleich aber eine selbstsignierte Kette, fehlenden
+Zeitstempel und JAR-Stream-Konsistenzwarnungen. Bundletool wurde für dieses AAB
+nicht ausgeführt; es wurde nicht in Play hochgeladen. Der normale Webbuild
 war erfolgreich; Wasm-Trockenlauf und Gradle nennen
 bekannte Warnungen der fest gepinnten TTS-/Firebase-Plugins. Physischer Android-,
 Audio- und Screenreader-Test sowie Live-Providerlauf wurden nicht durchgeführt.
-Keine automatische Produktionsbereitstellung: dieser Auftrag erteilt dafür
-keine neue Freigabe.
+Die ursprünglich protokollierte Codeprüfung enthielt noch keine
+Produktionsfreigabe. Der separate Rollout nach ausdrücklicher Anweisung ist oben
+im Eintrag vom 19.10.2026 dokumentiert.
 
 # Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
 
@@ -39,9 +58,10 @@ JSON-Testdaten gelesen. Vollständige Befundliste mit 32 Befunden und allen
 69 Testfallbezügen: docs/TEST_REPORT_REVIEW.md. Absichtliche Testfehler sind
 keine Diagnose echter Fähigkeiten. Keine echte Familie oder ihre Daten verändert.
 
-Öffentlich geprüft: https://schulpilot.dorfspy.de ; eigene API /api.
-Aktiver Produktcode: 863d4f9ef7a9d6671b6d3bc3ff8e06d3177dadfc, main gepusht.
-Release 20261019T065608Z-863d4f9, Schema 0021 tatsächlich ausgelesen.
+Der folgende Abschnitt hält den Ausgangsstand vor der Fachtest-Änderung fest.
+Vor der Produktivbereitstellung war der aktive Produktcode
+`863d4f9ef7a9d6671b6d3bc3ff8e06d3177dadfc`, Release
+`20261019T065608Z-863d4f9`, Schema `0021`.
 Vorheriger kompatibler Release: 20261019T063153Z-8990410. Bei Code-Rückweg
 Schema 0021 und neuere Antworten erhalten; kein Downgrade oder DB-Zurücksetzen.
 Additive Migration0020: versionierte Bewertungs-Audithistorie.
