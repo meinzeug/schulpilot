@@ -71,3 +71,43 @@ Verständnisnachweis, Attempt, Lernabschluss oder gebuchte Mindestlernzeit. Kind
 sehen vor den Links, dass ihre Eltern diese Aufrufe einsehen können. Externe
 Seiten werden nicht überwacht. Ansehen/Lesen ersetzt keine spätere eigene
 Abrufaufgabe; neue Übungen bleiben an bestätigte Quellen und Lernziele gebunden.
+
+## Korrekturen aus den Kinder-/Elternprotokollen ·19.10.2026
+
+Der verbindliche Bewertungsstand ist der gespeicherte Attempt. Inhalt, verlangte
+Form, Versuchszahl und tatsächlich erfasste Hilfe sind eigene Dimensionen.
+Rationale Brüche gleichen Werts gelten bei Ergebnisfragen als richtig, solange
+keine andere Darstellung verlangt wird. Eng geprüfte vollständige
+Sachformulierungen sind erlaubt; unbekannte freie Aussagen bleiben ausdrücklich
+offen. Ein Modellkommentar ist eine zusätzliche Einschätzung, keine heimliche
+Neubewertung. Kind/Eltern/Rückblick/Fortschritt lesen dieselbe Faktenprojektion.
+Explizite regelgebundene Nachprüfung erhält die vorherige Bewertung in
+AttemptAssessment0020 und aktualisiert abgeleitete Wiederholungen anhand des
+ursprünglichen Lerntags, ohne neue Aktivität oder späteren Prüftag.
+
+Ein Fehlerhinweis beginnt beim tatsächlich noch falschen Teil und erhält richtige
+Zuordnungen. Weitere Hinweise unterscheiden sich; danach ein gemeinsamer Schritt
+und ausdrücklich angefordertes neues Üben. Hilfen und spätere Versuche bleiben
+unterschieden. Bausteine starten eine neue Eingabe, STT bleibt unterstützte Eingabe,
+Erkennen/Schreiben/Hören/Abruf bleiben getrennte Belege. Der Client zeigt kurze
+Abschnitte gespeicherter Erklärungen; Bruchbalken veranschaulichen bei geöffneter
+Hilfe kleine Additionen. Das ist eine Gestaltungshilfe, kein Wirksamkeitsnachweis.
+
+Erkannte Aufgaben sind zunächst Vorschläge: Überschrift/Ausdruck zusammen,
+Beispiel/unklar/Hausaufgabe ausdrücklich wählen. Nur bewusst bestätigte Hausaufgaben
+werden verbindlich. Quellenrevision, Datum und Termin verhindern doppelte
+Übernahme; Quellenänderungen lösen eine erneute Klärung aus, ohne alte Antworten
+zu löschen (0021). Nicht jeder Probeaufgabentext ist eine Hausaufgabe.
+
+Der Tutor kann ein kleines ausdrücklich kuratiertes Grundwissen als Ergänzung
+verwenden, etwa die NOAA-belegten Walmerkmale. Herkunft bleibt sichtbar und wird
+nicht in eine Heftquelle umgedeutet. Andere unbekannte Grundlagen dürfen weiterhin
+offen bleiben. Ein echter Dialog hat eine Frage, ein direktes Antwortfeld und
+einen gespeicherten Gesprächsbezug; jeder Modellschritt braucht eine eigene Aktion.
+Fragebezogene externe Tipps ersetzen nicht die Antwort der App.
+
+Eltern erhalten zuerst gespeicherte Erfolge, den vorgesehenen nächsten App-Schritt
+und konkrete Hilfewünsche. Technische/OCR-/Bewertungsfragen sind keine Diagnose
+einer Wissenslücke. Bloßes Elternlesen ist kein Lernen des Kindes. Freie Tage und
+Auszeiten haben kein erfülltes tägliches Mindestziel; freiwillige Aktivität zählt
+weiter als echte Übung. Verbindliche Ziele an Lerntagen bleiben bestehen.

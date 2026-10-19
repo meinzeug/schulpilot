@@ -776,3 +776,49 @@ def test_parent_source_deletion_racing_tutor_completion_succeeds_and_removes_rep
         assert db.get(TutorTurn, response.json()["id"]) is None
         assert db.scalar(select(func.count()).select_from(TutorTurn)) == 0
         assert db.scalar(select(Job).where(Job.id == response.json()["job_id"])).status == "completed"
+
+
+def test_reviewed_whale_supplement_is_separate_and_has_real_checked_provenance(notebook, transport):
+    from schulpilot.foundations import WHALE
+
+    with DB.begin() as db:
+        material = db.get(Material, notebook['material_id'])
+        material.subject = 'Biologie'
+        material.content = 'Mensch und Hund gehören zu den Säugetieren. Fische leben im Wasser.'
+    transport['output'] = {'answer':'Wale atmen mit Lungen und ihre Jungen bekommen Milch.', 'kind':'foundation',
+                           'sources':[{'ref':'k1','quote':'Wale sind Säugetiere.'}],
+                           'next_question':'Welches dieser Merkmale hilft dir bei der Einordnung?'}
+    response = ask(notebook, question='Warum ist ein Wal ein Säugetier, obwohl er im Wasser lebt?')
+    assert response.status_code == 202, response.text
+    finish()
+    stored = saved(notebook['client'], notebook, 'material_id')[-1]
+    assert stored['status'] == 'ready', stored
+    assert len(transport['calls']) == 1 and transport['calls'][0]['foundations'] == [WHALE]
+    citation = stored['reply']['sources'][0]
+    assert citation['origin'] == 'reviewed_supplement' and citation['reference_url'] == WHALE['reference_url']
+    assert 'material_id' not in citation and stored['reply']['kind'] == 'foundation'
+    transport['output'] = {'answer':'Ja, die Lungenatmung hilft bei dieser Einordnung.', 'kind':'foundation',
+                           'sources':[{'ref':'k1','quote':'Wale sind Säugetiere.'}], 'next_question':None}
+    assert ask(notebook, question='Die Atmung mit Lungen.', reply_to=stored['id']).status_code == 202
+    finish()
+    assert transport['calls'][1]['history'][0]['next_question'] == stored['reply']['next_question']
+    assert transport['calls'][1]['foundations'] == [WHALE]
+
+
+def test_unknown_foundation_id_or_quote_is_rejected_and_does_not_fabricate_sources():
+    from schulpilot.foundations import WHALE
+
+    payload = {'sources':[], 'foundations':[WHALE]}
+    for citation in ({'ref':'k2','quote':'Wale sind Säugetiere.'}, {'ref':'k1','quote':'Wale atmen mit Kiemen.'}):
+        with pytest.raises(ProviderError):
+            tutor.checked_reply({'kind':'foundation','answer':'Künstliche falsche Ausgabe.',
+                                 'sources':[citation],'next_question':None}, payload, [])
+
+
+def test_foundation_selection_is_contextual_and_does_not_guess_other_courses():
+    from schulpilot.foundations import for_question
+
+    assert for_question('Warum ist ein Wal ein Säugetier?', [{'subject':'Biologie'}])
+    assert not for_question('Was ist im Wald?', [{'subject':'Biologie'}])
+    assert not for_question('Was ist ein Wal?', [{'subject':'Englisch'}])
+    assert not for_question('Wie lautet Present Perfect?', [{'subject':'Englisch'}])

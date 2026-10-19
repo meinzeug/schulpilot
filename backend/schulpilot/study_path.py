@@ -469,6 +469,7 @@ def process(job_id):
                     "subject": block["subject"],
                     "topic": block["title"],
                     "content": "\n\n".join(m.content for m in items),
+                    "uncertainties": [warning for m in items for warning in m.uncertainties],
                 },
                 "study_block": {
                     "mode": block["phase"],

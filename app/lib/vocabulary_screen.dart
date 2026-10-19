@@ -280,6 +280,8 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     final text = TextEditingController();
     var selectedLocale = locale;
     var mode = widget.materialId == null ? 'manual' : 'material';
+    String? pairError;
+    String? titleError;
     final result = await showDialog<Json>(
       context: context,
       builder: (ctx) => _DialogFields(
@@ -314,7 +316,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     TextField(
                       controller: title,
                       maxLength: 160,
-                      decoration: const InputDecoration(labelText: 'Sammlung'),
+                      decoration: InputDecoration(
+                        labelText: 'Sammlung',
+                        errorText: titleError,
+                      ),
+                      onChanged: (_) => update(() => titleError = null),
                     ),
                     DropdownButtonFormField<String>(
                       initialValue: mode,
@@ -347,7 +353,10 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                           labelText: mode == 'manual'
                               ? 'Je Zeile: apple = Apfel'
                               : 'Bestätigter Vokabeltext',
+                          errorText: pairError,
+                          errorMaxLines: 3,
                         ),
+                        onChanged: (_) => update(() => pairError = null),
                       ),
                     ],
                     if (mode != 'manual')
@@ -367,12 +376,17 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 onPressed: () {
                   final pairs = <Json>[];
                   if (mode == 'manual') {
-                    for (final line
-                        in text.text
-                            .split('\n')
-                            .where((line) => line.trim().isNotEmpty)) {
+                    final invalid = <int>[];
+                    final lines = text.text.split('\n');
+                    for (var index = 0; index < lines.length; index++) {
+                      final line = lines[index];
+                      if (line.trim().isEmpty) continue;
                       final separator = line.indexOf('=');
-                      if (separator < 1) {
+                      if (separator < 1 ||
+                          line.substring(0, separator).trim().isEmpty ||
+                          line.substring(separator + 1).trim().isEmpty ||
+                          line.indexOf('=', separator + 1) >= 0) {
+                        invalid.add(index + 1);
                         continue;
                       }
                       pairs.add({
@@ -380,24 +394,25 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                         'meaning': line.substring(separator + 1).trim(),
                       });
                     }
-                    if (pairs.isEmpty ||
-                        pairs.length !=
-                            text.text
-                                .split('\n')
-                                .where((line) => line.trim().isNotEmpty)
-                                .length) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Bitte jede Zeile als Wort = Bedeutung eingeben.',
-                          ),
-                        ),
+                    if (pairs.isEmpty || invalid.isNotEmpty) {
+                      update(
+                        () => pairError = invalid.isEmpty
+                            ? 'Trage ein Wortpaar ein, zum Beispiel: cat = Katze.'
+                            : 'Bitte Zeile ${invalid.join(', ')} ergänzen: Wort = Bedeutung. Deine anderen Zeilen bleiben erhalten.',
                       );
                       return;
                     }
                   }
                   if (title.text.trim().isEmpty ||
                       (mode == 'text' && text.text.trim().isEmpty)) {
+                    update(() {
+                      if (title.text.trim().isEmpty) {
+                        titleError = 'Gib deiner Sammlung einen Namen.';
+                      }
+                      if (mode == 'text' && text.text.trim().isEmpty) {
+                        pairError = 'Füge zuerst deinen Vokabeltext ein.';
+                      }
+                    });
                     return;
                   }
                   Navigator.pop(ctx, {
@@ -633,7 +648,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 onChanged: (v) => update(() => voluntary = v!),
               ),
               const Text(
-                'Bis zu 3 Aufgaben. Jede Fähigkeit hat ihre eigene Wiedervorlage.',
+                'Bis zu 3 Aufgaben. Wir merken uns, was du wieder üben solltest.',
               ),
               if (skill == 'listening')
                 const Text(
@@ -726,26 +741,35 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     maxLength: 500,
                     decoration: const InputDecoration(labelText: 'Kontext'),
                   ),
-                  TextField(
-                    controller: variants,
-                    maxLength: 1600,
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Ausdrücklich erlaubte Antwortvarianten, je Zeile eine',
-                    ),
+                  ExpansionTile(
+                    title: const Text('Weitere richtige Antworten'),
+                    children: [
+                      const Text(
+                        'Nur gleichbedeutende Varianten für genau diesen Zusammenhang eintragen.',
+                      ),
+                      TextField(
+                        controller: variants,
+                        maxLength: 1600,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'Weitere Schreibweisen · eine pro Zeile',
+                        ),
+                      ),
+                      TextField(
+                        controller: meaningVariants,
+                        maxLength: 1600,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText:
+                              'Weitere deutsche Bedeutungen · eine pro Zeile',
+                        ),
+                      ),
+                    ],
                   ),
                   const Text(
-                    'Die Korrektur beginnt eine neue Wiedervorlage. Alte Antworten bleiben erhalten.',
-                  ),
-                  TextField(
-                    controller: meaningVariants,
-                    maxLength: 1600,
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Erlaubte deutsche Bedeutungsvarianten, je Zeile eine',
-                    ),
+                    'Mit dem korrigierten Wort übst du neu. Bisherige Antworten bleiben erhalten.',
                   ),
                 ],
               ),
@@ -1095,13 +1119,13 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                           ),
                         Text(
                           item['origin'] == 'material'
-                              ? 'Aus bestätigter Heftseite · Stand ${item['revision']}'
-                              : 'Selbst bestätigtes Wort · Stand ${item['revision']}',
+                              ? 'Aus deinem Heft'
+                              : 'Selbst eingetragen',
                           style: const TextStyle(fontSize: 12, color: muted),
                         ),
                         for (final state in item['reviews'] as List)
                           Text(
-                            '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'gemeinsam klären' : 'wieder am ${state['due']}'}',
+                            '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'Antwort noch offen' : 'wieder am ${friendlyDate(state['due'])}'}',
                             style: const TextStyle(fontSize: 13),
                           ),
                         if (!widget.state.isChild ||

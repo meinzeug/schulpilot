@@ -484,7 +484,9 @@ def import_catalog(db, data, snapshot_id=None, csv_path=None):
         db.expire(state)
     # Each snapshot has exactly one local backfill. Reimports preserve feedback,
     # confirmed selections, activities and old provider identities.
-    refresh_id = fingerprint([snapshot_id, "tips-v1"])
+    from .catalog_search import MATCHER_VERSION
+
+    refresh_id = fingerprint([snapshot_id, MATCHER_VERSION])
     if not db.get(CatalogRefresh, refresh_id):
         db.add(CatalogRefresh(id=refresh_id, snapshot_id=snapshot_id))
     from .security import audit
@@ -494,15 +496,22 @@ def import_catalog(db, data, snapshot_id=None, csv_path=None):
 
 
 def ensure_bundled():
+    from .catalog_search import MATCHER_VERSION
+
     data, snapshot = read_catalog()
     with DB.begin() as db:
         state = db.get(CatalogState, "sofatutor")
         if state and state.snapshot_id == snapshot:
+            key = fingerprint([snapshot, MATCHER_VERSION])
+            if not db.get(CatalogRefresh, key):
+                db.add(CatalogRefresh(id=key, snapshot_id=snapshot))
             return
         import_catalog(db, data, snapshot)
 
 
 def main():
+    from .catalog_search import MATCHER_VERSION
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=BUNDLE)
     parser.add_argument("--csv", type=Path)
@@ -524,9 +533,9 @@ def main():
         with DB.begin() as db:
             report = import_catalog(db, data, snapshot, args.csv) | {"written": True}
             if args.rebuild_tips:
-                row = db.get(CatalogRefresh, fingerprint([snapshot, "tips-v1"]))
+                row = db.get(CatalogRefresh, fingerprint([snapshot, MATCHER_VERSION]))
                 if row is None:
-                    row = CatalogRefresh(id=fingerprint([snapshot, "tips-v1"]), snapshot_id=snapshot)
+                    row = CatalogRefresh(id=fingerprint([snapshot, MATCHER_VERSION]), snapshot_id=snapshot)
                     db.add(row)
                 row.status, row.phase, row.cursor, row.processed = "queued", 0, "", 0
                 row.error, row.lease, row.updated = None, None, int(now())

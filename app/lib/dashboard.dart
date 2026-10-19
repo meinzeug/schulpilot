@@ -310,6 +310,81 @@ class _FamilyChildCard extends StatelessWidget {
   }
 }
 
+class ParentLearningBrief extends StatelessWidget {
+  final Json data;
+  const ParentLearningBrief({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final evidence = data['practice_summary'] as Map? ?? {};
+    final day = data['day_summary'] as Map? ?? {};
+    final plan = data['plan'] as Map? ?? {};
+    final next = (plan['today'] as List? ?? []).firstOrNull;
+    final independent = (evidence['independent_tasks'] as num? ?? 0).toInt();
+    final open = (evidence['uncertain_tasks'] as num? ?? 0).toInt();
+    final help = (day['help_requests'] as num? ?? 0).toInt();
+    final descriptions = [
+      (
+        Icons.check_circle_outline_rounded,
+        'Das gelang',
+        independent > 0
+            ? 'Bisher $independent Aufgaben beim ersten Versuch selbstständig richtig gelöst.'
+            : 'Die gespeicherten Antworten zeigen den bisherigen Übungsweg. Ohne Antworten gibt es noch keine Einschätzung.',
+      ),
+      (
+        Icons.auto_stories_outlined,
+        'Das übernimmt die App',
+        open > 0
+            ? 'Für $open offene Bewertungen gibt es eine Antwortprüfung in der Lernrunde. Offen bedeutet nicht falsch.'
+            : next is Map
+            ? 'Als Nächstes: ${next['subject']} · ${next['topic']}. Die Übungen kommen in kleinen Runden.'
+            : 'Gespeicherten Stoff in kleinen Runden üben und später erneut abrufen.',
+      ),
+      (
+        Icons.volunteer_activism_outlined,
+        'Jetzt für euch',
+        help > 0
+            ? '$help Hilfewunsch${help == 1 ? '' : 'wünsche'} wartet${help == 1 ? '' : 'n'}. Öffnet das konkrete Anliegen unter Nachrichten.'
+            : day['coaching_support_topics'] is List &&
+                  (day['coaching_support_topics'] as List).isNotEmpty
+            ? day['support']?.toString() ?? 'Ein gemeinsamer Blick auf den gespeicherten Lernschritt kann helfen.'
+            : 'Kein ausdrücklicher Hilfewunsch. Die App führt zunächst mit Erklärungen und passenden Übungen weiter.',
+      ),
+    ];
+    return Panel(
+      tone: help > 0 ? PanelTone.warning : PanelTone.info,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final item in descriptions) ...[
+            if (item != descriptions.first) const Divider(height: 26),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(item.$1, color: teal, size: 23),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.$2,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(item.$3, style: const TextStyle(height: 1.4)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ParentStatusCard extends StatelessWidget {
   final String title, value, detail, action;
   final IconData icon;
@@ -637,7 +712,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
         final child = data['child'] as Json;
         final plan = data['plan'] as Json;
         final openAssignments = (data['assignments'] as List? ?? [])
-            .where((assignment) => assignment['done'] != true)
+            .where(
+              (assignment) =>
+                  assignment['done'] != true &&
+                  assignment['mandatory'] == true &&
+                  (assignment['source_status'] ?? 'confirmed') == 'confirmed',
+            )
             .length;
         final helpRequests =
             (data['day_summary']?['help_requests'] as num? ?? 0).toInt();
@@ -686,6 +766,10 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
               ],
             ),
             const SizedBox(height: 20),
+            if (tab == 0) ...[
+              ParentLearningBrief(data: data),
+              const SizedBox(height: 18),
+            ],
             LayoutBuilder(
               builder: (context, size) {
                 final columns = size.maxWidth >= 900
@@ -978,12 +1062,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                             Tag(
                               a['kind'] == 'exam'
                                   ? 'Klassenarbeit'
-                                  : a['kind'] == 'homework'
+                                  : (a['origin_kind'] ?? a['kind']) ==
+                                        'homework'
                                   ? 'Notierte Hausaufgabe'
                                   : 'Elternauftrag',
                             ),
                             Tag(a['mandatory'] ? 'Verbindlich' : 'Freiwillig'),
                             if (a['done']) const Tag('Bearbeitet'),
+                            if (a['source_status'] == 'needs_review')
+                              const Tag('Quelle geändert · Auftrag prüfen'),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -994,7 +1081,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (a['due'] != null) Text('Termin: ${a['due']}'),
+                        if (a['due'] != null)
+                          Text('Termin: ${friendlyDate(a['due'])}'),
                         Text(a['note'] ?? ''),
                         LearningTips(
                           state,
@@ -1098,7 +1186,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       heading('Zeitlicher Verlauf'),
-                      for (final a in activities)
+                      for (final a in activities.where(
+                        (a) => ![
+                          'active_time',
+                          'vocabulary_exposure',
+                          'language_stimulus',
+                        ].contains(a['kind']),
+                      ))
                         Padding(
                           padding: const EdgeInsets.only(bottom: 14),
                           child: Column(
@@ -1129,6 +1223,36 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                 ),
                             ],
                           ),
+                        ),
+                      if (activities.any(
+                        (a) => [
+                          'active_time',
+                          'vocabulary_exposure',
+                          'language_stimulus',
+                        ].contains(a['kind']),
+                      ))
+                        ExpansionTile(
+                          title: const Text('Technische Ereignisse'),
+                          children: [
+                            for (final a in activities.where(
+                              (a) => [
+                                'active_time',
+                                'vocabulary_exposure',
+                                'language_stimulus',
+                              ].contains(a['kind']),
+                            ))
+                              ListTile(
+                                dense: true,
+                                title: Text(a['kind']),
+                                subtitle: Text(
+                                  DateFormat('dd.MM. HH:mm').format(
+                                    DateTime.fromMillisecondsSinceEpoch(
+                                      (a['created'] * 1000).toInt(),
+                                    ).toLocal(),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                     ],
                   ),
@@ -1256,7 +1380,10 @@ class _ChildHomeContent extends StatelessWidget {
       if (pending.isNotEmpty && pending.first['school_day_id'] == null) {
         openRoute(context, '/material/${pending.first['id']}');
       } else {
-        openRoute(context, '/after-school/${child['id']}');
+        openRoute(
+          context,
+          '/after-school/${child['id']}${photosWaiting ? '' : '?capture=1'}',
+        );
       }
     }
 
@@ -1284,7 +1411,7 @@ class _ChildHomeContent extends StatelessWidget {
                 ? 'Deine letzte Antwort'
                 : next['topic'] ?? 'Mit deinem Stoff weiter',
             subtitle:
-                '$obligation${next['subject']}${progress == null ? '' : '\n$progress'}',
+                '$obligation${next['subject']}${progress == null ? '' : '\n$progress'}${details['estimated_minutes'] is num ? '\nEtwa ${details['estimated_minutes']} Minuten' : ''}',
             icon: Icons.auto_stories_rounded,
             action: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1376,8 +1503,10 @@ class _ChildHomeContent extends StatelessWidget {
               children: [
                 if (!photoPrimary)
                   TextButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/after-school/${child['id']}'),
+                    onPressed: () => openRoute(
+                      context,
+                      '/after-school/${child['id']}?capture=1',
+                    ),
                     icon: const Icon(Icons.add_a_photo_outlined, size: 20),
                     label: Text(
                       needsCapture
@@ -1907,6 +2036,8 @@ Widget messages(
                           ? 'Deine Heftseiten'
                           : m['kind'] == 'reminder'
                           ? 'Dein Lernplan'
+                          : m['sender_role'] == 'system'
+                          ? 'Von Schulpilot'
                           : m['sender_role'] == 'child'
                           ? (state.isChild ? 'Von dir' : 'Von deinem Kind')
                           : (state.isChild
@@ -1926,6 +2057,22 @@ Widget messages(
               ),
               const SizedBox(height: 10),
               Text(m['body']),
+              if (m['context'] is Map && (m['context'] as Map).isNotEmpty)
+                TextButton.icon(
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Dazu ansehen'),
+                  onPressed: () {
+                    final scope = m['context'] as Map;
+                    openRoute(
+                      context,
+                      scope['unit_id'] != null
+                          ? '/unit/${scope['unit_id']}'
+                          : scope['material_id'] != null
+                          ? '/material/${scope['material_id']}'
+                          : '/after-school/${data['child']['id']}?day=${scope['day_id']}',
+                    );
+                  },
+                ),
               if (!state.isChild &&
                   state.canManage &&
                   m['kind'] == 'help' &&
@@ -2012,6 +2159,18 @@ Future<void> showLearningMessage(
   controller.dispose();
 }
 
+DateTime? planningDate(String text) {
+  for (final format in ['dd.MM.yyyy', 'yyyy-MM-dd']) {
+    try {
+      final value = DateFormat(format).parseStrict(text.trim());
+      if (value.year >= 2000 && value.year <= 2100) return value;
+    } on FormatException {
+      /* Try the second supported date format. */
+    }
+  }
+  return null;
+}
+
 Future<void> assignmentDialog(
   BuildContext context,
   AppState state,
@@ -2028,10 +2187,15 @@ Future<void> assignmentDialog(
         text: existing?['topic'] ?? source?['topic'] ?? '',
       ),
       note = TextEditingController(text: existing?['note'] ?? ''),
-      due = TextEditingController(text: existing?['due'] ?? ''),
+      due = TextEditingController(
+        text: existing?['due'] == null ? '' : friendlyDate(existing!['due']),
+      ),
       scheduled = TextEditingController(
-        text: existing?['scheduled_for'] ?? plannedFor ?? '',
+        text: (existing?['scheduled_for'] ?? plannedFor) == null
+            ? ''
+            : friendlyDate(existing?['scheduled_for'] ?? plannedFor),
       );
+  final form = GlobalKey<FormState>();
   String kind = existing?['kind'] == 'exam' ? 'exam' : 'parent';
   String? materialId = existing?['material_id'] ?? source?['id'];
   bool mandatory = existing?['mandatory'] ?? true;
@@ -2043,134 +2207,197 @@ Future<void> assignmentDialog(
           .firstOrNull;
   await showDialog(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, set) => AlertDialog(
-        title: Text(
-          existing == null ? 'Ein Lernziel vorgeben' : 'Lernauftrag neu planen',
-        ),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: kind,
-                  decoration: const InputDecoration(labelText: 'Art'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'parent',
-                      child: Text('Lernauftrag'),
+    builder: (ctx) => DialogControllerScope(
+      controllers: [subject, topic, note, due, scheduled],
+      child: StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          title: Text(
+            existing == null
+                ? 'Ein Lernziel vorgeben'
+                : 'Lernauftrag neu planen',
+          ),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Form(
+                key: form,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: kind,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Art'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'parent',
+                          child: Text('Lernauftrag'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'exam',
+                          child: Text('Klassenarbeit / Test'),
+                        ),
+                      ],
+                      onChanged: (v) => set(() => kind = v!),
                     ),
-                    DropdownMenuItem(
-                      value: 'exam',
-                      child: Text('Klassenarbeit / Test'),
+                    const SizedBox(height: 14),
+                    for (final item in [
+                      (subject, 'Fach'),
+                      (topic, 'Thema / Lernziel'),
+                      (note, 'Was soll geübt werden?'),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: TextFormField(
+                          controller: item.$1,
+                          maxLength: item.$1 == subject
+                              ? 80
+                              : item.$1 == topic
+                              ? 160
+                              : 2000,
+                          maxLines: item.$1 == note ? 3 : 1,
+                          validator: (v) =>
+                              item.$1 == note || (v?.trim().isNotEmpty ?? false)
+                              ? null
+                              : 'Bitte ${item.$2.toLowerCase()} eintragen.',
+                          decoration: InputDecoration(labelText: item.$2),
+                        ),
+                      ),
+                    for (final item in [
+                      (due, 'Termin'),
+                      (scheduled, 'Frühester Lernbeginn'),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: TextFormField(
+                          controller: item.$1,
+                          keyboardType: TextInputType.datetime,
+                          validator: (v) =>
+                              v == null ||
+                                  v.trim().isEmpty ||
+                                  planningDate(v) != null
+                              ? null
+                              : 'Bitte ein gültiges Datum wie 24.10.2026 auswählen.',
+                          decoration: InputDecoration(
+                            labelText: '${item.$2} (optional)',
+                            hintText: 'TT.MM.JJJJ',
+                            suffixIcon: IconButton(
+                              tooltip: '${item.$2} im Kalender auswählen',
+                              icon: const Icon(Icons.calendar_month_outlined),
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: ctx,
+                                  initialDate:
+                                      planningDate(item.$1.text) ??
+                                      DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null && ctx.mounted) {
+                                  set(
+                                    () =>
+                                        item.$1.text = DateFormat('dd.MM.yyyy')
+                                            .format(picked),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final selected = await pickLibraryMaterial(
+                          ctx,
+                          state,
+                          child['id'],
+                        );
+                        if (selected != null && ctx.mounted) {
+                          set(() {
+                            materialId = selected['id'];
+                            selectedMaterialTitle =
+                                selected['topic']?.toString().isNotEmpty == true
+                                ? selected['topic']
+                                : selected['title'];
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.folder_open_rounded),
+                      label: Text(
+                        materialId == null
+                            ? 'Heftseite auswählen (optional)'
+                            : selectedMaterialTitle ??
+                                  'Verknüpfte Heftseite ändern',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (materialId != null)
+                      TextButton(
+                        onPressed: () => set(() {
+                          materialId = null;
+                          selectedMaterialTitle = null;
+                        }),
+                        child: const Text('Ohne Heftseite fortfahren'),
+                      ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Verbindlich einplanen'),
+                      value: mandatory,
+                      onChanged: (v) => set(() => mandatory = v),
+                    ),
+                    const Notice(
+                      'Du gibst Ziel und Stoff vor. Die passenden Übungen entstehen daraus; ein Termin erzeugt keinen unbegrenzten Tagesplan.',
                     ),
                   ],
-                  onChanged: (v) => set(() => kind = v!),
                 ),
-                const SizedBox(height: 14),
-                for (final item in [
-                  (subject, 'Fach'),
-                  (topic, 'Thema / Lernziel'),
-                  (note, 'Was soll geübt werden?'),
-                  (due, 'Termin (optional: JJJJ-MM-TT)'),
-                  (scheduled, 'Frühester Lernbeginn (optional: JJJJ-MM-TT)'),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: TextField(
-                      controller: item.$1,
-                      decoration: InputDecoration(labelText: item.$2),
-                    ),
-                  ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final selected = await pickLibraryMaterial(
-                      ctx,
-                      state,
-                      child['id'],
-                    );
-                    if (selected != null && ctx.mounted) {
-                      set(() {
-                        materialId = selected['id'];
-                        selectedMaterialTitle =
-                            selected['topic']?.toString().isNotEmpty == true
-                            ? selected['topic']
-                            : selected['title'];
-                      });
-                    }
-                  },
-                  icon: const Icon(Icons.folder_open_rounded),
-                  label: Text(
-                    materialId == null
-                        ? 'Heftseite auswählen (optional)'
-                        : selectedMaterialTitle ??
-                              'Verknüpfte Heftseite ändern',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (materialId != null)
-                  TextButton(
-                    onPressed: () => set(() {
-                      materialId = null;
-                      selectedMaterialTitle = null;
-                    }),
-                    child: const Text('Ohne Heftseite fortfahren'),
-                  ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Verbindlicher Elternauftrag'),
-                  value: mandatory,
-                  onChanged: (v) => set(() => mandatory = v),
-                ),
-                const Notice(
-                  'Du gibst Ziel und Stoff vor. Die passenden Übungen entstehen daraus; ein Termin erzeugt keinen unbegrenzten Tagesplan.',
-                ),
-              ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Abbrechen'),
+            ),
+            ActionButton(
+              label: 'Speichern',
+              onPressed: () async {
+                if (!(form.currentState?.validate() ?? false)) return;
+                final body = {
+                  'kind': kind,
+                  'subject': subject.text,
+                  'topic': topic.text,
+                  'note': note.text,
+                  'due': due.text.trim().isEmpty
+                      ? null
+                      : DateFormat('yyyy-MM-dd')
+                            .format(planningDate(due.text)!),
+                  'scheduled_for': scheduled.text.trim().isEmpty
+                      ? null
+                      : DateFormat('yyyy-MM-dd')
+                            .format(planningDate(scheduled.text)!),
+                  'material_id': materialId,
+                  'mandatory': mandatory,
+                };
+                if (existing == null) {
+                  await state.api.post(
+                    '/children/${child['id']}/assignments',
+                    body,
+                  );
+                } else {
+                  await state.api.put(
+                    '/children/${child['id']}/assignments/${existing['id']}',
+                    body,
+                  );
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Abbrechen'),
-          ),
-          ActionButton(
-            label: 'Speichern',
-            onPressed: () async {
-              final body = {
-                'kind': kind,
-                'subject': subject.text,
-                'topic': topic.text,
-                'note': note.text,
-                'due': due.text.isEmpty ? null : due.text,
-                'scheduled_for': scheduled.text.isEmpty ? null : scheduled.text,
-                'material_id': materialId,
-                'mandatory': mandatory,
-              };
-              if (existing == null) {
-                await state.api.post(
-                  '/children/${child['id']}/assignments',
-                  body,
-                );
-              } else {
-                await state.api.put(
-                  '/children/${child['id']}/assignments/${existing['id']}',
-                  body,
-                );
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-          ),
-        ],
       ),
     ),
   );
-  for (final c in [subject, topic, note, due, scheduled]) {
-    c.dispose();
-  }
 }
 
 Future<void> preferencesDialog(

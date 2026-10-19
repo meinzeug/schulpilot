@@ -157,7 +157,7 @@ def test_annotation_is_kept_separate_and_ignored_after_snapshot_change(bound):
         context = db.scalar(select(LearningTipContext).where(LearningTipContext.material_id == mid))
         assert context.matches[0]["basis"] == "ai"
         assert "reason" not in context.matches[0] and "learning_goal" not in context.matches[0]
-        assert context.matcher_version == "tips-v1"
+        assert context.matcher_version == "tips-v2"
 
 
 def test_extended_schema_still_enforces_original_question_and_transcription_rules(bound):

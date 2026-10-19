@@ -64,7 +64,7 @@ def recent_events(db, user, current=None):
     }
     for row in db.scalars(
         select(Message)
-        .options(load_only(Message.id, Message.child_id, Message.created, Message.kind, Message.sender_id))
+        .options(load_only(Message.id, Message.child_id, Message.created, Message.kind, Message.sender_id, Message.context))
         .where(Message.child_id.in_(ids), Message.kind.in_(kinds), Message.created > cutoff, Message.created <= current)
         .order_by(Message.created.desc(), Message.id.desc())
         .limit(LIMIT)
@@ -80,6 +80,15 @@ def recent_events(db, user, current=None):
                 if row.kind == "reminder"
                 else "/settings"
             )
+        context = row.context or {}
+        if context.get("unit_id"):
+            route = f"/unit/{context['unit_id']}"
+        elif context.get("material_id"):
+            route = f"/material/{context['material_id']}"
+        elif context.get("day_id"):
+            route = f"/after-school/{row.child_id}?day={context['day_id']}"
+        elif row.kind == "preparation":
+            route = f"/after-school/{row.child_id}/history"
         add("message:" + row.id, row.child_id, row.created, titles[row.kind], route, row.kind)
 
     for model, kind, title in (

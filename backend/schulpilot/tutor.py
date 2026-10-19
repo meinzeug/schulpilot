@@ -131,9 +131,10 @@ def history_for(db, turn, source_revisions):
             raise HTTPException(
                 409, "Die Heftseiten wurden geändert. Bitte stelle deine Frage neu ohne den alten Verlauf."
             )
-        history.append(
-            {"question": previous.question, "answer": previous.reply["answer"], "kind": previous.reply["kind"]}
-        )
+        history.append({
+            "question": previous.question, "answer": previous.reply["answer"], "kind": previous.reply["kind"],
+            **({"next_question": previous.reply["next_question"]} if previous.reply.get("next_question") else {}),
+        })
         seen.add(previous.id)
         previous_id = previous.reply_to
     return list(reversed(history))
@@ -151,6 +152,10 @@ def context(db, child, turn):
         for source, m in zip(revisions, materials, strict=True)
     ]
     payload = {"grade": child.grade, "question": turn.question, "sources": sources, "history": history}
+    from .foundations import for_question
+
+    if foundations := for_question(turn.question + " " + " ".join(h["question"] for h in history), sources):
+        payload["foundations"] = foundations
     signature = digest(
         json.dumps(
             [payload, revisions, scope_values(turn), scope_revision, child.family_id, child.preferences, turn.reply_to],
@@ -340,7 +345,7 @@ def checked_reply(data, payload, revisions):
         reply = TutorOutput.model_validate(data).model_dump()
     except ValidationError:
         raise ProviderError("Die Antwort konnte nicht sicher geprüft werden. Bitte stelle die Frage erneut.") from None
-    by_ref = {source["ref"]: source for source in payload["sources"]}
+    by_ref = {source["ref"]: source for source in [*payload["sources"], *payload.get("foundations", [])]}
     metadata = {source["ref"]: source for source in revisions}
     seen = set()
     for citation in reply["sources"]:
@@ -349,7 +354,15 @@ def checked_reply(data, payload, revisions):
         if not source or quote not in normalized_quote(source["content"]) or (citation["ref"], quote) in seen:
             raise ProviderError("Die Antwort enthält keinen passenden wörtlichen Quellenbeleg. Bitte frage erneut.")
         seen.add((citation["ref"], quote))
-        citation.update(label=metadata[citation["ref"]]["label"], material_id=metadata[citation["ref"]]["id"])
+        if citation["ref"].startswith("k"):
+            citation.update(label=source["label"], foundation_id=source["id"], version=source["version"],
+                            reference_title=source["reference_title"], reference_url=source["reference_url"],
+                            origin="reviewed_supplement")
+            reply["kind"] = "foundation"
+        else:
+            citation.update(label=metadata[citation["ref"]]["label"], material_id=metadata[citation["ref"]]["id"])
+    if reply["kind"] == "foundation" and not any(c.get("origin") == "reviewed_supplement" for c in reply["sources"]):
+        raise ProviderError("Die ergänzende Erklärung hat keinen geprüften Grundwissen-Beleg.")
     return reply
 
 
@@ -422,7 +435,7 @@ def process(job_id):
                         .with_for_update()
                     )
                 )
-                if reply["kind"] == "answer"
+                if reply["kind"] in ("answer", "foundation")
                 else []
             )
             db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade))
@@ -441,7 +454,7 @@ def process(job_id):
             ):
                 raise ProviderError("Die KI-Einstellung wurde während der Antwort geändert. Bitte frage erneut.")
             external_allowed(config)
-            if reply["kind"] == "answer":
+            if reply["kind"] in ("answer", "foundation"):
                 record_tutor_help(db, turn, ongoing_units, revisions)
             turn.status, turn.reply, turn.error = "ready", reply, None
             if result.catalog_assignment:

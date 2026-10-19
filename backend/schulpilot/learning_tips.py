@@ -18,7 +18,7 @@ from .catalog_models import (
     LearningTipContext,
     LearningTipInteraction,
 )
-from .catalog_search import current_snapshot, incompatible, known_class_topics, search_topics
+from .catalog_search import MATCHER_VERSION, current_snapshot, incompatible, known_class_topics, search_topics
 from .db import get_db, now
 from .security import authenticated, child_access, family_access, rate_limit
 from .subjects import owned_subject, subject_data
@@ -118,10 +118,10 @@ def projection(db, p, child, kind, resource, *, limit=3):
         return base
     context = db.scalar(select(LearningTipContext).where(LearningTipContext.context_ref == kind + ":" + resource.id))
     source = context_source(db, kind, resource)
+    failed_keys = [fingerprint([snapshot, MATCHER_VERSION, child.id, kind, resource.id]),
+                   fingerprint([snapshot, MATCHER_VERSION])]
     failed = db.scalar(select(CatalogRefresh.id).where(CatalogRefresh.snapshot_id == snapshot,
-        CatalogRefresh.status == "failed", CatalogRefresh.id.in_([
-            fingerprint([snapshot, "tips-v1", child.id, kind, resource.id]),
-            fingerprint([snapshot, "tips-v1"])])))
+        CatalogRefresh.status == "failed", CatalogRefresh.id.in_(failed_keys)))
     if not context or not source:
         return base | ({"state": "failed"} if failed else {})
     base |= {

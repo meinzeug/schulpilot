@@ -65,6 +65,21 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   // Keep the input subtree when the keyboard switches the sheet layout.
   final composerKey = GlobalKey();
   final List<Json> turns = [];
+  bool newQuestionMode = false;
+  Json? get answerPrompt {
+    final last = turns.lastOrNull;
+    if (newQuestionMode ||
+        last?['status'] != 'ready' ||
+        last?['source_changed'] == true) {
+      return null;
+    }
+    final reply = last?['reply'] as Map?;
+    return (reply?['next_question'] as String? ?? '').trim().isNotEmpty ||
+            (reply?['answer'] as String? ?? '').trim().endsWith('?')
+        ? last
+        : null;
+  }
+
   Timer? poll;
   String? cursor, replyTo, readError, sendError;
   late final String? actor = widget.state.user?['id'];
@@ -193,6 +208,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           unconfirmed = null;
           question.clear();
           replyTo = null;
+          newQuestionMode = false;
           sendError = null;
         }
       });
@@ -218,7 +234,8 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         _TutorSubmission({
           ...widget.scope,
           'question': draft,
-          if (replyTo != null) 'reply_to': replyTo,
+          if (replyTo ?? answerPrompt?['id'] case final String relatedId)
+            'reply_to': relatedId,
         }, turns);
     final version = generation;
     setState(() {
@@ -247,6 +264,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         unconfirmed = null;
         question.clear();
         replyTo = null;
+        newQuestionMode = false;
       });
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
@@ -284,6 +302,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           related?['status'] == 'ready' && related?['source_changed'] != true
           ? related!['id'] as String?
           : null;
+      newQuestionMode = related == null;
     });
   }
 
@@ -292,6 +311,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     final editable = ownerMatches && state.isChild;
     final blocked = sending || hasPending || unconfirmed != null || loading;
     final latest = turns.lastOrNull;
+    final parentTurn = turns
+        .where((turn) => turn['id'] == latest?['reply_to'])
+        .firstOrNull;
+    final answering = answerPrompt != null;
     final inset = MediaQuery.viewInsetsOf(context).bottom;
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * .92,
@@ -357,16 +380,25 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                           style: const TextStyle(fontSize: 18),
                         ),
                       ),
+                    if (editable && parentTurn != null) turnCard(parentTurn),
                     if (editable && latest != null) turnCard(latest),
                     if (!editable)
                       for (final turn in turns.reversed)
                         turnCard(turn, collapsed: turn != latest),
-                    if (editable && turns.length > 1)
+                    if (editable && turns.length > (parentTurn == null ? 1 : 2))
                       ExpansionTile(
-                        title: Text('Frühere Fragen (${turns.length - 1})'),
+                        title: Text(
+                          'Frühere Fragen (${turns.length - (parentTurn == null ? 1 : 2)})',
+                        ),
                         children: [
                           for (final turn
-                              in turns.take(turns.length - 1).toList().reversed)
+                              in turns
+                                  .take(turns.length - 1)
+                                  .where(
+                                    (turn) => turn['id'] != parentTurn?['id'],
+                                  )
+                                  .toList()
+                                  .reversed)
                             turnCard(turn, collapsed: true),
                         ],
                       ),
@@ -429,7 +461,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 tooltip: 'Neue Frage stellen',
                                 onPressed: blocked
                                     ? null
-                                    : () => setState(() => replyTo = null),
+                                    : () => setState(() {
+                                        replyTo = null;
+                                        newQuestionMode = true;
+                                      }),
                                 icon: const Icon(Icons.close_rounded, size: 18),
                               ),
                             ],
@@ -465,9 +500,13 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 maxLength: 1000,
                                 textCapitalization:
                                     TextCapitalization.sentences,
-                                decoration: const InputDecoration(
-                                  labelText: 'Deine Frage',
-                                  hintText: 'Was ist noch unklar?',
+                                decoration: InputDecoration(
+                                  labelText: answering
+                                      ? 'Deine Antwort'
+                                      : 'Deine Frage',
+                                  hintText: answering
+                                      ? 'Was denkst du?'
+                                      : 'Was ist noch unklar?',
                                 ),
                               ),
                             ),
@@ -500,9 +539,24 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 )
                               : const Icon(Icons.arrow_upward_rounded),
                           label: Text(
-                            sending ? 'Wird gesendet …' : 'Frage stellen',
+                            sending
+                                ? 'Wird gesendet …'
+                                : answering
+                                ? 'Antwort senden'
+                                : 'Frage stellen',
                           ),
                         ),
+                        if (answering)
+                          TextButton(
+                            onPressed: blocked
+                                ? null
+                                : () => setState(() {
+                                    newQuestionMode = true;
+                                    replyTo = null;
+                                    question.clear();
+                                  }),
+                            child: const Text('Eine andere Frage stellen'),
+                          ),
                         const SizedBox(height: 8),
                         const Text(
                           'Deine Eltern können Fragen und Antworten sehen.',
@@ -584,6 +638,11 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               alignment: Alignment.centerLeft,
               child: Tag('Nicht in deinen Heftseiten'),
             ),
+          if (reply?['kind'] == 'foundation')
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Tag('Ergänzendes Grundwissen · nicht aus deinem Heft'),
+            ),
           Text(answer, style: const TextStyle(fontSize: 17, height: 1.55)),
           if (!collapsed && turn['source_changed'] != true)
             LearningTips(
@@ -610,6 +669,11 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                           source['label'] ?? 'Deine Heftseite',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
+                        if (source['reference_title'] is String)
+                          Text(
+                            'Grundwissen nach ${source['reference_title']}',
+                            style: const TextStyle(fontSize: 13, color: muted),
+                          ),
                         const SizedBox(height: 5),
                         Text(
                           '„${source['quote']}“',
@@ -623,11 +687,15 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           if (state.isChild &&
               !collapsed &&
               (reply?['next_question'] as String? ?? '').isNotEmpty)
-            OutlinedButton(
-              onPressed: hasPending || sending || unconfirmed != null
-                  ? null
-                  : () => useStarter(reply!['next_question'], related: turn),
-              child: Text(reply!['next_question'], textAlign: TextAlign.left),
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                reply!['next_question'],
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+              ),
             ),
           if (state.isChild && !collapsed)
             TextButton(

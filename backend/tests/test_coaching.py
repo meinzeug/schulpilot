@@ -336,17 +336,17 @@ def test_changed_sources_reject_review_without_losing_answers(normal_unit, monke
     assert result["coaching"]["next_unit_id"] is None
 
 
-def test_two_supported_rounds_recommend_parent_help_instead_of_endless_exercises(api):
+def test_two_correct_supported_rounds_offer_app_help_without_a_parent_alarm(api):
     demo, unit_id = prepared(api)
     with child_client(demo) as client:
         first = finish(client, unit_id, help_first=True)
         assert first["coaching"]["decision"] == "repair"
         second = finish(client, first["coaching"]["next_unit_id"], help_first=True)
-        assert second["coaching"]["decision"] == "parent_help"
-        assert second["coaching"]["next_unit_id"] is None
-        assert second["learning_progress"]["needs_parent"]
+        assert second["coaching"]["decision"] == "repair"
+        assert second["coaching"]["next_unit_id"] is not None
+        assert not second["learning_progress"]["needs_parent"]
         overview = client.get("/api/child/home").json()
-        assert "Brüche" in overview["day_summary"]["coaching_support_topics"]
+        assert "Brüche" not in overview["day_summary"]["coaching_support_topics"]
         assert second["coaching"]["provider"] == "synthetic"
 
 

@@ -1,3 +1,14 @@
+Protokollprüfung19.10.2026 – laufende Umsetzung, noch kein neuer Release
+Beide vollständigen HTML-Berichte mit Details und JSON gelesen. Vollständige
+Befund-/Fallliste: docs/TEST_REPORT_REVIEW.md. Neue Bewertung/Audithistorie0020,
+explizite gebündelte Hausaufgabenübernahme/Provenienz0021, progressive Fehlerhilfe,
+kuratiertes Tutor-Grundwissen, direkter Antwortdialog und Kinder-/Elternführung
+implementiert. Letzter gezielter Backendlauf75/75 grün; Gesamttests/Flutterprüfung
+laufen. Öffentliche Version weiterhin1.7.2+40, Schema0019. Keine echten Familien
+oder Antworten zum Testen verändert. Nächste Aktion: Tests auswerten, Builds und
+echte Browser-/native Bedienprüfung mit eigener künstlicher Familie; erst danach
+gesicherte Bereitstellung und überprüfter Release. Fortsetzung im Befunddokument.
+
 # Kompakte Hefter1.7.2+40 – produktiv geprüft18.10.2026
 
 Aktueller Produktstand: Commit 1e644c2447a5ad2951d10c415ef6b123140e4a2b, main gepusht.

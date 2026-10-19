@@ -5,7 +5,7 @@ import re
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from PIL import Image, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 
 from . import schemas as s
 from .config import runtime_settings, settings
@@ -180,20 +180,36 @@ def image(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
 
 @router.get("/materials/{material_id}")
 def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    from .material_tasks import duplicate_sources
+
     material, _ = get_material(db, p, material_id)
-    return material_data(material)
+    return material_data(material) | {"duplicate_candidates": duplicate_sources(db, material)}
+
+
+@router.post("/materials/{material_id}/task-preview")
+def task_preview(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated), db=Depends(get_db)):
+    from .material_tasks import duplicate_sources, preview
+
+    material, _ = get_material(db, p, material_id)
+    if data.revision is not None and data.revision != material.revision:
+        raise HTTPException(409, "Die Seite wurde geändert. Bitte die aktuelle Seite neu laden.")
+    return {"items": preview(data.content, data.homework, material.task_decisions), "duplicates": duplicate_sources(db, material)}
 
 
 @router.put("/materials/{material_id}/confirm")
 def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated), db=Depends(get_db)):
-    from . import material_vocabulary
+    from . import material_tasks, material_vocabulary
 
-    material, child = get_material(db, p, material_id, True)
+    material, child = get_material(db, p, material_id)
+    child_access(db, p, child.id, write=p.user.role == "parent")
     lock_material_units(db, child.id, material_id)
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     material = db.get(Material, material_id, populate_existing=True)
     if not material:
         raise HTTPException(404, "Heftseite nicht mehr vorhanden.")
+    confirmation_digest = material_tasks.fingerprint(data.model_dump(mode="json", exclude={"revision"}))
+    if material.confirmed and material.confirmation_digest == confirmation_digest:
+        return material_data(material)
     if data.revision is not None and data.revision != material.revision:
         # A lost response can be replayed without another source/item revision.
         if (data.vocabulary and data.vocabulary.revision == data.revision and material.confirmed
@@ -227,30 +243,17 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
                 422,
                 "Das synthetische Beispiel hat einen festen Beispieltext ohne notierte Hausaufgaben. Freie Eingaben sind hier nicht als KI-Demo auswertbar.",
             )
+    source_changed = material.confirmed and any(getattr(data, k) != getattr(material, k) for k in ("subject", "topic", "content", "homework"))
     for key in ("subject", "topic", "content", "homework"):
         setattr(material, key, getattr(data, key))
-    material.uncertainties = []
+    # Transcription confirmation is not a subject-quality certificate. Keep
+    # unresolved OCR warnings in sources and subsequent generator payloads.
     material.revision += 1
     material.confirmed = True
+    material.confirmation_digest = confirmation_digest
     material.status = "confirmed"
-    # Only explicitly confirmed notes become homework; generated exercises are separate.
-    db.execute(
-        __import__("sqlalchemy")
-        .delete(Assignment)
-        .where(Assignment.material_id == material.id, Assignment.kind == "homework")
-    )
-    for note in data.homework:
-        db.add(
-            Assignment(
-                child_id=material.child_id,
-                material_id=material.id,
-                kind="homework",
-                subject=material.subject,
-                topic=material.topic,
-                note=note,
-                mandatory=True,
-            )
-        )
+    tasks = material_tasks.apply_decisions(db, material, child, data.task_decisions, source_changed=source_changed)
+    material.task_decisions = [row.model_dump(mode="json") for row in data.task_decisions]
     record(
         db,
         material.child_id,
@@ -262,7 +265,7 @@ def confirm(material_id: str, data: s.MaterialConfirm, p=Depends(authenticated),
         words = material_vocabulary.transfer(db, p, child, material,
             data.vocabulary.model_copy(update={"revision": material.revision}))
     db.commit()
-    return material_data(material) | ({"vocabulary_transfer": words} if words is not None else {})
+    return material_data(material) | {"task_transfer": tasks} | ({"vocabulary_transfer": words} if words is not None else {})
 
 
 @router.get("/materials/{material_id}/vocabulary")
@@ -340,7 +343,9 @@ def lock_material_units(db, child_id, material_id):
     list(
         db.scalars(
             select(LearningUnit)
-            .where(LearningUnit.child_id == child_id, LearningUnit.material_id == material_id)
+            .where(LearningUnit.child_id == child_id,
+                   or_(LearningUnit.material_id == material_id, LearningUnit.id.in_(
+                       select(UnitSource.unit_id).where(UnitSource.material_id == material_id))))
             .order_by(LearningUnit.id)
             .with_for_update()
         )
@@ -419,6 +424,8 @@ def create_unit(
         assignment = db.get(Assignment, data.assignment_id)
         if not assignment or assignment.child_id != child.id:
             raise HTTPException(404, "Lernauftrag nicht gefunden.")
+        if assignment.source_status != "confirmed":
+            raise HTTPException(409, "Bitte den Auftrag nach der Quellenänderung zuerst prüfen.")
         from .learning import local_day
 
         if assignment.scheduled_for and assignment.scheduled_for > local_day(child).isoformat():

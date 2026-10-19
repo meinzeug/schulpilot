@@ -10,7 +10,7 @@ from sqlalchemy import func, literal_column, select
 from .catalog_models import CatalogLevel, CatalogPlacement, CatalogState, CatalogTopic
 from .db import ChildSubject
 
-MATCHER_VERSION = "tips-v1"
+MATCHER_VERSION = "tips-v2"
 STOP = set(
     "der die das des dem den ein eine einer einem einen eines und oder aber auch ist sind wird werden von vom zum zur zu im in am an auf aus mit für als bei durch nach vor nicht nur wir du ihr sie es sich was wie wo warum welche welcher welches dieser diese dieses haben hat sein so kann können soll bitte text seite heft foto lernen thema aufgabe klasse übung übungen verstehen erkläre erklären künstlicher funktionstest the a an of to and or is are in on for it be example".split()
 )

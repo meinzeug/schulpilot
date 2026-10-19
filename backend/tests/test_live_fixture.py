@@ -238,4 +238,12 @@ def test_child_cannot_rewrite_confirmed_material_or_its_homework(api):
             json={"username": credentials["child_username"], "password": credentials["child_password"]},
         ).json()
         kid.headers["Authorization"] = "Bearer " + logged["token"]
-        assert kid.put("/api/materials/" + material["id"] + "/confirm", json=confirmation).status_code == 403
+        # An identical retry is a no-op, even after the response was lost.
+        before = kid.get("/api/materials/" + material["id"]).json()
+        assert kid.put("/api/materials/" + material["id"] + "/confirm", json=confirmation).status_code == 200
+        assert kid.put("/api/materials/" + material["id"] + "/confirm",
+                       json={**confirmation, "homework": ["Changed binding task"]}).status_code == 403
+        assert kid.put("/api/materials/" + material["id"] + "/confirm",
+                       json={**confirmation, "content": "Changed confirmed source"}).status_code == 403
+        after = kid.get("/api/materials/" + material["id"]).json()
+        assert after["revision"] == before["revision"] and after["homework"] == before["homework"]

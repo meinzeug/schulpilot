@@ -269,3 +269,40 @@ Zusätzliche Datenfristen: einzelne Verbrauchsmetadaten 90 Tage, administrative 
 Vor einem Rückweg auf den Stand vor Migration 0005 echte Verarbeitung pausieren: alter Code kennt weder den getrennten technischen Routingblocker noch das neue Löschjournal. Zusatzspalten können bei einem kompatiblen Code-Rollback stehen bleiben; die neuen Watchdog-/Restore-Timer werden beim Aktivieren eines alten Releases angehalten. Kein Schema-Downgrade mit Datenverlust als gewöhnlichen Rückweg verwenden.
 
 Migration 0010 ergänzt ausschließlich Google-Identitäten und kurzlebige Anmeldevorgänge. Ein kompatibler Rückweg auf den bisherigen Release 1.0.0+14 ist mit `--rollback-compatible` ohne Schema-Downgrade möglich: bestehende Elternpasswörter und Familienschemata bleiben erhalten. Die optionale Google-Anmeldung entfällt dann vorübergehend; neue Google-Eltern haben ebenfalls ein eigenes Elternpasswort. Die zusätzlichen Tabellen erhalten, nicht per Downgrade löschen. Den HTML-Inhabernachweis für die SCHULPILOT-Subdomain bei längerem Rollback weiter bereitstellen oder den Rückweg um diese öffentliche Datei ergänzen. Keine anderen Domains oder Dienste ändern.
+
+## Protokollkorrekturen1.8.0+41 · Schema0020/0021
+
+0020 ergänzt ausschließlich die auditierte AttemptAssessment-Historie.0021
+speichert bestätigte Aufgabenentscheidungen am Material, Bestätigungsdigest,
+Auftragsursprung/Quellenrevisionen/Status, einen eindeutigen Quellschlüssel und
+private Nachrichtenkontexte. Bestehende Antworten/Materialien werden nicht
+umgeschrieben oder gelöscht. Alte erfasste Aufträge werden nicht als
+Testbereinigung echter Familien entfernt. Eine unveränderte Bestätigung ist
+idempotent; Kinder können bestätigte Quellen dadurch weiterhin nicht ändern.
+
+Die normale Migration bleibt `python -m schulpilot.migrate` mit der geschützten
+Serverumgebung; `scripts/deploy.sh` führt sie nach zwei überprüften Sicherungen
+und dem Anhalten der eigenen API/Worker aus. Keine eigene SQL-Manipulation
+privater Lernstände zur Abnahme. Neues Schema beim Code-Rückweg erhalten;
+keinesfalls `alembic downgrade` oder ein Backup über neuere Antworten legen.
+Vor Aktivierung den tatsächlichen vorherigen Releasezeiger notieren. Normaler
+Rückweg nach einem kompatiblen Codeproblem:
+
+```bash
+ssh dorfspy 'python3 /opt/schulpilot/current/deploy/activate.py <vorheriger-release> --rollback-compatible'
+```
+
+Danach HTTPS/API, Login und die Datenansichten prüfen. Audit-/Aufgabenentscheidungen
+sind nur mit dem neuen Code sichtbar. Einen nicht kompatiblen Rückweg zuerst in
+einer isolierten Wiederherstellungsdatenbank prüfen. Quelle/Auftrag geändert ist
+ein eigener Zustand und keine automatische fachliche Wissenslücke.
+
+Reproduzierbare QA: beide ursprünglichen HTML-Dateien ausschließlich lesen;
+Tests in `backend/tests/test_report_regressions.py`, `app/test/test_report_review_test.dart`
+und `word_bank_regression_test.dart`. `qa/prepare_report_review.py` erstellt eine
+normale, verifizierte eigene künstliche Familie mit geschütztem Checkpoint.
+`qa/report_review.mjs` und `qa/android_report_review.py` verwenden ausschließlich
+diese Familie. API-/Native-Logins nie in Argumenten ausgeben, keine fremden Konten
+für Tests benutzen. Fehlgeschlagene echte Provideraufträge halten den Checkpoint;
+kein automatischer Ersatzversuch. Abnahme/Blocker/69 Fälle stehen in
+`docs/TEST_REPORT_REVIEW.md` und im aktuellen Handoff.

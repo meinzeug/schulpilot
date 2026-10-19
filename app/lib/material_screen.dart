@@ -117,10 +117,20 @@ class CropDialog extends StatefulWidget {
 
 class _CropDialogState extends State<CropDialog> {
   double left = 0, top = 0, right = 1, bottom = 1;
+  int quarterTurns = 0;
+  int? dragCorner;
   late img.Image? image = orientedImage();
   img.Image? orientedImage() {
     final decoded = img.decodeImage(widget.bytes);
-    return decoded == null ? null : img.bakeOrientation(decoded);
+    if (decoded == null) return null;
+    final oriented = img.bakeOrientation(decoded);
+    return oriented.width > 1100 || oriented.height > 1100
+        ? img.copyResize(
+            oriented,
+            width: oriented.width >= oriented.height ? 1100 : null,
+            height: oriented.height > oriented.width ? 1100 : null,
+          )
+        : oriented;
   }
 
   late Uint8List preview = image == null
@@ -144,6 +154,7 @@ class _CropDialogState extends State<CropDialog> {
                   ? null
                   : () => setState(() {
                       image = img.copyRotate(image!, angle: 90);
+                      quarterTurns = (quarterTurns + 1) % 4;
                       preview = Uint8List.fromList(
                         img.encodeJpg(image!, quality: 85),
                       );
@@ -154,7 +165,7 @@ class _CropDialogState extends State<CropDialog> {
               label: const Text('Um 90° drehen'),
             ),
             SizedBox(
-              height: 220,
+              height: (MediaQuery.sizeOf(context).height * .40).clamp(240, 420),
               child: LayoutBuilder(
                 builder: (context, size) => Center(
                   child: AspectRatio(
@@ -165,10 +176,66 @@ class _CropDialogState extends State<CropDialog> {
                       fit: StackFit.expand,
                       children: [
                         Image.memory(preview, fit: BoxFit.fill),
-                        IgnorePointer(
-                          child: CustomPaint(
-                            painter: _CropPainter(
-                              Rect.fromLTRB(left, top, right, bottom),
+                        LayoutBuilder(
+                          builder: (context, bounds) => Semantics(
+                            label: 'Zuschneiderahmen. Ziehe eine Ecke. Darunter kannst du die Ränder mit Reglern verändern.',
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onPanStart: image == null
+                                  ? null
+                                  : (event) {
+                                      final corners = [
+                                        Offset(left, top),
+                                        Offset(right, top),
+                                        Offset(left, bottom),
+                                        Offset(right, bottom),
+                                      ];
+                                      final point = Offset(
+                                        event.localPosition.dx /
+                                            bounds.maxWidth,
+                                        event.localPosition.dy /
+                                            bounds.maxHeight,
+                                      );
+                                      var nearest = 0;
+                                      for (var i = 1; i < corners.length; i++) {
+                                        if ((corners[i] - point).distance <
+                                            (corners[nearest] - point)
+                                                .distance) {
+                                          nearest = i;
+                                        }
+                                      }
+                                      dragCorner = nearest;
+                                    },
+                              onPanUpdate: image == null
+                                  ? null
+                                  : (event) => setState(() {
+                                      final x =
+                                          (event.localPosition.dx /
+                                                  bounds.maxWidth)
+                                              .clamp(0.0, 1.0);
+                                      final y =
+                                          (event.localPosition.dy /
+                                                  bounds.maxHeight)
+                                              .clamp(0.0, 1.0);
+                                      if (dragCorner == 0 || dragCorner == 2) {
+                                        left = x.clamp(0.0, right - .1);
+                                      }
+                                      if (dragCorner == 1 || dragCorner == 3) {
+                                        right = x.clamp(left + .1, 1.0);
+                                      }
+                                      if (dragCorner == 0 || dragCorner == 1) {
+                                        top = y.clamp(0.0, bottom - .1);
+                                      }
+                                      if (dragCorner == 2 || dragCorner == 3) {
+                                        bottom = y.clamp(top + .1, 1.0);
+                                      }
+                                    }),
+                              onPanEnd: (_) => dragCorner = null,
+                              child: CustomPaint(
+                                painter: _CropPainter(
+                                  Rect.fromLTRB(left, top, right, bottom),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -223,6 +290,10 @@ class _CropDialogState extends State<CropDialog> {
                       ),
                       Expanded(
                         child: Slider(
+                          label:
+                              '${item.$1}: ${(item.$2 * 100).round()} Prozent',
+                          semanticFormatterCallback: (value) =>
+                              '${item.$1}: ${(value * 100).round()} Prozent',
                           value: item.$2,
                           min: item.$3,
                           max: item.$4,
@@ -250,28 +321,152 @@ class _CropDialogState extends State<CropDialog> {
               'Dieses Bildformat konnte nicht gelesen werden. Bitte JPEG oder PNG auswählen.',
             );
           }
-          // Bake orientation before cropping; encode without EXIF/XMP metadata.
-          final oriented = img.bakeOrientation(image!);
-          final cropped = img.copyCrop(
-            oriented,
-            x: (left * oriented.width).round(),
-            y: (top * oriented.height).round(),
-            width: math.max(1, ((right - left) * oriented.width).floor()),
-            height: math.max(1, ((bottom - top) * oriented.height).floor()),
-          );
-          final clean = img.Image.from(cropped)..exif.clear();
-          final resized = clean.width > 1600 || clean.height > 1600
-              ? img.copyResize(
-                  clean,
-                  width: clean.width >= clean.height ? 1600 : null,
-                  height: clean.height > clean.width ? 1600 : null,
-                )
-              : clean;
-          final encoded = Uint8List.fromList(
-            img.encodeJpg(resized, quality: 88),
-          );
+          // Give the busy indicator a frame; native encoding runs off the UI
+          // isolate. Web's compute still runs on the browser's event loop.
+          await Future<void>.delayed(const Duration(milliseconds: 32));
+          final encoded = await compute(encodeMaterialCrop, <String, dynamic>{
+            'bytes': widget.bytes,
+            'turns': quarterTurns,
+            'left': left,
+            'top': top,
+            'right': right,
+            'bottom': bottom,
+          });
           if (context.mounted) Navigator.pop(context, encoded);
         },
+      ),
+    ],
+  );
+}
+
+Uint8List encodeMaterialCrop(Map<String, dynamic> value) {
+  var source = img.bakeOrientation(img.decodeImage(value['bytes'])!);
+  if (value['turns'] != 0) {
+    source = img.copyRotate(source, angle: (value['turns'] as int) * 90);
+  }
+  final cropped = img.copyCrop(
+    source,
+    x: ((value['left'] as double) * source.width).round(),
+    y: ((value['top'] as double) * source.height).round(),
+    width: math.max(
+      1,
+      (((value['right'] as double) - (value['left'] as double)) * source.width)
+          .floor(),
+    ),
+    height: math.max(
+      1,
+      (((value['bottom'] as double) - (value['top'] as double)) * source.height)
+          .floor(),
+    ),
+  );
+  final clean = img.Image.from(cropped)..exif.clear();
+  final resized = clean.width > 1600 || clean.height > 1600
+      ? img.copyResize(
+          clean,
+          width: clean.width >= clean.height ? 1600 : null,
+          height: clean.height > clean.width ? 1600 : null,
+        )
+      : clean;
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
+}
+
+class MaterialTaskDialog extends StatefulWidget {
+  final List<Json> items;
+  final bool hasDuplicate;
+  const MaterialTaskDialog({
+    super.key,
+    required this.items,
+    this.hasDuplicate = false,
+  });
+
+  @override
+  State<MaterialTaskDialog> createState() => _MaterialTaskDialogState();
+}
+
+class _MaterialTaskDialogState extends State<MaterialTaskDialog> {
+  late final choices = <String, String>{
+    for (final row in widget.items)
+      row['key']: row['classification'] ?? 'unclear',
+  };
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Was ist wirklich aufgegeben?'),
+    content: SizedBox(
+      width: 520,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Nur bestätigte Hausaufgaben kommen verbindlich in deinen Plan. Beispiele bleiben im Heft.',
+            ),
+            if (widget.hasDuplicate) ...[
+              const SizedBox(height: 12),
+              const Notice(
+                'Ein ähnliches Blatt ist schon gespeichert. Du kannst zurückgehen und das doppelte Foto entfernen. Gleiche Aufträge desselben Tages zählen nur einmal.',
+                warning: true,
+              ),
+            ],
+            for (final item in widget.items) ...[
+              const SizedBox(height: 18),
+              Text(
+                item['text'],
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: choices[item['key']],
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'So wurde es in der Schule gesagt',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'homework',
+                    child: Text('Als Hausaufgabe aufgegeben'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'example',
+                    child: Text('Beispiel oder Übung im Unterricht'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'unclear',
+                    child: Text('Das weiß ich noch nicht'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setState(() => choices[item['key']] = value!),
+              ),
+              if (choices[item['key']] == 'unclear')
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Bleibt im Heft und wird vorerst nicht verbindlich eingeplant.',
+                    style: TextStyle(color: muted),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Zurück'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, <Json>[
+          for (final entry in choices.entries)
+            {'key': entry.key, 'classification': entry.value},
+        ]),
+        child: Text(
+          widget.hasDuplicate && widget.items.isEmpty
+              ? 'Seite bewusst behalten'
+              : 'Auswahl übernehmen',
+        ),
       ),
     ],
   );
@@ -300,6 +495,22 @@ class _CropPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
+    for (final point in [
+      rect.topLeft,
+      rect.topRight,
+      rect.bottomLeft,
+      rect.bottomRight,
+    ]) {
+      canvas.drawCircle(point, 9, Paint()..color = Colors.white);
+      canvas.drawCircle(
+        point,
+        9,
+        Paint()
+          ..color = teal
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
   }
 
   @override
@@ -319,8 +530,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
-    title: 'Dein Lernstoff',
-    subtitle: 'Prüfe den erkannten Text, bevor du loslegst.',
+    title: widget.state.isChild ? 'Dein Lernstoff' : 'Heftseite',
+    subtitle: widget.state.isChild ? 'Schau kurz, ob der Text stimmt.' : null,
     child: LoadView<Json>(
       key: ValueKey(version),
       load: () => widget.state.api.get('/materials/${widget.materialId}'),
@@ -609,7 +820,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                 (subject, 'Fach', 1),
                 (topic, 'Thema', 1),
                 (content, 'Erkannter Unterrichtsstoff', 8),
-                (homework, 'Notierte Hausaufgaben (eine pro Zeile)', 3),
+                (homework, 'Erkannte Aufgaben (eine pro Zeile)', 3),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 18),
@@ -634,7 +845,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                 ),
               if ((d['homework'] as List).isEmpty)
                 const Text(
-                  'Keine ausdrücklich notierten Hausaufgaben in diesem Material erfasst.',
+                  'Hier wurden keine Aufgabenangaben erkannt.',
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
               if (canConfirm) ...[
@@ -756,21 +967,48 @@ class _MaterialReviewState extends State<MaterialReview> {
         return;
       }
     }
+    final body = <String, dynamic>{
+      'subject': subject.text,
+      'topic': topic.text,
+      'content': content.text,
+      'homework': homework.text
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      'uncertainties_resolved': true,
+      if (widget.data['revision'] is int) 'revision': widget.data['revision'],
+      if (wordPreview != null) 'vocabulary': wordConfirmation,
+    };
+    if (d['supports_task_confirmation'] == true && d['synthetic'] != true) {
+      final preview = await widget.state.api.post(
+        '/materials/${d['id']}/task-preview',
+        body,
+      );
+      if (!mounted || owner != widget.state.user?['id']) return;
+      final items = (preview['items'] as List? ?? [])
+          .map((r) => Json.from(r))
+          .toList();
+      final duplicates = (preview['duplicates'] as List? ?? []);
+      if (items.isNotEmpty || duplicates.isNotEmpty) {
+        final decisions = await showDialog<List<Json>>(
+          context: context,
+          builder: (_) => MaterialTaskDialog(
+            items: items,
+            hasDuplicate: duplicates.isNotEmpty,
+          ),
+        );
+        if (decisions == null ||
+            !mounted ||
+            owner != widget.state.user?['id']) {
+          return;
+        }
+        body['task_decisions'] = decisions;
+      }
+    }
     final result = await widget.state.api.put(
-      '/materials/${widget.data['id']}/confirm',
-      {
-        'subject': subject.text,
-        'topic': topic.text,
-        'content': content.text,
-        'homework': homework.text
-            .split('\n')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList(),
-        'uncertainties_resolved': true,
-        if (widget.data['revision'] is int) 'revision': widget.data['revision'],
-        if (wordPreview != null) 'vocabulary': wordConfirmation,
-      },
+      '/materials/${d['id']}/confirm',
+      body,
     );
     if (!mounted || owner != widget.state.user?['id']) return;
     setState(() => confirmedHere = true);
@@ -808,39 +1046,43 @@ class _MaterialReviewState extends State<MaterialReview> {
             padding: const EdgeInsets.all(12),
             child: LoadView<Uint8List>(
               load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
-              builder: (bytes, _) => InkWell(
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (ctx) => Dialog(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: InteractiveViewer(
-                            maxScale: 5,
-                            child: Image.memory(bytes),
+              builder: (bytes, _) => Semantics(
+                button: true,
+                label: 'Heftfoto vergrößern',
+                child: InkWell(
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (ctx) => Dialog(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: InteractiveViewer(
+                              maxScale: 5,
+                              child: Image.memory(bytes),
+                            ),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Schließen'),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Schließen'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  child: SizedBox(
+                    height: 150,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(bytes, fit: BoxFit.contain),
+                        const Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Icon(Icons.zoom_in_rounded, color: teal),
                         ),
                       ],
                     ),
-                  ),
-                ),
-                child: SizedBox(
-                  height: 150,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.memory(bytes, fit: BoxFit.contain),
-                      const Positioned(
-                        right: 4,
-                        bottom: 4,
-                        child: Icon(Icons.zoom_in_rounded, color: teal),
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -899,7 +1141,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                 if (homework.text.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text(
-                    'Notierte Hausaufgaben',
+                    'Aufgaben auf dieser Seite',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   Text(homework.text),
@@ -920,7 +1162,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                     (subject, 'Fach', 1),
                     (topic, 'Thema', 1),
                     (content, 'Text auf der Seite', 6),
-                    (homework, 'Notierte Hausaufgaben', 3),
+                    (homework, 'Erkannte Aufgaben', 3),
                   ])
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -964,7 +1206,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                   ),
                 ] else if (confirmed) ...[
                   const SizedBox(height: 14),
-                  const Tag('Seite geprüft'),
+                  const Tag('Text übernommen'),
                 ],
               ],
             ),

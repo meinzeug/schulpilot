@@ -8,6 +8,7 @@ import 'learning_tips.dart';
 import 'coaching_panel.dart';
 import 'lesson_voice.dart';
 import 'learning_room.dart';
+import 'learning_explanation.dart';
 import 'learning_next_step.dart';
 import 'vocabulary_screen.dart';
 import 'tutor_sheet.dart';
@@ -52,6 +53,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Map<String, String> matches = {};
   String? questionId;
   String? answerRequestKey, answerRequestBody;
+  String? hintRequestKey;
+  bool hintExhausted = false;
+  final usedBank = <int>{};
   bool speechAnswer = false;
   List<String>? languageBank;
   String bankJoiner = ' ';
@@ -229,6 +233,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     questionId = next?['id'];
     speechAnswer = false;
     languageBank = null;
+    usedBank.clear();
+    hintExhausted = false;
+    hintRequestKey = null;
     bankJoiner = ' ';
     answerRequestKey = answerRequestBody = null;
     choice = null;
@@ -237,6 +244,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     helpExpanded = false;
     updatingDraft = true;
     text.clear();
+    // A resumed matching exercise retains its last submitted pairs. This is
+    // saved work, not an inferred new answer or additional learning evidence.
+    if (next?['type'] == 'match') {
+      final previous = (next?['attempts'] as List? ?? []).lastOrNull;
+      final values = previous?['answer']?.toString().split(';') ?? <String>[];
+      final labels = next?['options'] as List? ?? [];
+      for (var i = 0; i < labels.length && i < values.length; i++) {
+        matches[labels[i]] = values[i];
+      }
+    }
     updatingDraft = false;
   }
 
@@ -919,8 +936,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     for (final a in q['attempts'] as List)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung' : 'selbstständig'}' : ''}',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
+                            ),
+                            AssessmentTrail(
+                              a['assessment_history'] as List? ?? [],
+                            ),
+                          ],
                         ),
                       ),
                     const Divider(height: 28),
@@ -997,15 +1022,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
-            Text(
-              u['explanation'],
-              style: const TextStyle(fontSize: 18, height: 1.55),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ReadAloudButton(text: u['explanation']),
-            ),
+            LearningExplanation(text: u['explanation']),
             if (!['spaced_review', 'study_recall'].contains(u['round_kind']))
               unitTips(u),
             if (u['synthetic'] == true) ...[
@@ -1198,18 +1215,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final token in bank)
+                for (final entry in bank.indexed)
                   ActionChip(
-                    label: Text(token),
-                    onPressed: actionBusy
+                    label: Text(entry.$2),
+                    onPressed: actionBusy || usedBank.contains(entry.$1)
                         ? null
                         : () {
+                            usedBank.add(entry.$1);
                             text.text =
-                                '${text.text}${text.text.isEmpty ? '' : bankJoiner}$token';
+                                '${text.text}${text.text.isEmpty ? '' : bankJoiner}${entry.$2}';
                             noteInteraction();
                           },
                   ),
               ],
+            ),
+            TextButton(
+              onPressed: actionBusy
+                  ? null
+                  : () => setState(() {
+                      usedBank.clear();
+                      text.clear();
+                    }),
+              child: const Text('Neu zusammensetzen'),
             ),
           ],
           if (meta['skill'] == 'spelling' && bank.isEmpty)
@@ -1230,6 +1257,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             response['word_bank'],
                           );
                           bankJoiner = response['joiner'] ?? ' ';
+                          // The scaffold starts a fresh answer. Never append
+                          // an entire correct word to an earlier failed one.
+                          text.clear();
+                          usedBank.clear();
                         });
                       }
                     }),
@@ -1297,10 +1328,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     .join(' · '),
               ),
               if (result['next_due'] != null)
-                Text('Wiedervorlage: ${result['next_due']}'),
+                Text('Wieder üben: ${result['next_due']}'),
               const SizedBox(height: 12),
               const Text(
-                'Jede Antwort zählt in deinem Lernverlauf. Die Wiedervorlage gilt nur für die geübte Fähigkeit und Richtung.',
+                'Heute geübt. Später probierst du diese Wörter noch einmal ohne Vorlage.',
               ),
               const SizedBox(height: 12),
               FilledButton(
@@ -1417,10 +1448,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final id = u['id'];
     final requestedOwner = ownerId;
     if (!requestIsCurrent(id, requestedOwner)) return;
-    final data = await state.api.post('/units/$id/questions/${q['id']}/hint');
+    hintRequestKey ??= vocabularyKey();
+    final data = await state.api.post(
+      '/units/$id/questions/${q['id']}/hint',
+      null,
+      {
+        if (u['supports_answer_idempotency'] == true)
+          'Idempotency-Key': hintRequestKey!,
+      },
+    );
     if (requestIsCurrent(id, requestedOwner)) {
       setState(() {
         hint = data['hint'];
+        hintRequestKey = null;
+        hintExhausted = data['exhausted'] == true;
         helpExpanded = true;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1455,7 +1496,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     noteInteraction();
     await beat();
     if (!requestIsCurrent(id, requestedOwner) || !routeVisible) return;
-    if (q['language'] is Map) {
+    if (q['language'] is Map || u['supports_answer_idempotency'] == true) {
       final body = '$id:${q['id']}:$answer:$speechAnswer';
       if (answerRequestBody != body) {
         answerRequestBody = body;
@@ -1466,7 +1507,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       '/units/$id/questions/${q['id']}/answer',
       {
         'answer': answer,
-        if (q['language'] is Map) 'request_id': answerRequestKey,
+        if (answerRequestKey != null) 'request_id': answerRequestKey,
         if (q['language'] is Map)
           'input_method': speechAnswer ? 'speech' : 'typed',
         if (u.containsKey('pending_feedback')) 'guided_feedback': true,
@@ -1502,6 +1543,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final closed = done(q);
     final correct = answerOutcome == 'correct';
     final uncertain = answerOutcome == 'uncertain';
+    final lastEvaluation =
+        (q['attempts'] as List? ?? []).lastOrNull?['evaluation'] as Map?;
     final title = correct
         ? 'Richtig!'
         : uncertain
@@ -1551,9 +1594,56 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             i < (q['options'] as List).length;
                             i++
                           )
-                            Text(
-                              '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
-                              style: const TextStyle(fontSize: 17),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if ((lastEvaluation?['parts'] as List? ?? [])
+                                      .any(
+                                        (p) => p['label'] == q['options'][i],
+                                      )) ...[
+                                    Icon(
+                                      (lastEvaluation!['parts'] as List)
+                                                  .firstWhere(
+                                                    (p) =>
+                                                        p['label'] ==
+                                                        q['options'][i],
+                                                  )['outcome'] ==
+                                              'correct'
+                                          ? Icons.check_circle_outline
+                                          : Icons.refresh_rounded,
+                                      color:
+                                          (lastEvaluation['parts'] as List)
+                                                  .firstWhere(
+                                                    (p) =>
+                                                        p['label'] ==
+                                                        q['options'][i],
+                                                  )['outcome'] ==
+                                              'correct'
+                                          ? successInk
+                                          : warningInk,
+                                      semanticLabel:
+                                          (lastEvaluation['parts'] as List)
+                                                  .firstWhere(
+                                                    (p) =>
+                                                        p['label'] ==
+                                                        q['options'][i],
+                                                  )['outcome'] ==
+                                              'correct'
+                                          ? 'Richtig zugeordnet'
+                                          : 'Dieses Paar noch einmal versuchen',
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
+                                      style: const TextStyle(fontSize: 17),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                         ],
                       )
@@ -1603,7 +1693,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               const SizedBox(height: 10),
               if (uncertain)
                 const Text(
-                  'Ich kann deine Antwort nicht sicher bewerten. Sie ist gespeichert.',
+                  'Deine Antwort ist gespeichert. Die Prüfung ist offen – das bedeutet nicht, dass du falsch liegst.',
                   style: TextStyle(fontSize: 16),
                 )
               else if (!correct)
@@ -1620,9 +1710,69 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                   [])
                               .contains('recent_solution')
                       ? 'Gerade mit Vorlage gelernt. Später probierst du es ohne.'
-                      : 'Mit Hilfe gelöst. Gut, dass du drangeblieben bist.',
+                      : (lastEvaluation?['support_reasons'] as List? ?? [])
+                                    .length ==
+                                1 &&
+                            (lastEvaluation?['support_reasons'] as List)
+                                .contains('another_attempt')
+                      ? 'Im weiteren Versuch geschafft. Gut, dass du drangeblieben bist.'
+                      : 'Mit Unterstützung oder im weiteren Versuch gelöst. Gut, dass du drangeblieben bist.',
                   style: const TextStyle(fontSize: 16),
                 ),
+              if (lastEvaluation?['reason'] is String) ...[
+                const SizedBox(height: 8),
+                Text(
+                  lastEvaluation!['reason'],
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ],
+              AssessmentTrail(
+                (q['attempts'] as List? ?? []).lastOrNull?['assessment_history']
+                        as List? ??
+                    [],
+              ),
+              if (uncertain && state.isChild) ...[
+                const SizedBox(height: 12),
+                if (u['supports_recheck'] == true && q['language'] is! Map)
+                  OutlinedButton.icon(
+                    onPressed: actionBusy
+                        ? null
+                        : () => perform(() async {
+                            final owner = ownerId;
+                            final response = await state.api.post(
+                              '/units/${u['id']}/questions/${q['id']}/recheck',
+                            );
+                            if (!requestIsCurrent(u['id'], owner)) return;
+                            setState(() {
+                              unit = Json.from(response['unit']);
+                              answeredQuestion = Json.from(
+                                (unit!['questions'] as List).firstWhere(
+                                  (row) => row['id'] == q['id'],
+                                ),
+                              );
+                              answerOutcome = response['outcome'];
+                              answerAssisted = response['assisted'] == true;
+                              explanation = response['explanation'];
+                              restoreFeedback(unit!);
+                            });
+                            state.refreshState();
+                          }),
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('Antwort erneut prüfen'),
+                  ),
+                TextButton.icon(
+                  onPressed: actionBusy
+                      ? null
+                      : () => showTutorSheet(
+                          context,
+                          state,
+                          childId: u['child_id'],
+                          unitId: u['id'],
+                        ),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                  label: const Text('Mit der Lernhilfe klären'),
+                ),
+              ],
               if (explanation?.trim().isNotEmpty == true) ...[
                 const SizedBox(height: 16),
                 if (correct)
@@ -1705,7 +1855,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           runSpacing: 4,
           children: [
             TextButton(
-              onPressed: actionBusy
+              onPressed: actionBusy || hintExhausted
                   ? null
                   : () => perform(() => requestHint(u, q)),
               child: const Text('Noch ein Tipp'),
@@ -1864,12 +2014,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                data['explanation'],
-                style: const TextStyle(fontSize: 17, height: 1.5),
+              LearningExplanation(
+                text: data['explanation'],
+                prompt: currentQuestion?['prompt'],
               ),
-              const SizedBox(height: 12),
-              ReadAloudButton(text: data['explanation']),
             ],
           ),
         ),
@@ -1926,7 +2074,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     'Ich brauche Hilfe bei ${u['subject']}: ${u['topic']}.${note.text.trim().isEmpty ? '' : ' ${note.text.trim()}'}';
                 await state.api.post(
                   '/children/${u['child_id'] ?? state.user!['child_id']}/messages',
-                  {'kind': 'help', 'body': body},
+                  {
+                    'kind': 'help',
+                    'body': body,
+                    if (u['supports_answer_idempotency'] == true)
+                      'unit_id': u['id'],
+                  },
                 );
                 if (!requestIsCurrent(u['id'], requestedOwner)) return;
                 state.refreshState();

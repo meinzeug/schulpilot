@@ -340,7 +340,9 @@ void main() {
       expect(server.answers, 2);
       expect(server.value['pending_feedback']['assisted'], true);
       expect(
-        find.text('Mit Hilfe gelöst. Gut, dass du drangeblieben bist.'),
+        find.text(
+          'Mit Unterstützung oder im weiteren Versuch gelöst. Gut, dass du drangeblieben bist.',
+        ),
         findsOneWidget,
       );
     },

@@ -191,3 +191,24 @@ Benachrichtigungsglocke und Android-Zustellung, geprüft am 17.10.2026:
   Tatsächlich beobachtete Link-/Geräteprüfungen getrennt in STATUS/Handoff führen.
   Offizielle Paketdokumentation zusätzlich geprüft:
   [url_launcher6.3.2](https://pub.dev/packages/url_launcher/versions/6.3.2).
+
+## Protokollprüfung ·19.10.2026
+
+- Beide lokalen vollständigen Testberichte einschließlich aller Details/Anhänge
+  und eingebetteter JSON-Werte gelesen. Provenienz,69 Fälle und31 Befunde in
+  TEST_REPORT_REVIEW.md. Absichtliche Fehler sind keine Diagnose des echten Kindes.
+- [IES/WWC – Organizing Instruction and Study to Improve Student Learning](https://ies.ed.gov/ncee/wwc/PracticeGuide/1):
+  verteiltes Wiederholen, Wechsel von Beispielen/selbstständigem Üben, Abruf und
+  Verbindung von Grafik/Text; Belegstärke je Empfehlung unterschiedlich. Keine
+  behauptete Effektprüfung unserer App oder optimale universelle Intervallregel.
+- [EEF – Metacognition and Self-Regulated Learning](https://educationendowmentfoundation.org.uk/education-evidence/guidance-reports/metacognition):
+  Strategien fachbezogen vormachen, stützen und schrittweise selbstständig nutzen;
+  zweite Ausgabe13.11.2025. Kurze Lernschritte, konkrete Hilfe und eigene Antwort
+  sind Produktentscheidungen, keine zugesicherte Notenverbesserung.
+- [W3C – Understanding Error Suggestion](https://www.w3.org/WAI/WCAG22/Understanding/error-suggestion.html):
+  konkrete Korrektur am Feld statt nur flüchtiger Meldung; keine vollständige
+  WCAG-Konformitätsbehauptung aus einzelnen Widget-/Kontrasttests.
+- [NOAA – Marine Mammals](https://www.noaa.gov/education/resource-collections/marine-life/marine-mammals):
+  geprüftes Grundwissen zu Luftatmung/Lunge und Milch bei Meeressäugern. Eigene
+  kurze deutsche Paraphrase in foundations.py, getrennt vom bestätigten Hefttext;
+  keine fremden Bilder/Arbeitsblätter oder ungeprüfter allgemeiner Wissenskurs.

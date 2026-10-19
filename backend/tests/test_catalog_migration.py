@@ -7,6 +7,8 @@ import uuid
 from pathlib import Path
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from schulpilot.db import Attempt, Child, Family, LearningUnit, Material, User, engine
 from sqlalchemy import text
 
@@ -77,7 +79,8 @@ def test_postgres_catalog_upgrade_keeps_private_sources_answers_and_stable_subje
         subprocess.run([*command, "upgrade", "head"], env=env, capture_output=True, check=True)
         with engine.begin() as db:
             db.execute(text(f'SET LOCAL search_path TO "{schema}"'))
-            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0019"
+            expected_head = ScriptDirectory.from_config(Config(command[-1])).get_current_head()
+            assert db.scalar(text("SELECT version_num FROM alembic_version")) == expected_head
             assert db.scalar(text("SELECT id FROM subjects WHERE key='mathematik'")) == subject
             assert db.scalar(text("SELECT content FROM materials WHERE id='m'")) == "Artificial source"
             assert db.scalar(text("SELECT answer FROM attempts WHERE id='a'")) == "Synthetic answer"

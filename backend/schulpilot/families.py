@@ -73,7 +73,8 @@ def family_detail(family_id: str, p=Depends(parent), db=Depends(get_db)):
     open_assignments = dict(
         db.execute(
             select(Assignment.child_id, func.count())
-            .where(Assignment.child_id.in_([c.id for c in children]), Assignment.done.is_(False))
+            .where(Assignment.child_id.in_([c.id for c in children]), Assignment.done.is_(False),
+                   Assignment.mandatory.is_(True), Assignment.source_status == "confirmed")
             .group_by(Assignment.child_id)
         ).all()
     )
@@ -475,6 +476,13 @@ def export_child(db, child):
     result["attempts"] = [
         {c.name: getattr(row, c.name) for c in Attempt.__table__.columns}
         for row in db.scalars(select(Attempt).where(Attempt.unit_id.in_(units)))
+    ]
+    from .db import AttemptAssessment
+
+    result["attempt_assessments"] = [
+        {c.name: getattr(row, c.name) for c in AttemptAssessment.__table__.columns}
+        for row in db.scalars(select(AttemptAssessment).where(
+            AttemptAssessment.attempt_id.in_([row["id"] for row in result["attempts"]])))
     ]
     result["unit_sources"] = [
         {c.name: getattr(row, c.name) for c in UnitSource.__table__.columns}

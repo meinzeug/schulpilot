@@ -175,7 +175,7 @@ def _notify(db, day, state, status):
         "ready": "Dein Lernpaket ist bereit. Starte, wenn es für dich passt.",
         "saved": "Deine Seiten sind für spätere Lerntage gespeichert.",
     }[status]
-    db.add(Message(child_id=day.child_id, sender_id=None, kind="preparation", body=body))
+    db.add(Message(child_id=day.child_id, sender_id=None, kind="preparation", body=body, context={"day_id": day.id}))
     state["notice_status"], state["notice_created"] = status, int(now())
     record(db, day.child_id, "preparation_notice", {"school_day_id": day.id, "status": status})
 

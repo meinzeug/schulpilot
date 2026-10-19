@@ -5,7 +5,8 @@ import sys
 import uuid
 from pathlib import Path
 
-from schulpilot.db import DB, Assignment, Child, LearningUnit, Mastery, now
+import pytest
+from schulpilot.db import DB, Assignment, Child, LearningUnit, Mastery, Material, now
 from schulpilot.learning import local_day
 from schulpilot.main import app
 from schulpilot.worker import claim, process
@@ -115,7 +116,8 @@ def test_repeat_preferences_create_visible_goals_and_subject_days(api, household
     assert view["plan"]["today"] == [] and len(view["plan"]["later"]) == 1
 
 
-def test_queued_material_revision_cannot_be_overwritten(api):
+@pytest.mark.parametrize("source_changed", [False, True])
+def test_queued_material_revision_checks_real_changes_but_not_confirmation_replays(api, source_changed):
     demo, _ = prepared(api)
     queued = api.post(
         f"/api/children/{demo['child_id']}/units",
@@ -135,11 +137,17 @@ def test_queued_material_revision_cannot_be_overwritten(api):
             "uncertainties_resolved": True,
         },
     )
+    if source_changed:
+        with DB.begin() as db:
+            db.get(Material, demo['material_id']).revision += 1
     with DB() as db:
         job_id = claim(db)
     process(job_id)
     result = api.get(f"/api/jobs/{job_id}").json()
-    assert result["status"] == "failed" and "geändert" in result["error"]
+    if source_changed:
+        assert result["status"] == "failed" and "geändert" in result["error"]
+    else:
+        assert result["status"] == "completed"
 
 
 def test_uncertain_unit_does_not_become_a_difficulty(api):

@@ -144,6 +144,12 @@ class MaterialWords(Strict):
     revision: int = Field(ge=1)
 
 
+class MaterialTaskDecision(Strict):
+    key: str = Field(pattern=r"^[a-f0-9]{24}$")
+    classification: Literal["homework", "example", "unclear"]
+    due: date | None = None
+
+
 class MaterialConfirm(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
@@ -152,6 +158,7 @@ class MaterialConfirm(Strict):
     uncertainties_resolved: Literal[True]
     revision: int | None = Field(default=None, ge=1)
     vocabulary: MaterialWords | None = None
+    task_decisions: list[MaterialTaskDecision] = Field(default_factory=list, max_length=20)
 
 
 class Question(Strict):
@@ -322,6 +329,9 @@ class FeedbackRequest(Strict):
 class MessageRequest(Strict):
     kind: Literal["help", "interest", "plan_change", "reply"]
     body: str = Field(min_length=1, max_length=1000)
+    unit_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+    material_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+    day_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
 
 
 class ProviderUpdate(Strict):

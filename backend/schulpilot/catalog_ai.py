@@ -180,7 +180,9 @@ def remember(db, kind, resource, annotation):
     source = context_source(db, kind, resource)
     if not source or not source["ready"]:
         return
-    key = fingerprint([annotation["snapshot_id"], "tips-v1", resource.child_id, kind, resource.id])
+    from .catalog_search import MATCHER_VERSION
+
+    key = fingerprint([annotation["snapshot_id"], MATCHER_VERSION, resource.child_id, kind, resource.id])
     enqueue(db, annotation["snapshot_id"], child_id=resource.child_id, kind=kind, resource_id=resource.id)
     db.execute(
         update(CatalogRefresh)

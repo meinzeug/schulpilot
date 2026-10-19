@@ -231,7 +231,7 @@ void main() {
         expect(find.text('4 von 4 Aufgaben bearbeitet'), findsOneWidget);
         for (final fact in [
           '1 selbstständig',
-          '1 mit Hilfe',
+          '1 unterstützt / erneut',
           '1 noch unklar',
           '1 weiter üben',
         ]) {

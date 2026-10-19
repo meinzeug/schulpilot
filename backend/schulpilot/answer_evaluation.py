@@ -1,0 +1,113 @@
+"""Versioned, conservative subject rules. Model opinions are not verdicts.
+
+Content and a requested representation are separate dimensions. Only a
+recognised mathematical question or an explicit closed concept is expanded;
+unknown prose stays uncertain rather than being accepted by similarity.
+"""
+
+import re
+import unicodedata
+from fractions import Fraction
+
+from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
+
+VERSION = "subject_rules_v2"
+
+
+def normalized(value):
+    return " ".join(unicodedata.normalize("NFKC", value).casefold().strip().replace(",", ".").split())
+
+
+def result(outcome, reason, *, content=None, form=None, method=VERSION):
+    return {"version": 2, "outcome": outcome, "reason": reason, "method": method,
+            "dimensions": {"content": content or outcome, "form": form or "not_requested"}}
+
+
+def arithmetic(question, answer):
+    if question["type"] not in ("short", "gap"):
+        return None
+    prompt = question["prompt"]
+    instruction = fraction_instruction(prompt)
+    expression = re.search(
+        r"(?<![\d/])(\d{1,4})\s*/\s*([1-9]\d{0,3})\s*([+−-])\s*"
+        r"(\d{1,4})\s*/\s*([1-9]\d{0,3})(?![\d/])", prompt)
+    # Part questions and a numerator gap ask for a number, not the value of
+    # the entire fraction. Leave their established exact evaluation intact.
+    if re.search(r"\b(?:zähler|nenner|teiler|divisor|faktor)\b", prompt, re.I) and not instruction:
+        if not re.search(r"\b(?:als\s+bruch\s+mit\s+(?:dem\s+)?nenner)\b", prompt, re.I):
+            return None
+    if re.search(r"(?:_{2,}|□|\?+)\s*/|/\s*(?:_{2,}|□|\?+)", prompt):
+        return None
+    calculation = re.search(r"berechne|rechne|ergibt|ergebnis|summe|addiere|subtrahiere|wie viel", prompt, re.I)
+    equation_gap = re.search(r"=\s*(?:_{2,}|□|\?+)\s*[.!?]?\s*$", prompt)
+    if not instruction and not (expression and (calculation or equation_gap)):
+        return None
+    key, supplied = fraction_parts(question["answer"]), fraction_parts(answer)
+    if key is None or supplied is None:
+        return None
+    expected = Fraction(*key)
+    if expression:
+        a, b, op, c, d = expression.groups()
+        computed = Fraction(int(a), int(b)) + (1 if op == "+" else -1) * Fraction(int(c), int(d))
+        if computed != expected:
+            return result("uncertain", "Die gespeicherte Musterlösung passt nicht zur Rechnung. Die Aufgabe muss geklärt werden.")
+    if Fraction(*supplied) != expected:
+        return result("incorrect", "Die beiden Brüche haben noch nicht denselben Wert.")
+    try:
+        fraction_result(prompt, answer, [], question_type=question["type"])
+        denominator = re.search(r"\b(?:als\s+)?bruch\s+mit\s+(?:dem\s+)?nenner\s+(\d{1,4})\b", prompt, re.I)
+        if denominator and supplied[1] != int(denominator[1]):
+            raise ValueError("requested denominator")
+    except ValueError:
+        return result("incorrect", "Der Wert stimmt. Die Aufgabe verlangt noch eine bestimmte Bruchdarstellung.",
+                      content="correct", form="incorrect")
+    equivalent = supplied != key
+    return result("correct", (f"Das stimmt: {answer.strip()} ist genauso viel wie {question['answer']}."
+                              if equivalent else "Wert und verlangte Darstellung stimmen."),
+                  form="correct" if instruction or denominator else "not_requested")
+
+
+def closed_concept(question, answer):
+    """Small audited phrase rules, not a general semantic grader."""
+    expected = normalized(question["answer"])
+    value = " ".join(unicodedata.normalize("NFKC", answer).casefold().split()).rstrip(".! ")
+    # An answer wrapper may contain exactly the key, no added factual claim.
+    if len(expected.split()) <= 4 and any(value == prefix + expected for prefix in (
+        "die antwort ist ", "das ist ", "es ist ", "der begriff ist ")):
+        return result("correct", "Deine Formulierung nennt den gesuchten Begriff.")
+    prompt = normalized(question["prompt"])
+    if not re.search(r"wirbelsäule|wirbellos", prompt):
+        return None
+    if not re.fullmatch(r"(?:die |den |zu den )?wirbellosen?(?: tiere[ns]?)?", expected):
+        return None
+    # This precise positive classification accepts inflection and an optional
+    # matching reason. Negation, contradictory additions and other sentences
+    # intentionally fail the full match and remain open.
+    phrase = (r"(?:(?:es|das tier) (?:gehört|zählt) zu den |(?:es|das tier) ist (?:ein )?|(?:zu den |den |die ))?"
+              r"wirbellosen?(?:[rs] tier| tieren| tiere)?"
+              r"(?:,? (?:weil|da) (?:es|das tier) keine wirbelsäule (?:hat|besitzt))?")
+    if re.fullmatch(phrase, value):
+        return result("correct", "Du ordnest das Tier richtig als wirbellos ein.")
+    return None
+
+
+def evaluate(question, answer):
+    if question.get("language"):
+        from .language_evaluation import evaluate as language_evaluate
+
+        return language_evaluate(question, answer)
+    form = expanded_fraction(question["prompt"]) if question["type"] in ("choice", "gap", "short") else None
+    if form and (supplied := fraction_parts(answer)) is not None:
+        value_ok = Fraction(*supplied) == Fraction(*form)
+        return result("correct" if supplied == form else "incorrect",
+                      "Die verlangte Erweiterung stimmt." if supplied == form else "Multipliziere beide Zahlen mit dem verlangten Faktor.",
+                      content="correct" if value_ok else "incorrect", form="correct" if supplied == form else "incorrect")
+    if checked := arithmetic(question, answer):
+        return checked
+    if normalized(answer) in {normalized(v) for v in [question["answer"], *question.get("accepted", [])]}:
+        return result("correct", "Deine Antwort entspricht einer geprüften Lösung.")
+    if question["type"] == "short":
+        if checked := closed_concept(question, answer):
+            return checked
+        return result("uncertain", "Deine Antwort ist gespeichert. Du kannst die Prüfung öffnen oder den gesuchten Begriff präzisieren.")
+    return result("incorrect", "Die Antwort passt noch nicht zur Aufgabe.")

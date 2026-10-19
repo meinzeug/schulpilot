@@ -19,11 +19,13 @@ class SchoolDayScreen extends StatefulWidget {
   final AppState state;
   final String childId;
   final String? dayId;
+  final bool startWithPhotos;
   const SchoolDayScreen(
     this.state, {
     super.key,
     required this.childId,
     this.dayId,
+    this.startWithPhotos = false,
   });
 
   @override
@@ -88,6 +90,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
   late String? actor = widget.state.user?['id'];
   int generation = 0;
   bool foreground = true, routeVisible = true;
+  late bool captureRequested = widget.startWithPhotos;
   final preparationKeys = <String, String>{};
   AppState get state => widget.state;
   List<Json> get pages => (day?['pages'] as List? ?? []).cast<Json>();
@@ -373,6 +376,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         if (!mounted || !ownerMatches) return;
         final bytes = await cropMaterialPhoto(context, raw);
         if (bytes != null && mounted && ownerMatches) {
+          await ensureCollecting();
           await state.pendingUploads.add(
             state.user!['id'],
             widget.childId,
@@ -391,6 +395,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         : await pickMaterialPhoto(context, source);
     if (nativeAndroid) await state.storage.delete(key: 'camera_child');
     if (bytes == null || !mounted || !ownerMatches) return;
+    await ensureCollecting();
     await state.pendingUploads.add(
       state.user!['id'],
       widget.childId,
@@ -407,6 +412,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
   }
 
   Future<void> prepareInBackground() async {
+    setState(() => captureRequested = false);
     await sendPending();
     if (!mounted || !ownerMatches) return;
     final current = await state.api.get('/school-days/${day!['id']}');
@@ -438,6 +444,16 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     }
   }
 
+  Future<void> ensureCollecting() async {
+    if (day?['stage'] == 'collecting') return;
+    final updated = day?['stage'] == 'ready'
+        ? await state.api.post('/school-days/${day!['id']}/extend')
+        : await state.api.put('/school-days/${day!['id']}/stage', {
+            'stage': 'collecting',
+          });
+    if (mounted && ownerMatches) setState(() => day = updated);
+  }
+
   Future<void> replacePage(Json page) async {
     if (!allowUploads) return;
     await state.api.delete('/school-days/${day!['id']}/pages/${page['id']}');
@@ -464,7 +480,9 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
   }
 
   Widget childFrame(BuildContext context) {
-    final stage = day?['stage'] ?? 'collecting';
+    final stage = captureRequested && allowUploads && !waiting
+        ? 'collecting'
+        : day?['stage'] ?? 'collecting';
     final failed = ['failed', 'blocked'].contains(preparation?['status']);
     final failureHasHomeAction = failed && preparation?['can_retry'] != true;
     final step = stage == 'collecting'
@@ -560,12 +578,24 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (pendingPhotos.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Foto auf diesem Gerät gesichert. Es wird übertragen.',
+                      ),
+                      const SizedBox(height: 8),
+                      Image.memory(
+                        base64Decode(pendingPhotos.last['image']),
+                        height: 140,
+                        fit: BoxFit.contain,
+                      ),
+                    ],
                   ],
                 ),
               )
             else if (preparation?['status'] == 'postponed')
               childPostponed(context)
-            else if (failed)
+            else if (failed && !captureRequested)
               childPreparationFailed(context)
             else if (stage == 'collecting')
               childCollecting(context)
@@ -703,8 +733,23 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     ),
   );
 
+  Future<void> removeCollectedPage(Json page) async {
+    final accepted = await confirmDialog(
+      context,
+      'Foto entfernen?',
+      'Dieses neue Foto wird aus deinem Tagespaket entfernt.',
+    );
+    if (accepted && active) {
+      await state.api.delete('/school-days/${day!['id']}/pages/${page['id']}');
+    }
+  }
+
   Widget childCollecting(BuildContext context) {
-    final hasPhotos = pages.isNotEmpty || pendingPhotos.isNotEmpty;
+    final freshPages = pages
+        .where((page) => page['confirmed'] != true)
+        .toList();
+    final savedCount = pages.length - freshPages.length;
+    final hasPhotos = freshPages.isNotEmpty || pendingPhotos.isNotEmpty;
     final canAdd =
         allowUploads &&
         pages.length + pendingPhotos.length < (day!['max_pages'] as int);
@@ -781,22 +826,30 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             ],
           ),
         ),
+        if (savedCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              '$savedCount Seiten sind bereits gespeichert. Hier sammelst du nur die neuen Fotos.',
+              style: const TextStyle(color: muted),
+            ),
+          ),
         if (hasPhotos) ...[
           const SizedBox(height: 20),
           Text(
-            '${pages.length + pendingPhotos.length} ${pages.length + pendingPhotos.length == 1 ? 'Seite' : 'Seiten'} gesammelt',
+            '${freshPages.length + pendingPhotos.length} neue ${freshPages.length + pendingPhotos.length == 1 ? 'Seite' : 'Seiten'} gesammelt',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
-          if (pages.isNotEmpty)
+          if (freshPages.isNotEmpty)
             SizedBox(
               height: 156,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: pages.length,
+                itemCount: freshPages.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
-                  final page = pages[index];
+                  final page = freshPages[index];
                   return SizedBox(
                     width: 108,
                     child: Panel(
@@ -805,10 +858,33 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         children: [
                           SizedBox(
                             height: 58,
-                            child: _SchoolPagePhoto(
-                              state: state,
-                              page: page,
-                              key: ValueKey(page['id']),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _SchoolPagePhoto(
+                                  state: state,
+                                  page: page,
+                                  key: ValueKey(page['id']),
+                                ),
+                                if (page['confirmed'] != true &&
+                                    day!['synthetic'] != true)
+                                  Align(
+                                    alignment: Alignment.topRight,
+                                    child: IconButton.filledTonal(
+                                      tooltip:
+                                          'Foto ${page['page_number']} entfernen',
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 20,
+                                      ),
+                                      onPressed: working
+                                          ? null
+                                          : () => run(
+                                              () => removeCollectedPage(page),
+                                            ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 6),

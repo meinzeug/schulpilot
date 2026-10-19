@@ -4,6 +4,7 @@ import 'api.dart';
 import 'lesson_voice.dart';
 import 'learning_next_step.dart';
 import 'practice_evidence.dart';
+import 'tutor_sheet.dart';
 import 'ui.dart';
 
 class LearningProgressPanel extends StatelessWidget {
@@ -387,7 +388,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                       ),
                     if (facts.assisted > 0)
                       _RoundFact(
-                        '${facts.assisted} mit Hilfe',
+                        '${facts.assisted} unterstützt / erneut',
                         Icons.lightbulb_outline_rounded,
                       ),
                     if (facts.uncertain > 0)
@@ -466,7 +467,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                 ],
                 if (facts.uncertain > 0) ...[
                   const Text(
-                    'Unklare Antworten bleiben zur gemeinsamen Durchsicht offen.',
+                    'Die Prüfung einzelner Antworten ist noch offen. Das ist kein falsches Ergebnis.',
                   ),
                   const SizedBox(height: 18),
                 ],
@@ -485,6 +486,8 @@ class _ChildCoachingPanel extends StatelessWidget {
                         'kind': 'help',
                         'body':
                             'Ich brauche Hilfe bei ${unit['subject']}: ${unit['topic']}.',
+                        if (unit['supports_recheck'] == true)
+                          'unit_id': unit['id'],
                       });
                       if (context.mounted && current()) {
                         toast(context, 'Hilfewunsch gesendet.');
@@ -661,11 +664,46 @@ class _ChildCoachingPanel extends StatelessWidget {
                 for (final attempt in question['attempts'] as List? ?? [])
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
-                      '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe' : ''}',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
+                          '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe oder erneut' : ''}',
+                        ),
+                        AssessmentTrail(
+                          attempt['assessment_history'] as List? ?? [],
+                        ),
+                      ],
                     ),
                   ),
+                if ((question['attempts'] as List? ?? [])
+                        .lastOrNull?['outcome'] ==
+                    'uncertain') ...[
+                  if (unit['supports_recheck'] == true &&
+                      question['language'] is! Map)
+                    ActionButton(
+                      secondary: true,
+                      label: 'Antwort erneut prüfen',
+                      onPressed: () async {
+                        final current = _currentAction(context);
+                        await state.api.post(
+                          '/units/${unit['id']}/questions/${question['id']}/recheck',
+                        );
+                        if (current()) await refresh();
+                      },
+                    ),
+                  TextButton.icon(
+                    onPressed: () => showTutorSheet(
+                      context,
+                      state,
+                      childId: unit['child_id'],
+                      unitId: unit['id'],
+                    ),
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('Mit der Lernhilfe klären'),
+                  ),
+                ],
                 const SizedBox(height: 14),
               ],
             ],
@@ -785,7 +823,7 @@ class _DayGoalLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final remaining = time?['daily_remaining_seconds'];
     String? text;
-    if (time?['daily_goal_met'] == true) {
+    if (time?['goal_required'] == true && time?['daily_goal_met'] == true) {
       text = 'Tagesziel erreicht.';
     } else if (time?['goal_required'] == true &&
         remaining is num &&

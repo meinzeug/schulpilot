@@ -25,5 +25,10 @@ def evaluate(question, answer):
     reason = ("Bestätigte Antwortvariante erfüllt das Lernziel." if correct else
               "Antwort entspricht keiner für dieses Lernziel bestätigten Variante." if outcome == "incorrect" else
               "Freier Satz: keine verlässliche vollständige Regelbewertung vorhanden.")
+    dimensions = {policy.criterion: outcome}
+    if task.skill == "spelling":
+        dimensions.update(spelling=outcome, meaning="not_separately_tested")
+        if not correct:
+            reason = "Die Schreibung passt noch nicht zu dem gesuchten Heftwort. Ein Tipp hilft beim Prüfen der Buchstaben."
     return {"version": 1, "outcome": outcome, "reason": reason, "criterion": policy.criterion,
-            "dimensions": {policy.criterion: outcome}, "method": "language_rule_v1"}
+            "dimensions": dimensions, "method": "language_rule_v1"}

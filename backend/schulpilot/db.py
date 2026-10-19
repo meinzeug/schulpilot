@@ -333,6 +333,8 @@ class Material(Base):
     uncertainties = Column(JSON, default=list, nullable=False)
     homework = Column(JSON, default=list, nullable=False)
     confirmed = Column(Boolean, default=False, nullable=False)
+    confirmation_digest = Column(String(64))
+    task_decisions = Column(JSON, server_default="[]", nullable=False)
     synthetic = Column(Boolean, default=False, nullable=False)
     fixture_id = Column(String(40))
     extraction_provider = Column(String(20), default="", server_default="", nullable=False)
@@ -348,6 +350,10 @@ class Assignment(Base):
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     material_id = Column(ForeignKey("materials.id", ondelete="SET NULL"))
     kind = Column(String(24), nullable=False)  # parent, exam, homework, interest
+    origin_kind = Column(String(24))
+    source_key = Column(String(64))
+    source_revisions = Column(JSON, default=list, server_default="[]", nullable=False)
+    source_status = Column(String(20), default="confirmed", server_default="confirmed", nullable=False)
     subject = Column(String(80), nullable=False)
     subject_id = Column(ForeignKey("subjects.id", ondelete="SET NULL"), index=True)
     topic = Column(String(160), nullable=False)
@@ -357,6 +363,7 @@ class Assignment(Base):
     mandatory = Column(Boolean, default=True, nullable=False)
     done = Column(Boolean, default=False, nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (Index("uq_assignment_source_key", "source_key", unique=True),)
 
 
 class LearningUnit(Base):
@@ -502,6 +509,22 @@ class Attempt(Base):
     created = Column(Float, default=now, nullable=False)
     __table_args__ = (UniqueConstraint("unit_id", "question_id", "id"),
                       Index("uq_attempt_request", "unit_id", "request_key", unique=True))
+
+
+class AttemptAssessment(Base):
+    """Append-only corrections; original answers, time and support never change."""
+
+    __tablename__ = "attempt_assessments"
+    id = Column(String(32), primary_key=True, default=uid)
+    attempt_id = Column(ForeignKey("attempts.id", ondelete="CASCADE"), nullable=False, index=True)
+    rules_version = Column(String(40), nullable=False)
+    previous_outcome = Column(String(20), nullable=False)
+    outcome = Column(String(20), nullable=False)
+    previous_evaluation = Column(JSON)
+    evaluation = Column(JSON, nullable=False)
+    actor_id = Column(ForeignKey("users.id", ondelete="SET NULL"))
+    created = Column(Float, default=now, nullable=False)
+    __table_args__ = (UniqueConstraint("attempt_id", "rules_version"),)
 
 
 class VocabularyCollection(Base):
@@ -654,6 +677,7 @@ class Message(Base):
     sender_id = Column(ForeignKey("users.id", ondelete="SET NULL"))
     kind = Column(String(24), nullable=False)
     body = Column(String(1000), nullable=False)
+    context = Column(JSON)
     resolved = Column(Boolean, default=False, nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
 

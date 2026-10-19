@@ -129,7 +129,7 @@ def process(job_id):
                     "Das Material wurde seit Auftragserstellung geändert oder gelöscht. Bitte neu vorbereiten."
                 )
             if job.payload.get("assignment_id") and (
-                not assignment or assignment.revision != job.payload.get("assignment_revision")
+                not assignment or assignment.source_status != "confirmed" or assignment.revision != job.payload.get("assignment_revision")
             ):
                 raise ProviderError(
                     "Der Elternauftrag wurde inzwischen geändert oder gelöscht. Bitte den aktuellen Plan öffnen."
@@ -186,7 +186,8 @@ def process(job_id):
             payload = {
                 "function": job.kind,
                 "grade": child.grade,
-                "material": {"subject": material.subject, "topic": material.topic, "content": material.content}
+                "material": {"subject": material.subject, "topic": material.topic, "content": material.content,
+                             "uncertainties": material.uncertainties}
                 if material and job.kind != "extract"
                 else None,
                 "goal": {
@@ -225,6 +226,7 @@ def process(job_id):
                         "subject": m.subject,
                         "topic": m.topic,
                         "content": m.content,
+                        "uncertainties": m.uncertainties,
                     }
                     for g in job.payload["groups"]
                     for m in source_pages
@@ -239,6 +241,7 @@ def process(job_id):
                 payload["material"]["content"] = "\n\n".join(
                     f"Heftseite {m.page_number or i + 1}:\n{m.content}" for i, m in enumerate(source_pages)
                 )
+                payload["material"]["uncertainties"] = [warning for m in source_pages for warning in m.uncertainties]
             if job.kind == "unit" and job.payload.get("review_of"):
                 from .coaching import focus_ids, goals_for, root_and_units
 
@@ -303,7 +306,7 @@ def process(job_id):
                     "Das Material wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."
                 )
             if job.payload.get("assignment_id") and (
-                not assignment or assignment.revision != job.payload.get("assignment_revision")
+                not assignment or assignment.source_status != "confirmed" or assignment.revision != job.payload.get("assignment_revision")
             ):
                 raise ProviderError(
                     "Das Elternziel wurde während der Verarbeitung geändert. Ausgabe wurde nicht übernommen."

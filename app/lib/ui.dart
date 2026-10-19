@@ -1582,6 +1582,13 @@ String statusLabel(String? status) => switch (status) {
   'not_started' => 'Nicht begonnen',
   'active' => 'Begonnen',
   'paused' => 'Pausiert',
+  'planned' => 'Geplant',
+  'ready' => 'Bereit',
+  'pending' || 'queued' || 'running' || 'processing' => 'Wird vorbereitet',
+  'needs_review' => 'Text kurz prüfen',
+  'blocked' => 'Vorbereitung pausiert',
+  'failed' => 'Vorbereitung nicht gelungen',
+  'due' => 'Zum Wiederholen',
   'practiced_today' => 'Heute schon geübt',
   'completed' => 'Abgeschlossen',
   _ => status ?? '',
@@ -1599,6 +1606,64 @@ String outcomeLabel(String? outcome) => switch (outcome) {
   'uncertain' => 'Nicht sicher bewertbar',
   _ => outcome ?? '',
 };
+
+String friendlyDate(Object? value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+  if (date == null || date.year < 2000) return 'noch offen';
+  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+}
+
+class AssessmentTrail extends StatelessWidget {
+  final List entries;
+  const AssessmentTrail(this.entries, {super.key});
+  @override
+  Widget build(BuildContext context) => entries.isEmpty
+      ? const SizedBox.shrink()
+      : ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          leading: const Icon(Icons.fact_check_outlined),
+          title: const Text('Bewertung nachgeprüft'),
+          childrenPadding: const EdgeInsets.only(bottom: 12),
+          children: [
+            for (final entry in entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${outcomeLabel(entry['previous_outcome'])} → ${outcomeLabel(entry['outcome'])}',
+                ),
+              ),
+            const Text(
+              'Deine ursprüngliche Antwort, die Lernzeit und die erfassten Hilfen bleiben erhalten.',
+              style: TextStyle(color: muted, fontSize: 13),
+            ),
+          ],
+        );
+}
+
+/// Own form fields until the closing route animation has actually disposed them.
+class DialogControllerScope extends StatefulWidget {
+  final List<TextEditingController> controllers;
+  final Widget child;
+  const DialogControllerScope({
+    super.key,
+    required this.controllers,
+    required this.child,
+  });
+  @override
+  State<DialogControllerScope> createState() => _DialogControllerScopeState();
+}
+
+class _DialogControllerScopeState extends State<DialogControllerScope> {
+  @override
+  Widget build(BuildContext context) => widget.child;
+  @override
+  void dispose() {
+    for (final controller in widget.controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+}
 
 Future<bool> confirmDialog(
   BuildContext context,

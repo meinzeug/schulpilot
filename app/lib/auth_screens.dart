@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'app_version.dart';
 import 'download_panel.dart';
 import 'ui.dart';
 import 'store_screens.dart';
@@ -692,7 +693,7 @@ Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und k�
 
 Die Demo enthält vorbereitete Beispiele. In deinem eigenen Konto übst du mit deinem Unterrichtsmaterial und KI-Unterstützung.
 
-Version 1.0.1''',
+Version $appVersion''',
                     style: const TextStyle(fontSize: 15, height: 1.8),
                   ),
                 ],

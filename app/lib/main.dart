@@ -253,10 +253,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         builder: (context, s) => SchoolDayScreen(
           widget.state,
           key: ValueKey(
-            '${s.pathParameters['id']}:${s.uri.queryParameters['day'] ?? 'today'}',
+            '${s.pathParameters['id']}:${s.uri.queryParameters['day'] ?? 'today'}:${s.uri.queryParameters['capture'] ?? ''}',
           ),
           childId: s.pathParameters['id']!,
           dayId: s.uri.queryParameters['day'],
+          startWithPhotos: s.uri.queryParameters['capture'] == '1',
         ),
       ),
       GoRoute(

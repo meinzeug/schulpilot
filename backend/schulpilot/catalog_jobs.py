@@ -146,6 +146,8 @@ def context_source(db, kind, resource):
         "subject_id": subject_id,
         "title": title,
         "content": content,
+        "matching_content": ((resource.question + "\n" + (resource.reply or {}).get("answer", ""))
+                             if kind == "tutor" else content),
         "source_fingerprint": source_key,
         "ready": confirmed,
         "level": level,
@@ -186,7 +188,7 @@ def refresh_context(db, kind, resource, annotation=None):
     context.fingerprint, context.snapshot_id, context.matcher_version = key, snapshot, MATCHER_VERSION
     context.status = "ready" if source["ready"] else "source_changed"
     context.matches = (
-        match_sections(db, source["subject_id"], source["title"], source["content"], source["child"])
+        match_sections(db, source["subject_id"], source["title"], source["matching_content"], source["child"])
         if source["ready"]
         else []
     )

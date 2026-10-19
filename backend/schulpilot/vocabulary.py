@@ -368,7 +368,7 @@ def task_for(item, data, index, alternatives):
     options.sort(key=lambda word: fingerprint([item.id, index, word]))
     return {"id": "v" + str(index + 1), "type": "choice" if data.skill == "recognition" else "short",
             "prompt": ("Höre zu. Was bedeutet das Wort auf Deutsch?" if data.skill == "listening" else
-                       "Was bedeutet dieses Wort auf Deutsch?" if reverse else f"Schreibe auf {s.TARGETS[item.target_locale].split(' · ')[0]}:"),
+                       "Was bedeutet dieses Wort auf Deutsch?" if reverse else f"Schreibe das Wort aus deinem Heft auf {s.TARGETS[item.target_locale].split(' · ')[0]}:"),
             "options": options if data.skill == "recognition" else [], "answer": expected,
             "accepted": [] if data.skill == "recognition" else item.meaning_variants if reverse else item.variants,
             "hints": ["Denk an die bestätigte Bedeutung im genannten Zusammenhang.",

@@ -311,6 +311,19 @@ def focus_ids(db, unit, action):
     return [g["id"] for g in states[:2]]
 
 
+def persistent_errors(db, units):
+    done = [u for u in units if u.status == "completed"]
+    return len(done) >= 2 and all(
+        any(q["deterministic_outcome"] == "incorrect" and len(q["attempts"]) >= 2 for q in observations(db, u))
+        for u in done[-2:]
+    )
+
+
+def open_assessment_only(db, unit):
+    outcomes = [q["deterministic_outcome"] for q in observations(db, unit)]
+    return "uncertain" in outcomes and "incorrect" not in outcomes
+
+
 def progress(db, unit, *, ledger=None):
     from .learning_progress import read_ledger, topic_evidence, totals
 
@@ -334,6 +347,8 @@ def progress(db, unit, *, ledger=None):
         state = "needs_practice"
     else:
         state = "secure" if secure else "consolidating" if dates else "learning"
+    if completed and open_assessment_only(db, latest):
+        state = "assessment_open"
     try:
         catalog = goal_catalog(db, root)
         context(db, db.get(LearningUnit, catalog.unit_id) if catalog else root)
@@ -345,6 +360,7 @@ def progress(db, unit, *, ledger=None):
         "learning": "Gelernt – jetzt selbstständig prüfen",
         "checking": "Eine neue Abrufprobe steht bereit",
         "needs_practice": "Gezielt weiter üben",
+        "assessment_open": "Antwortprüfung offen – mit der Lernhilfe klären",
         "consolidating": "Wissen festigen und später wieder abrufen",
         "secure": "Im geprüften Stoff gefestigt",
         "source_changed": "Lernstoff geändert oder entfernt – gemeinsam neu prüfen",
@@ -380,7 +396,9 @@ def progress(db, unit, *, ledger=None):
             if latest.completed
             else None,
         ),
-        "needs_parent": not sources_current or bool(coaching and coaching.decision == "parent_help"),
+        "needs_parent": not sources_current or bool(coaching and coaching.decision == "parent_help" and persistent_errors(db, units)),
+        "needs_source_review": not sources_current,
+        "assessment_open": state == "assessment_open",
         "notice": "Gilt für den bestätigten Stoff dieser Lernfolge. Keine Garantie für den gesamten Unterricht; spätere Wiederholungen bleiben wichtig.",
     }
 
@@ -417,7 +435,7 @@ def plan_review(db, unit):
     evidence = progress(db, unit)
     clean = independently_correct(db, unit)
     done = [u for u in units if u.status == "completed"]
-    recent_hard = len(done) >= 2 and all(not independently_correct(db, u) for u in done[-2:])
+    recent_hard = persistent_errors(db, done)
     action = "repair" if not clean else "spaced" if unit.round_kind in CHECK_KINDS else "check"
     if action == "spaced" and (
         not evidence["learning_goals"]
@@ -429,6 +447,8 @@ def plan_review(db, unit):
         "check": "Eine neue kurze Abrufprobe zeigt, was du schon ohne Hilfe anwenden kannst.",
         "spaced": "Diese Abrufprobe ist selbstständig gelungen. Wir prüfen den Stoff an einem späteren Tag erneut.",
     }[action]
+    if open_assessment_only(db, unit):
+        reason = "Die Prüfung einzelner Antworten ist offen. Das ist kein nachgewiesener Fehler. Die Lernhilfe kann die Antwort klären; eine neue kurze Runde bietet einen weiteren Versuch ohne die vorige Vorlage."
     from .daily_planner import period_starts
 
     start, _ = period_starts(today, prefs.timezone)
@@ -436,7 +456,7 @@ def plan_review(db, unit):
     if recent_hard:
         action, reason = (
             "parent_help",
-            "Zwei Runden brauchten Unterstützung oder blieben unklar. Lass uns vor weiteren Aufgaben gemeinsam mit deinen Eltern auf die schwierigen Schritte schauen.",
+            "In zwei Runden blieb nach weiteren Versuchen ein Fehler offen. Die App bietet eine andere Erklärung an; bei Bedarf hilft ein gemeinsamer Blick auf diesen Schritt.",
         )
     elif action in ("repair", "check") and rounds_today >= RECOMMENDED_DAILY_ROUNDS:
         reason += " Eine kurze Pause kann guttun. Danach geht es mit dem nächsten Lernschritt weiter."
@@ -507,6 +527,7 @@ def context(db, unit):
                 "subject": material.subject,
                 "topic": material.topic,
                 "content": material.content,
+                "uncertainties": material.uncertainties,
             }
         )
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
@@ -543,13 +564,67 @@ def context(db, unit):
         "grade": child.grade,
         "required_subject": unit.subject,
         "required_topic": unit.topic,
-        "materials": [{k: m[k] for k in ("subject", "topic", "content")} for m in materials],
+        "materials": [{k: m[k] for k in ("subject", "topic", "content", "uncertainties")} for m in materials],
         "goal": goal,
         "completed_questions": completed_questions,
         "previous_prompts": [q["prompt"] for previous in chain for q in previous.questions][-80:],
         "learning_goals": snapshot["learning_goals"],
     }
     return signature, payload, [{"id": m["id"], "revision": m["revision"]} for m in materials]
+
+
+def report_projection(db, unit, stored):
+    """Every screen uses saved verdicts; model prose cannot claim bookkeeping."""
+    if not stored:
+        return stored
+    report = copy.deepcopy(stored)
+    def factual_prose(value):
+        sentences = re.split(r"(?<=[.!?])\s+", value)
+        return " ".join(s for s in sentences if not re.search(
+            r"gespeichert|verbucht|bewertet|mit\s+hilfe|selbstständig|alleine?\s+gelöst|hinweis\w*\s+(?:genutzt|verwendet)", s, re.I))
+
+    for field in ("strengths", "practice_focus"):
+        if isinstance(report.get(field), list):
+            report[field] = [text for value in report[field] if (text := factual_prose(value))]
+    if isinstance(report.get("explanation"), str):
+        report["explanation"] = factual_prose(report["explanation"])
+    items = {q["question_id"]: q for q in observations(db, unit)}
+    independent = supported = incorrect = uncertain = 0
+    for q in items.values():
+        attempts = q["attempts"]
+        if not attempts:
+            continue
+        if q["deterministic_outcome"] == "correct":
+            if len(attempts) == 1 and not attempts[-1]["assisted"]:
+                independent += 1
+            else:
+                supported += 1
+        elif q["deterministic_outcome"] == "incorrect":
+            incorrect += 1
+        else:
+            uncertain += 1
+    report["summary"] = (f"{independent} beim ersten Versuch selbstständig richtig, "
+                         f"{supported} mit Unterstützung oder erneut richtig, {incorrect} weiter üben, "
+                         f"{uncertain} Bewertungen offen. Eine offene Prüfung ist kein nachgewiesener Fehler.")
+    for review in report.get("question_reviews", []):
+        observed = items.get(review["question_id"])
+        if observed is None:
+            continue
+        known = observed["deterministic_outcome"]
+        review["saved_outcome"] = known
+        review["hints_used"] = observed["hints_used"]
+        if known != "uncertain":
+            if review.get("outcome") != known:
+                review["feedback"] = observed["task_explanation"]
+            review["outcome"], review["assessment_kind"] = known, "fixed_result"
+        # Keep explanations, but discard model-generated claims about state,
+        # help or persistence. These are supplied from our own saved events.
+        prose = factual_prose(review.get("feedback", ""))
+        label = {"correct": "Gespeichert: richtig.", "incorrect": "Gespeichert: noch nicht richtig.",
+                 "uncertain": "Die Prüfung ist offen; eine KI-Einschätzung ändert sie nicht."}[known]
+        support = f" {observed['hints_used']} Hinweise aufgerufen." if observed["hints_used"] else " Kein Aufgabenhinweis aufgerufen."
+        review["feedback"] = label + support + (" " + prose if prose else "")
+    return report
 
 
 def view(db, unit):
@@ -565,6 +640,12 @@ def view(db, unit):
             "failed",
             "Die frühere Verarbeitung ist nicht mehr verfügbar. Deine Antworten bleiben gespeichert.",
         )
+    decision = item.decision
+    if status == "ready" and decision == "parent_help":
+        _, units = root_and_units(db, unit)
+        if not persistent_errors(db, units):
+            decision = "check" if independently_correct(db, unit) else "repair"
+            reason = "Die App bietet zunächst eine passende Erklärung und einen weiteren Lernschritt. Eine offene Bewertung ist kein nachgewiesener Fehler."
     practice_job = db.scalar(
         select(Job)
         .where(
@@ -577,9 +658,9 @@ def view(db, unit):
     )
     return {
         "status": status,
-        "decision": item.decision,
+        "decision": decision,
         "reason": reason,
-        "report": item.report,
+        "report": report_projection(db, unit, item.report),
         "next_unit_id": item.next_unit_id,
         "next_review": item.next_review,
         "request_count": item.request_count,

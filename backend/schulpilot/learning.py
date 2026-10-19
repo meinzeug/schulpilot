@@ -1,4 +1,3 @@
-import unicodedata
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -12,6 +11,7 @@ from .db import (
     Activity,
     Assignment,
     Attempt,
+    AttemptAssessment,
     Child,
     Family,
     Job,
@@ -42,6 +42,7 @@ def record(db, child_id, kind, detail=None, unit_id=None):
 
 
 def material_data(material):
+    from .material_tasks import preview as task_preview
     from .material_vocabulary import preview
 
     return {
@@ -68,13 +69,18 @@ def material_data(material):
             "created",
             "revision",
         )
-    } | {"vocabulary_preview": preview(material.subject, material.topic, material.content) if not material.synthetic else None}
+    } | {"vocabulary_preview": preview(material.subject, material.topic, material.content) if not material.synthetic else None,
+         "task_preview": task_preview(material.content, material.homework, material.task_decisions),
+         "confirmed_tasks": [row["text"] for row in task_preview(material.content, material.homework, material.task_decisions)
+                             if row["classification"] == "homework" and any(
+                                 d["key"] == row["key"] and d["classification"] == "homework" for d in material.task_decisions or [])],
+         "supports_task_confirmation": True}
 
 
 def assignment_data(assignment):
     return {
         k: getattr(assignment, k)
-        for k in ("id", "kind", "subject", "topic", "note", "due", "scheduled_for", "mandatory", "done", "material_id")
+        for k in ("id", "kind", "origin_kind", "source_status", "source_revisions", "subject", "topic", "note", "due", "scheduled_for", "mandatory", "done", "material_id")
     }
 
 
@@ -142,16 +148,16 @@ def learning_times(db, children):
     result = {}
     for id, (prefs, today, _, _) in periods.items():
         daily, weekly = totals.get(id, (0, 0))
+        required = today.weekday() in prefs.weekdays and not (prefs.pause_until and today <= prefs.pause_until)
         result[id] = {
             "daily_active_seconds": daily,
             "weekly_active_seconds": weekly,
             "daily_goal_minutes": prefs.daily_minutes,
             "weekly_goal_minutes": prefs.weekly_minutes,
-            "daily_goal_met": daily >= prefs.daily_minutes * 60,
+            "daily_goal_met": bool(required and daily >= prefs.daily_minutes * 60),
             "weekly_goal_met": weekly >= prefs.weekly_minutes * 60,
             "daily_remaining_seconds": max(0, prefs.daily_minutes * 60 - daily),
-            "goal_required": today.weekday() in prefs.weekdays
-            and not (prefs.pause_until and today <= prefs.pause_until),
+            "goal_required": bool(required),
         }
     return result
 
@@ -204,6 +210,11 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
 
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
+    history = {}
+    for row in db.scalars(select(AttemptAssessment).where(AttemptAssessment.attempt_id.in_([a.id for a in attempts]))
+                           .order_by(AttemptAssessment.created, AttemptAssessment.id)):
+        history.setdefault(row.attempt_id, []).append({"previous_outcome": row.previous_outcome,
+            "outcome": row.outcome, "rules_version": row.rules_version, "created": row.created})
     questions = []
     for q in unit.questions:
         value = dict(q)
@@ -222,7 +233,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
                 value["choices"] = sorted(pair.split("|")[1] for pair in q["options"])
         value["attempts"] = [
             {"id": a.id, "answer": a.answer, "outcome": a.outcome, "assisted": a.assisted, "created": a.created,
-             "evaluation": a.evaluation, "input_method": a.input_method}
+             "evaluation": a.evaluation, "input_method": a.input_method, "assessment_history": history.get(a.id, [])}
             for a in attempts
             if a.question_id == q["id"]
         ]
@@ -246,6 +257,8 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         else "",
         "questions": questions,
         "pending_feedback": pending_feedback(unit, attempts, events),
+        "supports_recheck": True,
+        "supports_answer_idempotency": True,
         "status": unit.status,
         "synthetic": unit.synthetic,
         "active_seconds_approx": unit.active_seconds,
@@ -319,10 +332,12 @@ def summary(db, child, days, *, learning_paths=None):
             select(Activity).where(Activity.child_id == child.id, Activity.kind == "hint", Activity.created >= since)
         )
     )
-    uncertain = sum(a.outcome == "uncertain" for a in attempts)
+    final = {(a.unit_id, a.question_id): a for a in sorted(attempts, key=lambda a: (a.created, a.id))}
+    uncertain = sum(a.outcome == "uncertain" for a in final.values())
     topics = list(dict.fromkeys(f"{u.subject}: {u.topic}" for u in recent))
     coach_support = [
-        p for p in (paths(db, child.id) if learning_paths is None else learning_paths) if p["needs_parent"]
+        p for p in (paths(db, child.id) if learning_paths is None else learning_paths)
+        if p["needs_parent"] and p["state"] != "source_changed"
     ]
     if unresolved:
         support = f"Ja – {len(unresolved)} offener Hilfewunsch. Bitte gemeinsam das Anliegen ansehen."
@@ -333,9 +348,9 @@ def summary(db, child, days, *, learning_paths=None):
             + ". Die gespeicherte Lernbegleitung zeigt den Anlass."
         )
     elif uncertain:
-        support = f"Bitte {uncertain} nicht sicher bewertbare Antwort(en) gemeinsam ansehen."
-    elif any(a.outcome == "incorrect" for a in attempts):
-        support = "Ein gemeinsamer Blick auf die zuletzt schwierigen Aufgaben ist sinnvoll."
+        support = f"Für {uncertain} offene Bewertung(en) bietet die App eine Antwortprüfung an. Daraus folgt noch kein fachlicher Hilfebedarf."
+    elif any(a.outcome == "incorrect" for a in final.values()):
+        support = "Die App bietet zu den noch schwierigen Aufgaben eine andere Erklärung und kurze Anschlussübungen."
     elif attempts:
         support = "Aktuell kein ausdrücklicher Hilfebedarf erfasst. Weitere Wiederholungen bleiben sinnvoll."
     else:
@@ -384,7 +399,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         )
     )
     assignments = list(
-        db.scalars(select(Assignment).where(Assignment.child_id == child.id, Assignment.done.is_(False)))
+        db.scalars(select(Assignment).where(Assignment.child_id == child.id, Assignment.done.is_(False), Assignment.source_status == "confirmed"))
     )
     reviews = list(
         db.scalars(select(Mastery).where(Mastery.child_id == child.id, Mastery.next_review <= today.isoformat()))
@@ -610,7 +625,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         notices.append("Weiterer Stoff wird auf die nächsten Lerntage verteilt. Das Tagesziel bleibt gleich.")
     if proposal["beyond_week_steps"]:
         notices.append(
-            "Nicht der ganze gespeicherte Stoff passt in die nächsten sieben Tage. Bitte bei Bedarf gemeinsam Schwerpunkte setzen."
+            "Wir verteilen den Stoff in kleine Portionen. Was diese Woche nicht passt, bleibt gespeichert und wird später eingeplant."
         )
     if proposal["conflicts"]:
         notices.append(
@@ -904,7 +919,8 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
                 "resolved": m.resolved,
                 "sender_role": db.get(User, m.sender_id).role
                 if m.sender_id and db.get(User, m.sender_id)
-                else "parent",
+                else "system",
+                "context": m.context,
                 "created": m.created,
             }
             for m in db.scalars(
@@ -955,6 +971,9 @@ def edit_assignment(child_id: str, assignment_id: str, data: s.AssignmentCreate,
         if not material or material.child_id != child_id:
             raise HTTPException(404, "Material nicht gefunden.")
     values = data.model_dump(mode="json")
+    if a.origin_kind is None:
+        a.origin_kind = a.kind
+    a.source_status = "confirmed"  # a managing parent explicitly reviews it
     if "scheduled_for" not in data.model_fields_set:
         # Older clients cannot see the new start-date field; preserve the
         # binding date unless a managing parent explicitly sends a new value.
@@ -1142,48 +1161,53 @@ def question(unit, question_id):
 
 
 @router.post("/units/{unit_id}/questions/{question_id}/hint")
-def hint(unit_id: str, question_id: str, p=Depends(child_user), db=Depends(get_db)):
+def hint(unit_id: str, question_id: str, p=Depends(child_user), db=Depends(get_db),
+         idempotency_key: str | None = Header(None, alias="Idempotency-Key", min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")):
     unit = get_unit(db, p, unit_id, True, True)
     q = question(unit, question_id)
+    saved = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint")))
+    if idempotency_key:
+        replay = next((event for event in saved if event.detail.get("request_key") == idempotency_key), None)
+        if replay:
+            if replay.detail.get("question_id") != question_id:
+                raise HTTPException(409, "Dieser Hinweisschlüssel gehört zu einer anderen Aufgabe.")
+            return {"hint": replay.detail["text"], "hints_used": replay.detail["number"],
+                    "exhausted": replay.detail["number"] >= 3}
+    if unit.status not in ("active", "paused"):
+        raise HTTPException(409, "Diese Runde ist abgeschlossen. Du kannst die gespeicherte Erklärung im Rückblick lesen.")
+    previous = db.scalar(select(Attempt).where(Attempt.unit_id == unit.id, Attempt.question_id == question_id)
+                         .order_by(Attempt.created.desc(), Attempt.id.desc()).limit(1))
+    if previous and previous.outcome in ("correct", "uncertain"):
+        raise HTTPException(409, "Diese Antwort ist gespeichert. Öffne die Erklärung oder kläre die offene Prüfung mit der Lernhilfe.")
     count = len(list(db.scalars(select(Activity.id).where(Activity.unit_id == unit.id, Activity.kind == "hint"))))
-    if count >= len(unit.questions) * 3:
-        raise HTTPException(409, "Alle Hinweise wurden bereits angezeigt. Du kannst deine Eltern um Hilfe bitten.")
-    used = len(
-        [
+    shown = [
             e
             for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
             if e.detail.get("question_id") == question_id
         ]
-    )
-    text = q["hints"][min(used, len(q["hints"]) - 1)]
-    record(db, unit.child_id, "hint", {"question_id": question_id, "text": text}, unit.id)
+    if count >= len(unit.questions) * 3 or len(shown) >= 3:
+        raise HTTPException(409, "Die Hinweise sind gelesen. Öffne die Erklärung und versuche den gezeigten Schritt; danach geht es mit einer passenden Runde weiter.")
+    from .learning_hints import next_hint
+
+    text = next_hint(q, previous.answer if previous else None, [e.detail.get("text") for e in shown])
+    if text is None:
+        raise HTTPException(409, "Öffne die Erklärung für einen gemeinsam gelösten Schritt.")
+    record(db, unit.child_id, "hint", {"question_id": question_id, "text": text,
+                                     "number": len(shown)+1, "request_key": idempotency_key}, unit.id)
     db.commit()
-    return {"hint": text}
+    return {"hint": text, "hints_used": len(shown)+1, "exhausted": len(shown)+1 >= 3}
 
 
 def normalized(text):
-    return " ".join(unicodedata.normalize("NFKC", text).casefold().strip().replace(",", ".").split())
+    from .answer_evaluation import normalized as normalize_answer
+
+    return normalize_answer(text)
 
 
 def evaluate(q, answer):
-    if q.get("language"):
-        from .language_evaluation import evaluate as evaluate_language
+    from .answer_evaluation import evaluate as assess
 
-        return evaluate_language(q, answer)["outcome"]
-    from .checks import expanded_fraction, fraction_parts
-
-    expected_form = expanded_fraction(q["prompt"]) if q["type"] in ("choice", "gap", "short") else None
-    if expected_form:
-        parts = fraction_parts(answer)
-        if parts is not None:
-            return "correct" if parts == expected_form else "incorrect"
-        return "uncertain" if q["type"] == "short" else "incorrect"
-    valid = {normalized(v) for v in [q["answer"], *q["accepted"]]}
-    if normalized(answer) in valid:
-        return "correct"
-    if q["type"] == "short":
-        return "uncertain"
-    return "incorrect"
+    return assess(q, answer)["outcome"]
 
 
 def learning_block(db, unit):
@@ -1231,6 +1255,8 @@ def learning_block(db, unit):
         if reason := continuation_block(db, unit, child):
             return reason
     assignment = db.get(Assignment, unit.assignment_id) if unit.assignment_id else None
+    if assignment and assignment.source_status != "confirmed":
+        return "Die Heftseite dieses Auftrags wurde geändert. Bitte zuerst den aktuellen Auftrag prüfen."
     if assignment and assignment.scheduled_for and assignment.scheduled_for > today.isoformat():
         return f"Dieser Lernauftrag beginnt am {assignment.scheduled_for}. Deine Eltern können ihn neu planen."
     return None
@@ -1307,14 +1333,24 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     previous = [a for a in existing if a.question_id == question_id]
     if previous and (previous[-1].outcome in ("correct", "uncertain") or len(previous) >= 3):
         raise HTTPException(409, "Diese Aufgabe wurde bereits abgeschlossen.")
-    hinted = bool(
+    explained = bool(
         db.scalar(select(Activity.id).where(Activity.unit_id == unit.id, Activity.kind == "explanation"))
-    ) or any(
+    )
+    had_hint = any(
         e.detail.get("question_id") == question_id
         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "hint"))
     )
-    outcome = evaluate(q, data.answer)
-    evaluation = None
+    hinted = explained or had_hint
+    from .answer_evaluation import evaluate as assess
+
+    evaluation = assess(q, data.answer)
+    outcome = evaluation["outcome"]
+    if q["type"] == "match":
+        from .learning_hints import match_parts
+
+        evaluation["parts"] = match_parts(q, data.answer)
+        right = sum(p["outcome"] == "correct" for p in evaluation["parts"])
+        evaluation["reason"] = f"{right} von {len(evaluation['parts'])} Zuordnungen passen. Richtige Paare bleiben erhalten."
     if q.get("language"):
         from .language_evaluation import evaluate as evaluate_language
         from .vocabulary_review import recent_exposure
@@ -1336,6 +1372,14 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
                         for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "language_stimulus")))
             if not heard:
                 raise HTTPException(409, "Bitte zuerst den Hörtext abspielen. Ohne Audio ist das keine Hörübung.")
+    evaluation.update(attempt_number=len(previous) + 1,
+                      independent_attempt=not bool(hinted or previous),
+                      independent_evidence=outcome == "correct" and not bool(hinted or previous))
+    evaluation["support_reasons"] = list(dict.fromkeys([
+        *evaluation.get("support_reasons", []),
+        *(["hint"] if had_hint else []), *(["explanation"] if explained else []),
+        *(["another_attempt"] if previous else []),
+    ]))
     attempt = Attempt(
         unit_id=unit.id, question_id=question_id, answer=data.answer, outcome=outcome, assisted=bool(hinted or previous),
         request_key=data.request_id, request_digest=request_digest if data.request_id else None,
@@ -1386,17 +1430,29 @@ def answer_response(db, unit, q, attempt):
     text = {
         "correct": "Gut gelöst. Wiederholen hilft dir, das Wissen zu festigen.",
         "incorrect": "Das passt noch nicht. Schau dir den Hinweis an und versuche es noch einmal.",
-        "uncertain": "Diese Antwort kann ich nicht sicher bewerten. Sie bleibt zur gemeinsamen Durchsicht gespeichert.",
+        "uncertain": "Deine Antwort ist gespeichert. Die Prüfung ist noch offen – das bedeutet nicht, dass sie falsch ist.",
     }[outcome]
     return {
         "outcome": outcome,
         "assisted": attempt.assisted,
         "attempt_id": attempt.id,
         "evaluation": attempt.evaluation,
+        "can_clarify": outcome == "uncertain" and count < 3,
         "feedback": text,
         "explanation": q["explanation"] if outcome != "incorrect" or count >= 3 else None,
         "unit": unit_data(db, unit),
     }
+
+
+@router.post("/units/{unit_id}/questions/{question_id}/recheck")
+def recheck_answer(unit_id: str, question_id: str, p=Depends(child_user), db=Depends(get_db)):
+    from .assessments import recheck
+
+    unit = get_unit(db, p, unit_id, True, True)
+    rate_limit(db, "answer-recheck:" + p.user.id, 12, 60, commit=False)
+    attempt = recheck(db, unit, question(unit, question_id), p.user.id)
+    db.commit()
+    return answer_response(db, unit, question(unit, question_id), attempt)
 
 
 @router.post("/units/{unit_id}/feedback/acknowledge")
@@ -1436,7 +1492,15 @@ def send_message(child_id: str, data: s.MessageRequest, p=Depends(authenticated)
     if (p.user.role == "child" and data.kind == "reply") or (p.user.role == "parent" and data.kind != "reply"):
         raise HTTPException(403, "Nachrichtentyp für diesen Zugang nicht erlaubt.")
     rate_limit(db, "message:" + p.user.id, 10, 600)
-    message = Message(child_id=child_id, sender_id=p.user.id, kind=data.kind, body=data.body)
+    context = {key: getattr(data, key) for key in ("unit_id", "material_id", "day_id") if getattr(data, key)}
+    if len(context) > 1:
+        raise HTTPException(422, "Bitte nur eine Aufgabe oder Heftseite für das Anliegen auswählen.")
+    for key, value in context.items():
+        model = {"unit_id": LearningUnit, "material_id": Material, "day_id": SchoolDay}[key]
+        target = db.get(model, value)
+        if not target or target.child_id != child_id:
+            raise HTTPException(404, "Der Bezug dieses Anliegens ist nicht verfügbar.")
+    message = Message(child_id=child_id, sender_id=p.user.id, kind=data.kind, body=data.body, context=context or None)
     db.add(message)
     record(db, child_id, "message", {"kind": data.kind})
     db.commit()

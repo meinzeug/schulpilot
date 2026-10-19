@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'app_version.dart';
 import 'codex_model_picker.dart';
 import 'dashboard.dart';
 import 'notification_panel.dart';
@@ -152,7 +153,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onPressed: () => showLicensePage(
             context: context,
             applicationName: 'SCHULPILOT',
-            applicationVersion: '1.0.1',
+            applicationVersion: appVersion,
           ),
           child: const Text('Open-Source-Lizenzen'),
         ),

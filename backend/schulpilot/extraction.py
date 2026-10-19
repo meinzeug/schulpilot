@@ -41,6 +41,9 @@ in uncertainties benennen, zum Beispiel 'Unterer Absatz: zwei Zeilen unleserlich
 unreadable: kein lesbarer Unterrichtstext; blocks=[], homework=[] und Unsicherheit verständlich erklären.
 Leere oder unbeschriftete Seiten nicht mit erfundenem Stoff füllen. Es gibt keine Mindesttextlänge.
 homework enthält ausschließlich ausdrücklich als Hausaufgabe/Auftrag notierten Wortlaut aus dem Bild.
+Eine alleinstehende Überschrift (z.B. 'Probeaufgabe:') ist keine Hausaufgabe.
+Überschrift, Aufgabennummer und zugehörige Rechenzeilen als EINEN zusammenhängenden Eintrag erhalten.
+Probeaufgaben, Beispiele und Unterrichtsübungen ohne ausdrücklichen Hausaufgabenvermerk NICHT in homework aufnehmen.
 Alle Listen/Felder vollständig als JSON nach dem Schema ausgeben. Keine zusätzlichen Quellen erfinden."""
 
 

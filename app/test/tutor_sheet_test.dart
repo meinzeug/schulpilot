@@ -228,11 +228,14 @@ void main() {
         find.text('„Bei gleichem Nenner addierst du die Zähler.“'),
         findsOneWidget,
       );
-      await _tap(tester, 'Kannst du mir ein Beispiel zeigen?');
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'Kannst du mir ein Beispiel zeigen?',
+        isEmpty,
       );
+      // A teacher question is answered directly, never copied as the child's
+      // own question. Typing still cannot start another provider request.
+      expect(find.text('Deine Antwort'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '2/6 + 1/6 = 3/6');
       await tester.pump(const Duration(seconds: 9));
       expect(reads, 2);
       expect(posts.length, 1);

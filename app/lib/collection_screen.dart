@@ -65,7 +65,7 @@ class CollectionScreen extends StatelessWidget {
             onAddPhoto: state.isChild || state.canManage
                 ? () async {
                     if (state.isChild) {
-                      openRoute(context, '/after-school/$childId');
+                      openRoute(context, '/after-school/$childId?capture=1');
                     } else {
                       try {
                         await importMaterial(context, state, childId);
@@ -747,12 +747,15 @@ class _PagedCollectionState extends State<PagedCollection> {
         : item['created'];
     final stamp =
         item['school_date'] ??
-        (timestamp == null
+        (timestamp is! num || timestamp <= 0
             ? null
-            : DateTime.fromMillisecondsSinceEpoch(
-                (timestamp as num).toInt() * 1000,
-              ).toLocal().toIso8601String());
-    final date = DateTime.tryParse(stamp ?? '');
+            : DateTime.fromMillisecondsSinceEpoch(timestamp.toInt() * 1000)
+                  .toLocal()
+                  .toIso8601String());
+    final parsedDate = DateTime.tryParse(stamp ?? '');
+    final date = parsedDate != null && parsedDate.year >= 2000
+        ? parsedDate
+        : null;
     final scheduled = DateTime.tryParse(item['scheduled_for'] ?? '');
     final later =
         scheduled != null &&
