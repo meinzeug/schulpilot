@@ -37,12 +37,17 @@ def login(credentials, role):
     for index, key in enumerate((role + "_username", role + "_password")):
         fields = [n for n in native.nodes() if n.get("class") == "android.widget.EditText"]
         native.tap_node(fields[index])
+        time.sleep(1)
         length = min(256, len(fields[index].get("text", "")))
         native.adb("shell", "input", "keyevent", "123")
         native.adb("shell", "input", "keyevent", *(["67"] * (length + 4)))
         input_text(credentials[key])
-        native.adb("shell", "input", "keyevent", "4")
-    native.press("Anmelden")
+        ime = native.adb("shell", "dumpsys", "input_method").decode()
+        # The IME service can keep mIsInputViewShown=true after its window
+        # closed. A Back key in that state would leave the app instead.
+        if re.search(r"\bmInputShown=true\b", ime):
+            native.adb("shell", "input", "keyevent", "4")
+    native.press("Anmelden", scroll=True)
     native.wait("Heute" if role == "child" else "Deine Familie")
 
 
@@ -70,7 +75,8 @@ def main():
             unit = read(api, "/units/" + data["unit_id"])
             require(unit["synthetic"] and unit["provider"] == "synthetic", "fixed_synthetic_unit_required")
             launch()
-            if native.matching("Willkommen zurück"):
+            entry, _ = native.wait_any(("Willkommen zurück", "Konto"))
+            if entry == "Willkommen zurück":
                 login(credentials, "child")
             else:
                 # An interrupted visual run may leave this exact fixture logged
@@ -87,9 +93,17 @@ def main():
             native.press("Hefte")
             native.screenshot("design-native-notebooks.png")
             native.press("Heute")
-            action, _ = native.wait_any(("Rückmeldung ansehen", "Jetzt lernen", "Weiterlernen", "Freiwillig üben"))
-            native.press(action, scroll=True)
-            if not unit["introduction_seen"]:
+            # Use this fixture explicitly, even when another synthetic review
+            # has become the day's recommended next action.
+            native.press("Lernen")
+            native.press(unit["topic"], scroll=True)
+            action, _ = native.wait_any(("Weiter zu den Übungen", "Antwort prüfen", "Rückmeldung ansehen", "Einheit starten", "Lernen fortsetzen", "Jetzt lernen", "Weiterlernen", "Freiwillig üben"))
+            if action == "Weiter zu den Übungen":
+                native.screenshot("design-native-understand.png")
+                native.press(action)
+            elif action != "Antwort prüfen":
+                native.press(action, scroll=True)
+            if action not in ("Weiter zu den Übungen", "Antwort prüfen") and not unit["introduction_seen"]:
                 native.wait("Weiter zu den Übungen")
                 native.screenshot("design-native-understand.png")
                 native.press("Weiter zu den Übungen", scroll=True)
@@ -98,25 +112,25 @@ def main():
                 print(json.dumps({"design_native_task_type": q["type"]}), flush=True)
                 if q["attempts"]:
                     require(len(q["attempts"]) == 1 and q["attempts"][0]["outcome"] == "correct", "only_own_single_answer_may_be_resumed")
-                    # The interrupted run already performed this answer. Resume
-                    # its persisted feedback rather than submit it a second time.
-                    native.wait("Richtig!")
-                    native.adb("shell", "am", "force-stop", native.PACKAGE)
-                    launch()
-                    native.wait("Rückmeldung ansehen")
-                    native.press("Rückmeldung ansehen", scroll=True)
-                    native.wait("Richtig!")
-                    native.screenshot("design-native-feedback-restored.png")
-                    native.press("Weiter")
-                    checks.extend(["saved_feedback_visible_after_native_restart", "native_" + q["type"] + "_answer_and_explicit_feedback"])
+                    # Acknowledged answers must not be answered or reopened.
+                    if (unit.get("pending_feedback") or {}).get("question_id") == q["id"]:
+                        native.wait("Richtig!")
+                        native.press("Weiter")
+                    checks.append("native_" + q["type"] + "_saved_answer_resumed_without_duplicate")
                     continue
                 # All answers are our fixed fixture, obtained only with its parent.
                 if q["type"] == "choice":
-                    native.press(q["answer"], scroll=True)
+                    spoken = re.sub(r"(\d+)\s*/\s*(\d+)", r"\1 durch \2", q["answer"])
+                    native.press(spoken, scroll=True)
                 elif q["type"] in {"gap", "short"}:
+                    if "/" in q["answer"] and native.matching("Mit / tippen"):
+                        native.press("Mit / tippen")
                     fields = [n for n in native.nodes() if n.get("class") == "android.widget.EditText"]
                     require(bool(fields), "native_answer_field_missing")
                     native.tap_node(fields[0])
+                    length = min(500, len(fields[0].get("text", "")))
+                    native.adb("shell", "input", "keyevent", "123")
+                    native.adb("shell", "input", "keyevent", *(["67"] * (length + 2)))
                     input_text(q["answer"])
                     native.screenshot("design-native-" + q["type"] + "-keyboard.png")
                     require(bool(native.matching("Antwort prüfen")), "keyboard_must_not_hide_primary_action")

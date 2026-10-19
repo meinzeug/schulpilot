@@ -30,7 +30,8 @@ def evaluate(question, answer):
     if optional is None:
         optional = (task.answer_locale in ("en-GB", "en-US") and task.skill in ("spelling", "recall")
                     and not re.search(r"groß|klein|capital|case-sensitive", question.get("prompt", ""), re.I))
-    if policy.case_sensitive and optional and task.answer_locale in ("en-GB", "en-US"):
+    if (policy.case_sensitive and optional and task.answer_locale in ("en-GB", "en-US")
+            and not re.search(r"groß|klein|capital|case-sensitive", question.get("prompt", ""), re.I)):
         allowed |= {v[0].upper() + v[1:] for v in tuple(allowed) if v and 'a' <= v[0] <= 'z' and v == v.lower()}
     correct = supplied in allowed
     outcome = "correct" if correct else "incorrect" if policy.closed_answers else "uncertain"

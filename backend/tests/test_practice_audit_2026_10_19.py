@@ -41,6 +41,9 @@ def test_target_specific_case_unicode_and_variants_without_fuzzy_success():
     assert verdict["dimensions"]["capitalization"] == "incorrect"
     assert "kleinem s" in verdict["reason"]
     assert next_hint(q, "Swimming pool", []) == verdict["reason"]
+    q = word_question(optional=True)
+    q["prompt"] = "Schreibe das Wort ausdrücklich mit kleinem Anfangsbuchstaben."
+    assert language_evaluation.evaluate(q, "Swimming pool")["outcome"] == "incorrect"
     assert "capitalization" not in language_evaluation.evaluate(word_question("Straße", locale="de-DE"), "Strasse")["dimensions"]
 
 
