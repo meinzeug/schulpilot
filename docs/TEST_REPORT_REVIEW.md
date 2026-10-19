@@ -2,7 +2,7 @@
 
 Arbeitsbeginn: 19.10.2026, Ausgang main `afb1ea5`, App 1.7.2+40, Schema 0019.
 
-Beide HTML-Dokumente vollständig als Dokumente gelesen: alle geschlossenen Detailbereiche, Anhänge und eingebetteten JSON-Daten (468 bzw. 865 Blattwerte). Keine Skripte ausgeführt. Es gibt keine externen Bild-/Dateianhänge; eingebettet sind die Beobachtungen und Testdaten. Originale/geschützte Arbeitskopien bleiben außerhalb von Git.
+Beide HTML-Dokumente vollständig als Dokumente gelesen: alle geschlossenen Detailbereiche, Anhänge und eingebetteten JSON-Daten (468 bzw. 865 Blattwerte). Keine Skripte ausgeführt. Es gibt keine externen Bild-/Dateianhänge; eingebettet sind die Beobachtungen und Testdaten. Originale blieben unverändert außerhalb von Git; die eigenen geschützten Diagnosekopien wurden nach Abschluss entfernt.
 
 Die protokollierte Anzeige 1.0.1 war am Arbeitsbeginn im Client fest verdrahtet und kein verlässlicher Buildnachweis. Frühere und spätere Testbeobachtungen werden deshalb anhand des Codes und isolierter Regressionen geprüft. Absichtliche Fehler und synthetische Blätter sind keine Diagnose eines echten Kindes. Keine Testbereinigung echter Familienkonten.
 
@@ -14,9 +14,9 @@ Die protokollierte Anzeige 1.0.1 war am Arbeitsbeginn im Client fest verdrahtet 
 4. Kurze Elternentscheidung, technische Details nachgeordnet, Rechte-/Zeit-/Tageswechseltests.
 5. Gesamttests/Analyse/Build, tatsächlicher Web-/Android-Test mit eigener künstlicher Familie, gesicherte Bereitstellung, Commit/Push.
 
-Stand19.10.2026:1.8.0+41/Schema0021 öffentlich auf Quellcommit8990410. Bewertung, Quellenübernahme, Tutor und Darstellung implementiert. Vollständige Läufe932 PostgreSQL/346 Flutter bestanden, spätere gezielte Korrekturen separat geprüft. Öffentlicher Webablauf, reale OCR/Paket/Tutor und Android-OTA40->41 bestanden. Native Fortsetzung fand zusätzlich F26; Korrektur lokaler Altplanauflösung und verbleibender Freitagsprojektion in Abschlussprüfung. Keine echten Familien oder Antworten verändert.
+Stand19.10.2026:1.8.0+41/Schema0021 öffentlich auf Produktcommit863d4f9. Alle32 Befunde und69 Testfälle unten verfolgt. Vollständige Läufe932 PostgreSQL/346 Flutter bestanden; spätere125 Backend-/15 Elternprüfungen separat grün. Öffentlicher Webablauf mit echter OCR/Paket/Tutor sowie native Android-Runde/Neustart/gleichwertigem Bruch/Coach bestanden. Eltern danach mit identischem Bewertungs-/Zeitstand geprüft. Sechs tatsächliche Provideraufträge mit unbekannten Kosten; keine zusätzlichen Aufträge beim erneuten Öffnen. Eigene künstliche Familie nach Export regulär gelöscht, Sitzungen widerrufen und Emulator beendet. Keine echten Familien oder Antworten verändert.
 
-Nächste Aktion: letzte gezielte Regressionen abschließen, Backendkorrektur gesichert bereitstellen, denselben künstlichen Haushalt nativ fortsetzen, danach Export/Löschung und finale Ergebnisdokumentation.
+Nächster unabhängiger Nachtest: physischer Android-Ton/Mikrofon und tatsächliches Verstehen im Kinderalltag; der Code wurde hierfür nicht als vollständig geräte- oder lernwirksamkeitszertifiziert ausgegeben. Exakte Prüflücken und GitHub-Abrechnungsblocker unten und im Handoff.
 
 ## Herkunft
 
@@ -39,7 +39,7 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | status | früher belegt; aktueller Nachtest ohne Rücksprung |
 | Aktueller Nachtest/Ursache | Historischer Befund; aktueller Zeitcode synchronisiert Baselines und deckelt Idle/mehrere Geräte. Elternlesen ist separat isoliert geprüft. |
 | Komponenten, Änderung, Abnahme | unit_screen.dart, learning.py; monotone Zwischenanzeige/echte Serversekunden, Tageswechsel und Route/Idle erhalten. |
-| Status/Ergebnis | Kein aktueller Rücksprung nachgewiesen. Vorhandene Zeitregressionen und isolierter Elternlesetest; erneuter Oberflächentest folgt. |
+| Status/Ergebnis | Kein aktueller Rücksprung nachgewiesen. Zeitregressionen, öffentlicher Elternlesetest und native Antwortfortsetzung bestanden. |
 
 ### F02 · Erklärung ist textlastig und kaum auf den konkreten Irrtum zugeschnitten
 
@@ -188,7 +188,7 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | status | im früher geladenen Client beobachtet; Versionsnachtest offen |
 | Aktueller Nachtest/Ursache | Bestätigt: Wortkorrektur zeigte fortgeschrittene Antwortregeln sofort. |
 | Komponenten, Änderung, Abnahme | vocabulary_screen.edit; Wort/Bedeutung/Kontext zuerst, weitere erlaubte Antworten nur aufgeklappt, bestehende Revisionen/Antworten erhalten. |
-| Status/Ergebnis | Implementiert; Oberflächentest folgt. Kinder müssen keine Varianten pflegen, um zu üben. |
+| Status/Ergebnis | Widget-/Sprachregressionen bestanden; Variantenpflege bleibt im erweiterten Bereich. Diese konkrete Wortkorrektur nicht erneut real im Browser bedient. |
 
 ### F14 · Fehlerhafte Wortimport-Zeilen bleiben ohne sichtbare Anleitung
 
@@ -200,7 +200,7 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | status | im früher geladenen Client beobachtet; Versionsnachtest offen |
 | Aktueller Nachtest/Ursache | Bestätigt: ungültige Importzeilen nur per flüchtiger Meldung. |
 | Komponenten, Änderung, Abnahme | vocabulary_screen.importDialog; betroffene Zeilennummern direkt am Feld, konkretes Wort=Bedeutung-Beispiel, gültige Eingabe bleibt stehen. |
-| Status/Ergebnis | Implementiert; Feldregression/Browserprüfung folgt. |
+| Status/Ergebnis | Feld-/Zeilenregressionen bestanden; diesen Importfehler nicht zusätzlich mit realem Provider wiederholt. |
 
 ### F15 · Themenliste zeigt interne Zustände, Dopplungen und falsches Datum
 
@@ -285,7 +285,7 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | status | im früher geladenen Client beobachtet; Versionsnachtest offen |
 | Aktueller Nachtest/Ursache | Bestätigt: kleine Vorschau und unbenannte Randsteuerung. |
 | Komponenten, Änderung, Abnahme | CropDialog; 40% hohe begrenzte Vorschau, gezogene Ecken sowie weiterhin beschriftete Prozentregler und 48px-Bedienung. |
-| Status/Ergebnis | Implementiert; Widget-/Browserprüfung folgt. Keine vollständige WCAG-Zertifizierung behauptet. |
+| Status/Ergebnis | Widgettest und tatsächliche Auswahl/Zuschnitt von drei künstlichen Fotos im öffentlichen Browser bestanden. Keine vollständige WCAG-Zertifizierung behauptet. |
 
 ### F22 · Strenge Heftbindung lässt normale Verständnisfragen unbeantwortet
 
@@ -322,7 +322,7 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | status | im aktuell geladenen Stand belegt |
 | Aktueller Nachtest/Ursache | Bestätigt: Rückfrage erschien als Textbaustein zum Kopieren statt direktes Gespräch. |
 | Komponenten, Änderung, Abnahme | tutor_sheet, tutor_schemas; eigene Lehrerfrage sichtbar, Deine Antwort/Antwort senden mit reply_to, Kontext bleibt offen, andere Frage bewusst wählbar. |
-| Status/Ergebnis | Implementiert; direkte Gesprächsregression/Browserprüfung folgt. Jede Antwort bewusst reserviert, keine Daueraufnahme. |
+| Status/Ergebnis | Direkte reply_to-Gesprächs-/Widgetregression bestanden. Reale Walantwort erfolgreich; dort keine weitere Lehrerfrage vom Modell geliefert, daher kein echter Folgeauftrag behauptet. Jede Antwort bewusst reserviert. |
 
 ### F25 · Tageszielanzeige widerspricht dem freiwilligen Lerntag
 
@@ -347,7 +347,7 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | Komponenten | `study_path.ensure_plan`, `learning.plan`, Tagesplan/Lernsammlung. |
 | Priorität, Änderung | P1. Neue Erstblöcke speichern das Fach. Alte Pläne lösen es lesend aus ihrer vorhandenen Einheit auf; kein Überschreiben gespeicherter Pläne oder neuer KI-Auftrag. |
 | Abnahme | Beide Fächer bleiben erreichbar; aktive/pausierte zweite Runde steht zuerst unter Fortsetzung, auch bei Altplänen. GETs erzeugen keine Aufträge oder Verbrauch. Native Wiederaufnahme erhält dieselbe Antwort. |
-| Status/Prüfergebnis | Vier neue Regressionen vor dem Fix fehlgeschlagen; nach der Korrektur alle125 gezielten Plan-/Lernreise-/Sammlungs-/Mindestzeit-/Quellenprüfungen bestanden. Öffentlicher nativer Nachtest folgt nach Bereitstellung. |
+| Status/Prüfergebnis | Vier neue Regressionen vor dem Fix fehlgeschlagen; nach der Korrektur alle125 gezielten Plan-/Lernreise-/Sammlungs-/Mindestzeit-/Quellenprüfungen bestanden. Nach Bereitstellung im öffentlichen Web und nativen Android geprüft: Mathe erreichbar, Antwort/Feedback nach Prozessneustart mit identischer ID erhalten. |
 
 ### EF01 · Korrekte Antwort erzeugt trotz KI-Bestätigung weiteren Betreuungsbedarf
 
@@ -419,11 +419,11 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 
 | Maßnahme | Priorität | Beobachtungsbezug | Stand |
 |---|---|---|---|
-| R01 Bewertung und Lernstatus aus einer verlässlichen Grundlage ableiten | P1 | F05, K45, E05 | Umgesetzt; rationale Bewertung/Audithistorie/Konsistenz gezielt geprüft, vollständiger Abschlusslauf folgt. |
+| R01 Bewertung und Lernstatus aus einer verlässlichen Grundlage ableiten | P1 | F05, K45, E05 | Umgesetzt; rationale Bewertung/Audithistorie/Konsistenz gezielt geprüft, vollständiger932er-Lauf und nachgelagerte125 Regressionen bestanden. |
 | R02 Hausaufgaben vor dem Einplanen bündeln und auf Dopplungen prüfen | P1 | E07, F18 | Umgesetzt; gebündelte Vorschau, Beispiele/unklar, Idempotenz, andere Tage/Termine gezielt geprüft. |
 | R03 Hilfen am konkreten Fehler ausrichten | P1 | F04, K07, K43 | Umgesetzt; Teilurteile und verschiedene Hinweise, Backend + 320px-Rückmeldung geprüft. |
-| R04 Den Tutor zu einem direkten Lernpartner machen | P1 | F22, F23, F24, K35, K36, K47 | Umgesetzt; kuratiertes Grundwissen, konkreter Matchingkontext, direktes Antwortfeld geprüft; öffentliche Providerprüfung folgt. |
-| R05 Die Kinderoberfläche auf einen klaren nächsten Schritt konzentrieren | P1 | F08, F15, F25, K41, K46, K48 | Umgesetzt; vorhandene Hauptaktion erhalten, Status/Datum/Fotostart verbessert;345 vollständige Fluttertests grün. |
+| R04 Den Tutor zu einem direkten Lernpartner machen | P1 | F22, F23, F24, K35, K36, K47 | Umgesetzt; kuratiertes Grundwissen, konkreter Matchingkontext, direktes Antwortfeld geprüft; echte öffentliche Tutorantwort mit geprüftem Ergänzungsbeleg bestanden; kein echter Folgeauftrag ohne Lehrerfrage. |
+| R05 Die Kinderoberfläche auf einen klaren nächsten Schritt konzentrieren | P1 | F08, F15, F25, K41, K46, K48 | Umgesetzt; vorhandene Hauptaktion erhalten, Status/Datum/Fotostart verbessert;346 vollständige Fluttertests grün. |
 | R06 Eltern mit einer kurzen Entscheidungshilfe entlasten | P1 | EF01, EF02, E04, E05, E10 | Umgesetzt; kurze Elternentscheidung und technische Diagnose getrennt, Elternleserecht/Zeitzähler isoliert geprüft. |
 | R07 Vorhandene Wiederholungen zu einer nachvollziehbaren Lernfolge verbinden | P2 | F09, F16, E14, E15 | Bestand erhalten; Richtungen/Fähigkeiten, spätere Abrufe und kleine Folgerunden regressionsgeprüft. |
 | R08 Erklärungen in kurze, anschauliche Lernschritte übersetzen | P2 | F02, K04, K42 | Umgesetzt; schrittweise gespeicherte Erklärung und zugängliche Bruchbalken geprüft; keine Lernwirksamkeit zugesichert. |
@@ -439,8 +439,8 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 
 | Protokoll | Testfall | Bereich | Ursprünglicher Prüfstatus | Aktueller Nachweis |
 |---|---|---|---|---|
-| Kind | K01 | Heute | baseline | Vorhandene Hauptaktion erhalten; child_home/routine/minimum-Tests grün; echter Browsernachtest folgt. |
-| Kind | K02 | Lernrunde | pass | Bestehende geführte Lernrunde regressionsgeprüft; neuer echter Provider-/nativer Ablauf folgt. |
+| Kind | K01 | Heute | baseline | Vorhandene Hauptaktion erhalten; child_home/routine/minimum-Tests grün; öffentlicher Web-/nativer Alltagseinstieg geprüft. |
+| Kind | K02 | Lernrunde | pass | Bestehende geführte Lernrunde regressionsgeprüft; echte OCR/Paket/Tutor/Coach-Aufträge und native Runde erfolgreich geprüft. |
 | Kind | K03 | Pausen | pass | Pausen/Resume und echte Zeitmessung in vollständigen Fluttertests bestanden. |
 | Kind | K04 | Hilfe | pass | Gespeicherte Hilfe erhalten, gestufte Hinweise/Teilfeedback ergänzt; Regression bestanden. |
 | Kind | K05 | Erklärung/Vorlesen | partial | Schrittweise Erklärung/normal-langsam/Stopp geprüft; kein physischer Ton- oder Mikrofontest. |
@@ -522,21 +522,51 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
   Textvarianten desselben Tags und wiederhergestellte Entscheidungen wurden
   geprüft; andere echte Termine bleiben möglich. `homework` als historischer
   Erkennungstext ist keine automatische Pflichtfreigabe.
-- 345 vollständige Fluttertests vor der letzten Auditdarstellung bestanden;
-  danach48 betroffene Tests, acht Audit-/Dialogtests und die eigene
-  Bausteinregression bestanden. Abschließender vollständiger Lauf läuft erneut.
-- Erster vollständiger PostgreSQLlauf927/929; beide veralteten Erwartungen
-  (Headrevision und unveränderter Bestätigungsretry) korrigiert und Rechteprüfung
-  verschärft.109 gezielte Tests,108 für die offene Bewertung und105 für den
-  endgültigen Quellen-/Migrations-/Bewertungsstand bestanden. Keine Summierung
-  überlappender Testzahlen als Anzahl unterschiedlicher Prüfungen. Letzter
-  vollständiger Lauf folgt im finalen Handoff; ein Zwischenlauf wurde vor weiteren
-  Korrekturen bewusst abgebrochen und zählt nicht als bestandener Gesamtlauf.
-- Ruff und Flutteranalyse fehlerfrei. Web/Direct-/Play-Builds der41-Vorstufe,
-  Paket/Signatur/16-KB-Ausrichtung und tatsächliches AAB mit bundletool1.18.3
-  geprüft; finaler Build nach den letzten Darstellungen folgt. Kein SDK-Update.
-  Vorhandene Pluginwarnungen betreffen Wasm-Trockenlauf und künftige
-  Kotlin-Migration; keine Wasm-Unterstützung oder neue Audioabnahme behauptet.
+- Vollständiger PostgreSQL16-Lauf:932 bestanden,3 Warnungen,1175,33s. Danach
+ 21 gezielte Abstands-/Identitätsregressionen bestanden. Beim nativen Nachtest
+ zusätzlich F26 gefunden und korrigiert: nach vier vorher roten Fachfällen und
+ zwei roten Projektionen freier Tage alle125 betroffenen Plan-/Lernreise-/Sammlungs-/
+ Quellen-/Mindestzeit-/Bewertungstests bestanden(123,99s). Ein alter Sammlungs-
+ test verlangte am pausierten Tag Zielerfüllung; an die konsistente neue Regel
+ angepasst. Frühere Zwischenfehler und abgebrochene Läufe sind keine Erfolge.
+- Vollständiger Flutterlauf346 bestanden(142s). Danach alle15 Elternprüfungen
+ für die letzte technische Ereignisfilterung erneut bestanden; Analyse/Ruff,
+ Node-Syntax/Python-Compile und Diffprüfung fehlerfrei. Überlappende Prüfgruppen
+ werden nicht zu einer erfundenen Gesamtzahl summiert.
+- Web/Direct-APK/Play-AAB41 signiert gebaut; tatsächliche Paket-/Versions-/
+ Signatur-/16-KB-Ausrichtung und AAB mit bundletool1.18.3 geprüft. Die danach
+ korrigierte Fachplanung und die Planung freier Tage betreffen nur das Backend;
+ unveränderte App-/Buildquellen nachgewiesen. Kein unnötiger SDK-/Abhängigkeitswechsel.
+ Vorhandene Pluginwarnungen betreffen Wasm-Trockenlauf und künftige Kotlin-
+ Migration; keine Wasm-Unterstützung oder neue Audioabnahme behauptet.
+- Gesicherter öffentlicher Release20261019T065608Z-863d4f9, Schema0021.
+ Backup success/Exit0, sieben Dienste aktiv. Rückweg auf8990410 mit Schema0021,
+ ohne Datenrestore/Downgrade. Öffentliches JavaScript/APK bytegleich, HTTPS,
+ Weiterleitung/Direktlinks/DNS geprüft. Direct-APK66926838Bytes, SHA256
+ `3b5e857362a98bed84d8e88361e8dc87140e1a5b21c6f185ffdce341b75e00e5`.
+- Tatsächlicher Chrome390/1440px-Test: eigener normaler Kinder-/Elternlogin,
+ drei Fotos/Zuschnitt, drei echte OCRs, ein Paket mit zwei Fächern, Quellen- und
+ Auftragsvorschau, ein Auftrag aus zwei Varianten, eine echte gekennzeichnete
+ Wal-Erklärung. Null JavaScriptfehler. Zweiter Durchlauf ohne weitere KI.
+ Das Modell stellte hier keine Lehrer-Rückfrage; nur Widget-/Integrationsbeleg
+ für das direkte Folgeantwortfeld, kein tatsächlicher zweiter Tutorauftrag.
+- Native Flutter-APK/API36: echtes OTA40->41 ohne adb install, drei weitere
+ Start-/Vordergrundprüfungen, zwei tatsächliche richtige Antworten einschließlich
+ gleichwertiger Bruchdarstellung. Erste Antwort/Rückmeldung nach Prozessneustart
+ unverändert, keine Doppelbuchung. Ein echter Coachauftrag erfolgreich;37 echte
+ aktive Sekunden,20-Minuten-Ziel weiter offen. Frischer Fotoeinstieg ohne alte
+ bestätigte Seiten/Logout bestanden. Separates Emulator-System-UI-ANR und ein
+ verbliebener Installerdialog behoben; kein App-ANR daraus behauptet.
+- Eltern nach den nativen Antworten tatsächlich390/1440px geöffnet: derselbe
+ Bewertungsstand und37 Sekunden; keine Schreibanfrage/Kinderaktivität. Eigener
+ regulärer Export mit3 Fotos/2 Einheiten/2 Attempts/1 Auftrag/Auditstruktur und
+ 6 Verbrauchsbelegen geprüft. Alle6 Codex-Kosten unbekannt, nicht null. Familie
+ regulär gelöscht, beide alten Sitzungen401, private Checkpoints/Diagnosekopien
+ entfernt, eigener Emulator beendet. Originalberichte und echte Familien erhalten.
+- GitHub-Actions39202054006: beide Jobs vor Start wegen Billing-Kontosperre
+ blockiert, Annotationen117896914608/117896914923 gelesen. Lokale Prüfungen und
+ Push funktionieren. Server97% belegt/1,2GB frei; Wartungsbedarf dokumentiert,
+ keine fremden Daten für zusätzliche Kapazität verändert.
 - Unbekannte freie Aussagen bleiben konservativ offen. Der Ergänzungsbestand des
   Tutors ist gezielt kuratiert, kein allgemeines ungeprüftes Wörterbuch. Keine
   automatische zuverlässige fachliche OCR-Qualitätsprüfung, Bildstellenmarkierung,
@@ -548,3 +578,25 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 - Mikrofon/physischer Ton und ein begleitetes Verstehen durch echte Kinder
   brauchen getrennte Beobachtung. Widget-/Emulator-/Kontrasttests sind keine
   vollständige WCAG-Konformitäts- oder Lernwirksamkeitsstudie.
+
+## Kurzer Nachtest für Kind und Eltern
+
+1. Eigene künstliche Familie normal anmelden. Neue Heftfotos mit den synthetischen
+   Seiten abgeben; OCR-Text und gebündelte Aufgabe bewusst bestätigen. Ein Beispiel
+   wird erst durch ausdrückliche Wahl zur Hausaufgabe. Gleiches Foto erneut
+   übertragen/bestätigen: keine zusätzliche gleiche Tagespflicht.
+2. Erzeugte Runde unter Lernen öffnen. Gleichwertigen Bruch ohne Kürzvorgabe
+   eingeben, Rückmeldung ansehen, App neu starten und dieselbe Rückmeldung
+   wiederfinden. Eine offene Bewertung über Bewertung prüfen klären. Weitere
+   Hinweise bleiben unterschiedlich; direktes Tutorantwortfeld nur bei tatsächlich
+   gestellter Lehrerfrage. Tagesminimum aus tatsächlichen Sekunden prüfen.
+3. Eltern normal anmelden: kurze Übersicht, gespeicherte Aufgaben/Antworten/Hilfen
+   und Bewertungshistorie öffnen. Derselbe Ergebnis-/Zeitstand, kein Fortschritt
+   durch Lesen. Freien Tag/Auszeit nur in der eigenen Testfamilie prüfen.
+4. Automatisierte Nachweise: qa/prepare_report_review.py -> qa/report_review.mjs ->
+   qa/android_report_review.py -> qa/report_review_parent_result.mjs ->
+   qa/report_review_cleanup.py. Geschützte Zugangsdaten nicht weiterreichen.
+
+Die ursprüngliche6/16-Prüffrage und ihr auditierter Korrekturpfad sind zusätzlich
+reproduzierbar in backend/tests/test_report_regressions.py geprüft. Eine echte
+Familie wird hierfür weder verändert noch zur Testbereinigung verwendet.

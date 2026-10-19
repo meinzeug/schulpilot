@@ -306,3 +306,19 @@ diese Familie. API-/Native-Logins nie in Argumenten ausgeben, keine fremden Kont
 für Tests benutzen. Fehlgeschlagene echte Provideraufträge halten den Checkpoint;
 kein automatischer Ersatzversuch. Abnahme/Blocker/69 Fälle stehen in
 `docs/TEST_REPORT_REVIEW.md` und im aktuellen Handoff.
+
+
+## Abnahme der Protokollkorrekturen1.8.0+41
+
+Produktcode863d4f9, Release20261019T065608Z-863d4f9, Schema0021.
+Kompatibler Rückweg auf20261019T063153Z-8990410 ohne Schema-Downgrade oder
+Datenrücksicherung. Vor beiden Aktivierungen reguläre Sicherung success/Exit0,
+sieben Dienste aktiv. Appquellen/Artefakte nach dem reinen Backendfix unverändert.
+Zusätzliche reale Elternansicht nach nativen Antworten mit
+`node qa/report_review_parent_result.mjs`; anschließend ausschließlich denselben
+eigenen QA-Haushalt mit `.venv/bin/python qa/report_review_cleanup.py` exportieren
+und regulär löschen. Das Skript verweigert fremde/fehlende Checkpoints und
+ungeprüfte Fixturezahlen. Keine Zugangsdaten oder Exporte in der Übergabe.
+125 betroffene Backendtests nach dem letzten Fix grün; vollständiger932er-Lauf,
+346 Fluttertests, Builds und tatsächliche Web-/native Abnahme im Handoff.
+GitHub-CI-Abrechnungssperre und97% Laufwerksbelegung sind dokumentiert.

@@ -93,6 +93,7 @@ def main():
             require(
                 unit["child_id"] == account["child_id"] and unit["subject"] == "Mathematik", "owned_math_round_required"
             )
+            native.adb("shell", "am", "force-stop", native.PACKAGE)
             launch()
             if native.matching("Willkommen zurück"):
                 login(account["credentials"], "child")

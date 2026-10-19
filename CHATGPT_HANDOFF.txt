@@ -1,25 +1,115 @@
-Protokollprüfung 1.8.0+41 · öffentlich bereitgestellt, Android-Nachtest läuft
+Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
 
-Beide vollständigen HTML-Protokolle einschließlich Details/JSON gelesen.
-Befunde und alle 69 Testfallbezüge: docs/TEST_REPORT_REVIEW.md.
-Öffentlich: https://schulpilot.dorfspy.de ; API /api.
-Aktiver Release20261019T063153Z-8990410, Quellcommit8990410, Schema0021.
-Bewertungs-Audit0020 und Aufgabenherkunft/-bestätigung0021 additiv migriert;
-Sicherung und sieben Dienste geprüft. Keine echten Familien geändert.
-932 vollständige PostgreSQLtests und346 vollständige Fluttertests bestanden;
-spätere gezielte Korrekturen separat in den Testbelegen dokumentiert.
-Web/Direct-APK/Play-AAB41 signiert gebaut und öffentlich bytegleich geprüft.
-Normaler öffentlicher Webablauf mit drei künstlichen Fotos, drei echten OCRs,
-einem Lernpaket und einer Tutorantwort bestanden. Genau ein verbindlicher
-Auftrag aus zwei Foto-Varianten; Elternlesen erzeugte keine Kinderaktivität.
-Reales natives OTA40->41 und drei erneute Startprüfungen bestanden.
-Native Fortsetzung deckte F26 auf: Erst-Runden ohne Fach wurden gegenseitig
-verdeckt. Vier Regressionen vor dem Fix rot, danach alle71 Plan-/Lernreise-/
-Sammlungstests grün. Korrektur für Altpläne und freie Tage: alle125 betroffenen Prüfungen bestanden.
-Nächste Aktion: gesichert bereitstellen und Native-QA fortsetzen.
-Privater QA-Checkpoint unter artifacts/.school-day-qa-account.json bleibt
-außerhalb von Git. Nur diesen eigenen künstlichen Haushalt nach erfolgreicher
-Export-/Löschprüfung entfernen. Keine Daten echter Kinder bereinigen.
+Beide vollständigen HTML-Protokolle einschließlich aller Details, Anhänge und
+JSON-Testdaten gelesen. Vollständige Befundliste mit 32 Befunden und allen
+69 Testfallbezügen: docs/TEST_REPORT_REVIEW.md. Absichtliche Testfehler sind
+keine Diagnose echter Fähigkeiten. Keine echte Familie oder ihre Daten verändert.
+
+Öffentlich geprüft: https://schulpilot.dorfspy.de ; eigene API /api.
+Aktiver Produktcode: 863d4f9ef7a9d6671b6d3bc3ff8e06d3177dadfc, main gepusht.
+Release 20261019T065608Z-863d4f9, Schema0021 tatsächlich ausgelesen.
+Vorheriger kompatibler Release: 20261019T063153Z-8990410. Bei Code-Rückweg
+Schema0021 und neuere Antworten erhalten; kein Downgrade oder DB-Zurücksetzen.
+Additive Migration0020: versionierte Bewertungs-Audithistorie.
+Additive Migration0021: Herkunft/Entscheidungen der Aufgaben und Nachrichtenbezug.
+Sicherung Result=success/Exit0; sieben Dienste aktiv, Caddy gesichert/geprüft.
+Keine fremden Dienste, Provider-, Firebase- oder Familienrechte verändert.
+
+Umgesetzt: rationale Antwortgleichheit wie6/16=3/8 ohne Kürzvorgabe, getrennte
+Inhalts-/Form-/Versuchs-/Hilfenbewertung, ausdrückliche auditierte Nachprüfung,
+konsistente Kind-/Eltern-/Rückblick-/Fortschrittsprojektion. Offene Bewertung ist
+keine Wissenslücke. Hausaufgaben werden gebündelt, ausdrücklich bestätigt und
+gegen doppelte Übernahme abgesichert; Quellenrevisionen und Entscheidungen
+bleiben nachvollziehbar. Gezielte unterschiedliche Fehlerhilfen, sichere
+Wortbausteine, konkrete Formularfehler, kurze Erklärschritte mit Bruchdarstellung,
+kuratierte NOAA-belegte Wal-Erklärung und direktes Tutor-Antwortfeld ergänzt.
+Kinderführung/Fotostart/Zuschnitt verbessert; kurze Elternentscheidung vor den
+Details, technische Ereignisse nachgeordnet, konkrete Nachrichtenziele.
+Native Nachprüfung fand zusätzlich fehlende Erstblock-Fächer: begonnenes Mathe
+wurde hinter Biologie verdeckt. Altpläne lesen das Fach jetzt aus der Einheit,
+neue Erstblöcke speichern es. Freie-/Pausentage verwenden in allen Projektionen
+denselben Zielstatus. Verbindliches echtes Mindestziel an Lerntagen erhalten.
+
+Prüfungen: vollständiger PostgreSQL16-Lauf932 bestanden (1175,33s), nach späteren
+Korrekturen alle125 betroffenen Backendregressionen bestanden (123,99s).
+Vier neue Fach-/Resume- und zwei freie-Tag-Projektionsfälle vor dem Fix rot,
+danach grün. Drei überholte Erwartungen im Verlauf ausdrücklich korrigiert,
+Rechteprüfung verschärft. Keine Summierung überlappender Prüfgruppen.
+346 vollständige Fluttertests bestanden, danach alle15 Eltern-Detailtests nach
+der letzten Ereignisfilterkorrektur erneut bestanden. Flutteranalyse/Ruff,
+Node-Syntax/Python-Compile/Diffprüfung bestanden. Keine Abhängigkeiten erneuert.
+Web, signierte Direct-APK41 und Play-AAB41 gebaut. Tatsächliche Paket-/Versions-/
+Signatur-/16-KB-Ausrichtung und AAB mit bundletool1.18.3 geprüft. Späterer Fix
+betrifft nur das Backend; unveränderte App-/Buildquellen nachgewiesen.
+Öffentliches Web-JavaScript und APK bytegleich, gültiges HTTPS, HTTP-Weiterleitung,
+Direktlinks und DNS91.99.217.84 geprüft. SDK-Warnungen zu Wasm-Trockenlauf und
+künftiger Kotlin-Migration sind keine neue Wasm-/Audiofreigabe.
+
+Echter öffentlicher Chrome390/1440px: normaler eigener Kinder-/Elternlogin,
+Dateiauswahl/Zuschnitt von drei künstlichen Fotos, drei echte reservierte Codex-
+OCRs, Quellen-/Aufgabenvorschau und genau ein verbindlicher Auftrag aus zwei
+Foto-Varianten. Ein echtes Paket mit Biologie/Mathematik, gespeicherter Rundenstart
+und eine echte Tutorantwort mit gekennzeichnetem Zusatzbeleg. Modell gab bei
+dieser Frage keine weitere Lehrerfrage zurück; direkter reply_to-Dialog durch
+Integrations-/Widgettests geprüft, kein echter weiterer Tutoraufruf behauptet.
+Erneuter Webdurchlauf nach dem Fix ohne zusätzliche KI,0 JavaScriptfehler.
+
+Reguläre native Flutter-APK auf AndroidAPI36: tatsächliches OTA40->41 mit
+Servercheck/Hash/Größe/Paket/Signierer und Android-Bestätigung, kein adb install.
+Drei weitere Kalt-/Vordergrundprüfungen bestanden. Eigenständiger Kinderlogin,
+Mathe aus Lernen öffnen, zwei echte Antworten einschließlich gleichwertigem
+Bruch, Feedback nach Prozessneustart mit identischer Antwort-ID, keine
+Doppelbuchung. Tatsächlicher reservierter Coach erfolgreich, keine erfundene
+Hilfe. Nur37 aktive Sekunden gespeichert;20-Minuten-Ziel bleibt offen.
+Neue Heftfotos öffnet frische Aufnahme ohne alte bestätigte Fotos. Logout geprüft.
+Ein System-UI-ANR beim Emulatorstart und ein alter zusätzlicher Installer-Dialog
+wurden auf dem eigenen Emulator geschlossen; kein SCHULPILOT-ANR daraus abgeleitet.
+Eigener Emulator danach beendet. Keine physische Geräte-/Audioabnahme behauptet.
+
+Eltern danach tatsächlich im Browser390/1440px: dieselben zwei richtigen
+selbstständigen Antworten, identische37 Sekunden und offenes Mindestziel.
+Keine Schreibanfrage oder Kinderaktivität durch Elternlesen. Regulärer Export
+enthielt3 Fotos,2 Einheiten,2 Attempts,1 verbindlichen Auftrag, Aufgabenentscheidungen,
+Auditstruktur und6 tatsächliche Verbrauchsbelege. Alle6 Codex-Kosten unbekannt,
+nicht null. Eigenen künstlichen Haushalt regulär gelöscht, beide alten Sitzungen
+401, privater Testcheckpoint und private Protokoll-Arbeitskopien entfernt.
+Downloads-Originale unverändert. Keine Passwörter/Sitzungen/Tokens übergeben.
+
+APK: artifacts/schulpilot-android.apk,66926838Bytes, SHA256
+3b5e857362a98bed84d8e88361e8dc87140e1a5b21c6f185ffdce341b75e00e5.
+Öffentlicher Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play-AAB: artifacts/schulpilot-play.aab,63548292Bytes; nicht veröffentlicht.
+Belege: artifacts/report-review-{web,native,parent-after,erasure}-result.json,
+artifacts/test-report-review/{public-release41-final.json,backend-final-all.log,
+native-final-regressions2.log,flutter-release-final.log,deploy41-resume-fix.log}.
+
+Nachtest nach normalem eigenem Login(/login), ohne weitergereichte Zugangsdaten:
+Kind -> Neue Heftfotos -> künstliche Seiten -> Stimmt, weiter -> Aufgaben-/
+Beispielvorschau -> Lernpaket -> Lernen. Antwort/Feedback nach Neustart erhalten;
+weitere Hinweise verschieden, unklare Bewertung über Bewertung prüfen klären.
+Eltern -> /child/<eigene-Kind-ID> -> Das gelang/Das übernimmt die App/Jetzt für euch,
+Zeit/Verlauf -> /unit/<berechtigte-Einheit> mit Antworten, Hilfen und Bewertungshistorie.
+Kein bestehendes echtes Kind als Fehlerfixture verwenden. Für neue Automatiktests
+qa/prepare_report_review.py, qa/report_review.mjs, qa/android_report_review.py,
+qa/report_review_parent_result.mjs, qa/report_review_cleanup.py in dieser Reihenfolge.
+
+Offen: unbekannte freie Sätze bleiben konservativ unklar; Tutor-Grundwissen ist
+bewusst klein, kein allgemeines Wörterbuch. Keine automatische fachliche OCR-
+Zertifizierung, kein vollständiger Offline-Neustart zugesichert, keine vollständige
+WCAG-/Lernwirksamkeitsprüfung. Physischer Ton/Mikrofon und Verstehen durch Kinder
+brauchen eigene Beobachtung. Neue Push-Zustellung/Google-/Play-Prüfung ist nicht
+Teil dieser Protokollkorrektur; bestehende Freigaben/Nachweise bleiben unverändert.
+GitHub-Actions39202054006 startet wegen Billing-Kontosperre keine Jobs;
+Annotationen117896914608/117896914923 tatsächlich gelesen. Lokale Tests/Builds und
+main-Push erfolgreich. Nutzeraktion: GitHub-Kontoinhaber klärt die Abrechnungssperre.
+Serverlaufwerk aktuell97% belegt/1,2GB frei; gesonderte geplante Bereinigung alter
+Release-Artefakte sinnvoll, keine fremden Daten oder Ressourcen dafür verändert.
+Nächster unabhängiger Schritt: physischer Android-Alltagstest mit Ton/Mikrofon;
+kein Codeblocker für die ausgelieferten Korrekturen festgestellt.
+
+Die folgenden älteren Abschnitte sind historische Nachweise. Für den aktuellen
+Produktcode gilt der Abschnitt oben; spätere reine QA-/Dokumentationscommits
+ändern nicht den hier tatsächlich bereitgestellten Quellcommit.
 
 Kompakte Hefter1.7.2+40 – produktiv geprüft18.10.2026
 
