@@ -305,3 +305,14 @@ def test_explicit_homework_can_restore_a_dismissed_proposal_without_a_duplicate(
 def test_fraction_equation_does_not_need_a_magic_calculate_word(prompt):
     assert evaluate(question(prompt), '6/16')['outcome'] == 'correct'
     assert evaluate(question(prompt), '3/16')['outcome'] == 'incorrect'
+
+
+def test_numeric_task_spacing_variants_share_identity_but_numbers_and_goals_do_not():
+    from schulpilot.material_tasks import preview
+
+    def key(text):
+        return preview(text, [text])[0]['key']
+
+    assert key('Probeaufgabe: 1 / 3 + 1/6 = ?') == key('Probeaufgabe:1/3+1 /6=?')
+    assert key('Aufgabe 1: 1/3+1/6=?') != key('Aufgabe 2: 1/3+1/6=?')
+    assert key('Berechne die Summe 1/3+1/6') != key('Nenne den Nenner von 1/3+1/6')

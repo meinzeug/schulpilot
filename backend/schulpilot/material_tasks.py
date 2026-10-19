@@ -25,6 +25,14 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def task_identity(line):
+    value = re.sub(r"^(?:probeaufgabe|beispiel|übung|hausaufgaben?|auftrag)\s*:\s*", "", canonical(line))
+    # OCR formatting differences are not a second numeric exercise. Keep the
+    # instruction and its number; never merge different goals by similarity.
+    value = re.sub(r"(?<=\d)\s*([/+*=−-])\s*(?=\d)", lambda m: m[1].replace("−", "-"), value)
+    return re.sub(r"(?<=\d)\s*=\s*(?=[?□_])", "=", value)
+
+
 def preview(content, notes, decisions=None):
     selected = {row["key"]: row for row in decisions or []}
     lines = [line.strip() for note in notes for line in note.splitlines() if line.strip()]
@@ -39,7 +47,7 @@ def preview(content, notes, decisions=None):
             index += 1
         # Keep numbering and concrete expressions. Only a generic header can
         # be ignored for duplicate identity, never distinct exercise numbers.
-        identity = re.sub(r"^(?:probeaufgabe|beispiel|übung|hausaufgaben?|auftrag)\s*:\s*", "", canonical(line))
+        identity = task_identity(line)
         if not identity or len(identity) < 3:
             continue
         source_match = canonical(line) in canonical(content)
