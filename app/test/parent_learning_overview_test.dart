@@ -224,7 +224,28 @@ void main() {
       'Parent sees twelve actual of twenty minutes and explicit open goal at $width px',
       (tester) async {
         final requests = <http.Request>[];
-        await mountParent(tester, parentOverview(), requests, width: width);
+        final data = parentOverview();
+        data['practice_summary'] = {
+          'practiced_tasks': 4,
+          'attempts': 5,
+          'practiced_rounds': 1,
+          'independent_tasks': 3,
+          'assisted_tasks': 1,
+        };
+        data['mastery'] = [
+          {
+            'subject': 'Mathematik',
+            'topic': 'Brüche',
+            'next_review': '2026-10-20',
+            'description': 'Später erneut abrufen',
+          },
+        ];
+        await mountParent(tester, data, requests, width: width);
+        expect(find.text('5 Versuche · 1 Runde'), findsOneWidget);
+        expect(
+          find.textContaining('Nächste Wiederholung: 20.10.2026'),
+          findsOneWidget,
+        );
         expect(find.text('12:00 / 20 Min.'), findsOneWidget);
         expect(find.text('30:00 / 100 Min.'), findsOneWidget);
         expect(find.text('Tagesziel offen'), findsOneWidget);

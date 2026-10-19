@@ -979,7 +979,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                 ),
                               ),
                               Text(
-                                'Nächste Wiederholung: ${mastery['next_review']} · ${mastery['description']}',
+                                'Nächste Wiederholung: ${friendlyDate(mastery['next_review'])} · ${mastery['description']}',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: muted,
@@ -1657,7 +1657,11 @@ class _ChildHomeContent extends StatelessWidget {
           'Meine Heftseiten',
           data['material_count'] == null
               ? 'Deine gesammelten Seiten'
-              : '${data['material_count']} gespeicherte Seiten',
+              : counted(
+                  data['material_count'] as num,
+                  'gespeicherte Seite',
+                  'gespeicherte Seiten',
+                ),
           '/library/${child['id']}',
         ),
         _ChildHomeDisclosure(

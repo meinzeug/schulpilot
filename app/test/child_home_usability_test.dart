@@ -92,11 +92,13 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       final data = _overview();
+      data['material_count'] = 1;
       await _openHome(tester, data, requests: requests);
 
       expect(find.byType(FocusCard), findsOneWidget);
       expect(find.text('Weiterlernen'), findsOneWidget);
       expect(find.text('Heutige Seiten scannen'), findsOneWidget);
+      expect(find.text('1 gespeicherte Seite'), findsOneWidget);
       expect(find.text('Synthetischer Hefteintrag · Brüche'), findsNothing);
       expect(find.text('Was steht heute an?'), findsNothing);
       expect(

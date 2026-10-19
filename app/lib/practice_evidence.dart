@@ -64,7 +64,7 @@ class PracticeEvidence extends StatelessWidget {
         if (!compact) ...[
           const SizedBox(height: 4),
           Text(
-            '${count('attempts')} Versuche · ${count('practiced_rounds')} Runden',
+            '${counted(count('attempts'), 'Versuch', 'Versuche')} · ${counted(count('practiced_rounds'), 'Runde', 'Runden')}',
             style: const TextStyle(color: muted, fontSize: 13),
           ),
         ],
