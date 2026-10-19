@@ -97,6 +97,7 @@ def main():
             if native.matching("Willkommen zurück"):
                 login(account["credentials"], "child")
             native.wait("Heute")
+            phase = "open_existing_round"
             open_round(unit["topic"])
             if native.matching("Einheit starten"):
                 native.press("Einheit starten")

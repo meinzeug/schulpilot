@@ -376,7 +376,8 @@ def test_voluntary_learning_is_paginated_after_goals_and_preserves_future_releas
         assert response.status_code == 200, response.text
         data = response.json()
         assert data["total"] == 45 and data["pages"] == 3
-        assert data["daily_goal_met"] and data["weekly_goal_met"]
+        assert not data["daily_goal_met"] and not data["goal_required"]
+        assert data["weekly_goal_met"]
         assert data["daily_active_seconds"] == data["weekly_active_seconds"] == 3600
         assert data["can_continue_voluntarily"] and data["optional_learning"]
         assert len(data["items"]) == (5 if page == 3 else 20)

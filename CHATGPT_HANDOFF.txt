@@ -1,13 +1,25 @@
-Protokollprüfung19.10.2026 – laufende Umsetzung, noch kein neuer Release
-Beide vollständigen HTML-Berichte mit Details und JSON gelesen. Vollständige
-Befund-/Fallliste: docs/TEST_REPORT_REVIEW.md. Neue Bewertung/Audithistorie0020,
-explizite gebündelte Hausaufgabenübernahme/Provenienz0021, progressive Fehlerhilfe,
-kuratiertes Tutor-Grundwissen, direkter Antwortdialog und Kinder-/Elternführung
-implementiert. Letzter gezielter Backendlauf75/75 grün; Gesamttests/Flutterprüfung
-laufen. Öffentliche Version weiterhin1.7.2+40, Schema0019. Keine echten Familien
-oder Antworten zum Testen verändert. Nächste Aktion: Tests auswerten, Builds und
-echte Browser-/native Bedienprüfung mit eigener künstlicher Familie; erst danach
-gesicherte Bereitstellung und überprüfter Release. Fortsetzung im Befunddokument.
+Protokollprüfung 1.8.0+41 · öffentlich bereitgestellt, Android-Nachtest läuft
+
+Beide vollständigen HTML-Protokolle einschließlich Details/JSON gelesen.
+Befunde und alle 69 Testfallbezüge: docs/TEST_REPORT_REVIEW.md.
+Öffentlich: https://schulpilot.dorfspy.de ; API /api.
+Aktiver Release20261019T063153Z-8990410, Quellcommit8990410, Schema0021.
+Bewertungs-Audit0020 und Aufgabenherkunft/-bestätigung0021 additiv migriert;
+Sicherung und sieben Dienste geprüft. Keine echten Familien geändert.
+932 vollständige PostgreSQLtests und346 vollständige Fluttertests bestanden;
+spätere gezielte Korrekturen separat in den Testbelegen dokumentiert.
+Web/Direct-APK/Play-AAB41 signiert gebaut und öffentlich bytegleich geprüft.
+Normaler öffentlicher Webablauf mit drei künstlichen Fotos, drei echten OCRs,
+einem Lernpaket und einer Tutorantwort bestanden. Genau ein verbindlicher
+Auftrag aus zwei Foto-Varianten; Elternlesen erzeugte keine Kinderaktivität.
+Reales natives OTA40->41 und drei erneute Startprüfungen bestanden.
+Native Fortsetzung deckte F26 auf: Erst-Runden ohne Fach wurden gegenseitig
+verdeckt. Vier Regressionen vor dem Fix rot, danach alle71 Plan-/Lernreise-/
+Sammlungstests grün. Korrektur für Altpläne und freie Tage: alle125 betroffenen Prüfungen bestanden.
+Nächste Aktion: gesichert bereitstellen und Native-QA fortsetzen.
+Privater QA-Checkpoint unter artifacts/.school-day-qa-account.json bleibt
+außerhalb von Git. Nur diesen eigenen künstlichen Haushalt nach erfolgreicher
+Export-/Löschprüfung entfernen. Keine Daten echter Kinder bereinigen.
 
 Kompakte Hefter1.7.2+40 – produktiv geprüft18.10.2026
 

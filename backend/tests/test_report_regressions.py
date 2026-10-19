@@ -245,7 +245,8 @@ def test_error_specific_match_hints_are_distinct_and_retry_is_idempotent(api, ho
         assert db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
-def test_free_day_has_no_achieved_daily_minimum_even_with_saved_time(api, household, monkeypatch):
+@pytest.mark.parametrize('paused', [False, True])
+def test_free_day_has_no_achieved_daily_minimum_even_with_saved_time(api, household, monkeypatch, paused):
     from datetime import date
 
     from schulpilot import learning
@@ -256,11 +257,16 @@ def test_free_day_has_no_achieved_daily_minimum_even_with_saved_time(api, househ
     with DB.begin() as db:
         row = db.get(Child, child['id'])
         row.preferences = {'weekdays':[0,1,2,3,4], 'daily_minutes':20, 'timezone':'Europe/Berlin'}
+        if paused:
+            row.preferences = {**row.preferences, 'weekdays':list(range(7)), 'pause_until':'2026-10-18'}
         db.add(Activity(child_id=row.id, kind='active_time', detail={'seconds':1300}, created=1792321200))
         db.flush()
         time = learning.learning_time(db,row)
         assert time['daily_active_seconds'] >= 1200
         assert time['goal_required'] is False and time['daily_goal_met'] is False
+        planned = learning.plan(db, row)
+        assert planned['daily_active_seconds'] == time['daily_active_seconds']
+        assert planned['goal_required'] is False and planned['daily_goal_met'] is False
 
 
 def test_help_context_is_owned_and_notification_opens_the_exact_task(api, household):

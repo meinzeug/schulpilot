@@ -156,6 +156,7 @@ def ensure_plan(db, day):
                 "title": unit.topic,
                 "phase": "learning",
                 "label": "Erste Runde",
+                "subject": unit.subject,
                 "question_count": len(unit.questions),
                 "unit_id": unit.id,
                 "job_id": None,

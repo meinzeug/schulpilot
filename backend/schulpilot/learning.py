@@ -435,13 +435,16 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     for unit in units:
         if unit.completed and unit.school_day_id:
             practiced[unit.school_day_id] = max(practiced.get(unit.school_day_id, 0), unit.completed)
+    units_by_id = {u.id: u for u in units}
+    # Initial stages in older saved plans lack the subject field. Resolve it
+    # from the existing unit; otherwise different subjects share one empty
+    # chain and a started maths round disappears behind untouched biology.
     chains = {
-        block["unit_id"]: (f"{day.id}:{block.get('subject', '')}", index)
+        block["unit_id"]: (f"{day.id}:{block.get('subject') or units_by_id[block['unit_id']].subject}", index)
         for day in days
         for index, block in enumerate((day.learning_plan or {}).get("blocks", []))
-        if block.get("unit_id")
+        if block.get("unit_id") in units_by_id
     }
-    units_by_id = {u.id: u for u in units}
     synthetic_family = db.get(Family, child.family_id).synthetic
     synthetic_days = set(
         db.scalars(
@@ -703,7 +706,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         "weekly_goal_minutes": prefs.weekly_minutes,
         "daily_active_seconds": daily_seconds,
         "weekly_active_seconds": weekly_seconds,
-        "daily_goal_met": daily_seconds >= prefs.daily_minutes * 60,
+        "daily_goal_met": measured["daily_goal_met"],
         "weekly_goal_met": weekly_seconds >= prefs.weekly_minutes * 60,
         "goal_required": not paused and not free_day,
         "daily_remaining_minutes": (daily_remaining + 59) // 60,

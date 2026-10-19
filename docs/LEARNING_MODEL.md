@@ -111,3 +111,10 @@ und konkrete Hilfewünsche. Technische/OCR-/Bewertungsfragen sind keine Diagnose
 einer Wissenslücke. Bloßes Elternlesen ist kein Lernen des Kindes. Freie Tage und
 Auszeiten haben kein erfülltes tägliches Mindestziel; freiwillige Aktivität zählt
 weiter als echte Übung. Verbindliche Ziele an Lerntagen bleiben bestehen.
+
+Erste erzeugte Etappen gehören zur tatsächlichen Fachkette ihres Schultags.
+Bei älteren Plänen ohne Fach im Erstblock wird es aus der vorhandenen Einheit
+gelesen; gespeicherte Pläne und Antworten bleiben unverändert. Ein anderes
+noch nicht begonnenes Fach darf eine aktive/pausierte Runde nicht verdecken.
+Tagesplan, Sammlung und Lernzeitanzeige verwenden denselben Zielstatus, auch
+bei freiwilliger Aktivität über dem Richtwert an einem freien oder pausierten Tag.

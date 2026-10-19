@@ -419,3 +419,60 @@ def test_parent_subject_days_can_choose_english_before_unfinished_maths_in_the_s
         assert {x["subject"] for x in view["plan"]["today"]} == {"Englisch"}
         path = child.get(f"/api/school-days/{day_id}/study-path").json()
         assert path["next_block_id"] == english and path["can_continue"]
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("status", ["active", "paused"])
+def test_multisubject_initial_round_remains_reachable_after_native_restart(api, household, legacy, status):
+    """Initial blocks without a subject must not form a cross-subject chain."""
+    import copy
+
+    from schulpilot.study_path import ensure_plan
+
+    _, kid = household
+    with DB.begin() as db:
+        child = db.get(Child, kid["id"])
+        child.preferences = {"weekdays": list(range(7)), "daily_minutes": 20, "weekly_minutes": 100}
+        day = SchoolDay(child_id=child.id, school_date=learning.local_day(child).isoformat(), stage="ready")
+        db.add(day)
+        db.flush()
+        saved_ids = []
+        for index, subject in enumerate(("Biologie", "Mathematik")):
+            material = Material(
+                child_id=child.id, school_day_id=day.id, page_number=index + 1,
+                title="Künstliche Heftseite", topic=subject, subject=subject,
+                content="Künstlicher bestätigter Unterrichtsstoff.", confirmed=True, status="confirmed",
+            )
+            db.add(material)
+            db.flush()
+            unit = LearningUnit(
+                child_id=child.id, school_day_id=day.id, material_id=material.id,
+                **(sample_unit() | {"subject": subject, "topic": subject}),
+                status="not_started" if index == 0 else status,
+                estimated_minutes=8, provider="synthetic-fixture", created=now() + index,
+            )
+            db.add(unit)
+            db.flush()
+            db.add(UnitSource(unit_id=unit.id, material_id=material.id, revision=material.revision))
+            saved_ids.append(unit.id)
+        db.flush()
+        value = copy.deepcopy(ensure_plan(db, day))
+        if legacy:
+            for block in value["blocks"]:
+                if block.get("unit_id"):
+                    block.pop("subject", None)
+            day.learning_plan = value
+        else:
+            assert [b["subject"] for b in value["blocks"] if b.get("unit_id")] == ["Biologie", "Mathematik"]
+        day_id = day.id
+    with login_child() as child_api:
+        overview = child_api.get(f"/api/children/{kid['id']}/overview?compact=true").json()
+        assert set(saved_ids) <= {x["id"] for x in overview["plan"]["voluntary"] if x["kind"] == "unit"}
+        assert overview["plan"]["voluntary"][0]["id"] == saved_ids[1]
+        listed = child_api.get(f"/api/children/{kid['id']}/learning").json()
+        assert set(saved_ids) <= {x["id"] for x in listed["items"] if x["kind"] == "unit"}
+        assert child_api.post(f"/api/units/{saved_ids[1]}/start").status_code == 200
+    with DB() as db:
+        assert db.get(SchoolDay, day_id).learning_plan == value
+        assert db.scalar(select(func.count()).select_from(Job)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0

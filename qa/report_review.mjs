@@ -36,20 +36,26 @@ try{
  state.materials=day.pages.map(p=>p.id);await save();
  checks.push('actual_public_photo_picker_crop_explicit_submission_and_reserved_ocr');
  phase='source_and_homework_preview';
- for(const id of state.materials){const m=await get(child,'/materials/'+id);assert(m.content&&m.supports_task_confirmation,'current_source_capability_required');if(!m.confirmed){await open('/material/'+id);await tap(button('Stimmt, weiter'));if(await button('Auswahl übernehmen').count()){await shot('homework-preview');await tap(button('Auswahl übernehmen'),true);}await wait(()=>get(child,'/materials/'+id),v=>v.confirmed,30);} }
+ for(const id of state.materials){const m=await get(child,'/materials/'+id);assert(m.content&&m.supports_task_confirmation,'current_source_capability_required');if(!m.confirmed){await open('/material/'+id);const awaitingPreview=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/materials/'+id+'/task-preview'&&r.request().method()==='POST',{timeout:30000});awaitingPreview.catch(()=>{});await tap(button('Stimmt, weiter'));const proposal=await(await awaitingPreview).json();if(proposal.items.length||proposal.duplicates.length){await button('Auswahl übernehmen').waitFor({state:'visible',timeout:15000});await shot('homework-preview');await tap(button('Auswahl übernehmen'),true);}await wait(()=>get(child,'/materials/'+id),v=>v.confirmed,30);} }
  const before=await get(child,'/children/'+account.child_id+'/overview?compact=true');
- state.assignments=before.assignments.length;assert(state.assignments<=2,'headings_or_examples_not_binding');await save();
+ state.assignments=before.assignments.length;assert.equal(state.assignments,1,'same_day_homework_deduplicated_headings_not_binding');assert(before.assignments.every(a=>!/^Probeaufgabe:?$/i.test(a.note.trim())),'heading_is_never_a_task');await save();
  checks.push('explicit_source_task_preview_examples_not_automatic_homework');
  phase='real_learning_unit';
  day=await get(child,'/school-days/'+state.day_id);
  if(!state.unit_id){await open('/after-school/'+account.child_id);if(!day.units.length){await tap(button('Im Hintergrund vorbereiten').or(button('Lernpaket für heute erstellen')).or(button('Jetzt lernen')));}
  day=await wait(()=>get(child,'/school-days/'+state.day_id),d=>d.units.length>0,240);state.unit_id=day.units[0].id;await save();}
- let u=await get(child,'/units/'+state.unit_id);assert(!u.synthetic&&u.questions.length,'real_generated_round_required');
+ const mathRound=day.units.find(row=>['Mathematik','Mathe'].includes(row.subject));assert(mathRound,'actual_math_round_required');state.unit_id=mathRound.id;await save();let u=await get(child,'/units/'+state.unit_id);assert(!u.synthetic&&u.questions.length,'real_generated_round_required');
  await open('/unit/'+state.unit_id);
- if(await button('Einheit starten').count())await tap(button('Einheit starten'));
- if(await button('Lernen fortsetzen').count())await tap(button('Lernen fortsetzen')); 
- if(await button('Weiter zu den Übungen').count())await tap(button('Weiter zu den Übungen'));
- u=await get(child,'/units/'+state.unit_id);state.question_count=u.questions.length;await save();
+ if(!['active','completed'].includes(u.status)){
+  const name=u.status==='paused'?'Lernen fortsetzen':'Einheit starten';
+  await button(name).waitFor({state:'visible',timeout:20000});
+  u=await ui(button(name),'/units/'+state.unit_id+'/start','POST',200,true);
+ }
+ if(u.introduction_seen===false){
+  await button('Weiter zu den Übungen').waitFor({state:'visible',timeout:20000});
+  u=await ui(button('Weiter zu den Übungen'),'/units/'+state.unit_id+'/introduction','POST',200,true);
+ }
+ u=await get(child,'/units/'+state.unit_id);assert.equal(u.status,'active','actual_unit_start_required');assert.equal(u.introduction_seen,true,'introduction_must_be_saved');state.question_count=u.questions.length;await save();
  checks.push('actual_generated_round_open_and_saved_introduction');await shot('learning-mobile');
  phase='real_curated_tutor';
  const bioId=state.materials[state.materials.length-1];
@@ -97,6 +103,8 @@ try{
  phase='mobile_parent_form';await page.setViewportSize({width:390,height:1000});await open('/child/'+account.child_id);
  // Read-only baseline and generated unit stay available for a native continuation.
  page=childPage;await open('/learn/'+account.child_id);await shot('learning-list');
+ const listed=await get(child,'/children/'+account.child_id+'/learning?page_size=50');
+ assert(listed.items.some(item=>item.kind==='unit'&&item.id===state.unit_id),'started_subject_round_must_remain_reachable');
  assert.equal(await page.getByText('01.01.1970',{exact:true}).count(),0,'invalid_epoch_hidden');
  assert.equal(await page.getByText('ready',{exact:true}).count(),0,'raw_state_hidden');
  checks.push('learning_list_no_internal_states_or_epoch');

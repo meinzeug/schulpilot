@@ -14,9 +14,9 @@ Die protokollierte Anzeige 1.0.1 war am Arbeitsbeginn im Client fest verdrahtet 
 4. Kurze Elternentscheidung, technische Details nachgeordnet, Rechte-/Zeit-/Tageswechseltests.
 5. Gesamttests/Analyse/Build, tatsächlicher Web-/Android-Test mit eigener künstlicher Familie, gesicherte Bereitstellung, Commit/Push.
 
-Stand 19.10.2026: Bewertung/Quellenübernahme/Tutor/Darstellung implementiert, noch nicht veröffentlicht. Neue additive Migrationen0020/0021. 109 und zuletzt75 gezielte Backendtests bestanden. Eine größere Zwischenprüfung237/242 deckte fünf Integrationsfehler auf; diese sind korrigiert und die betroffenen75 Prüfungen erneut grün. 345 vollständige Fluttertests und45 gezielte Abschlussprüfungen bestanden; Analyse fehlerfrei. Der erste vollständige PostgreSQLlauf:927 bestanden, zwei veraltete Testerwartungen (Headrevision, unveränderter Bestätigungsretry). Erwartungen korrigiert; Rechteprüfung um echte verbotene Kinderänderungen erweitert. Neuer Backend-Abschlusslauf folgt. Öffentlicher Stand bleibt1.7.2+40/Schema0019, bis eine neue Bereitstellung tatsächlich geprüft ist.
+Stand19.10.2026:1.8.0+41/Schema0021 öffentlich auf Quellcommit8990410. Bewertung, Quellenübernahme, Tutor und Darstellung implementiert. Vollständige Läufe932 PostgreSQL/346 Flutter bestanden, spätere gezielte Korrekturen separat geprüft. Öffentlicher Webablauf, reale OCR/Paket/Tutor und Android-OTA40->41 bestanden. Native Fortsetzung fand zusätzlich F26; Korrektur lokaler Altplanauflösung und verbleibender Freitagsprojektion in Abschlussprüfung. Keine echten Familien oder Antworten verändert.
 
-Nächste Aktion: Gesamttestfehler auswerten, Flutter/Analyse abschließen, tatsächliche Web-/native Bedienprüfung ausschließlich eigener künstlicher Familie; anschließend gesicherter Release mit Rückweg. Keine Prüfungen an echten Familien und keine Testdatenbereinigung dort.
+Nächste Aktion: letzte gezielte Regressionen abschließen, Backendkorrektur gesichert bereitstellen, denselben künstlichen Haushalt nativ fortsetzen, danach Export/Löschung und finale Ergebnisdokumentation.
 
 ## Herkunft
 
@@ -334,7 +334,20 @@ Beobachtung/Versionsbezug stammen aus dem jeweiligen Bericht; Aktueller Nachtest
 | status | im aktuell geladenen Stand belegt |
 | Aktueller Nachtest/Ursache | Bestätigt: Tageszielmet-Flag wurde auch an freien Tagen vor goal_required ausgewertet. |
 | Komponenten, Änderung, Abnahme | learning_time und CoachingPanel; kein erfülltes Mindestziel an frei/pausiert, freiwillige Übung zählt trotzdem als Aktivität. |
-| Status/Ergebnis | Isolierter Sonntagstest mit >20 real gespeicherten Minuten bestanden; Zeitzonen-/Pausenregressionen laufen. |
+| Status/Ergebnis | Freier Sonntag und ausdrückliche Auszeit mit >20 gespeicherten Minuten in Zeit- und Planprojektion geprüft. Zwei Regressionen vor dem abschließenden Planfix rot; alle125 betroffenen Prüfungen danach grün. |
+
+### F26 · Begonnene Runde verschwindet bei mehreren Fächern aus „Lernen“
+
+| Feld | Stand |
+|---|---|
+| Protokoll und Testfall | Zusätzlicher isolierter Android-Nachtest zu K44/K48 und Wiederaufnahme. |
+| Versionsbezug | Auf öffentlicher 1.8.0+41 / `8990410` mit eigener künstlicher Familie reproduziert. |
+| Beobachtung | Biologie und Mathematik waren erzeugt; die über Web begonnene Mathe-Runde fehlte nach nativem Login in „Lernen“. Die gespeicherte Einheit und Antworten waren nicht gelöscht. |
+| Ursache | Erste gespeicherte Lernreiseblöcke enthielten kein Fach. Beide Erst-Runden landeten in derselben leeren Fachkette; die zweite wurde vom unangetasteten ersten Fach verdeckt. |
+| Komponenten | `study_path.ensure_plan`, `learning.plan`, Tagesplan/Lernsammlung. |
+| Priorität, Änderung | P1. Neue Erstblöcke speichern das Fach. Alte Pläne lösen es lesend aus ihrer vorhandenen Einheit auf; kein Überschreiben gespeicherter Pläne oder neuer KI-Auftrag. |
+| Abnahme | Beide Fächer bleiben erreichbar; aktive/pausierte zweite Runde steht zuerst unter Fortsetzung, auch bei Altplänen. GETs erzeugen keine Aufträge oder Verbrauch. Native Wiederaufnahme erhält dieselbe Antwort. |
+| Status/Prüfergebnis | Vier neue Regressionen vor dem Fix fehlgeschlagen; nach der Korrektur alle125 gezielten Plan-/Lernreise-/Sammlungs-/Mindestzeit-/Quellenprüfungen bestanden. Öffentlicher nativer Nachtest folgt nach Bereitstellung. |
 
 ### EF01 · Korrekte Antwort erzeugt trotz KI-Bestätigung weiteren Betreuungsbedarf
 
