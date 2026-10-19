@@ -1,33 +1,78 @@
-SCHULPILOT1.10.0+46 · Abschlussbereitstellung läuft · 19.10.2026
+SCHULPILOT1.10.0+49 · öffentlich verifiziert ·19.10.2026
 
-Code und Migration0023 fertig; Build46-Web, signierte Direct-APK und Play-AAB
-gebaut.1081 PostgreSQL-Tests,54 gezielte Abschlussregressionen und570 Fluttertests
-bestanden. Architektur, Zustände, zehn Szenarien, Messwerte, Konfiguration und
-Grenzen: docs/ADAPTIVE_OPENROUTER.md und docs/STATUS.md.
+Website https://schulpilot.dorfspy.de ; eigene API /api.
+Release20261019T205610Z-5c3811c
+Produktcode5c3811c46c9baa530d4b8e6d8c3f60bb5930a0a3, main gepusht.
+PostgreSQL-Schema0023, additive Migration. Pre-Deployment-Backup success/Exit0;
+API, DB-Worker, isolierter Codex-Worker, Caddy und Backuptimer aktiv.
+Webbundle und kompletter öffentlicher APK-Download entsprechen dem lokalen Build.
 
-Verifiziert live vor letztem46-Deploy:20261019T194301Z-cdad42d(Build45), Schema0023.
-24 Browseransichten und native Android36-Runde mit vier Aufgabentypen erfolgreich.
-Echtes Update44→45, eigene Entwurfs-/Eltern-Leseprüfung und249.521Byte-PDF-Import
-mit drei Noten und Duplikatschutz bestanden. Keine externen KI-Aufrufe dafür.
+Persistenter Lerncontroller, Beleg-/Quellen-/Planrevisionen, Entwürfe mit CAS und
+Idempotenz, gezielte lokale Sofatutor-Ressourcen und bewusst angeforderte neue
+Zweierprobe nach Rückkehr. Eltern lesen gespeicherte Aktivitäten, keinen
+ungesendeten Entwurf. Keine automatischen Modellschleifen oder GET-Generierung.
+OpenRouter-Routing, Budgetreservierung, tatsächliche Abrechnung und geschützte
+Kosten-/Routingansicht implementiert. Architektur, zehn Szenarien, Operatorweg,
+Kostenhypothesen und Grenzen: docs/ADAPTIVE_OPENROUTER.md.
 
-OPENROUTER_API_KEY liegt ausschließlich in /etc/schulpilot/environment, lokale
-Quelle ~/or.txt. Key-Authentifizierung/Guthaben und Azure-ZDR-Angebot geprüft.
-Noch aktiv: Codex/gpt-6-luna; Mix nicht heimlich umgeschaltet. Für echte Daten
-fehlen noch Kontoinhaltslogging-/Datenfreigabeprüfung und technische Probe der
-aktuellen vollständigen Modellmix-Konfiguration. Kein Schlüssel in diesem Handoff.
-25 kleine künstliche OpenRouter-Antworten:0,065440USD Usage,0,195440USD einschließlich
-offener Reservierungen. Gebühren/FX tatsächlich unbekannt, Astra ungetestet.
+Tests:1081 PostgreSQL-Gesamtlauf; danach60 gezielte PG-Auditregressionen.
+Finale583Fluttertests, Analyse, Ruff, Compile, Node-/Shellsyntax, Diff-/Secretscan.
+Web49:24Rollen-/Browserprüfungen320–1440px ohne Laufzeit-/GET-Fehler.
+Zwei zusätzliche Rollenagenten:23Kinderchecks,20Eltern-Baseline-/30Nachtestschritte.
+Vier Aufgaben/fünf Versuche, drei selbstständig/eine unterstützt; ungesendeter
+Entwurf privat, Elternlesen ohne Kinderzeit. Echter Browser-PDF-Import249.521Bytes:
+drei Noten, erneuter Import erkennt drei bestehende. Ziele25/125 erzeugen keine
+fiktive Zeit.49-Nachtest korrigierter Zähler erfolgreich,0Provideraufrufe.
+Berichte: docs/ROLE_SIMULATION_2026_10_19_CHILD.md und _PARENT.md.
+Native Flutter/Android36: Entwurf/Pause/Prozessneustart/200%-Systemschrift auf48;
+OTA48→49 mit Android-Bestätigung und geprüftem Download ohne adb-Install;
+drei Start-/Vordergrundchecks auf49. API49 bestätigt Wiederaufnahme/Idempotenz.
+Beide eigenen Testfamilien normal gelöscht, Kontocheckpoints entfernt, eigene
+Emulator-Appdaten gelöscht und Emulator beendet. Keine echten Familien verändert.
 
-Normale Browseranmeldung auf /login; eigene Familien unter /app, Betrieb unter
-/admin, KI und Kosten dort in den geschützten Abschnitten. Eigene Kinder:
-Lernen → gespeicherte Runde; Entwürfe beim Pausieren wieder aufnehmen.
-Bei Lerntipp-Rückkehr: angesehen/übersprungen/Problem ausdrücklich rückmelden,
-bei vorhandenen belegten Zielen zwei neue Aufgaben bewusst anfordern.
-Noch unbewertete Altthemen zuerst mit bestehendem Rückblick abschließen.
-Keine echten Familien für Tests ändern. Nachtest nur mit eigener künstlicher
-Familie, normale sichere Anmeldung. Private Kontocheckpoints niemals weitergeben.
-Noch ausstehend: echte Ton-/Mikrofon-/TalkBack-/physische Gerätetests und kompletter
-Fünf-Fächer-Ablauf mit freigegebener OpenRouter-Produktionsroute.
+APK artifacts/schulpilot-android.apk,68.009.006Bytes
+SHA256bc62e71dbc47006e039ca2ff3c9f380b2510d496c73d9cf8118a74701ccafec8
+https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play-AAB artifacts/schulpilot-play.aab,64.352.329Bytes
+SHA2568347b6d678a386680d348388789f216907180466efc30e6fbcd2c06169c1df23
+Signiert, bundletool1.18.3 validate/Manifest/Signierer geprüft; kein Debug oder
+Direct-Installerrecht im AAB. Kein Play-Console-Upload oder neue Pushzustellung.
+
+OPENROUTER_API_KEY aus ~/or.txt nur in /etc/schulpilot/environment,
+root:schulpilot0640. Keine Schlüssel/Tokens/Passwörter in dieser Übergabe.
+Aktiv bleibt Codex/gpt-6-luna; Mixfalse, emergency_stopfalse nach Deploy geprüft.
+OpenRouter noch nicht produktiv aktiviert: tatsächliche Workspace-Einstellungen
+für Inhaltslogging/Datenfreigabe und vollständige aktuelle Bild-/Aufgaben-/
+Paketprobe fehlen. Bestehende allgemeine Betreiberfreigabe wird nicht aufgehoben;
+keine erneute pauschale Freigabe nötig. Autorisierter Kontozugang/Nachweis ist
+konkret erforderlich. Response-Caching wird pro Request ausdrücklich gesperrt.
+25verwertbare synthetische OpenRouter-Antworten:0,065440USD erfasst,
+0,195440USD einschließlich offener Reservierungen, Testcap0,25USD eingehalten.
+Astra nicht inferenzgetestet, Gebühren/FX unbekannt, kein vollständiger
+Fünf-Fächer-Livevergleich. Ledger bleibt geschützt außerhalb von Git erhalten.
+
+Browserfortsetzung: normal auf /login anmelden. Eltern /app, Kinddetails über
+die eigene Familienübersicht, Fachfortschritt /progress/<eigene-child-id>.
+Kind /app → Lernen → gespeicherte Runde; Pause/Weiter über denselben Zugang.
+Lerntipps kontextbezogen im Lernen: ansehen/überspringen/Problem rückmelden;
+neue Zweierprobe nur bewusst bei belegtem Lernziel. Vorschläge sind keine
+bereits erzeugten Aufgaben. Admin /admin → KI-Anbieter/Modellmix und Kosten.
+Betriebsadmin darf keine privaten Kinderinhalte öffnen. Keine Testpasswörter
+weitergeben; für neue Abnahme eigene künstliche Familie normal anlegen.
+Feste Demo liefert keine externe KI-Qualitätsabnahme. QA-Treiber und tatsächliche
+Versionsgrenzen stehen in den Rollenberichten und docs/STATUS.md.
+
+Offen: physisches Smartphone, hörbare TTS/Mikrofon, Screenreader, echte200%-
+Browsertextskalierung und kompletter OpenRouter-Fachablauf. OS-Textscale in Chrome
+vergrößerte die gemessenen Flutterlabels nicht; nicht als bestanden ausgeben.
+Kein neuer Firebase-/Google-Login- oder Zustelltest in dieser Arbeitseinheit.
+
+Rückweg:20261019T204352Z-9c7f8f3(48,Schema0023), vorhanden als previous.
+Über ssh dorfspy deploy/activate.py <id> --rollback-compatible verwenden.
+Kein DB-Downgrade/Restore über neue Antworten oder Löschjournal; Code vor0023
+nur mit den zusätzlichen Stop-/Budgethinweisen der Operatoranleitung benutzen.
+Nächster Schritt: Kontoeinstellungen belegen, aktuelle freigegebene Route gezielt
+abnehmen und erst dann den beauftragten OpenRouter-Operatorwechsel ausführen.
 
 Vorheriger abgeschlossener Handoff:
 

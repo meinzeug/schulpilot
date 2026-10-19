@@ -77,3 +77,22 @@ Der Elternagent hat anschließend mit frischen getrennten Chrome-Kontexten und n
 Auf der Eltern-Fachkarte blieb außerdem „1 Themen · 1 Runden“ sichtbar. Daher ist die Singularabnahme von Build 48 ausdrücklich nur teilweise erfolgreich; der Hauptagent korrigiert diesen verbleibenden Text für Build 49. Es wurde durch diesen Agenten noch keine Build-49-Abnahme behauptet.
 
 Treiber: `qa/role_wording_acceptance.mjs`; bereinigter Bericht: `artifacts/role-wording-release48-result.json`. Der gezielte Nachtest änderte keine Antworten, Noten, Lernvorgaben oder Materialien und erzeugte keine PDF-, Medien- oder KI-Aufträge. Die Kunstfamilie bleibt bis zur zentralen Bereinigung erhalten.
+
+
+## Gezielter öffentlicher Nachtest von Build 49
+
+Release `20261019T205610Z-5c3811c`, Quelle `5c3811c46c9baa530d4b8e6d8c3f60bb5930a0a3`, wurde anschließend mit frischen getrennten Eltern-/Kinderkontexten ausschließlich lesend geprüft. Die drei Texte sind jetzt tatsächlich korrekt gerendert: „5 Versuche · 1 Runde“, die Fachkarte „1 Thema · 1 Runde“ und die Kinder-Startseite „1 gespeicherte Seite“. Verbleibende falsche Themen-/Rundenplurale wurden in dieser Fortschrittsansicht nicht gefunden. Die historische Teilabweichung von Build 48 bleibt oben dokumentiert.
+
+Vier Aufgaben/fünf Versuche, Mindestziele 25/125 und gespeicherte aktive Sekunden blieben unverändert. Null Lernmutationen, Browserfehler oder Provideraufrufe; die Usage-Liste der Kunstfamilie bleibt leer. Beide normalen Sessions wurden wieder abgemeldet. Die Kunstfamilie ist für die vom Hauptagenten koordinierte Bereinigung bereit und wurde durch diesen Nachtest nicht gelöscht.
+
+Befehl: `node qa/role_wording_acceptance.mjs --build 49 --release 20261019T205610Z-5c3811c`. Bereinigter Bericht: `artifacts/role-wording-release49-result.json`, Ergebnis `success=true` mit vier konkreten Prüfnachweisen. Der Treiber prüft den Fachkarten-Singular zusätzlich ausdrücklich positiv und nicht nur die Abwesenheit der alten Mehrzahl. Es wurden keine Antworten, Noten, Lernvorgaben, Materialien oder KI-/PDF-/Medienaufträge verändert.
+
+
+## Zentrale Bereinigung nach erfolgreicher49-Abnahme
+
+Der Hauptagent hat anschließend ausschließlich die gemeinsame eigene künstliche
+Familie mit `qa/role_parent_prepare.py --cleanup` über die normale authentifizierte
+Account-API entfernt (Ergebnis `own_synthetic_family_deleted=true`). Der private
+Kontocheckpoint und der Fortsetzungscheckpoint wurden gelöscht. Keine echte
+Familie, ihre Materialien, Antworten, Noten oder Lernvorgaben wurden verändert.
+Die oben beschriebenen historischen Testgrenzen bleiben bestehen.

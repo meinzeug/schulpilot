@@ -1,35 +1,123 @@
-# Ausbau1.10.0+46 · 19.10.2026 · Bereit zur Abschlussbereitstellung
+# Produktionsstand 1.10.0+49 · 19.10.2026
 
-Build45 bereits öffentlich als20261019T194301Z-cdad42d verifiziert; Migration0023,
-Backup success, API/Worker/Codex/Caddy aktiv. Aufbauend darauf ist Build46 fertig
-gebaut: verbesserte Wiederaufnahme vorbereiteter Medien-Lernproben und zusätzlicher
-Schutz der öffentlichen Demo. Bereitstellung46 und Nachtest folgen unmittelbar.
+Öffentlich verifiziert: https://schulpilot.dorfspy.de, Release
+`20261019T205610Z-5c3811c`, Produktcode
+`5c3811c46c9baa530d4b8e6d8c3f60bb5930a0a3`, PostgreSQL-Schema `0023`.
+Datenbanksicherung vor Aktivierung: success/Exit0. API, DB-Worker, isolierter
+Codex-Worker, Caddy und Backuptimer aktiv. HTTP leitet mit308 auf HTTPS;
+Webbundle und vollständiger öffentlicher APK-Download sind bytegleich zum Build.
+Andere Dienste, echte Familien und bestehende Limits wurden nicht verändert.
 
-Gesamtnachlauf1081 PostgreSQL-Tests bestanden, danach54 gezielte Regressionen
-für die abschließenden Zustands-/Demogrenzen.570 Fluttertests bestanden; Analyse,
-Ruff, Compile, Diff-/Schlüsselprüfung erfolgreich. Web, signierte Direct-APK und
-Play-AAB46 gebaut; Paket, Signierer, Version, Hash und16KB-Ausrichtung verifiziert.
-Bekannte TTS-Wasm-/Kotlin-Plugin- sowie Starlette/Alembic-Hinweise bleiben.
+## Tatsächlich umgesetzt
 
-Auf45 tatsächlich geprüft:24 öffentliche Rollen-/Browseransichten320–1440px,
-Android36 mit nativem Flutter, unabhängiger Kinder-/Elternlogin, vier Aufgabentypen
-und Feedback nach Neustart; vier konsistente Elternantworten. Echtes automatisches
-Download-/Installationsupdate44→45 über Android-Bestätigung, ohne adb-Install.
-Eigene künstliche HTTPS-Entwürfe über Pause erhalten, Speichern idempotent, normale
-Elternansichten ohne ungesendeten Entwurf und ohne Zeit-/Antwort-/Fortschritts-
-änderung. Künstliche249.521Byte-PDF:201, drei Noten, erneuter Import ohne Dubletten.
-Diese Abnahmen erzeugten keine externen KI-Aufrufe und keine echten Kinderdaten.
+Persistenter ereignisgesteuerter Lerncontroller mit begrenztem Aktionsvertrag,
+Belegverweisen, Quellen-/Planrevision und kompakter Sitzung. Einzelfehler,
+wiederkehrender belegbarer Rechenfehler, Hilfe, unklare Bewertung, spätere
+Wiederholung und Abschluss werden getrennt behandelt. Bestehende Attempts
+bleiben maßgeblich; keine künstlichen Beherrschungsnachweise aus Klicks oder Zeit.
+Antwortentwürfe über Pause/Neustart erhalten, konkurrierende Geräte mit CAS und
+Idempotenz gesichert. Ungesendete Entwürfe fehlen in normalen Elternansichten.
 
-Neue Controller-/Sofatutor-/Modellmix-/Budgetabläufe und Operatoranleitung:
-ADAPTIVE_OPENROUTER.md. Schlüssel aus ~/or.txt ausschließlich serverseitig in
-/etc/schulpilot/environment(root:schulpilot0640). Kein automatischer Providerwechsel.
-Aktiv bleibt Codex/gpt-6-luna. OpenRouter-Mix noch nicht für echte Daten aktiviert:
-Kontoinhaltslogging/Datenfreigabe und vollständige aktuelle Bild-/Aufgaben-/
-Paketabnahme der konkreten Route fehlen.25 verwertbare künstliche OpenRouter-
-Antworten:0,065440USD erfasst, mit offenen Reservierungen0,195440USD gebunden.
-Kein Astra-Inferenztest, kein vollständiger Fünf-Fächer-Livevergleich und kein
-Nachweis von EUR-Monatskosten oder garantierter Lernwirksamkeit. Keine physische
-Handy-, hörbare TTS-/Mikrofon- oder TalkBack-Abnahme.
+Sofatutor aus lokalem Katalog am konkreten Lernziel einsetzen; empfohlen/geöffnet/
+selbst als angesehen gemeldet/nicht hilfreich/defekt getrennt speichern. Nach
+Rückkehr bewusst zwei neue Aufgaben anfordern, alte Runde/Antwort erhalten.
+Kein kostenpflichtiger Aufruf beim Lesen, keine automatische Endlosschleife.
+Inline-Rückkehr verbleibt in der Lernrunde; Eltern sehen Medienstatus lesend.
+Alte Einheiten ohne Quellenrevision bleiben lesbar, ohne aktuelle Grafik zu
+unterstellen. Providerrevision wird auch vor alten Nicht-Mix-Aufträgen geprüft.
+
+OpenRouter-Chat-Completions-Adapter mit gebundenem Modell/Upstream, medium,
+ZDR, Data-Collection-Deny, Cache-Opt-out und ohne Providerfallback. Additive
+Migration0023 für Lernmemory/-ereignisse und Kosten-/Budgetzustand. Atomare
+Integer-/Decimal-Reservierung, Kinderbudget zusätzlich zu bestehenden Grenzen,
+Abgleich von tatsächlich abgerechneter Usage, unbekannte Kosten weiter gebunden.
+Fehlgeschlagene kostenpflichtige Ausgaben bleiben erfasst. Metadaten-Abgleich
+kann nicht mehr durch alte ungeeignete Datensätze verhungern. Geschützte
+Betreiberansicht für Routing, Kosten, Gebührenbelege und Latenzen.
+Architektur, zehn Controller-Szenarien und Betreiberanleitung:
+[ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md).
+
+## Prüfungen und ihre Grenzen
+
+- Vollständiger PostgreSQL-Lauf:1081 bestanden; nach abschließenden Auditfixes
+  weitere60 gezielte PostgreSQL-Regressionen bestanden. Überlappende Läufe,
+  keine Addition zu einer behaupteten Zahl unterschiedlicher Tests.
+- Finaler Flutter-Gesamtlauf auf49:583 bestanden; Analyse ohne Befund.
+  Ruff, Compile, Node-/Shellsyntax, Diff- und Geheimnisprüfung bestanden.
+- Öffentliche App49:24 Rollen-/Browserprüfungen bei320–1440px, keine
+  Laufzeitfehler oder fehlgeschlagenen authentifizierten GETs.
+- Zwei zusätzliche Agenten durchspielten Kind und Elternteil mit getrennten
+  Browsern in einer eigenen künstlichen Familie:23 Kinderprüfungen sowie
+  20 Eltern-Baseline- und30 Eltern-Nachtestschritte. Vier Aufgaben/fünf Versuche,
+  drei selbstständig und eine unterstützt; Reload und Hinweis nachvollziehbar.
+  Elternlesen erzeugt keine Kinderzeit/Antworten und verrät keinen Entwurf.
+- Echtes Browser-Dateifeld:249.521Byte-PDF, drei Noten übernommen, erneuter
+  Import erkennt alle drei ohne Neuanlage. Mindestziele25/125 gespeichert;
+  bereits gemessene27Sekunden bleiben27. Null Provideraufrufe in dieser Familie.
+- Die dabei gefundenen Singulartexte in Lernstand und Heute sind korrigiert;
+  gezielter49-Nachtest mit unveränderten Lern-/Zeit-/Notendaten bestanden.
+  [Kinderbericht](ROLE_SIMULATION_2026_10_19_CHILD.md),
+  [Elternbericht](ROLE_SIMULATION_2026_10_19_PARENT.md).
+- Native Flutter auf Android36: gespeicherter Entwurf über Pause und Prozess-
+  neustart mit echter200%-Systemschrift auf48 geprüft. Danach echtes OTA48→49
+  über geprüften Download und Android-Installationsbestätigung, ohne adb-Install.
+  Auf49 drei Updatechecks bei Kaltstart, Vordergrund und erneutem Launcheraufruf.
+  Öffentliche49-API bestätigt Entwurfs-/Idempotenz-/Eltern-Lesetrennung erneut.
+- Web, signierte Direct-APK49 und Play-AAB49 gebaut. Paket/Signierer/Version,
+  APK-Hash und16KB-Ausrichtung geprüft. Offizielles bundletool1.18.3 validiert
+  AAB49; kein Debug und keine Direct-Installerberechtigung im Play-Manifest.
+  Kein Play-Console-Upload. Bekannte TTS-Wasm-/Kotlin-Plugin- und
+  Starlette/Alembic-Hinweise sind nicht durch Paketupdates verdeckt worden.
+
+Beide eigenen künstlichen Familien anschließend über die normale Account-API
+entfernt, private Kontocheckpoints gelöscht; eigene Emulator-Appdaten entfernt
+und dedizierten Emulator beendet. Kosten-Evaluationsledger bleibt geschützt
+außerhalb von Git erhalten. Keine echten Konten oder Antworten testbereinigt.
+
+## Tatsächlicher Provider- und Kostenstand
+
+`OPENROUTER_API_KEY` aus `~/or.txt` liegt ausschließlich serverseitig in
+`/etc/schulpilot/environment`, root:schulpilot0640. Keine Ausgabe des Schlüssels.
+Aktiv nach Deployment49: **Codex/gpt-6-luna**, Mix deaktiviert, Notfallstopp aus.
+OpenRouter-Code ist bereit, aber **kein erfolgreicher produktiver Wechsel**:
+Workspace-Inhaltslogging/Datenfreigabe und die vollständige Bild-/Aufgaben-/
+Paketprüfung der aktuellen Mix-Konfiguration sind noch nicht belegt. Eine
+bestehende Betreiberfreigabe wird nicht nochmals pauschal abgefragt; es fehlen
+konkrete technische Nachweise, kein weiteres allgemeines Einverständnis.
+
+25 verwertbare synthetische OpenRouter-Antworten: **0,065440USD** Inferenz erfasst;
+mit zwei ungeklärten Reservierungen **0,195440USD** gebunden, Gesamttestlimit
+0,25USD eingehalten. Gebühren/FX tatsächlich unbekannt. Azure-ZDR und medium
+bei erfolgreichen Proben, Astra nur Katalogmetadaten. Kein vollständiger
+Fünf-Fächer-Livevergleich, kein Nachweis garantierter7€ pro Kind/Monat.
+Bereinigte Messwerte: OPENROUTER_EVALUATION_2026_10_19.json.
+
+Keine physische Handy-, hörbare TTS-/Mikrofon-, TalkBack- oder neue sichtbare
+Firebase-Zustellabnahme. Chrome-OS-Textskalierung veränderte die getesteten
+Fluttertexte nicht: daraus wird keine200%-Browserabnahme behauptet. Rollenlauf
+verwendete eine feste gekennzeichnete Mathe-Demo, keine neue OCR und keine
+vollständige Fachabdeckung. Die begrenzte Voraussetzungsliste ist kein kompletter
+Lehrplangraph. Externe Medien-Anschlussjobs sind mit synthetischen Modellantworten
+regressionsgeprüft, nicht durch ein echtes Kind als wirksam nachgewiesen.
+
+## Artefakte und Rückweg
+
+APK: `artifacts/schulpilot-android.apk`,68.009.006Bytes, SHA256
+`bc62e71dbc47006e039ca2ff3c9f380b2510d496c73d9cf8118a74701ccafec8`.
+[Öffentlicher Download](https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk).
+Play: `artifacts/schulpilot-play.aab`,64.352.329Bytes, SHA256
+`8347b6d678a386680d348388789f216907180466efc30e6fbcd2c06169c1df23`.
+
+Vorheriger kompatibler Release: `20261019T204352Z-9c7f8f3` (48, ebenfalls0023).
+Code-Rückweg mit `deploy/activate.py <id> --rollback-compatible` über vorhandenes
+SSH; keine Datenbankrückstufung und kein Restore über neuere Antworten.
+Nur current/previous bleiben als Releases erhalten. Vor Rückweg auf Code vor
+0023 neuen KI-Auftrag stoppen und die Hinweise in ADAPTIVE_OPENROUTER.md beachten.
+
+Nächste konkrete Aktion: OpenRouter-Kontologging/Datenfreigabe im autorisierten
+Workspace prüfen und dokumentieren, aktuelle Route gezielt technisch abnehmen;
+erst danach über den vorhandenen Operatorweg aktivieren. Anschließend kleine
+normale künstliche Fünf-Fächer-Kette und physisches Audio-/Geräteverhalten prüfen.
 
 ## Vorheriger verifizierter Produktionsstand
 

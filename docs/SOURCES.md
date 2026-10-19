@@ -2,6 +2,14 @@
 
 Ausbau19.10.2026: OpenRouter-Routing, ZDR, Medium-Reasoning, Gebühren, Cache-Opt-out und Generation-Abgleich anhand der offiziellen Dokumentation geprüft. Konkrete Links, Endpunktpreise, Messwerte und Grenzen in [ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Keine SDK-/Paketaktualisierung; Flutter3.47.7/Dart3.13.5 und bestehende Backend-Abhängigkeiten bleiben fixiert. Schema0023 additiv.
 
+Abschluss49: Das offizielle Google-bundletool1.18.3 wurde zusätzlich als externes
+Prüfwerkzeug verwendet, ohne Buildabhängigkeiten zu ändern. Asset-Digest
+`a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29`
+gegen die offizielle GitHub-Veröffentlichung geprüft; AAB49 mit `validate`,
+Manifestdump und dem bestehenden Signierer geprüft. Das ist keine Play-Console-
+Veröffentlichung oder Geräteabnahme. Tatsächlich bereitgestellte Quellversion,
+Artefakt-Hashes, Rollensimulationen und Grenzen stehen in [STATUS.md](STATUS.md).
+
 Praxistestkorrekturen, geprüft am 19.10.2026:
 
 - [RHS: How plants absorb water](https://www.rhs.org.uk/advice/understanding-plants/how-plants-absorb-water):
