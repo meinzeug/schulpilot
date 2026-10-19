@@ -426,7 +426,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         builder: (ctx) => AlertDialog(
           title: const Text('Fotos auswählen'),
           content: Text(
-            'Bis zu $remaining Fotos auf einmal. Pro Schultag sind ${day!['max_pages']} Seiten möglich. Auf dem Gerät passen höchstens 8 Fotos oder 3 MB in den Zwischenspeicher. Weitere Fotos kannst du danach hinzufügen.',
+            'Bis zu ${counted(remaining, 'Foto', 'Fotos')} auf einmal. Pro Schultag sind ${day!['max_pages']} Seiten möglich. Auf dem Gerät passen höchstens 8 Fotos oder 3 MB in den Zwischenspeicher. Weitere Fotos kannst du danach hinzufügen.',
           ),
           actions: [
             TextButton(
@@ -766,7 +766,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '${schoolDate(day!['date'])} · ${pages.length} Seiten · ${day!['confirmed_count']} geprüft',
+                    '${schoolDate(day!['date'])} · ${counted(pages.length, 'Seite', 'Seiten')} · ${day!['confirmed_count']} geprüft',
                     style: const TextStyle(color: muted, fontSize: 13),
                   ),
                 ),
@@ -823,7 +823,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           if (!isPackage && completed != null && total > 0) ...[
             const SizedBox(height: 8),
             Text(
-              '$completed von $total Seiten',
+              '$completed von ${counted(total, 'Seite', 'Seiten')}',
               style: const TextStyle(fontSize: 13, color: Color(0xFFD4D4EE)),
             ),
           ],
@@ -1070,7 +1070,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(
-              '$savedCount Seiten sind bereits gespeichert. Hier sammelst du nur die neuen Fotos.',
+              '${counted(savedCount, 'Seite', 'Seiten')} ${savedCount == 1 ? 'ist' : 'sind'} bereits gespeichert. Hier sammelst du nur die neuen Fotos.',
               style: const TextStyle(color: muted),
             ),
           ),

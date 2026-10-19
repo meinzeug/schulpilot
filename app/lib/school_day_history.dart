@@ -63,7 +63,7 @@ class _SchoolDayHistoryState extends State<SchoolDayHistory> {
                 contentPadding: EdgeInsets.zero,
                 title: Text(day['date']),
                 subtitle: Text(
-                  '${(day['subjects'] as List).join(' · ')}\n${day['page_count']} Seiten · ${day['completed_units']} von ${day['unit_count']} Einheiten abgeschlossen',
+                  '${(day['subjects'] as List).join(' · ')}\n${counted(day['page_count'] as num? ?? 0, 'Seite', 'Seiten')} · ${day['completed_units']} von ${counted(day['unit_count'] as num? ?? 0, 'Einheit', 'Einheiten')} abgeschlossen',
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => openRoute(

@@ -81,7 +81,7 @@ class AiCostPanel extends StatelessWidget {
           Text(data['note'] ?? '', style: const TextStyle(color: muted)),
           if (data['completed_costed_sessions'] != null)
             Text(
-              '${data['completed_costed_sessions']} abgeschlossene Runden mit zuordenbaren Kosten. ${data['attribution_notice'] ?? ''}',
+              '${counted(data['completed_costed_sessions'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')} mit zuordenbaren Kosten. ${data['attribution_notice'] ?? ''}',
               style: const TextStyle(color: muted),
             ),
           ExpansionTile(

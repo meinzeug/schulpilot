@@ -229,7 +229,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               if (data!['level'] == 'rounds') ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${statusLabel(item['status'])} · ${item['attempts']} Versuche',
+                                  '${statusLabel(item['status'])} · ${counted(item['attempts'] as num? ?? 0, 'Versuch', 'Versuche')}',
                                   style: const TextStyle(
                                     color: muted,
                                     fontSize: 13,
@@ -238,7 +238,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               ] else if (data!['level'] == 'subjects') ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${item['topic_count']} Themen · ${item['practiced_rounds']} Runden',
+                                  '${counted(item['topic_count'] as num? ?? 0, 'Thema', 'Themen')} · ${counted(item['practiced_rounds'] as num? ?? 0, 'Runde', 'Runden')}',
                                   style: const TextStyle(
                                     color: muted,
                                     fontSize: 13,

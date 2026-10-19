@@ -1245,7 +1245,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     MathText('Aufgabenerklärung: ${q['explanation']}'),
                     const SizedBox(height: 12),
                     MathText(
-                      '${q['hints_used']} Hinweise genutzt. Verfügbare Hinweise:',
+                      '${counted(q['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')} genutzt. Verfügbare Hinweise:',
                       style: const TextStyle(fontSize: 12, color: muted),
                     ),
                     for (final h in q['hints'] as List)

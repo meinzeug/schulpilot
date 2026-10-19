@@ -664,7 +664,7 @@ class _PagedCollectionState extends State<PagedCollection> {
           Text(
             total == 0
                 ? 'Keine Ergebnisse'
-                : '$first–$last von $total ${widget.learning ? 'Einträgen' : 'Seiten'}',
+                : '$first–$last von ${counted(total, widget.learning ? 'Eintrag' : 'Seite', widget.learning ? 'Einträgen' : 'Seiten')}',
             style: const TextStyle(color: muted, fontSize: 13),
           ),
           const SizedBox(height: 12),

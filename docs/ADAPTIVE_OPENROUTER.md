@@ -1,6 +1,6 @@
 # Zustandsbehaftete Lernbegleitung und OpenRouter
 
-Stand: 19.10.2026, Erweiterung für 1.10.0+48, additive Migration 0023.
+Stand: 19.10.2026, Erweiterung für 1.10.0+49, additive Migration 0023.
 Tatsächliche Bereitstellung und abschließende Testergebnisse: STATUS.md und
 CHATGPT_HANDOFF.txt. Ein Build oder API-Schlüssel ist keine Anbieterfreigabe.
 

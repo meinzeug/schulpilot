@@ -53,7 +53,7 @@ class LearningProgressPanel extends StatelessWidget {
           else
             MathText(
               progress['completed_rounds'] is num
-                  ? '${progress['completed_rounds']} Runden bearbeitet'
+                  ? '${counted(progress['completed_rounds'] as num? ?? 0, 'Runde', 'Runden')} bearbeitet'
                   : 'Deine bearbeiteten Runden bleiben gespeichert.',
             ),
           const SizedBox(height: 10),

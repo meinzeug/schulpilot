@@ -113,3 +113,17 @@ in diesen Bericht aufgenommen. Lokaler Zustand und Zugangsdaten verbleiben
 in geschützten, ignorierten Dateien. Die zentrale Testfamilienbereinigung
 koordiniert Root; dieser Bericht behauptet keine eigenständig ausgeführte
 Bereinigung oder nachträgliche Build48-Abnahme.
+
+
+## Gezielter öffentlicher Nachtest von Build 48
+
+Der Elternagent hat anschließend mit frischen getrennten Chrome-Kontexten und normalen eigenen Eltern-/Kinderanmeldungen Release `20261019T204352Z-9c7f8f3`, Quelle `9c7f8f37a4ca36a55ed223ffd11d5575ff745acf`, ausschließlich lesend geprüft:
+
+- Eltern-Hauptzähler: „5 Versuche · 1 Runde“ korrekt.
+- Kinder-Startseite bei 390 px: „1 gespeicherte Seite“ korrekt.
+- Vier Aufgaben/fünf Versuche, Mindestziele 25/125 und gespeicherte Kindersekunden unverändert.
+- Keine Lernmutationen, Browserfehler oder Provideraufrufe; beide Sessions wieder abgemeldet.
+
+Auf der Eltern-Fachkarte blieb außerdem „1 Themen · 1 Runden“ sichtbar. Daher ist die Singularabnahme von Build 48 ausdrücklich nur teilweise erfolgreich; der Hauptagent korrigiert diesen verbleibenden Text für Build 49. Es wurde durch diesen Agenten noch keine Build-49-Abnahme behauptet.
+
+Treiber: `qa/role_wording_acceptance.mjs`; bereinigter Bericht: `artifacts/role-wording-release48-result.json`. Der gezielte Nachtest änderte keine Antworten, Noten, Lernvorgaben oder Materialien und erzeugte keine PDF-, Medien- oder KI-Aufträge. Die Kunstfamilie bleibt bis zur zentralen Bereinigung erhalten.

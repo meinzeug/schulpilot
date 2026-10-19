@@ -291,7 +291,9 @@ class _FamilyChildCard extends StatelessWidget {
                 ),
               if (help > 0 && child['preferences']?['notify_help'] != false)
                 Tag('$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}'),
-              Tag('${summary['completed_units']} Runden heute'),
+              Tag(
+                '${counted(summary['completed_units'] as num? ?? 0, 'Runde', 'Runden')} heute',
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -871,7 +873,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 leading: const Icon(Icons.insights_rounded, color: teal),
                 title: const Text('Rückblick auf sieben Tage'),
                 subtitle: Text(
-                  '${data['week_summary']['completed_units']} Einheiten · ${data['week_summary']['hints_used']} Hinweise',
+                  '${counted(data['week_summary']['completed_units'] as num? ?? 0, 'Einheit', 'Einheiten')} · ${counted(data['week_summary']['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
                 ),
                 childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
                 children: [

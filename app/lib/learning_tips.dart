@@ -952,7 +952,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                       ),
                       Flexible(
                         child: Text(
-                          'Seite $page · ${data?['total'] ?? 0} Themen',
+                          'Seite $page · ${counted(data?['total'] as num? ?? 0, 'Thema', 'Themen')}',
                           textAlign: TextAlign.center,
                         ),
                       ),

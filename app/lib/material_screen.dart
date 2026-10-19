@@ -665,7 +665,7 @@ class _MaterialReviewState extends State<MaterialReview> {
             children: [
               if (stored + pending > 0) ...[
                 Text(
-                  '$stored Wörter gespeichert${pending > 0 ? ' · $pending noch prüfen' : ''}',
+                  '${counted(stored, 'Wort', 'Wörter')} gespeichert${pending > 0 ? ' · $pending noch prüfen' : ''}',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -1046,7 +1046,7 @@ class _MaterialReviewState extends State<MaterialReview> {
       final words = result['vocabulary_transfer'];
       toast(
         context,
-        '${words['confirmed_words']} Wörter gespeichert${(words['review_words'] as num? ?? 0) > 0 ? ' · ${words['review_words']} noch prüfen' : ''}.',
+        '${counted(words['confirmed_words'] as num? ?? 0, 'Wort', 'Wörter')} gespeichert${(words['review_words'] as num? ?? 0) > 0 ? ' · ${words['review_words']} noch prüfen' : ''}.',
       );
     }
     widget.onRefresh();
