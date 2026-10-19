@@ -26,12 +26,17 @@ def evaluate(question, answer):
     # A word entered in isolation may begin like a sentence. Only English
     # lower-case common words get this exception; proper names, German nouns,
     # internal capitals, accents and explicitly tested case remain exact.
+    case_required = bool(re.search(
+        r"(?:groß|klein)(?:schreibung|buchstaben|geschrieben)\b|"
+        r"\b(?:groß|klein)[enmrs]*\s+(?:(?:anfangs)?buchstaben?|[a-zäöü])\b|"
+        r"\bcapitali[sz]ation\b|\bcapital\s+letters?\b|\bcase[- ]sensitive\b",
+        question.get("prompt", ""), re.I))
     optional = policy.sentence_initial_optional
     if optional is None:
         optional = (task.answer_locale in ("en-GB", "en-US") and task.skill in ("spelling", "recall")
-                    and not re.search(r"groß|klein|capital|case-sensitive", question.get("prompt", ""), re.I))
+                    and not case_required)
     if (policy.case_sensitive and optional and task.answer_locale in ("en-GB", "en-US")
-            and not re.search(r"groß|klein|capital|case-sensitive", question.get("prompt", ""), re.I)):
+            and not case_required):
         allowed |= {v[0].upper() + v[1:] for v in tuple(allowed) if v and 'a' <= v[0] <= 'z' and v == v.lower()}
     correct = supplied in allowed
     outcome = "correct" if correct else "incorrect" if policy.closed_answers else "uncertain"
