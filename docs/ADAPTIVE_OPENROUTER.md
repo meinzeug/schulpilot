@@ -1,6 +1,6 @@
 # Zustandsbehaftete Lernbegleitung und OpenRouter
 
-Stand: 19.10.2026, Erweiterung für 1.10.0+46, additive Migration 0023.
+Stand: 19.10.2026, Erweiterung für 1.10.0+47, additive Migration 0023.
 Tatsächliche Bereitstellung und abschließende Testergebnisse: STATUS.md und
 CHATGPT_HANDOFF.txt. Ein Build oder API-Schlüssel ist keine Anbieterfreigabe.
 
@@ -76,6 +76,11 @@ und Eingabemethode. GETs verändern nichts. Zwei Geräte erhalten bei einem
 Konflikt eine ausdrückliche Auswahl statt stillen Überschreibens. Zusätzlich gibt
 es höchstens acht lokale Entwürfe für 24 Stunden, kontogebunden und beim Abmelden
 entfernt. Entwürfe sind keine Antwortversuche und keine Lernzeit.
+Beim Pausieren wird eine laufende Speicherung abgewartet und anschließend die
+neueste Eingabe mit der aktuellen Revision gespeichert. Lokale Wiederaufnahme
+bleibt auch während eines Netzfehlers erhalten; ein Gerätekonflikt erfordert
+weiterhin eine bewusste Auswahl. Die Verlassen-Meldung unterscheidet neue
+Entwurfsspeicherung von älteren Backends ohne diese Fähigkeit.
 
 Sofatutor wird nach dem konkreten Verständnisbedarf lokal gesucht; keine neue KI
 beim Öffnen einer Ansicht. Titel/Themen sind die Wissensgrundlage, keine Kenntnis

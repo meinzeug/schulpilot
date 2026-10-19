@@ -39,6 +39,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Timer? coachingPoll;
   Timer? draftTimer;
   bool savingDraft = false, draftOffline = false, draftConflict = false;
+  Completer<void>? draftDone;
   String? savedDraftSignature;
   String? pendingDraftKey, pendingDraftSignature;
   bool loading = false;
@@ -242,14 +243,38 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> saveDraft() async {
     final snapshot = draftSnapshot();
-    if (snapshot == null || savingDraft || draftConflict || ownerId == null) {
+    if (snapshot == null ||
+        draftConflict ||
+        ownerId == null ||
+        state.user?['id'] != ownerId) {
       return;
     }
     final id = widget.unitId, owner = ownerId!;
     final signature = snapshot.toString();
     if (signature == savedDraftSignature) return;
     final session = Json.from(unit!['learning_session']);
+    if (savingDraft) {
+      // Keep the latest edit locally even if this route is disposed while an
+      // earlier network write is still in flight. Pause waits for that write
+      // before sending the latest revision to the server.
+      final pending = draftDone;
+      try {
+        await state.learningDrafts.save(owner, id, {
+          ...snapshot,
+          'source_signature': session['source_signature'],
+        });
+      } catch (_) {
+        if (requestIsCurrent(id, owner)) setState(() => draftOffline = true);
+      }
+      await pending?.future;
+      if (requestIsCurrent(id, owner) && !draftOffline && !draftConflict) {
+        await saveDraft();
+      }
+      return;
+    }
     savingDraft = true;
+    final completed = Completer<void>();
+    draftDone = completed;
     try {
       if (pendingDraftSignature != signature) {
         pendingDraftSignature = signature;
@@ -286,6 +311,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       }
     } finally {
       savingDraft = false;
+      if (identical(draftDone, completed)) draftDone = null;
+      completed.complete();
       if (requestIsCurrent(id, owner) &&
           !draftOffline &&
           !draftConflict &&
@@ -949,8 +976,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         context: context,
         builder: (dialog) => AlertDialog(
           title: const Text('Jetzt eine Pause machen?'),
-          content: const Text(
-            'Deine ungeprüfte Antwort musst du später neu eingeben. Geprüfte Antworten bleiben gespeichert.',
+          content: Text(
+            u?['learning_session'] is Map
+                ? 'Deine Eingabe bleibt gespeichert. Du kannst später hier weiterlernen.'
+                : 'Deine ungeprüfte Antwort musst du später neu eingeben. Geprüfte Antworten bleiben gespeichert.',
           ),
           actions: [
             TextButton(

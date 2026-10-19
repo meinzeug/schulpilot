@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
+import 'package:http/http.dart' as http;
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/learning_tips.dart';
 import 'package:schulpilot/learning_drafts.dart';
@@ -90,6 +92,90 @@ void main() {
       expect(find.text('Meine neue Antwort'), findsOneWidget);
       expect(server.answers, 0);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Pause flushes a newer edit after an earlier network save finishes',
+    (tester) async {
+      final server = SavedRound(questions: [question('cat', type: 'short')]);
+      server.value['learning_session'] = session();
+      final first = Completer<void>();
+      addTearDown(() {
+        if (!first.isCompleted) first.complete();
+      });
+      final writes = <Json>[];
+      final h = await openRound(
+        tester,
+        server,
+        handle: (r) async {
+          if (r.method == 'PUT' && r.url.path.endsWith('/draft')) {
+            final body = jsonDecode(r.body) as Json;
+            writes.add(body);
+            if (writes.length == 1) await first.future;
+            final saved = session(answer: body['answer']);
+            saved['draft_revision'] = body['revision'] + 1;
+            server.value['learning_session'] = saved;
+            return jsonReply(saved);
+          }
+          return server.handle(r);
+        },
+      );
+      await tester.enterText(find.byType(TextField).first, 'Erster Entwurf');
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pump();
+      expect(writes.length, 1);
+      await tester.enterText(find.byType(TextField).first, 'Neueste Eingabe');
+      await tester.tap(find.text('Pause'));
+      await tester.pump();
+      expect(server.calls.where((v) => v.endsWith('/pause')), isEmpty);
+      first.complete();
+      await tester.pumpAndSettle();
+      expect(writes.map((v) => v['answer']), [
+        'Erster Entwurf',
+        'Neueste Eingabe',
+      ]);
+      expect(writes.map((v) => v['revision']), [0, 1]);
+      expect(server.value['status'], 'paused');
+      expect(server.answers, 0);
+      await h.close();
+      await openRound(tester, server);
+      await tester.tap(find.text('Lernen fortsetzen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Neueste Eingabe'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Leaving a draft-capable round explains that the input stays saved',
+    (tester) async {
+      final server = SavedRound(questions: [question('cat', type: 'short')]);
+      server.value['learning_session'] = session(answer: 'Noch ungeprüft');
+      final h = await openRound(
+        tester,
+        server,
+        handle: (http.Request r) async {
+          if (r.method == 'PUT') {
+            return jsonReply(server.value['learning_session']);
+          }
+          return server.handle(r);
+        },
+      );
+      await tester.tap(find.byTooltip('Lernrunde verlassen'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Deine Eingabe bleibt gespeichert. Du kannst später hier weiterlernen.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('musst du später neu eingeben'), findsNothing);
+      await tester.tap(find.text('Hier bleiben'));
+      await tester.pumpAndSettle();
+      expect(find.text('Noch ungeprüft'), findsOneWidget);
+      expect(server.answers, 0);
+      await h.close();
     },
   );
 
