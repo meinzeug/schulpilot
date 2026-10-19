@@ -1,22 +1,66 @@
-# Praxistestkorrekturen · Build44 vorbereitet
+# Produktionsstand · 19.10.2026 · App1.9.0+44
 
-Kernänderungen und vollständige Befundliste P01–P12 stehen in
-[docs/PRACTICE_REVIEW_2026_10_19.md](PRACTICE_REVIEW_2026_10_19.md).
-Zielbezogene Wortbewertung, aufgabenbezogene Erklärung/Hilfengründe, schrittweise
-Bruchmodelle, quellgebundene Biologie-Schemata, sichere interne Fotovorschau,
-Einzelprüfung mit zurückgestellten Wörtern und gebündelte Themenrunden sind
-implementiert. PDF500 mit künstlichem öffentlichen Upload reproduziert:
-unbenutzte versehentliche ORM-Spalte entfernt. Keine Datenmigration erforderlich;
-Schema0022 bleibt erhalten. Keine Kontingente oder echten Familiendaten geändert.
+Öffentlich unter https://schulpilot.dorfspy.de verifiziert. Aktiver Release
+`20261019T180543Z-55533ec`, Produktcode `55533ec034a6e462472a6f5b05fb72a71fbd4168`.
+Web und signierte Direct-APK44 entsprechen dem geprüften Build; spätere
+Backendabsicherungen ändern Flutter und Artefakte nicht. PostgreSQL-Schema0022
+unverändert, keine neue Datenmigration. Pre-Deployment-Sicherungen erfolgreich;
+API, Lernworker, isolierter Codex-Worker und Caddy aktiv. Kompatibler vorheriger
+Release bleibt über /opt/schulpilot/previous erreichbar; kein DB-Downgrade.
 
-Bestanden:268 PostgreSQL-Regressionsprüfungen, zusätzlich55 Noten-/PDF-/echte
-Migrationsprüfungen;323 Fluttertests, danach39 Unterstützung-/Zeitregressionen
-und neun neue Visual-/Interaktionstests erneut. Ruff und Flutteranalyse ohne
-Befund. Reale Schrift,320/1280px und200% Textgröße visuell geprüft. Release44
-wird signiert gebaut; Produktivrollout und öffentliche Prüfungen stehen noch aus.
-Kein physischer Audio-/Screenreadernachweis und keine neue externe KI-Abnahme.
+Praxistest P01–P12 umgesetzt und einzeln nachverfolgt:
+[PRACTICE_REVIEW_2026_10_19.md](PRACTICE_REVIEW_2026_10_19.md).
+Englischer großer Anfangsbuchstabe wird zielbezogen angenommen; ausdrückliche
+Kleinschreibung bleibt streng. Kein globales Casefolding. Bruchaddition in drei
+Balkenschritten, quellgebundene Wurzel-/Bestäubungsschemata, passende Erklärung
+zur aktuellen Frage und konkrete gespeicherte Hilfengründe. Interne Fotovorschau
+mit Zoom/Retry;21 gespeichert+3 vorgemerkt geprüft. Wörter einzeln bestätigen,
+korrigieren, abwählen oder zurückstellen; Buchstabenhilfe mit Rückschritt.
+Hilfeauswahl vor Elternnachricht, zusätzliche Problemmeldungen, Themenbündelung
+mit erhaltenen Runden und lokale Mengen-/Datumsanzeige. API-Fehler mit
+Wiederaufnahme statt automatischem Antwortretry.
 
-## Vorheriger verifizierter Produktionsstand
+Nachgereichten PDF500 öffentlich mit künstlichen249.521Bytes reproduziert:
+versehentliche ungenutzte GradeImport.source_blocks-ORM-Spalte entfernt. Sie war
+in Alembic nie für grade_imports angelegt und wird nicht benötigt. Tatsächlich
+migriertes Schema gegen alle ORM-Spalten geprüft. Öffentlicher Upload danach201,
+drei künstliche Noten übernommen, erneuter Import erkennt alle drei und erzeugt
+keine Dubletten. Keine echten Noten oder anderen Familien verändert.
+
+Prüfungen:268 PostgreSQL-Regressionen;55 zusätzliche Noten-/PDF-/Migrationstests;
+72 Fach-/Audit- und26 Sprach-/Wortschatztests nach den letzten Backendanpassungen
+erneut bestanden.323 Fluttertests plus25 Foto-/Entwurfs-/Designtests bestanden;
+39 Zeit-/Rückblick- und neun neue Interaktionstests erneut. Flutteranalyse,
+Ruff, Compile, Diff-/Geheimnisprüfung ohne Befund. Bekannte Starlette/httpx-
+Warnung. Web, Direct-APK und Play-AAB gebaut; Paket, Signierer, Version und
+16-KB-Ausrichtung verifiziert. Bekannte TTS-Wasm-/Kotlin-Pluginhinweise bleiben.
+Kein Play-Upload oder Bundletool-Abnahme in dieser Arbeitseinheit.
+
+Öffentlich24 Browserprüfungen aller Rollen bei320–1440px ohne Laufzeitfehler.
+Normale künstliche Wörterfamilie per echter Mail verifiziert; Swimming pool
+richtig, Antwort und Feedback nach Reload erhalten, je Aufgabe genau ein
+Attempt. Vorherige Wortvorlage bleibt als Unterstützung erfasst. Native Flutter-
+APK44 auf Android36: eigener Kinderlogin, Glocke/Heftansicht, vier Aufgabentypen
+über Unterbrechungen, vier gespeicherte Elternantworten, Elternlogin/Logout.
+Drei Start-/Vordergrund-Updatechecks und200% Systemschrift geprüft. Beide
+künstlichen Familien normal gelöscht; private Checkpoints entfernt und eigener
+Emulator beendet. Null externe KI-Aufrufe in diesen Nachtests, keine Limits
+oder Provider-/Firebasefreigaben verändert.
+
+APK: artifacts/schulpilot-android.apk,67.664.730Bytes, SHA256
+`827b65247e17e0964670d1ca2b7e0d5e3f2352444e6e3c6101a6f8e32776dcfc`.
+Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play-Artefakt: artifacts/schulpilot-play.aab.
+
+Grenzen: kein physisches Smartphone, hörbares TTS/Mikrofon oder TalkBack
+beobachtet; Semantik-/Adaptertests sind keine Audioabnahme. Keine neue Live-OCR
+oder externe KI-Fachgenerierung und keine vollständige Liveprüfung aller24
+Fächer. Ursprung des alten about:blank und Vorgeschichte der alten Mathe-Runde
+nicht reproduziert; keine nachträgliche Umwertung echter Antworten. Nächster
+Schritt: den dokumentierten kleinen Nachtest auf einem echten Smartphone mit
+künstlichen Fotos, Ton, Mikrofon und Screenreader durchführen.
+
+## Historischer Stand vor dieser Arbeitseinheit
 
 # Produktionsstand · 19.10.2026
 

@@ -1,17 +1,50 @@
-Arbeitsstand · Praxistestkorrekturen Build44
+Aktueller verifizierter Stand · 19.10.2026 · App1.9.0+44
 
-Implementierung P01–P12: docs/PRACTICE_REVIEW_2026_10_19.md.
-323 Flutter- und268 PostgreSQL-Regressionen sowie55 PDF-/Noten-/Migrationstests
-bestanden. Wortbewertung, Frageerklärung, Hilfengründe, Bruch-/Biologiemodelle,
-Fotovorschau, Wortbestätigung und Themenbündelung überarbeitet. Öffentliche
-PDF500 mit künstlichen249.521Bytes reproduziert; versehentliche ORM-Spalte
-GradeImport.source_blocks entfernt. Kein Datenbankeingriff nötig.
-Signierter Build44 und anschließende öffentliche QA sind in Arbeit. Eigene
-künstliche Familie wird über qa/prepare_design_review.py verwaltet; privater
-Checkpoint ausschließlich in artifacts/.design-qa-account.json. Nach Abschluss
-mit --cleanup löschen. Keine Zugangsdaten weitergeben.
+Website: https://schulpilot.dorfspy.de
+API: https://schulpilot.dorfspy.de/api
+Release: 20261019T180543Z-55533ec
+Produktcode: 55533ec034a6e462472a6f5b05fb72a71fbd4168
+Schema:0022, keine neue Datenmigration. Backups vor Aktivierung erfolgreich.
+Rückweg: bestehender vorheriger Release unter /opt/schulpilot/previous, kein
+Datenbank-Downgrade. Flutter-Artefakte seit erstem Build44 bytegleich; spätere
+Commits sichern ausschließlich serverseitige Case-Ziele/Locales und QA ab.
 
-Vorheriger verifizierter Stand (historisch):
+P01–P12 mit Ursachen, Abnahme und Grenzen:
+docs/PRACTICE_REVIEW_2026_10_19.md.
+Wortbewertung, aktuelle Aufgabenerklärung, konkrete Hilfengründe, Bruch-/Biologie-
+modelle, Fotovorschau, Wort-Einzelprüfung, Rückschritt, Hilfeauswahl und
+Themenbündelung überarbeitet. PDF500 durch versehentliche ORM-Spalte verursacht;
+Abgleich gegen echtes Alembic-head-Schema und öffentlicher249.521-Byte-Upload
+nach Fix erfolgreich. Drei künstliche Noten, erneuter Import ohne Dubletten.
+Keine echten Daten, Quoten, Provider oder Firebasefreigaben verändert.
+
+Tests:268 Backendregressionen,55 Noten-/PDF-/Migrationstests,323 Fluttertests und
+25 Foto-/Designtests bestanden. Nach letzten Detailänderungen72/26 Backend- und
+39/9 Fluttertests erneut bestanden. Analyse, Ruff, Compile und Diff-/Secretscan
+ohne Befund. Releasebuild Web, signierte Direct-APK44 und Play-AAB erfolgreich;
+keine Storeveröffentlichung oder neue sichtbare Pushzustellung behauptet.
+
+Öffentlich24 Rollen-/Browseransichten320–1440px fehlerfrei geprüft. Normale
+künstliche Wörterfamilie per echtem Mailweg verifiziert: Swimming pool richtig,
+Feedback nach Reload, Antworten genau einmal gespeichert. Native Flutter-APK44
+auf API36 über Unterbrechungen: Kinderlogin, Glocke, Hefte, vier Aufgabentypen,
+konsistente vier Elternantworten, Elternlogin und Logout. Drei Updatechecks bei
+Start/Vordergrund und200% Systemschrift beobachtet. Vorherige Wortvorlage bleibt
+als Hilfe erfasst. Null externe KI-Aufrufe. Beide eigenen Testfamilien gelöscht,
+private Kontocheckpoints entfernt, Emulator-Appdaten gelöscht und Emulator beendet.
+
+APK: artifacts/schulpilot-android.apk
+Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+67.664.730Bytes, SHA256827b65247e17e0964670d1ca2b7e0d5e3f2352444e6e3c6101a6f8e32776dcfc.
+Play: artifacts/schulpilot-play.aab. Privater Signierschlüssel außerhalb von Git.
+
+Weiter prüfen: echtes Smartphone, hörbares Vorlesen/Mikrofon, TalkBack und der
+ursprüngliche Fotovorschaufall mit künstlichen Seiten. Keine vollständige neue
+Live-OCR-/KI-Abdeckung aller Fächer. Alte Mathe-Rundenvorgeschichte und about:blank
+nicht als aktuell reproduziert ausgeben. Nachtestfolge und reproduzierbare
+QA-Befehle stehen im Befunddokument. Keine Zugangsdaten weitergeben.
+
+Historischer Stand vor dieser Arbeitseinheit:
 
 Aktueller Produktionsstand · 19.10.2026
 
