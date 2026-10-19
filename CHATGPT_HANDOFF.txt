@@ -1,54 +1,39 @@
-Fachtest · 19.10.2026 · produktiv bereitgestellt
+Aktueller Produktionsstand · 19.10.2026
 
-App 1.9.0+42 ist am 19.10.2026 als Release `20261019T153515Z-8850ec9`
-aus Codecommit `8850ec9b1441b66a50ce9b1fd8a39323f55477af` auf
-https://schulpilot.dorfspy.de aktiv. Vorheriges Release:
-`20261019T065608Z-863d4f9`. PostgreSQL meldet Schema `0022`; die Sicherung vor
-Aktivierung war erfolgreich. API, Lernworker, isolierter Codex-Worker und Caddy
-sind aktiv. Öffentliche Startseite, Login, Hefte und Sprachprojekt-Direktlink
-liefern HTTP 200; der öffentliche API-Healthcheck meldet den erwarteten
-Releasecommit.
+App 1.9.0+43 läuft unter https://schulpilot.dorfspy.de als Release
+`20261019T163738Z-9131cce`, Quellcommit
+`9131cce89efa4bc215ec9a74baece549f7e60895`. Direkter Rollback-Release ist
+`20261019T153515Z-8850ec9`; PostgreSQL-Schema `0022`. API, Lernworker,
+isolierter Codex-Worker und Caddy sind aktiv. `/`, `/login`, `/hefte` und
+`/api/health` liefern HTTPS 200; HTTP leitet mit 308 auf HTTPS.
 
-Der öffentliche Flutter-Web-JavaScript-Build ist bytegleich zum lokalen Build.
-Die Direct-APK wurde vollständig heruntergeladen und SHA-256/Größe stimmen mit
-dem Buildmanifest überein: 67.615.154 Bytes,
-`e45d32ec5eb1fc3ef27bcb6b99f16944e84f2f6034d6d9944434316b95f86513`.
-Das Play-AAB wurde gebaut, aber nicht veröffentlicht. Für das frisch gebaute
-AAB wurde beim Rollout kein separater Bundletool-Validierungslauf durchgeführt;
-Play-Veröffentlichungsreife ist damit nicht nachgewiesen.
+Das öffentliche `main.dart.js` ist bytegleich zum lokalen Webbuild. Die
+Direct-APK wurde vollständig heruntergeladen und stimmt mit dem Releasemanifest
+überein: 67.615.154 Bytes, SHA-256
+`7fd79e450ecb903c340ca08bb3dfb68073552966453cad458e315c6da30f6df7`.
+Lokale Datei: `artifacts/schulpilot-android.apk`.
+`/api/app-release` meldet Build 43. Das Play-AAB wurde lokal gebaut, aber nicht
+veröffentlicht oder mit Bundletool geprüft; `jarsigner` meldet „jar verified“
+mit bekannten Warnungen zu selbstsigniertem Zertifikat, Zeitstempel und
+Stream-Konsistenz.
 
-Die Serverplatte ist nach dem Upload bei 99 % belegt (ca. 411 MiB frei). Alte
-Releases und Sicherungen blieben erhalten; vor dem nächsten Rollout braucht es
-eine bewusste Kapazitäts-/Aufbewahrungsentscheidung. Dieser Rollout änderte
-keine Familieninhalte, Kontingente oder Providerkonfiguration.
+72 veraltete Releases wurden gelöscht. Nach dem Rollout bleiben nur `current`
+und `previous` übrig. Aktueller Serverstand: 17 GB frei (54 % belegt), Releases
+512 MiB, Backups 470 MiB. Keine anderen Anwendungen, Familieninhalte,
+Kontingente oder Provider wurden verändert.
+
+Gezielte Regressionen: 39 Fluttertests bestanden, `flutter analyze` ohne Befund;
+42 Backendtests bestanden, 2 übersprungen, eine bekannte Starlette/httpx-Warnung.
+Ruff, Python-Compile, Deployment-Shellsyntax, Diff- und Geheimnisprüfung ohne
+Befund. Releasebuild: Web, signierte Direct-APK 1.9.0+43 und Play-AAB. Die
+gepinnten TTS-/Firebase-Plugins melden Wasm-/Kotlin-Hinweise. Kein
+physischer Android-, Mikrofon-, TTS- oder Screenreadertest in diesem Rollout.
+Keine sichtbare Pushzustellung oder externe KI-Fachabnahme wurde hier geprüft.
 
 Die vollständige Befundliste und Fachmatrix stehen in
-`docs/FACHTEST_2026_10_19.md`. Der zugrunde liegende Testbericht bezieht sich
-auf Live 1.8.0+41; die Revision aus dem Bericht war zunächst nicht dem Livebetrieb
-zugeordnet.
-
-48 künstliche Fälle (2 je 24 Fächer) prüfen strukturierten Inhalt, Antwortregel,
-Offenlegung und lokale Flutterdarstellung. Kein vollständiger Live-KI- oder
-Foto-OCR-Durchlauf aller Fächer. Aus dem historischen Test: 24 Bilder gespeichert,
-18 Quellen bestätigt, nur Mathematik mit 2 Aufgaben vollständig beantwortet;
-Paketvorbereitung brach zweimal ab, späteres Kontingent blockierte weitere
-Aufträge. Rückblickfehler mit unbekannter Lernziel-ID wurde lokal reproduziert.
-Absichtliche Fehler sind keine Aussage über die Fähigkeiten des Kindes.
-
-Lokaler Stand: Backend-Gesamttest auf isoliertem PostgreSQL: 1.037 bestanden mit 3
-Starlette/Alembic-Warnungen; Flutter-Gesamttest des ausgelieferten Stands: 547 bestanden. Flutter-Analyse,
-Ruff, Python-Compile und Diff-/Geheimnisprüfung sind ohne Befund. Web, signierte
-Direct-APK 1.9.0+42 und Play-AAB wurden gebaut. APK-Paket/Version, Signatur und
-16-KB-Ausrichtung sind geprüft. Beim frisch gebauten AAB meldet `jarsigner`
-„jar verified“, zugleich aber eine selbstsignierte Kette, fehlenden Zeitstempel
-und JAR-Stream-Konsistenzwarnungen. Bundletool wurde für dieses frische AAB
-nicht ausgeführt; es wurde nicht in Play hochgeladen.
-Lokale Artefakte: `artifacts/schulpilot-android.apk`,
-`artifacts/schulpilot-play.aab`; Web-Build `app/build/web/`.
-Der normale Webbuild war erfolgreich; die fest gepinnten TTS-/Firebase-Plugins
-melden Wasm-/Kotlin-Migrationshinweise. Kein physischer Android-, Mikrofon-,
-TTS- oder Screenreadertest, keine sichtbare Pushzustellung und kein externer
-KI-Paketlauf in dieser Arbeit. Eine Bereitstellung wurde nicht vorgenommen.
+`docs/FACHTEST_2026_10_19.md`. Historische Testgrenzen und die früheren Releases
+stehen weiter unten; absichtliche Fehler im Test sind keine Aussage über echte
+Fähigkeiten des Kindes.
 
 Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
 

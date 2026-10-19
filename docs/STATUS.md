@@ -1,67 +1,42 @@
 # Produktionsstand · 19.10.2026
 
+## Aktive Version
+
+App `1.9.0+43` läuft auf `https://schulpilot.dorfspy.de` als Release
+`20261019T163738Z-9131cce`, Quellcommit
+`9131cce89efa4bc215ec9a74baece549f7e60895`. Der direkte Rollback-Release ist
+`20261019T153515Z-8850ec9`; PostgreSQL meldet Schema `0022`. Die erforderliche
+Sicherung wurde erstellt. API, Worker, isolierter Codex-Worker und Caddy sind
+aktiv. `/`, `/login`, `/hefte` und `/api/health` liefern HTTPS `200`; HTTP wird
+mit `308` auf HTTPS umgeleitet. Der öffentliche Healthcheck meldet den Release-
+und Quellcommit.
+
+Die Webdatei `main.dart.js` ist bytegleich mit dem lokalen Releasebuild. Der
+öffentliche Direct-APK-Endpunkt meldet Version `1.9.0`, Build `43`; der
+vollständige öffentliche Download stimmt mit dem geprüften lokalen Artefakt
+überein: 67.615.154 Bytes, SHA-256
+`7fd79e450ecb903c340ca08bb3dfb68073552966453cad458e315c6da30f6df7`. Der
+Play-AAB wurde gebaut, aber nicht veröffentlicht oder mit Bundletool geprüft.
+
+Auf dem Server wurden zunächst 72 alte Schulpilot-Releases entfernt; nach dem
+Rollout räumte die neue Routine ein weiteres aus. Nur `current` und `previous`
+bleiben als Code-Releases erhalten. `/opt/schulpilot/releases` belegt 512 MiB,
+Backups 470 MiB; auf dem 38-GB-Dateisystem sind 17 GB frei (54 % belegt). Keine
+anderen Anwendungen, Datenbanken, Familieninhalte, Kontingente oder Provider
+wurden verändert. Künftige Deployments räumen alte Releases erst nach
+erfolgreichem öffentlichen Healthcheck auf und lassen Daten und Backups aus.
+
 ## Heftseiten löschen und Lernzeituhr · 19.10.2026
 
 Löschaktionen in Album-, Kachel- und Listenansicht sowie „Alle Heftseiten“ ergänzt; die bereits bestehende Materialdetail-Aktion bleibt erhalten. Eltern benötigen verwaltende Familienrechte, Kinder können nur noch nicht bestätigte Seiten entfernen. Feste Testbeispiele zeigen keine Löschaktion. Löschen fragt nach und weist darauf hin, dass vorhandene Übungen erhalten bleiben. Nach Erfolg wird die Liste aktualisiert und ein leeres Heft korrekt angezeigt. Die Backend-Löschroute bleibt die maßgebliche Rechteprüfung.
 
 Die Lernzeitanzeige verwendet Klartext statt des Bruch-Renderers; `6:25 / 20:00` bleibt damit eine Zeitangabe.
 
-Gezielte Flutter-Regressionen: 39 bestanden; `flutter analyze --no-pub` ohne Befund. Backend für die Löschrechte: 38 Tests bestanden, 2 übersprungen; Ruff ohne Befund. Kein reales Familienkonto verändert.
+Prüfungen für diesen Release: 39 Flutter-Regressionen bestanden, `flutter analyze --no-pub` ohne Befund, 42 Backendtests bestanden und 2 übersprungen (eine bekannte Starlette/httpx-Warnung). Ruff, Python-Compile, Shellsyntax, Diff- und Geheimnisprüfung ohne Befund. Web, signierte APK `1.9.0+43` und Play-AAB gebaut. Webbuild meldet die bekannte Wasm-Trockenlaufwarnung aus dem gepinnten `flutter_tts`; Android-Plugins melden den bekannten Kotlin-Gradle-Migrationshinweis. Keine physische Geräte-, Audio- oder Play-Console-Abnahme in diesem Rollout.
 
-Vor dem neuen Rollout war Live auf `1.9.0+42`, Release `20261019T153515Z-8850ec9`. Auf dem Server wurden 72 alte Schulpilot-Code-Releases gelöscht; das aktive Release `20261019T153515Z-8850ec9`, sein Rückweg `20261019T065608Z-863d4f9` sowie die Sicherungen blieben erhalten. `/opt/schulpilot/releases` sank von 17 GB auf 511 MiB. Der freie Serverspeicher stieg von 411 MiB auf 17 GB (54 % Belegung); `/var/backups/schulpilot` blieb bei 435 MiB. API, Worker und Caddy blieben aktiv; `/api/health` meldete weiter den erwarteten aktiven Commit.
+Umgesetzt im lokalen Code: sichere Einzelbestätigung von Vokabelpaaren; sichtbare Datei-Uploadstatus; klassifizierte Vorbereitungsfehler; stabile Lernzielzuordnungen und Ergebniszusammenfassung aus gespeicherten Antworten; exakte Bruchnotation/-eingabe; quellgebundene Fachgrafiken für 24 Fächer mit getrennter Offenlegung; inhaltliche Dreiecksfehlerhilfe; passende Pause-/Zeit-/Statusdarstellung. 48 künstliche Quellenfälle prüfen Schema, Renderer und Antwortregel. Sie beweisen weder OCR noch Providerqualität oder vollständige Live-Fachabdeckung.
 
-Die nächste direkte Android-Version wurde auf `1.9.0+43` angehoben. Der signierte Releasebuild und die Deploymentprüfung laufen für Commit `df3f3d9` mit der sicheren automatischen Release-Aufbewahrung. Der Produktionsstand wird nach dem öffentlichen Healthcheck und APK-Abgleich aktualisiert.
-
-Am 19.10.2026 wurde App `1.9.0+42` aus Codecommit
-`8850ec9b1441b66a50ce9b1fd8a39323f55477af` als Release
-`20261019T153515Z-8850ec9` auf `https://schulpilot.dorfspy.de` aktiviert.
-Die vorherige Version ist `20261019T065608Z-863d4f9`; das Datenbankschema
-`0022` ist auf dem Server bestätigt. Die vorgeschaltete Datenbanksicherung
-meldete `Result=success`, Exitstatus `0`. API, Worker, isolierter Codex-Worker
-und Caddy laufen.
-
-Der Produktions-Healthcheck meldet Version `1.9.0` und den erwarteten
-Quellcommit. Startseite, Login, Hefte und ein Sprachprojekt-Direktlink liefern
-HTTP `200`. Das öffentliche `main.dart.js` ist bytegleich mit dem gebauten
-Webbundle. `/api/app-release` meldet Direct-APK Version `1.9.0`, Build `42`;
-der vollständige öffentliche APK-Download (67.615.154 Bytes) stimmt mit dem
-lokalen Manifest überein (SHA-256
-`e45d32ec5eb1fc3ef27bcb6b99f16944e84f2f6034d6d9944434316b95f86513`). Der
-Play-AAB wurde gebaut, aber nicht in der Play Console veröffentlicht.
-Für das frisch gebaute AAB gab es in diesem Rollout keinen separaten
-Bundletool-Validierungslauf; Play-Veröffentlichungsreife ist damit nicht
-nachgewiesen.
-
-Der Server hat nach dem Rollout nur noch rund 411 MiB frei (99 % Belegung).
-Es wurden keine alten Releases oder Sicherungen entfernt; eine kontrollierte
-Aufbewahrungs-/Kapazitätsentscheidung ist vor dem nächsten Release nötig.
-Kein echter Familieninhalt, Produktionskontingent oder Provider wurde für
-diesen Build geändert. Fachumfang und Testgrenzen stehen in
-`docs/FACHTEST_2026_10_19.md`.
-
-Umgesetzt im lokalen Code: sichere Einzelbestätigung von Vokabelpaaren; sichtbare
-Datei-Uploadstatus; klassifizierte Vorbereitungsfehler; stabile
-Lernzielzuordnungen und Ergebniszusammenfassung aus gespeicherten Antworten;
-exakte Bruchnotation/-eingabe; quellgebundene Fachgrafiken für 24 Fächer mit
-getrennter Offenlegung; inhaltliche Dreiecksfehlerhilfe; passende Pause-/Zeit-/
-Statusdarstellung. 48 künstliche Quellenfälle prüfen Schema, Renderer und
-Antwortregel. Sie beweisen weder OCR noch Providerqualität oder vollständige
-Live-Fachabdeckung.
-
-Flutter-Gesamttest für den ausgelieferten Stand: 547 bestanden; Analyse ohne Befund. Backend-Gesamttest auf
-isoliertem PostgreSQL: 1.037 bestanden, 3 Warnungen aus Starlette/Alembic. Ruff,
-Python-Compile und Diff-/Geheimnisprüfung ohne Befund. Web, signierte Direct-APK
-1.9.0+42 und Play-AAB wurden lokal gebaut. Die APK wurde auf Paket/Version,
-Signatur und 16-KB-Ausrichtung geprüft. Beim frisch gebauten AAB meldet
-`jarsigner` „jar verified“, zugleich aber eine selbstsignierte Kette, fehlenden
-Zeitstempel und JAR-Stream-Konsistenzwarnungen. Bundletool wurde für dieses AAB
-nicht ausgeführt; es wurde nicht in Play hochgeladen. Der normale Webbuild
-war erfolgreich; Wasm-Trockenlauf und Gradle nennen
-bekannte Warnungen der fest gepinnten TTS-/Firebase-Plugins. Physischer Android-,
-Audio- und Screenreader-Test sowie Live-Providerlauf wurden nicht durchgeführt.
-Die ursprünglich protokollierte Codeprüfung enthielt noch keine
-Produktionsfreigabe. Der separate Rollout nach ausdrücklicher Anweisung ist oben
-im Eintrag vom 19.10.2026 dokumentiert.
+Vorherige Produktion `1.9.0+42` und die fachliche Prüfgrenze dieses Releases sind unter `docs/FACHTEST_2026_10_19.md` dokumentiert.
 
 # Protokollkorrekturen · 19.10.2026 · App 1.8.0+41
 
