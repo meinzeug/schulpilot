@@ -118,6 +118,9 @@ def process(job_id):
             from .school_preparation import defer_package, validate_job
 
             validate_job(db, job)
+            from .material_actions import validate_reprocess_job
+
+            validate_reprocess_job(db, job)
             child = db.get(Child, job.child_id)
             family = db.get(Family, child.family_id)
             if family.expires and family.expires < now():
@@ -300,6 +303,9 @@ def process(job_id):
             if not db.execute(update(Child).where(Child.id == job.child_id).values(grade=Child.grade)).rowcount:
                 return
             validate_job(db, job)
+            from .material_actions import validate_reprocess_job
+
+            validate_reprocess_job(db, job)
             material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
             assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
             if job.payload.get("material_id") and (

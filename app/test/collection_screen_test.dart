@@ -133,9 +133,14 @@ Future<(AppState, GoRouter)> open(
 
 Future<void> tap(WidgetTester tester, Finder target) async {
   await tester.ensureVisible(target);
-  await tester.pumpAndSettle();
+  if (find.byType(AlertDialog).evaluate().isEmpty) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump(const Duration(milliseconds: 350));
+  }
   await tester.tap(target);
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 350));
+  if (find.byType(AlertDialog).evaluate().isEmpty) await tester.pumpAndSettle();
 }
 
 void main() {
@@ -176,9 +181,13 @@ void main() {
       tester,
       (request) async {
         requests.add(request);
-        if (request.method == 'DELETE') {
+        if (request.url.path.endsWith('/delete-preview')) {
+          expect(jsonDecode(request.body)['ids'], ['m0']);
+          return reply({'count': 1, 'selection_token': 'selection-token'});
+        }
+        if (request.url.path.endsWith('/bulk-delete')) {
           total--;
-          return reply({'message': 'deleted'});
+          return reply({'deleted_count': 1});
         }
         return reply(
           listing(
@@ -196,11 +205,15 @@ void main() {
     expect(find.text('Heftseite löschen?'), findsOneWidget);
     await tap(tester, find.text('Bestätigen'));
     expect(
-      requests.where((request) => request.method == 'DELETE').single.url.path,
-      '/api/materials/m0',
+      requests
+          .where((request) => request.url.path.endsWith('/bulk-delete'))
+          .single
+          .url
+          .path,
+      '/api/children/child/materials/bulk-delete',
     );
     expect(find.text('1–20 von 20 Seiten'), findsOneWidget);
-    expect(find.text('Heftseite gelöscht.'), findsOneWidget);
+    expect(find.text('1 Heftseite gelöscht.'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -421,4 +434,90 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('Confirmed child pages can be selected and deleted together', (
+    tester,
+  ) async {
+    final requests = <http.Request>[];
+    var total = 3;
+    await open(tester, (request) async {
+      requests.add(request);
+      if (request.url.path.endsWith('/delete-preview')) {
+        expect(jsonDecode(request.body)['ids'], ['m0', 'm1']);
+        return reply({'count': 2, 'selection_token': 'two-owned-pages'});
+      }
+      if (request.url.path.endsWith('/bulk-delete')) {
+        expect(jsonDecode(request.body)['selection_token'], 'two-owned-pages');
+        total = 1;
+        return reply({'deleted_count': 2});
+      }
+      return reply(listing(total: total));
+    });
+    expect(find.byTooltip('Heftseite löschen'), findsNWidgets(3));
+    await tap(tester, find.text('Seiten auswählen'));
+    await tap(tester, find.byType(Checkbox).at(0));
+    await tap(tester, find.byType(Checkbox).at(1));
+    await tap(tester, find.text('Auswahl löschen (2)'));
+    expect(find.text('2 Heftseiten löschen?'), findsOneWidget);
+    await tap(tester, find.text('Bestätigen'));
+    expect(
+      requests.where((r) => r.url.path.endsWith('/bulk-delete')),
+      hasLength(1),
+    );
+    expect(find.text('1–1 von 1 Seite'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Select all spans pagination and cancelling deletes nothing', (
+    tester,
+  ) async {
+    Json? selection;
+    final posts = <String>[];
+    await open(tester, (request) async {
+      if (request.method == 'POST') {
+        posts.add(request.url.path);
+        selection = jsonDecode(request.body) as Json;
+        return reply({'count': 1205, 'selection_token': 'filtered-all-pages'});
+      }
+      return reply(
+        listing(page: int.parse(request.url.queryParameters['page']!)),
+      );
+    });
+    await tap(tester, find.text('Seiten auswählen'));
+    await tap(tester, find.text('Alle auswählen'));
+    await tap(tester, find.byTooltip('Nächste Seite'));
+    expect(find.text('21–40 von 1205 Seiten'), findsOneWidget);
+    await tap(tester, find.text('Auswahl löschen (1205)'));
+    expect(selection!['all_matching'], true);
+    expect(selection!['filters'], {'q': '', 'status': 'all'});
+    expect(selection!.containsKey('ids'), false);
+    expect(find.text('1205 Heftseiten löschen?'), findsOneWidget);
+    await tap(tester, find.text('Abbrechen'));
+    expect(posts, ['/api/children/child/materials/delete-preview']);
+    expect(find.text('21–40 von 1205 Seiten'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'All-page list exposes separate photo reprocessing and deletion icons',
+    (tester) async {
+      final posts = <String>[];
+      await open(tester, (request) async {
+        if (request.method != 'GET') posts.add(request.url.path);
+        final data = listing(total: 1);
+        (data['items'] as List).first['has_image'] = true;
+        return reply(data);
+      }, width: 320);
+      expect(find.byTooltip('Mit KI neu lesen'), findsOneWidget);
+      expect(find.byTooltip('Heftseite löschen'), findsOneWidget);
+      await tap(tester, find.byTooltip('Mit KI neu lesen'));
+      expect(find.text('Seite neu einlesen?'), findsOneWidget);
+      await tap(tester, find.text('Abbrechen'));
+      expect(posts, isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

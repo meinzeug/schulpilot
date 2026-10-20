@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'material_actions.dart';
 import 'learning_tips.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
@@ -723,29 +724,76 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   Future<void> deletePage() async {
     final d = widget.data;
-    if (!await confirmDialog(
-      context,
-      'Seite löschen?',
-      d['confirmed'] == true
-          ? 'Das Foto und der Text werden gelöscht. Deine bisherigen Übungen bleiben erhalten.'
-          : 'Dieses Foto und der erkannte Text werden gelöscht.',
-    )) {
-      return;
+    final owner = widget.state.user?['id'];
+    final bool deleted;
+    if (d['school_day_id'] != null && d['confirmed'] != true) {
+      // The review wizard maintains its current page/preparation checkpoint.
+      // Keep its dedicated deletion endpoint and guarded continuation.
+      final accepted = await confirmDialog(
+        context,
+        'Seite löschen?',
+        'Dieses Foto und der erkannte Text werden gelöscht.',
+      );
+      if (!accepted || !mounted || owner != widget.state.user?['id']) return;
+      await widget.state.api.delete(
+        '/school-days/${d['school_day_id']}/pages/${d['id']}',
+      );
+      deleted = true;
+    } else {
+      deleted = await deleteNotebookPages(
+        context,
+        widget.state,
+        childId: d['child_id'],
+        ids: [d['id']],
+      );
     }
-    if (!mounted) return;
-    final dayId = d['school_day_id'];
-    await widget.state.api.delete(
-      dayId != null && d['confirmed'] != true
-          ? '/school-days/$dayId/pages/${d['id']}'
-          : '/materials/${d['id']}',
-    );
-    if (!mounted) return;
+    if (!deleted || !mounted || owner != widget.state.user?['id']) return;
     if (widget.onDeleted != null) {
       widget.onDeleted!();
     } else {
-      context.go('/app');
+      context.go('/library/${d['child_id']}');
     }
   }
+
+  Widget pageActions() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      if (widget.data['processing_job'] is Map &&
+          [
+            'queued',
+            'running',
+            'failed',
+          ].contains(widget.data['processing_job']['status']))
+        TextButton.icon(
+          onPressed: () => openRoute(
+            context,
+            '/material/${widget.data['id']}/processing/${widget.data['processing_job']['id']}',
+          ),
+          icon: const Icon(Icons.hourglass_top_rounded),
+          label: const Text('Einlesen ansehen'),
+        ),
+      if (materialCanReprocess(widget.state, widget.data))
+        ActionButton(
+          label: 'Mit KI neu lesen',
+          secondary: true,
+          icon: Icons.document_scanner_outlined,
+          onPressed: () => change(() async {
+            await reprocessNotebookPage(
+              context,
+              widget.state,
+              widget.data,
+              onRefresh: widget.state.refreshState,
+            );
+          }),
+        ),
+      if (materialCanDelete(widget.state, widget.data)) deleteButton(),
+    ],
+  );
+
+  bool get extractionRunning =>
+      widget.data['processing_job'] is Map &&
+      ['queued', 'running'].contains(widget.data['processing_job']['status']);
 
   Widget deleteButton() => ActionButton(
     label: 'Seite löschen',
@@ -754,10 +802,6 @@ class _MaterialReviewState extends State<MaterialReview> {
     onPressed: () => change(deletePage),
   );
 
-  bool get fixedDayExample =>
-      widget.data['synthetic'] == true &&
-      widget.data['school_day_id'] != null &&
-      widget.data['fixture_id'] != null;
   @override
   void dispose() {
     for (final c in [subject, topic, content, homework]) {
@@ -792,7 +836,9 @@ class _MaterialReviewState extends State<MaterialReview> {
             ),
           ],
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 12),
+        pageActions(),
+        const SizedBox(height: 12),
         if (liveFixture)
           const Notice(
             'Beispielseite · mit KI erkannt. Der Beispieltext ist unveränderlich.',
@@ -817,7 +863,7 @@ class _MaterialReviewState extends State<MaterialReview> {
               ),
             ),
           ),
-        if (d['status'] == 'uploaded' && !readonly)
+        if (d['status'] == 'uploaded' && !readonly && !extractionRunning)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: ActionButton(
@@ -938,14 +984,6 @@ class _MaterialReviewState extends State<MaterialReview> {
               childId: d['child_id'],
               materialId: d['id'],
             ),
-          ),
-        if (!readonly &&
-            !fixedDayExample &&
-            ((widget.state.isParent && widget.state.canManage) ||
-                (widget.state.isChild && d['confirmed'] != true)))
-          Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: deleteButton(),
           ),
         if (d['synthetic'] != true &&
             ['review', 'confirmed'].contains(d['status']))
@@ -1070,6 +1108,8 @@ class _MaterialReviewState extends State<MaterialReview> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        pageActions(),
+        const SizedBox(height: 10),
         if (!synthetic || d['fixture_id'] != null) ...[
           Panel(
             padding: const EdgeInsets.all(12),
@@ -1119,7 +1159,7 @@ class _MaterialReviewState extends State<MaterialReview> {
           ),
           const SizedBox(height: 16),
         ],
-        if (d['status'] == 'uploaded')
+        if (d['status'] == 'uploaded' && !extractionRunning)
           ActionButton(
             label: 'Text lesen lassen',
             onPressed: () async {
@@ -1241,10 +1281,6 @@ class _MaterialReviewState extends State<MaterialReview> {
               ],
             ),
           ),
-        if (!confirmed && !fixedDayExample) ...[
-          const SizedBox(height: 12),
-          deleteButton(),
-        ],
         if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
         if (confirmed && widget.showUnitAction) ...[
           const SizedBox(height: 20),

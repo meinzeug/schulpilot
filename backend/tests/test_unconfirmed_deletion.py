@@ -122,7 +122,7 @@ def test_child_general_material_delete_uses_same_archived_day_guards(api, househ
 
 
 @pytest.mark.parametrize("job_status", ["queued", "running"])
-def test_day_deletion_blocks_active_jobs_and_confirmed_sources(api, household, monkeypatch, job_status):
+def test_day_deletion_blocks_jobs_and_confirmed_sources_but_notebook_allows_own_deletion(api, household, monkeypatch, job_status):
     _, child = household
     day, ids, paths = review_day(api, child, monkeypatch, count=1)
     with DB.begin() as db:
@@ -146,10 +146,10 @@ def test_day_deletion_blocks_active_jobs_and_confirmed_sources(api, household, m
             material = db.get(Material, ids[0])
             material.confirmed, material.status = True, "confirmed"
         assert kid.delete(f"/api/school-days/{day['id']}/pages/{ids[0]}").status_code == 409
-        assert kid.delete(f"/api/materials/{ids[0]}").status_code == 403
         assert api.delete(f"/api/school-days/{day['id']}/pages/{ids[0]}").status_code == 409
-    # The general parent endpoint retains its existing broader deletion rights.
-    assert api.delete(f"/api/materials/{ids[0]}").status_code == 200
+        # The explicit notebook deletion also permits confirmed own pages.
+        assert kid.delete(f"/api/materials/{ids[0]}").status_code == 200
+    assert api.delete(f"/api/materials/{ids[0]}").status_code == 404
     assert not paths[0].exists()
 
 
@@ -180,7 +180,7 @@ def test_child_can_delete_unconfirmed_standalone_import_including_plain_demo(api
 
 
 @pytest.mark.parametrize("job_status", ["queued", "running"])
-def test_child_standalone_cannot_delete_during_job_or_after_confirmation(api, household, monkeypatch, job_status):
+def test_child_standalone_cannot_delete_during_job_but_can_after_confirmation(api, household, monkeypatch, job_status):
     _, child = household
     _, ids, paths = review_day(api, child, monkeypatch, count=1)
     with DB.begin() as db:
@@ -201,8 +201,8 @@ def test_child_standalone_cannot_delete_during_job_or_after_confirmation(api, ho
         with DB.begin() as db:
             db.get(Job, job_id).status = "completed"
             db.get(Material, ids[0]).confirmed = True
-        assert kid.delete(f"/api/materials/{ids[0]}").status_code == 403
-        assert paths[0].exists()
+        assert kid.delete(f"/api/materials/{ids[0]}").status_code == 200
+        assert not paths[0].exists()
 
 
 def test_view_only_parent_cannot_delete_unconfirmed_page_or_standalone(api, household, monkeypatch):
@@ -366,7 +366,7 @@ def test_confirm_wins_child_lock_race_and_prevents_unconfirmed_deletion(api, hou
             page = locker.get(Material, ids[0])
             page.confirmed, page.status, page.revision = True, "confirmed", page.revision + 1
         response = pending.result(timeout=10)
-    assert response.status_code == (403 if standalone else 409), response.text
+    assert response.status_code == 409, response.text
     assert paths[0].exists()
     with DB() as db:
         assert db.get(Material, ids[0]).confirmed is True

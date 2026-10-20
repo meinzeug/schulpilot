@@ -183,7 +183,12 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
     from .material_tasks import duplicate_sources
 
     material, _ = get_material(db, p, material_id)
-    return material_data(material) | {"duplicate_candidates": duplicate_sources(db, material)}
+    extraction = db.scalar(select(Job).where(Job.child_id == material.child_id, Job.kind == "extract",
+        Job.payload["material_id"].as_string() == material.id).order_by(Job.created.desc(), Job.id.desc()).limit(1))
+    return material_data(material) | {"duplicate_candidates": duplicate_sources(db, material),
+        "has_image": bool(material.path), "fixed_example": bool(material.fixture_id),
+        "processing_job": ({"id": extraction.id, "kind": extraction.kind, "status": extraction.status,
+                            "error": extraction.error, "error_code": extraction.error_code} if extraction else None)}
 
 
 @router.post("/materials/{material_id}/task-preview")
@@ -320,35 +325,21 @@ def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_d
         from .school_day import remove_page
 
         return remove_page(material.school_day_id, material.id, p=p, db=db)
-    if p.user.role == "child" and material.confirmed:
-        raise HTTPException(403, "Bestätigte Materialien werden durch deine Eltern gelöscht.")
     child_access(db, p, child.id, write=p.user.role == "parent")
-    # Material deletion sets LearningUnit.material_id to null through its FK.
-    # Answers and tutor help lock units before Child: keep that order rather
-    # than holding Child while waiting for an in-flight answer's unit lock.
-    lock_material_units(db, child.id, material_id)
-    material, _ = get_material(db, p, material_id, True)
-    if p.user.role == "child":
-        if material.confirmed:
-            raise HTTPException(403, "Bestätigte Materialien werden durch deine Eltern gelöscht.")
-        if material.school_day_id:
-            raise HTTPException(409, "Die Seite wurde inzwischen geändert. Bitte neu laden.")
-        if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):
-            raise HTTPException(409, "Eine Verarbeitung läuft noch. Bitte kurz warten und aktualisieren.")
-    path = material.path
-    from .erasure import flush_journal, request
-    from .tutor import purge_source_turns
+    # New notebook action explicitly allows the child to delete confirmed own
+    # pages. Existing generated units and attempts are retained by FK policy.
+    from .material_actions import delete_rows, ensure_idle, remove_files, snapshot
 
-    purge_source_turns(db, [material.id], child_id=material.child_id)
-    request(db, "material", material.id)
-    db.delete(material)
+    original_snapshot = snapshot([material])
+    lock_material_units(db, child.id, material_id)
+    material, child = get_material(db, p, material_id, True)
+    if snapshot([material]) != original_snapshot:
+        raise HTTPException(409, "Die Seite wurde inzwischen geändert. Bitte neu laden und erneut auswählen.")
+    ensure_idle(db, child.id)
+    paths = delete_rows(db, child, [material])
     db.commit()
-    if path:
-        (settings.data_dir / "uploads" / path).unlink(missing_ok=True)
-    flush_journal()
-    return {
-        "message": "Material und Bild gelöscht. Bereits erzeugte private Übungen bleiben bis zur Löschung des Lernverlaufs erhalten."
-    }
+    remove_files(paths)
+    return {"message": "Heftseite und Foto gelöscht. Deine bisherigen Antworten bleiben im Lernverlauf."}
 
 
 def lock_material_units(db, child_id, material_id):
@@ -528,9 +519,18 @@ def job_view(job_id: str, p=Depends(authenticated), db=Depends(get_db)):
     return {
         "id": job.id,
         "kind": job.kind,
+        "material_id": job.payload.get("material_id") if job.kind == "extract" else None,
         "status": job.status,
         "result": job.result,
         "error": job.error,
         "error_code": job.error_code,
         "attempts": job.attempts,
     }
+
+
+# Explicit notebook operations share the existing authenticated material API.
+from . import material_actions  # noqa: E402
+
+router.add_api_route("/children/{child_id}/materials/delete-preview", material_actions.delete_preview, methods=["POST"])
+router.add_api_route("/children/{child_id}/materials/bulk-delete", material_actions.bulk_delete, methods=["POST"])
+router.add_api_route("/materials/{material_id}/reprocess", material_actions.reprocess, methods=["POST"], status_code=202)

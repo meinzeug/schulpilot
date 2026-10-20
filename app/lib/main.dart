@@ -11,6 +11,7 @@ import 'dashboard.dart';
 import 'collection_screen.dart';
 import 'notebook_screen.dart';
 import 'material_screen.dart';
+import 'material_actions.dart';
 import 'settings_screen.dart';
 import 'installation_screen.dart';
 import 'school_day_screen.dart';
@@ -287,6 +288,17 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           widget.state,
           childId: s.pathParameters['id']!,
           learning: true,
+        ),
+      ),
+      GoRoute(
+        path: '/material/:id/processing/:jobId',
+        builder: (context, s) => MaterialProcessingScreen(
+          widget.state,
+          key: ValueKey(
+            '${widget.state.user?["id"]}:${s.pathParameters["id"]}:${s.pathParameters["jobId"]}',
+          ),
+          materialId: s.pathParameters['id']!,
+          jobId: s.pathParameters['jobId']!,
         ),
       ),
       GoRoute(

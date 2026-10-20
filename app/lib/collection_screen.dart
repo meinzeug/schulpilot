@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
+import 'material_actions.dart';
 import 'notebook_shelf.dart';
 import 'ui.dart';
 
@@ -105,6 +106,8 @@ class _PagedCollectionState extends State<PagedCollection> {
   Json? data;
   String? error, subject, opening;
   String? deletingMaterial;
+  bool selectingPages = false, allMatchingPages = false;
+  final selectedPages = <String>{};
   String status = 'all', sort = 'subject', section = 'ready';
   DateTimeRange? dates;
   int page = 1, pageSize = 20, generation = 0;
@@ -164,6 +167,8 @@ class _PagedCollectionState extends State<PagedCollection> {
       debounce?.cancel();
       setState(() {
         data = null;
+        selectedPages.clear();
+        selectingPages = allMatchingPages = false;
         search.clear();
       });
     }
@@ -254,6 +259,8 @@ class _PagedCollectionState extends State<PagedCollection> {
     generation++;
     setState(() {
       edit();
+      selectedPages.clear();
+      selectingPages = allMatchingPages = false;
       page = 1;
       data = null;
       loading = true;
@@ -460,38 +467,148 @@ class _PagedCollectionState extends State<PagedCollection> {
     }
   }
 
-  bool canDeleteMaterial(Json item) =>
+  bool get canSelectPages =>
       !widget.learning &&
       widget.onSelect == null &&
-      item['fixed_example'] == false &&
-      ((widget.state.isParent && widget.state.canManage) ||
-          (widget.state.isChild && item['confirmed'] != true));
+      (widget.state.isChild ||
+          (widget.state.isParent && widget.state.canManage));
 
-  Future<void> deleteMaterial(Json item) async {
+  bool canDeleteMaterial(Json item) =>
+      canSelectPages && materialCanDelete(widget.state, item);
+
+  Json materialFilters() => {
+    'q': search.text.trim(),
+    if (subject != null) 'subject': subject,
+    'status': status,
+    if (dates != null) 'since': DateFormat('yyyy-MM-dd').format(dates!.start),
+    if (dates != null) 'until': DateFormat('yyyy-MM-dd').format(dates!.end),
+  };
+
+  void togglePage(Json item) {
     if (!canDeleteMaterial(item) || deletingMaterial != null) return;
-    if (!await confirmDialog(
-      context,
-      'Heftseite löschen?',
-      'Foto und erkannter Text werden gelöscht. Bereits entstandene Übungen bleiben erhalten.',
-    )) {
-      return;
-    }
-    if (!active || !mounted) return;
-    setState(() => deletingMaterial = item['id']);
+    final id = item['id'] as String;
+    setState(() {
+      if (allMatchingPages) {
+        allMatchingPages = false;
+        selectedPages.clear();
+        for (final page in data?['items'] as List? ?? []) {
+          if (canDeleteMaterial(Json.from(page)) && page['id'] != id) {
+            selectedPages.add(page['id']);
+          }
+        }
+      } else if (selectedPages.contains(id)) {
+        selectedPages.remove(id);
+      } else if (selectedPages.length < 500) {
+        selectedPages.add(id);
+      }
+    });
+  }
+
+  Future<void> deletePages({Json? item, bool all = false}) async {
+    if (!canSelectPages || deletingMaterial != null) return;
+    final allMatches = item == null && (all || allMatchingPages);
+    final ids = item == null ? selectedPages.toList() : [item['id'] as String];
+    if (!allMatches && ids.isEmpty) return;
+    setState(() => deletingMaterial = item?['id'] ?? 'selection');
     try {
-      await widget.state.api.delete('/materials/${item['id']}');
-      if (!active || !mounted) return;
-      // The server clamps an emptied last page to the preceding page.
+      final deleted = await deleteNotebookPages(
+        context,
+        widget.state,
+        childId: widget.childId,
+        ids: allMatches ? null : ids,
+        filters: allMatches ? materialFilters() : null,
+      );
+      if (!active || !deleted) return;
+      setState(() {
+        selectedPages.clear();
+        selectingPages = allMatchingPages = false;
+      });
       await load(scroll: true);
-      if (!active || !mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Heftseite gelöscht.')));
     } catch (error) {
-      if (active && mounted) showError(context, error);
+      if (mounted && active) showError(context, error);
     } finally {
-      if (active && mounted) setState(() => deletingMaterial = null);
+      if (active) setState(() => deletingMaterial = null);
     }
   }
+
+  Future<void> rereadPage(Json item) async {
+    if (deletingMaterial != null) return;
+    setState(() => deletingMaterial = item['id']);
+    try {
+      await reprocessNotebookPage(
+        context,
+        widget.state,
+        item,
+        onRefresh: widget.state.refreshState,
+      );
+    } catch (error) {
+      if (mounted && active) showError(context, error);
+    } finally {
+      if (active) setState(() => deletingMaterial = null);
+    }
+  }
+
+  Widget selectionTools(int total) => Wrap(
+    spacing: 8,
+    runSpacing: 4,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      TextButton.icon(
+        onPressed: deletingMaterial != null
+            ? null
+            : () => setState(() {
+                selectingPages = !selectingPages;
+                allMatchingPages = false;
+                selectedPages.clear();
+              }),
+        icon: Icon(
+          selectingPages ? Icons.close_rounded : Icons.checklist_rounded,
+        ),
+        label: Text(selectingPages ? 'Auswahl aufheben' : 'Seiten auswählen'),
+      ),
+      if (selectingPages) ...[
+        TextButton.icon(
+          onPressed: deletingMaterial != null
+              ? null
+              : () => setState(() {
+                  allMatchingPages = true;
+                  selectedPages.clear();
+                }),
+          icon: const Icon(Icons.select_all_rounded),
+          label: const Text('Alle auswählen'),
+        ),
+        Text(
+          allMatchingPages
+              ? '$total Seiten in dieser Liste ausgewählt'
+              : '${selectedPages.length} ausgewählt',
+        ),
+        TextButton.icon(
+          onPressed:
+              deletingMaterial != null ||
+                  (!allMatchingPages && selectedPages.isEmpty)
+              ? null
+              : () => deletePages(),
+          icon: const Icon(Icons.delete_outline_rounded),
+          label: Text(
+            'Auswahl löschen (${allMatchingPages ? total : selectedPages.length})',
+          ),
+        ),
+      ],
+      TextButton.icon(
+        onPressed: deletingMaterial != null
+            ? null
+            : () => deletePages(all: true),
+        icon: const Icon(Icons.delete_sweep_outlined),
+        label: const Text('Alles löschen'),
+      ),
+      if (deletingMaterial == 'selection')
+        const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -705,6 +822,7 @@ class _PagedCollectionState extends State<PagedCollection> {
                 ],
               ),
             ),
+          if (canSelectPages && items.isNotEmpty) selectionTools(total),
           ...rows(items),
           if (pages > 1)
             Padding(
@@ -835,22 +953,30 @@ class _PagedCollectionState extends State<PagedCollection> {
         padding: const EdgeInsets.all(14),
         child: ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: mint,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              widget.learning
-                  ? item['status'] == 'completed'
-                        ? Icons.task_alt_rounded
-                        : Icons.auto_stories_outlined
-                  : Icons.description_outlined,
-              color: teal,
-              size: 23,
-            ),
-          ),
+          leading: selectingPages && canDeleteMaterial(item)
+              ? Checkbox(
+                  value: allMatchingPages || selectedPages.contains(item['id']),
+                  semanticLabel: '$title auswählen',
+                  onChanged: deletingMaterial != null
+                      ? null
+                      : (_) => togglePage(item),
+                )
+              : Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: mint,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    widget.learning
+                        ? item['status'] == 'completed'
+                              ? Icons.task_alt_rounded
+                              : Icons.auto_stories_outlined
+                        : Icons.description_outlined,
+                    color: teal,
+                    size: 23,
+                  ),
+                ),
           title: Text(
             title,
             maxLines: 2,
@@ -943,13 +1069,26 @@ class _PagedCollectionState extends State<PagedCollection> {
                   height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : canDeleteMaterial(item)
-              ? IconButton(
-                  tooltip: 'Heftseite löschen',
-                  onPressed: deletingMaterial != null
-                      ? null
-                      : () => deleteMaterial(item),
-                  icon: const Icon(Icons.delete_outline_rounded),
+              : canDeleteMaterial(item) && !selectingPages
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (materialCanReprocess(widget.state, item))
+                      IconButton(
+                        tooltip: 'Mit KI neu lesen',
+                        onPressed: deletingMaterial != null
+                            ? null
+                            : () => rereadPage(item),
+                        icon: const Icon(Icons.document_scanner_outlined),
+                      ),
+                    IconButton(
+                      tooltip: 'Heftseite löschen',
+                      onPressed: deletingMaterial != null
+                          ? null
+                          : () => deletePages(item: item),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                  ],
                 )
               : opening == item['id']
               ? const SizedBox(
@@ -957,15 +1096,12 @@ class _PagedCollectionState extends State<PagedCollection> {
                   height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Icon(
-                  actionable
-                      ? simpleLearning && item['status'] != 'completed'
-                            ? Icons.play_arrow_rounded
-                            : Icons.chevron_right_rounded
-                      : Icons.schedule_rounded,
-                  color: muted,
-                ),
-          onTap: actionable ? () => open(item) : null,
+              : const Icon(Icons.chevron_right_rounded, color: muted),
+          onTap: selectingPages && canDeleteMaterial(item)
+              ? () => togglePage(item)
+              : actionable
+              ? () => open(item)
+              : null,
         ),
       ),
     );

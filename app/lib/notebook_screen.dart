@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'learning_tips.dart';
+import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
 import 'ui.dart';
@@ -40,7 +41,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
   int stateRevision = 0;
   double swipeDistance = 0;
   bool loading = true, showSearch = false;
-  bool deleting = false;
+  bool deleting = false, selecting = false, allMatching = false;
+  final selectedIds = <String>{};
   bool canManage = false;
   static const pageSize = 20;
   bool get current => mounted && widget.state.user?['id'] == owner;
@@ -84,6 +86,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
         data = subject = null;
         error = null;
         search.clear();
+        clearSelection();
       });
     } else if (current && stateRevision != widget.state.revision) {
       stateRevision = widget.state.revision;
@@ -196,9 +199,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
           'Dieser Hefter kann gerade nicht geöffnet werden. Bitte später erneut laden.',
         );
       }
+      final lastIndex = math.max(0, (result['total'] as int) - 1);
+      if (index > lastIndex && index ~/ pageSize != lastIndex ~/ pageSize) {
+        index = lastIndex;
+        await load();
+        return;
+      }
       setState(() {
         data = result;
-        index = index.clamp(0, math.max(0, (result['total'] as int) - 1));
+        index = index.clamp(0, lastIndex);
         loading = false;
       });
       remember();
@@ -224,32 +233,93 @@ class _NotebookScreenState extends State<NotebookScreen> {
     }
   }
 
-  bool canDelete(Json item) =>
-      !deleting &&
-      item['fixed_example'] == false &&
-      ((widget.state.isParent && canManage) ||
-          (widget.state.isChild && item['confirmed'] != true));
+  bool get canEdit =>
+      widget.state.isChild || (widget.state.isParent && canManage);
 
-  Future<void> deletePage(Json item) async {
+  bool canDelete(Json item) =>
+      !deleting && materialCanDelete(widget.state, item, canManage: canManage);
+
+  bool canReprocess(Json item) =>
+      !deleting &&
+      materialCanReprocess(widget.state, item, canManage: canManage);
+
+  Json get selectionFilters => {
+    'subject_id': widget.subjectId,
+    'q': search.text.trim(),
+    'status': status,
+    if (dates != null) 'since': DateFormat('yyyy-MM-dd').format(dates!.start),
+    if (dates != null) 'until': DateFormat('yyyy-MM-dd').format(dates!.end),
+  };
+
+  int get selectionCount => allMatching ? total : selectedIds.length;
+
+  void clearSelection() {
+    selecting = false;
+    allMatching = false;
+    selectedIds.clear();
+  }
+
+  void togglePageSelection(Json item) {
     if (!canDelete(item)) return;
-    if (!await confirmDialog(
-      context,
-      'Heftseite löschen?',
-      'Foto und erkannter Text werden gelöscht. Bereits entstandene Übungen bleiben erhalten.',
-    )) {
+    final id = item['id'] as String;
+    final wasAllMatching = allMatching;
+    if (!allMatching &&
+        !selectedIds.contains(id) &&
+        selectedIds.length >= 500) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Für mehr Seiten wähle „Alle auswählen“.'),
+        ),
+      );
       return;
     }
-    if (!current || !mounted) return;
+    setState(() {
+      if (allMatching) {
+        // The server represents an all-matching selection, not an unbounded
+        // client-side list. Returning to individual choices is explicit.
+        selectedIds
+          ..clear()
+          ..addAll([
+            for (final page in items)
+              if (canDelete(page) && page['id'] != id) page['id'] as String,
+          ]);
+        allMatching = false;
+      } else if (!selectedIds.remove(id)) {
+        selectedIds.add(id);
+      }
+    });
+    if (wasAllMatching) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Jetzt sind nur die markierten Seiten dieser Übersicht ausgewählt.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> deletePages({Json? page, bool all = false}) async {
+    if (deleting || !current || !canEdit) return;
+    if (page != null && !canDelete(page)) return;
+    if (page == null && !all && selectionCount == 0) return;
     setState(() => deleting = true);
     try {
-      await widget.state.api.delete('/materials/${item['id']}');
-      if (!current || !mounted) return;
-      // Keeping the same position displays the next page. If this was the
-      // final page, load() clamps to the new last page (or the empty state).
+      final changed = await deleteNotebookPages(
+        context,
+        widget.state,
+        childId: widget.childId,
+        ids: page != null
+            ? [page['id'] as String]
+            : (all || allMatching ? null : selectedIds.toList()),
+        filters: page == null && (all || allMatching) ? selectionFilters : null,
+      );
+      if (!current || !mounted || !changed) return;
+      setState(() {
+        clearSelection();
+        if (all) index = 0;
+      });
       await load();
-      if (!current || !mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Heftseite gelöscht.')));
     } catch (error) {
       if (current && mounted) showError(context, error);
     } finally {
@@ -257,11 +327,119 @@ class _NotebookScreenState extends State<NotebookScreen> {
     }
   }
 
+  Future<void> reprocessPage(Json item) async {
+    if (!current || !canReprocess(item)) return;
+    setState(() => deleting = true);
+    try {
+      await reprocessNotebookPage(
+        context,
+        widget.state,
+        item,
+        onRefresh: () {
+          if (current) load();
+        },
+      );
+    } catch (error) {
+      if (current && mounted) showError(context, error);
+    } finally {
+      if (current && mounted) setState(() => deleting = false);
+    }
+  }
+
+  Widget pageActions(Json item) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (materialCanReprocess(widget.state, item, canManage: canManage))
+        IconButton(
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          tooltip: 'Mit KI neu lesen',
+          onPressed: canReprocess(item) ? () => reprocessPage(item) : null,
+          icon: const Icon(Icons.auto_awesome_outlined),
+        ),
+      if (materialCanDelete(widget.state, item, canManage: canManage))
+        IconButton(
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          tooltip: 'Heftseite löschen',
+          onPressed: canDelete(item) ? () => deletePages(page: item) : null,
+          icon: const Icon(Icons.delete_outline_rounded),
+          color: Theme.of(context).colorScheme.error,
+        ),
+    ],
+  );
+
+  Widget selectionToolbar() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        OutlinedButton.icon(
+          onPressed: deleting
+              ? null
+              : () => setState(() {
+                  if (selecting) {
+                    clearSelection();
+                  } else {
+                    selecting = true;
+                  }
+                }),
+          icon: Icon(selecting ? Icons.close_rounded : Icons.checklist_rounded),
+          label: Text(selecting ? 'Auswahl aufheben' : 'Seiten auswählen'),
+        ),
+        if (selecting) ...[
+          TextButton.icon(
+            onPressed: deleting
+                ? null
+                : () => setState(() {
+                    allMatching = true;
+                    selectedIds.clear();
+                  }),
+            icon: const Icon(Icons.select_all_rounded),
+            label: const Text('Alle auswählen'),
+          ),
+          Text(
+            allMatching
+                ? '${counted(selectionCount, 'Seite', 'Seiten')} im gefilterten Hefter ausgewählt'
+                : counted(
+                    selectionCount,
+                    'Seite ausgewählt',
+                    'Seiten ausgewählt',
+                  ),
+            style: const TextStyle(color: muted, fontSize: 12),
+          ),
+          FilledButton.icon(
+            onPressed: deleting || selectionCount == 0
+                ? null
+                : () => deletePages(),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: Text('Auswahl löschen ($selectionCount)'),
+          ),
+        ],
+        TextButton.icon(
+          onPressed: deleting ? null : () => deletePages(all: true),
+          icon: const Icon(Icons.delete_sweep_outlined),
+          label: const Text('Alles löschen'),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+        ),
+        if (deleting)
+          const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+      ],
+    ),
+  );
+
   void change(VoidCallback action, {bool delayed = false}) {
     debounce?.cancel();
     generation++;
     setState(() {
       action();
+      clearSelection();
       index = 0;
       data = null;
       loading = true;
@@ -533,7 +711,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
                         showCheckmark: false,
                         selected: view == mode.$1,
                         onSelected: (_) {
-                          setState(() => view = mode.$1);
+                          setState(() {
+                            view = mode.$1;
+                            clearSelection();
+                          });
                           remember();
                         },
                       ),
@@ -686,7 +867,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        pageControls(),
+        Row(
+          children: [
+            Expanded(child: pageControls()),
+            pageActions(item),
+          ],
+        ),
         const SizedBox(height: 8),
         CallbackShortcuts(
           bindings: {
@@ -826,12 +1012,6 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       icon: const Icon(Icons.zoom_in_rounded),
                       label: const Text('Vergrößern'),
                     ),
-                  if (canDelete(item))
-                    OutlinedButton.icon(
-                      onPressed: () => deletePage(item),
-                      icon: const Icon(Icons.delete_outline_rounded),
-                      label: const Text('Seite löschen'),
-                    ),
                   if (deleting)
                     const SizedBox(
                       width: 22,
@@ -871,6 +1051,13 @@ class _NotebookScreenState extends State<NotebookScreen> {
   Widget overview() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      if (view == 'list' &&
+          canEdit &&
+          items.any(
+            (item) =>
+                materialCanDelete(widget.state, item, canManage: canManage),
+          ))
+        selectionToolbar(),
       pageControls(overview: true),
       const SizedBox(height: 10),
       SizedBox(
@@ -890,7 +1077,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                         : constraints.maxWidth < 800
                         ? 3
                         : 4,
-                    mainAxisExtent: 260,
+                    mainAxisExtent: 294,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
                   ),
@@ -923,7 +1110,6 @@ class _NotebookScreenState extends State<NotebookScreen> {
         : const Center(
             child: Icon(Icons.description_outlined, size: 40, color: muted),
           );
-    final canRemove = canDelete(item);
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
@@ -932,57 +1118,79 @@ class _NotebookScreenState extends State<NotebookScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: list
-          ? Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  SizedBox(width: 70, height: 96, child: photo),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Semantics(
-                      button: true,
-                      label:
-                          'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
-                      child: InkWell(
-                        onTap: select,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                pageTitle(item),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 600;
+                final summary = Row(
+                  children: [
+                    if (selecting)
+                      Checkbox(
+                        value: allMatching || selectedIds.contains(item['id']),
+                        semanticLabel:
+                            'Seite ${batch * pageSize + position + 1} ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}',
+                        onChanged: canDelete(item)
+                            ? (_) => togglePageSelection(item)
+                            : null,
+                      ),
+                    SizedBox(width: wide ? 70 : 56, height: 86, child: photo),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Semantics(
+                        button: true,
+                        label: selecting
+                            ? 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}'
+                            : 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
+                        child: InkWell(
+                          onTap: selecting
+                              ? () => togglePageSelection(item)
+                              : select,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  pageTitle(item),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                pageDate(item),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: muted,
+                                const SizedBox(height: 6),
+                                Text(
+                                  pageDate(item),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: muted,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
+                    if (wide) pageActions(item),
+                  ],
+                );
+                return Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      summary,
+                      if (!wide)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: pageActions(item),
+                        ),
+                    ],
                   ),
-                  if (canRemove)
-                    IconButton(
-                      tooltip: 'Heftseite löschen',
-                      onPressed: deleting ? null : () => deletePage(item),
-                      icon: const Icon(Icons.delete_outline_rounded),
-                    ),
-                  if (!canRemove) const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
+                );
+              },
             )
           : Padding(
               padding: const EdgeInsets.all(8),
@@ -1040,14 +1248,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                           ),
                         ),
                       ),
-                      if (canRemove)
-                        IconButton(
-                          tooltip: 'Heftseite löschen',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: deleting ? null : () => deletePage(item),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                        ),
                     ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: pageActions(item),
                   ),
                 ],
               ),

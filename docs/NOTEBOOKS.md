@@ -116,3 +116,53 @@ Minefilter verbirgt auch ausgewählte leere Fächer und erhält unzugeordnete
 Seiten. Reales OTA39->40 und drei Startchecks bestanden. Testhaushalt nach
 Export regulär gelöscht, alte Sitzungen401. Details/aktuelle Artefakte in
 STATUS/Handoff; keine physische Geräte-, Audio- oder Push-Abnahme abgeleitet.
+
+## Heftaktionen ab1.11.0+50
+
+Der ausdrückliche Auftrag vom20.10.2026 erweitert die frühere Löschregel: Kinder
+können eigene bestätigte Seiten in der Heftsammlung entfernen. Papierkorb und
+„Mit KI neu lesen“ stehen direkt über dem Albumfoto und an den Kachel-/Listen-
+seiten. Die Detailansicht bietet dieselben Aktionen. Eltern benötigen weiterhin
+Verwaltungsrechte; Lese-Eltern und Betriebsadministratoren bekommen keinen
+privaten Schreibzugriff. Feste KI-Beispielseiten bleiben geschützt.
+
+Die Liste bietet „Seiten auswählen“, „Alle auswählen“, „Auswahl löschen“ und
+„Alles löschen“. Alle meint den gesamten aktuellen Hefter beziehungsweise Filter,
+auch jenseits der sichtbaren20 Datensätze. Einzelne Auswahl höchstens500 IDs,
+gefilterte Gesamtauswahl höchstens5.000 Seiten; größere Sammlungen nach Fach oder
+Datum eingrenzen. Eine serverseitige Vorschau zeigt die genaue Anzahl. Ihr
+verschlüsselter Token gilt zehn Minuten, gebunden an Anmeldung, Kind, Filter und
+Snapshot. Neue/geänderte Seiten, Rechteänderung oder laufende Verarbeitung führen
+zur vollständigen Ablehnung; keine stille Teillöschung. Einheitensperren vor Kind,
+stabile Reihenfolge, Löschjournal und bestehende Quellen-/Tutor-/Wortlöschung
+werden wiederverwendet. Bereits gespeicherte Übungen und Antworten bleiben.
+Auswahl wird bei Filter-/Kontowechsel verworfen. Die eigene Prüfseitenroute des
+Fotoassistenten behält ihre bisherigen Tages- und Fortsetzungsprüfungen.
+
+Neues Einlesen ist eine bewusste KI-Aktion mit Rückfrage und Idempotenzschlüssel:
+Das private Foto wird in eine neue unbestätigte Quelle kopiert und genau ein
+normal reservierter OCR-Auftrag angelegt. Die alte Quelle und ihre Antworten
+werden nicht überschrieben. Quelle, Sitzung, Familienrechte, Tarif und Provider-
+revision werden vor und nach der externen Verarbeitung geprüft. Keine neue
+Datenbankmigration; Herkunft und Quellrevision stehen im bestehenden Jobpayload.
+
+`/material/{id}/processing/{jobId}` beobachtet den bestehenden Auftrag nur mit
+GETs. Reload, Rückkehr aus dem Hintergrund oder „Status neu laden“ startet keine
+weitere KI. Nach Erfolg „Seite prüfen“ → „Stimmt, weiter“ → ausdrücklich neue
+Lernrunde vorbereiten. Bei Wortseiten bleibt die eigene Vokabelvorschau mit
+Einzelbestätigung erhalten. Fehler bleiben sichtbar; kein Dummy und kein
+automatischer Retry. Auch nach App-Neustart führt der Materialstatus zurück zum
+vorhandenen Auftrag. Die neue Fassung ist als eigene gespeicherte Quelle in der
+Sammlung erreichbar; gewünschte alte Fotos können danach bewusst gelöscht werden.
+
+Additive API-Endpunkte:
+
+- `POST /children/{id}/materials/delete-preview`: IDs oder all_matching+Filter.
+- `POST /children/{id}/materials/bulk-delete`: bestätigter Auswahl-Token.
+- `POST /materials/{id}/reprocess`: Quellrevision+Idempotency-Key.
+- Materialdetail: has_image, fixed_example, processing_job; Jobdetail zusätzlich
+  material_id. Keine Dateipfade, Anbieterzugänge oder privaten Schlüssel.
+
+Tatsächlich ausgeführte Prüfungen, öffentliche Version und verbleibende Grenzen
+stehen in STATUS.md und NOTEBOOK_ACTIONS_QA.md. Widget-/Mockprüfungen sind kein
+Nachweis echter KI-Erkennung oder physischer Gerätetests.
