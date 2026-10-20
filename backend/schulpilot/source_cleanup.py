@@ -10,13 +10,26 @@ import json
 
 from sqlalchemy import select
 
-from .db import DB, Assignment, Child, Job, LanguageProject, LearningUnit, Material, UnitSource, VocabularyItem
+from .db import (
+    DB,
+    Assignment,
+    Child,
+    Job,
+    LanguageProject,
+    LearningUnit,
+    Material,
+    SchoolDay,
+    UnitSource,
+    VocabularyItem,
+)
 from .material_actions import ensure_idle, lock_units
 from .security import audit
 from .unit_erasure import counts, references, remove, snapshot, word_source_revisions
 
 
 def selection(db, child_id, *, include_manual_assignments=False, include_manual_vocabulary=False):
+    from .study_path import source_backed_blocks
+
     child = db.get(Child, child_id)
     if child is None:
         raise ValueError("Kind nicht gefunden.")
@@ -64,13 +77,22 @@ def selection(db, child_id, *, include_manual_assignments=False, include_manual_
             protected.update(u.id for u in units if u.assignment_id == assignment.id)
     inherit_sources()
     unit_ids = sorted(u.id for u in units if u.id not in protected)
+    plans = []
+    for day in db.scalars(select(SchoolDay).where(SchoolDay.child_id == child_id).order_by(SchoolDay.id)):
+        blocks = (day.learning_plan or {}).get("blocks", [])
+        retained = source_backed_blocks(db, day)
+        if retained != blocks:
+            plans.append({"id": day.id, "revision": day.revision, "plan": day.learning_plan,
+                          "retained": retained, "preparation": day.preparation,
+                          "removed": len(blocks) - len(retained)})
     values = [{c.name: getattr(a, c.name) for c in Assignment.__table__.columns}
               for a in assignments if a.id in assignment_ids]
     digest = hashlib.sha256(json.dumps({"child": child_id, "units": snapshot(db, unit_ids),
         "assignments": values, "manual_assignments": include_manual_assignments,
-        "manual_vocabulary": include_manual_vocabulary}, sort_keys=True).encode()).hexdigest()
-    return {"unit_ids": unit_ids, "assignment_ids": sorted(assignment_ids), "digest": digest,
-            **counts(db, unit_ids), "assignment_count": len(assignment_ids)}
+        "manual_vocabulary": include_manual_vocabulary, "plans": plans}, sort_keys=True).encode()).hexdigest()
+    return {"unit_ids": unit_ids, "assignment_ids": sorted(assignment_ids), "plan_ids": [p["id"] for p in plans], "digest": digest,
+            **counts(db, unit_ids), "assignment_count": len(assignment_ids),
+            "planned_stage_count": sum(p["removed"] for p in plans)}
 
 
 def erase_assignments(db, child_id, ids, *, journal=True):
@@ -95,6 +117,7 @@ def apply(db, child_id, expected_digest, **options):
     if child is None:
         raise ValueError("Kind nicht gefunden.")
     list(db.scalars(select(Assignment).where(Assignment.child_id == child_id).order_by(Assignment.id).with_for_update()))
+    list(db.scalars(select(SchoolDay).where(SchoolDay.child_id == child_id).order_by(SchoolDay.id).with_for_update()))
     db.expire_all()
     ensure_idle(db, child_id)
     selected = selection(db, child_id, **options)
@@ -102,8 +125,14 @@ def apply(db, child_id, expected_digest, **options):
         raise ValueError("Der Bestand wurde verändert. Bitte neu prüfen; nichts wurde gelöscht.")
     remove(db, child, selected["unit_ids"])
     erase_assignments(db, child_id, selected["assignment_ids"])
+    from .school_preparation import sources_removed
+
+    for day_id in selected["plan_ids"]:
+        day = db.get(SchoolDay, day_id)
+        day.revision += 1
+        sources_removed(db, day)
     audit(db, "local-operator", "operator.source_orphans_removed", child_id)
-    return {k: selected[k] for k in ("unit_count", "answer_count", "assignment_count")}
+    return {k: selected[k] for k in ("unit_count", "answer_count", "assignment_count", "planned_stage_count")}
 
 
 def main():

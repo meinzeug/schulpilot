@@ -189,7 +189,7 @@ def test_human_notices_open_message_reader_only_for_capable_clients(api, househo
     # Existing Android clients do not know the new route.
     for capabilities in ("visual-v1", "messages-v10"):
         old = api.get("/api/notifications/inbox", headers={"X-Schulpilot-Capabilities": capabilities}).json()
-        assert old["items"][0]["route"] == "/unit/synthetic-unit"
+        assert old["items"][0]["route"] == f"/child/{child['id']}"
     with DB.begin() as db:
         db.add(Message(child_id=child["id"], sender_id=owner["id"], kind="reply", body="Synthetic reply",
                        context={"unit_id": "synthetic-unit"}))
@@ -272,3 +272,43 @@ def test_message_reader_keeps_text_but_hides_deleted_or_foreign_context_without_
         assert {m.body: m.context for m in db.scalars(select(Message).where(Message.child_id == child["id"]))} == expected
         assert db.scalar(select(func.count()).select_from(Activity)) == before
         assert db.scalar(select(func.count()).select_from(Job)) == 0
+
+
+def test_deleted_language_round_tombstone_is_not_advertised_as_ready(api, household):
+    from schulpilot.db import LanguageProject
+
+    owner, child = household
+    with DB.begin() as db:
+        job = Job(child_id=child['id'], kind='language_project', status='completed', payload={},
+                  result={'deleted': True}, finished=int(now()), idempotency=uid())
+        db.add(job)
+        db.flush()
+        project = LanguageProject(child_id=child['id'], user_id=owner['id'], request_key=uid(),
+            request_digest='x'*64, target_locale='en-GB', mode='dialog', inputs={},
+            status='failed', job_id=job.id)
+        db.add(project)
+        job_id = job.id
+    assert api.get('/api/notifications/inbox').json()['items'] == []
+    with DB() as db:
+        assert db.get(Job, job_id).status == 'completed'
+        assert db.scalar(select(func.count()).select_from(NotificationRead)) == 0
+
+
+def test_legacy_notification_links_validate_the_own_child_target(api, household):
+    from schulpilot.db import Material
+
+    owner, child = household
+    sibling = create_child(api, owner, 'notice-sibling')
+    with DB.begin() as db:
+        own = Material(child_id=child['id'], title='Own artificial page')
+        other = Material(child_id=sibling['id'], title='Sibling artificial page')
+        db.add_all([own, other])
+        db.flush()
+        for value in [own.id, other.id, uid(), ['malformed']]:
+            db.add(Message(child_id=child['id'], kind='help', body='Synthetic help', context={'material_id':value}))
+        own_id, foreign_id = own.id, other.id
+    data = api.get('/api/notifications/inbox',headers={'X-Schulpilot-Capabilities':'visual-v1'}).json()
+    assert len(data['items']) == 4
+    assert sum(row['route'] == '/material/'+own_id for row in data['items']) == 1
+    assert sum(row['route'] == f"/child/{child['id']}" for row in data['items']) == 3
+    assert foreign_id not in str(data)

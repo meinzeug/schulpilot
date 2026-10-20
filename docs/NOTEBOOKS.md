@@ -219,3 +219,17 @@ Operatorweg erlaubt die geprüfte Altbestandsbereinigung; kein privater Admin-AP
 Zugang und kein KI-Auftrag. Vorschau, exakter Bestandsdigest, Sperren und Audit
 sichern die Ausführung. Einzelheiten und Journal-/Rückwegregeln stehen in
 [SOURCE_DELETION_2026_10_20.md](SOURCE_DELETION_2026_10_20.md).
+
+### Geplante Etappen und Fotozoom ab 1.14.3+63
+
+Auch noch nicht erzeugte Etappen dürfen nach Quellenlöschung nicht als weitere
+Aufgaben angeboten werden. Eigene gültige Quell-IDs und gespeicherte Runden
+werden in Tagesplanung, Sammlung und Lernreise lesend geprüft. Die Lösch-,
+Aufbewahrungs- und Restorepfade entfernen unverbundene Planblöcke; der lokale
+Altbereinigungsdigest zählt sie separat. Kein automatisches Neuplanen/Generieren
+beim Lesen.
+
+Der Vollbildzoom hat zusätzliche große Plus-/Minus-/Zurücksetzen-Tasten und
+einen Prozentwert, weiterhin maximal8-fach. Bildwechsel/Logout verwerfen
+Matrix und private Bildbytes; Zoomen löst keine neuen Bild-/KI-Anfragen aus.
+Abnahme und Grenzen in CHILD_AUDIT_2026_10_20.md.

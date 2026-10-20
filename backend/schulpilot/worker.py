@@ -495,6 +495,7 @@ def maintenance():
             from .unit_erasure import linked_ids, remove
 
             ids = [m.id for m in expired_pages if m.child_id == child_id]
+            day_ids = {m.school_day_id for m in expired_pages if m.child_id == child_id and m.school_day_id}
             lock_units(db, child_id, ids)
             child = db.scalar(select(Child).where(Child.id == child_id).with_for_update())
             if child is None or db.scalar(select(Job.id).where(Job.child_id == child_id,
@@ -509,6 +510,11 @@ def maintenance():
                 request(db, "material", material.id)
                 db.delete(material)
             db.flush()
+            from .school_preparation import sources_removed
+
+            for day in db.scalars(select(SchoolDay).where(SchoolDay.child_id == child_id, SchoolDay.id.in_(day_ids))):
+                day.revision += 1
+                sources_removed(db, day)
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         from .db import (

@@ -15,7 +15,7 @@ import tempfile
 from sqlalchemy import delete, select
 
 from .config import settings
-from .db import DB, Assignment, Child, ErasureRequest, Family, LearningUnit, Material, Membership, User, now
+from .db import DB, Assignment, Child, ErasureRequest, Family, LearningUnit, Material, Membership, SchoolDay, User, now
 
 SCOPES = ("family", "child", "user", "material", "membership", "unit", "assignment")
 
@@ -134,6 +134,7 @@ def reconcile(db, records):
 
             remove(db, db.get(Child, row.child_id), [row.id], journal=False)
         else:
+            from .school_preparation import sources_removed
             from .tutor import purge_source_turns
             from .unit_erasure import linked_ids, remove
 
@@ -143,7 +144,12 @@ def reconcile(db, records):
             purge_source_turns(db, [row.id], child_id=row.child_id)
             if row.path:
                 paths.append(row.path)
+            day = db.get(SchoolDay, row.school_day_id) if row.school_day_id else None
             db.delete(row)
+            db.flush()
+            if day:
+                day.revision += 1
+                sources_removed(db, day)
         db.flush()
     return paths
 

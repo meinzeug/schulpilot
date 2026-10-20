@@ -45,25 +45,31 @@ def record(db, child_id, kind, detail=None, unit_id=None):
     activity_recorded(db, activity)
 
 
-def message_previews(db, child_id):
-    """Bounded private reader; deleted references never turn into clickable links."""
-    rows = list(db.scalars(select(Message).where(Message.child_id == child_id)
-                           .order_by(Message.created.desc(), Message.id.desc()).limit(100)))
+def message_context_targets(db, rows):
+    """Batch-check exact message targets; historic/client context grants no rights."""
     models = {"unit_id": LearningUnit, "material_id": Material, "day_id": SchoolDay}
     contexts = [m.context for m in rows if isinstance(m.context, dict) and len(m.context) == 1]
     existing = set()
     for key, model in models.items():
         ids = {context[key] for context in contexts if isinstance(context.get(key), str)}
         if ids:
-            existing.update((key, target) for target in db.scalars(
-                select(model.id).where(model.child_id == child_id, model.id.in_(ids))))
+            existing.update((child_id, key, target) for child_id, target in db.execute(
+                select(model.child_id, model.id).where(model.child_id.in_({m.child_id for m in rows}), model.id.in_(ids))))
+    return existing
+
+
+def message_previews(db, child_id):
+    """Bounded private reader; deleted references never turn into clickable links."""
+    rows = list(db.scalars(select(Message).where(Message.child_id == child_id)
+                           .order_by(Message.created.desc(), Message.id.desc()).limit(100)))
+    existing = message_context_targets(db, rows)
     sender_ids = {m.sender_id for m in rows if m.sender_id}
     roles = dict(db.execute(select(User.id, User.role).where(User.id.in_(sender_ids))).all()) if sender_ids else {}
     result = []
     for m in rows:
         context = m.context if isinstance(m.context, dict) and len(m.context) == 1 else {}
         # Do not hash malformed historical values, or expose another child's IDs.
-        available = any(isinstance(value, str) and (key, value) in existing for key, value in context.items())
+        available = any(isinstance(value, str) and (child_id, key, value) in existing for key, value in context.items())
         result.append({
             "id": m.id, "kind": m.kind, "body": m.body, "resolved": m.resolved,
             "sender_role": roles.get(m.sender_id, "system"),
@@ -455,6 +461,7 @@ def summary(db, child, days, *, learning_paths=None):
 def plan(db, child, *, learning_paths=None, include_language=True):
     from .coaching import paths
     from .grades import priorities, subject_key
+    from .study_path import source_backed_blocks
 
     prefs = s.Preferences(**child.preferences)
     today = local_day(child)
@@ -499,6 +506,13 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     if len(prefs.weekdays) * prefs.daily_minutes < prefs.weekly_minutes:
         notices.append("Das Wochenminimum liegt über den Tagesvorschlägen. Plant bei Bedarf weitere Lernzeit ein.")
     days = list(db.scalars(select(SchoolDay).where(SchoolDay.child_id == child.id).order_by(SchoolDay.school_date)))
+    source_ids_by_day = {}
+    for material_id, day_id in db.execute(select(Material.id, Material.school_day_id).where(
+            Material.child_id == child.id, Material.confirmed.is_(True))):
+        source_ids_by_day.setdefault(day_id, set()).add(material_id)
+    unit_ids = {u.id for u in units}
+    day_blocks = {d.id: source_backed_blocks(db, d, material_ids=source_ids_by_day.get(d.id, set()),
+                                           unit_ids=unit_ids) for d in days}
     source_dates = {d.id: d.school_date for d in days}
     practiced = {}
     for unit in units:
@@ -511,7 +525,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
     chains = {
         block["unit_id"]: (f"{day.id}:{block.get('subject') or units_by_id[block['unit_id']].subject}", index)
         for day in days
-        for index, block in enumerate((day.learning_plan or {}).get("blocks", []))
+        for index, block in enumerate(day_blocks[day.id])
         if block.get("unit_id") in units_by_id
     }
     synthetic_family = db.get(Family, child.family_id).synthetic
@@ -629,7 +643,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
                 }
             )
     for school_day in days:
-        for index, block in enumerate((school_day.learning_plan or {}).get("blocks", [])):
+        for index, block in enumerate(day_blocks[school_day.id]):
             saved_unit = units_by_id.get(block.get("unit_id"))
             if saved_unit and saved_unit.status == "completed":
                 continue
@@ -741,7 +755,7 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         if day and any(
             block.get("subject", "").casefold() == material.subject.casefold()
             and (not units_by_id.get(block.get("unit_id")) or units_by_id[block["unit_id"]].status != "completed")
-            for block in (day.learning_plan or {}).get("blocks", [])
+            for block in day_blocks[day.id]
         ):
             continue
         offered_groups.add(group)

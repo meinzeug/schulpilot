@@ -252,9 +252,15 @@ def test_old_notebooks_are_scheduled_without_get_creating_jobs_or_changing_sourc
             day = SchoolDay(child_id=child.id, school_date=(today - timedelta(days=offset)).isoformat(), stage="ready")
             db.add(day)
             db.flush()
+            material = Material(child_id=child.id, school_day_id=day.id, title="Künstliche Heftseite", subject="Mathematik",
+                                topic="Künstlicher Heftstoff", content="Ein künstlicher belegter Hefteintrag.",
+                                confirmed=True, status="confirmed", synthetic=False)
+            db.add(material)
+            db.flush()
             day.learning_plan = {
                 "blocks": [
-                    {"id": f"b{i}", "title": "Künstlicher Heftstoff", "subject": "Mathematik", "question_count": 4}
+                    {"id": f"b{i}", "title": "Künstlicher Heftstoff", "subject": "Mathematik", "question_count": 4,
+                     "material_ids": [material.id]}
                     for i in range(6)
                 ]
             }

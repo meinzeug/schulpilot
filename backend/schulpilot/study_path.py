@@ -224,6 +224,25 @@ def block_reason(db, child, subject, *, unit_id=None, question_count=2, current_
     return continuation_block(db, unit, child, check_sources=False)
 
 
+def source_backed_blocks(db, day, *, material_ids=None, unit_ids=None):
+    """Read-only projection: no offer from deleted/foreign source snapshots.
+
+    Saved rounds remain available independently. A dangling saved-round ID is
+    never converted back into a fresh generation request.
+    """
+    from .db import Material
+
+    if material_ids is None:
+        material_ids = set(db.scalars(select(Material.id).where(
+            Material.child_id == day.child_id, Material.school_day_id == day.id,
+            Material.confirmed.is_(True))))
+    if unit_ids is None:
+        unit_ids = set(db.scalars(select(LearningUnit.id).where(LearningUnit.child_id == day.child_id)))
+    return [block for block in (day.learning_plan or {}).get("blocks", [])
+            if (block.get("unit_id") in unit_ids if block.get("unit_id") else
+                bool(block.get("material_ids")) and set(block["material_ids"]) <= material_ids)]
+
+
 def path_data(db, day, child):
     value = day.learning_plan or {}
     result = {
@@ -245,7 +264,7 @@ def path_data(db, day, child):
         result["stale"] = value.get("source_hash") != fingerprint(sources(db, day))
     except ProviderError:
         result["stale"] = True
-    for saved in value.get("blocks", []):
+    for saved in source_backed_blocks(db, day):
         unit = db.get(LearningUnit, saved.get("unit_id")) if saved.get("unit_id") else None
         job = db.get(Job, saved.get("job_id")) if saved.get("job_id") else None
         status = (

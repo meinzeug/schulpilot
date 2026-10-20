@@ -45,6 +45,7 @@ class LessonVoiceSession extends ChangeNotifier {
   LessonVoiceMode mode = LessonVoiceMode.idle;
   String? message;
   Object? messageOwner;
+  bool messageIsFailure = false;
 
   bool owns(Object owner) => !_disposed && identical(_owner, owner);
   bool _active(Object owner, int generation) =>
@@ -61,6 +62,7 @@ class LessonVoiceSession extends ChangeNotifier {
     _owner = owner;
     mode = LessonVoiceMode.reading;
     message = null;
+    messageIsFailure = false;
     notifyListeners();
     try {
       await adapter.cancel().timeout(const Duration(seconds: 3));
@@ -98,6 +100,7 @@ class LessonVoiceSession extends ChangeNotifier {
     _owner = owner;
     mode = LessonVoiceMode.preparing;
     message = null;
+    messageIsFailure = false;
     notifyListeners();
     var heard = false;
     // A hard app-side deadline complements platform-specific silence limits.
@@ -161,6 +164,7 @@ class LessonVoiceSession extends ChangeNotifier {
   void _fail(Object owner, String text) {
     messageOwner = owner;
     message = text;
+    messageIsFailure = true;
     _finish();
     unawaited(adapter.cancel().catchError((Object _) {}));
   }
@@ -417,6 +421,34 @@ mixin _VoiceLifecycle<T extends StatefulWidget>
     }
   }
 
+  void presentVoiceMessage(String text, {bool failure = false}) {
+    // The page's SnackBar sits behind a dialog/bottom sheet. Keep actual
+    // failures accessible above the currently open explanation or input.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
+      if (failure && ModalRoute.of(context) is PopupRoute) {
+        unawaited(
+          showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Sprachfunktion nicht verfügbar'),
+              content: Text(text),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Weiter lesen und tippen'),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.maybeOf(context)
+            ?.showSnackBar(SnackBar(content: Text(text)));
+      }
+    });
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // A permission dialog may briefly make the app inactive while no recording
@@ -493,8 +525,7 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
     if (!mounted) return;
     setState(() {});
     if (identical(voice.messageOwner, owner) && voice.message != null) {
-      ScaffoldMessenger.maybeOf(context)
-          ?.showSnackBar(SnackBar(content: Text(voice.message!)));
+      presentVoiceMessage(voice.message!, failure: voice.messageIsFailure);
       voice.message = null;
     }
   }
@@ -533,12 +564,9 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
           if (completed && mounted) await widget.onReadCompleted?.call();
         } catch (_) {
           if (mounted) {
-            ScaffoldMessenger.maybeOf(this.context)?.showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Die Sprachhilfe konnte nicht gespeichert werden. Bitte erneut versuchen.',
-                ),
-              ),
+            presentVoiceMessage(
+              'Die Sprachhilfe konnte nicht gespeichert werden. Bitte erneut versuchen.',
+              failure: true,
             );
           }
         }
@@ -637,8 +665,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     if (!mounted) return;
     setState(() {});
     if (identical(voice.messageOwner, owner) && voice.message != null) {
-      ScaffoldMessenger.maybeOf(context)
-          ?.showSnackBar(SnackBar(content: Text(voice.message!)));
+      presentVoiceMessage(voice.message!, failure: voice.messageIsFailure);
       voice.message = null;
     }
   }

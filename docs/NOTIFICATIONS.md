@@ -124,3 +124,11 @@ werden (`--rollback-compatible`); Migration nicht zurückrollen oder vorhandene 
 Clients verwenden weiterhin die bisherigen Push-APIs und das feste `/app`-Ziel.
 Nach einem APK-Update bleiben Signierer, Paket und Konten erhalten; Android-APKs
 werden nicht automatisch heruntergestuft. Vorwärtskorrektur bevorzugen.
+
+## Altverweise und gelöschte Sprachrunden ab 1.14.3
+
+Nachrichtenreader und Glocke verwenden dieselbe gebündelte Zielprüfung gegen
+das eigene Kind. Auch ältere Clients bekommen keine gelöschten/fremden Links;
+die ursprüngliche Nachricht bleibt erhalten. Jobtombstones nach Rundenlöschung
+erzeugen keine neue „Sprachübung bereit“-Meldung. Vorbereitungszeilen mit mehr
+als zwei Fächern kennzeichnen die gekürzte Auswahl. GETs bleiben ohne Writes/KI.

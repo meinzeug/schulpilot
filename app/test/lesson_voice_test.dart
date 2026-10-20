@@ -232,6 +232,52 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets(
+    'A missing voice is visible above an explanation dialog and returns to its text',
+    (tester) async {
+      final adapter = FakeLessonVoice()
+        ..readFailure = const LessonVoiceFailure(
+          'Keine passende Stimme vorhanden.',
+        );
+      final voice = LessonVoiceSession(adapter: adapter);
+      addTearDown(voice.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Künstliche Erklärung'),
+                    content: ReadAloudButton(
+                      text: 'Künstlicher Text.',
+                      voice: voice,
+                    ),
+                  ),
+                ),
+                child: const Text('Erklärung öffnen'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Erklärung öffnen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Vorlesen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sprachfunktion nicht verfügbar'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(voice.mode, LessonVoiceMode.idle);
+      await tester.tap(find.text('Weiter lesen und tippen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Künstliche Erklärung'), findsOneWidget);
+      expect(find.text('Vorlesen'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('Dictated words remain editable and never submit themselves', (
     tester,
   ) async {

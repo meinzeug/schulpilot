@@ -1,3 +1,10 @@
+Kinder-Funktionsprüfung20.10.2026, Zielversion1.14.3+63:
+
+Eigene bestehende Quellen-/Runden-/Nachrichtenmodelle, gepinnte Flutter-
+TransformationController/InteractiveViewer und vorhandene Gerätesprachgrenze.
+Keine zusätzlichen Pakete, Dienste, Modelle, Preise oder höheren Kontingente.
+Prüfumfang, Fehler und Grenzen: [CHILD_AUDIT_2026_10_20.md](CHILD_AUDIT_2026_10_20.md).
+
 Elternübersicht und Quellenlöschung20.10.2026, bereitgestellt1.14.2+62:
 
 Eigene vorhandene serverseitige Lernstandsprojektion (`learning_progress.py`),

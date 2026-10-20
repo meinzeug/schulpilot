@@ -29,6 +29,8 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
   ImageProvider? image;
   String? error;
   int generation = 0;
+  final zoom = TransformationController();
+  Size photoViewport = Size.zero;
   bool get current => mounted && widget.state.user?['id'] == owner;
 
   @override
@@ -43,6 +45,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
     generation++;
     if (image != null) unawaited(image!.evict());
     image = null;
+    zoom.value = Matrix4.identity();
   }
 
   void identityChanged() {
@@ -65,6 +68,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
   void dispose() {
     widget.state.removeListener(identityChanged);
     discard();
+    zoom.dispose();
     super.dispose();
   }
 
@@ -143,13 +147,94 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
       errorBuilder: (_, _, _) =>
           const Center(child: Text('Foto nicht verfügbar.')),
     );
-    return widget.zoomable
-        ? InteractiveViewer(
-            minScale: 1,
-            maxScale: 8,
-            child: Center(child: photo),
-          )
-        : photo;
+    if (!widget.zoomable) return photo;
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, viewport) {
+              photoViewport = viewport.biggest;
+              return InteractiveViewer(
+                transformationController: zoom,
+                minScale: 1,
+                maxScale: 8,
+                child: Center(child: photo),
+              );
+            },
+          ),
+        ),
+        ValueListenableBuilder<Matrix4>(
+          valueListenable: zoom,
+          builder: (context, matrix, _) {
+            final scale = matrix.getMaxScaleOnAxis();
+            void change(double next) {
+              final target = next.clamp(1.0, 8.0);
+              if (target == 1) {
+                zoom.value = Matrix4.identity();
+                return;
+              }
+              final size = photoViewport;
+              if (size.isEmpty) return;
+              final center = Offset(size.width / 2, size.height / 2);
+              final scene = zoom.toScene(center);
+              zoom.value = Matrix4.diagonal3Values(target, target, 1)
+                ..setEntry(
+                  0,
+                  3,
+                  (center.dx - scene.dx * target).clamp(
+                    size.width * (1 - target),
+                    0.0,
+                  ),
+                )
+                ..setEntry(
+                  1,
+                  3,
+                  (center.dy - scene.dy * target).clamp(
+                    size.height * (1 - target),
+                    0.0,
+                  ),
+                );
+            }
+
+            return Material(
+              color: surfaceLow,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    IconButton(
+                      tooltip: 'Foto verkleinern',
+                      onPressed: scale > 1.01 ? () => change(scale / 2) : null,
+                      icon: const Icon(Icons.zoom_out),
+                    ),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text('${(scale * 100).round()} %'),
+                    ),
+                    IconButton(
+                      tooltip: 'Foto vergrößern',
+                      onPressed: scale < 7.99 ? () => change(scale * 2) : null,
+                      icon: const Icon(Icons.zoom_in),
+                    ),
+                    IconButton(
+                      tooltip: 'Fotoansicht zurücksetzen',
+                      onPressed:
+                          scale > 1.01 || matrix.getTranslation().length > 0.1
+                          ? () => change(1)
+                          : null,
+                      icon: const Icon(Icons.fit_screen_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 }
 

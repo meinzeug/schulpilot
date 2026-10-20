@@ -45,7 +45,7 @@ def test_preview_apply_retains_valid_heft_roots_and_manual_words(api, household)
         picked = selection(db, child['id'], include_manual_assignments=True)
         assert picked['assignment_ids'] == [goal_id]
         result = apply(db, child['id'], picked['digest'], include_manual_assignments=True)
-        assert result == {'unit_count': 1, 'answer_count': 1, 'assignment_count': 1}
+        assert result == {'unit_count': 1, 'answer_count': 1, 'assignment_count': 1, 'planned_stage_count': 0}
     with DB() as db:
         assert db.get(Attempt, old_answer) is None
         assert db.get(LearningUnit, valid) and db.get(LearningUnit, follow) and db.get(LearningUnit, vocab)

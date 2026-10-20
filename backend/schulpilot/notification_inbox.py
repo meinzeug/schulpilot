@@ -74,13 +74,17 @@ def recent_events(db, user, current=None, *, direct_messages=False):
         "plan_change": "Ein Wunsch zum Lernplan",
     }
     seen_preparations = set()
-    for row in db.scalars(
+    messages = list(db.scalars(
         select(Message)
         .options(load_only(Message.id, Message.child_id, Message.created, Message.kind, Message.sender_id, Message.context))
         .where(Message.child_id.in_(ids), Message.kind.in_(kinds), Message.created > cutoff, Message.created <= current)
         .order_by(Message.created.desc(), Message.id.desc())
         .limit(LIMIT)
-    ):
+    ))
+    from .learning import message_context_targets
+
+    targets = message_context_targets(db, messages)
+    for row in messages:
         if row.sender_id == user.id:
             continue
         route = f"/child/{row.child_id}" if user.role == "parent" else "/settings"
@@ -92,7 +96,11 @@ def recent_events(db, user, current=None, *, direct_messages=False):
                 if row.kind == "reminder"
                 else "/settings"
             )
-        context = row.context or {}
+        context = row.context if isinstance(row.context, dict) and len(row.context) == 1 else {}
+        context = {key: target for key, target in context.items()
+                   if isinstance(target, str) and (row.child_id, key, target) in targets}
+        if row.kind == "preparation" and row.context and not context:
+            continue
         # Human messages open the actual reply/request first. Context remains a
         # separate explicit link there; opening a notice must not start a round.
         if direct_messages and row.kind in ("reply", "help", "interest", "plan_change"):
@@ -117,7 +125,7 @@ def recent_events(db, user, current=None, *, direct_messages=False):
             if count == 0:
                 continue
             subjects = sorted({r.subject for r in source_rows if r.subject})
-            prefix = f"{count} Heftseite{'n' if count != 1 else ''}" + (" · " + ", ".join(subjects[:2]) if subjects else "")
+            prefix = f"{count} Heftseite{'n' if count != 1 else ''}" + (" · " + ", ".join(subjects[:2]) + (" …" if len(subjects) > 2 else "") if subjects else "")
             current_status = (day.preparation or {}).get("status")
             suffix = {"needs_review":"Bitte prüfen", "needs_photo":"Ein Foto neu aufnehmen", "processing":"Wird vorbereitet",
                       "ready":"Lernpaket bereit", "saved":"Für später gespeichert", "failed":"Vorbereitung noch offen", "blocked":"Vorbereitung noch offen"}.get(current_status, "Heftseiten öffnen")
@@ -137,6 +145,7 @@ def recent_events(db, user, current=None, *, direct_messages=False):
                 Job.status.in_(["completed", "failed"]),
                 Job.finished > cutoff,
                 Job.finished <= current,
+                Job.result["deleted"].as_boolean().is_not(True),
             )
             .order_by(Job.finished.desc(), Job.id.desc())
             .limit(LIMIT)

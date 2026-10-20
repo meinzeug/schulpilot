@@ -327,7 +327,7 @@ def saved_by_user(db, day, p):
 
 
 def sources_removed(db, day):
-    """Called after deleting an unconfirmed page, while holding Child.
+    """Called after deleting own pages, while holding Child.
 
     No pending inference may exist. Cancel the old coordinator intent so a tick
     selected before deletion cannot reserve another job. Keep remaining pages,
@@ -335,6 +335,14 @@ def sources_removed(db, day):
     """
     state = _state(day)
     source_pages = _pages(db, day)
+    from .study_path import source_backed_blocks
+
+    plan = day.learning_plan or {}
+    blocks = source_backed_blocks(db, day)
+    if blocks != plan.get("blocks", []):
+        ids = {m.id for m in source_pages}
+        day.learning_plan = {**plan, "blocks": blocks,
+            "extents": [extent for extent in plan.get("extents", []) if extent.get("material_id") in ids]}
     status, phase, error = "idle", None, None
     if not source_pages:
         day.stage = "collecting"
