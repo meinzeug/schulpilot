@@ -2542,6 +2542,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (continuePractice == true &&
         introduction &&
         requestIsCurrent(u['id'], requestedOwner) &&
+        context.mounted &&
         ModalRoute.of(context)?.isCurrent != false &&
         unit?['status'] == 'active' &&
         unit?['introduction_seen'] == false) {
