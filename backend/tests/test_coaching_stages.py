@@ -480,7 +480,10 @@ def test_real_deferred_provider_request_has_only_review_instructions(normal_unit
     assert len(sent) == 1
     instructions = sent[0]["messages"][0]["content"]
     schema = sent[0]["response_format"]["json_schema"]["schema"]
-    assert schema["properties"]["next_unit"] == {"type": "null"}
+    # OpenRouter's fixed strict adapter omits unused round output entirely.
+    assert 'next_unit' not in schema['properties']
+    assert 'next_unit' not in schema['required']
+    assert 'Fachdarstellung presentation' not in instructions
     for generator_instruction in [
         "Bei repair: zwei leichtere Aufgaben",
         "Bei check: zwei NEUE",
@@ -493,7 +496,7 @@ def test_real_deferred_provider_request_has_only_review_instructions(normal_unit
         assert generator_instruction not in instructions
 
 
-def test_real_deferred_provider_rejects_exercises_even_if_upstream_ignores_null_schema(normal_unit, monkeypatch):
+def test_real_deferred_provider_rejects_exercises_even_if_upstream_ignores_review_schema(normal_unit, monkeypatch):
     config, payload, output = _provider_context(normal_unit)
     practice = sample_unit(variant=1)
     practice["questions"] = practice["questions"][:2]

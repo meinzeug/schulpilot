@@ -3,7 +3,7 @@ import io
 import re
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from PIL import Image, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
 from sqlalchemy import or_, select, update
 
@@ -189,6 +189,40 @@ def material_view(material_id: str, p=Depends(authenticated), db=Depends(get_db)
         "has_image": bool(material.path), "fixed_example": bool(material.fixture_id),
         "processing_job": ({"id": extraction.id, "kind": extraction.kind, "status": extraction.status,
                             "error": extraction.error, "error_code": extraction.error_code} if extraction else None)}
+
+
+@router.get("/materials/{material_id}/figures/{block_index}")
+def source_figure(material_id: str, block_index: int, revision: int,
+                  p=Depends(authenticated), db=Depends(get_db)):
+    material, _ = get_material(db, p, material_id)
+    if material.revision != revision:
+        raise HTTPException(409, "Die Heftseite wurde geändert. Bitte die aktuelle Seite öffnen.")
+    blocks = material_data(material)["source_blocks"]
+    if not 0 <= block_index < min(len(blocks), 80) or not material.path:
+        raise HTTPException(404, "Die Abbildung ist nicht mehr verfügbar.")
+    region = blocks[block_index].get("image_region")
+    if not region or blocks[block_index]["kind"] != "diagram_text":
+        raise HTTPException(404, "Die Zeichnung findest du im vollständigen Heftfoto.")
+    path = settings.data_dir / "uploads" / material.path
+    if not path.is_file():
+        raise HTTPException(404, "Das Heftfoto ist nicht mehr verfügbar.")
+    try:
+        with Image.open(path) as original:
+            # A small margin protects labels against approximate OCR bounds.
+            bounds = (max(0, region["left"] - 12), max(0, region["top"] - 12),
+                      min(1000, region["right"] + 12), min(1000, region["bottom"] + 12))
+            box = (bounds[0] * original.width // 1000, bounds[1] * original.height // 1000,
+                   (bounds[2] * original.width + 999) // 1000, (bounds[3] * original.height + 999) // 1000)
+            crop = original.crop(box).convert("RGB")
+            crop.thumbnail((1600, 2000))
+            output = io.BytesIO()
+            crop.save(output, format="JPEG", quality=92)
+    except (OSError, ValueError, Image.DecompressionBombError):
+        raise HTTPException(422, "Bitte die Abbildung im vollständigen Heftfoto ansehen.") from None
+    # Derived on demand from authenticated original pixels; no disk copy,
+    # provider call, progress write, or public image cache.
+    return Response(output.getvalue(), media_type="image/jpeg",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.post("/materials/{material_id}/task-preview")

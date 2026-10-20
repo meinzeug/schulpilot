@@ -11,6 +11,8 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/learning_room.dart';
 import 'package:schulpilot/ui.dart';
 import 'package:schulpilot/unit_screen.dart';
+import 'package:schulpilot/scientific_notation.dart';
+import 'package:schulpilot/science_graphic.dart';
 
 http.Response jsonReply(Object value, [int code = 200]) => http.Response(
   jsonEncode(value),
@@ -273,6 +275,53 @@ Future<void> tapText(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets(
+    'Real task room typesets formulas in questions, options and opened help',
+    (tester) async {
+      final q = question('cat')
+        ..['prompt'] = r'Was bedeutet \(E=mc^2\)?'
+        ..['options'] = [r'\(\frac12\)', r'\(x^2\)'];
+      final server = SavedRound(questions: [q]);
+      final p = {
+        'version': 1,
+        'evidence_kind': 'knowledge',
+        'blocks': [
+          {
+            'kind': 'logic_table',
+            'title': 'UND im Heft',
+            'disclosure': 'hint1',
+            'labels': ['A', 'B', 'Y'],
+            'numbers': [],
+            'variant': 'and_gate',
+            'unit': '',
+            'connections': [],
+          },
+        ],
+      };
+      await openRound(
+        tester,
+        server,
+        handle: (request) async {
+          if (request.url.path.endsWith('/hint')) {
+            return jsonReply({
+              'hint': r'Betrachte \(\sqrt{x}\) und die Tafel.',
+              'hints_used': 1,
+              'presentation': p,
+            });
+          }
+          return server.handle(request);
+        },
+      );
+      expect(find.byType(FormulaNotation), findsNWidgets(3));
+      expect(find.byType(ScienceGraphic), findsNothing);
+      await tapText(tester, 'Hilfe');
+      expect(find.byType(FormulaNotation), findsNWidgets(4));
+      expect(find.byType(ScienceGraphic), findsOneWidget);
+      expect(server.answers, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'One focused round has a fixed action and an exclusive keyboard radio group',
     (tester) async {

@@ -1,0 +1,1163 @@
+{
+  "version": 1,
+  "provenance": "Manually curated synthetic task/help display fixtures; no OCR or live-provider claim.",
+  "cases": [
+    {
+      "id": "GRAPH01",
+      "subject": "Mathematik",
+      "source": "f(x)=x²",
+      "question": {
+        "id": "graph01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_graph",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=x²",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [
+                1,
+                0,
+                0
+              ],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "polynomial2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GRAPH02",
+      "subject": "Mathematik",
+      "source": "y=-2x+3",
+      "question": {
+        "id": "graph02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_graph",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "y=-2x+3",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [
+                0,
+                -2,
+                3
+              ],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "polynomial2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GRAPH03",
+      "subject": "Mathematik",
+      "source": "f(x)=0,5x²-x-2",
+      "question": {
+        "id": "graph03",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_graph",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=0,5x²-x-2",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [
+                0.5,
+                -1,
+                -2
+              ],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "polynomial2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "DATA01",
+      "subject": "Physik",
+      "source": "Zeit t, Weg s: (0;0), (1;2), (2;4)",
+      "question": {
+        "id": "data01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "data_plot",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Zeit t, Weg s: (0;0), (1;2), (2;4)",
+              "labels": [
+                "Zeit t",
+                "Weg s"
+              ],
+              "numbers": [
+                0,
+                0,
+                1,
+                2,
+                2,
+                4
+              ],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "polyline"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "DATA02",
+      "subject": "Biologie",
+      "source": "Zeit, Wachstum: (0;2), (1;3), (2;2)",
+      "question": {
+        "id": "data02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "data_plot",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Zeit, Wachstum: (0;2), (1;3), (2;2)",
+              "labels": [
+                "Zeit",
+                "Wachstum"
+              ],
+              "numbers": [
+                0,
+                2,
+                1,
+                3,
+                2,
+                2
+              ],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "scatter"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CELL01",
+      "subject": "Biologie",
+      "source": "Pflanzenzelle: Zellwand, Zellmembran, Zellkern, Cytoplasma, Vakuole, Chloroplast.",
+      "question": {
+        "id": "cell01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "cell",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Pflanzenzelle: Zellwand, Zellmembran, Zellkern, Cytoplasma, Vakuole, Chloroplast.",
+              "labels": [
+                "Zellwand",
+                "Zellmembran",
+                "Zellkern",
+                "Cytoplasma",
+                "Vakuole",
+                "Chloroplast"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "plant_cell"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CELL02",
+      "subject": "Biologie",
+      "source": "Tierzelle: Zellmembran, Zellkern, Cytoplasma.",
+      "question": {
+        "id": "cell02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "cell",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Tierzelle: Zellmembran, Zellkern, Cytoplasma.",
+              "labels": [
+                "Zellmembran",
+                "Zellkern",
+                "Cytoplasma"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "animal_cell"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MOLE01",
+      "subject": "Chemie",
+      "source": "H-O-H",
+      "question": {
+        "id": "mole01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "molecule",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "H-O-H",
+              "labels": [
+                "H",
+                "O",
+                "H"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "water"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MOLE02",
+      "subject": "Chemie",
+      "source": "O=C=O",
+      "question": {
+        "id": "mole02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "molecule",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "O=C=O",
+              "labels": [
+                "O",
+                "C",
+                "O"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "carbon_dioxide"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MOLE03",
+      "subject": "Chemie",
+      "source": "H-C(H)(H)-H",
+      "question": {
+        "id": "mole03",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "molecule",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "H-C(H)(H)-H",
+              "labels": [
+                "C",
+                "H",
+                "H",
+                "H",
+                "H"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "methane"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MOLE04",
+      "subject": "Chemie",
+      "source": "CH3-CH2-OH",
+      "question": {
+        "id": "mole04",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "molecule",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "CH3-CH2-OH",
+              "labels": [
+                "C",
+                "C",
+                "O",
+                "H",
+                "H",
+                "H",
+                "H",
+                "H",
+                "H"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "ethanol"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LOGIC01",
+      "subject": "Informatik",
+      "source": "A AND B; Y",
+      "question": {
+        "id": "logic01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "logic_table",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "hint1",
+              "source_excerpt": "A AND B; Y",
+              "labels": [
+                "A",
+                "B",
+                "Y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "and_gate"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LOGIC02",
+      "subject": "Informatik",
+      "source": "A OR B; Y",
+      "question": {
+        "id": "logic02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "logic_table",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "hint1",
+              "source_excerpt": "A OR B; Y",
+              "labels": [
+                "A",
+                "B",
+                "Y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "or_gate"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LOGIC03",
+      "subject": "Informatik",
+      "source": "NOT A; Y",
+      "question": {
+        "id": "logic03",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "logic_table",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "hint1",
+              "source_excerpt": "NOT A; Y",
+              "labels": [
+                "A",
+                "Y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "not_gate"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CIRCUIT01",
+      "subject": "Technik",
+      "source": "R1 und R2 in Reihe",
+      "question": {
+        "id": "circuit01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "circuit_network",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "R1 und R2 in Reihe",
+              "labels": [
+                "R1",
+                "R2"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "series"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CIRCUIT02",
+      "subject": "Physik",
+      "source": "R1 und R2 parallel",
+      "question": {
+        "id": "circuit02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "circuit_network",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "R1 und R2 parallel",
+              "labels": [
+                "R1",
+                "R2"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "parallel"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "TECH01",
+      "subject": "Technik",
+      "source": "Platte: Breite40mm, Höhe20mm, mittige Bohrung6mm.",
+      "question": {
+        "id": "tech01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "technical_drawing",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Platte: Breite40mm, Höhe20mm, mittige Bohrung6mm.",
+              "labels": [],
+              "numbers": [
+                40,
+                20,
+                6
+              ],
+              "connections": [],
+              "marks": [],
+              "unit": "mm",
+              "variant": "center_hole"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_sine",
+      "subject": "Mathematik",
+      "source": "f(x)=sin(x)",
+      "question": {
+        "id": "curve_sine",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=sin(x)",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "sine"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_cosine",
+      "subject": "Mathematik",
+      "source": "f(x)=cos(x)",
+      "question": {
+        "id": "curve_cosine",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=cos(x)",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "cosine"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_exponential",
+      "subject": "Mathematik",
+      "source": "f(x)=e^x",
+      "question": {
+        "id": "curve_exponential",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=e^x",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "exponential"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_logarithm",
+      "subject": "Mathematik",
+      "source": "f(x)=ln(x)",
+      "question": {
+        "id": "curve_logarithm",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=ln(x)",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "logarithm"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_square_root",
+      "subject": "Mathematik",
+      "source": "f(x)=sqrt(x)",
+      "question": {
+        "id": "curve_square_root",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=sqrt(x)",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "square_root"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_reciprocal",
+      "subject": "Mathematik",
+      "source": "f(x)=1/x",
+      "question": {
+        "id": "curve_reciprocal",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=1/x",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "reciprocal"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_cubic",
+      "subject": "Mathematik",
+      "source": "f(x)=x^3",
+      "question": {
+        "id": "curve_cubic",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=x^3",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "cubic"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CURVE_absolute",
+      "subject": "Mathematik",
+      "source": "f(x)=|x|",
+      "question": {
+        "id": "curve_absolute",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "function_curve",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "f(x)=|x|",
+              "labels": [
+                "x",
+                "y"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "absolute"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "PROCESS01",
+      "subject": "Biologie",
+      "source": "Reiz→Rezeptor; Rezeptor→Signal; Signal→Reaktion",
+      "question": {
+        "id": "process01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "process_graph",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Reiz→Rezeptor; Rezeptor→Signal; Signal→Reaktion",
+              "labels": [
+                "Reiz",
+                "Rezeptor",
+                "Signal",
+                "Reaktion"
+              ],
+              "numbers": [],
+              "connections": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "relation": "next"
+                },
+                {
+                  "start": 1,
+                  "end": 2,
+                  "relation": "next"
+                },
+                {
+                  "start": 2,
+                  "end": 3,
+                  "relation": "next"
+                }
+              ],
+              "marks": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "PROCESS02",
+      "subject": "Biologie",
+      "source": "Prüfung→Fall A; Prüfung→Fall B",
+      "question": {
+        "id": "process02",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "process_graph",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Prüfung→Fall A; Prüfung→Fall B",
+              "labels": [
+                "Prüfung",
+                "Fall A",
+                "Fall B"
+              ],
+              "numbers": [],
+              "connections": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "relation": "next"
+                },
+                {
+                  "start": 0,
+                  "end": 2,
+                  "relation": "next"
+                }
+              ],
+              "marks": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "CYCLE01",
+      "subject": "Biologie",
+      "source": "Wasser→Dampf; Dampf→Kondensat; Kondensat→Wasser",
+      "question": {
+        "id": "cycle01",
+        "type": "short",
+        "prompt": "Erkläre das belegte Modell.",
+        "answer": "Beispielantwort",
+        "options": [],
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beschrifteten Teile."
+        ],
+        "explanation": "Vereinfachte Darstellung des bestätigten Stoffs.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "process_cycle",
+              "title": "Modell zum Heftstoff",
+              "disclosure": "solution",
+              "source_excerpt": "Wasser→Dampf; Dampf→Kondensat; Kondensat→Wasser",
+              "labels": [
+                "Wasser",
+                "Dampf",
+                "Kondensat"
+              ],
+              "numbers": [],
+              "connections": [
+                {
+                  "start": 0,
+                  "end": 1,
+                  "relation": "next"
+                },
+                {
+                  "start": 1,
+                  "end": 2,
+                  "relation": "next"
+                },
+                {
+                  "start": 2,
+                  "end": 0,
+                  "relation": "next"
+                }
+              ],
+              "marks": [],
+              "unit": "",
+              "variant": ""
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

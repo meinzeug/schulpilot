@@ -66,6 +66,10 @@ Nutze ausschließlich den bestätigten Stoff und die ausdrücklich gesetzten Zie
 Beschreibe Unsicherheit ehrlich. Erfinde keine Inhalte unleserlicher Stellen und keine angeblichen Hausaufgaben.
 homework darf nur ausdrücklich auf dem Material notierte Hausaufgaben enthalten.
 Übungen sind selbst erzeugt, keine Behauptung über den gesamten Unterricht.
+In Erklärungen, Fragen und Hinweisen Formeln mit Standard-LaTeX in \\(…\\) oder \\[...\\] setzen,
+chemische Formeln mit \\mathrm, Indizes und Ladungen, keine ce/chemfig-Makros. Keine HTML/SVG-Bilder.
+Antwortschlüssel, Optionen, accepted und wörtliche Belege behalten ihre prüfbare Quellschreibweise;
+keine zusätzlichen Darstellungszeichen in einfache Zahl-/Wortantworten einfügen.
 Nur wenn eine Lerneinheit angefordert ist: 2 bis 5 kurze Aufgaben. Typ choice: Antwort muss eine Option sein.
 Typ gap: eindeutige kurze Lücke; Typ short: kurze eindeutig prüfbare Antwort mit akzeptierten Varianten.
 Typ match: options sind jeweils 'links|rechts', answer sind die rechten Seiten in Originalreihenfolge mit ';' getrennt.
@@ -906,7 +910,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             payload = {**payload, "math_tasks": math_examples}
     from . import subject_content
 
-    visual_functions = function in ("unit", "package", "coach")
+    review_only = function == "coach" and bool(payload.get("defer_practice"))
+    visual_functions = function in ("unit", "package") or (function == "coach" and not review_only)
     if visual_functions:
         subjects = [payload.get("required_subject", ""), *[g.get("subject", "") for g in payload.get("selected_groups", [])]]
         payload = {**payload, "content_context": subject_content.generation_context(subjects)}
@@ -946,10 +951,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         proposal["learning_goal_id"] = {"anyOf": [{"type": "string", "enum": [g["id"] for g in payload["learning_goals"]]}, {"type": "null"}]}
     if visual_functions and "Presentation" in schema.get("$defs", {}):
         schema["$defs"]["Presentation"]["properties"]["blocks"]["maxItems"] = 2
-    if visual_functions and "Graphic" in schema.get("$defs", {}):
-        kinds = payload["content_context"]["graphic_kinds"]
-        if kinds:
-            schema["$defs"]["Graphic"]["properties"]["kind"]["enum"] = kinds
+    if visual_functions:
+        subject_content.bind_graphic_schema(schema, subjects)
     if function == "coach" and payload.get("learning_goals"):
         # Partial/legacy assignment still needs a closed set. Previously only
         # fully assigned questions omitted the model-selected ID; a model could
@@ -995,7 +998,6 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     elif function == "unit" and payload.get("review") and payload.get("required_topic"):
         for field in ("subject", "topic"):
             schema["properties"][field]["enum"] = [payload["required_" + field]]
-    review_only = function == "coach" and bool(payload.get("defer_practice"))
     # A review cannot create a round. Do not ask OpenRouter's strict-schema
     # adapters to generate an always-null placeholder (or its unused unit
     # definitions). Restore that canonical value locally before validation.
@@ -1018,7 +1020,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "innerhalb der angeforderten Ziele prüfen. Die festen practice_tasks, math_tasks und Quellen bleiben verbindlich. "
             "Keine bereits gezeigte Antwort als neuen selbstständigen Abruf ausgeben.")
     if visual_functions:
-        instructions += subject_content.RULES
+        instructions += subject_content.rules_for(subjects)
     if catalog_context:
         from .catalog_ai import RULES
 

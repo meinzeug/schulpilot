@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Shared typography for saved text: no LaTeX/HTML interpretation or webview.
+import 'scientific_notation.dart';
+
+/// Shared typography: bounded local formula layout, never HTML or a webview.
 class MathText extends Text {
   const MathText(
     super.data, {
@@ -52,15 +54,71 @@ class MathText extends Text {
     return _vulgarFractions[match[5]!]!;
   }
 
-  static String spoken(String value) => value.replaceAllMapped(fraction, (m) {
-    final (numerator, denominator) = parts(m);
-    return '$numerator durch $denominator';
-  });
+  static String spoken(String value) {
+    for (final segment in formulaSegments(value).reversed) {
+      value = value.replaceRange(
+        segment.start,
+        segment.end,
+        spokenFormula(segment.expression),
+      );
+    }
+    return value.replaceAllMapped(fraction, (m) {
+      final (numerator, denominator) = parts(m);
+      return '$numerator durch $denominator';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final value = data!;
     final base = DefaultTextStyle.of(context).style.merge(style);
     final spans = <InlineSpan>[];
+    var end = 0;
+    final formulas = formulaSegments(value);
+    for (final segment in formulas) {
+      _fractionSpans(value.substring(end, segment.start), base, spans);
+      if (segment.display &&
+          segment.start > 0 &&
+          value[segment.start - 1] != '\n') {
+        spans.add(const TextSpan(text: '\n'));
+      }
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: FormulaNotation(
+            expression: segment.expression,
+            style: base,
+            display: segment.display,
+            maxWidth: (MediaQuery.sizeOf(context).width - 96).clamp(120, 720),
+          ),
+        ),
+      );
+      if (segment.display &&
+          segment.end < value.length &&
+          value[segment.end] != '\n') {
+        spans.add(const TextSpan(text: '\n'));
+      }
+      end = segment.end;
+    }
+    _fractionSpans(value.substring(end), base, spans);
+    if (formulas.isEmpty && !fraction.hasMatch(value)) {
+      return super.build(context);
+    }
+    return Text.rich(
+      TextSpan(children: spans),
+      style: base,
+      maxLines: maxLines,
+      overflow: overflow,
+      textAlign: textAlign,
+      semanticsLabel: semanticsLabel ?? spoken(value),
+    ).build(context);
+  }
+
+  static void _fractionSpans(
+    String value,
+    TextStyle base,
+    List<InlineSpan> spans,
+  ) {
     var end = 0;
     for (final match in fraction.allMatches(value).take(40)) {
       if (match.start > end) {
@@ -79,16 +137,7 @@ class MathText extends Text {
       );
       end = match.end;
     }
-    if (end == 0) return super.build(context);
     spans.add(TextSpan(text: value.substring(end)));
-    return Text.rich(
-      TextSpan(children: spans),
-      style: base,
-      maxLines: maxLines,
-      overflow: overflow,
-      textAlign: textAlign,
-      semanticsLabel: semanticsLabel ?? spoken(value),
-    ).build(context);
   }
 }
 

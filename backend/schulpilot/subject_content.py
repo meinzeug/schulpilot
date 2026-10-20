@@ -8,7 +8,9 @@ import math
 import re
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+
+from . import science_graphics
 
 KINDS = (
     "fraction",
@@ -47,6 +49,7 @@ KINDS = (
     "gears",
     "forces",
     "money",
+    *science_graphics.KINDS,
 )
 
 # The same profiles constrain generation and document the curriculum's limits.
@@ -76,6 +79,20 @@ PROFILES = {
     "Technik": ("gears", "forces"),
     "Wirtschaft": ("money", "statements"),
 }
+for _subject, _kinds in {
+    "Mathematik": ("function_graph", "data_plot"),
+    "Biologie": ("cell", "data_plot"),
+    "Physik": ("function_graph", "data_plot", "circuit_network"),
+    "Chemie": ("molecule", "data_plot"),
+    "Technik": ("technical_drawing", "circuit_network", "logic_table", "function_graph", "data_plot"),
+    "Informatik": ("logic_table", "data_plot"),
+}.items():
+    PROFILES[_subject] = (*PROFILES[_subject], *_kinds)
+
+for _subject in PROFILES:
+    PROFILES[_subject] = (*PROFILES[_subject], "process_graph", "process_cycle")
+for _subject in ("Mathematik", "Physik", "Technik"):
+    PROFILES[_subject] = (*PROFILES[_subject], "function_curve")
 PICTURE_WORDS = {
     "rouge",
     "rot",
@@ -115,10 +132,32 @@ class Bounded(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, allow_inf_nan=False)
 
 
+class SourceImageRegion(Bounded):
+    """A crop of original pixels, never a generated drawing or vector path."""
+    left: int = Field(ge=0, le=1000, strict=True)
+    top: int = Field(ge=0, le=1000, strict=True)
+    right: int = Field(ge=0, le=1000, strict=True)
+    bottom: int = Field(ge=0, le=1000, strict=True)
+
+    @model_validator(mode="after")
+    def nonempty(self):
+        if self.right - self.left < 10 or self.bottom - self.top < 10:
+            raise ValueError("Der Fotoausschnitt muss eine erkennbare Fläche umfassen.")
+        return self
+
+
 class SourceBlock(Bounded):
-    kind: Literal["heading", "paragraph", "list", "formula", "table", "diagram_text"]
-    text: str = Field(min_length=1, max_length=12000)
+    kind: Literal["heading", "paragraph", "list", "formula", "table", "diagram_text", "code"]
+    text: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=12000, pattern=r"\S")
     purpose: Literal["unknown", "translation", "inflection", "rule", "example", "diagram", "metadata"] = "unknown"
+    image_region: SourceImageRegion | None = Field(default=None,
+        description="Nur bei diagram_text: Bereich der sichtbaren Originalabbildung einschließlich Beschriftungen; Bildkoordinaten links/oben/rechts/unten von0bis1000, sonst null.")
+
+    @model_validator(mode="after")
+    def literal_figure(self):
+        if self.image_region and self.kind != "diagram_text":
+            raise ValueError("Ein Fotoausschnitt gehört ausschließlich zu einer sichtbaren Abbildung.")
+        return self
 
 
 class Connection(Bounded):
@@ -170,6 +209,7 @@ class Graphic(Bounded):
         "gears",
         "forces",
         "money",
+        "function_graph", "data_plot", "cell", "molecule", "logic_table", "circuit_network", "technical_drawing", "function_curve", "process_graph", "process_cycle",
     ]
     title: str = Field(min_length=1, max_length=100)
     disclosure: Literal["given", "hint1", "hint2", "hint3", "solution"]
@@ -182,7 +222,7 @@ class Graphic(Bounded):
     numbers: list[Annotated[float, Field(ge=-10000, le=10000)]] = Field(max_length=16)
     connections: list[Connection] = Field(max_length=20)
     marks: list[SentenceMark] = Field(default_factory=list, max_length=8)
-    unit: Literal["", "cm", "m", "cm²", "m²", "°", "€", "Schläge"]
+    unit: Literal["", "cm", "m", "cm²", "m²", "°", "€", "Schläge", "mm"]
     variant: Literal[
         "",
         "open",
@@ -210,11 +250,17 @@ class Graphic(Bounded):
         "counterclockwise",
         "roots",
         "pollination",
+        "polynomial2", "scatter", "polyline", "plant_cell", "animal_cell",
+        "water", "carbon_dioxide", "methane", "ethanol", "and_gate", "or_gate", "not_gate",
+        "series", "parallel", "center_hole",
+        "sine", "cosine", "exponential", "logarithm", "square_root", "reciprocal", "cubic", "absolute",
     ]
 
     @model_validator(mode="after")
     def coherent(self):
         n, labels = self.numbers, self.labels
+        if self.kind in science_graphics.KINDS:
+            science_graphics.validate(self, {}, [self.source_excerpt])
         if self.variant in ("roots", "pollination") and self.disclosure != "solution":
             raise ValueError("Diese erklärenden Funktionsschemata dürfen keine Antwort vorwegnehmen.")
         if self.variant == "roots" and self.kind != "plant":
@@ -235,7 +281,7 @@ class Graphic(Bounded):
             "bar_chart",
             "place_values",
             "money",
-            "timeline",
+            "timeline", "function_graph", "data_plot", "technical_drawing",
         }
         if n and self.kind not in numeric_kinds:
             raise ValueError("Dieser Grafiktyp hat keine Zahlenparameter.")
@@ -376,6 +422,11 @@ solche Reflexionsaufgaben ausschließlich freie Texteingabe, Bewertung offen. Hi
 """
 
 
+def rules_for(subjects):
+    allowed = {kind for subject in subjects for kind in PROFILES.get(subject, ())}
+    return RULES + science_graphics.rules_for(allowed)
+
+
 def generation_context(subjects):
     return {"version": 1, "graphic_kinds": sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())})}
 
@@ -393,19 +444,24 @@ def validate_question(presentation, question, sources, allowed_kinds):
             raise ValueError("Grafik gehört nicht zum ausgewählten Fachprofil.")
         if not any(_contains(text, block.source_excerpt) for text in [*sources, question["prompt"]]):
             raise ValueError("Grafik ohne wörtlichen Quellenbeleg.")
+        if block.kind in science_graphics.KINDS:
+            science_graphics.validate(block, question, sources)
         # Numeric values are given data, not newly invented source facts.
-        quoted = block.source_excerpt + " " + question["prompt"]
-        values_to_check = (
-            []
-            if block.kind == "place_values"
-            and re.search(r"(?<!\d)" + "".join(str(int(n)) for n in block.numbers) + r"(?!\d)", quoted)
-            else block.numbers
-        )
+        quoted = (block.source_excerpt + " " + question["prompt"]).replace("−", "-")
+        values_to_check = block.numbers
+        if block.kind in ("function_graph", "function_curve"):
+            # Coefficients were checked against the complete parsed polynomial;
+            # an implicit coefficient1 or0 need not appear as a literal digit.
+            values_to_check = []
+        elif block.kind == "place_values" and re.search(
+            r"(?<!\d)" + "".join(str(int(n)) for n in block.numbers) + r"(?!\d)", quoted
+        ):
+            values_to_check = []
         for number in values_to_check:
             token = str(int(number)) if number == int(number) else str(number)
             if not re.search(r"(?<![\d])" + re.escape(token).replace(r"\.", "[.,]") + r"(?![\d])", quoted):
                 raise ValueError("Grafikzahl fehlt im Beleg oder in der Aufgabe.")
-        if any(not _contains(block.source_excerpt + " " + question["prompt"], label) for label in block.labels):
+        if block.kind not in ("function_graph", "function_curve") and any(not _contains(block.source_excerpt + " " + question["prompt"], label) for label in block.labels):
             raise ValueError("Grafikbeschriftung fehlt im wörtlichen Beleg.")
         if block.kind == "plant" and [v.casefold() for v in block.labels] not in (
             ["blüte", "blatt", "stängel", "wurzel"],
@@ -531,3 +587,12 @@ def open_learning_unit(unit):
         (q.get("presentation") or {}).get("evidence_kind") in ("reflection", "creative", "self_report", "movement")
         for q in unit.questions
     )
+
+
+def bind_graphic_schema(schema, subjects):
+    """Use the selected finite profile in this private request, never a new call."""
+    allowed = sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())})
+    graphic = schema.get('$defs', {}).get('Graphic')
+    if allowed and graphic:
+        graphic['properties']['kind']['enum'] = allowed
+    return schema

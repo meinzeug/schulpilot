@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'learning_content.dart';
 import 'learning_tips.dart';
 import 'lesson_voice.dart';
 import 'ui.dart';
@@ -644,7 +645,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               alignment: Alignment.centerLeft,
               child: Tag('Ergänzendes Grundwissen · nicht aus deinem Heft'),
             ),
-          MathText(answer, style: const TextStyle(fontSize: 17, height: 1.55)),
+          LearningContent(
+            answer,
+            style: const TextStyle(fontSize: 17, height: 1.55),
+          ),
           if (!collapsed && turn['source_changed'] != true)
             LearningTips(
               state,

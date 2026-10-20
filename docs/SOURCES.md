@@ -1,3 +1,19 @@
+Fachliche Darstellung, geprüft20.10.2026, Zielversion1.12.0+56:
+
+- [flutter_math_fork0.7.4](https://pub.dev/packages/flutter_math_fork/versions/0.7.4),
+  [lokale Math-API](https://pub.dev/documentation/flutter_math_fork/0.7.4/flutter_math/Math-class.html):
+  nativer Flutter/Dart-Formelsatz, Apache-2.0 laut installiertem Paket. Exakter
+  Pub-Archivhash6d5f2f1aa57ae539ffb0a04bb39d2da67af74601d685a161aff7ce5bda5fa407;
+  Paket/Lockfile/Toolchain gepinnt. KaTeX-Schriften mitgeliefert, keine CDN-Fonts.
+- [KMK Bildungsstandards](https://www.kmk.org/bildungsministerkonferenz/bildungsthemen/bildungsstandards.html):
+  Orientierung für Bereiche Primar/SekI/Abitur; keine aus dem Index abgeleitete
+  einheitliche Klassenverteilung. Geöffnete Primärdokumente: MathematikAHR2012,
+  Biologie/Chemie/PhysikAHR2020. Prüfraster, Implementierungsumfang und Grenzen in
+  [SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
+- Eigene endliche Vektor-/Canvas-Zeichnungen aus überprüften Parametern und
+  Beziehungen. Keine fremden Schulbuchabbildungen oder privaten Heftinhalte in
+  den neuen Repositoryfixtures. Bisherige Modelle/Preise/Providerlimits erhalten.
+
 # Offizielle Quellen und geprüfte Versionen
 
 Abnahme20.10.2026, Version1.11.5+55: keine Toolchain-/SDK-Änderung; Details und

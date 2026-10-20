@@ -9,11 +9,14 @@ import 'ui.dart';
 class NotebookPhoto extends StatefulWidget {
   final AppState state;
   final String materialId;
+  final int? figureIndex, revision;
   final bool thumbnail, zoomable;
   const NotebookPhoto(
     this.state, {
     super.key,
     required this.materialId,
+    this.figureIndex,
+    this.revision,
     this.thumbnail = false,
     this.zoomable = false,
   });
@@ -50,7 +53,9 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
   void didUpdateWidget(covariant NotebookPhoto oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.materialId != widget.materialId ||
-        oldWidget.thumbnail != widget.thumbnail) {
+        oldWidget.thumbnail != widget.thumbnail ||
+        oldWidget.figureIndex != widget.figureIndex ||
+        oldWidget.revision != widget.revision) {
       discard();
       load();
     }
@@ -69,12 +74,18 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
     setState(() => error = null);
     try {
       final bytes = await widget.state.api
-          .bytes('/materials/${widget.materialId}/image')
+          .bytes(
+            widget.figureIndex == null
+                ? '/materials/${widget.materialId}/image'
+                : '/materials/${widget.materialId}/figures/${widget.figureIndex}?revision=${widget.revision}',
+          )
           .timeout(const Duration(seconds: 30));
       if (!current || request != generation) return;
       setState(
         () => image = ResizeImage.resizeIfNeeded(
-          widget.thumbnail ? 400 : 1600,
+          widget.thumbnail
+              ? 400
+              : (widget.figureIndex != null && !widget.zoomable ? 1000 : 1600),
           null,
           MemoryImage(bytes),
         ),
@@ -126,7 +137,9 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
     final photo = Image(
       image: image!,
       fit: BoxFit.contain,
-      semanticLabel: 'Fotografierte Heftseite',
+      semanticLabel: widget.figureIndex == null
+          ? 'Fotografierte Heftseite'
+          : 'Abbildung aus deinem Heftfoto',
       errorBuilder: (_, _, _) =>
           const Center(child: Text('Foto nicht verfügbar.')),
     );
@@ -143,15 +156,17 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
 Future<void> zoomNotebookPhoto(
   BuildContext context,
   AppState state,
-  Json page,
-) => showDialog<void>(
+  Json page, {
+  int? figureIndex,
+  int? revision,
+}) => showDialog<void>(
   context: context,
   useSafeArea: false,
   builder: (_) => Dialog.fullscreen(
     child: Scaffold(
       backgroundColor: surfaceLow,
       appBar: AppBar(
-        title: const Text('Heftfoto'),
+        title: Text(figureIndex == null ? 'Heftfoto' : 'Abbildung im Heftfoto'),
         leading: IconButton(
           tooltip: 'Schließen',
           icon: const Icon(Icons.close),
@@ -162,6 +177,8 @@ Future<void> zoomNotebookPhoto(
         child: NotebookPhoto(
           state,
           materialId: page['id'],
+          figureIndex: figureIndex,
+          revision: revision,
           key: ValueKey('zoom:${state.user?['id']}:${page['id']}'),
           zoomable: true,
         ),
@@ -169,3 +186,37 @@ Future<void> zoomNotebookPhoto(
     ),
   ),
 );
+
+/// Only source-reading views use original-pixel crops. No lesson disclosure.
+class NotebookFigure extends StatelessWidget {
+  final AppState state;
+  final Json page;
+  final int index;
+  const NotebookFigure(this.state, this.page, this.index, {super.key});
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SizedBox(
+        height: 280,
+        child: NotebookPhoto(
+          state,
+          materialId: page['id'],
+          figureIndex: index,
+          revision: page['revision'],
+        ),
+      ),
+      TextButton.icon(
+        onPressed: () => zoomNotebookPhoto(
+          context,
+          state,
+          page,
+          figureIndex: index,
+          revision: page['revision'],
+        ),
+        icon: const Icon(Icons.zoom_in),
+        label: const Text('Abbildung vergrößern'),
+      ),
+    ],
+  );
+}

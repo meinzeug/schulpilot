@@ -1,0 +1,1023 @@
+{
+  "version": 1,
+  "synthetic_only": true,
+  "purpose": "Representation corpus; not a curriculum, new course or grading key. Grade bands are review ranges, not claims about every state school curriculum.",
+  "cases": [
+    {
+      "id": "mathematik-1-4-grundlagen-1",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Grundrechenarten",
+      "tex": "7+5=12\\qquad 12-5=7\\qquad 3\\cdot4=12\\qquad 12:3=4"
+    },
+    {
+      "id": "mathematik-1-4-grundlagen-2",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Stellenwerte",
+      "tex": "348=3\\cdot100+4\\cdot10+8"
+    },
+    {
+      "id": "mathematik-1-4-grundlagen-3",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Schriftliche Addition",
+      "tex": "\\begin{array}{r} 348\\\\ +\\,127\\\\\\hline 475\\end{array}"
+    },
+    {
+      "id": "mathematik-1-4-grundlagen-4",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Einheiten",
+      "tex": "1\\,\\mathrm{m}=100\\,\\mathrm{cm}"
+    },
+    {
+      "id": "mathematik-1-4-grundlagen-5",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Bruchteile",
+      "tex": "\\frac{1}{2}+\\frac{1}{4}=\\frac{3}{4}"
+    },
+    {
+      "id": "mathematik-1-4-grundlagen-6",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Fläche und Umfang",
+      "tex": "A=a\\cdot b\\qquad U=2(a+b)"
+    },
+    {
+      "id": "mathematik-1-4-grundlagen-7",
+      "subject": "Mathematik",
+      "grade_band": "1-4",
+      "form": "grundlagen",
+      "topic": "Daten und Häufigkeit",
+      "tex": "h=\\frac{3}{12}=\\frac14"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-1",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Brüche erweitern",
+      "tex": "\\frac{2}{3}=\\frac{8}{12}"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-2",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Gemischte Zahl",
+      "tex": "2\\frac{1}{3}=\\frac{7}{3}"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-3",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Negative Zahlen",
+      "tex": "-3+5=2"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-4",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Dezimalzahlen",
+      "tex": "2{,}5\\cdot1{,}2=3"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-5",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Prozent und Verhältnis",
+      "tex": "25\\%=\\frac{25}{100}=\\frac14"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-6",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Potenzen",
+      "tex": "2^3=8"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-7",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Winkel",
+      "tex": "\\alpha+\\beta+\\gamma=180^\\circ"
+    },
+    {
+      "id": "mathematik-5-6-zahlen-8",
+      "subject": "Mathematik",
+      "grade_band": "5-6",
+      "form": "zahlen",
+      "topic": "Maßstab",
+      "tex": "1:100\\qquad 2\\,\\mathrm{cm}\\leftrightarrow2\\,\\mathrm{m}"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-1",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Terme",
+      "tex": "3x+2x=5x"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-2",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Lineare Gleichung",
+      "tex": "2x+3=11\\quad\\Rightarrow\\quad x=4"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-3",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Gleichungssystem",
+      "tex": "\\begin{cases}x+y=5\\\\x-y=1\\end{cases}"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-4",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Ungleichung",
+      "tex": "2x<8\\quad\\Leftrightarrow\\quad x<4"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-5",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Binomische Formel",
+      "tex": "(a+b)^2=a^2+2ab+b^2"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-6",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Quadratische Gleichung",
+      "tex": "x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-7",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Wurzeln",
+      "tex": "\\sqrt[3]{8}=2\\qquad\\sqrt{a^2}=|a|"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-8",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Funktionen",
+      "tex": "f(x)=2x+1\\qquad g(x)=x^2"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-9",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Exponentielles Wachstum",
+      "tex": "N(t)=N_0\\cdot q^t"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-10",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Logarithmen",
+      "tex": "\\log_{10}(1000)=3"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-11",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Pythagoras",
+      "tex": "a^2+b^2=c^2"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-12",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Trigonometrie",
+      "tex": "\\sin(\\alpha)=\\frac{\\text{Gegenkathete}}{\\text{Hypotenuse}}"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-13",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Kreis",
+      "tex": "U=2\\pi r\\qquad A=\\pi r^2"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-14",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Körper",
+      "tex": "V_{\\mathrm{Zylinder}}=\\pi r^2h\\qquad V_{\\mathrm{Kugel}}=\\frac43\\pi r^3"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-15",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Mengen und Intervalle",
+      "tex": "x\\in\\mathbb{R}\\qquad x\\in[0;1]\\qquad A\\cap B"
+    },
+    {
+      "id": "mathematik-7-10-algebra-geometrie-16",
+      "subject": "Mathematik",
+      "grade_band": "7-10",
+      "form": "algebra-geometrie",
+      "topic": "Mittelwert",
+      "tex": "\\overline{x}=\\frac{x_1+x_2+x_3}{3}"
+    },
+    {
+      "id": "mathematik-11-13-analysis-1",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Grenzwerte",
+      "tex": "\\lim_{x\\to0}\\frac{\\sin x}{x}=1"
+    },
+    {
+      "id": "mathematik-11-13-analysis-2",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Differenzenquotient",
+      "tex": "f\\prime(x)=\\lim_{h\\to0}\\frac{f(x+h)-f(x)}{h}"
+    },
+    {
+      "id": "mathematik-11-13-analysis-3",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Ableitung",
+      "tex": "\\frac{\\mathrm{d}}{\\mathrm{d}x}x^3=3x^2"
+    },
+    {
+      "id": "mathematik-11-13-analysis-4",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Produktregel",
+      "tex": "(uv)\\prime=u\\prime v+uv\\prime"
+    },
+    {
+      "id": "mathematik-11-13-analysis-5",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Kettenregel",
+      "tex": "(f\\circ g)\\prime=(f\\prime\\circ g)\\cdot g\\prime"
+    },
+    {
+      "id": "mathematik-11-13-analysis-6",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Integral",
+      "tex": "\\int_0^1x^2\\,\\mathrm{d}x=\\left[\\frac{x^3}{3}\\right]_0^1=\\frac13"
+    },
+    {
+      "id": "mathematik-11-13-analysis-7",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Partielle Integration",
+      "tex": "\\int u\\,v\\prime\\,\\mathrm{d}x=uv-\\int u\\prime v\\,\\mathrm{d}x"
+    },
+    {
+      "id": "mathematik-11-13-analysis-8",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Exponentialfunktion",
+      "tex": "\\frac{\\mathrm{d}}{\\mathrm{d}x}e^x=e^x"
+    },
+    {
+      "id": "mathematik-11-13-analysis-9",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Folgen und Summen",
+      "tex": "\\sum_{k=1}^{n}k=\\frac{n(n+1)}2"
+    },
+    {
+      "id": "mathematik-11-13-analysis-10",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "analysis",
+      "topic": "Differentialgleichung",
+      "tex": "y\\prime=ky\\qquad y(t)=Ce^{kt}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-1",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Spaltenvektor",
+      "tex": "\\vec{a}=\\begin{pmatrix}1\\\\2\\\\3\\end{pmatrix}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-2",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Betrag und Skalarprodukt",
+      "tex": "|\\vec a|=\\sqrt{14}\\qquad\\vec a\\cdot\\vec b=a_1b_1+a_2b_2+a_3b_3"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-3",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Geraden und Ebenen",
+      "tex": "\\vec x=\\vec p+t\\vec v\\qquad ax+by+cz=d"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-4",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Kreuzprodukt",
+      "tex": "\\vec a\\times\\vec b=\\begin{pmatrix}a_2b_3-a_3b_2\\\\a_3b_1-a_1b_3\\\\a_1b_2-a_2b_1\\end{pmatrix}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-5",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Matrix",
+      "tex": "\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\begin{pmatrix}x\\\\y\\end{pmatrix}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-6",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Determinante",
+      "tex": "\\det\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}=ad-bc"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-7",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Kombinatorik",
+      "tex": "\\binom nk=\\frac{n!}{k!(n-k)!}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-8",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Bedingte Wahrscheinlichkeit",
+      "tex": "P(A\\mid B)=\\frac{P(A\\cap B)}{P(B)}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-9",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Binomialverteilung",
+      "tex": "P(X=k)=\\binom nkp^k(1-p)^{n-k}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-10",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Normalverteilung",
+      "tex": "\\varphi(x)=\\frac{1}{\\sqrt{2\\pi}}e^{-\\frac{x^2}{2}}"
+    },
+    {
+      "id": "mathematik-11-13-vektoren-stochastik-11",
+      "subject": "Mathematik",
+      "grade_band": "11-13",
+      "form": "vektoren-stochastik",
+      "topic": "Erwartungswert und Streuung",
+      "tex": "\\mu=np\\qquad\\sigma=\\sqrt{np(1-p)}"
+    },
+    {
+      "id": "biologie-1-6-naturbeobachtung-1",
+      "subject": "Biologie",
+      "grade_band": "1-6",
+      "form": "naturbeobachtung",
+      "topic": "Lebewesen zählen",
+      "tex": "3+2=5"
+    },
+    {
+      "id": "biologie-1-6-naturbeobachtung-2",
+      "subject": "Biologie",
+      "grade_band": "1-6",
+      "form": "naturbeobachtung",
+      "topic": "Vergrößerung",
+      "tex": "V=\\frac{\\text{Bildgröße}}{\\text{Objektgröße}}"
+    },
+    {
+      "id": "biologie-1-6-naturbeobachtung-3",
+      "subject": "Biologie",
+      "grade_band": "1-6",
+      "form": "naturbeobachtung",
+      "topic": "Nahrungskette",
+      "tex": "\\text{Gras}\\longrightarrow\\text{Heuschrecke}\\longrightarrow\\text{Frosch}"
+    },
+    {
+      "id": "biologie-7-10-zelle-genetik-1",
+      "subject": "Biologie",
+      "grade_band": "7-10",
+      "form": "zelle-genetik",
+      "topic": "Fotosynthese",
+      "tex": "6\\,\\mathrm{CO_2}+6\\,\\mathrm{H_2O}\\xrightarrow{\\text{Licht}}\\mathrm{C_6H_{12}O_6}+6\\,\\mathrm{O_2}"
+    },
+    {
+      "id": "biologie-7-10-zelle-genetik-2",
+      "subject": "Biologie",
+      "grade_band": "7-10",
+      "form": "zelle-genetik",
+      "topic": "Zellatmung",
+      "tex": "\\mathrm{C_6H_{12}O_6}+6\\,\\mathrm{O_2}\\rightarrow6\\,\\mathrm{CO_2}+6\\,\\mathrm{H_2O}"
+    },
+    {
+      "id": "biologie-7-10-zelle-genetik-3",
+      "subject": "Biologie",
+      "grade_band": "7-10",
+      "form": "zelle-genetik",
+      "topic": "Kreuzungsschema",
+      "tex": "\\begin{array}{c|cc}&A&a\\\\\\hline A&AA&Aa\\\\a&Aa&aa\\end{array}"
+    },
+    {
+      "id": "biologie-7-10-zelle-genetik-4",
+      "subject": "Biologie",
+      "grade_band": "7-10",
+      "form": "zelle-genetik",
+      "topic": "Genexpression",
+      "tex": "\\mathrm{DNA}\\xrightarrow{\\text{Transkription}}\\mathrm{mRNA}\\xrightarrow{\\text{Translation}}\\text{Protein}"
+    },
+    {
+      "id": "biologie-7-10-zelle-genetik-5",
+      "subject": "Biologie",
+      "grade_band": "7-10",
+      "form": "zelle-genetik",
+      "topic": "Einheiten im Mikroskop",
+      "tex": "1\\,\\mathrm{mm}=1000\\,\\mathrm{\\mu m}"
+    },
+    {
+      "id": "biologie-11-13-systeme-1",
+      "subject": "Biologie",
+      "grade_band": "11-13",
+      "form": "systeme",
+      "topic": "Enzymkinetik",
+      "tex": "v=\\frac{v_{\\max}[S]}{K_M+[S]}"
+    },
+    {
+      "id": "biologie-11-13-systeme-2",
+      "subject": "Biologie",
+      "grade_band": "11-13",
+      "form": "systeme",
+      "topic": "Membranpotential",
+      "tex": "U=-70\\,\\mathrm{mV}"
+    },
+    {
+      "id": "biologie-11-13-systeme-3",
+      "subject": "Biologie",
+      "grade_band": "11-13",
+      "form": "systeme",
+      "topic": "Population",
+      "tex": "\\frac{\\mathrm{d}N}{\\mathrm{d}t}=rN\\left(1-\\frac NK\\right)"
+    },
+    {
+      "id": "biologie-11-13-systeme-4",
+      "subject": "Biologie",
+      "grade_band": "11-13",
+      "form": "systeme",
+      "topic": "Populationsgenetik",
+      "tex": "p^2+2pq+q^2=1\\qquad p+q=1"
+    },
+    {
+      "id": "biologie-11-13-systeme-5",
+      "subject": "Biologie",
+      "grade_band": "11-13",
+      "form": "systeme",
+      "topic": "Energetik",
+      "tex": "\\mathrm{ATP}+\\mathrm{H_2O}\\rightarrow\\mathrm{ADP}+\\mathrm{P_i}"
+    },
+    {
+      "id": "biologie-11-13-systeme-6",
+      "subject": "Biologie",
+      "grade_band": "11-13",
+      "form": "systeme",
+      "topic": "Stammbaum",
+      "tex": "\\mathrm{A}\\rightarrow\\begin{cases}\\mathrm{B}\\\\\\mathrm{C}\\end{cases}"
+    },
+    {
+      "id": "physik-1-6-beobachtung-1",
+      "subject": "Physik",
+      "grade_band": "1-6",
+      "form": "beobachtung",
+      "topic": "Größen und Einheiten",
+      "tex": "s=2\\,\\mathrm m\\qquad t=4\\,\\mathrm s"
+    },
+    {
+      "id": "physik-1-6-beobachtung-2",
+      "subject": "Physik",
+      "grade_band": "1-6",
+      "form": "beobachtung",
+      "topic": "Temperatur",
+      "tex": "20\\,{}^\\circ\\mathrm C"
+    },
+    {
+      "id": "physik-1-6-beobachtung-3",
+      "subject": "Physik",
+      "grade_band": "1-6",
+      "form": "beobachtung",
+      "topic": "Reflexion",
+      "tex": "\\alpha=\\beta"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-1",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Geschwindigkeit",
+      "tex": "v=\\frac st"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-2",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Beschleunigung",
+      "tex": "a=\\frac{\\Delta v}{\\Delta t}"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-3",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Kraft",
+      "tex": "\\vec F=m\\vec a"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-4",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Druck und Dichte",
+      "tex": "p=\\frac FA\\qquad\\rho=\\frac mV"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-5",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Arbeit und Leistung",
+      "tex": "W=Fs\\qquad P=\\frac Wt"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-6",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Ohmsches Gesetz",
+      "tex": "U=RI"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-7",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Elektrische Leistung",
+      "tex": "P=UI"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-8",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Parallelschaltung",
+      "tex": "\\frac1{R_{\\mathrm{ges}}}=\\frac1{R_1}+\\frac1{R_2}"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-9",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Wärme",
+      "tex": "Q=mc\\Delta T"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-10",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Linsen",
+      "tex": "\\frac1f=\\frac1g+\\frac1b"
+    },
+    {
+      "id": "physik-7-10-mechanik-elektrik-11",
+      "subject": "Physik",
+      "grade_band": "7-10",
+      "form": "mechanik-elektrik",
+      "topic": "Energie",
+      "tex": "E_{\\mathrm{kin}}=\\frac12mv^2\\qquad E_{\\mathrm{pot}}=mgh"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-1",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Gravitation",
+      "tex": "F=G\\frac{m_1m_2}{r^2}"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-2",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Elektrisches Feld",
+      "tex": "\\vec E=\\frac{\\vec F}{q}"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-3",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Coulombkraft",
+      "tex": "F=\\frac1{4\\pi\\varepsilon_0}\\frac{|q_1q_2|}{r^2}"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-4",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Magnetfeld",
+      "tex": "F_L=qvB\\sin\\alpha"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-5",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Induktion",
+      "tex": "U_{\\mathrm{ind}}=-N\\frac{\\mathrm d\\Phi}{\\mathrm dt}"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-6",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Schwingungen",
+      "tex": "T=2\\pi\\sqrt{\\frac lg}"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-7",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Wellen",
+      "tex": "y(x,t)=A\\sin(\\omega t-kx)\\qquad c=\\lambda f"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-8",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Photonen",
+      "tex": "E=hf\\qquad p=\\frac h\\lambda"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-9",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "De-Broglie",
+      "tex": "\\lambda=\\frac hp"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-10",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Kernphysik",
+      "tex": "{}^{14}_{6}\\mathrm C\\rightarrow{}^{14}_{7}\\mathrm N+e^-+\\bar\\nu_e"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-11",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Zerfall",
+      "tex": "N(t)=N_0e^{-\\lambda t}\\qquad T_{1/2}=\\frac{\\ln2}\\lambda"
+    },
+    {
+      "id": "physik-11-13-felder-wellen-quanten-12",
+      "subject": "Physik",
+      "grade_band": "11-13",
+      "form": "felder-wellen-quanten",
+      "topic": "Relativität",
+      "tex": "E=mc^2"
+    },
+    {
+      "id": "chemie-1-6-stoffe-1",
+      "subject": "Chemie",
+      "grade_band": "1-6",
+      "form": "stoffe",
+      "topic": "Teilchenmodell",
+      "tex": "\\text{fest}\\rightarrow\\text{flüssig}\\rightarrow\\text{gasförmig}"
+    },
+    {
+      "id": "chemie-1-6-stoffe-2",
+      "subject": "Chemie",
+      "grade_band": "1-6",
+      "form": "stoffe",
+      "topic": "Stoffe benennen",
+      "tex": "\\mathrm{H_2O}\\qquad\\mathrm{CO_2}\\qquad\\mathrm{O_2}"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-1",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Reaktionsgleichung",
+      "tex": "2\\,\\mathrm{H_2}+\\mathrm{O_2}\\rightarrow2\\,\\mathrm{H_2O}"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-2",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Ionen und Ladungen",
+      "tex": "\\mathrm{Na^+}\\qquad\\mathrm{Cl^-}\\qquad\\mathrm{SO_4^{2-}}"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-3",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Elektronenschalen",
+      "tex": "2n^2"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-4",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Lewis-Schreibweise",
+      "tex": "\\mathrm{H}\\!:\\!\\mathrm{H}"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-5",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Stoffmenge",
+      "tex": "n=\\frac mM\\qquad N=nN_A"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-6",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Konzentration",
+      "tex": "c=\\frac nV"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-7",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Säure-Base",
+      "tex": "\\mathrm{HCl}+\\mathrm{H_2O}\\rightarrow\\mathrm{H_3O^+}+\\mathrm{Cl^-}"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-8",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Redox",
+      "tex": "\\mathrm{Zn}\\rightarrow\\mathrm{Zn^{2+}}+2e^-"
+    },
+    {
+      "id": "chemie-7-10-reaktionen-9",
+      "subject": "Chemie",
+      "grade_band": "7-10",
+      "form": "reaktionen",
+      "topic": "Organik",
+      "tex": "\\mathrm{CH_3{-}CH_2{-}OH}"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-1",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Gleichgewicht",
+      "tex": "\\mathrm{N_2}+3\\,\\mathrm{H_2}\\rightleftharpoons2\\,\\mathrm{NH_3}"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-2",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Massenwirkungsgesetz",
+      "tex": "K_c=\\frac{[C]^c[D]^d}{[A]^a[B]^b}"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-3",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "pH-Wert",
+      "tex": "\\mathrm{pH}=-\\log_{10}\\!\\left(\\frac{c(\\mathrm{H_3O^+})}{1\\,\\mathrm{mol\\,L^{-1}}}\\right)"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-4",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Puffer",
+      "tex": "\\mathrm{pH}=\\mathrm{p}K_s+\\log_{10}\\frac{c(\\mathrm{A^-})}{c(\\mathrm{HA})}"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-5",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Energetik",
+      "tex": "\\Delta G=\\Delta H-T\\Delta S"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-6",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Reaktionsgeschwindigkeit",
+      "tex": "v=k[A]^m[B]^n"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-7",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Elektrochemie",
+      "tex": "E=E^\\circ+\\frac{RT}{zF}\\ln\\frac{a_{\\mathrm{Ox}}}{a_{\\mathrm{Red}}}"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-8",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Isotope",
+      "tex": "{}^{12}_{6}\\mathrm C\\qquad{}^{13}_{6}\\mathrm C"
+    },
+    {
+      "id": "chemie-11-13-gleichgewicht-energetik-9",
+      "subject": "Chemie",
+      "grade_band": "11-13",
+      "form": "gleichgewicht-energetik",
+      "topic": "Elektronenkonfiguration",
+      "tex": "1s^2\\,2s^2\\,2p^6"
+    },
+    {
+      "id": "technik-5-13-konstruktion-1",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Getriebe",
+      "tex": "\\frac{n_1}{n_2}=\\frac{z_2}{z_1}"
+    },
+    {
+      "id": "technik-5-13-konstruktion-2",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Hebel",
+      "tex": "F_1l_1=F_2l_2"
+    },
+    {
+      "id": "technik-5-13-konstruktion-3",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Wirkungsgrad",
+      "tex": "\\eta=\\frac{E_{\\mathrm{nutz}}}{E_{\\mathrm{zu}}}"
+    },
+    {
+      "id": "technik-5-13-konstruktion-4",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Toleranzen",
+      "tex": "d=(20{,}0\\pm0{,}1)\\,\\mathrm{mm}"
+    },
+    {
+      "id": "technik-5-13-konstruktion-5",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Leistung",
+      "tex": "P=M\\omega"
+    },
+    {
+      "id": "technik-5-13-konstruktion-6",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Maßstab",
+      "tex": "1:2"
+    },
+    {
+      "id": "technik-5-13-konstruktion-7",
+      "subject": "Technik",
+      "grade_band": "5-13",
+      "form": "konstruktion",
+      "topic": "Regelung",
+      "tex": "e(t)=w(t)-y(t)"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-1",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Binärzahlen",
+      "tex": "(1011)_2=(11)_{10}"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-2",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Hexadezimalzahlen",
+      "tex": "(\\mathrm{FF})_{16}=255_{10}"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-3",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Boolesche Algebra",
+      "tex": "A\\land B\\qquad\\neg(A\\lor B)=\\neg A\\land\\neg B"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-4",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Wahrheitstabelle",
+      "tex": "\\begin{array}{cc|c}A&B&A\\land B\\\\\\hline0&0&0\\\\0&1&0\\\\1&0&0\\\\1&1&1\\end{array}"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-5",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Mengen und Relationen",
+      "tex": "R\\subseteq A\\times B"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-6",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Laufzeit",
+      "tex": "T(n)\\in O(n\\log n)"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-7",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Rekursion",
+      "tex": "n!=\\begin{cases}1&n=0\\\\n\\cdot(n-1)!&n>0\\end{cases}"
+    },
+    {
+      "id": "informatik-5-13-logik-daten-8",
+      "subject": "Informatik",
+      "grade_band": "5-13",
+      "form": "logik-daten",
+      "topic": "Endlicher Automat",
+      "tex": "\\delta:Q\\times\\Sigma\\rightarrow Q"
+    }
+  ]
+}

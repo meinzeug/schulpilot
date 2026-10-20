@@ -24,7 +24,7 @@ def test_album_uses_canonical_subject_aliases_and_bounded_metadata(api, househol
         assert data["total"] == 47 and data["pages"] == 3
         for row in data["items"]:
             assert row["subject_id"] == sid and row["has_image"] is True and row["revision"] == 1
-            assert not {"path", "content", "image_digest", "extraction_model"} & row.keys()
+            assert not {"path", "content", "source_blocks", "image_digest", "extraction_model"} & row.keys()
             seen.append(row["id"])
     assert len(seen) == len(set(seen)) == 47
     with DB() as db:

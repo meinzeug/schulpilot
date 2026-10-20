@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'lesson_voice.dart';
 import 'ui.dart';
 import 'math_content.dart';
+import 'scientific_notation.dart';
+import 'learning_content.dart';
 
 /// The same saved explanation, presented in readable steps, never new AI text.
 class LearningExplanation extends StatefulWidget {
@@ -19,13 +21,14 @@ class _LearningExplanationState extends State<LearningExplanation> {
 
   @override
   Widget build(BuildContext context) {
-    final paragraphs = widget.text
-        .split(RegExp(r'\n\s*\n'))
-        .where((p) => p.trim().isNotEmpty)
-        .toList();
+    final paragraphs = learningParagraphs(widget.text);
     final chunks = <String>[];
     for (final paragraph in paragraphs) {
-      if (paragraph.length <= 280) {
+      if (paragraph.length <= 280 ||
+          formulaSegments(paragraph).isNotEmpty ||
+          paragraph.contains('```') ||
+          paragraph.contains('|') ||
+          paragraph.contains('\t')) {
         chunks.add(paragraph);
       } else {
         var chunk = '';
@@ -53,10 +56,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
           ),
           const SizedBox(height: 10),
         ],
-        MathText(
-          chunks[current],
-          style: const TextStyle(fontSize: 18, height: 1.55),
-        ),
+        LearningContent(chunks[current]),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,

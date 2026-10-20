@@ -136,7 +136,7 @@ class AssignmentCreate(Strict):
 class MaterialVocabularyPreview(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
-    content: str = Field(min_length=1, max_length=24000)
+    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=24000, pattern=r"\S")
 
 
 class MaterialWordSelection(Strict):
@@ -167,7 +167,7 @@ class MaterialTaskDecision(Strict):
 class MaterialConfirm(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
-    content: str = Field(min_length=1, max_length=24000)
+    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=24000, pattern=r"\S")
     homework: list[Annotated[str, Field(max_length=500)]] = Field(default_factory=list, max_length=20)
     uncertainties_resolved: Literal[True]
     revision: int | None = Field(default=None, ge=1)
@@ -252,7 +252,7 @@ class ExtractionOutput(Strict):
     legibility: Literal["readable", "partial", "unreadable"] = "readable"
     subject: str = Field(max_length=80)
     topic: str = Field(max_length=160)
-    content: str = Field(max_length=24000)
+    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(max_length=24000)
     uncertainties: list[Annotated[str, Field(max_length=500)]] = Field(max_length=30)
     homework: list[Annotated[str, Field(max_length=500)]] = Field(max_length=20)
 

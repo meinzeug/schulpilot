@@ -14,6 +14,8 @@ import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'material_words.dart';
 import 'subject_picker.dart';
+import 'learning_content.dart';
+import 'notebook_photo.dart';
 
 Future<void> importMaterial(
   BuildContext context,
@@ -888,33 +890,57 @@ class _MaterialReviewState extends State<MaterialReview> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               heading('Was steht in diesem Material?'),
-              for (final item in [
-                (subject, 'Fach', 1),
-                (topic, 'Thema', 1),
-                (content, 'Erkannter Unterrichtsstoff', 8),
-                (homework, 'Erkannte Aufgaben (eine pro Zeile)', 3),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: item.$1 == subject
-                      ? SubjectField(
-                          widget.state,
-                          childId: d['child_id'],
-                          controller: subject,
-                          enabled: !synthetic && canConfirm,
-                          changed: () => setState(() {}),
-                        )
-                      : TextField(
-                          controller: item.$1,
-                          onChanged: (_) => setState(() {}),
-                          readOnly: synthetic || !canConfirm,
-                          maxLines: item.$3,
-                          decoration: InputDecoration(
-                            labelText: item.$2,
-                            alignLabelWithHint: true,
-                          ),
-                        ),
+              if (!editing) ...[
+                LearningContent(
+                  content.text,
+                  figureBuilder: d['has_image'] == true
+                      ? (index, _) => NotebookFigure(widget.state, d, index)
+                      : null,
+                  blocks: content.text == d['content']
+                      ? d['source_blocks'] as List?
+                      : null,
                 ),
+                if (canConfirm && !synthetic)
+                  TextButton.icon(
+                    onPressed: () => setState(() => editing = true),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Erkannten Text verbessern'),
+                  ),
+              ],
+              if (editing)
+                TextButton.icon(
+                  onPressed: () => setState(() => editing = false),
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Leseansicht'),
+                ),
+              if (editing)
+                for (final item in [
+                  (subject, 'Fach', 1),
+                  (topic, 'Thema', 1),
+                  (content, 'Erkannter Unterrichtsstoff', 8),
+                  (homework, 'Erkannte Aufgaben (eine pro Zeile)', 3),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 18),
+                    child: item.$1 == subject
+                        ? SubjectField(
+                            widget.state,
+                            childId: d['child_id'],
+                            controller: subject,
+                            enabled: !synthetic && canConfirm,
+                            changed: () => setState(() {}),
+                          )
+                        : TextField(
+                            controller: item.$1,
+                            onChanged: (_) => setState(() {}),
+                            readOnly: synthetic || !canConfirm,
+                            maxLines: item.$3,
+                            decoration: InputDecoration(
+                              labelText: item.$2,
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                  ),
               if ((d['homework'] as List).isEmpty)
                 const Text(
                   'Hier wurden keine Aufgabenangaben erkannt.',
@@ -1192,19 +1218,30 @@ class _MaterialReviewState extends State<MaterialReview> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                Text(
+                LearningContent(
                   content.text,
-                  style: const TextStyle(fontSize: 15, height: 1.5),
-                  maxLines: longText ? 7 : null,
-                  overflow: longText
-                      ? TextOverflow.ellipsis
-                      : TextOverflow.clip,
+                  figureBuilder: !longText && d['has_image'] == true
+                      ? (index, _) => NotebookFigure(widget.state, d, index)
+                      : null,
+                  blocks: content.text == d['content']
+                      ? d['source_blocks'] as List?
+                      : null,
+                  compact: longText,
                 ),
                 if (longText)
                   ExpansionTile(
                     title: const Text('Ganzen Text lesen'),
                     children: [
-                      Text(content.text, style: const TextStyle(height: 1.5)),
+                      LearningContent(
+                        content.text,
+                        figureBuilder: d['has_image'] == true
+                            ? (index, _) =>
+                                  NotebookFigure(widget.state, d, index)
+                            : null,
+                        blocks: content.text == d['content']
+                            ? d['source_blocks'] as List?
+                            : null,
+                      ),
                     ],
                   ),
                 if (homework.text.isNotEmpty) ...[

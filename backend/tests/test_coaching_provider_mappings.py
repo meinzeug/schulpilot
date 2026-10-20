@@ -127,6 +127,8 @@ def test_openrouter_review_omits_unused_round_schema_but_rejects_new_tasks(coach
         assert result.data["next_unit"] is None
         assert result.data["learning_goals"] == payload["learning_goals"]
     assert len(calls) == 1
+    assert 'graphic_kinds' not in calls[0]['messages'][1]['content']
+    assert 'Fachdarstellung presentation' not in calls[0]['messages'][0]['content']
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert "next_unit" not in schema["properties"]
     assert "next_unit" not in schema["required"]

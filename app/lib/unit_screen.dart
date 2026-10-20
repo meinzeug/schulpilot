@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'learning_content.dart';
 import 'learning_tips.dart';
 import 'coaching_panel.dart';
 import 'lesson_voice.dart';
@@ -1768,7 +1769,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Expanded(
-        child: MathText(
+        child: LearningContent(
           q['prompt'],
           style: const TextStyle(
             fontSize: 22,
@@ -1870,10 +1871,23 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (requestIsCurrent(id, requestedOwner)) {
       setState(() {
         hint = data['hint'];
-        if (data['presentation'] is Map) {
-          q['presentation'] = Json.from(data['presentation']);
+        // currentQuestion is a copy. Keep the server's disclosed projection in
+        // the actual unit as well, so the next build retains the new graphic.
+        final targets = [
+          q,
+          ...((unit?['questions'] as List?) ?? []).where(
+            (row) => row['id'] == q['id'],
+          ),
+        ];
+        for (final target in targets) {
+          final previous = target['hints_used'] as int? ?? 0;
+          final returned = data['hints_used'] as int?;
+          if (returned != null && returned < previous) continue;
+          if (data['presentation'] is Map) {
+            target['presentation'] = Json.from(data['presentation']);
+          }
+          if (returned != null) target['hints_used'] = returned;
         }
-        q['hints_used'] = data['hints_used'];
         hintRequestKey = null;
         hintExhausted = data['exhausted'] == true;
         helpExpanded = true;
@@ -1883,7 +1897,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         if (mounted && target != null) {
           Scrollable.ensureVisible(
             target,
-            alignment: 1,
+            alignment: 0,
             duration: const Duration(milliseconds: 180),
           );
         }
@@ -2224,7 +2238,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   ExpansionTile(
                     title: const Text('Warum das stimmt'),
                     children: [
-                      MathText(
+                      LearningContent(
                         explanation!,
                         style: const TextStyle(fontSize: 17, height: 1.5),
                       ),
@@ -2235,7 +2249,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ],
                   )
                 else ...[
-                  MathText(
+                  LearningContent(
                     explanation!,
                     style: const TextStyle(fontSize: 17, height: 1.5),
                   ),
@@ -2294,7 +2308,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ],
         ),
         if (hint != null)
-          MathText(hint!, style: const TextStyle(fontSize: 17, height: 1.5)),
+          LearningContent(
+            hint!,
+            style: const TextStyle(fontSize: 17, height: 1.5),
+          ),
         SubjectPresentation(
           q['presentation'] is Map ? Json.from(q['presentation']) : null,
           stages: const {'hint1', 'hint2', 'hint3'},

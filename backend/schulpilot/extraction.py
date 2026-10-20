@@ -29,6 +29,20 @@ Rechenbeispiel, Tabelle oder beschrifteter Zeichnung. text enthält jeweils den 
 alle lesbaren Zeilen dieses Bereichs und alle Zahlen, Brüche, Rechenschritte und Ergebnisse.
 Zeilenumbrüche innerhalb eines Blocks erhalten; Tabellen mit Zeilen und Zelltexten abschreiben.
 Beschriftungen von Skizzen abschreiben, keine Bedeutung der Zeichnung hinzuerfinden.
+Zweidimensionale Formeln symbolgetreu mit Standard-TeX in \\( ... \\) oder \\[ ... \\]
+abschreiben: Bruchstriche, Wurzeln, Hoch-/Tiefstellungen, Integrale, Vektoren und
+Matrizen erhalten. Das ist nur Schreibweise, keine Berechnung oder fachliche Korrektur.
+Chemische Formeln mit \\mathrm{...}, Indizes und Ladungen, ohne \\ce oder \\chemfig.
+Keine Zeichnung in erfundene Formeln oder Zeichenkunst umwandeln; dafür diagram_text
+mit den tatsächlich sichtbaren Beschriftungen verwenden. Eindeutig sichtbare Pfeile
+zwischen beschrifteten Teilen als A→B abschreiben; unklare Richtung ausdrücklich offen lassen. Tabellenzellen zeilenweise
+mit | trennen, leere Zellen erhalten. Programmcode als kind=code mit unveränderten
+Zeilenumbrüchen und Einrückungen abschreiben; niemals ausführen.
+Bei diagram_text image_region um die tatsächlich sichtbare Zeichnung einschließlich
+ihrer Beschriftungen legen (links/oben/rechts/unten auf einer Skala0bis1000des ganzen
+Bildes, etwas Rand lassen). Keine neuen Zeichnungskoordinaten oder Bildinhalte erfinden.
+Wenn der Ausschnitt nicht sicher abgrenzbar ist, image_region=null. Bei allen anderen
+Blockarten immer null. Die Originalzeichnung bleibt maßgeblich, nicht ihre Textbeschriftung.
 Nicht zusammenfassen, umformulieren, erklären oder den Text durch eine Bildbeschreibung ersetzen.
 Eine Kopfzeile, ein Wasserzeichen oder eine Kennzeichnung wie Test/Beispiel ist NICHT der ganze Inhalt:
 Schreibe den darunter und daneben sichtbaren Unterrichtstext und die Beispiele ebenfalls vollständig ab.
@@ -87,8 +101,8 @@ class TranscriptionOutput(s.Strict):
             content="\n\n".join(block.text for block in self.blocks),
             uncertainties=self.uncertainties,
             homework=self.homework,
-            source_blocks=[block.model_dump() for block in self.blocks],
-        ).model_dump()
+            source_blocks=[block.model_dump(exclude_none=True) for block in self.blocks],
+        ).model_dump(exclude_none=True)
 
 
 class IncompleteTranscription(ValueError):

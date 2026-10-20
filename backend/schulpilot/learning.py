@@ -48,6 +48,17 @@ def record(db, child_id, kind, detail=None, unit_id=None):
 def material_data(material):
     from .material_tasks import preview as task_preview
     from .material_vocabulary import preview
+    from .subject_content import SourceBlock
+
+    # Only expose an ordered reading projection of this exact saved revision.
+    # Corrections and historical malformed blocks must never show stale text.
+    source_blocks = []
+    try:
+        parsed = [SourceBlock.model_validate(row).model_dump(exclude_none=True) for row in (material.source_blocks or [])[:80]]
+        if "\n\n".join(row["text"] for row in parsed) == material.content:
+            source_blocks = parsed
+    except (ValueError, TypeError):
+        pass
 
     return {
         k: getattr(material, k)
@@ -73,7 +84,8 @@ def material_data(material):
             "created",
             "revision",
         )
-    } | {"vocabulary_preview": preview(material.subject, material.topic, material.content, material.source_blocks) if not material.synthetic else None,
+    } | {"source_blocks": source_blocks,
+         "vocabulary_preview": preview(material.subject, material.topic, material.content, material.source_blocks) if not material.synthetic else None,
          "task_preview": task_preview(material.content, material.homework, material.task_decisions),
          "confirmed_tasks": [row["text"] for row in task_preview(material.content, material.homework, material.task_decisions)
                              if row["classification"] == "homework" and any(

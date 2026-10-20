@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'math_content.dart';
+import 'science_graphic.dart';
 import 'ui.dart';
 
 /// Finite versioned vector diagrams. No network images, HTML or model-drawn paths.
@@ -162,6 +163,7 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
+    if (ScienceGraphic.kinds.contains(kind)) return ScienceGraphic(block);
     final text = description;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),

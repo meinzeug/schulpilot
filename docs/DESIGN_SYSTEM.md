@@ -61,3 +61,12 @@ Benachrichtigungstests bleiben bestehen.
 Browser- und native Sichtprüfung, Releaseversion sowie tatsächliche Ergebnisse
 stehen in `STATUS.md` und `CHATGPT_HANDOFF.txt`. Einzelne Farb-/Widgettests sind
 keine vollständige WCAG-Zertifizierung, Screenreader- oder Nutzerstudie.
+
+## Lokaler Formelsatz
+
+Die funktionale, exakt gepinnte Formelengine flutter_math_fork0.7.4 ergänzt
+MathText für native wissenschaftliche Notation. Sie führt kein neues Designsystem,
+Webview oder externe Schrift-/Bilddienste ein. Mindestgröße18, geräumige Brüche,
+große Schrift und horizontales Lesen breiter Formeln; normale Lerntexte bleiben
+im gemeinsamen Design. Tabellen/Code/Fachgrafiken stehen direkt in Aufgaben und
+geöffneten Hilfen. Umfang und Grenzen: [SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
