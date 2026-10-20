@@ -364,7 +364,7 @@ def test_source_deletion_purges_import_items_and_projects(api, notebook):
         assert db.scalar(select(func.count()).select_from(VocabularyItem)) == 2
 
 
-def test_source_delete_preserves_answer_history_and_blocks_further_language_answers(api, notebook):
+def test_source_delete_removes_linked_language_round_and_answers(api, notebook):
     _, child, material_id = notebook
     import_words(api, child)
     with DB.begin() as db:
@@ -378,22 +378,28 @@ def test_source_delete_preserves_answer_history_and_blocks_further_language_answ
         json={"answer": correct_answer(unit["id"], first["id"]), "request_id": "before-source-delete-001"},
     )
     assert result.status_code == 200
+    later_answer = correct_answer(unit["id"], second["id"])
     with TestClient(app, headers=HEADERS) as parent:
         logged = parent.post(
             "/api/auth/login", json={"username": "parent@example.org", "password": "secure-parent-pass-123"}
         )
         parent.headers["Authorization"] = "Bearer " + logged.json()["token"]
-        deleted = parent.delete("/api/materials/" + material_id)
+        assert parent.delete("/api/materials/" + material_id).status_code == 409
+        selection = parent.post(f"/api/children/{child['id']}/materials/delete-preview",
+                                json={"ids": [material_id]}).json()
+        assert selection['unit_count'] == selection['answer_count'] == 1
+        deleted = parent.post(f"/api/children/{child['id']}/materials/bulk-delete",
+                              json={"selection_token": selection['selection_token'], "delete_linked_units": True})
         assert deleted.status_code == 200, deleted.text
-    assert api.get("/api/units/" + unit["id"]).status_code == 200
+    assert api.get("/api/units/" + unit["id"]).status_code == 404
     result = api.post(
         f"/api/units/{unit['id']}/questions/{second['id']}/answer",
-        json={"answer": correct_answer(unit["id"], second["id"]), "request_id": "after-source-delete-0001"},
+        json={"answer": later_answer, "request_id": "after-source-delete-0001"},
     )
-    assert result.status_code == 409
+    assert result.status_code == 404
     with DB() as db:
-        assert db.get(LearningUnit, unit["id"]) is not None
-        assert db.scalar(select(func.count()).select_from(Attempt)) == 1
+        assert db.get(LearningUnit, unit["id"]) is None
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
         assert db.scalar(select(func.count()).select_from(VocabularyItem)) == 0
 
 

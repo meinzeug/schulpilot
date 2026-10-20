@@ -187,7 +187,7 @@ def generate(body: dict):
 
 def upstream_body(body):
     """Allowlist the actual model request; CLI or uploaded instructions cannot add tools."""
-    content = [{"type": "input_text", "text": json.dumps(body["payload"], ensure_ascii=False)}]
+    content = [{"type": "input_text", "text": json.dumps(body["payload"], ensure_ascii=False, separators=(",", ":"))}]
     if body["image"]:
         content.append(
             {"type": "input_image", "image_url": "data:image/jpeg;base64," + body["image"], "detail": "high"}

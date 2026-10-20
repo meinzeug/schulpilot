@@ -64,7 +64,7 @@ def preview(client, child, **selection):
 
 
 def confirm_delete(client, child, token):
-    return client.post(f"/api/children/{child['id']}/materials/bulk-delete", json={"selection_token": token})
+    return client.post(f"/api/children/{child['id']}/materials/bulk-delete", json={"selection_token": token, "delete_linked_units": True})
 
 
 def saved_round(child, material_id):
@@ -93,18 +93,21 @@ def saved_round(child, material_id):
         return unit.id, attempt.id
 
 
-def test_child_can_delete_confirmed_own_photo_preserving_answers(api, household):
+def test_child_delete_confirmed_photo_cascades_round_and_answers_after_counted_preview(api, household):
     _, child = household
     mid, path = photo(api, child)
     unit_id, attempt_id = saved_round(child, mid)
     with kid() as client:
-        assert client.delete(f"/api/materials/{mid}").status_code == 200
+        assert client.delete(f"/api/materials/{mid}").status_code == 409
+        data = preview(client, child, ids=[mid])
+        assert data['unit_count'] == 1 and data['answer_count'] == 1
+        assert confirm_delete(client, child, data['selection_token']).status_code == 200
         assert client.get(f"/api/materials/{mid}/image").status_code == 404
     assert not path.exists()
     with DB() as db:
         assert db.get(Material, mid) is None
-        assert db.get(LearningUnit, unit_id).material_id is None
-        assert db.get(Attempt, attempt_id).answer == "synthetic stored answer"
+        assert db.get(LearningUnit, unit_id) is None
+        assert db.get(Attempt, attempt_id) is None
         assert not list(db.scalars(select(UnitSource).where(UnitSource.unit_id == unit_id)))
 
 
@@ -479,7 +482,7 @@ def test_bulk_keeps_unit_before_child_lock_order_with_concurrent_answer(api, hou
         response = pending.result(10)
     assert response.status_code == 200, response.text
     with DB() as db:
-        assert db.get(Attempt, attempt_id).answer == "synthetic stored answer"
+        assert db.get(Attempt, attempt_id) is None
 
 
 @pytest.mark.parametrize("change", ["none", "source_after", "session_before", "provider_after"])

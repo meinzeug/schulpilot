@@ -824,6 +824,20 @@ def settle(db, usage, result=None, failed=False):
         settle_child(db, usage)
 
 
+def transport_payload(function, payload):
+    """Send identical follow-up source text once; keep canonical validation data."""
+    material, sources = payload.get("material"), payload.get("materials")
+    if (function != "unit" or not payload.get("review") or not isinstance(material, dict)
+            or not isinstance(sources, list) or not sources
+            or any(not isinstance(m, dict) or not isinstance(m.get("content"), str) for m in sources)):
+        return payload
+    content = material.get("content")
+    if not isinstance(content, str) or len(content) < 256 or content != "\n\n".join(m["content"] for m in sources):
+        return payload
+    return {**payload, "material": {**{k: v for k, v in material.items() if k != "content"},
+                                      "content_ref": "materials[].content"}}
+
+
 def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False, private_probe=False):
     started = time.monotonic()
     billing_result = None
@@ -1233,7 +1247,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Bei Anschlussübungen bleibt auch die in practice_tasks festgelegte learning_goal_id erhalten."
         )
     prune_schema(schema)
-    user_text = json.dumps(payload, ensure_ascii=False)
+    outgoing_payload = transport_payload(function, payload)
+    if outgoing_payload is not payload:
+        instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."
+    user_text = json.dumps(outgoing_payload, ensure_ascii=False, separators=(",", ":"))
     # Byte count is deliberately conservative for text; image budget uses the
     # entire encoded payload rather than an optimistic model-specific formula.
     image_data = base64.b64encode(image_bytes).decode() if image_bytes else ""
@@ -1255,7 +1272,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "web_search": settings.codex_web_search and function not in ("extract", "vocabulary_import"),
             "model": config.model,
             "system": instructions,
-            "payload": payload,
+            "payload": outgoing_payload,
             "schema": schema,
             "image": image_data or None,
             "max_output_tokens": config.max_output_tokens,

@@ -37,6 +37,7 @@ from . import (
     subjects,
     synthetic,
     tutor,
+    unit_actions,
     vocabulary,
 )
 from .config import runtime_settings, settings
@@ -252,6 +253,7 @@ for router in (
     learning_controller.router,
     controller_jobs.router,
     routing_admin.router,
+    unit_actions.router,
 ):
     app.include_router(router, prefix="/api")
 

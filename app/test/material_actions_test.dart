@@ -522,11 +522,18 @@ void main() {
         });
         return reply({
           'count': 24,
+          'unit_count': 4,
+          'answer_count': 9,
           'selection_token': 'synthetic-private-preview',
         });
       }, deleting: true);
       await tap(tester, 'Aktion öffnen');
       expect(find.text('24 Heftseiten löschen?'), findsOneWidget);
+      expect(find.textContaining('4 verknüpfte Lernrunden'), findsOneWidget);
+      expect(
+        find.textContaining('9 gespeicherten Antwortversuchen'),
+        findsOneWidget,
+      );
       expect(
         find.textContaining('auch auf weiteren Listenseiten'),
         findsOneWidget,

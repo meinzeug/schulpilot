@@ -182,7 +182,7 @@ def test_search_allowlist_and_api_reservation():
     assert data["max_tool_calls"] == 1 and data["parallel_tool_calls"] is False
     assert data["store"] is False and data["max_output_tokens"] == 1000
     assert "previous_response_id" not in data and "conversation" not in data
-    assert data["input"][0]["content"][0]["text"] == json.dumps(job()["payload"])
+    assert json.loads(data["input"][0]["content"][0]["text"]) == job()["payload"]
     with pytest.raises(HTTPException) as error:
         worker.upstream_body({**job(), "input_rate": 1_000_000, "reserve_micros": 10_000})
     assert error.value.status_code == 413

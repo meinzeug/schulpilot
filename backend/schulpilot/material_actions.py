@@ -2,8 +2,8 @@
 
 Deletion tokens contain only opaque IDs/filter values and bind the exact current
 selection to the actor, session and child for ten minutes. No writes or inference
-are triggered by GET/listing. Reprocessing creates a new unconfirmed source and
-one normally reserved extraction job; immutable units/answers remain untouched.
+are triggered by GET/listing. Confirmed deletion also removes linked learning
+rounds and answers. Reprocessing preserves them and reserves one extraction.
 """
 
 import hashlib
@@ -21,7 +21,7 @@ from sqlalchemy import or_, select, update
 
 from . import schemas as s
 from .config import settings
-from .db import Child, Job, LearningUnit, Material, SchoolDay, UnitSource, Usage, get_db, now, uid
+from .db import Child, Job, LearningUnit, Material, SchoolDay, Usage, get_db, now, uid
 from .security import authenticated, child_access, crypt, rate_limit
 
 MAX_DELETE = 5000
@@ -68,6 +68,7 @@ class DeletePreview(s.Strict):
 
 class DeleteConfirm(s.Strict):
     selection_token: str = Field(min_length=80, max_length=48000)
+    delete_linked_units: bool = False
 
 
 class Reprocess(s.Strict):
@@ -159,20 +160,14 @@ def ensure_deletable(rows):
 
 
 def lock_units(db, child_id, ids):
-    return list(
-        db.scalars(
-            select(LearningUnit.id)
-            .where(
-                LearningUnit.child_id == child_id,
-                or_(
-                    LearningUnit.material_id.in_(ids),
-                    LearningUnit.id.in_(select(UnitSource.unit_id).where(UnitSource.material_id.in_(ids))),
-                ),
-            )
-            .order_by(LearningUnit.id)
-            .with_for_update()
-        )
-    )
+    from .unit_erasure import linked_ids
+
+    selected = linked_ids(db, child_id, ids)
+    # FK cleanup can also clear a predecessor's coaching link. Lock all rounds
+    # of this child before Child, in the same order as answer/tutor mutations.
+    list(db.scalars(select(LearningUnit.id).where(LearningUnit.child_id == child_id)
+                    .order_by(LearningUnit.id).with_for_update()))
+    return selected
 
 
 def delete_rows(db, child, rows):
@@ -184,6 +179,9 @@ def delete_rows(db, child, rows):
 
     ensure_deletable(rows)
     ids = [m.id for m in rows]
+    from .unit_erasure import linked_ids, remove
+
+    remove(db, child, linked_ids(db, child.id, ids))
     day_ids = sorted({m.school_day_id for m in rows if m.school_day_id})
     paths = [m.path for m in rows if m.path]
     purge_source_turns(db, ids, child_id=child.id)
@@ -219,7 +217,7 @@ def delete_preview(child_id: str, data: DeletePreview, p=Depends(authenticated),
     ensure_idle(db, child.id)
     ensure_deletable(rows)
     payload = {
-        "v": 1,
+        "v": 2,
         "actor": p.user.id,
         "session": p.session.id,
         "child": child.id,
@@ -227,10 +225,16 @@ def delete_preview(child_id: str, data: DeletePreview, p=Depends(authenticated),
         "snapshot": snapshot(rows),
         "count": len(rows),
     }
+    from .unit_erasure import counts, linked_ids
+    from .unit_erasure import snapshot as unit_snapshot
+
+    unit_ids = linked_ids(db, child.id, [m.id for m in rows])
+    payload["units_snapshot"] = unit_snapshot(db, unit_ids)
     token = crypt().encrypt(json.dumps(payload, separators=(",", ":")).encode()).decode()
     db.commit()
     return {
         "count": len(rows),
+        **counts(db, unit_ids),
         "selection_token": token,
         "expires_in": TTL,
         "sample": [{"id": m.id, "title": m.title, "subject": m.subject, "topic": m.topic} for m in rows[:5]],
@@ -241,7 +245,7 @@ def bulk_delete(child_id: str, data: DeleteConfirm, p=Depends(authenticated), db
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     try:
         token = json.loads(crypt().decrypt(data.selection_token.encode(), ttl=TTL))
-        if (token["v"], token["actor"], token["session"], token["child"]) != (1, p.user.id, p.session.id, child.id):
+        if (token["v"], token["actor"], token["session"], token["child"]) != (2, p.user.id, p.session.id, child.id):
             raise ValueError("scope")
         selection = DeletePreview.model_validate(token["selection"])
     except (InvalidToken, ValueError, KeyError, TypeError):
@@ -261,25 +265,21 @@ def bulk_delete(child_id: str, data: DeleteConfirm, p=Depends(authenticated), db
         raise HTTPException(
             409, "Die Seitenauswahl wurde inzwischen geändert. Nichts wurde gelöscht. Bitte die Vorschau neu öffnen."
         )
-    current_units = list(
-        db.scalars(
-            select(LearningUnit.id)
-            .where(
-                LearningUnit.child_id == child.id,
-                or_(
-                    LearningUnit.material_id.in_(ids),
-                    LearningUnit.id.in_(select(UnitSource.unit_id).where(UnitSource.material_id.in_(ids))),
-                ),
-            )
-            .order_by(LearningUnit.id)
-        )
-    )
-    if current_units != locked_units:
+    from .unit_erasure import linked_ids
+    from .unit_erasure import snapshot as unit_snapshot
+
+    current_units = linked_ids(db, child.id, ids)
+    if current_units != locked_units or unit_snapshot(db, current_units) != token["units_snapshot"]:
         raise HTTPException(
             409, "Neue Übungen wurden gespeichert. Nichts wurde gelöscht. Bitte die Vorschau neu öffnen."
         )
     ensure_idle(db, child.id)
+    if current_units and not data.delete_linked_units:
+        raise HTTPException(409, "Die verknüpften Übungen und Antworten werden mitgelöscht. Bitte die App aktualisieren und erneut bestätigen.")
     paths = delete_rows(db, child, rows)
+    from .security import audit
+
+    audit(db, p.user.id, "notebook.pages_and_rounds_deleted", child.id)
     db.commit()
     remove_files(paths)
     return {"deleted_count": len(rows)}

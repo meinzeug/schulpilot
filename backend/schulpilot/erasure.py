@@ -15,11 +15,13 @@ import tempfile
 from sqlalchemy import delete, select
 
 from .config import settings
-from .db import DB, Child, ErasureRequest, Family, Material, Membership, User, now
+from .db import DB, Child, ErasureRequest, Family, LearningUnit, Material, Membership, User, now
+
+SCOPES = ("family", "child", "user", "material", "membership", "unit")
 
 
 def request(db, scope, target):
-    if scope not in ("family", "child", "user", "material", "membership") or not re.fullmatch(r"[a-f0-9]{32}", target):
+    if scope not in SCOPES or not re.fullmatch(r"[a-f0-9]{32}", target):
         raise ValueError("Invalid erasure identifier")
     db.add(ErasureRequest(scope=scope, target=target))
 
@@ -36,7 +38,7 @@ def verify(raw, key):
     expected = json.loads(signed(record, key))["signature"]
     if not hmac.compare_digest(value["signature"], expected):
         raise ValueError("Erasure journal authentication failed")
-    if record["scope"] not in ("family", "child", "user", "material", "membership"):
+    if record["scope"] not in SCOPES:
         raise ValueError("Invalid erasure scope")
     if not all(re.fullmatch(r"[a-f0-9]{32}", record[k]) for k in ("id", "target")):
         raise ValueError("Invalid erasure identifier")
@@ -96,10 +98,11 @@ def reconcile(db, records):
 
     paths = []
     # Collect image paths before user cascades can remove their Material rows.
-    order = {"family": 0, "child": 1, "material": 2, "membership": 3, "user": 4}
+    order = {"family": 0, "child": 1, "unit": 2, "material": 3, "membership": 4, "user": 5}
     for record in sorted(records, key=lambda record: order[record["scope"]]):
         scope, target = record["scope"], record["target"]
-        model = {"family": Family, "child": Child, "user": User, "material": Material, "membership": Membership}[scope]
+        model = {"family": Family, "child": Child, "user": User, "material": Material,
+                 "membership": Membership, "unit": LearningUnit}[scope]
         row = db.get(model, target)
         if row is None:
             continue
@@ -111,6 +114,10 @@ def reconcile(db, records):
             db.execute(delete(User).where(User.id == target))
         elif scope == "membership":
             db.delete(row)
+        elif scope == "unit":
+            from .unit_erasure import remove
+
+            remove(db, db.get(Child, row.child_id), [row.id], journal=False)
         else:
             from .tutor import purge_source_turns
 

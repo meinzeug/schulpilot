@@ -41,6 +41,8 @@ Future<bool> deleteNotebookPages(
   );
   if (!context.mounted || owner != state.user?['id']) return false;
   final count = (preview['count'] as num? ?? 0).toInt();
+  final units = (preview['unit_count'] as num? ?? 0).toInt();
+  final answers = (preview['answer_count'] as num? ?? 0).toInt();
   if (count < 1 || preview['selection_token'] is! String) {
     throw ApiError('Keine Seiten ausgewählt. Lade die Liste neu.');
   }
@@ -48,16 +50,50 @@ Future<bool> deleteNotebookPages(
     context,
     count == 1 ? 'Heftseite löschen?' : '$count Heftseiten löschen?',
     '${counted(count, 'ausgewählte Seite wird', 'ausgewählte Seiten werden')} gelöscht${ids == null ? ' – auch auf weiteren Listenseiten' : ''}. '
-    'Foto und erkannter Text werden entfernt. Bisherige Übungen und Antworten bleiben erhalten.',
+    'Foto und erkannter Text werden entfernt. '
+    '${units > 0 ? '${counted(units, 'verknüpfte Lernrunde', 'verknüpfte Lernrunden')} mit ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} werden ebenfalls gelöscht, auch Runden mit mehreren Heftseiten. ' : ''}'
+    'Das kannst du nicht rückgängig machen.',
   );
   if (!accepted || !context.mounted || owner != state.user?['id']) return false;
   final result = await state.api.post(
     '/children/$childId/materials/bulk-delete',
-    {'selection_token': preview['selection_token']},
+    {
+      'selection_token': preview['selection_token'],
+      'delete_linked_units': true,
+    },
   );
   if (!context.mounted || owner != state.user?['id']) return false;
   final deleted = (result['deleted_count'] as num? ?? 0).toInt();
   toast(context, '${counted(deleted, 'Heftseite', 'Heftseiten')} gelöscht.');
+  state.refreshState();
+  return true;
+}
+
+Future<bool> deleteLearningRound(
+  BuildContext context,
+  AppState state,
+  Json item,
+) async {
+  final owner = state.user?['id'];
+  final id = item['id'];
+  final preview = await state.api.post('/units/$id/delete-preview', {});
+  if (!context.mounted || owner != state.user?['id']) return false;
+  final answers = (preview['answer_count'] as num? ?? 0).toInt();
+  if (preview['selection_token'] is! String) {
+    throw ApiError('Lade die Liste neu und wähle die Runde erneut aus.');
+  }
+  final accepted = await confirmDialog(
+    context,
+    'Lernrunde löschen?',
+    'Diese Runde mit ihren Aufgaben, Rückmeldungen und ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} wird gelöscht. '
+        'Die Heftseiten und andere Runden bleiben erhalten. Das kannst du nicht rückgängig machen.',
+  );
+  if (!accepted || !context.mounted || owner != state.user?['id']) return false;
+  await state.api.post('/units/$id/delete', {
+    'selection_token': preview['selection_token'],
+  });
+  if (!context.mounted || owner != state.user?['id']) return false;
+  toast(context, 'Lernrunde gelöscht.');
   state.refreshState();
   return true;
 }

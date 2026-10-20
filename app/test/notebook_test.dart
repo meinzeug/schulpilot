@@ -359,6 +359,7 @@ void main() {
             expect(request.method, 'POST');
             expect(jsonDecode(request.body), {
               'selection_token': 'own-selection',
+              'delete_linked_units': true,
             });
             deleted.add('page0');
             return jsonReply({'deleted_count': 1});
@@ -399,7 +400,7 @@ void main() {
       );
       expect(find.text('Heftseite löschen?'), findsOneWidget);
       expect(
-        find.textContaining('Bisherige Übungen und Antworten bleiben erhalten'),
+        find.textContaining('Das kannst du nicht rückgängig machen'),
         findsOneWidget,
       );
       await tap(tester, find.text('Bestätigen'), settle: false);
@@ -488,6 +489,7 @@ void main() {
             expect(request.url.path.endsWith('/bulk-delete'), isTrue);
             expect(jsonDecode(request.body), {
               'selection_token': 'all-own-math',
+              'delete_linked_units': true,
             });
             removed = true;
             return jsonReply({'deleted_count': 47});

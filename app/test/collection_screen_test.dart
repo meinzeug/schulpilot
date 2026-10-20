@@ -144,6 +144,61 @@ Future<void> tap(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  for (final section in ['ready', 'completed']) {
+    testWidgets(
+      'Round deletion counts answers and refreshes $section at320px',
+      (tester) async {
+        final posts = <http.Request>[];
+        var removed = false;
+        await open(tester, (request) async {
+          if (request.method == 'POST') {
+            posts.add(request);
+            if (request.url.path.endsWith('/delete-preview')) {
+              return reply({
+                'unit_count': 1,
+                'answer_count': 3,
+                'selection_token': 'private-snapshot',
+              });
+            }
+            expect(request.url.path, '/api/units/m0/delete');
+            expect(jsonDecode(request.body), {
+              'selection_token': 'private-snapshot',
+            });
+            removed = true;
+            return reply({'deleted_count': 1});
+          }
+          return reply(
+            listing(total: removed ? 0 : 1, learning: true, section: section),
+          );
+        }, learning: true);
+        await tap(tester, find.byTooltip('Lernrunde löschen'));
+        expect(find.text('Lernrunde löschen?'), findsOneWidget);
+        expect(
+          find.textContaining('3 gespeicherten Antwortversuchen'),
+          findsOneWidget,
+        );
+        await tap(tester, find.text('Abbrechen'));
+        expect(posts, hasLength(1));
+        await tap(tester, find.byTooltip('Lernrunde löschen'));
+        await tap(tester, find.text('Bestätigen'));
+        await tester.pumpAndSettle();
+        expect(removed, true);
+        expect(find.byTooltip('Lernrunde löschen'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+  testWidgets('Read-only parent has no round deletion control', (tester) async {
+    await open(
+      tester,
+      (_) async => reply(listing(total: 1, learning: true)),
+      learning: true,
+      parent: true,
+    );
+    expect(find.byTooltip('Lernrunde löschen'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
   for (final width in [320.0, 1280.0]) {
     testWidgets(
       'Library paginates1205 metadata records at$width without loading images',

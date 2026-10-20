@@ -135,7 +135,8 @@ verschlüsselter Token gilt zehn Minuten, gebunden an Anmeldung, Kind, Filter un
 Snapshot. Neue/geänderte Seiten, Rechteänderung oder laufende Verarbeitung führen
 zur vollständigen Ablehnung; keine stille Teillöschung. Einheitensperren vor Kind,
 stabile Reihenfolge, Löschjournal und bestehende Quellen-/Tutor-/Wortlöschung
-werden wiederverwendet. Bereits gespeicherte Übungen und Antworten bleiben.
+werden wiederverwendet. In Version50 blieben gespeicherte Übungen und Antworten;
+der folgende ausdrückliche Betreiberauftrag ändert dies ab51 wie unten beschrieben.
 Auswahl wird bei Filter-/Kontowechsel verworfen. Die eigene Prüfseitenroute des
 Fotoassistenten behält ihre bisherigen Tages- und Fortsetzungsprüfungen.
 
@@ -166,3 +167,31 @@ Additive API-Endpunkte:
 Tatsächlich ausgeführte Prüfungen, öffentliche Version und verbleibende Grenzen
 stehen in STATUS.md und NOTEBOOK_ACTIONS_QA.md. Widget-/Mockprüfungen sind kein
 Nachweis echter KI-Erkennung oder physischer Gerätetests.
+
+## Zusammenhängendes Löschen ab1.11.1+51
+
+Die bestätigte Seitenlöschung entfernt auch direkt verknüpfte Lernrunden,
+Mehrquellenrunden und über Vorgänger-/Wurzelverweise verknüpfte Folgeübungen.
+Die serverseitige Vorschau nennt die genaue Zahl der Seiten, Runden und
+gespeicherten Antwortversuche. Bei einer Mehrquellenrunde bleiben andere Fotos
+erhalten; ihre gemeinsame Runde wird vollständig entfernt. Quellen-, Runden-,
+Antwort-, Hilfe- und Rückblickänderungen nach der Vorschau sperren die Löschung.
+Laufende KI-Verarbeitung sperrt weiterhin die gesamte Aktion.
+
+Neue Clients senden delete_linked_units=true mit dem bestätigten Auswahltoken.
+Ältere Clients mit dem bisherigen Versprechen, Antworten zu behalten, werden
+bei verknüpften Übungen mit einem Aktualisierungshinweis abgewiesen. Auch die
+alte direkte DELETE-Route löscht solche Seiten nicht unbemerkt.
+
+Attempts, Rückblicke, Tutorbezüge, Entwürfe, Lerntipps und zugehörige Aktivitäten
+werden über bestehende Fremdschlüssel gelöscht. Lernplanblöcke werden entfernt,
+nicht als neue Erzeugungswünsche freigestellt. Abgeleitete Themen-/Wortstände
+werden aus verbleibenden Übungsbelegen neu berechnet. Elternaufträge und echte
+KI-Verbräuche/Reservierungen bleiben erhalten; abgeschlossene Jobaufträge behalten
+ihre Idempotenzkennung mit bereinigtem Inhalt.
+
+Das authentifizierte Löschjournal kennt zusätzlich scope=unit. Wiederherstellungen
+müssen mindestens diesen journalfähigen Stand verwenden. Ein Code-Rückweg auf50
+braucht einen gesonderten Rückbau, der die neue Journalprüfung und Rundenbereinigung
+erhält; alte Wiederherstellungswerkzeuge würden den unbekannten Scope ablehnen.
+Keine Rücksicherung über neuere Antworten oder Löschungen durchführen.

@@ -476,6 +476,27 @@ class _PagedCollectionState extends State<PagedCollection> {
   bool canDeleteMaterial(Json item) =>
       canSelectPages && materialCanDelete(widget.state, item);
 
+  bool canDeleteRound(Json item) =>
+      widget.learning &&
+      widget.onSelect == null &&
+      item['kind'] == 'unit' &&
+      (widget.state.isChild ||
+          (widget.state.isParent && widget.state.canManage));
+
+  Future<void> deleteRound(Json item) async {
+    if (!canDeleteRound(item) || deletingMaterial != null) return;
+    setState(() => deletingMaterial = item['id']);
+    try {
+      if (await deleteLearningRound(context, widget.state, item) && active) {
+        await load(scroll: true);
+      }
+    } catch (error) {
+      if (mounted && active) showError(context, error);
+    } finally {
+      if (active) setState(() => deletingMaterial = null);
+    }
+  }
+
   Json materialFilters() => {
     'q': search.text.trim(),
     if (subject != null) 'subject': subject,
@@ -1089,6 +1110,14 @@ class _PagedCollectionState extends State<PagedCollection> {
                       icon: const Icon(Icons.delete_outline_rounded),
                     ),
                   ],
+                )
+              : canDeleteRound(item)
+              ? IconButton(
+                  tooltip: 'Lernrunde löschen',
+                  onPressed: deletingMaterial != null
+                      ? null
+                      : () => deleteRound(item),
+                  icon: const Icon(Icons.delete_outline_rounded),
                 )
               : opening == item['id']
               ? const SizedBox(

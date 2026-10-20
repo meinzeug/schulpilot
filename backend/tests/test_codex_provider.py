@@ -131,6 +131,41 @@ def test_codex_schema_indexes_and_account_usage(transport):
     assert all("key" not in field for field in body)
 
 
+def test_followup_transport_sends_identical_sources_once_without_mutating_revision_data(transport):
+    config, _, calls, _ = transport
+    sources = [{"id": "source-one", "revision": 4, "content": "Künstlicher Bruchstoff. " * 30},
+               {"id": "source-two", "revision": 7, "content": "Künstliche Beispiele. " * 30}]
+    combined = "\n\n".join(m["content"] for m in sources)
+    payload = {"review": True, "materials": sources,
+               "material": {"subject": "Mathematik", "content": combined},
+               "previous_prompts": ["Vorherige künstliche Frage"]}
+    original = copy.deepcopy(payload)
+    result = request_provider(config, "unit", payload)
+    assert result.data["questions"]
+    sent = calls[0]["payload"]
+    assert sent["materials"] == sources and sent["previous_prompts"] == original["previous_prompts"]
+    assert "content" not in sent["material"] and sent["material"]["content_ref"] == "materials[].content"
+    assert payload == original
+    import json
+
+    assert len(json.dumps(sent)) < len(json.dumps(original)) - len(combined) + 100
+    assert "vollständig enthaltenen Quellen" in calls[0]["system"]
+
+
+def test_transport_keeps_nonidentical_source_and_initial_unit_content(transport):
+    config, _, calls, _ = transport
+    payload = {"review": True, "materials": [{"content": "Künstlicher Stoff. " * 30}],
+               "material": {"content": "Anderer bestätigter Stoff. " * 30}}
+    request_provider(config, "unit", payload)
+    assert calls[-1]["payload"]["material"] == payload["material"]
+    assert calls[-1]["payload"]["materials"] == payload["materials"]
+    payload["review"] = False
+    payload["material"]["content"] = payload["materials"][0]["content"]
+    request_provider(config, "unit", payload)
+    assert calls[-1]["payload"]["material"] == payload["material"]
+    assert calls[-1]["payload"]["materials"] == payload["materials"]
+
+
 @pytest.mark.parametrize("status", [413, 429, 502, 503, 500])
 def test_worker_errors_never_echo_credentials_or_fallback(transport, status):
     config, _, calls, response = transport

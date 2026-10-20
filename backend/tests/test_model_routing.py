@@ -11,7 +11,7 @@ from schulpilot import providers
 from schulpilot.ai_accounting import allocate_fee, response_metrics
 from schulpilot.config import settings
 from schulpilot.db import DB, ChildCostBucket, CreditPurchase, Family, Job, ProviderConfig, Usage, UsageBucket, now, uid
-from schulpilot.model_routing import RoutingPolicy, choose_tier, job_config, select_route
+from schulpilot.model_routing import RoutingPolicy, choose_tier, features_for, job_config, select_route
 from schulpilot.providers import ProviderError, Result, reserve, settle
 from sqlalchemy import func, select
 from test_providers import configured
@@ -66,6 +66,67 @@ def test_routes_use_recorded_need_and_do_not_fall_back(api, household):
         with pytest.raises(HTTPException) as raised:
             job_config(db, job)
         assert raised.value.status_code == 409
+
+
+@pytest.mark.parametrize('function,features,tier', [
+    ('tutor', {'sources_known': True, 'source_count': 1, 'source_chars': 1200, 'question_chars': 60}, 'luna'),
+    ('coach', {'source_chars': 3000}, 'luna'),
+    ('unit', {'sources_known': True, 'source_count': 1, 'source_chars': 1800, 'subject_count': 1}, 'luna'),
+    ('coach_practice', {'sources_known': True, 'source_count': 2, 'source_chars': 2500, 'subject_count': 1}, 'luna'),
+    ('package', {'sources_known': True, 'source_count': 9, 'source_chars': 6000, 'subject_count': 3}, 'sol'),
+    ('tutor', {'sources_known': True, 'source_count': 1, 'source_chars': 1200, 'errors': 2}, 'sol'),
+    ('coach', {'source_chars': 3000, 'uncertain': 1}, 'sol'),
+    ('extract', {'poor_image': True}, 'sol'),
+    ('unit', {}, 'sol'),
+    ('language_project', {}, 'sol'),
+    ('coach', {'uncertain': 2, 'errors': 3}, 'sol'),
+])
+def test_explicit_economy_policy_uses_recorded_scope_without_model_router(function, features, tier):
+    assert choose_tier(function, features, economy=True)[0] == tier
+
+
+def test_tutor_economy_route_reads_own_sources_and_preserves_reserved_choice(api, household):
+    from schulpilot.db import Child, Material, TutorTurn
+
+    parent, child = household
+    setup_policy(parent['families'][0]['id'])
+    with DB.begin() as db:
+        cfg = db.get(ProviderConfig, 1)
+        cfg.routing_policy = {**cfg.routing_policy, 'economy_mode': True}
+        material = Material(child_id=child['id'], title='Künstliche Bruchregel', content='Zähler und Nenner gleich erweitern.',
+                            subject='Mathematik', confirmed=True)
+        db.add(material)
+        db.flush()
+        turn = TutorTurn(child_id=child['id'], user_id=db.get(Child, child['id']).user_id,
+                         material_id=material.id, question='Was heißt erweitern?',
+                         source_revisions=[{'id': material.id, 'revision': material.revision}])
+        db.add(turn)
+        db.flush()
+        job = Job(child_id=child['id'], kind='tutor', payload={'turn_id': turn.id}, idempotency='economy-help-test')
+        db.add(job)
+        db.flush()
+        facts = features_for(db, child['id'], job.id)
+        assert facts['sources_known'] and facts['source_count'] == 1
+        usage = reserve(db, db.get(Family, parent['families'][0]['id']), child['id'], job.id, 'tutor')
+        assert usage.model == cfg.routing_policy['routes']['luna']['model']
+        assert usage.route_snapshot['reason'] == 'bounded_source_help'
+        # Later context growth cannot silently upgrade an already reserved job.
+        material.content = 'Künstlicher umfangreicher Unterricht. ' * 400
+        assert job_config(db, job, 'tutor').model == usage.model
+
+
+def test_routing_features_reject_foreign_job_before_loading_private_context(api, household):
+    from conftest import create_child
+
+    parent, child = household
+    sibling = create_child(api, parent, 'economy-sibling')
+    with DB.begin() as db:
+        job = Job(child_id=sibling['id'], kind='unit', payload={}, idempotency='foreign-economy-job')
+        db.add(job)
+        db.flush()
+        with pytest.raises(HTTPException) as raised:
+            features_for(db, child['id'], job.id)
+        assert raised.value.status_code == 403
 
 
 def test_invalid_or_stale_route_cannot_be_enabled(api, household):
@@ -271,3 +332,29 @@ def test_local_switch_needs_server_key_and_preserves_stricter_limits(api, househ
         assert cfg.global_limit_micros == 1000000 and cfg.reserve_micros == 1000
         assert cfg.production_block_reason
         assert db.get(Family, fid).call_limit == 3 and db.get(Family, fid).budget_micros == 3000
+
+
+def test_local_paid_switch_can_explicitly_resize_hold_without_raising_quotas(api, household, monkeypatch):
+    import io
+    import json
+
+    from schulpilot import openrouter_setup
+    from schulpilot.db import Audit
+
+    parent, _ = household
+    fid = parent['families'][0]['id']
+    configured(fid)
+    object.__setattr__(settings, 'openrouter_api_key', 'SYNTHETIC-NOT-A-REAL-KEY')
+    document = {'policy': policy(), 'evidence': 'Synthetic explicit paid reservation and switch.',
+                'reservation_micros': 150000}
+    monkeypatch.setattr('sys.stdin', io.StringIO(json.dumps(document)))
+    openrouter_setup.configure()
+    with DB() as db:
+        cfg = db.get(ProviderConfig, 1)
+        assert cfg.reserve_micros == 150000 and cfg.global_limit_micros == 1000000
+        assert cfg.production_block_reason
+        assert db.get(Family, fid).call_limit == 3 and db.get(Family, fid).budget_micros == 3000
+        assert db.scalar(select(Audit.id).where(Audit.action == 'provider.explicit_paid_reservation'))
+    document['reservation_micros'] = 250001
+    with pytest.raises(ValidationError):
+        openrouter_setup.Configuration.model_validate(document)

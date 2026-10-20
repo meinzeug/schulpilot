@@ -1,5 +1,14 @@
 # Betreiberfreigabe und technische Verfügbarkeit
 
+Am20.10.2026 wurde ausdrücklich der produktive Wechsel von Codex auf bezahlte
+OpenRouter-Modelle mit bedarfsabhängiger Auswahl und dem Schlüssel aus `~/or.txt`
+beauftragt. Wegen nicht möglicher Browseranmeldung hat der Betreiber anschließend
+ausdrücklich die direkte Schlüsselnutzung angewiesen. Kontoweite Logging-/
+Datenfreigabeeinstellungen wurden dabei nicht eingesehen und werden nicht als
+verifiziert ausgegeben. Die API erzwingt ZDR, Data-Collection-Deny, feste Upstreams
+und deaktiviertes Response-Caching. Technischer Nachweis, Kosten, Limits und
+Rückweg: [Operatorwechsel20.10.](OPENROUTER_ACTIVATION_2026_10_20.md).
+
 Am 14.10.2026 hat der Auftraggeber ausdrücklich erklärt: „anbieter und datenschutz freigabe ist erteilt“.
 Diese Betreiberentscheidung wird für SCHULPILOT dokumentiert und bei der Konfiguration berücksichtigt. Eine erneute Zustimmung wird dafür nicht verlangt. Dieses Protokoll behauptet nicht, dass Vertragsunterlagen oder eine unabhängige Rechtsprüfung im Repository vorliegen.
 

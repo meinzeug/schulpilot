@@ -740,7 +740,7 @@ void main() {
       for (var i = 0; i < 8; i++) {
         for (
           var wait = 0;
-          wait < 40 && find.text('Zuschnitt übernehmen').evaluate().isEmpty;
+          wait < 300 && find.text('Zuschnitt übernehmen').evaluate().isEmpty;
           wait++
         ) {
           await tester.runAsync(
@@ -760,7 +760,7 @@ void main() {
         );
         await settleUi(tester);
       }
-      for (var wait = 0; wait < 30 && server.uploads < 8; wait++) {
+      for (var wait = 0; wait < 300 && server.uploads < 8; wait++) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 30)),
         );

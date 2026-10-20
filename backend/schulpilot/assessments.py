@@ -20,18 +20,20 @@ def rebuild_mastery(db, child, subject, topic):
     if not units:
         return
     mastery = db.scalar(select(Mastery).where(Mastery.child_id == child.id, Mastery.subject == subject, Mastery.topic == topic))
-    if mastery is None:
-        mastery = Mastery(child_id=child.id, subject=subject, topic=topic)
-        db.add(mastery)
-    mastery.independent = mastery.assisted = mastery.difficulties = mastery.uncertain_units = mastery.review_successes = 0
+    if mastery is not None:
+        mastery.independent = mastery.assisted = mastery.difficulties = mastery.uncertain_units = mastery.review_successes = 0
     previous_day = None
     zone = ZoneInfo(Preferences(**child.preferences).timezone)
     for unit in units:
         attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
         final = {a.question_id: a for a in attempts}
         values = [final[q["id"]] for q in unit.questions if q["id"] in final]
-        if len(values) != len(unit.questions):
+        if not values or len(values) != len(unit.questions) or not unit.completed:
             continue
+        if mastery is None:
+            mastery = Mastery(child_id=child.id, subject=subject, topic=topic, independent=0,
+                             assisted=0, difficulties=0, uncertain_units=0, review_successes=0)
+            db.add(mastery)
         day = datetime.fromtimestamp(unit.completed, zone).date()
         if all(a.outcome == "correct" and not a.assisted for a in values):
             mastery.independent += 1

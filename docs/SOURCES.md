@@ -232,3 +232,21 @@ Benachrichtigungsglocke und Android-Zustellung, geprüft am 17.10.2026:
   geprüftes Grundwissen zu Luftatmung/Lunge und Milch bei Meeressäugern. Eigene
   kurze deutsche Paraphrase in foundations.py, getrennt vom bestätigten Hefttext;
   keine fremden Bilder/Arbeitsblätter oder ungeprüfter allgemeiner Wissenskurs.
+## Arbeitseinheit20.10.2026 ·1.11.1+51
+
+- Offizielle OpenRouter-Modell-/Endpunkt- und ZDR-APIs am20.10. erneut geprüft:
+  [Luna-Endpunkte](https://openrouter.ai/api/v1/models/openai/gpt-6-luna/endpoints),
+  [Sol-Endpunkte](https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints),
+  [ZDR-Liste](https://openrouter.ai/api/v1/endpoints/zdr).
+- [Routingvorgaben](https://openrouter.ai/docs/guides/routing/provider-selection),
+  [ZDR](https://openrouter.ai/docs/guides/features/zdr) und
+  [Response-Caching](https://openrouter.ai/docs/guides/features/response-caching):
+  konkrete Anfragevorgaben getrennt von nicht eingesehenem Konto-Logging führen.
+- [ECB-Referenzkurse](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml),
+  Datenstand19.10.2026:1EUR=1,1225USD. Konservativ gerundete Umrechnung und
+  tatsächliche dreiteilige Probe in OPENROUTER_ACTIVATION_2026_10_20.md.
+- Neun künstliche Heftbilder mit eingebautem image_gen, je drei Abschnitte in
+  Mathematik, Deutsch und Englisch. Prompts/Herkunft:
+  qa/notebook_audit_images_20261020.json; Bilder außerhalb von Git in
+  artifacts/notebook-audit-20261020. Alle neun vor Upload visuell durchgesehen;
+  keine echten Kinderinhalte oder übernommenen Schulbuchseiten.

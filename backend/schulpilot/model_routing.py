@@ -9,11 +9,11 @@ from fastapi import HTTPException
 from pydantic import Field, model_validator
 from sqlalchemy import select
 
-from .db import Attempt, Job, LearningUnit, Material, ProviderConfig, Usage, now
+from .db import Attempt, Job, LearningUnit, Material, ProviderConfig, SchoolDay, TutorTurn, UnitSource, Usage, now
 from .schemas import Strict
 
-ROUTING_VERSION = "school-1"
-PROMPT_VERSION = "school-20261019-1"
+ROUTING_VERSION = "school-2"
+PROMPT_VERSION = "school-20261020-1"
 
 
 class ModelRoute(Strict):
@@ -71,6 +71,7 @@ class BudgetPolicy(Strict):
 class RoutingPolicy(Strict):
     version: Literal[1] = 1
     enabled: bool = False
+    economy_mode: bool = False
     routes: dict[Literal["luna", "sol", "astra"], ModelRoute]
     budget: BudgetPolicy
     region: Literal["standard", "eu", "us"] = "standard"
@@ -99,25 +100,69 @@ def enabled(config):
 def features_for(db, child_id, job_id):
     """Use bounded recorded facts, never client-selected difficulty or model IDs."""
     job = db.get(Job, job_id)
+    if job and job.child_id != child_id:
+        raise HTTPException(403, "Dieser Auftrag gehört zu einem anderen Zugang.")
     data = job.payload if job else {}
-    unit = db.get(LearningUnit, data.get("unit_id")) if data.get("unit_id") else None
+    turn = db.get(TutorTurn, data.get("turn_id")) if data.get("turn_id") else None
+    if turn and turn.child_id != child_id:
+        raise HTTPException(403, "Diese Heftfrage gehört zu einem anderen Zugang.")
+    unit_id = data.get("unit_id") or (turn.unit_id if turn else None)
+    unit = db.get(LearningUnit, unit_id) if unit_id else None
     if unit and unit.child_id != child_id:
         raise HTTPException(403, "Diese Lernrunde gehört zu einem anderen Zugang.")
-    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).limit(40))) if unit else []
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id)
+        .order_by(Attempt.created.desc(), Attempt.id.desc()).limit(40))) if unit else []
     material = db.get(Material, data.get("material_id")) if data.get("material_id") else None
     if material and material.child_id != child_id:
         raise HTTPException(403, "Diese Heftseite gehört zu einem anderen Zugang.")
+    ids = {material.id} if material else set()
+    refs = [*(data.get("sources") or []), *(data.get("material_revisions") or []),
+            *(turn.source_revisions if turn else [])]
+    if unit:
+        if unit.material_id:
+            ids.add(unit.material_id)
+        ids.update(db.scalars(select(UnitSource.material_id).where(UnitSource.unit_id == unit.id)))
+    day_id = data.get("day_id")
+    if day_id and data.get("block_id"):
+        day = db.get(SchoolDay, day_id)
+        if day and day.child_id != child_id:
+            raise HTTPException(403, "Dieser Lernplan gehört zu einem anderen Zugang.")
+        if day:
+            block = next((b for b in (day.learning_plan or {}).get("blocks", [])
+                          if b.get("id") == data["block_id"]), {})
+            ids.update(block.get("material_ids", []))
+    ids.update(ref.get("id") or ref.get("material_id") for ref in refs if isinstance(ref, dict))
+    ids.discard(None)
+    sources = list(db.scalars(select(Material).where(Material.child_id == child_id, Material.id.in_(ids)))) if ids else []
     return {
         "errors": sum(a.outcome == "incorrect" for a in attempts),
         "uncertain": sum(a.outcome == "uncertain" for a in attempts),
-        "poor_image": bool(material and (material.uncertainties or material.quality_warnings
-            or material.legibility in ("partial", "unreadable"))),
-        "source_count": len(data.get("sources", data.get("material_revisions", []))),
+        "poor_image": any(m.uncertainties or m.quality_warnings or m.legibility in ("partial", "unreadable") for m in sources),
+        "sources_known": bool(ids) and len(sources) == len(ids),
+        "source_count": len(sources),
+        "source_chars": sum(len(m.content or "") for m in sources),
+        "subject_count": len({m.subject for m in sources}),
+        "question_chars": len(turn.question) if turn else 0,
     }
 
 
-def choose_tier(function, features):
+def choose_tier(function, features, *, economy=False):
     # Start difficult material on the suitable route, without a trial cascade.
+    if economy:
+        if features.get("poor_image") or features.get("errors", 0) >= 2 or features.get("uncertain", 0):
+            return "sol", "recorded_difficulty"
+        if function in ("extract", "coach", "vocabulary_import"):
+            if features.get("source_chars", 0) <= 8000:
+                return "luna", "bounded_source_or_review"
+        if features.get("sources_known"):
+            if (function == "tutor" and features["source_count"] <= 4
+                    and features["source_chars"] <= 8000 and features.get("question_chars", 0) <= 800):
+                return "luna", "bounded_source_help"
+            if (function in ("unit", "coach_practice", "controller_check", "study_block", "package")
+                    and features["source_count"] <= 2 and features["source_chars"] <= 6000
+                    and features.get("subject_count", 0) <= 1):
+                return "luna", "focused_source_practice"
+        return "sol", "extended_or_unclassified_teaching"
     if features.get("uncertain", 0) >= 2 and features.get("errors", 0) >= 3:
         return "astra", "recorded_ambiguity_after_support"
     if function == "extract" and not features.get("poor_image"):
@@ -134,7 +179,7 @@ def select_route(config, function, features=None, snapshot=None):
     if not enabled(config):
         return config
     policy = RoutingPolicy.model_validate(policy_data)
-    tier, reason = choose_tier(function, features or {})
+    tier, reason = choose_tier(function, features or {}, economy=policy.economy_mode)
     if snapshot:
         if snapshot.get("policy_hash") != policy_hash(policy_data):
             raise HTTPException(409, "Die KI-Einstellung wurde geändert. Bitte den aktuellen Lernschritt öffnen.")

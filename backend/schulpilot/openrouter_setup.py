@@ -16,6 +16,7 @@ from .security import audit
 class Configuration(Strict):
     policy: RoutingPolicy
     evidence: str = Field(min_length=20, max_length=500)
+    reservation_micros: int | None = Field(default=None, ge=1000, le=250000)
 
 
 def configure():
@@ -41,12 +42,20 @@ def configure():
         config.capability_evidence, config.pricing_evidence = route['capability_evidence'], route['pricing_evidence']
         config.input_per_million_micros = route['input_per_million_micros']
         config.output_per_million_micros = route['output_per_million_micros']
-        # All existing stricter global/family/call/output/reservation limits and
-        # emergency stop remain intact. Route flags are not operator consent.
+        if data.reservation_micros is not None:
+            previous = config.reserve_micros
+            config.reserve_micros = data.reservation_micros
+            audit(db, 'local-cli', 'provider.explicit_paid_reservation',
+                  f'{previous}->{data.reservation_micros}; family/system quotas unchanged')
+        # Global/family/call/output limits and emergency stop remain intact.
+        # The accounting hold changes only through the explicit operator field.
+        # Route flags are not operator consent.
         config.production_block_reason = 'Modellmix gespeichert; künstliche Bild-, Aufgaben- und Paketprüfung steht aus.'
         config.status = config.production_block_reason
         config.revision += 1
         audit(db, 'local-cli', 'provider.configure_openrouter_mix', policy['revision'])
         audit(db, 'local-cli', 'provider.switch_evidence', data.evidence[:80])
     print(json.dumps({'configured': True, 'provider': 'openrouter', 'synthetic_probe_required': True,
-        'privacy_route_flags_preserved': True, 'limits_preserved': True}))
+        'privacy_route_flags_preserved': True, 'quotas_preserved': True,
+        'existing_reservation_preserved': data.reservation_micros is None,
+        'explicit_reservation_micros': data.reservation_micros}))

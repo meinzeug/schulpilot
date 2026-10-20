@@ -326,9 +326,10 @@ def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_d
 
         return remove_page(material.school_day_id, material.id, p=p, db=db)
     child_access(db, p, child.id, write=p.user.role == "parent")
-    # New notebook action explicitly allows the child to delete confirmed own
-    # pages. Existing generated units and attempts are retained by FK policy.
+    # Older clients promise that answers survive. Require the new counted
+    # preview/confirmation whenever removal also affects saved learning rounds.
     from .material_actions import delete_rows, ensure_idle, remove_files, snapshot
+    from .unit_erasure import linked_ids
 
     original_snapshot = snapshot([material])
     lock_material_units(db, child.id, material_id)
@@ -336,10 +337,12 @@ def delete_material(material_id: str, p=Depends(authenticated), db=Depends(get_d
     if snapshot([material]) != original_snapshot:
         raise HTTPException(409, "Die Seite wurde inzwischen geändert. Bitte neu laden und erneut auswählen.")
     ensure_idle(db, child.id)
+    if linked_ids(db, child.id, [material_id]):
+        raise HTTPException(409, "Diese Seite hat verknüpfte Übungen. Bitte die App aktualisieren und die Löschvorschau in deinen Heften verwenden.")
     paths = delete_rows(db, child, [material])
     db.commit()
     remove_files(paths)
-    return {"message": "Heftseite und Foto gelöscht. Deine bisherigen Antworten bleiben im Lernverlauf."}
+    return {"message": "Heftseite und Foto gelöscht."}
 
 
 def lock_material_units(db, child_id, material_id):

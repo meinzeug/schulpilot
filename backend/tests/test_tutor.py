@@ -713,7 +713,7 @@ def test_simultaneous_last_answer_finishes_before_tutor_without_retrospective_he
 
 
 @pytest.mark.skipif(engine.dialect.name != "postgresql", reason="Requires PostgreSQL row-lock semantics")
-def test_parent_source_deletion_racing_tutor_completion_succeeds_and_removes_reply(api, notebook, transport):
+def test_legacy_delete_racing_tutor_waits_then_requires_counted_cascade(api, notebook, transport):
     from threading import Event, get_ident
     from time import monotonic
 
@@ -767,10 +767,15 @@ def test_parent_source_deletion_racing_tutor_completion_succeeds_and_removes_rep
                 resume_completion.set()
             tutor_future.result(timeout=15)
             deleted = deletion.result(timeout=15)
-            assert deleted.status_code == 200, deleted.text
+            assert deleted.status_code == 409, deleted.text
     finally:
         resume_completion.set()
         event.remove(engine, "before_cursor_execute", before_statement)
+    selection = api.post(f"/api/children/{notebook['child']['id']}/materials/delete-preview",
+                         json={"ids": [notebook['material_id']]}).json()
+    deleted = api.post(f"/api/children/{notebook['child']['id']}/materials/bulk-delete",
+                       json={"selection_token": selection['selection_token'], "delete_linked_units": True})
+    assert deleted.status_code == 200, deleted.text
     with DB() as db:
         assert db.get(Material, notebook["material_id"]) is None
         assert db.get(TutorTurn, response.json()["id"]) is None
