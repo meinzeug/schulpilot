@@ -79,7 +79,9 @@ Die vorhandenen freiwilligen Aufträge zeigten eine sprachliche Unklarheit in de
 bezogen. 1.14.1 benennt das ausdrücklich und zeigt freiwillige Aufträge getrennt.
 Rundensummen sind ausdrücklich Runden mit gespeicherten Antworten; eine noch
 unbeantwortete vorbereitete/pausierte Runde wird damit nicht als geübt ausgegeben.
-Ein zusätzlicher GET-only-Regressionsfall sichert die Trennung.
+Ein zusätzlicher GET-only-Regressionsfall sichert die Trennung. Der leere
+Tagesplan benennt vor dem offenen Mindestziel Weiterlernen als nächsten Schritt;
+er verwendet dort nicht den Begriff freiwillig.
 
 ## Bereitstellung
 

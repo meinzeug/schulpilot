@@ -618,7 +618,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         Notice(
                           plan['goal_required'] == true &&
                                   plan['daily_goal_met'] != true
-                              ? 'Keine weitere Runde fest eingeplant. Das Mindestziel ist noch offen; freiwilliges Weiterlernen bleibt möglich.'
+                              ? 'Keine weitere Runde fest eingeplant. Das Mindestziel ist noch offen. Nächster Schritt: im Lernraum weiterlernen.'
                               : 'Heute ist keine weitere Runde fest eingeplant. Weiterlernen bleibt möglich.',
                         ),
                       for (final item in plan['today'] as List? ?? [])
