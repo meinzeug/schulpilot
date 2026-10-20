@@ -36,6 +36,9 @@ Auch synthetisch oder als Funktionstest gekennzeichnete Seiten werden vollständ
 Nichts aus Erwartungen an die Klassenstufe oder aus Vorwissen ergänzen. Sichtbare Fehler nicht korrigieren.
 
 Erst nach der Abschrift Fach (subject), Thema (topic) und Lesbarkeit (legibility) bestimmen.
+Eine ausdrücklich auf der Seite genannte Fachbezeichnung hat Vorrang. Namen von Zeitformen
+allein belegen keine Fremdsprache: beachte die Sprache der tatsächlichen Beispielsätze.
+Das Thema muss zum abgeschriebenen Stoff passen; keine andere Sprache hinzuerfinden.
 readable: der sichtbare Stoff ist vollständig lesbar und abgeschrieben.
 partial: nur sicher lesbaren Wortlaut abschreiben; jede fehlende/unklare Stelle mit ihrer Lage
 in uncertainties benennen, zum Beispiel 'Unterer Absatz: zwei Zeilen unleserlich'. Keine Wörter erraten.
