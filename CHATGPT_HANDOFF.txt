@@ -1,3 +1,56 @@
+SCHULPILOT1.11.0+50 · bereitgestellt ·20.10.2026
+
+Website https://schulpilot.dorfspy.de
+API https://schulpilot.dorfspy.de/api
+Release20261020T053724Z-82a6078
+Produktcode82a6078ae45a92d6da6556a0703b2d5d6c6a9d73, main gepusht.
+Build/Deployment erfolgreich, öffentlicher Healthcheck statusok/Version1.11.0.
+Keine Migration; bestehendes Schema0023. Sicherung im bestehenden Deployweg.
+
+Heftseitenlöschen jetzt auch für eigene bestätigte Kinderseiten. Sichtbare
+Papierkorb-/KI-Icons am Albumfoto, in Kacheln/Liste und im Materialdetail.
+Mehrfachauswahl, Alle auswählen über Pagination, Auswahl löschen und Alles löschen
+für den aktuellen Hefter/Filter. Servervorschau/Snapshot, keine Teilübernahme bei
+Änderungen. Antworten/Übungen bleiben; fremde Zugänge, Lese-Eltern und Betriebsadmin
+haben keine privaten Verwaltungsrechte. Feste KI-Beispiele bleiben geschützt.
+
+Neu einlesen: eigene private Fotokopie als neue unbestätigte Quelle, exakt ein
+reservierter OCR-Auftrag. Alte Quelle/Antworten nicht überschreiben. Statusroute
+/material/<neue-id>/processing/<job-id> ist nach Reload nur GET; anschließend
+Seite prüfen → Stimmt, weiter → bewusst neue Lernrunde. Kein automatischer Retry.
+API-/Zustandsbeschreibung und Grenzen: docs/NOTEBOOKS.md.
+
+Web, Direct-APK und Play-AAB50 gebaut. Signierung außerhalb von Git unverändert.
+APK artifacts/schulpilot-android.apk,68.058.366Bytes
+SHA256c25da2e7db8610ec7c54d0e1b2a1386bcec2447d20df7ee22e4c33790a93036e
+https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play-AAB artifacts/schulpilot-play.aab,64.444.596Bytes; kein Play-Upload.
+
+Vor Nutzersteuerung192PG-/4SQLite-/610Fluttertests bestanden, Analyse sauber.
+Initiale künstliche OCR auf49 erfolgreich, Codex-USD-Kosten unbekannt. Eigene
+reguläre Testfamilie danach normal gelöscht und private Kontocheckpoints entfernt.
+Abschließender ausdrücklicher Auftrag: NUR Versionen bauen und ausrollen; weitere
+Funktionstests übernimmt Nutzer. Keine Browser-/native50-/Reprocess50-Abnahme oder
+zusätzliche AAB50-Validierung behaupten. Bestehende erforderliche Build-/Signierer-
+Prüfung und der Deployment-Healthcheck sind erfolgt. Prüftreiber für eine spätere
+eigene Abnahme liegen vorbereitet in qa; docs/NOTEBOOK_ACTIONS_QA.md beachten.
+
+Provider-/Firebase-/Budgeteinstellungen unverändert. Frühere OpenRouter-
+Aktivierungsgrenzen bleiben bestehen; diese Arbeit behauptet keinen Wechsel.
+Keine Passwörter, Keys, Sessions oder privaten Fotos in dieser Übergabe.
+
+Rückweg:20261019T205610Z-5c3811c(49,Schema0023), als previous vorhanden.
+Vor Code-Rückweg neue KI-Aufträge stoppen und Neu-Einleseaufträge abarbeiten,
+dann vorhandenes deploy/activate.py <id> --rollback-compatible über ssh dorfspy.
+Keine DB-Rückstufung/pauschale Rücksicherung über neue Antworten oder Löschjournal.
+
+Kurzer Nutzernachtest: normaler Kinderlogin → Hefte → Hefter, Icons öffnen;
+Löschdialog erst abbrechen, dann eigene Auswahl prüfen. KI-Neueinlesen bestätigen,
+neue Fassung prüfen und neue Runde ausdrücklich starten. Android auf APK50
+aktualisieren. Produktivfunktionen nach Bereitstellung prüft der Nutzer.
+
+Vorheriger abgeschlossener Handoff bis1.10.0+49:
+
 SCHULPILOT1.10.0+49 · öffentlich verifiziert ·19.10.2026
 
 Website https://schulpilot.dorfspy.de ; eigene API /api.

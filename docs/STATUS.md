@@ -1,3 +1,65 @@
+# Produktionsstand 1.11.0+50 ·20.10.2026
+
+Web und reguläre signierte Direct-APK50 über den vorhandenen Deploymentweg
+bereitgestellt. Release `20261020T053724Z-82a6078`, Produktcode
+`82a6078ae45a92d6da6556a0703b2d5d6c6a9d73`. Der öffentliche Deployment-Healthcheck
+meldet status=ok und API-Version1.11.0. Vorherige Sicherung und Aktivierung über
+scripts/deploy.sh erfolgreich. Keine neue Migration: Schema0023 bleibt erhalten.
+
+## Neue Heftaktionen
+
+- Papierkorb und KI-Neueinlesen sichtbar im Album direkt über dem Foto sowie an
+  Kachel-/Listenseiten und im Materialdetail. Kinder dürfen nach dem ausdrücklichen
+  Auftrag nun auch eigene bestätigte Seiten löschen. Bestehende Antworten und
+  erzeugte Übungen bleiben im Lernverlauf; feste Beispiele sind geschützt.
+- Liste: Seiten auswählen, Alle auswählen über Pagination, Auswahl löschen und
+  Alles löschen für den aktuellen Hefter/Filter. Servervorschau mit Anzahl und
+  sitzungsgebundenem Zehn-Minuten-Snapshot; Änderungen und laufende Verarbeitung
+  verhindern die gesamte Löschung, keine stille Teilmenge.
+- KI-Neueinlesen legt eine neue unbestätigte Fassung des eigenen Fotos an. Genau
+  ein normal reservierter OCR-Auftrag, ursprüngliche Quelle/Antworten erhalten.
+  Statusseite nach Neustart/Reload nur GET. Danach Seite prüfen und ausdrücklich
+  eine neue Runde vorbereiten; keine automatische Quellenbestätigung.
+- Alte Fotoassistenten-Löschroute und ihre Weiterführung erhalten. Rechte bleiben
+  im Backend; Lese-Eltern, Geschwister/fremde Familien und Betriebsadmin gesperrt.
+
+Details/API/Größenlimits: NOTEBOOKS.md. Herkunft und Status: NOTEBOOK_ACTIONS_QA.md.
+Anbieter-, Firebase-, Tarif- und Budgeteinstellungen wurden nicht umgeschaltet.
+
+## Builds und Nachweisgrenze
+
+Web, signierte Direct-APK und Play-AAB50 erfolgreich gebaut. Gepinnte Toolchain
+und externe Signierung unverändert. Die bestehenden verpflichtenden APK-/Paket-/
+Versions-/Signierer-/Hash-/16KB-Prüfungen liefen im Build-/Deploymentweg.
+Bekannte flutter_tts-Wasm- und Kotlin-Plugin-Hinweise bleiben. AAB gebaut,
+kein Play-Upload und auf Nutzerwunsch keine zusätzliche Bundletool-Abnahme50.
+
+Vor der abschließenden Nutzersteuerung bestanden192 PostgreSQL-Tests (31 neue
+Fälle), vier SQLite-Kompatibilitätsprüfungen und610 Fluttertests; Analyse ohne
+Befund. Eine eigene künstliche Seite wurde noch auf49 normal erkannt und geprüft.
+Danach ausdrücklich: nur bauen/ausrollen, weitere Funktionstests durch Nutzer.
+Daher keine öffentliche Lösch-/Bulk-/Reprocess50-Abnahme und kein nativer50-
+Funktionstest behauptet. Die vorbereiteten Treiber wurden nicht mehr ausgeführt.
+Eigene Testfamilie regulär gelöscht, private Zugangsdaten entfernt und dedizierten
+Emulator nach Bereinigung beendet. Keine echten Familien verändert.
+
+APK: `artifacts/schulpilot-android.apk`,68.058.366Bytes, SHA256
+`c25da2e7db8610ec7c54d0e1b2a1386bcec2447d20df7ee22e4c33790a93036e`.
+Download: https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Play-AAB: `artifacts/schulpilot-play.aab`,64.444.596Bytes, lokal gebaut.
+
+Vorheriger Release `20261019T205610Z-5c3811c` (49, ebenfalls Schema0023) bleibt
+als previous verfügbar. Vor Rückweg neue KI-Aufträge anhalten und laufende
+Neu-Einleseaufträge abarbeiten; Code49 kennt deren Zusatzguards nicht.
+Danach deploy/activate.py <vorheriger-release> --rollback-compatible verwenden,
+kein DB-Downgrade oder Restore über neue Antworten/Löschjournale.
+
+Nutzer-Nachtest: Hefte → Hefter → Papierkorb/KI-Icon; Liste → Mehrfachauswahl
+und bestätigte Anzahl; neue KI-Fassung prüfen → Stimmt, weiter → Jetzt lernen.
+Für Android die reguläre APK50 aktualisieren. Im Web den neuen Stand laden.
+
+## Vorheriger Produktionsstand1.10.0+49
+
 # Produktionsstand 1.10.0+49 · 19.10.2026
 
 Öffentlich verifiziert: https://schulpilot.dorfspy.de, Release
