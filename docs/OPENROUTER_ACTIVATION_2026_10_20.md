@@ -10,7 +10,7 @@ deaktiviert ausgegeben. Die bestehende allgemeine Betreiberfreigabe bleibt erhal
 Der Schlüssel stimmt mit der geschützten Serverumgebung überein; kein Schlüssel
 in Git, Release, Browser oder Bericht. Anbieterstand vor dem Wechsel geschützt
 unter `/var/lib/schulpilot/operator-checkpoints/` gesichert. Konfiguration und
-Wechselgrund sind auditiert. Die aktive Auswahl ist OpenRouter, zunächst Revision25.
+Wechselgrund sind auditiert. Die aktive Auswahl ist OpenRouter, aktuell Revision29.
 
 ## Verifizierte Routen und Schutzvorgaben
 
@@ -35,8 +35,12 @@ Dienste nicht verändert. Servereigene Prüfzeit vermeidet eine fälschliche
 Zukunftsprüfung; die Zeitabweichung bleibt ein separater Betriebsbefund.
 
 Die ausdrücklich angekündigte maximale Auftragsreservierung steigt vom bisherigen
-Codex-Buchungswert0,001USD auf0,15USD. Luna reserviert höchstens0,05USD, Sol
-höchstens0,15USD. Das sind konservative Reservierungen innerhalb der unveränderten
+Codex-Buchungswert0,001USD auf0,15USD. Beide Routen reservieren höchstens0,15USD.
+Die anfängliche Luna-Reservierung0,05USD stoppte ein normales künstliches Foto
+knapp vor dem Versand: Die konservative Prüfung zählt Base64-Bytes als mögliche
+Inputtokens. Auditiert auf die bereits freigegebene Obergrenze angeglichen,
+ohne Preis-, Modell- oder Quotenänderung; abgebrochener Aufruf mit0USD abgerechnet.
+Das sind konservative Reservierungen innerhalb der unveränderten
 Familien-/Systembudgets, keine Ausgabenpauschalen. Globales Limit weiterhin10USD;
 Familienbudgets, Aufrufkontingente und Zeitlimits unverändert. Ausgabe je Route
 höchstens4.000Tokens und weiterhin höchstens der bestehende Konfigurationswert.
@@ -79,9 +83,13 @@ Identische zusammengestellte Hefttexte in Anschlussaufträgen werden nur einmal
 vollständig. JSON wird ohne unnötige Trennzeichen-Leerzeichen übertragen. Keine
 unbelegte feste Tokenersparnis aus einer reinen Bytezählung ableiten.
 
-Aktivierung des Sparmodus, zusätzliche Prüfungen und App-Abnahme werden nach
-Deployment in STATUS/Handoff ergänzt. Die oben gemessenen drei Aufrufe fanden
-vor dem Sparmodus statt.
+Der Sparmodus ist aktiv. Eine weitere vollständige feste Probe nach Aktivierung
+kostete0,033344USD, die Probe nach Anpassung der Fotoreservierung0,033884USD.
+Alle drei Proben erfolgreich, zusammen0,102064USD bekannte Inferenzkosten.
+Aktive Policy: paid-economy-20261020-v3-photo-hold, Konfigurationsrevision29.
+Die normale App-Abnahme verwendet zusätzlich ausschließlich die neun künstlichen
+Seiten aus qa/notebook_audit_images_20261020.json. Deren Kosten werden getrennt
+von den festen Operatorproben erfasst; keine alten echten Antworten zum Testen.
 
 ## Rückweg
 

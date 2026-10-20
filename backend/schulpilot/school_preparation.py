@@ -14,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import load_only
 
 from .commerce import usage_terms
-from .db import DB, Child, Family, Job, Material, SchoolDay, Session, Usage, User, now, uid
+from .db import DB, Child, Family, Job, Material, ProviderConfig, SchoolDay, Session, Usage, User, now, uid
 from .fixtures import DAY_FIXTURE_IDS, LIVE_FIXTURE_IDS
 from .learning import record
 from .providers import ProviderError, Result, external_allowed, reserve, settle
@@ -212,9 +212,19 @@ def preparation_data(db, day, child=None):
     from .job_failures import generation_availability, message_code
 
     blocker = generation_availability(db, db.get(Family, child.family_id), "extract" if state.get("phase") == "extract" else "package") if can_retry else None
+    error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
+    if error_code == "unknown" and error:
+        error_code = message_code(error)
+    if can_retry and not blocker and error_code == "cost_preflight" and job:
+        failed_usage = db.scalar(select(Usage).where(Usage.job_id == job.id).order_by(Usage.created.desc()).limit(1))
+        config = db.get(ProviderConfig, 1)
+        if failed_usage and config and failed_usage.config_revision == config.revision:
+            blocker = {
+                "code": "cost_preflight",
+                "message": "Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.",
+            }
     if blocker:
         can_retry = False
-    error_code = (job.error_code if job and job.status == "failed" else None) or state.get("error_code") or (message_code(error) if error else None)
     return {
         "status": status,
         "error_code": error_code if error else None,
@@ -256,6 +266,10 @@ def submit(db, p, day, child, key):
         return
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(ACTIVE))):
         raise HTTPException(409, "Für dich wird gerade noch etwas vorbereitet. Bitte kurz warten.")
+    if same and state.get("status") in ("failed", "blocked", "processing"):
+        blocker = preparation_data(db, day, child).get("retry_blocker")
+        if blocker and blocker.get("code") == "cost_preflight":
+            raise HTTPException(409, blocker["message"])
     rate_limit(db, "school-prepare:" + p.user.id, 10, 60, commit=False)
     if day.stage == "collecting":
         day.stage = "review"

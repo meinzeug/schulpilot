@@ -852,6 +852,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           'invalid_output' => 'Die KI hat unvollständige Aufgaben geliefert. Wir haben sie nicht übernommen.',
           'provider_busy' => 'Die KI arbeitet gerade an einer anderen Anfrage. Du kannst es später noch einmal versuchen.',
           'unreadable_photo' => 'Ein Foto ist nicht gut lesbar. Nimm es bitte bei gutem Licht neu auf.',
+          'cost_preflight' => 'Die KI-Verarbeitung muss zuerst geprüft werden. Bitte deine Eltern um Hilfe. Deine Fotos sind gespeichert.',
           'source_changed' =>
             'Eine Heftseite wurde geändert. Prüfe zuerst die aktuelle Seite.',
           _ => canRetry ? 'Du kannst die Vorbereitung noch einmal starten.' : 'Deine Seiten bleiben gespeichert. Vorhandene Runden findest du unter Lernen.',
@@ -1413,6 +1414,16 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             }),
           ),
         ),
+        if (allowUploads && day!['stage'] == 'review')
+          TextButton.icon(
+            onPressed: () => run(() async {
+              await state.api.put('/school-days/${day!['id']}/stage', {
+                'stage': 'collecting',
+              });
+            }),
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: const Text('Noch eine Seite hinzufügen'),
+          ),
         if (canStart && allConfirmed && day!['synthetic'] != true)
           TextButton(
             onPressed: () => run(() async {

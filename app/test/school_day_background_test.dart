@@ -119,6 +119,10 @@ class PreparationServer {
       savedForLater++;
       return response({});
     }
+    if (request.method == 'PUT' && request.url.path.endsWith('/stage')) {
+      stage = (jsonDecode(request.body) as Json)['stage'] as String;
+      return response(day);
+    }
     if (request.url.path.endsWith('/postpone')) {
       expect(request.method, 'POST');
       expect(request.body, isEmpty);
@@ -380,6 +384,7 @@ void main() {
         await tapText(tester, 'Stimmt, weiter');
         expect(server.pages.single['confirmed'], true);
         expect(server.submissions, 0);
+        expect(find.text('Noch eine Seite hinzufügen'), findsOneWidget);
         await tapText(tester, 'Im Hintergrund vorbereiten');
         expect(server.submissions, 1);
         expect(find.text('Dein Lernpaket entsteht'), findsOneWidget);
@@ -399,6 +404,31 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'Another photo remains reachable after the last source confirmation',
+    (tester) async {
+      mobile(tester);
+      final server = PreparationServer(
+        pages: [source(1)],
+        stage: 'review',
+        preparation: {'status': 'needs_review', 'phase': 'review'},
+      )..realUploads = true;
+      final navigation = router(server.state());
+      addTearDown(navigation.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+      );
+      await settleUi(tester);
+      await tapText(tester, 'Stimmt, weiter');
+      await tapText(tester, 'Noch eine Seite hinzufügen');
+      expect(find.text('Fotos auswählen'), findsOneWidget);
+      expect(server.pages.single['confirmed'], true);
+      expect(server.submissions, 0);
+      expect(server.starts, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'Persisted preparation stops reads in background and resumes without a POST',
@@ -477,6 +507,37 @@ void main() {
       expect(find.text('Erneut vorbereiten'), findsNothing);
       await reload(tester);
       expect(server.submissions, 2);
+      expect(server.starts, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Photo preflight explains parent help without offering a wasted retry',
+    (tester) async {
+      mobile(tester);
+      final server = PreparationServer(
+        preparation: {
+          'status': 'failed',
+          'phase': 'extract',
+          'can_retry': false,
+          'error_code': 'cost_preflight',
+          'error': 'Private operator diagnostic must not become child copy',
+        },
+      );
+      final navigation = router(server.state());
+      addTearDown(navigation.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+      );
+      await settleUi(tester);
+      expect(
+        find.textContaining('Bitte deine Eltern um Hilfe.'),
+        findsOneWidget,
+      );
+      expect(find.text('Erneut vorbereiten'), findsNothing);
+      expect(find.textContaining('Private operator diagnostic'), findsNothing);
+      expect(server.submissions, 0);
       expect(server.starts, 0);
       expect(tester.takeException(), isNull);
     },

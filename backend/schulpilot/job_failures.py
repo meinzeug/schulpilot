@@ -12,6 +12,7 @@ CODES = {
     "source_changed",
     "access_changed",
     "not_configured",
+    "cost_preflight",
     "interrupted",
     "unknown",
 }
@@ -19,6 +20,8 @@ CODES = {
 
 def message_code(message):
     value = message.casefold()
+    if "konservative kostenreservierung" in value:
+        return "cost_preflight"
     if "lernumfang" in value and ("erreicht" in value or "kostenlimit" in value):
         return "quota_exhausted"
     if "beschäftigt" in value or "belegt" in value:

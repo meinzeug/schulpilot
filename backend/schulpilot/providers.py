@@ -1264,6 +1264,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     if worst > config.reserve_micros:
         raise ProviderError(
             "Material überschreitet die konfigurierte konservative Kostenreservierung. Material kürzen oder Preisobergrenze prüfen.",
+            code="cost_preflight",
             billing_result=Result({}, 0, 0, 0, telemetry={"pre_dispatch": True}, cost_source="cancelled"),
         )
     if config.provider == "codex":

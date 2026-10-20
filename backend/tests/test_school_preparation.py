@@ -6,7 +6,19 @@ from datetime import timedelta
 import pytest
 from conftest import HEADERS, create_child
 from fastapi.testclient import TestClient
-from schulpilot.db import DB, Child, Family, Job, LearningUnit, Material, Message, SchoolDay, Session, Usage
+from schulpilot.db import (
+    DB,
+    Child,
+    Family,
+    Job,
+    LearningUnit,
+    Material,
+    Message,
+    ProviderConfig,
+    SchoolDay,
+    Session,
+    Usage,
+)
 from schulpilot.main import app
 from schulpilot.providers import ProviderError, Result
 from schulpilot.school_preparation import advance_one
@@ -192,6 +204,39 @@ def test_ocr_failures_need_explicit_retry_and_two_attempts_are_final(api, househ
     assert final["status"] == "failed" and final["can_retry"] is False
     assert submit(api, day, "third")["status"] == "blocked"
     assert step() is None and len(calls) == 2
+
+
+def test_photo_cost_preflight_waits_for_operator_change_without_losing_saved_page(api, household, monkeypatch):
+    _, child = household
+    day, _ = capture(api, child, monkeypatch, 2)
+    assert ProviderError("Material überschreitet die konfigurierte konservative Kostenreservierung.").code == "cost_preflight"
+    submit(api, day, "first")
+    assert step()
+
+    def fail(*args, **kwargs):
+        raise ProviderError(
+            "Material überschreitet die konfigurierte konservative Kostenreservierung.",
+            billing_result=Result({}, 0, 0, 0, telemetry={"pre_dispatch": True}, cost_source="cancelled"),
+        )
+
+    monkeypatch.setattr("schulpilot.worker.request_provider", fail)
+    assert step()
+    with DB.begin() as db:
+        # Also recognize failures stored by the previous release.
+        failed = db.scalar(select(Job).where(Job.status == "failed"))
+        failed.error_code = "unknown"
+    before = api.get(f"/api/school-days/{day['id']}").json()["preparation"]
+    assert before["completed_pages"] == 1 and before["error_code"] == "cost_preflight"
+    assert before["can_retry"] is False and before["retry_blocker"]["code"] == "cost_preflight"
+    assert api.post(f"/api/school-days/{day['id']}/prepare", headers={"Idempotency-Key": "no-repeat"}).status_code == 409
+    assert step() is None
+    with DB.begin() as db:
+        assert db.scalar(select(func.count()).select_from(Job)) == 2
+        assert db.scalar(select(Usage).where(Usage.job_id == failed.id)).cost_micros == 0
+        db.get(ProviderConfig, 1).revision += 1
+    after = api.get(f"/api/school-days/{day['id']}").json()["preparation"]
+    assert after["can_retry"] is True and after["completed_pages"] == 1
+    assert step() is None  # Even an operator change never restarts OCR on GET.
 
 
 @pytest.mark.parametrize("when", ["before", "during"])
