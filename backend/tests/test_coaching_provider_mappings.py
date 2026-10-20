@@ -110,6 +110,62 @@ def test_known_question_goals_are_omitted_from_output_schema_and_restored_by_id(
     assert all(r["outcome"] == "correct" for r in result.data["question_reviews"])
 
 
+@pytest.mark.parametrize("unexpected_unit", [False, True])
+def test_openrouter_review_omits_unused_round_schema_but_rejects_new_tasks(coach_transport, unexpected_unit):
+    config, payload, output, calls = coach_transport
+    config.provider = "openrouter"
+    config.model = "synthetic-fixture:free"
+    config.input_per_million_micros = config.output_per_million_micros = 0
+    payload["defer_practice"] = True
+    output.pop("next_unit")
+    if unexpected_unit:
+        output["next_unit"] = {"questions": []}
+        with pytest.raises(ProviderError, match="unerlaubte neue Aufgaben"):
+            request_provider(config, "coach", payload)
+    else:
+        result = request_provider(config, "coach", payload)
+        assert result.data["next_unit"] is None
+        assert result.data["learning_goals"] == payload["learning_goals"]
+    assert len(calls) == 1
+    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    assert "next_unit" not in schema["properties"]
+    assert "next_unit" not in schema["required"]
+    assert not {"PracticeUnitOutput", "PracticeQuestion", "Question"} & set(schema["$defs"])
+    assert schema["additionalProperties"] is False
+
+
+def test_openrouter_http_error_keeps_only_safe_diagnostics_and_unknown_billing(coach_transport, monkeypatch):
+    config, payload, _, _ = coach_transport
+    config.provider = "openrouter"
+    config.model = "synthetic-fixture:free"
+    config.input_per_million_micros = config.output_per_million_micros = 0
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, *args, **kwargs):
+            return httpx.Response(400, headers={"x-request-id": "synthetic-request-1"}, json={
+                "error": {"message": "Invalid schema PRIVATE_SYNTHETIC_ECHO", "metadata": {
+                    "error_type": "invalid_request", "provider_code": "PRIVATE_SYNTHETIC_ECHO"}}})
+
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    with pytest.raises(ProviderError) as caught:
+        request_provider(config, "coach", payload)
+    result = caught.value.billing_result
+    assert result.cost_micros is None
+    assert result.cost_source == "unknown"
+    assert result.telemetry["request_id"] == "synthetic-request-1"
+    assert result.telemetry["error_type"] == "invalid_schema"
+    assert "PRIVATE_SYNTHETIC_ECHO" not in str(caught.value) + jsonlib.dumps(result.telemetry)
+
+
 @pytest.mark.parametrize("fault", ["new_assignment", "foreign_question", "duplicate_question"])
 def test_slim_coach_output_rejects_assignments_and_nonmatching_question_sets(coach_transport, fault):
     config, payload, output, calls = coach_transport

@@ -984,6 +984,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         for field in ("subject", "topic"):
             schema["properties"][field]["enum"] = [payload["required_" + field]]
     review_only = function == "coach" and bool(payload.get("defer_practice"))
+    # A review cannot create a round. Do not ask OpenRouter's strict-schema
+    # adapters to generate an always-null placeholder (or its unused unit
+    # definitions). Restore that canonical value locally before validation.
+    omit_review_unit = config.provider == "openrouter" and review_only
+    if omit_review_unit:
+        schema["properties"].pop("next_unit")
+        schema["required"].remove("next_unit")
     instructions = system_text(function, review_only=review_only)
     if controller_proposal:
         instructions += ("\nErgänze einen begrenzten next_step-Vorschlag am vorhandenen Lernziel mit vorhandenen question_ids als Belegen. "
@@ -1052,6 +1059,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Die Erklärung höchstens sechs kurze Sätze; nur beobachtete Schwierigkeiten erläutern. "
             "Neue Übungen entstehen später in einem eigenen Auftrag."
         )
+        if omit_review_unit:
+            instructions = instructions.replace("next_unit bleibt IMMER null.", "Gib kein Feld next_unit aus.")
+            instructions = instructions.replace("next_unit ist IMMER null.", "Gib kein Feld next_unit aus.")
     subjects = [
         value.get("subject")
         for value in [
@@ -1404,9 +1414,32 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             }.get(response.status_code, "Der Codex-Lernworker muss vom Betreiber geprüft werden.")
             code = response.headers.get("X-Schulpilot-Failure")
             raise ProviderError(message, code=code)
+        # Retain only closed diagnostic categories, never a provider's message,
+        # parameter value, raw metadata, or private echoed request.
+        diagnostic = None
+        if config.provider == "openrouter" and len(response.content) <= 50_000:
+            from .ai_accounting import response_metrics
+
+            try:
+                raw_error = response.json()
+                if isinstance(raw_error, dict):
+                    diagnostic = Result({}, **response_metrics(raw_error,
+                        (time.monotonic() - started) * 1000, response.headers.get("x-request-id")))
+                    error = raw_error.get("error")
+                    metadata = error.get("metadata") if isinstance(error, dict) else None
+                    category = metadata.get("error_type") if isinstance(metadata, dict) else None
+                    if category in {"invalid_request", "authentication", "permission_denied", "payment_required",
+                        "rate_limit_exceeded", "provider_overloaded", "timeout", "server"}:
+                        diagnostic.telemetry["error_type"] = category
+                    message = error.get("message") if isinstance(error, dict) else None
+                    if isinstance(message, str) and "invalid schema" in message.lower():
+                        diagnostic.telemetry["error_type"] = "invalid_schema"
+            except ValueError:
+                pass
         # Provider error bodies can contain secrets or private echoed content.
         raise ProviderError(
-            f"KI-Anbieter meldet HTTP {response.status_code}. Schlüssel, Modell, Freigabe oder Kontingent prüfen."
+            f"KI-Anbieter meldet HTTP {response.status_code}. Schlüssel, Modell, Freigabe oder Kontingent prüfen.",
+            billing_result=diagnostic,
         )
     try:
         if len(response.content) > 500_000:
@@ -1467,8 +1500,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         else:
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
-        if indexed_choices:
-            data = response_type.model_validate(decode_choice_indices(json.loads(text))).model_dump()
+        if indexed_choices or omit_review_unit:
+            decoded = json.loads(text)
+            if omit_review_unit and isinstance(decoded, dict):
+                if decoded.get("next_unit") is not None:
+                    raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
+                decoded = {**decoded, "next_unit": None}
+            if indexed_choices:
+                decoded = decode_choice_indices(decoded)
+            data = response_type.model_validate(decoded).model_dump()
         else:
             data = response_type.model_validate_json(text).model_dump()
         # A new optional field must not mutate legacy stored questions by
