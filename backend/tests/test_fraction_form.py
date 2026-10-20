@@ -45,3 +45,23 @@ def test_equivalent_answers_remain_valid_when_no_form_is_requested():
     question = expansion_question(prompt="Welcher Bruch ist gleich 2/4?")
     assert evaluate(question, "1/2") == "correct"
     assert Question.model_validate(question).accepted == ["2 / 4", "1/2"]
+
+
+@pytest.mark.parametrize("prefix", ["Übung: ", "Übungsaufgabe: "])
+def test_labelled_expansion_with_following_result_question_keeps_the_required_form(prefix):
+    prompt = prefix + "Erweitere 4/5 mit dem Faktor 3. Welcher vollständige Bruch entsteht in der geforderten Darstellung?"
+    question = expansion_question(prompt=prompt, answer="12/15", accepted=["4/5", "12 / 15"])
+    assert evaluate(question, "4/5") == "incorrect"
+    assert evaluate(question, "24/30") == "incorrect"
+    assert evaluate(question, "12/15") == "correct"
+    assert Question.model_validate(question).accepted == ["12 / 15"]
+    with pytest.raises(ValidationError):
+        Question.model_validate({**question, "answer": "4/5"})
+
+
+def test_label_does_not_turn_a_numerator_question_into_a_whole_fraction():
+    question = expansion_question(
+        prompt="Übung: Erweitere 4/5 mit dem Faktor 3. Welcher Zähler entsteht?",
+        answer="12", accepted=[])
+    assert evaluate(question, "12") == "correct"
+    assert evaluate(question, "12/15") == "uncertain"

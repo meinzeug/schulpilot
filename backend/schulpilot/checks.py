@@ -8,6 +8,10 @@ from fractions import Fraction
 def fraction_instruction(prompt):
     """Recognize a single result fraction, never a requested divisor or part."""
     text = unicodedata.normalize("NFKC", prompt).casefold()
+    # Generated examples are explicitly labelled. That label must not hide an
+    # otherwise recognised instruction; retain the full question for the part,
+    # ambiguity and multiple-factor guards below.
+    text = re.sub(r"^\s*(?:übung|übungsaufgabe)\s*:\s*", "", text, count=1)
     if re.search(
         r"\b(?:welche[rnms]?|wie\s+(?:lautet|heißt)|nenne|bestimme|gib)\s+"
         r"(?:(?:nur|der|den|die|das|ist)\s+)*(?:zähler|nenner|teiler|divisor|(?:kürzungs|erweiterungs)?faktor)\b",

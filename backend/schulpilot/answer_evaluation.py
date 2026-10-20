@@ -12,7 +12,7 @@ from math import gcd
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
-VERSION = "subject_rules_v2"
+VERSION = "subject_rules_v3"
 
 
 def fraction_addition_hint(question, answer):
