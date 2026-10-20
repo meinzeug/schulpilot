@@ -1,4 +1,4 @@
-Menü- und Leseflussprüfung20.10.2026, Zielversion1.13.0+59:
+Menü- und Leseflussprüfung20.10.2026, bereitgestellt1.13.0+59:
 
 Keine SDK-, Anbieter- oder Preisänderung. Die vorhandene gemeinsame Flutter-
 Oberfläche und dieselbe gepinnte Formelengine werden weiterverwendet. Neu sind

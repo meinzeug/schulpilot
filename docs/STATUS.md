@@ -1,4 +1,50 @@
-# Produktionsstand 1.12.2+58 · 20.10.2026
+# Produktionsstand 1.13.0+59 · 20.10.2026
+
+Live: Release `20261020T115520Z-0720f90`, Produktcommit
+`0720f9093ceb6768135db799097a794f53b13b2b`. Healthcheck status=ok/Version 1.13.0,
+API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema 0023 unverändert. Produktcode
+nach main gepusht; anschließender Dokumentationscommit ohne Clientänderung.
+
+Erneute Menüprüfung umgesetzt: Hefte startet für Kinder mit vorhandenen Seiten,
+Wörter mit klaren Lade-/Leer-/Fehlerzuständen und Filterrückweg, Nachrichten direkt
+lesbar, veraltete/fremde Verweise ausgeblendet, leere Vorbereitungsmeldungen und
+bestätigte Wort-Prüfaufforderungen entfallen. Lernliste ohne doppelte Statusangabe,
+Geräteaktionen eindeutig und bei großer Schrift erreichbar. Normale Handschrift
+bleibt Eingabe. Formeln in Tabellen verursachen keinen intrinsischen Layoutfehler;
+Code/Matrizen bleiben zusammen. Neue Erklärung und Schrittwechsel beginnen oben;
+Überschrift bleibt beim ersten Inhalt. Darstellung benötigt keine zusätzliche KI.
+
+889 Fluttertests vollständig bestanden, Analyse/Ruff sauber. 81 PostgreSQL-
+Prüfungen plus 19 Nachprüfungen für den finalen Serverstand (überschneidende
+Mengen). Web-Nachprüfung mit künstlichen Daten bei 200 %, Live-Wortsuche mit
+Rücksetzen, Hefter, Nachrichtenreader, Konto, Neuigkeiten und Lernliste geprüft.
+Keine vollständige Live-Abnahme aller Eltern-/Adminaktionen, Smartphone-/TalkBack-
+Zertifizierung oder gemessene Lernwirkung behauptet.
+
+Endbestand: zehn bestätigte Seiten, sechs Einheiten (fünf fertig, eine pausiert),
+21 Antwortversuche, keine laufende Verarbeitung. Keine neuen Testantworten oder
+Nachrichten gesendet. OpenRouter/Revision 29 und Grenzen unverändert; keine
+eigenen neuen Inferenzaufträge dieser Menüprüfung. Alte Kosten/Unklarheiten erhalten.
+
+Web, signierte APK und Play-AAB 59 gebaut/validiert, kein Play-Upload. Vollständiger
+Wiederholungsbuild Status 0 nach einem Abschlussstatus 143; Artefaktprüfungen danach
+erfolgreich. APK 72.284.767 Bytes, SHA256
+`8b5c2065cffbde69b5de4a5a61bb1f4bdcf2f288e4038e0ff4b409b9ddf92bbb`.
+Öffentlicher Download/Server/Manifest identisch. AAB 68.077.470 Bytes, passende
+Version und Signatur, keine Play-Installerberechtigung. 445 Quelldateien und beide
+Android-Archive auf den bekannten Provider-Schlüssel geprüft, kein Treffer.
+
+Details, Grenzen und Belege: [MENU_REVIEW_2026_10_20.md](MENU_REVIEW_2026_10_20.md).
+Kompatibler Rückweg `20261020T104607Z-f3a631a` (58), Schema 0023. Neue KI-Aufträge
+anhalten/aktive abarbeiten, vorhandenes activate.py --rollback-compatible; kein
+Restore über neue Antworten oder Löschjournal und kein stiller Providerwechsel.
+
+---
+
+Nachfolgend historische Zwischenstände mit damaligen Artefakten/Kosten/Rückwegen.
+Aktuell ist der Kopf oben.
+
+# Historischer Produktionsstand 1.12.2+58 · 20.10.2026
 
 Live: Release `20261020T104607Z-f3a631a`, Produktcommit
 `f3a631ac6e7876e8cbd4a7bb755e2385cda449f6`, main gepusht, Schema 0023.

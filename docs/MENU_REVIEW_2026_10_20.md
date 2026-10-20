@@ -2,7 +2,7 @@
 
 Ausbau auf Betreiberauftrag: alle Hauptmenüs und Unteransichten erneut prüfen,
 Bedienung grundsätzlich hinterfragen und belegte Verbesserungen umsetzen.
-Zielversion **1.13.0+59**. Die Hauptnavigation bleibt rollenbezogen und die
+Bereitgestellt: **1.13.0+59**. Die Hauptnavigation bleibt rollenbezogen und die
 Lernrunde behält ihre klare nächste Hauptaktion. Normale Handschrift bleibt
 Eingabe; keine weiteren gedruckten Heftbilder und keine Bild-KI für Appinhalte.
 
@@ -35,12 +35,12 @@ Abnahme aller Betreiber-/Elternaktionen. Rollen, Familienrechte und große Schri
 werden zusätzlich mit künstlichen lokalen Fixtures geprüft; keine echten
 Kinderinhalte an Anbieter und keine neuen Antwortbelege zum Testen.
 
-Zwischenstand: vollständige Flutter-Suite mit 885 bestandenen Tests. Nach den
-letzten Text-/Erklärungskorrekturen 174 gezielte Aufgabenraum-/Formel-/Menüprüfungen
-bestanden, Analyse und Ruff sauber. 81 PostgreSQL-Prüfungen für Lernen, Konten,
-Löschungen, Mindestzeiten und Benachrichtigungen bestanden; anschließend 19
-gezielte Nachprüfungen für die letzten Lesepfade. Mengen überschneiden sich.
-Endgültige Release-/Abnahmezahlen werden nach der Bereitstellung ergänzt.
+Abschließende vollständige Flutter-Suite: **889 Tests bestanden**. Analyse und
+Ruff ohne Befund. Zuvor 81 PostgreSQL-Prüfungen für Lernen, Konten, Löschungen,
+Mindestzeiten und Benachrichtigungen bestanden; nach der letzten Serverkorrektur
+19 gezielte Nachprüfungen. Die Mengen überschneiden sich. Gezielte Menü-/Layout-,
+Kontowechsel- und Aufgabenraumprüfungen bestanden ebenfalls. Keine Testzahlen
+als Anzahl unterschiedlicher Nutzerabläufe oder Lernerfolge ausgeben.
 
 Lokale Sichtprüfung im echten Web-Runner mit künstlichen Mockantworten: Tabelle
 mit Beträgen/Normen/Brüchen und mehrzeilige Matrix im regulären Aufgabenraum-
@@ -55,14 +55,64 @@ Nutzer begonnenen Runde hatte noch Aktivitätszeit erfasst; sie wurde pausiert,
 diese Zeit nicht rückwirkend umgeschrieben. Keine Prüfung dieser Einheit durch
 Testantworten.
 
-## Bereitstellung
+## Tatsächliche Live-Nachprüfung
 
-Web, signierte Direct-APK und Play-AAB werden aus derselben Produktrevision gebaut.
-Tatsächlicher Healthcheck, APK-Hash, Dienste, Sicherungsstand und kompatibler
-Rückweg werden nach dem Deployment hier und in STATUS/Handoff dokumentiert.
-Privates Bildmaterial und Browserbelege verbleiben außerhalb von Git.
+Auf Version 59 im normalen angemeldeten Kinderzugang:
 
-Nachprüfung im Web bei 200 %: Ein langer Erklärungsschritt hatte seinen alten
-Scrollversatz auf den nächsten übertragen. Der neue Regressionstest scheitert
-vor dem Fix und prüft danach einen sichtbaren Schrittanfang. Dieser letzte
-Darstellungsfix wird vor der ersten Bereitstellung von Version 59 eingebaut.
+- Leere Wortsuche: alte Karten verschwinden, passende Leermeldung, mit
+  „Filter zurücksetzen“ wieder alle neun vorhandenen Wörter erreichbar.
+- Hefte zeigt die drei belegten Fächer mit 3/3/4 Seiten; der volle Katalog bleibt
+  erreichbar. Pausierte Runde unter Lernen weiter vorhanden; kein doppeltes
+  „Geplant“. Singular „1 Lernmodus“ korrekt.
+- Direkten Nachrichtenreader über Heute → Nachrichten geöffnet und gespeicherten
+  Verlauf gelesen. Keine Nachricht gesendet, keine Lernrunde dabei gestartet.
+- Im Konto „Hier abmelden“/„Gerät abmelden“ gesehen, keine Sitzung widerrufen.
+  Neuigkeiten ohne die frühere Meldung „0 Heftseiten“; Zähler aktualisiert.
+- Sprachwerkstatt und Lernstand lesend geprüft, keinen neuen Auftrag vorbereitet.
+
+Endbestand: zehn bestätigte Seiten, sechs Einheiten (fünf abgeschlossen, eine
+pausiert), 21 Antwortversuche, keine laufende Verarbeitung. OpenRouter/Revision 29
+unverändert. Browserbelege liegen privat unter `artifacts/science-browser/`:
+`menu59-empty-search.png`, `menu59-notebooks.png`, `menu-step-scroll-after.png`
+und `menu-table-200-horizontal.png`. Keine privaten Screenshots im Repository.
+
+Der neue Scrolltest scheiterte vor dem Fix bei 530 statt 0 Pixeln. Nach dem Fix
+besteht er; im neu gebauten Web-Runner bei 200 % tatsächlich vom Ende der Matrix
+zur Tabelle gewechselt: neuer Schrittanfang sichtbar, zweite Spalte durch
+Seitwärtsscrollen erreichbar. Überschrift und erster Inhalt sind derselbe Schritt.
+
+## Release und Rückweg
+
+Live-Release `20261020T115520Z-0720f90`, Produktcommit
+`0720f9093ceb6768135db799097a794f53b13b2b`, Version **1.13.0+59**.
+Beide Produktcommits und der abschließende Dokumentationscommit sind zum
+bestehenden main gepusht. Der Dokumentationscommit ändert keine gebaute Quelle.
+Öffentlicher Healthcheck status=ok und passende Version/Quellrevision; API,
+Worker und Caddy aktiv. Sicherungsdienst Result=success/ExecMainStatus=0.
+Konfiguration und Datenbank vor Aktivierung gesichert, Caddy validiert.
+Schema 0023 unverändert, keine neue Migration oder Anbieterumschaltung.
+
+Web, Direct-APK und Play-AAB aus derselben finalen Revision gebaut. Ein Lauf
+meldete beim Abschluss Status 143; die Ursache ist nicht belegt. Der vollständige
+Wiederholungsbuild endete mit Status 0. Danach Versions-/Paket-/Signiererprüfung,
+JAR-Signaturprüfung und offizielle Bundletool-Validierung erfolgreich. Play-Paket
+Version 59 ohne APK-Installerberechtigung, Signierer entspricht Release-Policy.
+Die bekannten Signaturhinweise zum selbst signierten Zertifikat/fehlenden
+Zeitstempel/JAR-Streamingformat bleiben dokumentiert; kein Play-Upload oder
+vollständige native Geräteabnahme behauptet.
+
+APK: **72.284.767 Bytes**, SHA256
+`8b5c2065cffbde69b5de4a5a61bb1f4bdcf2f288e4038e0ff4b409b9ddf92bbb`.
+Vollständiger [öffentlicher APK-Download](https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk),
+Serverdatei und lokales Manifest nach Größe/Hash identisch.
+AAB: **68.077.470 Bytes**, SHA256
+`f832f2bcce22e2bddcf55ab72b052157c7c70bd10ff42927962e1ff53074b694`.
+445 getrackte Text-/Quelldateien und 334 Einträge der beiden Android-Archive
+auf den tatsächlich verwendeten Provider-Schlüssel und Base64-Darstellung geprüft:
+kein Treffer. Das ist keine allgemeine Sicherheitszertifizierung.
+
+Kompatibler vorheriger Release: `20261020T104607Z-f3a631a` (1.12.2+58).
+Vor Rückweg neue KI-Aufträge anhalten und aktive abarbeiten; vorhandenes
+`deploy/activate.py <release> --rollback-compatible` verwenden. Kein DB-Restore
+über neue Antworten oder das Löschjournal. Dieser Rückweg verliert die neuen
+Menü-/Lesekorrekturen; Quellen, Antworten und bestehende Providergrenzen erhalten.

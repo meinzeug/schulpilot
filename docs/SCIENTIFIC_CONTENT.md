@@ -1,6 +1,6 @@
 # Fachliche Darstellung in Aufgaben und Hilfen
 
-Ausbauauftrag20.10.2026, bereitgestellte Version1.12.2+58. Gemeint ist die Darstellung
+Ausbauauftrag20.10.2026, erster Stand1.12.2+58; Lesekorrekturen auf1.13.0+59. Gemeint ist die Darstellung
 **innerhalb der App**: Aufgaben, Auswahloptionen, Hinweise, Erklärungen,
 Antwortfeedback und Heftfragen. Eingaben bleiben gewöhnliche fotografierte,
 auch handschriftliche Schulhefter. Gedruckte KI-Testseiten sind kein neues
@@ -169,3 +169,10 @@ Abschluss58: 870 Fluttertests vollständig bestanden,277gezielte Nachprüfungen
 und Analyse ohne Befund. Auf1.12.2gespeicherte produktive Heft-Hilfe nach Reload
 ohne neue KI erneut geöffnet. Release, Hashes, Kosten und Grenzen:
 [SCIENTIFIC_QA_2026_10_20.md](SCIENTIFIC_QA_2026_10_20.md).
+
+Weitere Abnahme 59: Formeln in Tabellen ohne intrinsische Breitenmessung,
+mehrzeilige Matrizen auch ohne äußere TeX-Klammern, gemischte Blöcke ohne
+Leerzeile, Überschriften beim ersten Inhalt, Erklärungsschritte wieder am Anfang.
+889 Fluttertests vollständig bestanden; tatsächliche Web-/Menünachprüfung,
+Signaturen, Kostenabgrenzung und Rückweg in
+[MENU_REVIEW_2026_10_20.md](MENU_REVIEW_2026_10_20.md).

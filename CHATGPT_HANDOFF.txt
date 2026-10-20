@@ -1,3 +1,61 @@
+SCHULPILOT 1.13.0+59 · bereitgestellt · 20.10.2026
+
+Website https://schulpilot.dorfspy.de · API /api
+Release 20261020T115520Z-0720f90
+Produktcommit 0720f9093ceb6768135db799097a794f53b13b2b, main gepusht.
+Healthcheck status=ok/Version 1.13.0, Schema 0023 unverändert. API/Worker/Caddy aktiv,
+Sicherung erfolgreich. Nachträglicher Dokumentationscommit ohne Clientänderung.
+
+Auftrag: Hauptmenüs/Unteransichten erneut prüfen und begründete Verbesserungen
+umsetzen. Normale Handschrift bleibt Eingabe. Hefte für Kinder zuerst mit Seiten;
+volle Fachliste weiter erreichbar und vorhandene Ansichtspräferenz erhalten.
+Wörter: keine alten Karten unter neuen Filtern, Ladestand/Fehler/fehlende Treffer
+unterscheiden, Reset/GET-Retry. Direkter Nachrichtenreader mit Konto-/Familienrecht,
+keine automatische Lernrunde beim Lesen. Gelöschte/fremde Verweise ausblenden,
+Originalnachrichten erhalten, Quellen/Absender gebündelt laden. Nachrichtenroute
+nur bei messages-v1; ältere Clients behalten ihre Routen. Null-Seiten-Meldungen
+und erledigte Wort-Prüfaufforderungen aus der Glocke entfernen. Kontoaktionen
+„Hier abmelden“/„Gerät abmelden“, große Schrift/langen Gerätenamen lokal geprüft.
+
+Formeln in Tabellen: intrinsischen Layoutfehler behoben; responsive feste Spalten,
+horizontal lesbar. Code/Matrizen/TeX-Trennzeichen erhalten, angrenzende Blöcke
+sauber trennen. Überschrift mit erstem Inhalt, neue Erklärung beginnt bei Schritt 1.
+Schrittwechsel scrollt nach langem Inhalt wieder nach oben: Test vorher 530px,
+nachher 0; im Web bei 200 % nachgeprüft. Partielle Formelvorlesehilfe verbessert.
+
+889 Fluttertests vollständig bestanden, Analyse/Ruff sauber. 81 PG-Prüfungen plus
+19 gezielte Nachprüfungen für finalen Serverstand; überlappende Mengen. Neue
+Rollen-/Kontowechsel-/Quellenprüfungen ohne neue KI. Hauptmenüs und Sprachwerkstatt/
+Lernstand live gelesen; neue Wortsuche/Reset, Hefte, Nachrichtenreader, Konto,
+Neuigkeiten und Lernliste auf 59 nachgeprüft. Kein vollständiger Live-Nachweis
+aller Eltern-/Adminaktionen oder Smartphone-/TalkBack-/Lernwirksamkeitsnachweis.
+
+Bestand: zehn bestätigte Seiten, sechs Einheiten (fünf fertig/eine pausiert),
+21 Versuche, keine aktiven Jobs.
+Keine neuen Antworten/Nachrichten zum Testen. Rundenzustand und erfasste
+Aktivitätszeit erhalten. OpenRouter/Revision 29 unverändert, keine eigenen neuen
+Inferenzaufträge. Bisherige Kosten und unbekannte Reservierungen erhalten.
+
+Web/Direct-APK/Play-AAB 59 gebaut. Ein Abschlussstatus 143, vollständiger Cache-
+Wiederholungsbuild Status 0 und alle Artefaktprüfungen erfolgreich. APK 72.284.767 Bytes,
+SHA256 8b5c2065cffbde69b5de4a5a61bb1f4bdcf2f288e4038e0ff4b409b9ddf92bbb
+https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Öffentlicher Download/Server/Manifest identisch. AAB 68.077.470 Bytes, Bundletool/
+Version/Signatur geprüft, kein Play-Upload, keine Play-APK-Installerberechtigung.
+Bekannten Provider-Key in 445 Text-/Quelldateien und 334 Archiveinträgen nicht gefunden.
+
+Details: docs/MENU_REVIEW_2026_10_20.md, docs/STATUS.md, docs/SOURCES.md,
+docs/SCIENTIFIC_CONTENT.md, docs/NOTIFICATIONS.md und docs/DESIGN_SYSTEM.md.
+Private Screenshots/Diagnoseartefakte außerhalb von Git. Keine eigenen neuen Anbieter-
+oder Datenschutzeinstellungen; alte feste Upstreams/Token-/Kostengrenzen erhalten.
+
+Rückweg previous 20261020T104607Z-f3a631a (58, Schema 0023); verliert Menü-/Lesefixes.
+Neue KI anhalten/aktive abarbeiten, deploy/activate.py <id> --rollback-compatible.
+Kein DB-Restore über Antworten/Löschjournal, kein ungefragter Providerwechsel.
+
+--- HISTORISCHER STAND58 ---
+Der folgende Kopf ist archivierte Vorgeschichte. Aktueller Stand ist oben.
+
 SCHULPILOT 1.12.2+58 · bereitgestellt · 20.10.2026
 
 Website https://schulpilot.dorfspy.de · API /api
