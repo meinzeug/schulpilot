@@ -2,7 +2,7 @@
 
 Zusatzauftrag: Beim Entfernen einer Heftseite müssen die zugehörigen Übungen
 unter Lernen verschwinden; vorhandene Aufgaben ohne Heftquellen bereinigen.
-Zielversion 1.14.2+62, Schema 0023 unverändert.
+Bereitgestellt 1.14.2+62, Schema 0023 unverändert.
 
 ## Verhalten
 
@@ -73,10 +73,28 @@ CLI publiziert das Journal vor ihrer Erfolgsausgabe. Keine neue Datenmigration.
 Antworten, Folgeseite und letzte archivierte Seite. 130 PostgreSQL-Prüfungen
 in einer separaten lokalen Datenbank bestanden (Löschung, Altbestand,
 Wiederherstellung, Aufbewahrung, Wort-/Tutorquellen). Ruff und Flutteranalyse ohne
-Befund. Tatsächliches Bereinigungsergebnis wird nach der Bereitstellung ergänzt.
+Befund. Tatsächliches Bereinigungsergebnis siehe unten.
 Kein Produktions-Testantwortversuch, kein Provideraufruf für diese Prüfung.
 
 Rückweg: 1.14.0+60 / `20261020T124231Z-8bbd152`, kompatibles Schema 0023.
 Vor Code-Rollback neue KI-Aufträge anhalten und aktive Aufträge abarbeiten lassen;
 Journalpublikation prüfen, keine Datensicherung über neuere Antworten/Löschungen
 zurückspielen. Die Löschverbesserungen entfallen auf dem alten Clientstand.
+
+## Produktive Abnahme
+
+Release `20261020T132931Z-091b791`, Quelle `091b791130abc898585aec0fbedf9d84284251cb`.
+Vorherige Konfiguration und Datenbank gesichert; Sicherung erfolgreich. Lokale
+Vorschau mit `--include-manual-assignments` zeigte genau vier alte quellenlose
+Testaufträge und null verwaiste Runden/Antworten. Anwendung an den exakten Digest
+gebunden, vier Aufträge entfernt, Audit gespeichert, Journal vollständig
+publiziert (null unveröffentlichte Auftragslöschungen). Erneute Auswahl: null
+quellenlose Runden und null unverbundene Aufträge. Keine Erweiterung auf reine
+manuelle Wortrunden, keine anderen Haushalte bereinigt.
+
+Zehn Heftseiten und sechs gültige Lernrunden erhalten. Keine Produktivantwort
+eingetragen oder gelöscht; kein Provideraufruf für diese Prüfung. Live-Plan zeigt
+keine alten Testaufträge mehr; neue Übersichts-/Planfassung geprüft. Die
+Seitenkaskade selbst wurde mit künstlichen Daten in isolierten Tests geprüft,
+keine echten Fotos zum Nachweis gelöscht. Öffentliche Version und Artefakte
+stehen in STATUS.md.

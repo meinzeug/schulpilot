@@ -1,3 +1,54 @@
+# Produktionsstand 1.14.2+62 · 20.10.2026
+
+Live: Release `20261020T132931Z-091b791`, Produktcommit
+`091b791130abc898585aec0fbedf9d84284251cb`. Health status=ok/1.14.2, API/Worker/Caddy aktiv,
+aktuelle Sicherung erfolgreich, Schema 0023 unverändert. Produktcode nach main
+gepusht; anschließender Dokumentationscommit ohne Clientänderung.
+
+Elternübersicht neu geordnet: gespeicherte Aufgaben/Versuche und selbstständige
+oder unterstützte Ergebnisse zuerst, Lernzeit daneben, Fach-/Themenrückweg,
+Pflichtaufträge/aktuelle Runde und spätere Festigung getrennt. Gemeinsame acht
+Bereiche mit geordneter Desktopnavigation und mobiler Auswahl. Plan, Noten, Hefte,
+Wörter, Verlauf und Nachrichten klar erreichbar; Einstellungen nach den Inhalten.
+Quellen, Antworten, Familienrechte und tatsächliche Serversekunden erhalten.
+
+Alle Foto-/Prüflöschwege verwenden die gezählte, revisionsgebundene Seiten-/
+Runden-/Antwortvorschau. Alte Tages-DELETEs mit gespeicherten Runden sperren.
+Historische Auftrags-/Sprachprojekt-/Wortrevisionen, Folgeübungen, Aufbewahrung
+und Restore alter Materialjournale berücksichtigen dieselbe Kaskade.
+Im ausdrücklich geprüften Haushalt vier alte quellenlose Testaufträge entfernt;
+keine verwaiste Runde vorhanden, keine weitere quellenlose Aufgabe übrig. Zehn
+Seiten und sechs gültige Runden erhalten. Audit und Löschjournal publiziert.
+Keine neuen Produktivantworten, Nachrichten, Noten oder Inferenzaufträge.
+
+898 Fluttertests vollständig bestanden, 22 passende Tests nach letzter
+Textkorrektur zusätzlich (überlappend). 130 isolierte PostgreSQL-Prüfungen zur
+Löschung; zuvor 69 PostgreSQL-Prüfungen für Elternprojektion/Noten/Sammlungen/
+Mindestzeit. Flutteranalyse/Ruff sauber. Alle Elternbereiche und verschachtelte
+Rückwege live gelesen; finale Übersicht/Plan bei 390 px und Desktop 1101 px
+nachgeprüft. Keine vollständige physische Android-/TalkBack-/WCAG-Abnahme oder
+gemessene Lernwirkung behauptet.
+
+Web/Direct-APK/Play-AAB 62 vollständig gebaut und validiert, finaler Build Status 0
+nach unbenutztem Zwischenlauf Status 143. APK 72.383.151 Bytes, SHA256
+`f3638c645b1f03b3bcbf2485fb8f7ecb5f27e69c5297a19f9a06979449003b0d`.
+Öffentlicher Download/Manifest identisch. AAB 68.134.391 Bytes, SHA256
+`739e3a559c68ee8499ef3cadb4ac8c5d69c7dee24bcb4efa6225255a1c9e39e8`; Version/Signatur/Bundletool
+korrekt, keine Play-APK-Installerberechtigung, kein Play-Upload. Bekannter
+Provider-Schlüssel in 451 Quelldateien, 334 Archiveinträgen und 93 Webdateien
+nicht gefunden. Anbieterrevision/Kontingente/Schlüsselablage unverändert.
+
+Details: [PARENT_OVERVIEW_2026_10_20.md](PARENT_OVERVIEW_2026_10_20.md),
+[SOURCE_DELETION_2026_10_20.md](SOURCE_DELETION_2026_10_20.md).
+Rückweg `20261020T124231Z-8bbd152` (60), Schema 0023. Neue KI-Aufträge anhalten/
+aktive abarbeiten; Journalpublikation vor Code-Rollback prüfen. Restorewerkzeuge
+**mindestens 1.14.2**, damit typisierte Auftragslöschungen angewendet werden.
+Keine Datenrücksicherung über neuere Antworten oder Löschungen.
+
+---
+
+Nachfolgend historische Zwischenstände; aktuell ist der Kopf oben.
+
 # Produktionsstand 1.13.0+59 · 20.10.2026
 
 Live: Release `20261020T115520Z-0720f90`, Produktcommit

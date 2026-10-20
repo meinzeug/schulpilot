@@ -2,7 +2,7 @@
 
 Betreiberauftrag: Lernüberblick eines vorhandenen Kindes im angemeldeten
 Elternzugang neu ordnen, Lernstand verständlich zeigen und Menüs/Unterseiten
-aufräumen. Zielversion **1.14.2+62**; produktive Abnahme siehe Abschluss unten.
+aufräumen. Bereitgestellt **1.14.2+62**; produktive Abnahme siehe Abschluss unten.
 Keine privaten Namen, Kennungen, Fotos, Antworten oder Screenshots im Repository.
 
 ## Darstellung und Navigation
@@ -83,10 +83,35 @@ Ein zusätzlicher GET-only-Regressionsfall sichert die Trennung. Der leere
 Tagesplan benennt vor dem offenen Mindestziel Weiterlernen als nächsten Schritt;
 er verwendet dort nicht den Begriff freiwillig.
 
-## Bereitstellung
+## Abschließende Bereitstellung
 
-Die abschließende Nachbesserung 1.14.2 enthält zusätzlich die vereinheitlichte
-Quellenlöschung, siehe SOURCE_DELETION_2026_10_20.md. 898 Fluttertests bestanden.
-Vor Aktivierung Analyse, Diff-/Geheimnisprüfung und Web/Direct-APK/Play-AAB bauen. Deployment sichert die
-betroffenen Konfigurationen und Datenbank. Rückweg ist das bisherige Release
-1.14.0+60 (`20261020T124231Z-8bbd152`), Schema 0023.
+1.14.2+62 / `20261020T132931Z-091b791`, Produktquelle `091b791130abc898585aec0fbedf9d84284251cb`,
+main gepusht. 898 Fluttertests vollständig bestanden; nach letzter rein
+sprachlicher Plan-Korrektur 22 passende Elternprüfungen erneut erfolgreich.
+Flutteranalyse und Ruff ohne Befund. 130 PostgreSQL-Prüfungen zur Quellenlöschung
+zusätzlich zur oben dokumentierten Elternabnahme bestanden.
+
+Vollständiger Web-/Direct-APK-/Play-AAB-Build Status 0. Ein vorheriger Zwischenlauf
+endete mit 143 und wurde nicht bereitgestellt. Finaler Stand vollständig neu
+gebaut. Androidversion, Signierer, ZIP-Ausrichtung und AAB mit Bundletool geprüft;
+Play ohne APK-Installerberechtigung. Keine Play-Veröffentlichung. Bekannter
+Provider-Schlüssel in 451 Quelldateien, 334 Android-Archiveinträgen und
+93 Webdateien nicht gefunden.
+
+Live: Health status=ok/1.14.2, API/Worker/Caddy aktiv, aktuelle Sicherung
+erfolgreich. Öffentlicher APK-Download mit Manifest/Build identisch. Alle acht
+Bereiche und Fach-/Themen-/Rundenrückweg auf der ersten Bereitstellung geprüft;
+finale Übersicht/Plan erneut bei 390 px und Desktop 1101 px angesehen. Neue
+Rundenbezeichnung, Pflichtauftragstext und Mindestziel-Weiterlernen live sichtbar.
+Vier alte quellenlose Testaufträge auf ausdrücklichen Zusatzauftrag bereinigt,
+keine Heftseite, Lernrunde oder Antwort dabei entfernt. Journal publiziert und
+Bestand anschließend ohne weitere verwaiste Aufgaben. Keine neuen Antworten,
+Nachrichten, Noten oder KI-Aufträge für die Abnahme eingetragen.
+
+Private Screenshots ausschließlich als ignorierte lokale Ergebnisartefakte.
+Keine neue physische Android-/TalkBack-/WCAG-Zertifizierung.
+
+Rückweg: 1.14.0+60 (`20261020T124231Z-8bbd152`), Schema 0023. Vor Code-Rollback
+neue KI-Aufträge anhalten/aktive abarbeiten, Journalpublikation prüfen.
+Wiederherstellungen benötigen mindestens 1.14.2; Details in
+SOURCE_DELETION_2026_10_20.md. Keine Rücksicherung über neuere Antworten/Löschungen.
