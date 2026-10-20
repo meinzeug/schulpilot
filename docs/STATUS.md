@@ -1,4 +1,92 @@
-# Produktionsstand 1.11.0+50 ·20.10.2026
+# Produktionsstand 1.11.5+55 · 20.10.2026
+
+Live: Release `20261020T074833Z-65e3ea6`, Produktcode
+`65e3ea64996e4ef3547489ea393b661721f4232f`, Schema0023. Healthcheck status=ok,
+Version1.11.5. Web, signierte Direct-APK und Play-AAB55 gebaut; main gepusht.
+Vor Aktivierungen bestehende Sicherungen erstellt; Caddy ergänzt und validiert,
+andere Dienste aktiv. Backend-Folgekorrekturen ändern den gebauten Client nicht.
+
+## Ergebnis der beauftragten App-Abnahme
+
+- Nach konkreter Nutzerbestätigung 42 Heftseiten mit 34 verknüpften Runden und
+  120 Antwortversuchen gelöscht. Quellenlöschung entfernt jetzt die zugehörigen
+  Übungen; einzelne gespeicherte Runden unter Lernen ebenfalls löschbar.
+  Finanzbelege und unabhängige Elternaufträge bleiben erhalten.
+- Neun künstliche Heftbilder mit je drei Themen erstellt und normal im Browser
+  hochgeladen, zugeschnitten, erkannt, geprüft und bestätigt: je drei für Deutsch,
+  Englisch und Mathematik. Neun Wortpaare ausdrücklich aus der Vorschau übernommen.
+- Neue lokale Vokabelrunden: Standard zehn, Auswahl fünf/zehn/fünfzehn. Bei weniger
+  verfügbaren Wörtern entsprechend kürzer. Begonnene Runden erhalten; keine KI für
+  diese Übungsform. Tatsächlich neun Wörter in einer größeren Runde gelöst.
+- Drei erzeugte Fachrunden mit zusammen sechs Aufgaben vollständig beantwortet,
+  Lösungen und Hilfen geprüft. Zusammen mit zwei Wörterrunden: fünf abgeschlossene
+  Runden, 18 Aufgaben, 21 Versuche. Öffentlicher Lernstand und Server stimmen überein:
+  zehn allein, acht mit Hilfe gelöst. Das belegt Bedienung, keine Lernwirkung.
+- Fotoreservierungsfehler verständlich und ohne sinnlosen Retry; erfolgreicher
+  Teilimport bleibt erhalten. Nach Fotoabschluss Seiten nachreichen und aus dem
+  Fotoeinstieg zur vorhandenen Auswahl zurückkehren. Allgemeine Einführung führt
+  nach „Weiter üben“ zur Aufgabe. Fragewort im Feedback erhalten.
+- Belegter OpenRouter-400er durch Anführungszeichen im Quellenzitat-Enum behoben:
+  private Integerindizes, danach unverändertes Originalzitat und alle bestehenden
+  Prüfungen. Drei erfolgreiche günstige Fachrückblicke; einmalige auditierte
+  Reparatur nach Codefix, alte Fehler und Verbrauch erhalten.
+- „Übung:“ verdeckt keine Bruchregel mehr (subject_rules_v3). Im Browser4/5für
+  Erweiterung mit3ausdrücklich nachgeprüft: falsch;12/15danach richtig. Vorherige
+  offene Bewertung im Prüfprotokoll erhalten. Lokaler Tipp und Tutor-Beleg geprüft.
+
+Einzelheiten, Prompts, Befunde und Grenzen: [APP_AUDIT_2026_10_20.md](APP_AUDIT_2026_10_20.md).
+Private Testbilder/Screenshots bleiben außerhalb von Git. Alle neuen Eingaben waren künstlich.
+
+## Bezahlter sparsamer OpenRouter-Betrieb
+
+Expliziter Betreiberauftrag ersetzt für diese Installation den früheren
+Codex-/Free-Standard. Schlüssel aus der beauftragten lokalen Datei geschützt auf
+Server verwendet; keine OpenRouter-Webanmeldung erforderlich. Revision29, Policy
+paid-economy-20261020-v3-photo-hold: Luna für überschaubare OCR, Rückblicke und
+quellgebundene Hilfe; Sol für anspruchsvolleren/umfangreicheren Stoff. Feste Azure-
+Bindung, medium, ZDR/Data-Collection-Deny/Cache-Opt-out, kein automatischer Fallback.
+Die Kontoeinstellungen beim Anbieter wurden nicht unabhängig eingesehen.
+
+Bestehende Kosten-/Tarifgrenzen erhalten. Fotoreservierung innerhalb der ausdrücklich
+freigegebenen0,15USD; paid-Routen maximal4000Ausgabetokens, keine Kontingenterhöhung.
+Anbieteraufrufe erzeugter Pakete auf den tatsächlich geplanten Einstieg begrenzt,
+spätere Etappen bewusst einzeln;34geplante Aufgaben sind kein fertiger Aufgabensatz.
+
+Abnahme:0,224013USD gemeldete Inferenzkosten einschließlich drei fester Probeabläufe.
+Drei400er mit unbekannter tatsächlicher Abrechnung behalten die volle Reservierung;
+aus den genauen Anfragen konservativ berechnete zusätzliche Modellkosten höchstens
+0,013486USD. Somit höchstens0,237499USD für diesen Teststand, unter0,25USD.
+Gebühren/Steuern sind damit nicht als null behauptet; alte unbekannte Codex-Belege
+unverändert. Aktivierung/Preise/Freigaben: [OPENROUTER_ACTIVATION_2026_10_20.md](OPENROUTER_ACTIVATION_2026_10_20.md).
+
+## Prüfung und Artefakte
+
+1148PostgreSQLtests vor den Folgekorrekturen vollständig bestanden. Danach gezielte
+Suiten, insbesondere159Provider-/Wortschatztests,85Zitat-/Rückblick-/Routentests,
+72Bruch-/Providerprüfungen und32Lern-/Prüfprotokolltests.617Fluttertests vollständig
+auf54; danach36gezielte Tests für den Erklärungseinstieg55. Analyse/Ruff sauber,
+Diff- und Geheimnisprüfung ohne Treffer. Dies sind überlappende Suiten, keine
+aufsummierte Anzahl unterschiedlicher Tests.
+
+APK55:68.123.902Bytes, SHA256
+`14b60432fa9ac73b6bf180fe92efe28ee4937e15f043451da211f14bec8beb60`.
+Vollständiger öffentlicher Download mit lokalem und serverseitigem Hash abgeglichen.
+[Direct-APK herunterladen](https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk).
+Play-AAB55:64.467.422Bytes, lokal gebaut; kein Play-Upload. Keine vollständige native
+Android-, Sprach-, Google-Login- oder Push-Abnahme dieser Arbeit behauptet.
+
+Rückweg: previous=`20261020T074208Z-b4e70f8`, gleiches Schema0023. Neue KI-Aufträge
+anhalten, aktive Aufträge abarbeiten, dann bestehendes deploy/activate.py mit
+--rollback-compatible. Dieser Rückweg verliert den Präfix-Bruchfix, erhält aber
+die Kaskadenlöschung und den Zitatfix. Kein DB-Restore über neue Antworten oder
+Löschjournal. Providerwechsel nur lokal mit Revision/Audit, keine stillen Fallbacks.
+
+---
+
+Die folgenden Abschnitte dokumentieren ältere Releases und deren damalige Grenzen.
+Sie beschreiben nicht den aktuellen Anbieter- oder Löschbetrieb.
+
+# Historischer Stand 1.11.0+50 ·20.10.2026
 
 Web und reguläre signierte Direct-APK50 über den vorhandenen Deploymentweg
 bereitgestellt. Release `20261020T053724Z-82a6078`, Produktcode

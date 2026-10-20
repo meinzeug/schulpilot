@@ -1,5 +1,27 @@
 # Offizielle Quellen und geprüfte Versionen
 
+Abnahme20.10.2026, Version1.11.5+55: keine Toolchain-/SDK-Änderung; Details und
+beobachtete Grenzen in [APP_AUDIT_2026_10_20.md](APP_AUDIT_2026_10_20.md).
+
+- [OpenRouter Fehler und Diagnose](https://openrouter.ai/docs/api_reference/errors-and-debugging):
+  HTTP-Fehler von Fehlern nach Annahme unterscheiden; bekannte Kostenmetadaten
+  erhalten, unbekannte Kosten nicht als0abrechnen. Nur feste sichere Kategorien
+  speichern, keine Anbieter-Raw-Bodies oder privaten Echos.
+- [OpenRouter strukturierte Ausgabe](https://openrouter.ai/docs/guides/features/structured-outputs):
+  strikte Schemas und gebundene Endpunktunterstützung. Der konkrete Azure-400er
+  für Anführungszeichen im Quellen-Enum ist eine direkt beobachtete Anbieterantwort
+  dieser künstlichen Abnahme, keine allgemein behauptete JSON-Schema-Regel.
+  Belege durch nullbasierte Integerindizes gebunden, danach unverändert restauriert.
+- [Luna-Endpunkte](https://openrouter.ai/api/v1/models/openai/gpt-6-luna/endpoints),
+  [Sol-Endpunkte](https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol/endpoints),
+  [ZDR-Endpunkte](https://openrouter.ai/api/v1/endpoints/zdr):20.10.2026geprüfte
+  Preis-/Anbieterbindung gemäß [Aktivierungsbeleg](OPENROUTER_ACTIVATION_2026_10_20.md).
+  Keine erfundene kostenlose Abrechnung oder gemessene Lernwirksamkeit behauptet.
+
+Lokale Wortschatzrunden5/10/15(Standard10) verwenden bestätigte Wörter ohne
+Inferenz; serverseitige Regeln subject_rules_v3 erkennen zusätzlich den bekannten
+Vorsatz Übung:/Übungsaufgabe:. Frühere Nachprüfungen versioniert erhalten.
+
 Ausbau19.10.2026: OpenRouter-Routing, ZDR, Medium-Reasoning, Gebühren, Cache-Opt-out und Generation-Abgleich anhand der offiziellen Dokumentation geprüft. Konkrete Links, Endpunktpreise, Messwerte und Grenzen in [ADAPTIVE_OPENROUTER.md](ADAPTIVE_OPENROUTER.md). Keine SDK-/Paketaktualisierung; Flutter3.47.7/Dart3.13.5 und bestehende Backend-Abhängigkeiten bleiben fixiert. Schema0023 additiv.
 
 Abschluss49: Das offizielle Google-bundletool1.18.3 wurde zusätzlich als externes

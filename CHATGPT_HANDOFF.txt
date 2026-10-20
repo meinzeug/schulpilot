@@ -1,3 +1,66 @@
+SCHULPILOT 1.11.5+55 · bereitgestellt · 20.10.2026
+
+Website https://schulpilot.dorfspy.de · API /api
+Release20261020T074833Z-65e3ea6
+Produktcode65e3ea64996e4ef3547489ea393b661721f4232f, main gepusht.
+Healthcheck statusok/Version1.11.5. Schema0023 unverändert.
+
+Aktueller Auftrag abgearbeitet: nach konkreter Freigabe42Seiten/34Runden/
+120Attempts gelöscht; Kaskadenlöschung und einzelne Rundenlöschung umgesetzt.
+Neun künstliche Heftbilder normal hochgeladen, OCR geprüft/ausdrücklich bestätigt.
+Neun Wortpaare übernommen. Drei Fachrunden und zwei lokale Wörterrunden komplett:
+18Aufgaben,21Versuche,10allein/8mitHilfe. Zahlen im mobilen Lernstand abgeglichen.
+Alte unabhängige Elternaufträge/Finanzbelege bleiben erhalten.
+
+Neu für die letzte Nutzersteuerung: lokale Wörterrunden standardmäßig10,
+Auswahl5/10/15, bei weniger verfügbaren Wörtern kürzer. Keine KI-Kosten dabei;
+begonnene Snapshots bleiben erhalten. Neunwort-Runde produktiv abgeschlossen.
+Allgemeine Erklärung führt tatsächlich zur Aufgabe; Feedback mit Fragewort.
+Foto-Teilimporte/Reservierungsfehler, Hin-/Rückweg zur bestätigten Auswahl verbessert.
+
+Explizit bezahlter OpenRouter-Sparmodus aktiv (ersetzt früheren Codex-/Free-Auftrag).
+Schlüssel geschützt aus der vom Betreiber genannten Datei, keine Webanmeldung.
+Revision29/paid-economy-20261020-v3-photo-hold. Luna für überschaubare OCR/Rückblicke/
+Heft-Hilfe, Sol für umfangreichere Aufgaben. Feste Azure-Bindung, medium, ZDR,
+Data-Collection-Deny, Cache-Opt-out, kein Fallback. Kontoeinstellungen nicht
+unabhängig im Anbieter-Webkonto eingesehen. Bestehende Limits nicht erhöhen.
+
+Belegter400er: quoted source_excerpt in strict Enum. Nun privater nullbasierter
+Integerindex, feste Grenzen/Typ, danach unverändertes Originalzitat und alle
+Quellenprüfungen. Rückblick enthält kein neues Rundenschema. Drei Rückblicke und
+Tutor mit Luna produktiv erfolgreich. Genau eine auditierte lokale Reparatur der
+konkret fehlgeschlagenen Deutschrunde nach Codefix; Zähler/alte Fehler erhalten.
+Bruchregel subject_rules_v3 erkennt Übung:/Übungsaufgabe:; ausdrückliche Nachprüfung
+bewahrt frühere Bewertung.4/5nicht richtige Erweiterung,12/15richtig.
+
+Testkosten gemeldet0,224013USD inklusive3fester Probeabläufe.3HTTP400-Abrechnungen
+unbekannt, volle Reservierungen erhalten. Konservative exakte Anfrageobergrenzen
+zusammen0,013486USD; insgesamt höchstens0,237499USD, unter0,25USD. Keine weiteren
+KI-Tests nötig; Gebühren/Steuern und alte Codex-Kosten nicht als0ausgeben.
+
+Build55Web/Direct-APK/Play-AAB erfolgreich. APK68.123.902Bytes,
+SHA25614b60432fa9ac73b6bf180fe92efe28ee4937e15f043451da211f14bec8beb60
+https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+AAB64.467.422Bytes, kein Play-Upload. Native Funktion/Push/Google/Audio in dieser
+Arbeit nicht vollständig abgenommen. Keine Wirksamkeitsgarantie aus UI-Tests.
+
+1148PGvollständig vor Folgefixes; danach passende gezielte Prüfungen inkl159/85/
+72/32Tests.617Fluttertests auf54vollständig;36gezielte Einführungstests auf55.
+Analyse/Ruff/Diff/Secret-Scan sauber. Öffentlicher APK-Hash abgeglichen, Dienste aktiv.
+
+Details: docs/STATUS.md, docs/APP_AUDIT_2026_10_20.md,
+docs/OPENROUTER_ACTIVATION_2026_10_20.md, docs/SOURCES.md.
+Prompts/Herkunft: qa/notebook_audit_images_20261020.json.
+Private synthetische Bild-/Screenshotbelege nur in ignorierten artifacts.
+
+Rückweg previous20261020T074208Z-b4e70f8 (Schema0023). Neue KI-Aufträge anhalten,
+aktive abarbeiten, dann deploy/activate.py <id> --rollback-compatible. Kein Restore
+über neue Antworten/Löschjournale; Providerwechsel nur mit Revision/Audit.
+
+--- HISTORISCHE ÜBERGABEN ---
+Die folgenden Stände sind archivierte Vorgeschichte. Für Anbieter, Löschung,
+Kosten und Deployment gilt ausschließlich der aktuelle Kopf oben.
+
 SCHULPILOT1.11.0+50 · bereitgestellt ·20.10.2026
 
 Website https://schulpilot.dorfspy.de

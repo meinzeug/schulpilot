@@ -91,6 +91,19 @@ Die normale App-Abnahme verwendet zusätzlich ausschließlich die neun künstlic
 Seiten aus qa/notebook_audit_images_20261020.json. Deren Kosten werden getrennt
 von den festen Operatorproben erfasst; keine alten echten Antworten zum Testen.
 
+## Abnahme55
+
+Abgeschlossene künstliche Browserabnahme auf1.11.5+55: neun normale OCRs,
+gemeinsames Paket, drei erfolgreiche Luna-Rückblicke und eine belegte Luna-Hilfe.
+Details in APP_AUDIT_2026_10_20.md. Einschließlich drei fester Probeabläufe
+0,224013USD gemeldete Inferenzkosten. Drei400er behalten unbekannte Abrechnung
+und volle Reservierung; deren konservative Modellkostenobergrenzen zusammen
+0,013486USD. Insgesamt höchstens0,237499USD dieser Abnahme, unter0,25USD.
+Keine weiteren Prüfaufrufe oder erneute Operatorprobe nötig. Fehlerursache der
+400er (Anführungszeichen in strengem Quellen-Enum) durch geprüfte Integerindizes
+behoben; keine Quellenprüfung gelockert. Kontoeinstellungen nicht unabhängig
+eingesehen; Gebühren/Steuern und unbekannte Altbelege nicht als0behauptet.
+
 ## Rückweg
 
 Vorher neue KI-Aufträge stoppen und aktive Aufträge abarbeiten. Gesicherten
