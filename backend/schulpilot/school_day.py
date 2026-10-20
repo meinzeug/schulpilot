@@ -451,6 +451,12 @@ def remove_page(day_id: str, material_id: str, p=Depends(authenticated), db=Depe
         )
     if material.synthetic and material.fixture_id in DAY_FIXTURE_IDS and db.get(Family, child.family_id).synthetic:
         raise HTTPException(409, "Diese Beispielseiten gehören zusammen. Bitte nutze beide Seiten.")
+    # Older review clients never acknowledged loss of linked answers. Route
+    # those selections through the counted, revision-bound notebook deletion.
+    from .unit_erasure import linked_ids
+
+    if linked_ids(db, child.id, [material.id]):
+        raise HTTPException(409, "Diese Seite hat verknüpfte Übungen. Bitte die App aktualisieren und die Löschvorschau verwenden; sie entfernt Seite, Übungen und Antworten gemeinsam.")
     path = material.path
     from .erasure import flush_journal, request
     from .tutor import purge_source_turns

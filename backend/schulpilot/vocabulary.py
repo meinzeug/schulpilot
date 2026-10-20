@@ -544,9 +544,8 @@ def purge_sources(db, material_ids, child_id):
             historical = [source for version in getattr(row, "history", []) for source in version.get("source_revisions", [])]
             if any(source["id"] in ids for source in [*row.source_revisions, *historical]):
                 db.delete(row)
-    # Preserve generated units/immutable answers under the existing private
-    # learning-history retention policy. Deleting a source is not deletion of
-    # the learning history. JSON snapshots still block further source use.
+    # Page-erasure callers remove linked rounds before purging these source
+    # snapshots. Word-only deletion keeps its separate history policy.
 
 
 @router.post("/children/{child_id}/vocabulary/{item_id}/reveal")

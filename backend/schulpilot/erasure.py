@@ -15,9 +15,9 @@ import tempfile
 from sqlalchemy import delete, select
 
 from .config import settings
-from .db import DB, Child, ErasureRequest, Family, LearningUnit, Material, Membership, User, now
+from .db import DB, Assignment, Child, ErasureRequest, Family, LearningUnit, Material, Membership, User, now
 
-SCOPES = ("family", "child", "user", "material", "membership", "unit")
+SCOPES = ("family", "child", "user", "material", "membership", "unit", "assignment")
 
 
 def request(db, scope, target):
@@ -38,6 +38,8 @@ def verify(raw, key):
     expected = json.loads(signed(record, key))["signature"]
     if not hmac.compare_digest(value["signature"], expected):
         raise ValueError("Erasure journal authentication failed")
+    if record.get("resource_kind") not in (None, "assignment") or (record.get("resource_kind") and record["scope"] != "unit"):
+        raise ValueError("Invalid erasure resource kind")
     if record["scope"] not in SCOPES:
         raise ValueError("Invalid erasure scope")
     if not all(re.fullmatch(r"[a-f0-9]{32}", record[k]) for k in ("id", "target")):
@@ -61,6 +63,12 @@ def flush_journal():
                 fcntl.flock(output, fcntl.LOCK_EX)
                 for row in rows:
                     record = {k: getattr(row, k) for k in ("id", "scope", "target", "created")}
+                    if row.scope == "assignment":
+                        # Old live journal readers accept/preserve extra fields
+                        # of a unit record. Current restore tools resolve this
+                        # explicitly typed resource before looking up its ID.
+                        record["scope"] = "unit"
+                        record["resource_kind"] = "assignment"
                     output.write(signed(record, settings.master_key) + "\n")
                     row.published = True
                 output.flush()
@@ -96,13 +104,16 @@ def reconcile(db, records):
     """Apply verified IDs in an isolated restore DB; return obsolete image paths."""
     from .families import remove_child, remove_family
 
+    records = [{**record, "scope": "assignment"}
+               if record["scope"] == "unit" and record.get("resource_kind") == "assignment" else record
+               for record in records]
     paths = []
     # Collect image paths before user cascades can remove their Material rows.
-    order = {"family": 0, "child": 1, "unit": 2, "material": 3, "membership": 4, "user": 5}
+    order = {"family": 0, "child": 1, "unit": 2, "assignment": 3, "material": 4, "membership": 5, "user": 6}
     for record in sorted(records, key=lambda record: order[record["scope"]]):
         scope, target = record["scope"], record["target"]
         model = {"family": Family, "child": Child, "user": User, "material": Material,
-                 "membership": Membership, "unit": LearningUnit}[scope]
+                 "membership": Membership, "unit": LearningUnit, "assignment": Assignment}[scope]
         row = db.get(model, target)
         if row is None:
             continue
@@ -114,13 +125,21 @@ def reconcile(db, records):
             db.execute(delete(User).where(User.id == target))
         elif scope == "membership":
             db.delete(row)
+        elif scope == "assignment":
+            from .source_cleanup import erase_assignments
+
+            erase_assignments(db, row.child_id, [row.id], journal=False)
         elif scope == "unit":
             from .unit_erasure import remove
 
             remove(db, db.get(Child, row.child_id), [row.id], journal=False)
         else:
             from .tutor import purge_source_turns
+            from .unit_erasure import linked_ids, remove
 
+            # Older journals only recorded the page. A restore must not revive
+            # its rounds, follow-ups or evidence after replaying that deletion.
+            remove(db, db.get(Child, row.child_id), linked_ids(db, row.child_id, [row.id]), journal=False)
             purge_source_turns(db, [row.id], child_id=row.child_id)
             if row.path:
                 paths.append(row.path)

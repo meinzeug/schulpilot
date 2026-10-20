@@ -486,6 +486,29 @@ def maintenance():
             period = bucket.id.rsplit(":", 1)[-1]
             if len(period) == 7 and period[4] == "-" and period.replace("-", "").isdigit() and period < oldest_period:
                 db.delete(bucket)
+        expired_pages = list(db.scalars(select(Material).where(Material.created < int(now()) - 365 * 86400)
+                                       .order_by(Material.child_id, Material.id)))
+        for child_id in sorted({m.child_id for m in expired_pages}):
+            from .erasure import request
+            from .material_actions import lock_units
+            from .tutor import purge_source_turns
+            from .unit_erasure import linked_ids, remove
+
+            ids = [m.id for m in expired_pages if m.child_id == child_id]
+            lock_units(db, child_id, ids)
+            child = db.scalar(select(Child).where(Child.id == child_id).with_for_update())
+            if child is None or db.scalar(select(Job.id).where(Job.child_id == child_id,
+                    Job.status.in_(("queued", "running")))):
+                # Recheck during the next local maintenance pass, never retry AI.
+                continue
+            remove(db, child, linked_ids(db, child_id, ids))
+            purge_source_turns(db, ids, child_id=child_id)
+            for material in db.scalars(select(Material).where(Material.child_id == child_id, Material.id.in_(ids))):
+                if material.path:
+                    paths.append(material.path)
+                request(db, "material", material.id)
+                db.delete(material)
+            db.flush()
         # Private learning records: 365 days; activities/answers disappear together.
         db.execute(delete(LearningUnit).where(LearningUnit.created < int(now()) - 365 * 86400))
         from .db import (
@@ -522,13 +545,6 @@ def maintenance():
             for file in exports.glob("family-*.zip"):
                 if file.stat().st_mtime < now() - 3600:
                     file.unlink(missing_ok=True)
-        for m in list(db.scalars(select(Material).where(Material.created < int(now()) - 365 * 86400))):
-            from .tutor import purge_source_turns
-
-            purge_source_turns(db, [m.id], child_id=m.child_id)
-            if m.path:
-                paths.append(m.path)
-            db.delete(m)
         # Bundled, in-app reminders only; no sensitive lock-screen messages.
         for child in db.scalars(select(Child)):
             prefs = s.Preferences(**child.preferences)

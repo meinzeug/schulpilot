@@ -2,7 +2,7 @@
 
 Betreiberauftrag: Lernüberblick eines vorhandenen Kindes im angemeldeten
 Elternzugang neu ordnen, Lernstand verständlich zeigen und Menüs/Unterseiten
-aufräumen. Zielversion **1.14.1+61**; produktive Abnahme siehe Abschluss unten.
+aufräumen. Zielversion **1.14.2+62**; produktive Abnahme siehe Abschluss unten.
 Keine privaten Namen, Kennungen, Fotos, Antworten oder Screenshots im Repository.
 
 ## Darstellung und Navigation
@@ -83,7 +83,8 @@ Ein zusätzlicher GET-only-Regressionsfall sichert die Trennung.
 
 ## Bereitstellung
 
-Die abschließende Nachbesserung ist noch nicht bereitgestellt. Vor Aktivierung vollständige Tests, Analyse,
-Diff-/Geheimnisprüfung und Web/Direct-APK/Play-AAB bauen. Deployment sichert die
+Die abschließende Nachbesserung 1.14.2 enthält zusätzlich die vereinheitlichte
+Quellenlöschung, siehe SOURCE_DELETION_2026_10_20.md. 898 Fluttertests bestanden.
+Vor Aktivierung Analyse, Diff-/Geheimnisprüfung und Web/Direct-APK/Play-AAB bauen. Deployment sichert die
 betroffenen Konfigurationen und Datenbank. Rückweg ist das bisherige Release
 1.14.0+60 (`20261020T124231Z-8bbd152`), Schema 0023.

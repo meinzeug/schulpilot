@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'material_screen.dart';
+import 'material_actions.dart';
 import 'dashboard.dart';
 import 'pending_uploads.dart';
 import 'notebook_photo.dart';
@@ -599,7 +600,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
 
   Future<void> replacePage(Json page) async {
     if (!allowUploads) return;
-    await state.api.delete('/school-days/${day!['id']}/pages/${page['id']}');
+    if (!await deleteDayPage(page)) return;
     final updated = await state.api.put('/school-days/${day!['id']}/stage', {
       'stage': 'collecting',
     });
@@ -893,15 +894,15 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     ),
   );
 
+  Future<bool> deleteDayPage(Json page) => deleteNotebookPages(
+    context,
+    state,
+    childId: widget.childId,
+    ids: [page['id']],
+  );
+
   Future<void> removeCollectedPage(Json page) async {
-    final accepted = await confirmDialog(
-      context,
-      'Foto entfernen?',
-      'Dieses neue Foto wird aus deinem Tagespaket entfernt.',
-    );
-    if (accepted && active) {
-      await state.api.delete('/school-days/${day!['id']}/pages/${page['id']}');
-    }
+    await deleteDayPage(page);
   }
 
   Future<void> viewDraft(Json photo) async {
@@ -1170,9 +1171,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                     await reorderPage(page['id'], 1);
                                   }
                                   if (action == 'delete') {
-                                    await state.api.delete(
-                                      '/school-days/${day!['id']}/pages/${page['id']}',
-                                    );
+                                    await deleteDayPage(page);
                                   }
                                   if (action == 'view' && context.mounted) {
                                     await zoomNotebookPhoto(
@@ -1856,9 +1855,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                               IconButton(
                                 tooltip: 'Diese Seite entfernen',
                                 onPressed: () => run(() async {
-                                  await state.api.delete(
-                                    '/school-days/${day!['id']}/pages/${page['id']}',
-                                  );
+                                  if (!await deleteDayPage(page)) return;
                                 }),
                                 icon: const Icon(Icons.delete_outline),
                               ),
@@ -1868,9 +1865,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                 !locked)
                               TextButton(
                                 onPressed: () => run(() async {
-                                  await state.api.delete(
-                                    '/school-days/${day!['id']}/pages/${page['id']}',
-                                  );
+                                  if (!await deleteDayPage(page)) return;
                                   await state.api.put(
                                     '/school-days/${day!['id']}/stage',
                                     {'stage': 'collecting'},

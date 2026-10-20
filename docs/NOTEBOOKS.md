@@ -204,3 +204,18 @@ gegebenenfalls „Noch zuordnen“. Alle Fächer bleiben über den vorhandenen F
 zugänglich. Eine im selben angemeldeten Konto bewusst gespeicherte volle Ansicht
 hat Vorrang; Eltern behalten die bisherige Voreinstellung. Keine Fachzuordnung,
 Quellenbestätigung oder KI durch Öffnen/Umschalten der Ansicht.
+
+### Durchgängiger Fotoassistent und Altbestand ab 1.14.2+62
+
+Auch der Fotoassistent und die Prüfung unbestätigter Tagesseiten verwenden nun
+dieselbe gezählte, revisionsgebundene Löschvorschau wie das Fotoalbum. Alte direkte
+Tagesseiten-DELETEs mit verknüpften Runden werden abgewiesen. Explizite historische
+Quellenbindungen über Aufträge, Sprachprojekte und die gespeicherte Wortrevision
+werden mit erfasst. Aktuell bearbeitete Wörter binden alte Runden nicht um.
+
+Die 365-Tage-Seitenbereinigung und ein Restore alter reiner Materialjournale
+entfernen ebenfalls abhängige Runden. Ein lokaler, explizit kindgebundener
+Operatorweg erlaubt die geprüfte Altbestandsbereinigung; kein privater Admin-API-
+Zugang und kein KI-Auftrag. Vorschau, exakter Bestandsdigest, Sperren und Audit
+sichern die Ausführung. Einzelheiten und Journal-/Rückwegregeln stehen in
+[SOURCE_DELETION_2026_10_20.md](SOURCE_DELETION_2026_10_20.md).

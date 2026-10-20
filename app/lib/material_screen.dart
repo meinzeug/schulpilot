@@ -727,32 +727,17 @@ class _MaterialReviewState extends State<MaterialReview> {
   Future<void> deletePage() async {
     final d = widget.data;
     final owner = widget.state.user?['id'];
-    final bool deleted;
-    if (d['school_day_id'] != null && d['confirmed'] != true) {
-      // The review wizard maintains its current page/preparation checkpoint.
-      // Keep its dedicated deletion endpoint and guarded continuation.
-      final accepted = await confirmDialog(
-        context,
-        'Seite löschen?',
-        'Dieses Foto und der erkannte Text werden gelöscht.',
-      );
-      if (!accepted || !mounted || owner != widget.state.user?['id']) return;
-      await widget.state.api.delete(
-        '/school-days/${d['school_day_id']}/pages/${d['id']}',
-      );
-      deleted = true;
-    } else {
-      deleted = await deleteNotebookPages(
-        context,
-        widget.state,
-        childId: d['child_id'],
-        ids: [d['id']],
-      );
-    }
+    final deleted = await deleteNotebookPages(
+      context,
+      widget.state,
+      childId: d['child_id'],
+      ids: [d['id']],
+      // Preserve the wizard's next-page/archived-last-page decision before
+      // global listeners reload the newly reduced page list.
+      onDeleted: widget.onDeleted,
+    );
     if (!deleted || !mounted || owner != widget.state.user?['id']) return;
-    if (widget.onDeleted != null) {
-      widget.onDeleted!();
-    } else {
+    if (widget.onDeleted == null) {
       context.go('/library/${d['child_id']}');
     }
   }

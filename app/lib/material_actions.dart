@@ -30,6 +30,7 @@ Future<bool> deleteNotebookPages(
   required String childId,
   List<String>? ids,
   Json? filters,
+  VoidCallback? onDeleted,
 }) async {
   final owner = state.user?['id'];
   if (owner == null || (ids != null && ids.isEmpty)) return false;
@@ -65,6 +66,7 @@ Future<bool> deleteNotebookPages(
   if (!context.mounted || owner != state.user?['id']) return false;
   final deleted = (result['deleted_count'] as num? ?? 0).toInt();
   toast(context, '${counted(deleted, 'Heftseite', 'Heftseiten')} gelöscht.');
+  onDeleted?.call();
   state.refreshState();
   return true;
 }

@@ -54,7 +54,7 @@ def review_day(api, child, monkeypatch, *, count=2, archived=False):
 
 
 @pytest.mark.parametrize("archived", [False, True])
-def test_child_deletes_review_pages_and_last_page_resets_inbox_without_losing_answers(
+def test_child_counted_review_deletion_removes_linked_rounds_and_last_page_resets_inbox(
     api, household, monkeypatch, archived
 ):
     _, child = household
@@ -84,9 +84,13 @@ def test_child_deletes_review_pages_and_last_page_resets_inbox_without_losing_an
         unit_id, answer_id = unit.id, answer.id
         revision = db.get(SchoolDay, day["id"]).revision
     with child_client() as kid:
-        response = kid.delete(f"/api/school-days/{day['id']}/pages/{ids[0]}")
+        assert kid.delete(f"/api/school-days/{day['id']}/pages/{ids[0]}").status_code == 409
+        selection = kid.post(f"/api/children/{child['id']}/materials/delete-preview", json={"ids": [ids[0]]}).json()
+        assert selection['unit_count'] == selection['answer_count'] == 1
+        response = kid.post(f"/api/children/{child['id']}/materials/bulk-delete", json={
+            "selection_token": selection["selection_token"], "delete_linked_units": True})
         assert response.status_code == 200, response.text
-        state = response.json()
+        state = kid.get(f"/api/school-days/{day['id']}").json()
         assert len(state["pages"]) == 1 and state["preparation"]["status"] == "needs_review"
         assert not paths[0].exists() and paths[1].exists()
         with DB() as db:
@@ -105,8 +109,8 @@ def test_child_deletes_review_pages_and_last_page_resets_inbox_without_losing_an
         assert not overview["pending_preparations"]
     advance_one()
     with DB() as db:
-        assert db.get(LearningUnit, unit_id).status == "completed"
-        assert db.get(Attempt, answer_id).answer == "synthetic saved answer"
+        assert db.get(LearningUnit, unit_id) is None
+        assert db.get(Attempt, answer_id) is None
         assert db.scalar(select(func.count()).select_from(Job)) == 0
         assert db.scalar(select(func.count()).select_from(Usage)) == 0
 

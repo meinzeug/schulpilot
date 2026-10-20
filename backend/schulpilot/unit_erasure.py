@@ -25,6 +25,18 @@ from .db import (
 )
 
 
+def word_source_revisions(db, child_id):
+    """Exact historical word revisions; never rebind a begun round to an edit."""
+    from .db import VocabularyItem
+
+    revisions = {}
+    for word in db.execute(select(VocabularyItem.id, VocabularyItem.revision, VocabularyItem.source_revisions,
+                                  VocabularyItem.history).where(VocabularyItem.child_id == child_id)):
+        for value in [*word.history, {"revision": word.revision, "source_revisions": word.source_revisions}]:
+            revisions[(word.id, value.get("revision"))] = {source.get("id") for source in value.get("source_revisions", [])}
+    return revisions
+
+
 def linked_ids(db, child_id, material_ids):
     if not material_ids:
         return []
@@ -39,6 +51,27 @@ def linked_ids(db, child_id, material_ids):
             )
         )
     )
+    # Older imports/projects/orders can retain an explicit source snapshot but
+    # lack UnitSource rows. Match only saved IDs and exact word revisions.
+    from .db import Assignment
+
+    source_ids = set(material_ids)
+    assignment_ids = {row.id for row in db.execute(select(Assignment.id, Assignment.material_id, Assignment.source_revisions)
+                      .where(Assignment.child_id == child_id))
+                      if row.material_id in source_ids or any(source.get("id") in source_ids for source in row.source_revisions)}
+    selected.update(db.scalars(select(LearningUnit.id).where(LearningUnit.child_id == child_id,
+                    LearningUnit.assignment_id.in_(assignment_ids))))
+    matched_projects = {project.unit_id for project in db.execute(select(LanguageProject.unit_id, LanguageProject.source_revisions)
+                        .where(LanguageProject.child_id == child_id))
+                        if any(source.get("id") in source_ids for source in project.source_revisions)}
+    selected.update(db.scalars(select(LearningUnit.id).where(LearningUnit.child_id == child_id,
+                    LearningUnit.id.in_(matched_projects))))
+    words = word_source_revisions(db, child_id)
+    for unit in db.scalars(select(LearningUnit).where(LearningUnit.child_id == child_id, LearningUnit.round_kind == "vocabulary")):
+        if any(source_ids & words.get((q.get("language", {}).get("vocabulary_item_id"),
+                                      q.get("language", {}).get("vocabulary_revision")), set())
+               for q in unit.questions if isinstance(q, dict) and isinstance(q.get("language"), dict)):
+            selected.add(unit.id)
     # Legacy follow-ups may have only their predecessor/root reference.
     rows = list(
         db.execute(

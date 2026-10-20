@@ -1,9 +1,10 @@
-Elternübersicht20.10.2026, Zielversion1.14.1+61:
+Elternübersicht und Quellenlöschung20.10.2026, Zielversion1.14.2+62:
 
 Eigene vorhandene serverseitige Lernstandsprojektion (`learning_progress.py`),
 kompakter Überblick und gemeinsame Flutter-Palette. Keine SDK-, Anbieter-,
 Preis- oder Kontingentänderung. Darstellung/Prüfung und Abnahme:
-[PARENT_OVERVIEW_2026_10_20.md](PARENT_OVERVIEW_2026_10_20.md).
+[PARENT_OVERVIEW_2026_10_20.md](PARENT_OVERVIEW_2026_10_20.md),
+[SOURCE_DELETION_2026_10_20.md](SOURCE_DELETION_2026_10_20.md).
 
 Menü- und Leseflussprüfung20.10.2026, bereitgestellt1.13.0+59:
 

@@ -130,6 +130,22 @@ class PreparationServer {
       preparation = {'status': 'postponed', 'phase': 'review'};
       return response(day);
     }
+    if (request.url.path.endsWith('/materials/delete-preview')) {
+      return response({
+        'count': 1,
+        'unit_count': 1,
+        'answer_count': 2,
+        'selection_token': (jsonDecode(request.body)['ids'] as List).single,
+      });
+    }
+    if (request.url.path.endsWith('/materials/bulk-delete')) {
+      final body = jsonDecode(request.body);
+      expect(body['delete_linked_units'], true);
+      pages.removeWhere((page) => page['id'] == body['selection_token']);
+      if (pages.isEmpty) stage = 'collecting';
+      preparation = {'status': 'idle', 'phase': null};
+      return response({'deleted_count': 1});
+    }
     if (request.method == 'DELETE' &&
         request.url.path.startsWith('/api/school-days/day/pages/')) {
       final id = request.url.pathSegments.last;
@@ -313,7 +329,8 @@ void main() {
       await settleUi(tester);
       expect(find.byType(CheckboxListTile), findsNothing);
       await tapText(tester, 'Seite löschen');
-      expect(find.text('Seite löschen?'), findsOneWidget);
+      expect(find.text('Heftseite löschen?'), findsOneWidget);
+      expect(find.textContaining('verknüpfte Lernrunde'), findsOneWidget);
       await tapText(tester, 'Abbrechen');
       expect(server.pages, hasLength(2));
       expect(server.requests.where((r) => r.startsWith('DELETE ')), isEmpty);
@@ -329,7 +346,7 @@ void main() {
       expect(server.pages, isEmpty);
       expect(find.text('Zeig mir deine Heftseiten'), findsOneWidget);
       expect(
-        server.requests.where((r) => r.startsWith('DELETE ')),
+        server.requests.where((r) => r.contains('/materials/bulk-delete')),
         hasLength(2),
       );
       expect(server.requests.where((r) => r.contains('/confirm')), isEmpty);
