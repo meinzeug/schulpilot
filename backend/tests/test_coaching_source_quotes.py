@@ -71,7 +71,13 @@ def quote_transport(monkeypatch):
     def respond(request):
         body = json.loads(request.content)
         calls.append((request.url, body))
-        text = json.dumps(output, ensure_ascii=False)
+        wire = copy.deepcopy(output)
+        if config.provider == "openrouter":
+            candidates = providers.source_excerpt_candidates(payload)
+            for goal in wire["learning_goals"]:
+                literal = goal.pop("source_excerpt")
+                goal.setdefault("source_excerpt_index", candidates.index(literal) if literal in candidates else -1)
+        text = json.dumps(wire, ensure_ascii=False)
         if config.provider == "openai":
             reply = {
                 "status": "completed",
@@ -120,7 +126,14 @@ def test_literal_goal_quote_is_schema_bound_across_all_pages_and_accepted(quote_
         assert body["store"] is False
     candidates = submitted["source_excerpt_candidates"]
     assert len(candidates) == len(set(candidates)) == 32
-    assert schema["$defs"]["LearningGoal"]["properties"]["source_excerpt"]["enum"] == candidates
+    goal_schema = schema["$defs"]["LearningGoal"]
+    if provider == "openrouter":
+        assert "source_excerpt" not in goal_schema["properties"]
+        assert "source_excerpt" not in goal_schema["required"]
+        assert goal_schema["properties"]["source_excerpt_index"] == {"type": "integer", "enum": list(range(32))}
+        assert "NULLBASIERTEN Integerindex" in instructions
+    else:
+        assert goal_schema["properties"]["source_excerpt"]["enum"] == candidates
     assert "EXAKT und UNVERÄNDERT" in instructions
     texts = [material["content"] for material in payload["materials"]] + [payload["goal"]["note"]]
     assert all(3 <= len(candidate) <= 350 and any(candidate in text for text in texts) for candidate in candidates)
@@ -154,3 +167,24 @@ def test_long_source_passages_remain_literal_and_bounded(quote_transport):
     candidates = submitted["source_excerpt_candidates"]
     assert all(3 <= len(candidate) <= 350 and candidate in text for candidate in candidates)
     assert text.endswith(candidates[-1])
+
+
+def test_quoted_excerpt_is_carried_as_an_index_without_changing_the_source(quote_transport):
+    config, payload, output, calls = quote_transport
+    literal = 'Das Nomen "Hund" wird großgeschrieben.'
+    payload["materials"] = [{"content": literal}]
+    payload.pop("goal")
+    output["learning_goals"][0]["source_excerpt"] = literal
+    result = request_provider(config, "coach", payload)
+    schema = calls[0][1]["response_format"]["json_schema"]["schema"]
+    assert literal not in json.dumps(schema, ensure_ascii=False)
+    assert result.data["learning_goals"][0]["source_excerpt"] == literal
+    assert payload["materials"][0]["content"] == literal
+
+
+@pytest.mark.parametrize("index", [-1, 32, True, 1.5, "0", None])
+def test_quote_index_is_a_bounded_integer_not_a_guessed_text_answer(quote_transport, index):
+    config, payload, output, _ = quote_transport
+    output["learning_goals"][0]["source_excerpt_index"] = index
+    with pytest.raises(ProviderError, match="keinen der wörtlichen Belege"):
+        request_provider(config, "coach", payload)

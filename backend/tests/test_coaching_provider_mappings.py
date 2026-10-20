@@ -152,7 +152,8 @@ def test_openrouter_http_error_keeps_only_safe_diagnostics_and_unknown_billing(c
 
         def post(self, *args, **kwargs):
             return httpx.Response(400, headers={"x-request-id": "synthetic-request-1"}, json={
-                "error": {"message": "Invalid schema PRIVATE_SYNTHETIC_ECHO", "metadata": {
+                "error": {"message": "Provider returned error", "metadata": {
+                    "raw": "Invalid schema PRIVATE_SYNTHETIC_ECHO",
                     "error_type": "invalid_request", "provider_code": "PRIVATE_SYNTHETIC_ECHO"}}})
 
     monkeypatch.setattr(providers.httpx, "Client", Client)

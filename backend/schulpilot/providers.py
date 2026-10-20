@@ -967,7 +967,19 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         payload, language_quotes = bind_language_project_sources(schema, payload)
     if function == "coach":
         if excerpt_candidates is not None:
-            schema["$defs"]["LearningGoal"]["properties"]["source_excerpt"]["enum"] = excerpt_candidates
+            goal_schema = schema["$defs"]["LearningGoal"]
+            if config.provider == "openrouter":
+                # Azure rejects quoted string literals inside strict enums.
+                # Bind an integer to the exact excerpt instead of changing or
+                # weakening the literal source evidence.
+                goal_schema["properties"].pop("source_excerpt")
+                goal_schema["properties"]["source_excerpt_index"] = {
+                    "type": "integer", "enum": list(range(len(excerpt_candidates)))}
+                goal_schema["required"] = [
+                    "source_excerpt_index" if field == "source_excerpt" else field
+                    for field in goal_schema["required"]]
+            else:
+                goal_schema["properties"]["source_excerpt"]["enum"] = excerpt_candidates
         ids = [q["question_id"] for q in payload["completed_questions"]]
         schema["properties"]["question_reviews"].update(minItems=len(ids), maxItems=len(ids))
         review_type = "QuestionFeedback" if model_type is s.AssignedCoachingReviewOutput else "QuestionReview"
@@ -1052,6 +1064,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "source_excerpt_candidates wählen. Keine Paraphrase, Zusammenfassung, Auslassungszeichen "
             "oder veränderte Schreibweise. Wähle einen zum konkreten Lernziel passenden Beleg."
         )
+        if config.provider == "openrouter":
+            instructions += (
+                "\nIm privaten Ausgabeschema steht ausschließlich source_excerpt_index statt source_excerpt. "
+                "Wähle den NULLBASIERTEN Integerindex des passenden wörtlichen Belegs in "
+                "source_excerpt_candidates. Gib keinen Zitattext und keine Buchstaben aus. "
+                "Der Server setzt den unveränderten Beleg ein."
+            )
     if function == "coach" and payload.get("defer_practice"):
         instructions += (
             "\nDIESER AUFTRAG IST NUR DER RÜCKBLICK. next_unit ist IMMER null. "
@@ -1432,7 +1451,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                         "rate_limit_exceeded", "provider_overloaded", "timeout", "server"}:
                         diagnostic.telemetry["error_type"] = category
                     message = error.get("message") if isinstance(error, dict) else None
-                    if isinstance(message, str) and "invalid schema" in message.lower():
+                    raw_detail = metadata.get("raw") if isinstance(metadata, dict) else None
+                    if any(isinstance(value, str) and "invalid schema" in value.lower()
+                        for value in (message, raw_detail)):
                         diagnostic.telemetry["error_type"] = "invalid_schema"
             except ValueError:
                 pass
@@ -1500,8 +1521,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         else:
             text = json.dumps(raw["data"])
             input_tokens, output_tokens = usage.get("input_tokens"), usage.get("output_tokens")
-        if indexed_choices or omit_review_unit:
+        indexed_excerpts = config.provider == "openrouter" and excerpt_candidates is not None
+        if indexed_choices or omit_review_unit or indexed_excerpts:
             decoded = json.loads(text)
+            if indexed_excerpts and isinstance(decoded, dict):
+                for goal in decoded.get("learning_goals", []):
+                    index = goal.get("source_excerpt_index") if isinstance(goal, dict) else None
+                    if (type(index) is not int or not 0 <= index < len(excerpt_candidates)
+                        or "source_excerpt" in goal):
+                        raise ProviderError("Ein vorgeschlagenes Lernziel verwendet keinen der wörtlichen Belege.")
+                    del goal["source_excerpt_index"]
+                    goal["source_excerpt"] = excerpt_candidates[index]
             if omit_review_unit and isinstance(decoded, dict):
                 if decoded.get("next_unit") is not None:
                     raise ProviderError("Der Rückblick enthält unerlaubte neue Aufgaben. Deine Antworten bleiben gespeichert.")
