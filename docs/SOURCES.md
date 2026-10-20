@@ -1,4 +1,5 @@
-Lernsteuerung und gemeinsamer Arbeitsraum20.10.2026, Zielversion1.15.0+65:
+Lernsteuerung und gemeinsamer Arbeitsraum20.10.2026, bereitgestellt1.15.0+65
+(20261020T184923Z-872d505, Produktcommit872d505375894ffd4e1c173af5a1d6513aff0e75):
 
 Eigene vorhandene Attempt-/Activity-/Quellen-/Jobmodelle und gepinnte Flutter-
 Darstellung. Keine neuen Dart-/Python-Pakete, Lernanbieter, Microservices oder höheren

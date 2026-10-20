@@ -1,7 +1,7 @@
 # Zustandsbehaftete Lernsteuerung und gemeinsamer Arbeitsraum
 
-Zielversion 1.15.0+65. Tatsächliche Bereitstellung und Testergebnisse stehen in
-STATUS.md; dieser Text allein ist kein Deploymentnachweis.
+Produktionsversion1.15.0+65, Release20261020T184923Z-872d505.
+Tatsächliche Bereitstellung, Testabdeckung und Prüfgrenzen stehen in STATUS.md.
 
 ## Ziel und tatsächliche Aufgabenteilung
 

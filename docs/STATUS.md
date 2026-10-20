@@ -1,43 +1,90 @@
-# Freigabevorbereitung 1.15.0+65 ·20.10.2026
+# Produktionsstand1.15.0+65 ·20.10.2026
 
-Produktcode und Prüfungen für die neue zustandsbehaftete Lernsteuerung und zwei
-vollständige Erscheinungsbilder werden hier vorbereitet. Zum Zeitpunkt dieses
-Quellcommits läuft Produktion noch mit1.14.3+63; der nachfolgende tatsächliche
-Release-/Build-/Deploymentnachweis ersetzt diesen Kopf nach erfolgreicher Abnahme.
+Live: Release `20261020T184923Z-872d505`, Produktcommit
+`872d505375894ffd4e1c173af5a1d6513aff0e75`. Öffentlicher Healthcheck status=ok/1.15.0;
+API, Worker und Caddy aktiv. Caddy-/Datenbanksicherung vor Aktivierung erfolgreich,
+Schema0023 unverändert. Produktcommits nach main gepusht; nachfolgender
+Dokumentationscommit ändert keine Releaseartefakte.
 
-Neuer gemeinsamer Cyber-Arbeitsraum: dunkel und hell, lokal umschaltbar ohne
-Formularverlust oder Serverauftrag. Kinder starten in einer Lernstation mit
-eigener künstlicher Buchdrohne, kompaktem Fotoeingang und klarer Hauptaktion.
-Lernen, Wörter, Nachrichten und Konto gemeinsam neu geordnet. Eltern sehen reale
-Übungsbelege und Handlungsbedarf; Admins Triage und Betriebsaktionen. Einheitliche
-Navigation in allen Breiten, weiterhin Backendrollen und keine Fantasiespielwerte.
-Lokale Nunito-/Space-Grotesk-Schriften mit OFL; kein Font-CDN.
+## Ergebnis
 
-Die Lernsteuerung verbindet vorhandene Antworten, Hilfen, Quellen und Jobgrenzen
-mit einem gespeicherten Kurzplan. Endlicher Bruch-Vorwissenspfad, belegtes
-Langzeitgedächtnis, optionaler begrenzter Modellplan, passende echte Ressourcen,
-Medienrückkehr und ausdrücklich neue Verständnisfragen. Antworten/Hilfen bleiben
-unverändert nachvollziehbar; veraltete Modellantworten werden verworfen.
-Schema0023 bleibt erhalten. Keine Migration privater Antworten in andere Systeme.
+Zwei vollständige Erscheinungsbilder derselben Cyber-Anwendung: Dunkel und Hell,
+lokal umschaltbar und nach Neustart erhalten. Neue Kinder-Lernstation mit eigener
+künstlicher Buchdrohne, kompaktem Fotoeingang, einer nächsten Hauptaktion und
+klar getrenntem Plan/Postfach. Lernen, Wörter, Nachrichten und Konto verwenden
+einheitliche Navigation. Eltern sehen tatsächliche Übungsbelege und Handlungsbedarf;
+Admins Triage, Kosten und Betriebsaktionen. Adminlogin und alte Startlinks führen
+unmittelbar ins Betriebscockpit. Lokale Nunito-/Space-Grotesk-Schriften mit OFL,
+keine Schrift-CDN-Abfrage und keine neue Bilddienstintegration in der App.
 
-OpenRouter-Kontodatenschutz geprüft/gespeichert: ZDR und keine Trainings-/
-Observability-Inhaltsspeicherung. Bestehende freigegebene Route/Revision29 und
-Budgets unverändert. Genau ein weiterer künstlicher normal reservierter Planjob,
-Kosten0,000514USD, gesamte bisherige künstliche Evaluation0,238013USD innerhalb
-0,25USD. Kein echter Kinderinhalt und keine Produktions-Testantwort dieser Prüfung.
+Zustandsbehaftete Lernsteuerung mit vorhandenen Attempts/Activities als Belegen,
+endlichem Kurzplan, geprüfter Bruch-Vorwissensverzweigung, getrenntem langfristigem
+Lernmodell, optionaler begrenzter Modellentscheidung über vorhandene Inhalte,
+echten lokalen Ressourcen und Medienrückkehr. Nach Erklärungen bewusst neue
+Verständnisfragen; unklare Bewertung bleibt offen. Gezeigte Hilfe und ursprüngliche
+Antworten werden nicht für bessere Statistiken überschrieben. Entwürfe,
+Planrevisionen und Feedback überleben Unterbrechungen; ein Reload erzeugt keine KI.
 
-Vollständiger Flutterlauf983 Prüfungen bestanden, danach201 überlappende
-Renderer-/Design-/Lernraumprüfungen. Analyse/Ruff sauber, bekannte Schlüssel in617
-Quelldateien nicht gefunden. Künstliche mobile/weite Hell-/Dunkel-Browserprüfung
-bestätigt erreichbare Hauptaktion und erhaltene Rückmeldung nach Reload.
-Abschließender PostgreSQL-Lauf und signierte Builds/Produktivbereitstellung
-stehen zu diesem Quellstand noch aus; keine vorweggenommene Live-Abnahme.
+OpenRouter bleibt aktiv, Revision29, bezahlter Mix Luna/Sol mit economy_mode,
+Medium, ZDR und unveränderten Kosten-/Token-/Systemgrenzen. Keine Astra-Freigabe,
+kein automatischer Fallback. Kontodatenschutz zusätzlich gespeichert und nach
+Reload geprüft: ZDR, keine Trainingsfreigabe oder Observability-Inhaltsspeicherung.
+Ein zusätzlicher künstlicher normal reservierter Entscheidungsjob erfolgreich,
+erfasste Kosten0,000514USD; gesamte bisherige künstliche Evaluation0,238013USD
+innerhalb0,25USD. Keine echte Kinderantwort oder echte Seite an einen Testanbieter.
 
-Architektur/Schnittstellen/Beispielspur und Grenzen:
-docs/LEARNING_CONTROLLER_2026_10_20.md. Design, Recherche und Assetherkunft:
-docs/DESIGN_SYSTEM.md sowie CHILD_/PARENT_/ADMIN_WORKSPACE_2026_10_20.md.
-Rückweg ist die vor Deployment aktive1.14.3+63, Release20261020T160732Z-421e0ea;
-neuere Antworten/Löschjournale dürfen nie durch einen alten Datenstand ersetzt werden.
+## Nachweise und Grenzen
+
+983 Fluttertests im vollständigen Lauf bestanden; danach201 Renderer-/Design-/
+Lernraumprüfungen,11 gezielte Abschlussprüfungen und23 Router-/Adminprüfungen
+bestanden. Mengen überschneiden sich. Flutteranalyse und Ruff sauber.
+
+Backend: vollständige eindeutige Abdeckung aller1269 Fälle in75 Dateien auf
+isoliertem PostgreSQL16. Lange Prozesse endeten vor Abschluss mit143; ausdrücklich
+kein sauber beendeter monolithischer Gesamtlauf behauptet. Nachgewiesen sind625
+abgeschlossene serielle Fälle des unterbrochenen Teillaufs,634 Fälle mit fertigem
+JUnit-Bericht und10 separat erfolgreich nachgeprüfte Restfälle. Reihenfolge,
+Identität und Überschneidungsfreiheit gegen die vollständige Collection geprüft;
+kein Fehler/Skip in dieser finalen Fallabdeckung. Der vorher aufgedeckte direkte
+FastAPI-Header-Defaultfehler wurde behoben und unter anderem mit43 Tutor-/
+Adaptivregressionen nachgeprüft. Rohprotokolle/Abdeckungsnachweis unter artifacts.
+
+Browser: künstliche Kinder-/Eltern-/Adminprofile bei390px und1280px in beiden
+Varianten geprüft. Bruchspur1/3+1/6 →2/9 →gezielte Gleichwertigkeitsprobe →
+visuelle Erklärung →neue1/4+1/8 →3/8 tatsächlich bedient. Rückmeldung nach Reload
+erhalten; Elternprojektion zeigt3 Aufgaben/3 Versuche,2 selbstständig gelöst und1
+weiter zu üben, offene Runde separat. Adminentwurf über Reiter-/Designwechsel
+sichtbar erhalten, ohne Speichern/Providerprüfung. Verkauf/Push rein lesend geprüft.
+
+Produktion nach Deployment: bestehende Kindersitzung erhalten, neue Heute-Seite in
+beiden Varianten und Lernen/Wörter/Hefte/Konto gezeigt, Clientversion1.15.0+65 in
+App-Informationen bestätigt. Keine Testantwort, Nachricht, neue Lernrunde,
+Providerprüfung oder Pushnachricht im echten Haushalt ausgelöst. Browser wieder
+auf Heute im dunklen Design bereit. Temporäre künstliche Konten/Datenbanken entfernt, lokalen API-/Workerprozess
+beendet und Testtab geschlossen.
+Keine vollständige physische Android-/TalkBack-/FCM-Zustellabnahme, gesamte
+Klasse1–13-Lehrplanabnahme oder gemessene Lernwirkung behauptet.
+
+Web, signierte Direct-APK und Play-AAB65 gebaut und validiert; kein Play-Upload.
+APK74499066 Bytes, SHA256
+`9e267af37540a0822d858ba8c70771581d5a85c193e4478449ded8a7c054de7f`.
+Öffentlicher Download und Manifest vollständig identisch. AAB70090963 Bytes,
+SHA256 `fa87bafcfa657b33ad8972f2501ff4db70144b43608667e7b87cf208c7d14a52`;
+Bundletool, Version, Paket und Signierer korrekt, keine Play-APK-Installerberechtigung.
+617 Quelldateien,344 Archiveinträge und98 Webdateien gegen bekannte Geheimnisse
+geprüft, keine Treffer; Provider-Schlüssel zusätzlich roh/base64 geprüft.
+
+Architektur/Funktionen/Schnittstellen/Beispielspur:
+[LEARNING_CONTROLLER_2026_10_20.md](LEARNING_CONTROLLER_2026_10_20.md).
+Design, Recherche und Assetherkunft: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md),
+[CHILD_WORKSPACE_2026_10_20.md](CHILD_WORKSPACE_2026_10_20.md),
+[PARENT_WORKSPACE_2026_10_20.md](PARENT_WORKSPACE_2026_10_20.md),
+[ADMIN_WORKSPACE_2026_10_20.md](ADMIN_WORKSPACE_2026_10_20.md).
+
+Rückweg: `/opt/schulpilot/releases/20261020T160732Z-421e0ea` (1.14.3+63),
+auch als previous erhalten, Schema0023. Vor Code-Rollback neue KI-Aufträge
+anhalten/aktive abarbeiten und Löschjournal beachten. Keine Datenrücksicherung
+über neuere Antworten oder Löschungen. Restorewerkzeuge mindestens1.14.2.
 
 ---
 
