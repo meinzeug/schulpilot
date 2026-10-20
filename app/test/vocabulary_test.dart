@@ -294,7 +294,11 @@ void main() {
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
       await tap(tester, find.text('Runde beginnen'));
       expect(find.text('Gespeicherte Wörterrunde'), findsOneWidget);
-      final post = requests.singleWhere((r) => r.method == 'POST');
+      final post = requests.singleWhere((r) => r.url.path.endsWith('/rounds'));
+      expect(requests.where((r) => r.method == 'POST').map((r) => r.url.path), [
+        '/api/children/child/vocabulary/rounds',
+        '/api/units/round/start',
+      ]);
       final body = jsonDecode(post.body);
       expect(body['skill'], 'spelling');
       expect(body['direction'], 'de_to_target');
@@ -321,7 +325,7 @@ void main() {
       await tap(tester, find.text('15 Vokabeln').last);
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
       await tap(tester, find.text('Runde beginnen'));
-      final post = requests.singleWhere((r) => r.method == 'POST');
+      final post = requests.singleWhere((r) => r.url.path.endsWith('/rounds'));
       expect(jsonDecode(post.body)['count'], 15);
       expect(tester.takeException(), isNull);
     },
@@ -341,6 +345,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Apfel'), findsNothing);
   });
+
+  testWidgets(
+    'A failed explicit word-round start retries the same stored round without a new creation key',
+    (tester) async {
+      final requests = <http.Request>[];
+      var starts = 0;
+      await open(
+        tester,
+        requests,
+        respond: (r) async {
+          if (r.url.path.endsWith('/imports')) return reply({'imports': []});
+          if (r.url.path.endsWith('/rounds')) {
+            return reply({'unit_id': 'round'});
+          }
+          if (r.url.path.endsWith('/start')) {
+            starts++;
+            return starts == 1
+                ? http.Response(
+                    '{"detail":"Künstlicher Verbindungsfehler"}',
+                    503,
+                    headers: {'content-type': 'application/json'},
+                  )
+                : reply({});
+          }
+          return reply(listing());
+        },
+      );
+      await tap(tester, find.text('Wörter üben'));
+      await tap(tester, find.text('Runde beginnen'));
+      expect(
+        find.textContaining('Künstlicher Verbindungsfehler'),
+        findsOneWidget,
+      );
+      expect(find.text('Gespeicherte Wörterrunde'), findsNothing);
+      expect(starts, 1);
+      await tap(tester, find.text('Wörter üben'));
+      await tap(tester, find.text('Runde beginnen'));
+      final creates = requests
+          .where((r) => r.url.path.endsWith('/rounds'))
+          .toList();
+      expect(creates, hasLength(2));
+      expect(
+        creates[1].headers['Idempotency-Key'],
+        creates[0].headers['Idempotency-Key'],
+      );
+      expect(creates[1].body, creates[0].body);
+      expect(starts, 2);
+      expect(find.text('Gespeicherte Wörterrunde'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final width in [320.0, 1280.0]) {
     testWidgets('Workshop requires conscious word selection at $width', (

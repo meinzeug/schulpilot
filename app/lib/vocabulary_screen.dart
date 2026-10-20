@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'lesson_voice.dart';
+import 'learning_navigation.dart';
 import 'language_options.dart';
 import 'material_screen.dart';
 import 'material_words.dart';
@@ -784,9 +785,16 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       final result = await widget.state.api.post('$base/rounds', selection, {
         'Idempotency-Key': roundRequestKey!,
       });
-      roundRequestBody = roundRequestKey = null;
       if (mounted && current && (originRoute?.isCurrent ?? true)) {
-        openRoute(context, '/unit/${result['unit_id']}');
+        await openPlanItem(
+          context,
+          widget.state,
+          {
+            'child': {'id': widget.childId},
+          },
+          {'kind': 'unit', 'id': result['unit_id']},
+        );
+        if (current) roundRequestBody = roundRequestKey = null;
       }
     });
   }

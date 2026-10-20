@@ -1,4 +1,4 @@
-Kinder-Funktionsprüfung20.10.2026, Zielversion1.14.3+63:
+Kinder-Funktionsprüfung20.10.2026, Zielversion1.14.4+64:
 
 Eigene bestehende Quellen-/Runden-/Nachrichtenmodelle, gepinnte Flutter-
 TransformationController/InteractiveViewer und vorhandene Gerätesprachgrenze.

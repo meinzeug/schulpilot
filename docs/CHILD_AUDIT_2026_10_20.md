@@ -1,7 +1,7 @@
 # Kinderzugang: vollständige Funktionsprüfung · 20.10.2026
 
 Betreiberauftrag: alle Funktionen im angemeldeten Kinderzugang prüfen und
-belegte Fehler/Bedienprobleme beheben. Zielversion 1.14.3+63. Produktionskonto
+belegte Fehler/Bedienprobleme beheben. Zielversion 1.14.4+64. Produktionskonto
 nur lesend prüfen; keine Testantworten, Hilfewünsche, Nachrichten, Änderungen
 an Wörtern/Noten oder neuen KI-Aufträge in seinem Bestand. Schreibende Abläufe
 verwenden künstliche, getrennte lokale Daten. Keine privaten Kennungen,
@@ -35,6 +35,13 @@ Antworten, Fotos oder Zugangsdaten in Git.
   Familienbereich. Menschliche Nachrichten bleiben erhalten/lesbar. Mehr als
   zwei Fächer werden in kurzen Vorbereitungszeilen mit Auslassung gekennzeichnet.
 
+- **Wörterrunde direkt beginnen:** Der Browser zeigte nach „Runde beginnen“
+  nochmals „Einheit starten“. Die ausdrücklich angeforderte Wörterrunde nutzt
+  jetzt denselben bestehenden Startweg wie andere gespeicherte Runden. Bei
+  Startfehlern bleibt der Erzeugungsschlüssel erhalten; ein bewusster weiterer
+  Versuch verwendet dieselbe Runde. Konto-/Routenwechsel verhindern einen
+  nachträglichen Start. Kein zusätzlicher Providerauftrag.
+
 ## Prüfumfang und Methoden
 
 | Funktion | Ausgeführte Prüfung |
@@ -46,17 +53,19 @@ Antworten, Fotos oder Zugangsdaten in Git.
 | Hefte, Album, Originalfoto, Zoom | Reales Album/Zoom/Rückweg gelesen; neue Zoomsteuerung bei 320 px und doppelter Schrift, Grenzen und Quellenwechsel isoliert. |
 | Fotoauswahl, Blobzugriff, Drehen, Zuschnitt | Künstliches JPEG im regulären Produktions-Fotoassistenten bis zum Zuschnitt geöffnet und gedreht. Vor Übernahme abgebrochen: neun Tagesseiten gespeichert, null vorgemerkt. Kein Upload und keine OCR dadurch. |
 | Abgeben, OCR, Bestätigen, Pakete, Status/Retry | Vollständige isolierte API-/Widgettests für Idempotenz, Quellen-/Sitzungsprüfung, Fehler und Hintergrundfortsetzung. Externe OCR/Erzeugung in dieser erneuten Bedienprüfung nicht wiederholt; bisherige Anbieterabnahme unverändert. |
-| Wörter, Import, Korrektur, Abrufmodi | Reale Übersicht und 10er-Dialog gelesen, keine Aufdeckung/Korrektur gestartet. Ganze isolierte Modus-/Import-/Revision-/Wiedervorlageprüfungen einschließlich fünf/zehn/fünfzehn Aufgaben. |
+| Wörter, Import, Korrektur, Abrufmodi | Reale Übersicht und 10er-Dialog gelesen, keine echte Aufdeckung/Korrektur gestartet. In einer getrennten gewöhnlichen lokalen Testfamilie zwölf künstliche Paare eingegeben, ungültige Zeile korrigiert, zehn ausdrücklich bestätigt und zwei einschließlich einer Korrektur zum späteren Prüfen erhalten. Zehner-Runde erzeugt; unnötigen zweiten Startschritt reproduziert. Ganze isolierte Modus-/Import-/Revision-/Wiedervorlageprüfungen einschließlich fünf/zehn/fünfzehn Aufgaben. |
 | Sprachwerkstatt, Dialog, Grammatik, Probe | Bestehende vollständige Widget-/Backendtests für Entwürfe, Kriterien, Quellen, einzelne bewusste Schritte, Limits und Wiederholung. Kein zusätzlicher externer Modellauftrag. |
 | Heftfragen, Zitate, Lerntipps, Medienrückkehr | Vollständige isolierte Tests für gespeicherte Zitate, private Quellen, Hilfezuordnung, gestufte Offenlegung und explizite Folgeaufträge. |
-| Nachrichten, Hilfe, Wünsche | Reale Menü-/Readernavigation ohne Versand; isolierte Schreib-/Rollen-/Kontextprüfungen einschließlich ungültiger Altverweise. |
+| Nachrichten, Hilfe, Wünsche | Reale Menü-/Readernavigation ohne Versand; im lokalen künstlichen Haushalt einen Hilfewunsch ohne eigenes Pflichttextfeld gesendet und wieder geöffnet. Isolierte Rollen-/Kontextprüfungen einschließlich ungültiger Altverweise. |
 | Glocke, Lesen, Push-Freigabe | Reale Neuigkeiten und gesperrtes Geräte-Opt-in ohne Elternfreigabe gesehen; Lesen/Mehrgeräte/Entzug/Ruhezeiten mit künstlichen Tests. |
 | Konto, Geräte, Datenschutz, Abmelden | Reale Geräte-/Elternrechte gelesen, keine echte Sitzung widerrufen. Isolierte Auth-/Konten-/Widerrufs-/Lösch-/Exporttests. |
 | Mobil, große Schrift, Tastatur, Kontowechsel | Vollständige Flutter-Suite einschließlich 320/390/1440 px, doppelter Schrift, später Antworten und Cache-/Lifecycleprüfungen. |
 
 ## Tests
 
-900 Fluttertests vollständig bestanden. Flutteranalyse und Ruff ohne Befund.
+901 Fluttertests im abschließenden vollständigen Lauf bestanden. Zuvor 32
+passende Prüfungen für den direkten Wortstart einschließlich Verbindungsfehler
+und Wiederholung bestanden. Flutteranalyse und Ruff ohne Befund.
 Vollständiger isolierter PostgreSQL-Pytestlauf: 1.247 bestanden in 1.047,05 s.
 Die äußere Ausführung meldete danach Abschlussstatus143; die temporäre Datenbank
 war vollständig entfernt, kein zurückgebliebener Testcluster. Diesen Status
@@ -73,8 +82,15 @@ von Anbieterroute, Reservierung, Budget oder bisherigem Kostennachweis.
 
 ## Bereitstellung
 
-Abschließende Artefakt-/Deploymentprüfung und tatsächliche Altbereinigung folgen
-nach dem Build. Geplanter Code-Rückweg ist 1.14.2+62 /
-`20261020T132931Z-091b791`, Schema0023. Wiederherstellung mindestens1.14.3
+Zwischenstand 1.14.3+63 erfolgreich bereitgestellt: `20261020T160732Z-421e0ea`,
+Quelle `421e0ea901bb433cc0462258c66579cd4e4ed39e`. Artefakte/Signaturen und
+öffentlicher Download geprüft. Der genaue Bestandsdigest zeigte 34 nicht erzeugte
+Planreste und null Runden/Antworten/Elternaufträge in der Löschmenge. Genau diese
+34 Etappen entfernt und auditiert. Die echte Lernliste zeigt danach fünf
+verfügbare Einträge statt der alten 22; gültige Hefte, Runden und Wörter erhalten.
+
+Die Nachbesserung des Wortstarts ist in1.14.4+64 enthalten; finale Artefakt-/
+Browserabnahme wird nach dem Build ergänzt. Code-Rückweg ist1.14.3+63 /
+`20261020T160732Z-421e0ea`, Schema0023. Wiederherstellung mindestens1.14.3
 verwenden, um zusätzlich die geplanten Etappen nach Quellenlöschung zu bereinigen.
 Keine Sicherung über neuere Antworten/Löschungen zurückspielen.

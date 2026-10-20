@@ -339,3 +339,13 @@ Prüfentwurf mit denselben Quellenrevisionen erhalten. Bestätigen ist atomar un
 wiederholbar, keine zusätzliche KI. Neue Capability `supports_deferred_pairs`
 verhindert stillen Verlust bei einem alten Backend. Foto-Paare bleiben ohne
 Übernahme auf ihrer gespeicherten Seite erreichbar.
+
+## Direkter bewusster Wortstart ab1.14.4+64
+
+„Runde beginnen“ erzeugt idempotent den bestehenden Wortschatz-Snapshot und
+startet genau diese gespeicherte Einheit über den regulären kindgebundenen
+Start-Endpunkt. Kein zweiter Startknopf als Pflichtschritt. Bei einem
+Start-/Transportfehler bleiben Körper und Idempotenzschlüssel des Erzeugens
+erhalten; Wiederholung ausdrücklich auslösen. Konto und Ursprungsroute vor
+dem Start erneut prüfen. Keine automatische Erzeugung beim Öffnen/Reload und
+keine neue KI für lokale Vokabelrunden.
