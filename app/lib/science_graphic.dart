@@ -120,12 +120,12 @@ class ScienceGraphic extends StatelessWidget {
           const SizedBox(height: 16),
           if (block['kind'] == 'logic_table')
             Table(
-              border: TableBorder.all(color: surfaceBorder),
+              border: TableBorder.all(color: context.palette.surfaceBorder),
               children: [
                 for (final row in logicRows.indexed)
                   TableRow(
                     decoration: row.$1 == 0
-                        ? const BoxDecoration(color: surfaceLow)
+                        ? BoxDecoration(color: context.palette.surfaceLow)
                         : null,
                     children: [
                       for (final cell in row.$2)
@@ -158,6 +158,7 @@ class ScienceGraphic extends StatelessWidget {
                       Theme.of(context).colorScheme.onSurface,
                       MediaQuery.textScalerOf(context).scale(14).clamp(14, 20),
                       Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                      palette: context.palette,
                     ),
                   ),
                 ),
@@ -196,7 +197,14 @@ class SciencePainter extends CustomPainter {
   final Color ink;
   final double fontSize;
   final String? family;
-  SciencePainter(this.block, this.ink, this.fontSize, this.family);
+  final AppPalette palette;
+  SciencePainter(
+    this.block,
+    this.ink,
+    this.fontSize,
+    this.family, {
+    this.palette = const AppPalette(isDark: false),
+  });
   List<double> get n =>
       (block['numbers'] as List).map((v) => (v as num).toDouble()).toList();
   void line(Canvas c, Offset a, Offset b, {Color? color, double width = 2}) =>
@@ -229,7 +237,7 @@ class SciencePainter extends CustomPainter {
   }
 
   void atom(Canvas c, String label, Offset p) {
-    c.drawCircle(p, 14, Paint()..color = Colors.white);
+    c.drawCircle(p, 14, Paint()..color = palette.panelSurface);
     text(c, label, p);
   }
 
@@ -311,14 +319,14 @@ class SciencePainter extends CustomPainter {
             canvas,
             Offset(xp.dx, rect.top),
             Offset(xp.dx, rect.bottom),
-            color: surfaceBorder,
+            color: palette.surfaceBorder,
             width: 1,
           );
           line(
             canvas,
             Offset(rect.left, yp.dy),
             Offset(rect.right, yp.dy),
-            color: surfaceBorder,
+            color: palette.surfaceBorder,
             width: 1,
           );
           text(
@@ -356,14 +364,14 @@ class SciencePainter extends CustomPainter {
           canvas.drawPath(
             path,
             Paint()
-              ..color = cyanInk
+              ..color = palette.cyanInk
               ..strokeWidth = 3
               ..style = PaintingStyle.stroke,
           );
         }
         if (block['kind'] == 'data_plot') {
           for (final p in points) {
-            canvas.drawCircle(position(p), 4, Paint()..color = cyanInk);
+            canvas.drawCircle(position(p), 4, Paint()..color = palette.cyanInk);
           }
         }
         canvas.restore();
@@ -411,23 +419,27 @@ class SciencePainter extends CustomPainter {
               b = points[edge['end'] as int];
           final direction = (b - a) / (b - a).distance;
           final start = a + direction * 16, end = b - direction * 19;
-          line(canvas, start, end, color: cyanInk);
+          line(canvas, start, end, color: palette.cyanInk);
           final perpendicular = Offset(-direction.dy, direction.dx);
           line(
             canvas,
             end,
             end - direction * 8 + perpendicular * 4,
-            color: cyanInk,
+            color: palette.cyanInk,
           );
           line(
             canvas,
             end,
             end - direction * 8 - perpendicular * 4,
-            color: cyanInk,
+            color: palette.cyanInk,
           );
         }
         for (var i = 0; i < points.length; i++) {
-          canvas.drawCircle(points[i], 16, Paint()..color = Colors.white);
+          canvas.drawCircle(
+            points[i],
+            16,
+            Paint()..color = palette.panelSurface,
+          );
           canvas.drawCircle(points[i], 16, stroke);
           text(canvas, '${i + 1}', points[i]);
         }
@@ -449,7 +461,7 @@ class SciencePainter extends CustomPainter {
               width: w * .33,
               height: h * .44,
             ),
-            Paint()..color = const Color(0xFFE4EEFC),
+            Paint()..color = palette.cyanSurface,
           );
           text(canvas, '5', Offset(w * .57, h * .57));
           for (final p in [
@@ -458,7 +470,7 @@ class SciencePainter extends CustomPainter {
           ]) {
             canvas.drawOval(
               Rect.fromCenter(center: p, width: 32, height: 18),
-              Paint()..color = const Color(0xFFB9DDBA),
+              Paint()..color = palette.successSurface,
             );
             text(canvas, '6', p);
           }
@@ -471,11 +483,7 @@ class SciencePainter extends CustomPainter {
           text(canvas, '3', Offset(w * .65, h * .66));
         }
         final nucleus = Offset(w * .35, h * .40);
-        canvas.drawCircle(
-          nucleus,
-          24,
-          Paint()..color = const Color(0xFFDDD1EF),
-        );
+        canvas.drawCircle(nucleus, 24, Paint()..color = palette.mint);
         canvas.drawCircle(nucleus, 24, stroke);
         text(canvas, plant ? '3' : '2', nucleus);
       case 'molecule':
@@ -626,5 +634,6 @@ class SciencePainter extends CustomPainter {
       block != oldDelegate.block ||
       ink != oldDelegate.ink ||
       fontSize != oldDelegate.fontSize ||
-      family != oldDelegate.family;
+      family != oldDelegate.family ||
+      palette.isDark != oldDelegate.palette.isDark;
 }

@@ -43,7 +43,7 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     load();
-    poll = Timer.periodic(const Duration(seconds: 3), (_) {
+    poll = Timer.periodic(Duration(seconds: 3), (_) {
       if (foreground &&
           sameOwner &&
           waiting &&
@@ -85,7 +85,7 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
     readingJob = id;
     try {
       final result = await widget.state.api.get('/jobs/$id');
-      if (result['kind'] != 'unit') {
+      if (!['unit', 'controller_check', 'decision'].contains(result['kind'])) {
         throw ApiError('Diese Vorbereitung gehört zu einem anderen Schritt.');
       }
       if (mounted && sameOwner && id == widget.jobId) {
@@ -103,16 +103,17 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (!sameOwner) return const SizedBox.shrink();
+    if (!sameOwner) return SizedBox.shrink();
     final ready =
         job?['status'] == 'completed' && job?['result']?['unit_id'] is String;
     final failed = job != null && !waiting && !ready;
+    final planning = job?['kind'] == 'decision';
     return PageFrame(
       state: widget.state,
-      title: 'Deine Lernrunde',
+      title: planning ? 'Dein nächster Lernschritt' : 'Deine Lernrunde',
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 660),
+          constraints: BoxConstraints(maxWidth: 660),
           child: Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,30 +124,29 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                       : failed || error != null
                       ? Icons.cloud_off_rounded
                       : Icons.auto_awesome_rounded,
-                  color: teal,
+                  color: context.palette.teal,
                   size: 46,
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Text(
                   ready
-                      ? 'Deine Runde ist bereit.'
+                      ? planning
+                            ? 'Dein Lernplan ist bereit.'
+                            : 'Deine Runde ist bereit.'
                       : failed
                       ? 'Diese Runde konnte nicht vorbereitet werden.'
                       : error != null
                       ? 'Wir können gerade nicht nachsehen.'
+                      : planning
+                      ? 'Dein Lernplan entsteht …'
                       : 'Deine Runde entsteht …',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 25,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 25),
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 if (waiting && error == null) ...[
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Du kannst die App schließen. Wir arbeiten weiter.',
-                  ),
+                  LinearProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Du kannst die App schließen. Wir arbeiten weiter.'),
                 ],
                 if (failed || error != null) ...[
                   Text(
@@ -155,9 +155,9 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                         : job?['error'] as String? ??
                               'Deine Heftseiten bleiben gespeichert.',
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                 ],
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 if (ready)
                   ActionButton(
                     label: 'Los geht’s',
@@ -183,11 +183,11 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                     icon: Icons.refresh_rounded,
                     onPressed: load,
                   ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextButton.icon(
                   onPressed: () => openRoute(context, '/app'),
-                  icon: const Icon(Icons.home_outlined),
-                  label: const Text('Zur Startseite'),
+                  icon: Icon(Icons.home_outlined),
+                  label: Text('Zur Startseite'),
                 ),
               ],
             ),

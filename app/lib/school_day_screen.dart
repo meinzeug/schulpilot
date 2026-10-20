@@ -42,7 +42,7 @@ class _SchoolPagePhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       page['synthetic'] == true && page['fixture_id'] == null
-      ? const Center(child: Icon(Icons.description_outlined, size: 32))
+      ? Center(child: Icon(Icons.description_outlined, size: 32))
       : NotebookPhoto(state, materialId: page['id'], thumbnail: true);
 }
 
@@ -143,7 +143,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     poll?.cancel();
     poll = null;
     if (!active || !waiting || working) return;
-    poll = Timer(const Duration(seconds: 3), () {
+    poll = Timer(Duration(seconds: 3), () {
       poll = null;
       if (active) unawaited(load());
     });
@@ -279,7 +279,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       '/children/${widget.childId}/overview',
     );
     final tomorrow = DateTime.parse(overview['plan']['date'])
-        .add(const Duration(days: 1))
+        .add(Duration(days: 1))
         .toIso8601String()
         .substring(0, 10);
     if (!mounted) return;
@@ -334,12 +334,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
   }
 
   Widget importStatus() {
-    if (importReceipts.isEmpty) return const SizedBox.shrink();
+    if (importReceipts.isEmpty) return SizedBox.shrink();
     final missing = importReceipts
         .where((r) => r['stage'] == 'not_accepted')
         .length;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Panel(
         child: ExpansionTile(
           key: ValueKey('import-${importReceipts.length}-$missing'),
@@ -352,19 +352,19 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           children: [
             for (final row in importReceipts)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       row['name'] ?? 'Heftfoto',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     Text(receiptStatus(row)),
                     if ((row['reason'] as String? ?? '').isNotEmpty)
                       Text(
                         row['reason'],
-                        style: const TextStyle(color: warningInk),
+                        style: TextStyle(color: context.palette.warningInk),
                       ),
                   ],
                 ),
@@ -426,18 +426,18 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       final accepted = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Fotos auswählen'),
+          title: Text('Fotos auswählen'),
           content: Text(
             'Bis zu ${counted(remaining, 'Foto', 'Fotos')} auf einmal. Pro Schultag sind ${day!['max_pages']} Seiten möglich. Auf dem Gerät passen höchstens 8 Fotos oder 3 MB in den Zwischenspeicher. Weitere Fotos kannst du danach hinzufügen.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Abbrechen'),
+              child: Text('Abbrechen'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Fotos auswählen'),
+              child: Text('Fotos auswählen'),
             ),
           ],
         ),
@@ -647,7 +647,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               unawaited(load());
             }
           },
-          itemBuilder: (_) => const [
+          itemBuilder: (_) => [
             PopupMenuItem(value: 'history', child: Text('Frühere Tage')),
             PopupMenuItem(value: 'refresh', child: Text('Neu laden')),
           ],
@@ -668,16 +668,20 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         Container(
                           height: 5,
                           decoration: BoxDecoration(
-                            color: i <= step ? teal : const Color(0xFFE1E6F0),
+                            color: i <= step
+                                ? context.palette.teal
+                                : Color(0xFFE1E6F0),
                             borderRadius: BorderRadius.circular(5),
                           ),
                         ),
-                        const SizedBox(height: 7),
+                        SizedBox(height: 7),
                         Text(
                           ['1 Fotos', '2 Prüfen', '3 Fertig'][i],
                           style: TextStyle(
                             fontSize: 12,
-                            color: i == step ? teal : muted,
+                            color: i == step
+                                ? context.palette.teal
+                                : context.palette.muted,
                             fontWeight: i == step
                                 ? FontWeight.w700
                                 : FontWeight.w400,
@@ -689,20 +693,17 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           if (loading)
-            const Center(child: CircularProgressIndicator())
+            Center(child: CircularProgressIndicator())
           else if (day == null) ...[
-            const Notice(
-              'Dein Schultag konnte nicht geladen werden.',
-              warning: true,
-            ),
+            Notice('Dein Schultag konnte nicht geladen werden.', warning: true),
             ActionButton(label: 'Noch einmal versuchen', onPressed: load),
           ] else ...[
             if (error != null) Notice(error!, warning: true),
             importStatus(),
             if (day!['synthetic'] == true)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 12),
                 child: Tag('Beispiel · keine eigenen Fotos'),
               ),
@@ -710,25 +711,25 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               childPreparing(context)
             else if (working)
               Panel(
-                color: mint,
+                color: context.palette.mint,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 18),
+                    LinearProgressIndicator(),
+                    SizedBox(height: 18),
                     Text(
                       progress.isEmpty ? 'Einen Moment …' : progress,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (pendingPhotos.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      const Text(
+                      SizedBox(height: 12),
+                      Text(
                         'Foto auf diesem Gerät gesichert. Es wird übertragen.',
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Image.memory(
                         base64Decode(pendingPhotos.last['image']),
                         height: 140,
@@ -751,34 +752,37 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             if ((stage != 'collecting' || failed) &&
                 !waiting &&
                 !failureHasHomeAction) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextButton.icon(
                 onPressed: () => context.go('/app'),
-                icon: const Icon(Icons.home_outlined),
-                label: const Text('Zur Startseite'),
+                icon: Icon(Icons.home_outlined),
+                label: Text('Zur Startseite'),
               ),
             ],
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             ExpansionTile(
-              title: const Text(
+              title: Text(
                 'Mehr zu diesem Tag',
-                style: TextStyle(fontSize: 13, color: muted),
+                style: TextStyle(fontSize: 13, color: context.palette.muted),
               ),
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '${schoolDate(day!['date'])} · ${counted(pages.length, 'Seite', 'Seiten')} · ${day!['confirmed_count']} geprüft',
-                    style: const TextStyle(color: muted, fontSize: 13),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
+                SizedBox(height: 12),
+                Text(
                   'Deine Eltern können die Heftseiten und deine Übungen ansehen.',
-                  style: TextStyle(color: muted, fontSize: 13),
+                  style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
                 if (day!['last_error'] != null)
-                  const Notice(
+                  Notice(
                     'Die Vorbereitung hat noch nicht geklappt. Deine gespeicherten Seiten und Runden bleiben erhalten.',
                     warning: true,
                   ),
@@ -790,7 +794,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                       await state.pendingUploads.clear();
                       await refreshPending();
                     }),
-                    child: const Text('Gespeicherte Fotos entfernen'),
+                    child: Text('Gespeicherte Fotos entfernen'),
                   ),
               ],
             ),
@@ -816,20 +820,20 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LinearProgressIndicator(
-            color: electric,
+            color: context.palette.electric,
             backgroundColor: Colors.white24,
             value: !isPackage && completed != null && total > 0
                 ? (completed / total).clamp(0, 1).toDouble()
                 : null,
           ),
           if (!isPackage && completed != null && total > 0) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '$completed von ${counted(total, 'Seite', 'Seiten')}',
-              style: const TextStyle(fontSize: 13, color: Color(0xFFD4D4EE)),
+              style: TextStyle(fontSize: 13, color: Color(0xFFD4D4EE)),
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           ActionButton(
             label: 'Zur Startseite',
             icon: Icons.home_outlined,
@@ -876,7 +880,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         ),
         if (message != null && message.isNotEmpty)
           ExpansionTile(
-            title: const Text('Was ist passiert?'),
+            title: Text('Was ist passiert?'),
             children: [Notice(explanation, warning: true)],
           ),
       ],
@@ -913,17 +917,17 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         builder: (ctx) => Dialog.fullscreen(
           child: Scaffold(
             appBar: AppBar(
-              title: const Text('Dein vorgemerktes Foto'),
+              title: Text('Dein vorgemerktes Foto'),
               leading: IconButton(
                 tooltip: 'Zurück zu deinen Fotos',
-                icon: const Icon(Icons.close),
+                icon: Icon(Icons.close),
                 onPressed: () => Navigator.pop(ctx),
               ),
             ),
             body: ListenableBuilder(
               listenable: state,
               builder: (_, _) => !ownerMatches
-                  ? const SizedBox.shrink()
+                  ? SizedBox.shrink()
                   : InteractiveViewer(
                       minScale: 1,
                       maxScale: 8,
@@ -961,43 +965,43 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             children: [
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(22),
+                  padding: EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    color: mint,
+                    color: context.palette.mint,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.add_a_photo_rounded,
                     size: 44,
-                    color: teal,
+                    color: context.palette.teal,
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
                 hasPhotos
                     ? 'Hast du alle Seiten?'
                     : 'Zeig mir deine Heftseiten',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.w800,
                   height: 1.15,
                 ),
               ),
-              const SizedBox(height: 10),
-              const Text(
+              SizedBox(height: 10),
+              Text(
                 'Eine Seite pro Foto. Im nächsten Schritt kannst du Namen abschneiden und das Foto drehen.',
-                style: TextStyle(color: muted),
+                style: TextStyle(color: context.palette.muted),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 '${pages.length} gespeichert · ${pendingPhotos.length} vorgemerkt · ${((day!['max_pages'] as int) - pages.length - pendingPhotos.length).clamp(0, 24)} noch möglich',
               ),
               if (!canAdd)
-                const Notice(
+                Notice(
                   'Alle 24 Plätze für heute sind belegt. Du kannst die vorgemerkten Fotos noch abgeben. Deine Seiten bleiben gespeichert.',
                 ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               if (allowUploads && day!['synthetic'] == true && pages.isEmpty)
                 ActionButton(
                   label: 'Beispielseiten öffnen',
@@ -1019,30 +1023,30 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 ),
                 TextButton.icon(
                   onPressed: () => run(() => capture(ImageSource.gallery)),
-                  icon: const Icon(Icons.photo_library_outlined, size: 18),
-                  label: const Text('Fotos auswählen'),
+                  icon: Icon(Icons.photo_library_outlined, size: 18),
+                  label: Text('Fotos auswählen'),
                 ),
               ],
               if (allowUploads && state.recoveredPhoto != null)
                 TextButton.icon(
                   onPressed: () =>
                       run(() => capture(ImageSource.camera, recovered: true)),
-                  icon: const Icon(Icons.restore_rounded),
-                  label: const Text('Letztes Foto wiederfinden'),
+                  icon: Icon(Icons.restore_rounded),
+                  label: Text('Letztes Foto wiederfinden'),
                 ),
             ],
           ),
         ),
         if (savedCount > 0)
           TextButton.icon(
-            icon: const Icon(Icons.photo_library_outlined),
+            icon: Icon(Icons.photo_library_outlined),
             label: Text(
               '${counted(savedCount, 'gespeicherte Seite', 'gespeicherte Seiten')} ansehen',
             ),
             onPressed: () => showDialog<void>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: const Text('Deine gespeicherten Seiten'),
+                title: Text('Deine gespeicherten Seiten'),
                 content: SizedBox(
                   width: 480,
                   height: 360,
@@ -1054,7 +1058,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         ListTile(
                           title: Text('Seite ${page['page_number']}'),
                           subtitle: Text(page['subject'] ?? ''),
-                          trailing: const Icon(Icons.zoom_in),
+                          trailing: Icon(Icons.zoom_in),
                           onTap: () => zoomNotebookPhoto(ctx, state, page),
                         ),
                     ],
@@ -1063,7 +1067,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Zurück zu deinen Fotos'),
+                    child: Text('Zurück zu deinen Fotos'),
                   ),
                 ],
               ),
@@ -1071,15 +1075,15 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           ),
         if (savedCount > 0)
           Padding(
-            padding: const EdgeInsets.only(top: 12),
+            padding: EdgeInsets.only(top: 12),
             child: Text(
               '${counted(savedCount, 'Seite', 'Seiten')} ${savedCount == 1 ? 'ist' : 'sind'} bereits gespeichert. Hier sammelst du nur die neuen Fotos.',
-              style: const TextStyle(color: muted),
+              style: TextStyle(color: context.palette.muted),
             ),
           ),
         if (!hasPhotos && savedCount > 0 && allowUploads)
           Padding(
-            padding: const EdgeInsets.only(top: 16),
+            padding: EdgeInsets.only(top: 16),
             child: ActionButton(
               label: 'Mit diesen Seiten weiter',
               icon: Icons.arrow_forward_rounded,
@@ -1092,25 +1096,25 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             ),
           ),
         if (hasPhotos) ...[
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text(
             '${freshPages.length + pendingPhotos.length} neue ${freshPages.length + pendingPhotos.length == 1 ? 'Seite' : 'Seiten'} gesammelt',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           if (freshPages.isNotEmpty)
             SizedBox(
               height: 156,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: freshPages.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final page = freshPages[index];
                   return SizedBox(
                     width: 108,
                     child: Panel(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(8),
                       child: Column(
                         children: [
                           SizedBox(
@@ -1130,7 +1134,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                     child: IconButton.filledTonal(
                                       tooltip:
                                           'Foto ${page['page_number']} entfernen',
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.delete_outline_rounded,
                                         size: 20,
                                       ),
@@ -1144,10 +1148,10 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                               ],
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Text(
                             'Seite ${page['page_number']}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1155,7 +1159,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                           if (page['status'] == 'unreadable')
                             TextButton(
                               onPressed: () => run(() => replacePage(page)),
-                              child: const Text('Ersetzen'),
+                              child: Text('Ersetzen'),
                             )
                           else
                             SizedBox(
@@ -1182,23 +1186,23 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                   }
                                 }),
                                 itemBuilder: (_) => [
-                                  const PopupMenuItem(
+                                  PopupMenuItem(
                                     value: 'view',
                                     child: Text('Seite ansehen'),
                                   ),
                                   if (index > 0)
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'up',
                                       child: Text('Nach vorn'),
                                     ),
                                   if (index + 1 < pages.length)
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'down',
                                       child: Text('Nach hinten'),
                                     ),
                                   if (page['confirmed'] != true &&
                                       day!['synthetic'] != true)
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'delete',
                                       child: Text('Foto entfernen'),
                                     ),
@@ -1216,17 +1220,17 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             for (final photo in pendingPhotos)
               TextButton.icon(
                 onPressed: () => viewDraft(photo),
-                icon: const Icon(Icons.zoom_in_rounded),
+                icon: Icon(Icons.zoom_in_rounded),
                 label: Text(
                   'Vorgemerktes Foto ${pendingPhotos.indexOf(photo) + 1} ansehen',
                 ),
               ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Notice(
               '${pendingPhotos.length} ${pendingPhotos.length == 1 ? 'Foto ist' : 'Fotos sind'} noch auf diesem Gerät. Mit Fotos abgeben werden sie gesendet.',
             ),
           ],
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           ActionButton(
             label: 'Fotos abgeben',
             icon: Icons.cloud_upload_outlined,
@@ -1246,7 +1250,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         unconfirmed.where((page) => page['id'] == reviewId).firstOrNull ??
         unconfirmed.firstOrNull;
     if (selected == null) {
-      return const Notice('Füge zuerst eine Heftseite hinzu.');
+      return Notice('Füge zuerst eine Heftseite hinzu.');
     }
     if (selected['status'] == 'uploaded') {
       return Panel(
@@ -1254,8 +1258,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             heading('Deine Fotos sind gespeichert'),
-            const Text('Lass den Text im Hintergrund vorbereiten.'),
-            const SizedBox(height: 20),
+            Text('Lass den Text im Hintergrund vorbereiten.'),
+            SizedBox(height: 20),
             ActionButton(
               label: 'Im Hintergrund vorbereiten',
               icon: Icons.auto_awesome_outlined,
@@ -1282,7 +1286,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           onDeleted: pageDeleted,
         ),
         if (selected['status'] == 'unreadable') ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (allowUploads)
             ActionButton(
               label: 'Ersetzen',
@@ -1298,7 +1302,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               }),
             ),
         ],
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         if (allowUploads)
           TextButton(
             onPressed: () => run(() async {
@@ -1306,7 +1310,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 'stage': 'collecting',
               });
             }),
-            child: const Text('Noch eine Seite hinzufügen'),
+            child: Text('Noch eine Seite hinzufügen'),
           ),
       ],
     );
@@ -1332,10 +1336,10 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           StudyPathPanel(state, widget.childId, day!['id'], onChanged: load),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           TextButton.icon(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            label: const Text('Fragen zu meinen Heftseiten'),
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            label: Text('Fragen zu meinen Heftseiten'),
             onPressed: () => showTutorSheet(
               context,
               state,
@@ -1344,13 +1348,13 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             ),
           ),
           ExpansionTile(
-            title: const Text('Heftseiten und bisherige Runden'),
+            title: Text('Heftseiten und bisherige Runden'),
             children: [
               for (final item in units)
                 ListTile(
                   title: Text(item['topic']),
                   subtitle: Text(statusLabel(item['status'])),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(Icons.chevron_right_rounded),
                   onTap: () => openRoute(context, '/unit/${item['id']}'),
                 ),
               for (final page in pages)
@@ -1365,8 +1369,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               onPressed: () => run(() async {
                 await state.api.post('/school-days/${day!['id']}/extend');
               }),
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Eine Seite nachreichen'),
+              icon: Icon(Icons.add_photo_alternate_outlined),
+              label: Text('Eine Seite nachreichen'),
             ),
         ],
       );
@@ -1435,8 +1439,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 'stage': 'collecting',
               });
             }),
-            icon: const Icon(Icons.add_photo_alternate_outlined),
-            label: const Text('Noch eine Seite hinzufügen'),
+            icon: Icon(Icons.add_photo_alternate_outlined),
+            label: Text('Noch eine Seite hinzufügen'),
           ),
         if (canStart && allConfirmed && day!['synthetic'] != true)
           TextButton(
@@ -1444,19 +1448,19 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               await state.api.post('/school-days/${day!['id']}/save-for-later');
               if (mounted && context.mounted) context.go('/app');
             }),
-            child: const Text('Heute nur speichern'),
+            child: Text('Heute nur speichern'),
           ),
         if (canStart && (preview?['estimated_minutes'] ?? 0) > 0)
           Padding(
-            padding: const EdgeInsets.only(top: 12),
+            padding: EdgeInsets.only(top: 12),
             child: Text(
               'Etwa ${counted(preview!['estimated_minutes'], 'Minute', 'Minuten')}',
-              style: const TextStyle(color: muted, fontSize: 13),
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
           ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         ExpansionTile(
-          title: const Text('Was ist im Paket?'),
+          title: Text('Was ist im Paket?'),
           children: [
             for (final group in preview?['groups'] as List? ?? [])
               ListTile(
@@ -1469,7 +1473,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 contentPadding: EdgeInsets.zero,
                 title: Text('${unit['subject']} · ${unit['topic']}'),
                 subtitle: Text(statusLabel(unit['status'])),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                trailing: Icon(Icons.chevron_right_rounded),
                 onTap: () => openRoute(context, '/unit/${unit['id']}'),
               ),
             for (final page in pages)
@@ -1487,8 +1491,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             onPressed: () => run(() async {
               await state.api.post('/school-days/${day!['id']}/extend');
             }),
-            icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-            label: const Text('Eine Seite nachreichen'),
+            icon: Icon(Icons.add_photo_alternate_outlined, size: 18),
+            label: Text('Eine Seite nachreichen'),
           ),
       ],
     );
@@ -1516,13 +1520,13 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
         OutlinedButton.icon(
           onPressed: () =>
               openRoute(context, '/after-school/${widget.childId}/history'),
-          icon: const Icon(Icons.history),
-          label: const Text('Tagespakete'),
+          icon: Icon(Icons.history),
+          label: Text('Tagespakete'),
         ),
         OutlinedButton.icon(
           onPressed: () => unawaited(load()),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Aktualisieren'),
+          icon: Icon(Icons.refresh),
+          label: Text('Aktualisieren'),
         ),
       ],
       child: Column(
@@ -1545,35 +1549,39 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                   child: Column(
                     children: [
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
+                        duration: Duration(milliseconds: 220),
                         width: 38,
                         height: 38,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: step >= item.$1
-                              ? teal
-                              : const Color(0xFFE5E9F3),
+                              ? context.palette.teal
+                              : Color(0xFFE5E9F3),
                           borderRadius: BorderRadius.circular(13),
                         ),
                         child: step > item.$1
-                            ? const Icon(
+                            ? Icon(
                                 Icons.check_rounded,
-                                color: Colors.white,
+                                color: context.palette.panelSurface,
                                 size: 20,
                               )
                             : Text(
                                 '${item.$1 + 1}',
                                 style: TextStyle(
-                                  color: step == item.$1 ? Colors.white : muted,
+                                  color: step == item.$1
+                                      ? Colors.white
+                                      : context.palette.muted,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         item.$2,
                         style: TextStyle(
-                          color: step == item.$1 ? ink : muted,
+                          color: step == item.$1
+                              ? context.palette.ink
+                              : context.palette.muted,
                           fontWeight: step == item.$1
                               ? FontWeight.w700
                               : FontWeight.w400,
@@ -1586,8 +1594,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               ],
             ],
           ),
-          const SizedBox(height: 24),
-          if (loading) const Center(child: CircularProgressIndicator()),
+          SizedBox(height: 24),
+          if (loading) Center(child: CircularProgressIndicator()),
           if (error != null) Notice(error!, warning: true),
           importStatus(),
           if (error != null && state.isChild && !working)
@@ -1596,18 +1604,18 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 await state.pendingUploads.clear();
                 await refreshPending();
               }),
-              child: const Text('Lokale Uploadreste löschen'),
+              child: Text('Lokale Uploadreste löschen'),
             ),
           if (pendingPhotos.isNotEmpty && state.isChild)
             Panel(
-              color: cream,
+              color: context.palette.cream,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   heading(
                     '${pendingPhotos.length} Foto(s) auf diesem Gerät gespeichert',
                   ),
-                  const Text(
+                  Text(
                     'Noch nicht hochgeladen. Auf diesem Gerät bis zu 24 Stunden verfügbar.',
                   ),
                   for (final photo in pendingPhotos)
@@ -1617,10 +1625,10 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         width: 40,
                         height: 48,
                       ),
-                      title: const Text('Upload ausstehend'),
+                      title: Text('Upload ausstehend'),
                       trailing: IconButton(
                         tooltip: 'Lokales Foto entfernen',
-                        icon: const Icon(Icons.delete_outline),
+                        icon: Icon(Icons.delete_outline),
                         onPressed: working
                             ? null
                             : () => run(() async {
@@ -1642,35 +1650,35 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               ),
             ),
           if (!loading && day == null)
-            const Notice(
+            Notice(
               'Für heute wurde noch kein Tagesassistent begonnen. Dein Kind kann ihn in seinem eigenen Lernraum starten.',
             ),
           if (day != null) ...[
             if (readOnly)
-              const Notice(
+              Notice(
                 'Gespeicherter Schultag. Seiten und vorhandene Einheiten bleiben einsehbar. Neue Fotos gehören zum heutigen Tag.',
               ),
             Text(
               '${schoolDate(day!['date'])} · ${pages.length} von ${day!['max_pages']} möglichen Seiten · $confirmed geprüft',
-              style: const TextStyle(color: muted),
+              style: TextStyle(color: context.palette.muted),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (day!['synthetic'] == true)
-              const Notice(
+              Notice(
                 'Beispielseiten · mit KI ausgewertet. Bitte keine eigenen Inhalte eingeben.',
                 icon: Icons.science_outlined,
               ),
             if (locked)
               Panel(
-                color: mint,
+                color: context.palette.mint,
                 child: Row(
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    const SizedBox(width: 18),
+                    SizedBox(width: 18),
                     Expanded(
                       child: Text(
                         progress.isEmpty
@@ -1736,15 +1744,15 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                     ],
                   ],
                 ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
             ],
             if (stage != 'ready') ...[
               for (final page in pages)
                 Padding(
                   key: ValueKey(page['id']),
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: EdgeInsets.only(bottom: 10),
                   child: Panel(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -1764,18 +1772,18 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                 ),
                               )
                             else
-                              const Icon(
+                              Icon(
                                 Icons.description_outlined,
-                                color: teal,
+                                color: context.palette.teal,
                               ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     'Seite ${page['page_number']} · ${page['subject'].toString().isEmpty ? 'Fach wird erkannt' : page['subject']}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1784,7 +1792,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                           [])
                                     Text(
                                       warning,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.brown,
                                       ),
@@ -1795,13 +1803,13 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                         : page['status'] == 'review'
                                         ? 'Erkannt · Bitte prüfen'
                                         : 'Foto gespeichert',
-                                    style: const TextStyle(
-                                      color: muted,
+                                    style: TextStyle(
+                                      color: context.palette.muted,
                                       fontSize: 12,
                                     ),
                                   ),
                                   if (page['status'] == 'unreadable')
-                                    const Text(
+                                    Text(
                                       'Nicht lesbar · Bitte neu aufnehmen',
                                       style: TextStyle(
                                         color: Colors.brown,
@@ -1813,7 +1821,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Wrap(
                           alignment: WrapAlignment.end,
                           spacing: 4,
@@ -1831,7 +1839,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                     : () => run(
                                         () => reorderPage(page['id'], -1),
                                       ),
-                                icon: const Icon(Icons.arrow_upward, size: 18),
+                                icon: Icon(Icons.arrow_upward, size: 18),
                               ),
                               IconButton(
                                 tooltip: 'Seite nach unten',
@@ -1840,10 +1848,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                     ? null
                                     : () =>
                                           run(() => reorderPage(page['id'], 1)),
-                                icon: const Icon(
-                                  Icons.arrow_downward,
-                                  size: 18,
-                                ),
+                                icon: Icon(Icons.arrow_downward, size: 18),
                               ),
                             ],
                             if (stage == 'collecting' &&
@@ -1857,7 +1862,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                 onPressed: () => run(() async {
                                   if (!await deleteDayPage(page)) return;
                                 }),
-                                icon: const Icon(Icons.delete_outline),
+                                icon: Icon(Icons.delete_outline),
                               ),
                             if (page['status'] == 'unreadable' &&
                                 !parent &&
@@ -1871,7 +1876,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                                     {'stage': 'collecting'},
                                   );
                                 }),
-                                child: const Text('Ersetzen'),
+                                child: Text('Ersetzen'),
                               ),
                             if (stage == 'review' &&
                                 page['status'] != 'uploaded' &&
@@ -1879,7 +1884,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                               TextButton(
                                 onPressed: () =>
                                     setState(() => reviewId = page['id']),
-                                child: const Text('Ansehen'),
+                                child: Text('Ansehen'),
                               ),
                           ],
                         ),
@@ -1887,7 +1892,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                     ),
                   ),
                 ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
             ],
             if (stage == 'collecting' &&
                 pages.isNotEmpty &&
@@ -1911,7 +1916,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                   onPressed: () => run(prepareInBackground),
                 ),
               if (selected != null && !locked && !readOnly) ...[
-                const SizedBox(height: 22),
+                SizedBox(height: 22),
                 heading(
                   'Seite ${selected['page_number']} prüfen',
                   subtitle: 'Stimmt alles? Prüfe Fach, Thema und Text. Frage bei unleserlichen Stellen nach Hilfe.',
@@ -1926,15 +1931,15 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 ),
               ],
               if (!locked && !parent && !readOnly) ...[
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 TextButton.icon(
                   onPressed: () => run(() async {
                     await state.api.put('/school-days/${day!['id']}/stage', {
                       'stage': 'collecting',
                     });
                   }),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Noch eine Seite hinzufügen'),
+                  icon: Icon(Icons.arrow_back),
+                  label: Text('Noch eine Seite hinzufügen'),
                 ),
               ],
               if (allConfirmed) ...[
@@ -1948,12 +1953,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         '/school-days/${day!['id']}/finish-additions',
                       );
                     }),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text(
+                    icon: Icon(Icons.play_arrow),
+                    label: Text(
                       'Gespeichertes Paket weiter nutzen · Ergänzungen später',
                     ),
                   ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 heading(
                   'Dein Paket für heute',
                   subtitle: 'Passende Einheiten für deine Zeit. Notierte Hausaufgaben bleiben eigene Aufträge.',
@@ -1965,7 +1970,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                       group['selected'] == true
                           ? Icons.auto_stories_outlined
                           : Icons.schedule,
-                      color: teal,
+                      color: context.palette.teal,
                     ),
                     title: Text(group['subject']),
                     subtitle: Text(
@@ -1994,8 +1999,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               if (day!['synthetic'] != true) ...[
                 StudyPathPanel(state, widget.childId, day!['id']),
                 TextButton.icon(
-                  icon: const Icon(Icons.chat_bubble_outline_rounded),
-                  label: const Text('Fragen zum Heft ansehen'),
+                  icon: Icon(Icons.chat_bubble_outline_rounded),
+                  label: Text('Fragen zum Heft ansehen'),
                   onPressed: () => showTutorSheet(
                     context,
                     state,
@@ -2013,18 +2018,18 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         'Seite ${page['page_number']} · ${page['subject']}',
                       ),
                       subtitle: Text(page['topic']),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Icon(Icons.chevron_right),
                       onTap: () =>
                           openRoute(context, '/material/${page['id']}'),
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               for (final unit in day!['units'] as List)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: EdgeInsets.only(bottom: 14),
                   child: Panel(
-                    color: mint,
+                    color: context.palette.mint,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -2035,7 +2040,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                               ? 'Noch nicht begonnen'
                               : 'Begonnen · weiterlernen',
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         heading(
                           '${unit['subject']} · ${unit['topic']}',
                           subtitle:
@@ -2064,7 +2069,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                     ),
                   ),
                 ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               for (final group in preview?['groups'] as List? ?? [])
                 if (group['covered'] != true)
                   Notice(
@@ -2085,14 +2090,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 ),
               if (parent && state.canManage)
                 TextButton.icon(
-                  icon: const Icon(Icons.event_note),
-                  label: const Text(
-                    'Gespeicherten Stoff als Lernauftrag einplanen',
-                  ),
+                  icon: Icon(Icons.event_note),
+                  label: Text('Gespeicherten Stoff als Lernauftrag einplanen'),
                   onPressed: () => scheduleMaterial(),
                 ),
               if (!parent)
-                const Notice(
+                Notice(
                   'Deine Eltern können deine Heftseiten und Übungen ansehen.',
                 ),
             ],
@@ -2102,14 +2105,14 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 allConfirmed)
               TextButton.icon(
                 onPressed: () => scheduleMaterial(pages.first),
-                icon: const Icon(Icons.event_note),
-                label: const Text('Gespeicherten Stoff für später einplanen'),
+                icon: Icon(Icons.event_note),
+                label: Text('Gespeicherten Stoff für später einplanen'),
               ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: () => openRoute(context, '/app'),
-              icon: const Icon(Icons.home_outlined),
-              label: const Text('Zur Tagesübersicht'),
+              icon: Icon(Icons.home_outlined),
+              label: Text('Zur Tagesübersicht'),
             ),
           ],
         ],

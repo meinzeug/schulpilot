@@ -1,66 +1,100 @@
-# Oberflächengestaltung
+# Zwei Erscheinungsbilder: Cyber-Lerncockpit
 
-Gemeinsames Flutter-Design für Android und Web, Kinder, Eltern und Administration.
-Die Darstellung wird in `app/lib/ui.dart` gepflegt; keine neue UI-Bibliothek,
-keine zusätzlichen Schrift- oder Bilddienste. Navy/Cyan/Violett bleiben die Marke.
+Stand20.10.2026, Zielversion1.15.0+65. Gemeinsame Flutter-Oberfläche für Web und
+Android; Kinder, Eltern und Administration verwenden dieselben semantischen
+Farben in `app/lib/app_palette.dart` und kontrollierten Komponenten in `ui.dart`.
+Der ausdrückliche Betreiberauftrag ersetzt die frühere reine Hellgestaltung.
 
-## Visuelle Ebenen
+## Dunkel und hell
 
-- **Arbeitsfläche:** blaugrau `#E8EEF6`. Sie trennt die Inhalte von weißen
-  Kopfzeilen und Cards; die Navigation verwendet Navy `#14243D`.
-- **Cards:** Weiß, sichtbarer Rahmen `#B8C6D9`, dezenter Schatten, Radius 20.
-  Zusammengehörige Inhalte stehen innerhalb einer Card, unterschiedliche
-  Abschnitte mit Abstand nebeneinander oder untereinander.
-- **Eingelagerte Gruppen:** `SurfaceInset`, Graublau `#F2F5FA`, Rahmen und Radius
-  14; keine weitere schwebende weiße Card in einer weißen Card. Lernzeit und
-  eigene Antwort verwenden diese Ebene.
-- **Gezielte Hervorhebung:** Violett `#5936CB` für Hauptaktionen und Auswahl,
-  Cyan auf dunklen Einstiegskarten. Auf hellen Flächen wird für Cyan-Symbole
-  und Text das dunkle `#006575` verwendet.
-- **Zustände:** Grün für gespeicherten Erfolg, Amber für weiteren Übungsbedarf,
-  Cyan für offene Bewertung/Information. Text und Symbole bleiben zusätzlich
-  erhalten; Farbe allein ist kein Leistungs- oder Statusnachweis.
+| Ebene | Dunkel | Hell |
+| --- | --- | --- |
+| Arbeitsfläche | Navy `#080F1F` | `#F4F5FC` |
+| Inhaltsfläche | `#132139` | Weiß |
+| eingelagerte Gruppe | `#111F35` | `#EBEFF8` |
+| normale Schrift | `#EFF6FF` | `#17233C` |
+| sekundäre Schrift | `#ADBED5` | `#4C5F79` |
+| violette Textakzente | `#B49AFF` | `#623BEA` |
+| Cyantext | `#67E8F0` | `#006575` |
+| Hauptaktion | `#7048D5` mit Weiß | `#7048D5` mit Weiß |
 
-`PanelTone` legt Flächen für neutrale, untergeordnete, hervorgehobene,
-informative, erfolgreiche, warnende und fehlerhafte Bereiche fest.
-Benachrichtigungen unterscheiden gelesen/ungelesen mit Fläche, Rahmen,
-Schriftgewicht und Symbol. Betriebswarnungen verwenden dunkle Amber-Symbole.
+Der gemeinsame Sonnen-/Mondschalter ist schon vor der Anmeldung erreichbar und
+bleibt im Kontokopf. `AppState.setAppearance` ändert ausschließlich die lokale
+Anzeigepräferenz; sie bleibt nach Neustart erhalten. Es entstehen keine
+Serveränderung, KI-Kosten oder Rollenrechte. Derselbe Router und dieselben
+Formularcontroller erhalten Eingaben und Mailfragmente beim Wechsel.
+Historische Farbkonstanten dienen nur als kompatible Standardargumente; gemeinsame
+Flächen lösen sie über die aktuelle Palette auf. Fotografien und fachliche
+Farbwerte werden nicht pauschal invertiert.
 
-## Lesbarkeit und Bedienung
+## Aufbau der drei Arbeitsräume
 
-Fließtext 15–16 px mit Zeilenhöhe 1,5–1,55. Überschriften 28/32 px je verfügbarer
-Breite, Abschnittstitel 20 px. Sekundärtexte sind deckend `#4C5F79`, nicht durch
-Transparenz abgeschwächt. Normale Buttons mindestens 48 px, Hauptaktionen 52 px
-hoch; beschriftete Eingabefelder mit dunklem Rand und eigenem 2,5-px-Fokusrahmen.
-Sekundärbuttons besitzen eine weiße Fläche und sichtbare Umrandung.
-Tastaturfokus bleibt auch an Buttons und der Browser-Sidebar sichtbar.
+Kinder: eine dominante Lernstation mit tatsächlichem nächsten Schritt und eigener
+Cyber-Buchdrohne. Ein kompakter Scan-Dock bleibt sichtbar. Echte Lernzeit,
+Kurzplan und Postfach sind klar getrennte kleinere Werkzeuge, keine aufklappbaren
+Kartenstapel. Lernen verwendet offene Themengruppen, Wörter echte Karteikarten,
+Konto geordnete Geräteeinstellungen. Keine erfundenen Punkte, Levels oder Streaks.
 
-Aufklappbare Details haben eigene Flächen, Rahmen und Innenabstände. Kopf,
-Lerninhalt und Aktionsbereich des Lernraums sind getrennt; Antwort und Rückmeldung
-bleiben gemeinsam sichtbar, bis ausdrücklich weitergegangen wird. Die drei
-Lernphasen bleiben beschriftet, ergänzt durch Symbole. Bei großer Schrift
-bleibt der Kopf scrollbar; die Aktion liegt weiterhin außerhalb der Tastatur.
+Eltern: tatsächliche Übungsbelege vor Verwaltung, vollständige Kategorienverteilung,
+Handlungsbedarf und Zeit nebeneinander, flache Fach-/Kinderzeilen. Admin:
+reale Triage, priorisierte Betriebsaktionen und breite Verwaltungstabellen.
+Der jeweilige Rollenbereich folgt derselben Formensprache ohne Kinderfigur vor
+Berichten und Betriebsformularen.
 
-Browser: Sidebar ab 1050 px, Rail ab 720 px, darunter Touch-Navigation.
-Android behält seine native Touch-Navigation. Keine Rollen-/Rechteänderung
-durch die Gestaltung und keine zusätzlichen KI- oder Push-Aufrufe.
+Eine globale Navigation: Sidebar ab1050px, Rail ab720px, darunter Touchnavigation.
+Betrieb, Einrichtung, Verkauf und Push bleiben auch mobil erreichbar.
+Lokale Kontextreiter wiederholen keine zweite globale Menüleiste.
+Die geführte Lernrunde erhält ihren klaren Rückweg und die drei Phasen
+Verstehen, Üben, Rückblick. Frage, eigene Antwort und Rückmeldung bleiben
+zusammen. Antwortfeedback verschwindet erst nach ausdrücklichem Weitergehen.
+Hilfe und Hauptaktion haben feste Plätze außerhalb der Tastatur.
 
-## Kontrast und Prüfgrenzen
+## Schrift und Grafik
 
-Grundlage: WCAG 2.2, Textkontrast 4,5:1 für normalen Text und 3:1 für große
-Schrift; notwendige Erkennungsmerkmale von Bedienelementen 3:1. Die gemeinsame
-Palette prüft auch kleine Beschriftungen mit 4,5:1. Dekorative Card-Rahmen sind
-keine Eingabefeldgrenzen; Eingabefelder verwenden das stärkere `#7788A2`.
+Nunito für Fließtext, Space Grotesk für kurze Überschriften und Zahlen, beide
+lokal mit OFL-Lizenz gebündelt. Keine Font-CDN-Abfrage. Formelsatz nutzt weiterhin
+die funktionalen KaTeX-Schriften; Code die lokale System-Monospace-Schrift.
+Fließtext15–17px, mindestens1,5-fache Zeilenhöhe. Hauptaktionen52px,
+andere Trefferflächen mindestens48px. Eingaben erhalten einen sichtbaren
+2,5px-Fokusrahmen. Sekundärtexte werden nicht mit Transparenz abgeschwächt.
 
-`app/test/design_accessibility_test.dart` prüft die tatsächlich verwendeten
-Themenfarben, Navigationszustände und gerenderte Fokusrahmen. Dazu kommen
-Flutter-Kontrast-/Beschriftungsprüfungen mit 320/390/1440 px und normaler/doppelter
-Schrift. Bestehende Rollen-, Lernraum-, Tastatur-, Bibliotheks-, Zeit- und
-Benachrichtigungstests bleiben bestehen.
+`assets/illustrations/learning-companion.png` wurde mit dem eingebauten
+Bildwerkzeug aus einer rein künstlichen Beschreibung erzeugt. Es enthält keine
+Kinderfotos, Namen, Schulheftinhalte oder Anbieter-Schlüssel. Keine neue
+Bilddienstintegration in Schulpilot. Die Darstellung ist Dekoration und kein
+Kompetenz- oder KI-Erfolgsbeleg. Generierungsauftrag:
 
-Browser- und native Sichtprüfung, Releaseversion sowie tatsächliche Ergebnisse
-stehen in `STATUS.md` und `CHATGPT_HANDOFF.txt`. Einzelne Farb-/Widgettests sind
-keine vollständige WCAG-Zertifizierung, Screenreader- oder Nutzerstudie.
+> Friendly hovering book-shaped exploration drone for a learning app, cyan
+> visor and eyes, violet folded-paper wings, bookmark antenna, sophisticated
+> for ages7–17, matte navy body and cyan seams, centered full character in
+> three-quarter view, production illustration with genuine transparent alpha,
+> works on dark and light backgrounds. No real child, names, text, numbers,
+> reward coins, weapons, logos, franchise or cropped limbs.
+
+PNG1254×1254 RGBA, SHA256
+`51c202855298bdf9a0656f4974408a24c81182c9d262ee4a0dbd3c65b951df06`.
+Ein lokaler Codefallback hält den Einstieg bei einem Ladefehler funktionsfähig.
+Schriftquellen/Hashes stehen in SOURCES.md.
+
+## Lesbarkeit und Prüfung
+
+Normale Texte einschließlich kleiner Reiterbeschriftung mindestens4,5:1,
+notwendige Kontrollmerkmale mindestens3:1. Zustände zusätzlich durch Text und
+Symbole. Wissenschaftliche helle Flächen und ihre Beschriftung werden gemeinsam
+behandelt; echte weiße/schwarze Klaviertasten und fachliche Farbcodierung bleiben
+fachlich korrekt. Die Formeln behalten Werte, Geometrie und Alternativtexte.
+
+Die Widgetprüfungen umfassen beide Varianten,320/390/1440px, große Schrift,
+Tastatur, tatsächliche Fokusrahmen, Entwurferhalt und reine Navigation ohne POST.
+`appearance_test.dart` prüft lokalen Wiederanlauf und Mailfragment-/Formularerhalt.
+Zusätzliche Rendererfälle prüfen Wechsel beider Themen. Tatsächliche Browser-,
+Build- und Testergebnisse stehen in STATUS.md; diese Beschreibung ist keine
+vollständige WCAG-Zertifizierung, physische Android- oder Wirksamkeitsstudie.
+
+Die gemeinsame Rechercheentscheidung mit Primärquellen und Grenzen ist in
+[CHILD_WORKSPACE_2026_10_20.md](CHILD_WORKSPACE_2026_10_20.md),
+[PARENT_WORKSPACE_2026_10_20.md](PARENT_WORKSPACE_2026_10_20.md) und
+[ADMIN_WORKSPACE_2026_10_20.md](ADMIN_WORKSPACE_2026_10_20.md) dokumentiert.
 
 ## Lokaler Formelsatz
 

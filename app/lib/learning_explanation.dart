@@ -76,7 +76,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
       }
     }
     if (heading.isNotEmpty) chunks.add(heading);
-    if (chunks.isEmpty) return const SizedBox.shrink();
+    if (chunks.isEmpty) return SizedBox.shrink();
     final current = step.clamp(0, chunks.length - 1);
     return Column(
       key: stepTop,
@@ -85,12 +85,12 @@ class _LearningExplanationState extends State<LearningExplanation> {
         if (chunks.length > 1) ...[
           MathText(
             'Schritt ${current + 1} von ${chunks.length}',
-            style: const TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
         ],
         LearningContent(chunks[current]),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Wrap(
           spacing: 8,
           children: [
@@ -107,14 +107,14 @@ class _LearningExplanationState extends State<LearningExplanation> {
               IconButton(
                 tooltip: 'Vorheriger Erklärungsschritt',
                 onPressed: current == 0 ? null : () => changeStep(current - 1),
-                icon: const Icon(Icons.chevron_left_rounded),
+                icon: Icon(Icons.chevron_left_rounded),
               ),
               TextButton.icon(
                 onPressed: current + 1 == chunks.length
                     ? null
                     : () => changeStep(current + 1),
-                icon: const Icon(Icons.chevron_right_rounded),
-                label: const Text('Nächster Schritt'),
+                icon: Icon(Icons.chevron_right_rounded),
+                label: Text('Nächster Schritt'),
               ),
             ],
           ),
@@ -145,7 +145,7 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
     final match = RegExp(
       r'(\d{1,2})\s*/\s*([1-9]\d?)\s*\+\s*(\d{1,2})\s*/\s*([1-9]\d?)',
     ).firstMatch(widget.prompt);
-    if (match == null) return const SizedBox.shrink();
+    if (match == null) return SizedBox.shrink();
     final a = int.parse(match[1]!),
         b = int.parse(match[2]!),
         c = int.parse(match[3]!),
@@ -156,7 +156,7 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
         first + second > denominator ||
         first < 0 ||
         second < 0) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
     Widget bar(
       int filled,
@@ -165,7 +165,7 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
       int? divisions,
       String mark = 'A',
     }) => Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: EdgeInsets.only(top: 12),
       child: Semantics(
         label:
             '$label: $filled von ${divisions ?? denominator} gleich großen Teilen markiert.',
@@ -173,11 +173,8 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              MathText(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
+              MathText(label, style: TextStyle(fontWeight: FontWeight.w700)),
+              SizedBox(height: 6),
               SizedBox(
                 height: 32,
                 child: Row(
@@ -189,16 +186,21 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
                             color: i >= filled
                                 ? Colors.white
                                 : split > 0 && i >= split
-                                ? cyanInk
-                                : teal,
-                            border: Border.all(color: muted, width: .7),
+                                ? context.palette.cyanInk
+                                : context.palette.teal,
+                            border: Border.all(
+                              color: context.palette.muted,
+                              width: .7,
+                            ),
                           ),
                           child: Center(
                             child: i < filled
                                 ? Text(
                                     split > 0 && i >= split ? 'B' : mark,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: context.palette.isDark
+                                          ? context.palette.cream
+                                          : Colors.white,
                                       fontSize: 10,
                                     ),
                                   )
@@ -242,7 +244,7 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
               'A + B: ${first + second}/$denominator',
               split: first,
             ),
-            const Text(
+            Text(
               'A und B markieren die beiden Anteile – zusätzlich zur Farbe.',
             ),
           ],
@@ -252,22 +254,24 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
               if (stage > 0)
                 TextButton.icon(
                   onPressed: () => setState(() => stage--),
-                  icon: const Icon(Icons.chevron_left),
-                  label: const Text('Zurück'),
+                  icon: Icon(Icons.chevron_left),
+                  label: Text('Zurück'),
                 ),
               if (stage < 2)
                 FilledButton.icon(
                   onPressed: () => setState(() => stage++),
-                  icon: const Icon(Icons.chevron_right),
+                  icon: Icon(Icons.chevron_right),
                   label: Text(
                     stage == 0 ? 'Gleich einteilen' : 'Anteile zusammenlegen',
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'Die Stücke sind gleich groß. Du addierst die markierten Teile, die Einteilung bleibt gleich.',
+          SizedBox(height: 10),
+          Text(
+            stage == 0 && b != d
+                ? 'Die Ganzen sind gleich groß. Ihre Stücke sind noch unterschiedlich groß. Teile sie zuerst gleich ein.'
+                : 'Die Stücke sind gleich groß. Du addierst die markierten Teile, die Einteilung bleibt gleich.',
           ),
         ],
       ),

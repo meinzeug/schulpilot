@@ -4,6 +4,7 @@ import 'api.dart';
 import 'practice_evidence.dart';
 import 'parent_child_navigation.dart';
 import 'parent_overview.dart';
+import 'parent_workspace_ui.dart';
 
 import 'package:go_router/go_router.dart';
 
@@ -146,11 +147,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
     title: widget.state.isChild ? 'Dein Lernstand' : 'Lernstand',
+    showTitle: widget.state.isChild,
     actions: [
       IconButton(
         onPressed: loading ? null : load,
         tooltip: 'Aktualisieren',
-        icon: const Icon(Icons.refresh_rounded),
+        icon: Icon(Icons.refresh_rounded),
       ),
     ],
     child: !current
@@ -164,13 +166,22 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   selected: 'progress',
                   childName: data?['child_name'],
                 ),
+              if (!widget.state.isChild) ...[
+                const ParentWorkspaceHero(
+                  eyebrow: 'FORTSCHRITT VERSTEHEN',
+                  title: 'Der Lernstand im Detail',
+                  subtitle: 'Vom Fach bis zur einzelnen Antwort. Selbstständige Lösungen und genutzte Hilfe bleiben getrennt sichtbar.',
+                  icon: Icons.insights_rounded,
+                ),
+                const SizedBox(height: 24),
+              ],
               if (subject != null)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     onPressed: () =>
                         topic == null ? choose() : choose(nextSubject: subject),
-                    icon: const Icon(Icons.arrow_back_rounded),
+                    icon: Icon(Icons.arrow_back_rounded),
                     label: Text(
                       topic == null ? 'Alle Fächer' : 'Themen in $subject',
                     ),
@@ -200,9 +211,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                   ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Jede Übung zählt. Wiederholte Versuche bleiben sichtbar.',
-                  style: TextStyle(color: muted, fontSize: 13),
+                  style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
                 const SizedBox(height: 24),
                 heading(
@@ -247,15 +258,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                           : data!['level'] == 'topics'
                                           ? item['topic']
                                           : 'Runde vom ${_day(item['last_activity'])}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
-                                  const Icon(
+                                  Icon(
                                     Icons.chevron_right_rounded,
-                                    color: teal,
+                                    color: context.palette.teal,
                                   ),
                                 ],
                               ),
@@ -265,8 +276,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                 const SizedBox(height: 8),
                                 Text(
                                   '${statusLabel(item['status'])} · ${counted(item['attempts'] as num? ?? 0, 'Versuch', 'Versuche')}',
-                                  style: const TextStyle(
-                                    color: muted,
+                                  style: TextStyle(
+                                    color: context.palette.muted,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -274,8 +285,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                 const SizedBox(height: 8),
                                 Text(
                                   '${counted(item['topic_count'] as num? ?? 0, 'Thema', 'Themen')} · ${counted(item['practiced_rounds'] as num? ?? 0, 'Runde', 'Runden')}',
-                                  style: const TextStyle(
-                                    color: muted,
+                                  style: TextStyle(
+                                    color: context.palette.muted,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -287,7 +298,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                   ),
                 if ((data!['items'] as List).isEmpty && !loading)
-                  const Notice(
+                  Notice(
                     'Hier erscheinen beantwortete Aufgaben – auch aus noch nicht abgeschlossenen Runden.',
                   ),
                 const SizedBox(height: 12),
@@ -304,7 +315,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               page--;
                               load();
                             },
-                      icon: const Icon(Icons.chevron_left_rounded),
+                      icon: Icon(Icons.chevron_left_rounded),
                     ),
                     Text(
                       'Seite ${data!['pagination']['page']} von ${data!['pagination']['pages']}',
@@ -320,7 +331,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                               page++;
                               load();
                             },
-                      icon: const Icon(Icons.chevron_right_rounded),
+                      icon: Icon(Icons.chevron_right_rounded),
                     ),
                   ],
                 ),

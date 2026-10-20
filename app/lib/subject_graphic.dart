@@ -192,6 +192,7 @@ class SubjectGraphic extends StatelessWidget {
                             Theme.of(context).colorScheme.onSurface,
                             MediaQuery.textScalerOf(context).scale(14) / 14,
                             Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                            palette: context.palette,
                           ),
                         ),
                       ),
@@ -224,7 +225,10 @@ class SubjectGraphic extends StatelessWidget {
                         child: SizedBox(
                           height: 100,
                           child: CustomPaint(
-                            painter: PollinationPainter(step.$1),
+                            painter: PollinationPainter(
+                              step.$1,
+                              palette: context.palette,
+                            ),
                           ),
                         ),
                       ),
@@ -246,7 +250,9 @@ class SubjectGraphic extends StatelessWidget {
             else if (kind == 'forms')
               labels.map(formPair).every((pair) => pair != null)
                   ? Table(
-                      border: TableBorder.all(color: surfaceBorder),
+                      border: TableBorder.all(
+                        color: context.palette.surfaceBorder,
+                      ),
                       defaultVerticalAlignment:
                           TableCellVerticalAlignment.middle,
                       children: [
@@ -331,8 +337,8 @@ class SubjectGraphic extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(vertical: 5),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: surfaceBorder),
+                      color: context.palette.panelSurface,
+                      border: Border.all(color: context.palette.surfaceBorder),
                       borderRadius: BorderRadius.circular(
                         kind == 'speech' || kind == 'perspectives' ? 22 : 10,
                       ),
@@ -358,9 +364,9 @@ class SubjectGraphic extends StatelessWidget {
                         mark['role'] == 'subject'
                             ? 'Subjekt – wer oder was?'
                             : 'Prädikat – was geschieht?',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: cyanInk,
+                          color: context.palette.cyanInk,
                         ),
                       ),
                     ),
@@ -420,7 +426,14 @@ class SubjectVectorPainter extends CustomPainter {
   final Color ink;
   final double textScale;
   final String? fontFamily;
-  SubjectVectorPainter(this.data, this.ink, this.textScale, this.fontFamily);
+  final AppPalette palette;
+  SubjectVectorPainter(
+    this.data,
+    this.ink,
+    this.textScale,
+    this.fontFamily, {
+    this.palette = const AppPalette(isDark: false),
+  });
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
@@ -429,10 +442,10 @@ class SubjectVectorPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final fill = Paint()
-      ..color = const Color(0xffdce9ff)
+      ..color = palette.cyanSurface
       ..style = PaintingStyle.fill;
     final accent = Paint()
-      ..color = const Color(0xff4e2ec9)
+      ..color = palette.teal
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
     final ns = (data['numbers'] as List).cast<num>();
@@ -478,7 +491,7 @@ class SubjectVectorPainter extends CustomPainter {
         for (var i = 0; i < count; i++) {
           final rect = Rect.fromLTWH(i * w / count, 65, w / count, 70);
           if (i < marked) {
-            canvas.drawRect(rect, fill..color = const Color(0xffc8c0ff));
+            canvas.drawRect(rect, fill..color = palette.mint);
           }
           canvas.drawRect(rect, p);
         }
@@ -494,11 +507,7 @@ class SubjectVectorPainter extends CustomPainter {
         for (var century = firstCentury; century <= lastCentury; century++) {
           final x = xStart + (xEnd - xStart) * (century - firstCentury) / count;
           line(Offset(x, axisY - 24), Offset(x, axisY + 24), accent);
-          canvas.drawCircle(
-            Offset(x, axisY),
-            4,
-            fill..color = const Color(0xffc8c0ff),
-          );
+          canvas.drawCircle(Offset(x, axisY), 4, fill..color = palette.mint);
           canvas.drawCircle(Offset(x, axisY), 4, p);
           text('$century.', Offset(x - 8, 58));
         }
@@ -618,7 +627,7 @@ class SubjectVectorPainter extends CustomPainter {
           canvas.drawCircle(
             Offset(pos.dx * w, pos.dy * h),
             7,
-            fill..color = const Color(0xffc8c0ff),
+            fill..color = palette.mint,
           );
           canvas.drawCircle(Offset(pos.dx * w, pos.dy * h), 7, p);
         }
@@ -636,10 +645,20 @@ class SubjectVectorPainter extends CustomPainter {
         break;
       case 'keyboard':
         final keyWidth = w / 8;
+        final keyOutline = Paint()
+          ..color = Colors.black
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke;
         for (var i = 0; i < 8; i++) {
-          canvas.drawRect(Rect.fromLTWH(i * keyWidth, 15, keyWidth, h - 30), p);
+          final key = Rect.fromLTWH(i * keyWidth, 15, keyWidth, h - 30);
+          canvas.drawRect(key, Paint()..color = Colors.white);
+          canvas.drawRect(key, keyOutline);
           if (labels.isNotEmpty) {
-            text(labels[i], Offset(i * keyWidth + 3, h - 50));
+            text(
+              labels[i],
+              Offset(i * keyWidth + 3, h - 50),
+              color: Colors.black,
+            );
           }
         }
         for (final i in [0, 1, 3, 4, 5]) {
@@ -650,7 +669,7 @@ class SubjectVectorPainter extends CustomPainter {
               keyWidth * 0.52,
               h * 0.50,
             ),
-            Paint()..color = ink,
+            Paint()..color = Colors.black,
           );
         }
         break;
@@ -761,7 +780,7 @@ class SubjectVectorPainter extends CustomPainter {
                     ) *
                     19,
             12,
-            fill..color = const Color(0xffc8c0ff),
+            fill..color = palette.mint,
           );
           canvas.drawCircle(
             c +
@@ -840,7 +859,7 @@ class SubjectVectorPainter extends CustomPainter {
             (w - 65) * ns[i] / maxValue,
             math.max(10, row - 26),
           );
-          canvas.drawRect(rect, fill..color = const Color(0xffc8c0ff));
+          canvas.drawRect(rect, fill..color = palette.mint);
           canvas.drawRect(rect, p);
           text('${labels[i]}: ${ns[i]}', Offset(26, i * row + 10));
         }
@@ -857,9 +876,9 @@ class SubjectVectorPainter extends CustomPainter {
             rect,
             fill
               ..color = [
-                const Color(0xffdce9ff),
-                const Color(0xffc8c0ff),
-                const Color(0xffbfdfd5),
+                palette.cyanSurface,
+                palette.mint,
+                palette.successSurface,
               ][i],
           );
           canvas.drawRect(rect, p);
@@ -1005,7 +1024,11 @@ class SubjectVectorPainter extends CustomPainter {
           line(points[edge['start']], points[edge['end']], accent);
         }
         for (var i = 0; i < points.length; i++) {
-          canvas.drawCircle(points[i], 18, Paint()..color = Colors.white);
+          canvas.drawCircle(
+            points[i],
+            18,
+            Paint()..color = palette.panelSurface,
+          );
           canvas.drawCircle(points[i], 18, p);
           text('${i + 1}', points[i] - const Offset(7, 10));
         }
@@ -1023,7 +1046,7 @@ class SubjectVectorPainter extends CustomPainter {
             : variant == 'below'
             ? Offset((left + right) / 2, bottom - 16)
             : Offset(left - 35, bottom - 16);
-        canvas.drawCircle(ball, 15, fill..color = const Color(0xffc8c0ff));
+        canvas.drawCircle(ball, 15, fill..color = palette.mint);
         canvas.drawCircle(ball, 15, p);
         break;
     }
@@ -1034,7 +1057,8 @@ class SubjectVectorPainter extends CustomPainter {
       old.data != data ||
       old.ink != ink ||
       old.textScale != textScale ||
-      old.fontFamily != fontFamily;
+      old.fontFamily != fontFamily ||
+      old.palette.isDark != palette.isDark;
 }
 
 class FlowNode extends StatelessWidget {
@@ -1044,7 +1068,11 @@ class FlowNode extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),
     child: CustomPaint(
-      painter: _FlowOutline(role),
+      painter: _FlowOutline(
+        role,
+        context.palette.panelSurface,
+        context.palette.controlBorder,
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         child: MathText(text, style: const TextStyle(fontSize: 17)),
@@ -1055,7 +1083,8 @@ class FlowNode extends StatelessWidget {
 
 class _FlowOutline extends CustomPainter {
   final String role;
-  _FlowOutline(this.role);
+  final Color surface, outline;
+  _FlowOutline(this.role, this.surface, this.outline);
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path();
@@ -1075,31 +1104,36 @@ class _FlowOutline extends CustomPainter {
     } else {
       path.addRect(Offset.zero & size);
     }
-    canvas.drawPath(path, Paint()..color = Colors.white);
+    canvas.drawPath(path, Paint()..color = surface);
     canvas.drawPath(
       path,
       Paint()
-        ..color = controlBorder
+        ..color = outline
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _FlowOutline old) => old.role != role;
+  bool shouldRepaint(covariant _FlowOutline old) =>
+      old.role != role || old.surface != surface || old.outline != outline;
 }
 
 /// Fixed schematic: pollen to stigma, then fusion of male and female cells.
 class PollinationPainter extends CustomPainter {
   final int step;
-  PollinationPainter(this.step);
+  final AppPalette palette;
+  PollinationPainter(
+    this.step, {
+    this.palette = const AppPalette(isDark: false),
+  });
   @override
   void paint(Canvas canvas, Size size) {
     final p = Paint()
-      ..color = ink
+      ..color = palette.ink
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-    final fill = Paint()..color = mint;
+    final fill = Paint()..color = palette.mint;
     final y = size.height / 2, left = size.width * .2, right = size.width * .8;
     if (step == 0) {
       canvas.drawCircle(Offset(left, y), 15, fill);
@@ -1109,7 +1143,11 @@ class PollinationPainter extends CustomPainter {
         const Offset(6, -3),
         const Offset(0, 6),
       ]) {
-        canvas.drawCircle(Offset(left, y) + offset, 2, Paint()..color = ink);
+        canvas.drawCircle(
+          Offset(left, y) + offset,
+          2,
+          Paint()..color = palette.ink,
+        );
       }
       canvas.drawPath(
         Path()
@@ -1134,5 +1172,5 @@ class PollinationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(PollinationPainter oldDelegate) =>
-      step != oldDelegate.step;
+      step != oldDelegate.step || palette.isDark != oldDelegate.palette.isDark;
 }

@@ -38,22 +38,24 @@ class LearningRoom extends StatelessWidget {
     const phases = ['Verstehen', 'Üben', 'Rückblick'];
     final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1.4;
     final header = Container(
-      padding: const EdgeInsets.only(bottom: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: surfaceBorder)),
+      padding: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: context.palette.panelSurface,
+        border: Border(
+          bottom: BorderSide(color: context.palette.surfaceBorder),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 2, 8, 0),
+            padding: EdgeInsets.fromLTRB(4, 2, 8, 0),
             child: Row(
               children: [
                 IconButton(
                   tooltip: 'Lernrunde verlassen',
                   onPressed: onLeave,
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  icon: Icon(Icons.arrow_back_rounded),
                 ),
                 Expanded(
                   child: Text(
@@ -62,24 +64,21 @@ class LearningRoom extends StatelessWidget {
                         : title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                   ),
                 ),
                 if (onPause != null)
                   TextButton.icon(
                     onPressed: onPause,
-                    icon: const Icon(Icons.pause_rounded, size: 20),
-                    label: const Text('Pause'),
+                    icon: Icon(Icons.pause_rounded, size: 20),
+                    label: Text('Pause'),
                   ),
               ],
             ),
           ),
           if (!keyboard)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
               child: Row(
                 children: [
                   for (var index = 0; index < phases.length; index++)
@@ -104,14 +103,14 @@ class LearningRoom extends StatelessWidget {
                                   height: 4,
                                   decoration: BoxDecoration(
                                     color: index < phase
-                                        ? successInk
+                                        ? context.palette.successInk
                                         : index == phase
-                                        ? teal
-                                        : controlBorder,
+                                        ? context.palette.teal
+                                        : context.palette.controlBorder,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -124,12 +123,12 @@ class LearningRoom extends StatelessWidget {
                                                 .radio_button_unchecked_rounded,
                                       size: 14,
                                       color: index < phase
-                                          ? successInk
+                                          ? context.palette.successInk
                                           : index == phase
-                                          ? teal
-                                          : muted,
+                                          ? context.palette.teal
+                                          : context.palette.muted,
                                     ),
-                                    const SizedBox(width: 5),
+                                    SizedBox(width: 5),
                                     Flexible(
                                       child: Text(
                                         phases[index],
@@ -139,7 +138,9 @@ class LearningRoom extends StatelessWidget {
                                           fontWeight: phase == index
                                               ? FontWeight.w800
                                               : FontWeight.w600,
-                                          color: phase == index ? teal : muted,
+                                          color: phase == index
+                                              ? context.palette.teal
+                                              : context.palette.muted,
                                         ),
                                       ),
                                     ),
@@ -156,17 +157,17 @@ class LearningRoom extends StatelessWidget {
             ),
           if (clock != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: clock!,
             ),
           if (!keyboard && progress != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+              padding: EdgeInsets.fromLTRB(18, 6, 18, 0),
               child: Text(
                 progress!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF53617A),
+                  color: context.palette.muted,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -177,27 +178,27 @@ class LearningRoom extends StatelessWidget {
     final Widget? help = onHelp == null
         ? null
         : OutlinedButton(
-            key: const ValueKey('learning-help'),
+            key: ValueKey('learning-help'),
             onPressed: onHelp,
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(60, 52),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: Size(60, 52),
+              padding: EdgeInsets.symmetric(horizontal: 12),
             ),
-            child: const Text('Hilfe'),
+            child: Text('Hilfe'),
           );
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 820),
+            constraints: BoxConstraints(maxWidth: 820),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (!enlarged) header,
                 Expanded(
                   child: SingleChildScrollView(
-                    key: const ValueKey('learning-room-scroll'),
+                    key: ValueKey('learning-room-scroll'),
                     controller: scrollController,
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
@@ -206,7 +207,7 @@ class LearningRoom extends StatelessWidget {
                       children: [
                         if (enlarged) header,
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                          padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                           child: child,
                         ),
                       ],
@@ -215,9 +216,11 @@ class LearningRoom extends StatelessWidget {
                 ),
                 if (primaryAction != null || onHelp != null)
                   DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(top: BorderSide(color: surfaceBorder)),
+                    decoration: BoxDecoration(
+                      color: context.palette.panelSurface,
+                      border: Border(
+                        top: BorderSide(color: context.palette.surfaceBorder),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Color(0x1414243D),
@@ -227,14 +230,14 @@ class LearningRoom extends StatelessWidget {
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                      padding: EdgeInsets.fromLTRB(16, 10, 16, 10),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (actionMessage != null)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.only(bottom: 8),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   maxHeight: keyboard ? 64 : 112,
@@ -251,7 +254,7 @@ class LearningRoom extends StatelessWidget {
                               children: [
                                 ?primaryAction,
                                 if (help != null) ...[
-                                  const SizedBox(height: 6),
+                                  SizedBox(height: 6),
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: help,
@@ -266,9 +269,9 @@ class LearningRoom extends StatelessWidget {
                                 if (primaryAction != null)
                                   Expanded(child: primaryAction!)
                                 else
-                                  const Spacer(),
+                                  Spacer(),
                                 if (onHelp != null) ...[
-                                  const SizedBox(width: 10),
+                                  SizedBox(width: 10),
                                   help!,
                                 ],
                               ],

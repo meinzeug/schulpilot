@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
@@ -32,6 +33,13 @@ Future<void> main() async {
   // Email links carry one-time secrets in the fragment, outside HTTP logs.
   // The default path strategy drops that fragment during initial routing.
   setUrlStrategy(PathUrlStrategy(BrowserPlatformLocation(), true));
+  LicenseRegistry.addLicense(() async* {
+    for (final family in ['Nunito', 'SpaceGrotesk']) {
+      yield LicenseEntryWithLineBreaks([
+        family,
+      ], await rootBundle.loadString('assets/fonts/$family-OFL.txt'));
+    }
+  });
   final state = AppState();
   await state.restore();
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
@@ -425,11 +433,16 @@ class _SchulpilotAppState extends State<SchulpilotApp>
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp.router(
-    scaffoldMessengerKey: messenger,
-    title: 'SCHULPILOT',
-    debugShowCheckedModeBanner: false,
-    theme: appTheme(),
-    routerConfig: router,
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.state,
+    builder: (context, _) => MaterialApp.router(
+      scaffoldMessengerKey: messenger,
+      title: 'SCHULPILOT',
+      debugShowCheckedModeBanner: false,
+      theme: appTheme(),
+      darkTheme: appTheme(brightness: Brightness.dark),
+      themeMode: widget.state.darkAppearance ? ThemeMode.dark : ThemeMode.light,
+      routerConfig: router,
+    ),
   );
 }

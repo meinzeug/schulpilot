@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'admin_workspace_ui.dart';
 import 'ui.dart';
 
 class AiCostPanel extends StatelessWidget {
@@ -11,23 +12,22 @@ class AiCostPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LoadView<Json>(
     load: () => state.api.get('/admin/ai-costs'),
-    builder: (data, reload) => Panel(
-      tone: PanelTone.info,
+    builder: (data, reload) => AdminWorkSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'KI-Verbrauch & Qualität',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
               IconButton(
                 onPressed: reload,
                 tooltip: 'Kosten aktualisieren',
-                icon: const Icon(Icons.refresh_rounded),
+                icon: Icon(Icons.refresh_rounded),
               ),
             ],
           ),
@@ -35,6 +35,13 @@ class AiCostPanel extends StatelessWidget {
             '${data['peak_calls_per_minute'] ?? 0} Aufrufe / Minute in der Spitze · ${data['escalations'] ?? 0} schwierige Fälle',
           ),
           const SizedBox(height: 14),
+          if ((data['models'] as Map? ?? {}).isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 14),
+              child: SurfaceInset(
+                child: Text('Noch kein zuordenbarer Modellverbrauch erfasst.'),
+              ),
+            ),
           if (data['budget_policy'] is Map) ...[
             Text(
               'Pro Kind und Monat: Ziel ${(data['budget_policy']['target_eur_micros'] / 1000000).toStringAsFixed(2)} € · Warnung ${(data['budget_policy']['warning_eur_micros'] / 1000000).toStringAsFixed(2)} € · Grenze ${(data['budget_policy']['hard_eur_micros'] / 1000000).toStringAsFixed(2)} €',
@@ -46,22 +53,25 @@ class AiCostPanel extends StatelessWidget {
                   row['state'] == 'within_target'
                       ? Icons.check_circle_outline
                       : Icons.warning_amber_rounded,
+                  color: row['state'] == 'within_target'
+                      ? context.palette.successInk
+                      : context.palette.warningInk,
                 ),
                 title: Text('Kostenstelle ${row['cost_centre']}'),
                 subtitle: Text(
-                  '${(row['held_eur_micros'] / 1000000).toStringAsFixed(2)} € einschließlich Reservierungen · ${row['unsettled_calls']} Abrechnungen offen',
+                  '${_budgetState(row['state'])} · ${(row['held_eur_micros'] / 1000000).toStringAsFixed(2)} € einschließlich Reservierungen · ${row['unsettled_calls']} Abrechnungen offen',
                 ),
               ),
             const SizedBox(height: 14),
           ],
           for (final entry in Json.from(data['models'] ?? {}).entries) ...[
-            Panel(
+            SurfaceInset(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SelectableText(
                     entry.key,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -78,12 +88,62 @@ class AiCostPanel extends StatelessWidget {
             ),
             const SizedBox(height: 10),
           ],
-          Text(data['note'] ?? '', style: const TextStyle(color: muted)),
+          Text(
+            data['note'] ?? '',
+            style: TextStyle(color: context.palette.muted),
+          ),
           if (data['completed_costed_sessions'] != null)
-            Text(
-              '${counted(data['completed_costed_sessions'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')} mit zuordenbaren Kosten. ${data['attribution_notice'] ?? ''}',
-              style: const TextStyle(color: muted),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: SurfaceInset(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Zuordnung zu Lernrunden',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${counted(data['completed_costed_sessions'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')} mit zuordenbaren Kosten.',
+                    ),
+                    if (data['cost_per_completed_session_micros_usd'] is num)
+                      Text(
+                        'Ø ${(data['cost_per_completed_session_micros_usd'] / 1000000).toStringAsFixed(5)} USD zugeordnete Auftragskosten je Runde.',
+                      ),
+                    if (data['cost_per_independently_practiced_goal_micros_usd']
+                        is num) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '${data['independently_practiced_goals']} Lernziele mit selbstständiger Anwendung · Ø ${(data['cost_per_independently_practiced_goal_micros_usd'] / 1000000).toStringAsFixed(5)} USD zugeordnete Kosten.',
+                      ),
+                      Text(
+                        data['goal_cost_notice']?.toString() ?? 'Kostenverteilung auf geübte Ziele; keine dauerhafte Beherrschung.',
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Text(
+                      '${data['attribution_notice'] ?? 'Nur eindeutig zugeordnete Aufträge; keine vollständigen Kosten je Lernerfolg.'}',
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          if (data['operator_probes'] is Map) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Künstliche Anbieterprüfungen: ${data['operator_probes']['calls'] ?? 0} Aufrufe · ${((data['operator_probes']['billed_micros_usd'] as num? ?? 0) / 1000000).toStringAsFixed(5)} USD erfasst · ${data['operator_probes']['unknown_calls'] ?? 0} Kosten offen.',
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
+            ),
+          ],
           ExpansionTile(
             title: const Text('Kostenstellen'),
             children: [
@@ -102,6 +162,14 @@ class AiCostPanel extends StatelessWidget {
     ),
   );
 }
+
+String _budgetState(dynamic value) => switch (value) {
+  'within_target' => 'Innerhalb des Kostenziels',
+  'over_target' => 'Kostenziel überschritten',
+  'warning' => 'Warnschwelle erreicht',
+  'blocked' => 'Kostengrenze erreicht',
+  _ => 'Status nicht gemeldet',
+};
 
 class CreditReceiptForm extends StatefulWidget {
   final AppState state;
@@ -249,13 +317,13 @@ class _AiRoutingPanelState extends State<AiRoutingPanel> {
             .convert(data!['policy']);
       }
       final routes = Json.from(data!['policy']?['routes'] ?? {});
-      return Panel(
+      return AdminWorkSurface(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Geprüfter Modellmix',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 10),
             Text(
@@ -266,7 +334,10 @@ class _AiRoutingPanelState extends State<AiRoutingPanel> {
             for (final entry in routes.entries)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.route_outlined, color: teal),
+                leading: Icon(
+                  Icons.route_outlined,
+                  color: context.palette.teal,
+                ),
                 title: Text(entry.value['model'] ?? entry.key),
                 subtitle: Text(
                   '${(entry.value['upstreams'] as List? ?? []).join(', ')} · medium · ${entry.value['under13_approved'] == true ? 'Kinderroute freigegeben' : 'Kinderfreigabe offen'}',

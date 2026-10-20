@@ -195,6 +195,7 @@ def source_goals(materials, subject, topic):
         (r"addier|addition", "Brüche addieren"),
         (r"kürz", "Brüche kürzen"),
         (r"erweit", "Brüche erweitern"),
+        (r"gleichwert", "Gleichwertige Brüche erkennen"),
     ):
         for material in materials:
             match = re.search(pattern, material["content"], re.I)
@@ -746,6 +747,8 @@ def fraction_task_goal(prompt, goals):
     geometry = next((g["id"] for g in goals if g["label"] == "Fläche eines Dreiecks berechnen"), None)
     if geometry and re.search(r"fläch", prompt, re.I) and legacy_presentation({"prompt":prompt}):
         return geometry
+    if re.search(r"dieselbe Menge|gleichwertig", prompt, re.I):
+        return next((g["id"] for g in goals if g["label"] == "Gleichwertige Brüche erkennen"), None)
     labels = ("Zähler und Nenner benennen", "Brüche addieren", "Brüche kürzen", "Brüche erweitern")
     known = {g["label"]: g["id"] for g in goals if g["label"] in labels}
     if not known:

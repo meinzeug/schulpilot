@@ -12,20 +12,24 @@ class AndroidDownload extends StatelessWidget {
   Widget build(BuildContext context) => LoadView<Json>(
     load: () => api.get('/app-release'),
     builder: (release, _) {
-      if (release['available'] != true) return const SizedBox.shrink();
+      if (release['available'] != true) return SizedBox.shrink();
       return Panel(
-        padding: const EdgeInsets.all(22),
+        padding: EdgeInsets.all(22),
         child: Wrap(
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 24,
           runSpacing: 16,
           children: [
-            const SizedBox(
+            SizedBox(
               width: 230,
               child: Row(
                 children: [
-                  Icon(Icons.android_rounded, color: teal, size: 28),
+                  Icon(
+                    Icons.android_rounded,
+                    color: context.palette.teal,
+                    size: 28,
+                  ),
                   SizedBox(width: 14),
                   Expanded(
                     child: Text(

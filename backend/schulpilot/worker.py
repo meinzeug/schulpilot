@@ -98,8 +98,8 @@ def process(job_id):
 
         process_language(job_id)
         return
-    if kind in ("coach", "coach_practice", "study_block", "tutor", "controller_check"):
-        from . import coaching, controller_jobs, study_path, tutor
+    if kind in ("coach", "coach_practice", "study_block", "tutor", "controller_check", "decision"):
+        from . import coaching, controller_jobs, instructional_decisions, study_path, tutor
 
         {
             "coach": coaching.process,
@@ -107,6 +107,7 @@ def process(job_id):
             "study_block": study_path.process,
             "tutor": tutor.process,
             "controller_check": controller_jobs.process,
+            "decision": instructional_decisions.process,
         }[kind](job_id)
         return
     result = None

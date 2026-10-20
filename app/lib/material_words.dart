@@ -30,7 +30,7 @@ Future<Json?> transferPageWords(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, update) => AlertDialog(
-        title: const Text('Wörter aus deiner Heftseite'),
+        title: Text('Wörter aus deiner Heftseite'),
         content: SizedBox(
           width: 560,
           child: SingleChildScrollView(
@@ -54,7 +54,7 @@ Future<Json?> transferPageWords(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Später'),
+            child: Text('Später'),
           ),
           ActionButton(
             label: 'Ausgewählte Wörter übernehmen',
@@ -185,7 +185,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
     final checked = selected.contains(key),
         canSelect = widget.enabled && valid(row) && original['key'] != null;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10),
       child: SurfaceInset(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -216,13 +216,13 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 10),
+                    padding: EdgeInsets.only(top: 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '${row['word']}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         Text(
                           (row['meaning'] ?? '').toString().isEmpty
@@ -232,14 +232,17 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                         if ((row['context'] ?? '').toString().isNotEmpty)
                           Text(
                             '${row['context']}',
-                            style: const TextStyle(fontSize: 13, color: muted),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.palette.muted,
+                            ),
                           ),
                         if (!valid(row))
                           Text(
                             (row['uncertainty'] ?? '').toString().isNotEmpty
                                 ? '${row['uncertainty']}'
                                 : 'Bitte Wort und Übersetzung prüfen.',
-                            style: const TextStyle(color: warningInk),
+                            style: TextStyle(color: context.palette.warningInk),
                           ),
                       ],
                     ),
@@ -248,7 +251,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                 IconButton(
                   tooltip: '${row['word']} korrigieren',
                   onPressed: widget.enabled ? () => correct(original) : null,
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: Icon(Icons.edit_outlined),
                 ),
               ],
             ),
@@ -266,11 +269,11 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                           });
                           emit();
                         },
-                  child: const Text('Stimmt'),
+                  child: Text('Stimmt'),
                 ),
                 TextButton(
                   onPressed: widget.enabled ? () => correct(original) : null,
-                  child: const Text('Korrigieren'),
+                  child: Text('Korrigieren'),
                 ),
                 for (final option in [
                   ('skip', 'Nicht übernehmen'),
@@ -291,7 +294,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
               ],
             ),
             if (decisions[key] == 'later')
-              const Text(
+              Text(
                 'Bleibt in deiner Heftseite. Du kannst das Wort später prüfen.',
               ),
             if (original['source_text'] != null)
@@ -300,7 +303,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                 title: Text('Heftzeile ${original['source_line']}'),
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8),
                     child: Text('${original['source_text']}'),
                   ),
                 ],
@@ -321,19 +324,15 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
         children: [
           Text(
             '${counted(selected.length, 'Wort', 'Wörter')} ausgewählt',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
-          const Text(
-            'Wähle nur Wörter mit der passenden deutschen Übersetzung.',
-          ),
-          const SizedBox(height: 12),
+          Text('Wähle nur Wörter mit der passenden deutschen Übersetzung.'),
+          SizedBox(height: 12),
           DropdownButtonFormField<String>(
             key: ValueKey(widget.locale),
             initialValue: widget.locale,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Lernsprache bestätigen',
-            ),
+            decoration: InputDecoration(labelText: 'Lernsprache bestätigen'),
             items: [
               for (final item in learningLocales.entries)
                 if (language == null || item.key.split('-').first == language)
@@ -341,7 +340,7 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
             ],
             onChanged: widget.enabled ? (v) => widget.onLocale(v!) : null,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           for (final row in pairs.take(4)) pair(row),
           if (pairs.length > 4)
             ExpansionTile(
@@ -351,14 +350,14 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
           if ((widget.preview['unpaired_lines'] as num? ?? 0) > 0)
             Text(
               '${widget.preview['unpaired_lines']} andere Zeilen bleiben in deiner Heftseite.',
-              style: const TextStyle(fontSize: 13, color: muted),
+              style: TextStyle(fontSize: 13, color: context.palette.muted),
             ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: widget.enabled ? widget.onReverse : null,
-              icon: const Icon(Icons.swap_horiz_rounded),
-              label: const Text('Spalten tauschen'),
+              icon: Icon(Icons.swap_horiz_rounded),
+              label: Text('Spalten tauschen'),
             ),
           ),
         ],
@@ -389,7 +388,7 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Wortpaar prüfen'),
+    title: Text('Wortpaar prüfen'),
     content: SizedBox(
       width: 440,
       child: SingleChildScrollView(
@@ -399,9 +398,9 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
             TextField(
               controller: word,
               maxLength: 200,
-              decoration: const InputDecoration(labelText: 'Wort oder Wendung'),
+              decoration: InputDecoration(labelText: 'Wort oder Wendung'),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: meaning,
               maxLength: 200,
@@ -410,11 +409,11 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
                 errorText: error,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: contextText,
               maxLength: 500,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Kontext oder Beispielsatz',
               ),
             ),
@@ -425,7 +424,7 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Abbrechen'),
+        child: Text('Abbrechen'),
       ),
       FilledButton(
         onPressed: () {
@@ -443,7 +442,7 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
             'uncertainty': '',
           });
         },
-        child: const Text('Korrektur übernehmen'),
+        child: Text('Korrektur übernehmen'),
       ),
     ],
   );

@@ -1,3 +1,6 @@
+Erweiterung20.10.2026: [Ausführbare Lernsteuerung und Belegspur](LEARNING_CONTROLLER_2026_10_20.md)
+mit getrennten Quellenzielen, langfristigen Beobachtungen und gespeicherten Kurzplänen.
+
 # Vom Schulstoff zum nachvollziehbaren Lernweg
 
 Stand 19.10.2026. SCHULPILOT unterstützt das Verstehen und Üben des tatsächlich bestätigten Unterrichtsmaterials. Schulnoten geben einen zusätzlichen Hinweis auf Schwerpunkte. Sie ersetzen weder die Beobachtung beim Üben noch eine fachliche Diagnose durch Lehrkräfte. Verbesserte Schulnoten sind ein Ziel, keine zugesicherte Wirkung der Software.

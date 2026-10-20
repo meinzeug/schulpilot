@@ -236,8 +236,7 @@ class CodexModelPickerState extends State<CodexModelPicker> {
         : models;
     final known = choices.any((model) => model.id == value);
     final items = <DropdownMenuItem<String>>[
-      if (photo)
-        const DropdownMenuItem(value: '', child: Text('Gleiches Modell')),
+      if (photo) DropdownMenuItem(value: '', child: Text('Gleiches Modell')),
       for (final model in choices)
         DropdownMenuItem(
           value: model.id,
@@ -268,7 +267,7 @@ class CodexModelPickerState extends State<CodexModelPicker> {
       decoration: InputDecoration(
         labelText: photo ? 'Bildmodell' : 'Modell für Lerneinheiten',
       ),
-      hint: const Text('Modell wählen'),
+      hint: Text('Modell wählen'),
       items: items,
       onChanged: loading || !loaded || error != null
           ? null
@@ -291,18 +290,18 @@ class CodexModelPickerState extends State<CodexModelPicker> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (loading) ...[
-          const LinearProgressIndicator(),
-          const SizedBox(height: 8),
-          const Text('Codex-Modelle werden geladen …'),
-          const SizedBox(height: 16),
+          LinearProgressIndicator(),
+          SizedBox(height: 8),
+          Text('Codex-Modelle werden geladen …'),
+          SizedBox(height: 16),
         ],
         modelDropdown(),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         DropdownButtonFormField<String>(
           key: ValueKey('codex-reasoning-$currentEffort'),
           initialValue: currentEffort.isEmpty ? null : currentEffort,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Reasoning / Denkstufe'),
+          decoration: InputDecoration(labelText: 'Reasoning / Denkstufe'),
           items: [
             for (final effort in effortOptions)
               DropdownMenuItem(
@@ -323,12 +322,12 @@ class CodexModelPickerState extends State<CodexModelPicker> {
                 },
         ),
         if (adjustment != null) ...[
-          const SizedBox(height: 8),
-          Text(adjustment!, style: const TextStyle(color: muted)),
+          SizedBox(height: 8),
+          Text(adjustment!, style: TextStyle(color: context.palette.muted)),
         ],
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         modelDropdown(photo: true),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (error != null) Notice(error!, warning: true),
         if (!loading && selectionError != null)
           Notice(
@@ -341,13 +340,13 @@ class CodexModelPickerState extends State<CodexModelPicker> {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: loading ? null : load,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Modelle neu laden'),
+            icon: Icon(Icons.refresh_rounded),
+            label: Text('Modelle neu laden'),
           ),
         ),
-        const Text(
+        Text(
           'Modellzugriff wird mit dem Prüflauf bestätigt.',
-          style: TextStyle(color: muted, fontSize: 12),
+          style: TextStyle(color: context.palette.muted, fontSize: 12),
         ),
       ],
     );

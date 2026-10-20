@@ -59,13 +59,13 @@ Future<void> importMaterial(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('Hefteintrag fotografieren'),
+            leading: Icon(Icons.photo_camera_outlined),
+            title: Text('Hefteintrag fotografieren'),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Bild auswählen'),
+            leading: Icon(Icons.photo_library_outlined),
+            title: Text('Bild auswählen'),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
         ],
@@ -142,16 +142,16 @@ class _CropDialogState extends State<CropDialog> {
       : Uint8List.fromList(img.encodeJpg(image!, quality: 85));
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Passt das Foto?'),
+    title: Text('Passt das Foto?'),
     content: SizedBox(
       width: 590,
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Namen bitte abschneiden. Der Text soll gut lesbar sein.',
-              style: TextStyle(color: muted, fontSize: 13),
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
             TextButton.icon(
               onPressed: image == null
@@ -165,8 +165,8 @@ class _CropDialogState extends State<CropDialog> {
                       left = top = 0;
                       right = bottom = 1;
                     }),
-              icon: const Icon(Icons.rotate_right),
-              label: const Text('Um 90° drehen'),
+              icon: Icon(Icons.rotate_right),
+              label: Text('Um 90° drehen'),
             ),
             SizedBox(
               height: (MediaQuery.sizeOf(context).height * .40).clamp(240, 420),
@@ -249,9 +249,9 @@ class _CropDialogState extends State<CropDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ExpansionTile(
-              title: const Text('Bild zuschneiden'),
+              title: Text('Bild zuschneiden'),
               children: [
                 for (final item in [
                   (
@@ -287,10 +287,7 @@ class _CropDialogState extends State<CropDialog> {
                     children: [
                       SizedBox(
                         width: 100,
-                        child: Text(
-                          item.$1,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        child: Text(item.$1, style: TextStyle(fontSize: 12)),
                       ),
                       Expanded(
                         child: Slider(
@@ -315,7 +312,7 @@ class _CropDialogState extends State<CropDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Abbrechen'),
+        child: Text('Abbrechen'),
       ),
       ActionButton(
         label: 'Zuschnitt übernehmen',
@@ -327,7 +324,7 @@ class _CropDialogState extends State<CropDialog> {
           }
           // Give the busy indicator a frame; native encoding runs off the UI
           // isolate. Web's compute still runs on the browser's event loop.
-          await Future<void>.delayed(const Duration(milliseconds: 32));
+          await Future<void>.delayed(Duration(milliseconds: 32));
           final encoded = await compute(encodeMaterialCrop, <String, dynamic>{
             'bytes': widget.bytes,
             'turns': quarterTurns,
@@ -395,7 +392,7 @@ class _MaterialTaskDialogState extends State<MaterialTaskDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Was ist wirklich aufgegeben?'),
+    title: Text('Was ist wirklich aufgegeben?'),
     content: SizedBox(
       width: 520,
       child: SingleChildScrollView(
@@ -403,30 +400,27 @@ class _MaterialTaskDialogState extends State<MaterialTaskDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Nur bestätigte Hausaufgaben kommen verbindlich in deinen Plan. Beispiele bleiben im Heft.',
             ),
             if (widget.hasDuplicate) ...[
-              const SizedBox(height: 12),
-              const Notice(
+              SizedBox(height: 12),
+              Notice(
                 'Ein ähnliches Blatt ist schon gespeichert. Du kannst zurückgehen und das doppelte Foto entfernen. Gleiche Aufträge desselben Tages zählen nur einmal.',
                 warning: true,
               ),
             ],
             for (final item in widget.items) ...[
-              const SizedBox(height: 18),
-              Text(
-                item['text'],
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
+              SizedBox(height: 18),
+              Text(item['text'], style: TextStyle(fontWeight: FontWeight.w700)),
+              SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: choices[item['key']],
                 isExpanded: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'So wurde es in der Schule gesagt',
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'homework',
                     child: Text('Als Hausaufgabe aufgegeben'),
@@ -444,11 +438,11 @@ class _MaterialTaskDialogState extends State<MaterialTaskDialog> {
                     setState(() => choices[item['key']] = value!),
               ),
               if (choices[item['key']] == 'unclear')
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 6),
                   child: Text(
                     'Bleibt im Heft und wird vorerst nicht verbindlich eingeplant.',
-                    style: TextStyle(color: muted),
+                    style: TextStyle(color: context.palette.muted),
                   ),
                 ),
             ],
@@ -459,7 +453,7 @@ class _MaterialTaskDialogState extends State<MaterialTaskDialog> {
     actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
-        child: const Text('Zurück'),
+        child: Text('Zurück'),
       ),
       FilledButton(
         onPressed: () => Navigator.pop(context, <Json>[
@@ -630,8 +624,8 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   Widget saveWithoutWords() => TextButton.icon(
     onPressed: () => change(savePageOnly),
-    icon: const Icon(Icons.description_outlined),
-    label: const Text('Nur Heftseite speichern'),
+    icon: Icon(Icons.description_outlined),
+    label: Text('Nur Heftseite speichern'),
   );
 
   Widget wordPreviewPanel({bool saved = false}) => MaterialWordsPanel(
@@ -652,7 +646,7 @@ class _MaterialReviewState extends State<MaterialReview> {
   );
 
   Widget savedWordPanel() => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    padding: EdgeInsets.symmetric(vertical: 16),
     child: LoadView<Json>(
       revision: widget.data['revision'],
       load: () =>
@@ -661,7 +655,7 @@ class _MaterialReviewState extends State<MaterialReview> {
         final stored = status['confirmed_words'] as int? ?? 0;
         final pending = status['review_words'] as int? ?? 0;
         final canWrite = widget.state.isChild || widget.state.canManage;
-        if (stored + pending == 0 && !canWrite) return const SizedBox.shrink();
+        if (stored + pending == 0 && !canWrite) return SizedBox.shrink();
         return Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -669,28 +663,25 @@ class _MaterialReviewState extends State<MaterialReview> {
               if (stored + pending > 0) ...[
                 Text(
                   '${counted(stored, 'Wort', 'Wörter')} gespeichert${pending > 0 ? ' · $pending noch prüfen' : ''}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 if ((status['unpaired_lines'] as num? ?? 0) > 0)
                   Text(
                     '${status['unpaired_lines']} weitere Zeilen wurden nicht als Wortpaare übernommen.',
-                    style: const TextStyle(color: warningInk),
+                    style: TextStyle(color: context.palette.warningInk),
                   ),
                 OutlinedButton.icon(
                   onPressed: () => openRoute(
                     context,
                     '/vocabulary/${widget.data['child_id']}?material=${widget.data['id']}',
                   ),
-                  icon: const Icon(Icons.translate_rounded),
+                  icon: Icon(Icons.translate_rounded),
                   label: Text(pending > 0 ? 'Wörter prüfen' : 'Wörter öffnen'),
                 ),
               ] else if (canWrite) ...[
                 wordPreviewPanel(saved: true),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ActionButton(
                   label: 'Wörter übernehmen',
                   icon: Icons.playlist_add_check_rounded,
@@ -757,8 +748,8 @@ class _MaterialReviewState extends State<MaterialReview> {
             context,
             '/material/${widget.data['id']}/processing/${widget.data['processing_job']['id']}',
           ),
-          icon: const Icon(Icons.hourglass_top_rounded),
-          label: const Text('Einlesen ansehen'),
+          icon: Icon(Icons.hourglass_top_rounded),
+          label: Text('Einlesen ansehen'),
         ),
       if (materialCanReprocess(widget.state, widget.data))
         ActionButton(
@@ -823,16 +814,16 @@ class _MaterialReviewState extends State<MaterialReview> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         pageActions(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (liveFixture)
-          const Notice(
+          Notice(
             'Beispielseite · mit KI erkannt. Der Beispieltext ist unveränderlich.',
             icon: Icons.science_outlined,
           ),
         if (synthetic && !liveFixture)
-          const Notice(
+          Notice(
             'Vorbereitete Beispielseite · ohne KI-Erkennung.',
             icon: Icons.science_outlined,
           ),
@@ -852,7 +843,7 @@ class _MaterialReviewState extends State<MaterialReview> {
           ),
         if (d['status'] == 'uploaded' && !readonly && !extractionRunning)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: EdgeInsets.symmetric(vertical: 20),
             child: ActionButton(
               label: 'Material erkennen lassen',
               icon: Icons.document_scanner_outlined,
@@ -864,9 +855,9 @@ class _MaterialReviewState extends State<MaterialReview> {
           ),
         for (final uncertainty in d['uncertainties'] as List)
           Notice(uncertainty, warning: true),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         if (d['status'] == 'unreadable')
-          const Notice(
+          Notice(
             'Das Foto ist nicht lesbar. Bitte im Fotoassistenten neu aufnehmen.',
             warning: true,
           ),
@@ -888,15 +879,15 @@ class _MaterialReviewState extends State<MaterialReview> {
                 if (canConfirm && !synthetic)
                   TextButton.icon(
                     onPressed: () => setState(() => editing = true),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Erkannten Text verbessern'),
+                    icon: Icon(Icons.edit_outlined),
+                    label: Text('Erkannten Text verbessern'),
                   ),
               ],
               if (editing)
                 TextButton.icon(
                   onPressed: () => setState(() => editing = false),
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Leseansicht'),
+                  icon: Icon(Icons.menu_book_outlined),
+                  label: Text('Leseansicht'),
                 ),
               if (editing)
                 for (final item in [
@@ -906,7 +897,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                   (homework, 'Erkannte Aufgaben (eine pro Zeile)', 3),
                 ])
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
+                    padding: EdgeInsets.only(bottom: 18),
                     child: item.$1 == subject
                         ? SubjectField(
                             widget.state,
@@ -927,16 +918,16 @@ class _MaterialReviewState extends State<MaterialReview> {
                           ),
                   ),
               if ((d['homework'] as List).isEmpty)
-                const Text(
+                Text(
                   'Hier wurden keine Aufgabenangaben erkannt.',
-                  style: TextStyle(color: muted, fontSize: 13),
+                  style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
               if (canConfirm) ...[
                 if (wordPreview != null) ...[
                   wordPreviewPanel(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ActionButton(
                   label: d['confirmed']
                       ? 'Bestätigung speichern'
@@ -949,17 +940,17 @@ class _MaterialReviewState extends State<MaterialReview> {
             ],
           ),
         ),
-        const SizedBox(height: 22),
+        SizedBox(height: 22),
         if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
         if (d['confirmed'] && widget.showUnitAction)
           Panel(
-            color: mint,
+            color: context.palette.mint,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 heading('Bereit für eine kleine Lerneinheit?'),
-                const Text('Übe deinen bestätigten Stoff.'),
-                const SizedBox(height: 20),
+                Text('Übe deinen bestätigten Stoff.'),
+                SizedBox(height: 20),
                 if (!readonly)
                   ActionButton(
                     label: widget.state.isChild
@@ -987,8 +978,8 @@ class _MaterialReviewState extends State<MaterialReview> {
           ),
         if (d['confirmed'] == true && d['synthetic'] != true)
           TextButton.icon(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            label: const Text('Fragen zu dieser Heftseite'),
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            label: Text('Fragen zu dieser Heftseite'),
             onPressed: () => showTutorSheet(
               context,
               widget.state,
@@ -1120,10 +1111,10 @@ class _MaterialReviewState extends State<MaterialReview> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         pageActions(),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         if (!synthetic || d['fixture_id'] != null) ...[
           Panel(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             child: LoadView<Uint8List>(
               load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
               builder: (bytes, _) => Semantics(
@@ -1144,7 +1135,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Schließen'),
+                            child: Text('Schließen'),
                           ),
                         ],
                       ),
@@ -1156,10 +1147,13 @@ class _MaterialReviewState extends State<MaterialReview> {
                       fit: StackFit.expand,
                       children: [
                         Image.memory(bytes, fit: BoxFit.contain),
-                        const Positioned(
+                        Positioned(
                           right: 4,
                           bottom: 4,
-                          child: Icon(Icons.zoom_in_rounded, color: teal),
+                          child: Icon(
+                            Icons.zoom_in_rounded,
+                            color: context.palette.teal,
+                          ),
                         ),
                       ],
                     ),
@@ -1168,7 +1162,7 @@ class _MaterialReviewState extends State<MaterialReview> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ],
         if (d['status'] == 'uploaded' && !extractionRunning)
           ActionButton(
@@ -1179,7 +1173,7 @@ class _MaterialReviewState extends State<MaterialReview> {
             },
           )
         else if (d['status'] == 'unreadable')
-          const Notice(
+          Notice(
             'Das Foto ist nicht lesbar. Nimm die Seite bitte noch einmal auf.',
             warning: true,
           )
@@ -1190,19 +1184,19 @@ class _MaterialReviewState extends State<MaterialReview> {
               children: [
                 Text(
                   '${subject.text} · ${topic.text}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 if (synthetic) ...[
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Beispielseite',
-                    style: TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 LearningContent(
                   content.text,
                   figureBuilder: !longText && d['has_image'] == true
@@ -1215,7 +1209,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                 ),
                 if (longText)
                   ExpansionTile(
-                    title: const Text('Ganzen Text lesen'),
+                    title: Text('Ganzen Text lesen'),
                     children: [
                       LearningContent(
                         content.text,
@@ -1230,8 +1224,8 @@ class _MaterialReviewState extends State<MaterialReview> {
                     ],
                   ),
                 if (homework.text.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Aufgaben auf dieser Seite',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
@@ -1256,7 +1250,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                     (homework, 'Erkannte Aufgaben', 3),
                   ])
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.only(bottom: 12),
                       child: field.$1 == subject
                           ? SubjectField(
                               widget.state,
@@ -1276,20 +1270,20 @@ class _MaterialReviewState extends State<MaterialReview> {
                             ),
                     ),
                 if (canConfirm) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (wordPreview != null) ...[
                     wordPreviewPanel(),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                   if (uncertainties.isNotEmpty) ...[
-                    const Text(
+                    Text(
                       'Hier bitte genau hinschauen:',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     for (final uncertainty in uncertainties)
                       Notice('$uncertainty', warning: true),
                   ],
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   ActionButton(
                     label: 'Stimmt, weiter',
                     icon: Icons.check_rounded,
@@ -1297,15 +1291,15 @@ class _MaterialReviewState extends State<MaterialReview> {
                   ),
                   if (wordPreview != null) saveWithoutWords(),
                 ] else if (confirmed) ...[
-                  const SizedBox(height: 14),
-                  const Tag('Text übernommen'),
+                  SizedBox(height: 14),
+                  Tag('Text übernommen'),
                 ],
               ],
             ),
           ),
         if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
         if (confirmed && widget.showUnitAction) ...[
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           ActionButton(
             label: languageMaterial ? 'Wörter & Sprache üben' : 'Jetzt lernen',
             icon: Icons.play_arrow_rounded,
@@ -1329,18 +1323,18 @@ class _MaterialReviewState extends State<MaterialReview> {
           ),
         ],
         if (confirmed && d['synthetic'] != true) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextButton.icon(
-            icon: const Icon(Icons.translate_rounded),
-            label: const Text('Wörter aus dieser Seite'),
+            icon: Icon(Icons.translate_rounded),
+            label: Text('Wörter aus dieser Seite'),
             onPressed: () => openRoute(
               context,
               '/vocabulary/${d['child_id']}?material=${d['id']}',
             ),
           ),
           TextButton.icon(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            label: const Text('Frag nach'),
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            label: Text('Frag nach'),
             onPressed: () => showTutorSheet(
               context,
               widget.state,

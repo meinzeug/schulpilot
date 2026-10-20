@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'learning_navigation.dart';
 import 'material_screen.dart';
 import 'material_actions.dart';
@@ -32,14 +33,15 @@ class CollectionScreen extends StatelessWidget {
         : state.isChild
         ? 'Meine Hefte'
         : 'Heftseiten',
+    showTitle: !state.isChild || !learning,
     actions: [
-      if (learning)
+      if (learning && !state.isChild)
         TextButton.icon(
           onPressed: () => openRoute(context, '/vocabulary/$childId'),
           icon: const Icon(Icons.translate_rounded),
           label: const Text('Wörter'),
         ),
-      if (learning)
+      if (learning && !state.isChild)
         TextButton.icon(
           onPressed: () => openRoute(context, '/progress/$childId'),
           icon: const Icon(Icons.insights_rounded),
@@ -60,6 +62,27 @@ class CollectionScreen extends StatelessWidget {
             childId: childId,
             selected: learning ? 'history' : 'materials',
           ),
+        if (learning && state.isChild) ...[
+          const ChildSectionHero(
+            eyebrow: 'Lernen',
+            title: 'Ein Thema. Dein nächster Schritt.',
+            description: 'Hier geht es mit deinem Heftstoff weiter. Wähle eine Runde und lerne in deinem Tempo.',
+            icon: Icons.auto_stories_rounded,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              TextButton.icon(
+                onPressed: () => openRoute(context, '/progress/$childId'),
+                icon: const Icon(Icons.insights_rounded),
+                label: const Text('Lernstand'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         learning
             ? PagedCollection(
                 state,
@@ -665,25 +688,26 @@ class _PagedCollectionState extends State<PagedCollection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.learning) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tab in [
-                ('ready', 'Offen'),
-                ('later', 'Später'),
-                ('completed', 'Erledigt'),
-              ])
-                ChoiceChip(
-                  label: Text(tab.$2),
-                  selected: section == tab.$1,
-                  onSelected: (_) => change(() {
-                    section = tab.$1;
-                    subject = null;
-                    search.clear();
-                  }, scroll: true),
-                ),
+          ChildSectionTabs(
+            tabs: const [
+              (
+                id: 'ready',
+                label: 'Offen',
+                icon: Icons.play_circle_outline_rounded,
+              ),
+              (id: 'later', label: 'Später', icon: Icons.event_outlined),
+              (
+                id: 'completed',
+                label: 'Erledigt',
+                icon: Icons.task_alt_rounded,
+              ),
             ],
+            selected: section,
+            onSelected: (value) => change(() {
+              section = value;
+              subject = null;
+              search.clear();
+            }, scroll: true),
           ),
           if (data?['paused'] == true)
             const Padding(
@@ -817,7 +841,7 @@ class _PagedCollectionState extends State<PagedCollection> {
             total == 0
                 ? 'Keine Ergebnisse'
                 : '$first–$last von ${counted(total, widget.learning ? 'Eintrag' : 'Seite', widget.learning ? 'Einträgen' : 'Seiten')}',
-            style: const TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
           ),
           const SizedBox(height: 12),
           if (items.isEmpty)
@@ -829,7 +853,7 @@ class _PagedCollectionState extends State<PagedCollection> {
                         ? Icons.auto_stories_outlined
                         : Icons.folder_open_rounded,
                     size: 36,
-                    color: teal,
+                    color: context.palette.teal,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -911,10 +935,10 @@ class _PagedCollectionState extends State<PagedCollection> {
             padding: const EdgeInsets.fromLTRB(2, 12, 2, 10),
             child: Text(
               subject.isEmpty ? 'Fach noch offen' : subject,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: ink,
+                color: context.palette.ink,
               ),
             ),
           ),
@@ -923,22 +947,32 @@ class _PagedCollectionState extends State<PagedCollection> {
       if (item['kind'] == 'topic_group') {
         final entries = (item['entries'] as List).cast<Json>();
         widgets.add(
-          Panel(
-            child: ExpansionTile(
-              title: Text(
-                item['topic'],
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text(
-                '${counted(entries.length, 'Runde', 'Runden')} zu diesem Thema · zum Auswählen öffnen',
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final entry in entries.indexed)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                Text(
+                  item['topic'],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Tag('Nächste empfohlene Runde'),
+                ),
+                if (entries.isNotEmpty) _tile(entries.first, inset: true),
+                if (entries.length > 1)
+                  ExpansionTile(
+                    title: Text(
+                      '${counted(entries.length - 1, 'weitere Runde', 'weitere Runden')} zu diesem Thema',
+                    ),
                     children: [
-                      if (entry.$1 == 0) const Tag('Nächste empfohlene Runde'),
-                      _tile(entry.$2),
+                      for (final entry in entries.skip(1))
+                        _tile(entry, inset: true),
                     ],
                   ),
               ],
@@ -952,7 +986,7 @@ class _PagedCollectionState extends State<PagedCollection> {
     return widgets;
   }
 
-  Widget _tile(Json item) {
+  Widget _tile(Json item, {bool inset = false}) {
     final topic = (item['topic'] as String? ?? '').trim(),
         title = topic.isEmpty ? item['title'] ?? 'Heftseite' : topic;
     final closed = (item['closed_questions'] as num? ?? 0).toInt(),
@@ -985,6 +1019,7 @@ class _PagedCollectionState extends State<PagedCollection> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Panel(
+        tone: inset ? PanelTone.subtle : PanelTone.neutral,
         padding: const EdgeInsets.all(14),
         child: ListTile(
           contentPadding: EdgeInsets.zero,
@@ -999,7 +1034,7 @@ class _PagedCollectionState extends State<PagedCollection> {
               : Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: mint,
+                    color: context.palette.mint,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -1008,7 +1043,7 @@ class _PagedCollectionState extends State<PagedCollection> {
                               ? Icons.task_alt_rounded
                               : Icons.auto_stories_outlined
                         : Icons.description_outlined,
-                    color: teal,
+                    color: context.palette.teal,
                     size: 23,
                   ),
                 ),
@@ -1016,7 +1051,12 @@ class _PagedCollectionState extends State<PagedCollection> {
             title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontFamily: simpleLearning ? 'SpaceGrotesk' : null,
+              color: context.palette.ink,
+              fontSize: simpleLearning ? 19 : 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -1060,12 +1100,18 @@ class _PagedCollectionState extends State<PagedCollection> {
                   if (date != null)
                     Text(
                       DateFormat('dd.MM.yyyy').format(date),
-                      style: const TextStyle(fontSize: 12, color: muted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.palette.muted,
+                      ),
                     ),
                   if (item['review_status'] == 'pending')
-                    const Text(
+                    Text(
                       'Rückblick wird vorbereitet',
-                      style: TextStyle(fontSize: 12, color: muted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.palette.muted,
+                      ),
                     ),
                   if (simpleLearning && item['status'] != 'completed' && !later)
                     Padding(
@@ -1076,8 +1122,8 @@ class _PagedCollectionState extends State<PagedCollection> {
                             : item['kind'] == 'unit'
                             ? 'Runde starten'
                             : 'Runde vorbereiten',
-                        style: const TextStyle(
-                          color: teal,
+                        style: TextStyle(
+                          color: context.palette.teal,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1139,7 +1185,7 @@ class _PagedCollectionState extends State<PagedCollection> {
                   height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.chevron_right_rounded, color: muted),
+              : Icon(Icons.chevron_right_rounded, color: context.palette.muted),
           onTap: selectingPages && canDeleteMaterial(item)
               ? () => togglePage(item)
               : actionable

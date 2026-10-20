@@ -140,7 +140,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     poll?.cancel();
     poll = null;
     if (!active || !waiting) return;
-    poll = Timer(const Duration(seconds: 3), () {
+    poll = Timer(Duration(seconds: 3), () {
       poll = null;
       if (active && waiting) unawaited(checkJob());
     });
@@ -320,8 +320,8 @@ class _StudyPathPanelState extends State<StudyPathPanel>
         children: [
           Row(
             children: [
-              const Icon(Icons.route_rounded, color: teal, size: 27),
-              const SizedBox(width: 12),
+              Icon(Icons.route_rounded, color: context.palette.teal, size: 27),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Dein Lernweg',
@@ -334,14 +334,14 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               IconButton(
                 tooltip: 'Lernweg aktualisieren',
                 onPressed: reading ? null : load,
-                icon: const Icon(Icons.refresh_rounded, size: 20),
+                icon: Icon(Icons.refresh_rounded, size: 20),
               ),
             ],
           ),
           if (!ownerMatches)
-            const Text('Bitte melde dich erneut an.')
+            Text('Bitte melde dich erneut an.')
           else if (data == null && readError == null)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(22),
               child: Center(child: CircularProgressIndicator()),
             )
@@ -349,66 +349,66 @@ class _StudyPathPanelState extends State<StudyPathPanel>
             if (readError != null) Notice(readError!, warning: true),
             if (actionError != null) ...[
               Notice(actionError!, warning: true),
-              TextButton(onPressed: load, child: const Text('Stand prüfen')),
+              TextButton(onPressed: load, child: Text('Stand prüfen')),
             ],
             if (data != null && data['available'] != true) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 editable
                     ? 'Dein Stoff wird zu mehreren kleinen Etappen.'
                     : 'Für diesen Tag ist noch kein Lernweg geplant.',
               ),
               if (editable) ...[
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: posting ? null : createPlan,
-                  icon: const Icon(Icons.route_rounded),
+                  icon: Icon(Icons.route_rounded),
                   label: Text(posting ? 'Wird geplant …' : 'Lernweg planen'),
                 ),
               ],
             ] else if (data?['available'] == true) ...[
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               if (total > 0) ...[
                 LinearProgressIndicator(value: (completed / total).clamp(0, 1)),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Text(
                   '$completed von $total Aufgaben bearbeitet',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ],
-              const SizedBox(height: 7),
+              SizedBox(height: 7),
               Text(
                 '$ready bereit · verteilt auf mehrere Lerntage',
-                style: const TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(color: context.palette.muted, fontSize: 12),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               if (current != null) ...[
                 Text(
                   current['title'] ?? _phaseLabel(current['phase']),
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   current['label'] ?? _phaseLabel(current['phase']),
-                  style: const TextStyle(color: muted),
+                  style: TextStyle(color: context.palette.muted),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 if (waiting || posting) ...[
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: 10),
-                  const Text('Deine nächste Etappe wird vorbereitet.'),
-                  const SizedBox(height: 6),
-                  const Text(
+                  LinearProgressIndicator(),
+                  SizedBox(height: 10),
+                  Text('Deine nächste Etappe wird vorbereitet.'),
+                  SizedBox(height: 6),
+                  Text(
                     'Du kannst später weitermachen.',
-                    style: TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ] else if (editable && data?['can_continue'] == true)
                   FilledButton.icon(
                     onPressed: () => continueBlock(current),
-                    icon: const Icon(Icons.play_arrow_rounded),
+                    icon: Icon(Icons.play_arrow_rounded),
                     label: Text(
                       current['unit_id'] != null
                           ? 'Etappe öffnen'
@@ -424,37 +424,40 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                     editable &&
                     data?['can_continue'] == true &&
                     completed > 0) ...[
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Die nächste Runde beginnt, wenn du sie auswählst.',
-                    style: TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ] else if (blocks.isNotEmpty)
-                const Text(
+                Text(
                   'Alle Etappen sind bearbeitet. Gut gemacht!',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               if ((data?['block_reason'] as String? ?? '').isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   data!['block_reason'],
-                  style: const TextStyle(color: muted),
+                  style: TextStyle(color: context.palette.muted),
                 ),
               ],
               if (editable && data?['stale'] == true) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: posting ? null : createPlan,
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: Icon(Icons.refresh_rounded),
                   label: Text(
                     posting ? 'Wird geplant …' : 'Lernweg neu planen',
                   ),
                 ),
               ],
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               ExpansionTile(
-                title: const Text('Alle Etappen'),
+                title: Text('Alle Etappen'),
                 children: [
                   for (final block in blocks)
                     ListTile(
@@ -463,7 +466,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                         block['status'] == 'completed'
                             ? Icons.task_alt_rounded
                             : _phaseIcon(block['phase']),
-                        color: teal,
+                        color: context.palette.teal,
                       ),
                       title: Text(
                         block['title'] ?? _phaseLabel(block['phase']),
@@ -472,7 +475,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                         '${block['label'] ?? _phaseLabel(block['phase'])} · ${block['question_count'] ?? 0} Aufgaben · ${_blockLabel(block['status'])}',
                       ),
                       trailing: block['unit_id'] != null
-                          ? const Icon(Icons.chevron_right_rounded)
+                          ? Icon(Icons.chevron_right_rounded)
                           : null,
                       onTap: block['unit_id'] == null
                           ? null

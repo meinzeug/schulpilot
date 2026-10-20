@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
+import 'admin_workspace_ui.dart';
 import 'settings_screen.dart';
 import 'ui.dart';
 
@@ -513,23 +514,44 @@ class _InstallationScreenState extends State<InstallationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < labels.length; i++)
-              ChoiceChip(
-                label: Text(
-                  widget.initial ? '${i + 1}  ${labels[i]}' : labels[i],
+        if (!widget.initial)
+          AdminContextTabs(
+            selected: step,
+            onSelected: selectStep,
+            items: [
+              for (final label in labels)
+                (
+                  {
+                        'Betrieb': Icons.tune_rounded,
+                        'E-Mail': Icons.mail_outline_rounded,
+                        'KI': Icons.auto_awesome_rounded,
+                        'Tarif': Icons.family_restroom_rounded,
+                        'Push': Icons.notifications_outlined,
+                        'Status': Icons.fact_check_outlined,
+                      }[label] ??
+                      Icons.circle_outlined,
+                  label,
                 ),
-                selected: i == step,
-                showCheckmark: false,
-                onSelected: !widget.initial || i < step
-                    ? (_) => selectStep(i)
-                    : null,
-              ),
-          ],
-        ),
+            ],
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < labels.length; i++)
+                ChoiceChip(
+                  label: Text(
+                    widget.initial ? '${i + 1}  ${labels[i]}' : labels[i],
+                  ),
+                  selected: i == step,
+                  showCheckmark: false,
+                  onSelected: !widget.initial || i < step
+                      ? (_) => selectStep(i)
+                      : null,
+                ),
+            ],
+          ),
         if (widget.initial) ...[
           const SizedBox(height: 20),
           LinearProgressIndicator(
@@ -614,7 +636,20 @@ class _InstallationScreenState extends State<InstallationScreen> {
       return PageFrame(
         state: widget.state,
         title: 'Betriebseinstellungen',
-        child: child,
+        showTitle: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AdminWorkspaceHeader(
+              title: 'Betriebseinstellungen',
+              subtitle: 'Zugänge, Freigaben und Dienste bewusst konfigurieren.',
+              currentPath: '/admin/settings',
+              icon: Icons.tune_rounded,
+            ),
+            const SizedBox(height: 24),
+            child,
+          ],
+        ),
       );
     }
     return Scaffold(

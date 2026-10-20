@@ -3,7 +3,7 @@
 import copy
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from . import schemas as s
 from .coaching import context, root_and_units, validate_new_round
@@ -34,6 +34,9 @@ def authority(db, job):
 
 @router.post("/units/{unit_id}/learning-session/check", status_code=202)
 def prepare(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(get_db)):
+    from .db import Activity
+    from .learning import pending_feedback
+    from .learning_controller import facts
     from .materials import enqueue
 
     unit = get_unit(db, p, unit_id, True, True)
@@ -41,14 +44,20 @@ def prepare(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
         raise HTTPException(409, "Für eine neue Lernprobe brauchst du eigene bestätigte Heftseiten. Die Beispielrunde bleibt gespeichert.")
     memory = db.get(LearningMemory, unit.id)
     media = (memory.working or {}).get("media") if memory else None
-    if not media or media.get("status") not in ("watched", "not_helpful", "broken", "skipped") or media.get("user_id") != p.user.id:
-        raise HTTPException(409, "Kehre zuerst von deinem Lerntipp zurück. Die gespeicherte Runde bleibt verfügbar.")
-    key = "media-check:" + media.get("open_id", media["interaction_id"])
+    media_valid = media and media.get("status") in ("watched", "not_helpful", "broken", "skipped") and media.get("user_id") == p.user.id
+    support = db.scalar(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")
+        .order_by(Activity.created.desc(), Activity.id.desc()))
+    if not media_valid and not support:
+        raise HTTPException(409, "Öffne zuerst eine Erklärung oder kehre von deinem Lerntipp zurück. Deine Runde bleibt verfügbar.")
+    key = "media-check:" + media.get("open_id", media["interaction_id"]) if media_valid else "help-check:" + unit.id
     previous = db.scalar(select(Job).where(Job.idempotency == p.user.id + ":" + key))
     if previous:
         return {"id": previous.id, "status": previous.status}
     if memory.revision != data.revision:
         raise HTTPException(409, "Der Lernschritt hat sich geändert. Bitte neu laden.")
+    state = facts(db, unit)
+    if pending_feedback(unit, state["attempts"], state["activities"]):
+        raise HTTPException(409, "Lies zuerst deine gespeicherte Rückmeldung.")
     if data.kind != "check_understanding":
         raise HTTPException(422, "Hier wird eine neue kleine Verständnisrunde vorbereitet.")
     try:
@@ -58,16 +67,18 @@ def prepare(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
     goals = payload["learning_goals"]
     if not goals:
         raise HTTPException(409, "Beende zuerst deine gespeicherte Runde. Ihr Rückblick legt die nächste passende Lernprobe fest.")
-    question = next((q for q in unit.questions if q["id"] == media.get("question_id")), None)
+    question_id = media.get("question_id") if media_valid else support.detail.get("question_id")
+    question = next((q for q in unit.questions if q["id"] == question_id), None)
     target = question.get("learning_goal_id") if question else None
     focus = [target] if target in {g["id"] for g in goals} else [g["id"] for g in goals[:2]]
     child = db.get(Child, unit.child_id)
     if unit.status == "active":
         unit.status, unit.heartbeat = "paused", None
-    observe(db, unit, "support_check_requested", "check-request:" + data.request_key, ["tip_interaction:" + media["interaction_id"]])
+    evidence = "tip_interaction:" + media["interaction_id"] if media_valid else "activity:" + support.id
+    observe(db, unit, "support_check_requested", "check-request:" + data.request_key, [evidence])
     result = enqueue(db, p, child, "controller_check", {"unit_id": unit.id, "signature": signature,
         "focus_goal_ids": focus, "session_id": p.session.id, "family_id": child.family_id,
-        "media_id": media["interaction_id"]}, key, commit=False)
+        "media_id": media["interaction_id"] if media_valid else None, "support_ref": evidence}, key, commit=False)
     memory.working = {**memory.working, "pending_check_job_id": result["id"]}
     db.commit()
     return result
@@ -110,6 +121,9 @@ def process(job_id):
             if not job or job.status != "running":
                 return
             unit = db.scalar(select(LearningUnit).where(LearningUnit.id == job.payload["unit_id"]).with_for_update())
+            child = authority(db, job)
+            db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+            db.expire_all()
             child = authority(db, job)
             current = job_config(db, job, "unit")
             external_allowed(current)

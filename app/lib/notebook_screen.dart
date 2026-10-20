@@ -268,9 +268,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
         !selectedIds.contains(id) &&
         selectedIds.length >= 500) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Für mehr Seiten wähle „Alle auswählen“.'),
-        ),
+        SnackBar(content: Text('Für mehr Seiten wähle „Alle auswählen“.')),
       );
       return;
     }
@@ -291,7 +289,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     });
     if (wasAllMatching) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
             'Jetzt sind nur die markierten Seiten dieser Übersicht ausgewählt.',
           ),
@@ -352,24 +350,24 @@ class _NotebookScreenState extends State<NotebookScreen> {
     children: [
       if (materialCanReprocess(widget.state, item, canManage: canManage))
         IconButton(
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          constraints: BoxConstraints(minWidth: 48, minHeight: 48),
           tooltip: 'Mit KI neu lesen',
           onPressed: canReprocess(item) ? () => reprocessPage(item) : null,
-          icon: const Icon(Icons.auto_awesome_outlined),
+          icon: Icon(Icons.auto_awesome_outlined),
         ),
       if (materialCanDelete(widget.state, item, canManage: canManage))
         IconButton(
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          constraints: BoxConstraints(minWidth: 48, minHeight: 48),
           tooltip: 'Heftseite löschen',
           onPressed: canDelete(item) ? () => deletePages(page: item) : null,
-          icon: const Icon(Icons.delete_outline_rounded),
+          icon: Icon(Icons.delete_outline_rounded),
           color: Theme.of(context).colorScheme.error,
         ),
     ],
   );
 
   Widget selectionToolbar() => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: EdgeInsets.only(bottom: 12),
     child: Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -396,8 +394,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     allMatching = true;
                     selectedIds.clear();
                   }),
-            icon: const Icon(Icons.select_all_rounded),
-            label: const Text('Alle auswählen'),
+            icon: Icon(Icons.select_all_rounded),
+            label: Text('Alle auswählen'),
           ),
           Text(
             allMatching
@@ -407,26 +405,26 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     'Seite ausgewählt',
                     'Seiten ausgewählt',
                   ),
-            style: const TextStyle(color: muted, fontSize: 12),
+            style: TextStyle(color: context.palette.muted, fontSize: 12),
           ),
           FilledButton.icon(
             onPressed: deleting || selectionCount == 0
                 ? null
                 : () => deletePages(),
-            icon: const Icon(Icons.delete_outline_rounded),
+            icon: Icon(Icons.delete_outline_rounded),
             label: Text('Auswahl löschen ($selectionCount)'),
           ),
         ],
         TextButton.icon(
           onPressed: deleting ? null : () => deletePages(all: true),
-          icon: const Icon(Icons.delete_sweep_outlined),
-          label: const Text('Alles löschen'),
+          icon: Icon(Icons.delete_sweep_outlined),
+          label: Text('Alles löschen'),
           style: TextButton.styleFrom(
             foregroundColor: Theme.of(context).colorScheme.error,
           ),
         ),
         if (deleting)
-          const SizedBox(
+          SizedBox(
             width: 22,
             height: 22,
             child: CircularProgressIndicator(strokeWidth: 2),
@@ -448,7 +446,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     });
     remember();
     if (delayed) {
-      debounce = Timer(const Duration(milliseconds: 350), load);
+      debounce = Timer(Duration(milliseconds: 350), load);
     } else {
       load();
     }
@@ -459,7 +457,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     final target = await showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Zu welcher Seite?'),
+        title: Text('Zu welcher Seite?'),
         content: TextField(
           controller: input,
           autofocus: true,
@@ -471,17 +469,17 @@ class _NotebookScreenState extends State<NotebookScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Abbrechen'),
+            child: Text('Abbrechen'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, int.tryParse(input.text)),
-            child: const Text('Seite öffnen'),
+            child: Text('Seite öffnen'),
           ),
         ],
       ),
     );
     // The closing route still reads its controller during the exit transition.
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await Future<void>.delayed(Duration(milliseconds: 250));
     input.dispose();
     if (current && target != null) move(target - 1);
   }
@@ -496,7 +494,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -505,11 +503,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 'Seiten auswählen',
                 style: Theme.of(ctx).textTheme.titleLarge,
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               DropdownButtonFormField<String>(
                 initialValue: draftSort,
-                decoration: const InputDecoration(labelText: 'Reihenfolge'),
-                items: const [
+                decoration: InputDecoration(labelText: 'Reihenfolge'),
+                items: [
                   DropdownMenuItem(
                     value: 'newest',
                     child: Text('Neueste zuerst'),
@@ -523,11 +521,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   if (v != null) set(() => draftSort = v);
                 },
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: draftStatus,
-                decoration: const InputDecoration(labelText: 'Seitenstatus'),
-                items: const [
+                decoration: InputDecoration(labelText: 'Seitenstatus'),
+                items: [
                   DropdownMenuItem(value: 'all', child: Text('Alle Seiten')),
                   DropdownMenuItem(
                     value: 'confirmed',
@@ -539,9 +537,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   if (v != null) set(() => draftStatus = v);
                 },
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               OutlinedButton.icon(
-                icon: const Icon(Icons.date_range_outlined),
+                icon: Icon(Icons.date_range_outlined),
                 label: Text(
                   draftDates == null
                       ? 'Zeitraum wählen'
@@ -564,12 +562,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
               if (draftDates != null)
                 TextButton(
                   onPressed: () => set(() => draftDates = null),
-                  child: const Text('Zeitraum aufheben'),
+                  child: Text('Zeitraum aufheben'),
                 ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Anzeigen'),
+                child: Text('Anzeigen'),
               ),
             ],
           ),
@@ -624,7 +622,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!current) return const SizedBox();
+    if (!current) return SizedBox();
     return PageFrame(
       state: widget.state,
       title: subject?['title'] ?? 'Dein Hefter',
@@ -642,9 +640,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
               IconButton(
                 tooltip: 'Alle Hefter',
                 onPressed: () => context.go('/library/${widget.childId}'),
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: Icon(Icons.arrow_back_rounded),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   subject?['title'] ?? 'Dein Hefter',
@@ -657,7 +655,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 IconButton(
                   tooltip: 'Heftfoto hinzufügen',
                   onPressed: addPhoto,
-                  icon: const Icon(Icons.add_a_photo_outlined),
+                  icon: Icon(Icons.add_a_photo_outlined),
                 ),
               if (widget.subjectId != 'unassigned')
                 IconButton(
@@ -668,14 +666,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     widget.childId,
                     widget.subjectId,
                   ),
-                  icon: const Icon(Icons.ondemand_video_outlined),
+                  icon: Icon(Icons.ondemand_video_outlined),
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Panel(
             tone: PanelTone.subtle,
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -686,11 +684,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: 'In diesem Hefter suchen',
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: Icon(Icons.search_rounded),
                       suffixIcon: IconButton(
                         tooltip: 'Suche schließen',
                         onPressed: toggleSearch,
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close),
                       ),
                     ),
                     onChanged: (_) => change(() {}, delayed: true),
@@ -699,7 +697,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       load();
                     },
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
                 Wrap(
                   spacing: 10,
@@ -737,33 +735,36 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                   : status == 'review'
                                   ? ' · Noch prüfen'
                                   : ''}${dates == null ? '' : ' · Zeitraum'}',
-                        style: const TextStyle(color: muted, fontSize: 12),
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     if (!showSearch)
                       IconButton(
                         tooltip: 'Im Hefter suchen',
                         onPressed: toggleSearch,
-                        icon: const Icon(Icons.search_rounded),
+                        icon: Icon(Icons.search_rounded),
                       ),
                     IconButton(
                       tooltip: 'Filter',
                       onPressed: filters,
-                      icon: const Icon(Icons.tune_rounded),
+                      icon: Icon(Icons.tune_rounded),
                     ),
                     IconButton(
                       tooltip: 'Seiten aktualisieren',
                       onPressed: subject == null ? loadSubject : load,
-                      icon: const Icon(Icons.refresh_rounded),
+                      icon: Icon(Icons.refresh_rounded),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (loading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(44),
               child: Center(child: CircularProgressIndicator()),
             )
@@ -773,28 +774,28 @@ class _NotebookScreenState extends State<NotebookScreen> {
               alignment: Alignment.centerLeft,
               child: OutlinedButton(
                 onPressed: subject == null ? loadSubject : load,
-                child: const Text('Erneut laden'),
+                child: Text('Erneut laden'),
               ),
             ),
           ] else if (total == 0)
             Panel(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: 24),
                 child: Column(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.folder_open_rounded,
                       size: 50,
-                      color: teal,
+                      color: context.palette.teal,
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     Text(
                       search.text.isEmpty && status == 'all' && dates == null
                           ? 'Hier sind noch keine Heftseiten vorhanden.'
                           : 'Dazu gibt es gerade keine Seiten.',
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     if (search.text.isNotEmpty ||
                         status != 'all' ||
                         dates != null)
@@ -804,13 +805,13 @@ class _NotebookScreenState extends State<NotebookScreen> {
                           status = 'all';
                           dates = null;
                         }),
-                        child: const Text('Alle Seiten zeigen'),
+                        child: Text('Alle Seiten zeigen'),
                       ),
                     if (widget.state.isChild || canManage)
                       FilledButton.icon(
                         onPressed: addPhoto,
-                        icon: const Icon(Icons.add_a_photo_outlined),
-                        label: const Text('Erstes Heftfoto hinzufügen'),
+                        icon: Icon(Icons.add_a_photo_outlined),
+                        label: Text('Erstes Heftfoto hinzufügen'),
                       ),
                   ],
                 ),
@@ -833,7 +834,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
         onPressed: (overview ? batch > 0 : index > 0)
             ? () => move(overview ? (batch - 1) * pageSize : index - 1)
             : null,
-        icon: const Icon(Icons.chevron_left_rounded),
+        icon: Icon(Icons.chevron_left_rounded),
       ),
       Flexible(
         child: TextButton(
@@ -852,14 +853,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
             (overview ? (batch + 1) * pageSize < total : index + 1 < total)
             ? () => move(overview ? (batch + 1) * pageSize : index + 1)
             : null,
-        icon: const Icon(Icons.chevron_right_rounded),
+        icon: Icon(Icons.chevron_right_rounded),
       ),
     ],
   );
 
   Widget album() {
     final item = selected;
-    if (item == null) return const SizedBox();
+    if (item == null) return SizedBox();
     final viewport = MediaQuery.sizeOf(context);
     final height = math
         .min(
@@ -879,20 +880,17 @@ class _NotebookScreenState extends State<NotebookScreen> {
             pageActions(item),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+            SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
                 move(index - 1),
-            const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+            SingleActivator(LogicalKeyboardKey.arrowRight): () =>
                 move(index + 1),
-            const SingleActivator(LogicalKeyboardKey.pageDown): () =>
-                move(index + 1),
-            const SingleActivator(LogicalKeyboardKey.pageUp): () =>
-                move(index - 1),
-            const SingleActivator(LogicalKeyboardKey.home): () => move(0),
-            const SingleActivator(LogicalKeyboardKey.end): () =>
-                move(total - 1),
+            SingleActivator(LogicalKeyboardKey.pageDown): () => move(index + 1),
+            SingleActivator(LogicalKeyboardKey.pageUp): () => move(index - 1),
+            SingleActivator(LogicalKeyboardKey.home): () => move(0),
+            SingleActivator(LogicalKeyboardKey.end): () => move(total - 1),
           },
           child: Focus(
             autofocus: true,
@@ -913,12 +911,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 height: height,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0E7F1),
+                    color: Color(0xFFE0E7F1),
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: surfaceBorder),
+                    border: Border.all(color: context.palette.surfaceBorder),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: EdgeInsets.all(14),
                     child: AnimatedSwitcher(
                       duration: Duration(milliseconds: reduce ? 0 : 300),
                       transitionBuilder: (child, animation) => FadeTransition(
@@ -954,18 +952,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.description_outlined,
                                         size: 48,
-                                        color: muted,
+                                        color: context.palette.muted,
                                       ),
-                                      const SizedBox(height: 12),
-                                      const Text(
+                                      SizedBox(height: 12),
+                                      Text(
                                         'Diese Seite enthält Text, kein Foto.',
                                       ),
                                       TextButton(
                                         onPressed: () => detail(item),
-                                        child: const Text('Text ansehen'),
+                                        child: Text('Text ansehen'),
                                       ),
                                     ],
                                   ),
@@ -979,21 +977,21 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 pageTitle(item),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
               ),
-              const SizedBox(height: 6),
-              Text(pageDate(item), style: const TextStyle(color: muted)),
-              const SizedBox(height: 12),
+              SizedBox(height: 6),
+              Text(
+                pageDate(item),
+                style: TextStyle(color: context.palette.muted),
+              ),
+              SizedBox(height: 12),
               Wrap(
                 spacing: 12,
                 runSpacing: 8,
@@ -1015,11 +1013,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     OutlinedButton.icon(
                       onPressed: () =>
                           zoomNotebookPhoto(context, widget.state, item),
-                      icon: const Icon(Icons.zoom_in_rounded),
-                      label: const Text('Vergrößern'),
+                      icon: Icon(Icons.zoom_in_rounded),
+                      label: Text('Vergrößern'),
                     ),
                   if (deleting)
-                    const SizedBox(
+                    SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -1029,7 +1027,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         pageControls(),
         LearningTips(
           widget.state,
@@ -1065,18 +1063,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
           ))
         selectionToolbar(),
       pageControls(overview: true),
-      const SizedBox(height: 10),
+      SizedBox(height: 10),
       SizedBox(
         height: (MediaQuery.sizeOf(context).height * 0.65).clamp(340.0, 850.0),
         child: view == 'list'
             ? ListView.separated(
                 itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => SizedBox(height: 10),
                 itemBuilder: (_, n) => overviewCard(items[n], n, list: true),
               )
             : LayoutBuilder(
                 builder: (_, constraints) => GridView.builder(
-                  scrollCacheExtent: const ScrollCacheExtent.pixels(0),
+                  scrollCacheExtent: ScrollCacheExtent.pixels(0),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: constraints.maxWidth < 500
                         ? 2
@@ -1092,7 +1090,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 ),
               ),
       ),
-      const SizedBox(height: 10),
+      SizedBox(height: 10),
       pageControls(overview: true),
     ],
   );
@@ -1113,14 +1111,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
             materialId: item['id'],
             thumbnail: true,
           )
-        : const Center(
-            child: Icon(Icons.description_outlined, size: 40, color: muted),
+        : Center(
+            child: Icon(
+              Icons.description_outlined,
+              size: 40,
+              color: context.palette.muted,
+            ),
           );
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: surfaceBorder),
+        side: BorderSide(color: context.palette.surfaceBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: list
@@ -1139,7 +1141,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                             : null,
                       ),
                     SizedBox(width: wide ? 70 : 56, height: 86, child: photo),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Semantics(
                         button: true,
@@ -1152,7 +1154,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                               : select,
                           borderRadius: BorderRadius.circular(12),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: EdgeInsets.symmetric(vertical: 10),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1161,16 +1163,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                   pageTitle(item),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
-                                const SizedBox(height: 6),
+                                SizedBox(height: 6),
                                 Text(
                                   pageDate(item),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: muted,
+                                    color: context.palette.muted,
                                   ),
                                 ),
                               ],
@@ -1183,7 +1183,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ],
                 );
                 return Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1199,7 +1199,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
               },
             )
           : Padding(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1215,7 +1215,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -1227,7 +1227,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                             onTap: select,
                             borderRadius: BorderRadius.circular(8),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              padding: EdgeInsets.symmetric(vertical: 4),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1235,17 +1235,17 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                     pageTitle(item),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   Text(
                                     pageDate(item),
                                     maxLines: 1,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: muted,
+                                      color: context.palette.muted,
                                     ),
                                   ),
                                 ],

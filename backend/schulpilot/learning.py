@@ -266,7 +266,7 @@ def unit_source_texts(db, unit):
 
 
 def unit_data(db, unit, include_answers=False, *, include_progress=True):
-    from . import coaching
+    from . import adaptive_plan, coaching
     from .learning_controller import projection as session_projection
 
     sources = unit_source_texts(db, unit)
@@ -278,6 +278,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         history.setdefault(row.attempt_id, []).append({"previous_outcome": row.previous_outcome,
             "outcome": row.outcome, "rules_version": row.rules_version, "created": row.created})
     questions = []
+    deferred_questions = adaptive_plan.deferred(db, unit)
     for q in unit.questions:
         value = dict(q)
         if not include_answers:
@@ -301,6 +302,8 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         ]
         shown = [e for e in events if e.kind == "hint" and e.detail.get("question_id") == q["id"]]
         value["hints_used"] = len(shown)
+        if q["id"] in deferred_questions:
+            value["controller_deferred"] = True
         value["shown_hints"] = [{"number":e.detail.get("number"), "text":e.detail.get("text", "")} for e in sorted(shown,key=lambda e:(e.created,e.id))]
         if (
             unit.status == "completed"
@@ -377,7 +380,7 @@ def vocabulary_result(db, unit):
 
 
 def language_capability(unit, capabilities):
-    if any(q.get("presentation") for q in unit.questions) and "visual-v1" not in (capabilities or "").split(","):
+    if any(q.get("presentation") for q in unit.questions) and "visual-v1" not in (capabilities.split(",") if isinstance(capabilities, str) else []):
         raise HTTPException(426, "Diese Runde enthält neue Lernbilder. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if any(q.get("language") for q in unit.questions) and not language_supported(capabilities):
         raise HTTPException(426, "Für diese Sprachrunde bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
@@ -872,7 +875,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         feedback_resume = None
     preparing_unit = db.scalar(
         select(Job).options(load_only(Job.id, Job.status))
-        .where(Job.child_id == child.id, Job.kind.in_(["unit", "controller_check"]), Job.status.in_(["queued", "running"]))
+        .where(Job.child_id == child.id, Job.kind.in_(["unit", "controller_check", "decision"]), Job.status.in_(["queued", "running"]))
         .order_by(Job.created, Job.id).limit(1)
     )
     ledger = read_ledger(db, child.id)
@@ -1147,6 +1150,12 @@ def start(unit_id: str, p=Depends(child_user), db=Depends(get_db),
     unit.status = "active"
     unit.heartbeat = int(now())
     record(db, unit.child_id, "unit_started", {"topic": unit.topic}, unit.id)
+    from .adaptive_plan import CAPABILITY
+    from .db import LearningMemory
+
+    if CAPABILITY in (capabilities.split(",") if isinstance(capabilities, str) else []):
+        memory = db.get(LearningMemory, unit.id)
+        memory.working = {**memory.working, "controller_version": 2}
     db.commit()
     return unit_data(db, unit)
 
@@ -1438,6 +1447,27 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     if reason := learning_block(db, unit):
         raise HTTPException(409, reason)
     q = question(unit, question_id)
+    from . import adaptive_plan
+    from .db import LearningMemory
+
+    if adaptive_plan.CAPABILITY in (capabilities.split(",") if isinstance(capabilities, str) else []):
+        memory = db.get(LearningMemory, unit.id)
+        if memory:
+            memory.working = {**memory.working, "controller_version": 2}
+    active_question = adaptive_plan.current_question(db, unit)
+    active_flow = adaptive_plan.flow(db, unit)
+    from .instructional_decisions import current as current_instructional_step
+
+    model_step = current_instructional_step(db, unit)
+    if model_step:
+        step = model_step[1]
+        if step["kind"] not in ("practice", "check_understanding"):
+            raise HTTPException(409, "Öffne zuerst den gespeicherten Lernschritt und gehe dann weiter.")
+        active_question = step["question_id"]
+    if active_question and active_question != question_id:
+        raise HTTPException(409, "Dieser Lernschritt wurde geändert. Bitte lade die aktuelle Aufgabe.")
+    if not model_step and active_flow and active_flow["phase"] in ("explanation", "change_support"):
+        raise HTTPException(409, "Schau zuerst die Erklärung an und starte dann bewusst die nächste Aufgabe.")
     if q.get("language") and not data.request_id:
         raise HTTPException(422, "Für Sprachantworten wird ein eindeutiger Antwortschlüssel benötigt. Bitte die App aktualisieren.")
     existing = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
@@ -1503,6 +1533,12 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     )
     db.add(attempt)
     db.flush()
+    from .learning_controller import source_state
+
+    adaptive_plan.answer_recorded(db, unit, q, attempt, source_state(db, unit)[2])
+    from .instructional_decisions import answered as advance_instructional_plan
+
+    advance_instructional_plan(db, unit, attempt)
     if q.get("language"):
         from .vocabulary_review import record_review
 
@@ -1514,7 +1550,12 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         record(db, unit.child_id, "feedback_pending", {"attempt_id": attempt.id}, unit.id)
     record(db, unit.child_id, "answer", {"question_id": question_id, "outcome": outcome}, unit.id)
     attempts = [*existing, attempt]
-    done = all(
+    deferred_questions = adaptive_plan.deferred(db, unit)
+    active_flow = adaptive_plan.flow(db, unit)
+    flow_pending = active_flow and active_flow["phase"] not in ("offer_probe", "closed")
+    done = not flow_pending and all(
+        x["id"] in deferred_questions
+        or
         any(a.question_id == x["id"] and a.outcome in ("correct", "uncertain") for a in attempts)
         or sum(a.question_id == x["id"] for a in attempts) >= 3
         for x in unit.questions

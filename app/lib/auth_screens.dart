@@ -21,24 +21,28 @@ class LandingScreen extends StatelessWidget {
           final hero = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Tag('LERNEN MIT RÜCKENWIND'),
-              const SizedBox(height: 24),
+              Tag('LERNEN MIT RÜCKENWIND'),
+              SizedBox(height: 24),
               Text(
                 'Nach der Schule.\nMit Plan weiter.',
                 style: TextStyle(
                   fontSize: wide ? 64 : 42,
-                  color: ink,
+                  color: context.palette.ink,
                   height: 1.06,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -2.3,
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              SizedBox(height: 24),
+              Text(
                 'Heftfotos rein. Stoff verstehen. Mit passenden Übungen dranbleiben.',
-                style: TextStyle(fontSize: 19, height: 1.5, color: muted),
+                style: TextStyle(
+                  fontSize: 19,
+                  height: 1.5,
+                  color: context.palette.muted,
+                ),
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -46,7 +50,7 @@ class LandingScreen extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: () =>
                         context.go(kIsWeb ? '/angebote' : '/register'),
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: Icon(Icons.arrow_forward_rounded),
                     label: Text(
                       kIsWeb ? 'Tarife ansehen' : 'Elternkonto erstellen',
                     ),
@@ -64,9 +68,9 @@ class LandingScreen extends StatelessWidget {
             ],
           );
           final flow = Container(
-            padding: const EdgeInsets.all(28),
+            padding: EdgeInsets.all(28),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [Color(0xFF111C34), teal],
@@ -76,13 +80,13 @@ class LandingScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
+                Icon(
                   Icons.auto_awesome_rounded,
-                  color: electric,
+                  color: context.palette.electric,
                   size: 32,
                 ),
-                const SizedBox(height: 20),
-                const Text(
+                SizedBox(height: 20),
+                Text(
                   'Ein klarer nächster Schritt.',
                   style: TextStyle(
                     fontSize: 29,
@@ -91,7 +95,7 @@ class LandingScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 for (final item in [
                   (
                     Icons.document_scanner_rounded,
@@ -113,8 +117,8 @@ class LandingScreen extends StatelessWidget {
                   ),
                 ])
                   Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(18),
+                    margin: EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: .09),
                       borderRadius: BorderRadius.circular(18),
@@ -125,22 +129,22 @@ class LandingScreen extends StatelessWidget {
                     child: Row(
                       children: [
                         Icon(item.$1, color: Colors.white, size: 24),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 item.$3,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 item.$4,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Color(0xFFC7CBED),
                                   fontSize: 12,
                                 ),
@@ -150,7 +154,7 @@ class LandingScreen extends StatelessWidget {
                         ),
                         Text(
                           item.$2,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white38,
                             fontWeight: FontWeight.w700,
                           ),
@@ -164,7 +168,7 @@ class LandingScreen extends StatelessWidget {
           return SingleChildScrollView(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1240),
+                constraints: BoxConstraints(maxWidth: 1240),
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: wide ? 44 : 22,
@@ -181,6 +185,7 @@ class LandingScreen extends StatelessWidget {
                               child: brand(),
                             ),
                           ),
+                          AppearanceToggle(state),
                           TextButton(
                             onPressed: () => context.go(
                               state.user == null ? '/login' : '/app',
@@ -197,16 +202,16 @@ class LandingScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(flex: 6, child: hero),
-                            const SizedBox(width: 64),
+                            SizedBox(width: 64),
                             Expanded(flex: 5, child: flow),
                           ],
                         )
                       else ...[
                         hero,
-                        const SizedBox(height: 36),
+                        SizedBox(height: 36),
                         flow,
                       ],
-                      const SizedBox(height: 42),
+                      SizedBox(height: 42),
                       Wrap(
                         spacing: 20,
                         runSpacing: 20,
@@ -238,19 +243,21 @@ class LandingScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(item.$1, color: teal),
-                                    const SizedBox(height: 18),
+                                    Icon(item.$1, color: context.palette.teal),
+                                    SizedBox(height: 18),
                                     Text(
                                       item.$2,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 17,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: 8),
                                     Text(
                                       item.$3,
-                                      style: const TextStyle(color: muted),
+                                      style: TextStyle(
+                                        color: context.palette.muted,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -258,30 +265,28 @@ class LandingScreen extends StatelessWidget {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30),
                       if (kIsWeb) ...[
                         StoreSection(state),
-                        const SizedBox(height: 32),
+                        SizedBox(height: 32),
                       ],
                       if (kIsWeb) AndroidDownload(state.api),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       Wrap(
                         spacing: 12,
                         children: [
                           TextButton(
                             onPressed: () => openRoute(context, '/privacy'),
-                            child: const Text('Datenschutz'),
+                            child: Text('Datenschutz'),
                           ),
                           TextButton(
                             onPressed: () => openRoute(context, '/about'),
-                            child: const Text('Über SCHULPILOT'),
+                            child: Text('Über SCHULPILOT'),
                           ),
                           if (kIsWeb)
                             TextButton(
                               onPressed: () => context.go('/bedingungen'),
-                              child: const Text(
-                                'Vertragsbedingungen & Widerruf',
-                              ),
+                              child: Text('Vertragsbedingungen & Widerruf'),
                             ),
                         ],
                       ),
@@ -371,14 +376,15 @@ class _AuthScreenState extends State<AuthScreen> {
     };
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: cream,
+        backgroundColor: context.palette.cream,
         title: InkWell(onTap: () => context.go('/'), child: brand()),
+        actions: [AppearanceToggle(widget.state), const SizedBox(width: 16)],
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(22),
+          padding: EdgeInsets.all(22),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 490),
+            constraints: BoxConstraints(maxWidth: 490),
             child: Panel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -387,16 +393,16 @@ class _AuthScreenState extends State<AuthScreen> {
                     title,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text(
                     mode == 'login'
                         ? 'Mit deinem Benutzernamen und Passwort.'
                         : mode == 'register'
                         ? 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.'
                         : 'Übernimm den Code aus deiner E-Mail.',
-                    style: const TextStyle(color: muted),
+                    style: TextStyle(color: context.palette.muted),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   if (result != null)
                     Notice(result!, icon: Icons.check_circle_outline),
                   if (error != null) Notice(error!, warning: true),
@@ -415,25 +421,25 @@ class _AuthScreenState extends State<AuthScreen> {
                             : 'E-Mail-Adresse',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                   if (['register', 'invite'].contains(mode)) ...[
                     TextField(
                       controller: name,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Dein Anzeigename',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                   if (mode == 'register') ...[
                     TextField(
                       controller: family,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Name deiner Familie',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                   if ([
                     'login',
@@ -470,30 +476,30 @@ class _AuthScreenState extends State<AuthScreen> {
                             : 'Passwort (mindestens 12 Zeichen)',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                   if (['reset', 'verify', 'invite'].contains(mode)) ...[
                     TextField(
                       controller: token,
                       obscureText: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Sicherer Link-Code',
                         helperText: 'Wird aus dem E-Mail-Link übernommen.',
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                   ],
                   if (mode == 'register') ...[
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: consent,
                       onChanged: (v) => setState(() => consent = v ?? false),
-                      title: const Text(
+                      title: Text(
                         'Ich bin volljährig und für die Einrichtung dieser Familie berechtigt.',
                         style: TextStyle(fontSize: 13),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                   ],
                   ActionButton(
                     label: switch (mode) {
@@ -569,7 +575,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       }
                     },
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                   if (mode == 'login' || mode == 'register')
                     GoogleLoginButton(widget.state),
                   if (mode == 'login')
@@ -578,7 +584,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       children: [
                         TextButton(
                           onPressed: () => context.go('/recovery'),
-                          child: const Text('Passwort vergessen'),
+                          child: Text('Passwort vergessen'),
                         ),
                         TextButton(
                           onPressed: () => context.go(
@@ -587,7 +593,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               queryParameters: widget.linkUri.queryParameters,
                             ).toString(),
                           ),
-                          child: const Text('Elternkonto erstellen'),
+                          child: Text('Elternkonto erstellen'),
                         ),
                       ],
                     )
@@ -599,7 +605,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           queryParameters: widget.linkUri.queryParameters,
                         ).toString(),
                       ),
-                      child: const Text('Zur Anmeldung'),
+                      child: Text('Zur Anmeldung'),
                     ),
                 ],
               ),
@@ -619,16 +625,16 @@ class InformationScreen extends StatelessWidget {
     appBar: AppBar(
       title: brand(),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
+        icon: Icon(Icons.arrow_back),
         onPressed: () => context.go('/'),
       ),
     ),
     body: SelectionArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: BoxConstraints(maxWidth: 800),
             child: Panel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,10 +648,10 @@ class InformationScreen extends StatelessWidget {
                   FutureBuilder<Json>(
                     future: Api().get('/legal'),
                     builder: (context, result) {
-                      if (!result.hasData) return const SizedBox.shrink();
+                      if (!result.hasData) return SizedBox.shrink();
                       final data = result.data!;
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        padding: EdgeInsets.symmetric(vertical: 18),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -659,7 +665,7 @@ class InformationScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Text(
                     kind == 'privacy'
                         ? '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SCHULPILOT und das übrige Gerät werden nicht überwacht.
@@ -694,7 +700,7 @@ Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und k�
 Die Demo enthält vorbereitete Beispiele. In deinem eigenen Konto übst du mit deinem Unterrichtsmaterial und KI-Unterstützung.
 
 Version $appVersion''',
-                    style: const TextStyle(fontSize: 15, height: 1.8),
+                    style: TextStyle(fontSize: 15, height: 1.8),
                   ),
                 ],
               ),

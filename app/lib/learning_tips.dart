@@ -66,22 +66,22 @@ Future<bool> openSofatutor(BuildContext context, String link) async {
     context: context,
     builder: (ctx) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Der Link konnte nicht geöffnet werden.',
               style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             FilledButton.icon(
               onPressed: () async {
                 if (await launch() && ctx.mounted) Navigator.pop(ctx);
               },
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Noch einmal öffnen'),
+              icon: Icon(Icons.open_in_new_rounded),
+              label: Text('Noch einmal öffnen'),
             ),
             TextButton.icon(
               onPressed: () async {
@@ -96,8 +96,8 @@ Future<bool> openSofatutor(BuildContext context, String link) async {
                   }
                 }
               },
-              icon: const Icon(Icons.copy_rounded),
-              label: const Text('Link kopieren'),
+              icon: Icon(Icons.copy_rounded),
+              label: Text('Link kopieren'),
             ),
           ],
         ),
@@ -123,9 +123,9 @@ class TipContentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = item['content_type'] == 'learning_text';
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: EdgeInsets.only(top: 10),
       child: Panel(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -136,30 +136,36 @@ class TipContentCard extends StatelessWidget {
                   text
                       ? Icons.article_outlined
                       : Icons.play_circle_outline_rounded,
-                  color: teal,
+                  color: context.palette.teal,
                   size: 27,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         item['title'] ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5),
                       Text(
                         'Sofatutor · ${text ? 'Lerntext' : 'Erklärvideo'}',
-                        style: const TextStyle(fontSize: 12, color: muted),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.palette.muted,
+                        ),
                       ),
                       if (item['relation'] == 'known_level')
-                        const Text(
+                        Text(
                           'Für deine Stufe',
-                          style: TextStyle(fontSize: 12, color: muted),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.palette.muted,
+                          ),
                         ),
                     ],
                   ),
@@ -167,15 +173,15 @@ class TipContentCard extends StatelessWidget {
               ],
             ),
             if ((item['reason'] as String? ?? '').isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(item['reason'], style: const TextStyle(height: 1.4)),
+              SizedBox(height: 10),
+              Text(item['reason'], style: TextStyle(height: 1.4)),
             ],
             if (item['match_quality'] == 'suggestion')
-              const Text(
+              Text(
                 'Vorschlag · prüfe, ob er passt.',
-                style: TextStyle(fontSize: 12, color: muted),
+                style: TextStyle(fontSize: 12, color: context.palette.muted),
               ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () async {
                 unawaited(beforeOpen?.call());
@@ -189,15 +195,15 @@ class TipContentCard extends StatelessWidget {
                   }
                 }
               },
-              icon: const Icon(Icons.open_in_new_rounded, size: 18),
-              label: const Text('Bei Sofatutor ansehen'),
+              icon: Icon(Icons.open_in_new_rounded, size: 18),
+              label: Text('Bei Sofatutor ansehen'),
             ),
             if (onReject != null)
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
                   onPressed: onReject,
-                  child: const Text('Passt nicht'),
+                  child: Text('Passt nicht'),
                 ),
               ),
           ],
@@ -403,20 +409,20 @@ class _LearningTipsState extends State<LearningTips>
         _ => 'Vom Kind geöffnet.',
       };
       return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: 12),
         child: Panel(
           tone: PanelTone.accent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'Lerntipp im Lernverlauf',
                 style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(status),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 'Ob der Inhalt geholfen hat, zeigen spätere eigene Antworten.',
               ),
             ],
@@ -425,7 +431,7 @@ class _LearningTipsState extends State<LearningTips>
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Panel(
         tone: PanelTone.accent,
         child: Column(
@@ -433,37 +439,37 @@ class _LearningTipsState extends State<LearningTips>
           children: [
             Text(
               opened ? 'Zurück vom Lerntipp?' : 'Jetzt selbst ausprobieren',
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               opened
                   ? 'Sag kurz, ob du ihn ansehen konntest.'
                   : 'Eine neue kleine Runde zeigt, was dir geholfen hat.',
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (opened) ...[
               FilledButton(
                 onPressed: writing ? null : () => returnAction(item, 'watched'),
-                child: const Text('Ich habe ihn angesehen'),
+                child: Text('Ich habe ihn angesehen'),
               ),
               OutlinedButton(
                 onPressed: writing ? null : () => returnAction(item, 'skipped'),
-                child: const Text('Ohne Video weiterlernen'),
+                child: Text('Ohne Video weiterlernen'),
               ),
               TextButton(
                 onPressed: writing ? null : () => returnAction(item, 'broken'),
-                child: const Text('Link oder Zugang klappt nicht'),
+                child: Text('Link oder Zugang klappt nicht'),
               ),
             ] else ...[
               if (media['check_available'] != false)
                 FilledButton.icon(
                   onPressed: writing ? null : checkAfterMedia,
-                  icon: const Icon(Icons.psychology_alt_outlined),
-                  label: const Text('Mit 2 neuen Aufgaben prüfen'),
+                  icon: Icon(Icons.psychology_alt_outlined),
+                  label: Text('Mit 2 neuen Aufgaben prüfen'),
                 )
               else
-                const Text(
+                Text(
                   'Beende zuerst diese Runde. Danach gibt es neue Aufgaben passend zu deinen Antworten.',
                 ),
               TextButton(
@@ -475,14 +481,14 @@ class _LearningTipsState extends State<LearningTips>
                     setState(() => expanded = false);
                   }
                 },
-                child: const Text('Zur gespeicherten Aufgabe'),
+                child: Text('Zur gespeicherten Aufgabe'),
               ),
               if (media['status'] == 'watched')
                 TextButton(
                   onPressed: writing
                       ? null
                       : () => returnAction(item, 'not_helpful'),
-                  child: const Text('Ich brauche eine andere Erklärung'),
+                  child: Text('Ich brauche eine andere Erklärung'),
                 ),
             ],
           ],
@@ -524,7 +530,7 @@ class _LearningTipsState extends State<LearningTips>
 
   @override
   Widget build(BuildContext context) {
-    if (!current || unavailable) return const SizedBox.shrink();
+    if (!current || unavailable) return SizedBox.shrink();
     final recommended = (data?['recommended'] as List? ?? [])
         .map((r) => Json.from(r))
         .toList();
@@ -533,16 +539,19 @@ class _LearningTipsState extends State<LearningTips>
         .toList();
     final items = [...recommended, ...additional].take(more ? 12 : 3).toList();
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: EdgeInsets.only(top: 16),
       child: Panel(
         tone: PanelTone.info,
-        padding: const EdgeInsets.all(4),
+        padding: EdgeInsets.all(4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ListTile(
-              leading: const Icon(Icons.ondemand_video_outlined, color: teal),
-              title: const Text(
+              leading: Icon(
+                Icons.ondemand_video_outlined,
+                color: context.palette.teal,
+              ),
+              title: Text(
                 'Lerntipps',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
@@ -554,44 +563,47 @@ class _LearningTipsState extends State<LearningTips>
             ),
             if (expanded)
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                padding: EdgeInsets.fromLTRB(12, 0, 12, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (data?['state'] == 'ready' &&
                         data?['media_return'] is Map)
                       mediaReturn(Json.from(data!['media_return'])),
-                    if (loading) const LinearProgressIndicator(minHeight: 3),
+                    if (loading) LinearProgressIndicator(minHeight: 3),
                     if (error != null) Notice(error!, warning: true),
                     if (data?['state'] == 'pending')
-                      const Text('Deine Lerntipps werden noch zugeordnet.'),
+                      Text('Deine Lerntipps werden noch zugeordnet.'),
                     if (data?['state'] == 'source_changed')
-                      const Text('Prüfe zuerst den aktuellen Lernstoff.'),
+                      Text('Prüfe zuerst den aktuellen Lernstoff.'),
                     if (data?['state'] == 'failed')
-                      const Notice(
+                      Notice(
                         'Die Lerntipps konnten nicht zugeordnet werden. Deine Heftseite bleibt verfügbar.',
                         warning: true,
                       ),
                     if (data?['source_confirmed'] == false)
-                      const Text(
+                      Text(
                         'Prüfe die Heftseite zuerst. Diese Tipps sind vorläufig.',
                       ),
                     if (data?['selection_needs_confirmation'] == true)
-                      const Notice(
+                      Notice(
                         'Dein Lernstoff hat sich geändert. Prüfe deine Themenauswahl.',
                       ),
                     if (data?['state'] == 'ready' && items.isEmpty)
-                      const Text(
+                      Text(
                         'Noch kein passender Lerntipp. Du kannst ein Thema auswählen.',
                       ),
                     if (widget.state.isChild && items.isNotEmpty)
-                      const Text(
+                      Text(
                         'Deine Eltern können sehen, welche Lerntipps du hier öffnest.',
-                        style: TextStyle(fontSize: 12, color: muted),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.palette.muted,
+                        ),
                       ),
                     for (final item in items) ...[
                       if (item == additional.firstOrNull)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 14),
                           child: Text(
                             'Weitere Lerntipps',
@@ -616,21 +628,27 @@ class _LearningTipsState extends State<LearningTips>
                       ),
                     ],
                     if (items.isNotEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 12),
                         child: Text(
                           'Bei Sofatutor können eine Anmeldung und ein Abo nötig sein.',
-                          style: TextStyle(fontSize: 12, color: muted),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.palette.muted,
+                          ),
                         ),
                       ),
                     if (widget.state.isParent &&
                         (data?['recent_links'] as List? ?? []).isNotEmpty)
                       ExpansionTile(
-                        title: const Text('Aufgerufene Links'),
+                        title: Text('Aufgerufene Links'),
                         children: [
-                          const Text(
+                          Text(
                             'Ein Linkaufruf belegt kein angesehenes Video oder eine gelöste Übung.',
-                            style: TextStyle(fontSize: 12, color: muted),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.palette.muted,
+                            ),
                           ),
                           for (final row in data!['recent_links'] as List)
                             ListTile(
@@ -657,20 +675,20 @@ class _LearningTipsState extends State<LearningTips>
                               more = true;
                               load();
                             },
-                            child: const Text('Weitere anzeigen'),
+                            child: Text('Weitere anzeigen'),
                           ),
                         if (data?['can_respond'] == true &&
                             data?['subject_id'] != null)
                           TextButton.icon(
                             onPressed: selectTopics,
-                            icon: const Icon(Icons.manage_search_rounded),
-                            label: const Text('Thema auswählen'),
+                            icon: Icon(Icons.manage_search_rounded),
+                            label: Text('Thema auswählen'),
                           ),
                         if (error != null || data?['state'] == 'pending')
                           TextButton.icon(
                             onPressed: loading ? null : load,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Erneut laden'),
+                            icon: Icon(Icons.refresh_rounded),
+                            label: Text('Erneut laden'),
                           ),
                       ],
                     ),
@@ -787,7 +805,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
 
   @override
   Widget build(BuildContext context) {
-    if (!current) return const SizedBox.shrink();
+    if (!current) return SizedBox.shrink();
     final rows = data?['items'] as List? ?? [];
     return LayoutBuilder(
       builder: (context, bounds) {
@@ -812,7 +830,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                       Expanded(
                         child: Text(
                           data?['subject']?['title'] ?? 'Themen entdecken',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 21,
                             fontWeight: FontWeight.w800,
                           ),
@@ -836,27 +854,27 @@ class _TopicBrowserState extends State<TopicBrowser> {
                               }
                             }
                           },
-                          icon: const Icon(Icons.tune_rounded),
+                          icon: Icon(Icons.tune_rounded),
                         ),
                       IconButton(
                         tooltip: 'Schließen',
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextField(
                     controller: search,
                     textInputAction: TextInputAction.search,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Thema suchen',
                       prefixIcon: Icon(Icons.search),
                     ),
                     onChanged: (_) {
                       page = 1;
                       debounce?.cancel();
-                      debounce = Timer(const Duration(milliseconds: 350), load);
+                      debounce = Timer(Duration(milliseconds: 350), load);
                     },
                     onSubmitted: (_) {
                       FocusManager.instance.primaryFocus?.unfocus();
@@ -864,7 +882,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                       load();
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   if (data?['has_known_level'] == true)
                     Wrap(
                       spacing: 8,
@@ -884,15 +902,12 @@ class _TopicBrowserState extends State<TopicBrowser> {
                           ),
                       ],
                     ),
-                  if (loading) const LinearProgressIndicator(minHeight: 3),
+                  if (loading) LinearProgressIndicator(minHeight: 3),
                   if (error != null) Notice(error!, warning: true),
                   if (error != null)
-                    TextButton(
-                      onPressed: load,
-                      child: const Text('Erneut laden'),
-                    ),
+                    TextButton(onPressed: load, child: Text('Erneut laden')),
                   if (data != null && rows.isEmpty && !loading)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.all(20),
                       child: Text(
                         'Kein Thema gefunden. Versuche einen anderen Begriff.',
@@ -904,7 +919,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                       children: [
                         if (widget.selected != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: EdgeInsets.only(top: 8),
                             child: Checkbox(
                               semanticLabel: '${row['title']} auswählen',
                               value: chosen.contains(row['id']),
@@ -948,7 +963,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                                 page--;
                                 load();
                               },
-                        icon: const Icon(Icons.chevron_left),
+                        icon: Icon(Icons.chevron_left),
                       ),
                       Flexible(
                         child: Text(
@@ -966,12 +981,12 @@ class _TopicBrowserState extends State<TopicBrowser> {
                                 page++;
                                 load();
                               },
-                        icon: const Icon(Icons.chevron_right),
+                        icon: Icon(Icons.chevron_right),
                       ),
                     ],
                   ),
                   if (widget.selected != null && chosen.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.all(8),
                       child: Text(
                         'Wähle ein passendes Thema oder schließe die Suche.',
@@ -982,7 +997,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                       onPressed: loading || chosen.isEmpty
                           ? null
                           : () => Navigator.pop(context, chosen),
-                      child: const Text('Auswahl übernehmen'),
+                      child: Text('Auswahl übernehmen'),
                     ),
                 ],
               ),
@@ -1058,21 +1073,21 @@ class _TopicRowState extends State<_TopicRow> {
     key: ValueKey(widget.topic['id']),
     title: Text(
       widget.topic['title'],
-      style: const TextStyle(fontWeight: FontWeight.w600),
+      style: TextStyle(fontWeight: FontWeight.w600),
     ),
     onExpansionChanged: (value) {
       if (value && detail == null && !loading) load();
     },
     children: [
-      if (loading) const LinearProgressIndicator(minHeight: 3),
+      if (loading) LinearProgressIndicator(minHeight: 3),
       if (error != null) Notice(error!, warning: true),
       if (error != null)
-        TextButton(onPressed: load, child: const Text('Erneut laden')),
+        TextButton(onPressed: load, child: Text('Erneut laden')),
       if (detail != null) ...[
         if (widget.state.isChild)
-          const Text(
+          Text(
             'Deine Eltern können sehen, welche Lerntipps du hier öffnest.',
-            style: TextStyle(fontSize: 12, color: muted),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
         for (final item in detail?['recommended'] as List? ?? [])
           TipContentCard(
@@ -1080,7 +1095,7 @@ class _TopicRowState extends State<_TopicRow> {
             onOpened: () => opened(Json.from(item)),
           ),
         if ((detail?['additional'] as List? ?? []).isNotEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 12),
             child: Text('Weitere Lerntipps'),
           ),
@@ -1091,15 +1106,15 @@ class _TopicRowState extends State<_TopicRow> {
           ),
         if ((detail?['recommended'] as List? ?? []).isEmpty &&
             (detail?['additional'] as List? ?? []).isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(12),
             child: Text('Hier ist gerade kein passender Inhalt verfügbar.'),
           ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.all(12),
           child: Text(
             'Bei Sofatutor können eine Anmeldung und ein Abo nötig sein.',
-            style: TextStyle(fontSize: 12, color: muted),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
         ),
       ],

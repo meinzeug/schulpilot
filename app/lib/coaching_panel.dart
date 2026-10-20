@@ -19,14 +19,14 @@ class LearningProgressPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Eigene Gedanken festgehalten',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (progress['practice'] is Map)
               PracticeEvidence(Json.from(progress['practice'])),
-            const Text(
+            Text(
               'Deine Gedanken und Beschreibungen bleiben gespeichert. Sie sind kein Test deiner Gefühle oder körperlichen Fähigkeiten.',
             ),
           ],
@@ -45,9 +45,9 @@ class LearningProgressPanel extends StatelessWidget {
         children: [
           MathText(
             '${progress['subject']} · ${progress['topic']}',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (practice is Map)
             PracticeEvidence(Json.from(practice))
           else
@@ -56,55 +56,55 @@ class LearningProgressPanel extends StatelessWidget {
                   ? '${counted(progress['completed_rounds'] as num? ?? 0, 'Runde', 'Runden')} bearbeitet'
                   : 'Deine bearbeiteten Runden bleiben gespeichert.',
             ),
-          const SizedBox(height: 10),
-          const Text(
+          SizedBox(height: 10),
+          Text(
             'Alle Übungen zu diesem Thema zählen – auch freiwillige.',
-            style: TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
           ),
           if (secure) ...[
-            const SizedBox(height: 10),
-            const Tag('Über mehrere Tage bestätigt'),
+            SizedBox(height: 10),
+            Tag('Über mehrere Tage bestätigt'),
           ],
           if (progress['next_review'] != null)
             Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: 12),
               child: MathText(
                 'Wiederholen: ${progress['next_review']}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ExpansionTile(
-            title: const Text(
+            title: Text(
               'Was bleibt über mehrere Tage hängen?',
               style: TextStyle(fontSize: 13),
             ),
-            childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            childrenPadding: EdgeInsets.fromLTRB(16, 4, 16, 12),
             children: [
-              const Text(
+              Text(
                 'Deine Übungen sind oben mitgezählt. Neue Aufgaben ohne Hilfe an späteren Tagen zeigen zusätzlich, was du noch weißt.',
-                style: TextStyle(color: muted, fontSize: 13),
+                style: TextStyle(color: context.palette.muted, fontSize: 13),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               MathText(
                 '$checkedDays von $requiredDays Prüftagen',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
               MathText(
                 'Wiederholungen über mindestens $minimumSpan Tage',
-                style: const TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(color: context.palette.muted, fontSize: 12),
               ),
               for (final goal in progress['learning_goals'] as List? ?? [])
                 Padding(
-                  padding: const EdgeInsets.only(top: 14),
+                  padding: EdgeInsets.only(top: 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       MathText(
                         goal['label'],
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       if (goal['practice'] is Map) ...[
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         PracticeEvidence(
                           Json.from(goal['practice']),
                           compact: true,
@@ -116,7 +116,10 @@ class LearningProgressPanel extends StatelessWidget {
                           'späterer Prüftag',
                           'spätere Prüftage',
                         ),
-                        style: const TextStyle(color: muted, fontSize: 12),
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -160,17 +163,17 @@ class CoachingPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Panel(
-          color: mint,
+          color: context.palette.mint,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               heading('Deine Lernbegleitung'),
               if (coach == null) ...[
-                const Text(
+                Text(
                   'Deine Antworten sind gespeichert. Bereit für deinen Rückblick?',
                 ),
                 if (state.isChild) ...[
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   ActionButton(
                     label: 'Lernbegleitung starten',
                     onPressed: () async {
@@ -180,24 +183,24 @@ class CoachingPanel extends StatelessWidget {
                   ),
                 ],
               ] else if (pending) ...[
-                const LinearProgressIndicator(),
-                const SizedBox(height: 14),
-                const Text(
+                LinearProgressIndicator(),
+                SizedBox(height: 14),
+                Text(
                   'Die KI schaut deine Antworten an und bereitet den nächsten Schritt vor.',
                 ),
-                const SizedBox(height: 8),
-                const Text('Du kannst später hier weitermachen.'),
+                SizedBox(height: 8),
+                Text('Du kannst später hier weitermachen.'),
               ] else if (coach['status'] != 'ready') ...[
                 Notice(
                   coach['reason'] ??
                       'Die Auswertung ist zurzeit nicht verfügbar.',
                   warning: true,
                 ),
-                const Text(
+                Text(
                   'Deine Antworten und bisherigen Fortschritte bleiben gespeichert.',
                 ),
                 if (state.isChild && coach['can_retry'] == true) ...[
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   ActionButton(
                     label: 'Auswertung erneut anfordern',
                     onPressed: () async {
@@ -205,9 +208,12 @@ class CoachingPanel extends StatelessWidget {
                       await refresh();
                     },
                   ),
-                  const Text(
+                  Text(
                     'Ein weiterer Versuch ist möglich und zählt zu deinem Lernumfang.',
-                    style: TextStyle(fontSize: 12, color: muted),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.palette.muted,
+                    ),
                   ),
                 ],
               ] else ...[
@@ -216,11 +222,11 @@ class CoachingPanel extends StatelessWidget {
                       ? 'Beispielrückblick · ohne KI'
                       : 'KI-Rückblick auf deine Antworten',
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 MathText(report['summary'] ?? ''),
                 if ((report['strengths'] as List? ?? []).isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Das ist dir gelungen',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
@@ -228,19 +234,19 @@ class CoachingPanel extends StatelessWidget {
                     MathText('• $item'),
                 ],
                 if ((report['practice_focus'] as List? ?? []).isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Das üben wir weiter',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   for (final item in report['practice_focus'] as List)
                     MathText('• $item'),
                 ],
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
                 MathText(report['explanation'] ?? ''),
-                const Divider(height: 32),
+                Divider(height: 32),
                 MathText(coach['reason'] ?? ''),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 if (state.isChild && coach['next_unit_id'] != null)
                   ActionButton(
                     label: coach['decision'] == 'check'
@@ -255,7 +261,7 @@ class CoachingPanel extends StatelessWidget {
                   ),
                 if (coach['next_review'] != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: EdgeInsets.only(top: 12),
                     child: MathText(
                       'Später erneut abrufen: ${coach['next_review']}',
                     ),
@@ -268,10 +274,13 @@ class CoachingPanel extends StatelessWidget {
                     icon: Icons.people_outline,
                   ),
                 if (coach['assessment_notice'] != null) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   MathText(
                     coach['assessment_notice'],
-                    style: const TextStyle(fontSize: 12, color: muted),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.palette.muted,
+                    ),
                   ),
                 ],
               ],
@@ -279,13 +288,13 @@ class CoachingPanel extends StatelessWidget {
           ),
         ),
         if ((report['question_reviews'] as List? ?? []).isNotEmpty) ...[
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           ExpansionTile(
-            title: const Text('Rückmeldung zu jeder Aufgabe'),
+            title: Text('Rückmeldung zu jeder Aufgabe'),
             children: [
               for (final review in report['question_reviews'] as List)
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -294,11 +303,11 @@ class CoachingPanel extends StatelessWidget {
                           (q) => q['id'] == review['question_id'],
                           orElse: () => {'prompt': 'Gespeicherte Aufgabe'},
                         )['prompt'],
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       if (review['assessment_kind'] == 'ai_opinion')
-                        const Tag(
+                        Tag(
                           'KI-Einschätzung · ursprüngliche Bewertung bleibt unklar',
                         ),
                       MathText(review['feedback']),
@@ -309,7 +318,7 @@ class CoachingPanel extends StatelessWidget {
           ),
         ],
         if (progress != null) ...[
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           LearningProgressPanel(progress),
         ],
       ],
@@ -372,7 +381,7 @@ class _ChildCoachingPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Panel(
-          color: mint,
+          color: context.palette.mint,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -382,13 +391,13 @@ class _ChildCoachingPanel extends StatelessWidget {
                     decision == 'parent_help'
                         ? Icons.people_outline_rounded
                         : Icons.task_alt_rounded,
-                    color: teal,
+                    color: context.palette.teal,
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: MathText(
                       headingText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
@@ -397,13 +406,13 @@ class _ChildCoachingPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               if (questions.isNotEmpty) ...[
                 MathText(
                   '${facts.answered} von ${questions.length} Aufgaben bearbeitet',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -440,85 +449,86 @@ class _ChildCoachingPanel extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
               ] else ...[
-                const Text(
+                Text(
                   'Hier liegen noch keine gespeicherten Aufgabenergebnisse vor.',
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: 18),
               ],
               // The round result describes learning, not a repeated time deficit.
               if (coach == null) ...[
-                const Text('Schauen wir auf deine gespeicherten Antworten.'),
-                const SizedBox(height: 18),
+                Text('Schauen wir auf deine gespeicherten Antworten.'),
+                SizedBox(height: 18),
                 ActionButton(
                   label: 'Rückblick starten',
                   icon: Icons.play_arrow_rounded,
                   onPressed: () => requestReview(context),
                 ),
               ] else if (pending) ...[
-                const LinearProgressIndicator(),
-                const SizedBox(height: 14),
-                const Text('Die KI schaut deine Antworten an.'),
-                const SizedBox(height: 6),
-                const Text('Deine Antworten bleiben gespeichert.'),
+                LinearProgressIndicator(),
+                SizedBox(height: 14),
+                Text('Die KI schaut deine Antworten an.'),
+                SizedBox(height: 6),
+                Text('Deine Antworten bleiben gespeichert.'),
                 _later(context),
               ] else if (localOnly) ...[
-                const Text(
+                Text(
                   'Danke für deinen eigenen Beitrag. Du kannst jetzt eine Pause machen.',
                 ),
                 for (final question in questions)
                   _SavedQuestionResult(Json.from(question)),
               ] else if (!ready) ...[
-                const Text('Dein Ergebnis ist gespeichert.'),
-                const SizedBox(height: 8),
-                const Text(
+                Text('Dein Ergebnis ist gespeichert.'),
+                SizedBox(height: 8),
+                Text(
                   'Die zusätzliche KI-Erklärung fehlt gerade. Das zeigen deine Antworten:',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 for (final question in unit['questions'] as List? ?? [])
                   _SavedQuestionResult(Json.from(question)),
                 if (coach?['can_retry'] == true) ...[
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                   ActionButton(
                     label: 'Noch einmal versuchen',
                     icon: Icons.refresh_rounded,
                     onPressed: () => requestReview(context),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Ein weiterer Versuch zählt zu deinem Lernumfang.',
-                    style: TextStyle(fontSize: 12, color: muted),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.palette.muted,
+                    ),
                   ),
                 ],
                 if ((coach?['reason'] as String? ?? '').isNotEmpty)
                   ExpansionTile(
-                    title: const Text('Was ist passiert?'),
+                    title: Text('Was ist passiert?'),
                     children: [MathText(coach!['reason'])],
                   ),
               ] else ...[
                 if (coach?['provider'] == 'synthetic') ...[
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Tag('Beispielrückblick · ohne KI'),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                 ],
                 if (highlight != null) ...[
                   MathText(highlight.toString()),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                 ],
                 if (facts.uncertain > 0) ...[
-                  const Text(
+                  Text(
                     'Die Prüfung einzelner Antworten ist noch offen. Das ist kein falsches Ergebnis.',
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                 ],
                 if (decision == 'parent_help' && childId != null) ...[
-                  const Text(
-                    'Schau mit deinen Eltern auf den schwierigen Schritt.',
-                  ),
-                  const SizedBox(height: 18),
+                  Text('Schau mit deinen Eltern auf den schwierigen Schritt.'),
+                  SizedBox(height: 18),
                   ActionButton(
                     label: 'Eltern um Hilfe bitten',
                     icon: Icons.volunteer_activism_outlined,
@@ -555,9 +565,9 @@ class _ChildCoachingPanel extends StatelessWidget {
                       },
                     )
                   else if (practicePending) ...[
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 10),
-                    const Text('Deine nächste Übung wird vorbereitet.'),
+                    LinearProgressIndicator(),
+                    SizedBox(height: 10),
+                    Text('Deine nächste Übung wird vorbereitet.'),
                     _later(context),
                   ] else ...[
                     ActionButton(
@@ -583,15 +593,18 @@ class _ChildCoachingPanel extends StatelessWidget {
                     ),
                     if (coach?['practice_error'] != null)
                       ExpansionTile(
-                        title: const Text('Was ist passiert?'),
+                        title: Text('Was ist passiert?'),
                         children: [MathText(coach!['practice_error'])],
                       ),
                   ],
                 if (coach?['next_review'] != null) ...[
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   MathText(
                     'Später wiederholen: ${_reviewDate(coach!['next_review'])}',
-                    style: const TextStyle(color: muted, fontSize: 13),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ],
@@ -600,15 +613,15 @@ class _ChildCoachingPanel extends StatelessWidget {
         ),
         if (!pending && !practicePending)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: 8),
             child: OutlinedButton.icon(
               onPressed: () => openRoute(context, '/app'),
-              icon: const Icon(Icons.pause_rounded),
-              label: const Text('Pause machen'),
+              icon: Icon(Icons.pause_rounded),
+              label: Text('Pause machen'),
             ),
           ),
         if (fallback && childId is String) ...[
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           LearningNextStep(
             state: state,
             childId: childId,
@@ -618,10 +631,13 @@ class _ChildCoachingPanel extends StatelessWidget {
         ],
         if (ready && (report['explanation'] as String? ?? '').isNotEmpty)
           ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: const Icon(Icons.lightbulb_outline_rounded, color: teal),
-            title: const Text('Erklärung ansehen'),
-            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+            tilePadding: EdgeInsets.symmetric(horizontal: 8),
+            leading: Icon(
+              Icons.lightbulb_outline_rounded,
+              color: context.palette.teal,
+            ),
+            title: Text('Erklärung ansehen'),
+            childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 18),
             children: [
               MathText(report['explanation']),
               ReadAloudButton(text: report['explanation']),
@@ -629,40 +645,46 @@ class _ChildCoachingPanel extends StatelessWidget {
           ),
         if (ready)
           ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: const Icon(Icons.chat_bubble_outline_rounded, color: teal),
-            title: const Text('Mein Rückblick'),
-            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+            tilePadding: EdgeInsets.symmetric(horizontal: 8),
+            leading: Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: context.palette.teal,
+            ),
+            title: Text('Mein Rückblick'),
+            childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 18),
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   MathText(report['summary'] ?? ''),
                   if (strengths.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    const Text(
+                    SizedBox(height: 14),
+                    Text(
                       'Das klappt schon',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     for (final item in strengths) MathText('• $item'),
                   ],
                   if (focus.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    const Text(
+                    SizedBox(height: 14),
+                    Text(
                       'Das üben wir weiter',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     for (final item in focus) MathText('• $item'),
                   ],
                   if ((coach?['reason'] as String? ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     MathText(coach!['reason']),
                   ],
                   if (coach?['assessment_notice'] != null) ...[
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     MathText(
                       coach!['assessment_notice'],
-                      style: const TextStyle(color: muted, fontSize: 12),
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ],
@@ -671,13 +693,16 @@ class _ChildCoachingPanel extends StatelessWidget {
           ),
         if (reviews.isNotEmpty && ready)
           ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: const Icon(Icons.fact_check_outlined, color: teal),
-            title: const Text('Rückmeldung zu jeder Aufgabe'),
+            tilePadding: EdgeInsets.symmetric(horizontal: 8),
+            leading: Icon(
+              Icons.fact_check_outlined,
+              color: context.palette.teal,
+            ),
+            title: Text('Rückmeldung zu jeder Aufgabe'),
             children: [
               for (final review in reviews)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+                  padding: EdgeInsets.fromLTRB(8, 0, 8, 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -686,12 +711,12 @@ class _ChildCoachingPanel extends StatelessWidget {
                           (q) => q['id'] == review['question_id'],
                           orElse: () => {'prompt': 'Deine Aufgabe'},
                         )['prompt'],
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       if (review['assessment_kind'] == 'ai_opinion') ...[
-                        const Tag('KI-Vorschlag · Antwort bleibt unklar'),
-                        const SizedBox(height: 8),
+                        Tag('KI-Vorschlag · Antwort bleibt unklar'),
+                        SizedBox(height: 8),
                       ],
                       MathText(review['feedback']),
                     ],
@@ -701,22 +726,22 @@ class _ChildCoachingPanel extends StatelessWidget {
           ),
         if (questions.isNotEmpty)
           ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: const Icon(Icons.edit_note_rounded, color: teal),
-            title: const Text('Deine Antworten'),
-            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+            tilePadding: EdgeInsets.symmetric(horizontal: 8),
+            leading: Icon(Icons.edit_note_rounded, color: context.palette.teal),
+            title: Text('Deine Antworten'),
+            childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 18),
             children: [
               for (final question in questions) ...[
                 MathText(
                   question['prompt'] ?? 'Deine Aufgabe',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 if ((question['attempts'] as List? ?? []).isEmpty)
-                  const Text('Noch keine Antwort gespeichert.'),
+                  Text('Noch keine Antwort gespeichert.'),
                 for (final attempt in question['attempts'] as List? ?? [])
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.only(bottom: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -754,27 +779,27 @@ class _ChildCoachingPanel extends StatelessWidget {
                       childId: unit['child_id'],
                       unitId: unit['id'],
                     ),
-                    icon: const Icon(Icons.chat_bubble_outline),
-                    label: const Text('Mit der Lernhilfe klären'),
+                    icon: Icon(Icons.chat_bubble_outline),
+                    label: Text('Mit der Lernhilfe klären'),
                   ),
                 ],
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
               ],
             ],
           ),
         if (progress != null)
           ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-            leading: const Icon(Icons.insights_rounded, color: teal),
-            title: const Text('Mein Lernstand'),
+            tilePadding: EdgeInsets.symmetric(horizontal: 8),
+            leading: Icon(Icons.insights_rounded, color: context.palette.teal),
+            title: Text('Mein Lernstand'),
             children: [LearningProgressPanel(progress!)],
           ),
         if (unit['child_id'] is String)
           TextButton.icon(
             onPressed: () =>
                 openRoute(context, '/progress/${unit['child_id']}'),
-            icon: const Icon(Icons.insights_rounded),
-            label: const Text('Alle Fächer ansehen'),
+            icon: Icon(Icons.insights_rounded),
+            label: Text('Alle Fächer ansehen'),
           ),
       ],
     );
@@ -784,7 +809,7 @@ class _ChildCoachingPanel extends StatelessWidget {
     alignment: Alignment.centerLeft,
     child: TextButton(
       onPressed: () => openRoute(context, '/app'),
-      child: const Text('Später hier weitermachen'),
+      child: Text('Später hier weitermachen'),
     ),
   );
 
@@ -853,20 +878,20 @@ class _RoundFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: context.palette.panelSurface,
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: teal),
-        const SizedBox(width: 6),
+        Icon(icon, size: 16, color: context.palette.teal),
+        SizedBox(width: 6),
         Flexible(
           child: MathText(
             label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -880,7 +905,7 @@ class _SavedQuestionResult extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final attempts = question['attempts'] as List? ?? [];
-    if (attempts.isEmpty) return const SizedBox.shrink();
+    if (attempts.isEmpty) return SizedBox.shrink();
     final last = attempts.last;
     final outcome = last['outcome'];
     final reasons = (last['evaluation']?['support_reasons'] as List? ?? []);
@@ -903,13 +928,13 @@ class _SavedQuestionResult extends StatelessWidget {
         ? 'Im erneuten Versuch gelöst'
         : 'Selbstständig gelöst';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           MathText(
             question['prompt'] ?? '',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
           MathText('Deine Antwort: ${last['answer']}'),
           MathText(label),

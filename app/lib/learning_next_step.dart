@@ -82,9 +82,9 @@ class _LearningNextStepState extends State<LearningNextStep> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.state.user?['id'] != owner) return const SizedBox.shrink();
+    if (widget.state.user?['id'] != owner) return SizedBox.shrink();
     if (loading) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.all(16),
         child: LinearProgressIndicator(),
       );
@@ -93,11 +93,11 @@ class _LearningNextStepState extends State<LearningNextStep> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Dein nächster Schritt konnte nicht geladen werden.'),
+          Text('Dein nächster Schritt konnte nicht geladen werden.'),
           TextButton.icon(
             onPressed: load,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Neu laden'),
+            icon: Icon(Icons.refresh_rounded),
+            label: Text('Neu laden'),
           ),
         ],
       );
@@ -117,28 +117,31 @@ class _LearningNextStepState extends State<LearningNextStep> {
       children: [
         Text(
           widget.title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         if (minimumOpen && widget.showGoal) ...[
           Text(
             remaining == null
                 ? 'Dein Tagesziel ist noch offen.'
                 : 'Noch ${(remaining / 60).ceil()} Min. bis zu deinem Tagesziel.',
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
         ],
         if (available) ...[
           if (mandatory)
-            const Text(
+            Text(
               'Elternauftrag',
-              style: TextStyle(color: muted, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: context.palette.muted,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           Text(
             '${next['subject']} · ${next['topic']}',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           ActionButton(
             label: unreadFeedback
                 ? 'Rückmeldung ansehen'
@@ -152,8 +155,8 @@ class _LearningNextStepState extends State<LearningNextStep> {
             },
           ),
         ] else if (pending) ...[
-          const Text('Deine nächste Runde wird vorbereitet.'),
-          const SizedBox(height: 12),
+          Text('Deine nächste Runde wird vorbereitet.'),
+          SizedBox(height: 12),
           ActionButton(
             label: 'Vorbereitung ansehen',
             icon: Icons.hourglass_top_rounded,
@@ -168,7 +171,7 @@ class _LearningNextStepState extends State<LearningNextStep> {
                 ? 'Für den nächsten Schritt brauchen wir passenden Lernstoff.'
                 : 'Diese Runde ist gespeichert. Deinen weiteren Stoff findest du unter Lernen.',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ActionButton(
             label: 'Mein Lernen öffnen',
             icon: Icons.auto_stories_outlined,

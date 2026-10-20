@@ -41,100 +41,145 @@ class ParentChildNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 24),
-    child: Panel(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Container(
+      padding: const EdgeInsets.only(bottom: 18),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: context.palette.surfaceBorder),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final identity = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: context.palette.mint,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  childName?.characters.firstOrNull?.toUpperCase() ?? 'L',
+                  style: TextStyle(
+                    color: context.palette.teal,
+                    fontSize: 21,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (childName != null)
-                      Text(
-                        childName!,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    if (subtitle != null)
-                      Text(subtitle!, style: const TextStyle(color: muted)),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => openRoute(context, '/app'),
-                tooltip: 'Zur Familie',
-                icon: const Icon(Icons.arrow_back_rounded, size: 20),
-              ),
-              if (onRefresh != null)
-                IconButton(
-                  onPressed: onRefresh,
-                  tooltip: 'Aktualisieren',
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth < 600 ||
-                  MediaQuery.textScalerOf(context).scale(1) > 1.4) {
-                return DropdownButtonFormField<String>(
-                  key: ValueKey('parent-section-$selected'),
-                  initialValue: selected,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Bereich öffnen',
-                  ),
-                  items: [
-                    for (final item in destinations)
-                      DropdownMenuItem(value: item.$1, child: Text(item.$2)),
-                  ],
-                  onChanged: (value) {
-                    if (value != null && value != selected) {
-                      openRoute(context, location(childId, value));
-                    }
-                  },
-                );
-              }
-              final columns = constraints.maxWidth >= 740 ? 4 : 3;
-              final itemWidth =
-                  (constraints.maxWidth - (columns - 1) * 4) / columns;
-              return Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  for (final item in destinations)
-                    SizedBox(
-                      width: itemWidth,
-                      child: Semantics(
-                        selected: selected == item.$1,
-                        child: selected == item.$1
-                            ? FilledButton.icon(
-                                onPressed: () {},
-                                icon: Icon(item.$3, size: 18),
-                                label: Text(item.$2),
-                              )
-                            : TextButton.icon(
-                                onPressed: () => openRoute(
-                                  context,
-                                  location(childId, item.$1),
-                                ),
-                                icon: Icon(item.$3, size: 18),
-                                label: Text(item.$2),
-                              ),
+                    Text(
+                      childName ?? 'Lernübersicht',
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                ],
-              );
+                    if (subtitle != null)
+                      Text(
+                        subtitle!,
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+          final section = destinations.any((item) => item.$1 == selected)
+              ? selected
+              : 'overview';
+          final picker = DropdownButtonFormField<String>(
+            key: ValueKey('parent-section-$section'),
+            initialValue: section,
+            isExpanded: true,
+            itemHeight: null,
+            decoration: const InputDecoration(labelText: 'Bereich öffnen'),
+            selectedItemBuilder: (context) => [
+              for (final item in destinations)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    item.$2,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            items: [
+              for (final item in destinations)
+                DropdownMenuItem(
+                  value: item.$1,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(item.$2),
+                  ),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null && value != section) {
+                openRoute(context, location(childId, value));
+              }
             },
-          ),
-        ],
+          );
+          final wide =
+              constraints.maxWidth >= 650 &&
+              MediaQuery.textScalerOf(context).scale(1) <= 1.3;
+          final actions = <Widget>[
+            IconButton(
+              onPressed: () => openRoute(context, '/app'),
+              tooltip: 'Zur Familie',
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            if (onRefresh != null)
+              IconButton(
+                onPressed: onRefresh,
+                tooltip: 'Aktualisieren',
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+          ];
+          if (wide) {
+            return Row(
+              children: [
+                Expanded(child: identity),
+                const SizedBox(width: 16),
+                SizedBox(width: 225, child: picker),
+                const SizedBox(width: 12),
+                ...actions,
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              identity,
+              const SizedBox(height: 16),
+              picker,
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 4,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => openRoute(context, '/app'),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: const Text('Zur Familie'),
+                    ),
+                    if (onRefresh != null) actions.last,
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     ),
   );

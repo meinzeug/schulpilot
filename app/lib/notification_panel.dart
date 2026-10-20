@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'admin_workspace_ui.dart';
 import 'ui.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -32,13 +33,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           if (target != null) {
             Scrollable.ensureVisible(
               target,
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               alignment: .05,
             );
           }
         },
-        icon: const Icon(Icons.tune_rounded),
-        label: const Text('Gerät einstellen'),
+        icon: Icon(Icons.tune_rounded),
+        label: Text('Gerät einstellen'),
       ),
     ],
     child: Column(
@@ -58,16 +59,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       IconButton(
                         tooltip: 'Aktualisieren',
                         onPressed: inbox.loading ? null : inbox.refresh,
-                        icon: const Icon(Icons.refresh_rounded),
+                        icon: Icon(Icons.refresh_rounded),
                       ),
                     ],
                   ),
-                  if (inbox.loading) const LinearProgressIndicator(),
+                  if (inbox.loading) LinearProgressIndicator(),
                   if (inbox.error != null) Notice(inbox.error!),
                   if (inbox.hasLoaded &&
                       inbox.items.isEmpty &&
                       inbox.error == null)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Text(
                         'Hier erscheint Neues zu deinen Lernrunden und deiner Familie.',
@@ -89,18 +90,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   for (final item in inbox.items)
                     Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.only(top: 12),
                       child: Material(
-                        color: item['read'] == true ? surfaceLow : mint,
+                        color: item['read'] == true
+                            ? context.palette.surfaceLow
+                            : context.palette.mint,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                           side: BorderSide(
-                            color: item['read'] == true ? surfaceBorder : teal,
+                            color: item['read'] == true
+                                ? context.palette.surfaceBorder
+                                : context.palette.teal,
                           ),
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 10,
                           ),
@@ -110,7 +115,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 : item['read'] == true
                                 ? Icons.notifications_none_rounded
                                 : Icons.notifications_active_outlined,
-                            color: item['read'] == true ? muted : teal,
+                            color: item['read'] == true
+                                ? context.palette.muted
+                                : context.palette.teal,
                           ),
                           title: Text(
                             item['title'],
@@ -123,7 +130,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           subtitle: Text(
                             '${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
                           ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
+                          trailing: Icon(Icons.chevron_right_rounded),
                           onTap: () async {
                             try {
                               await inbox.markRead([item['id']]);
@@ -138,11 +145,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ),
                   if (inbox.items.isNotEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 12),
                       child: Text(
                         'Die letzten Neuigkeiten aus 30 Tagen.',
-                        style: TextStyle(color: muted, fontSize: 12),
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                 ],
@@ -150,7 +160,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             );
           },
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         KeyedSubtree(key: _devicePanel, child: NotificationPanel(widget.state)),
       ],
     ),
@@ -167,58 +177,172 @@ class NotificationPanel extends StatefulWidget {
 class PushAdminScreen extends StatelessWidget {
   final AppState state;
   const PushAdminScreen(this.state, {super.key});
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: state,
     title: 'Push-Prüfung',
-    child: LoadView<Json>(
-      load: () => state.api.get('/notifications/admin/status'),
-      builder: (data, refresh) => Panel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            heading(
-              data['production_available'] == true
-                  ? 'Push ist freigegeben'
-                  : 'Allgemeiner Push-Versand ist gesperrt',
-            ),
-            SelectableText(
-              'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Dienstkonto konfiguriert: ${data['credential_configured'] == true ? 'Ja' : 'Nein'}',
-            ),
-            Text(
-              'Künstliche Tests vorbereitet: ${data['test_available'] == true ? 'Ja' : 'Nein'}',
-            ),
-            Text(
-              'App-/API-/Schlüsselprüfung: ${data['config_verification'] == '' ? 'Ausstehend' : data['config_verification']}',
-            ),
-            Text(
-              'Datenschutzentscheidung: ${data['privacy_evidence'] == '' ? 'Ausstehend' : data['privacy_evidence']}',
-            ),
-            const SizedBox(height: 16),
-            Text(data['delivery_notice']),
-            const SizedBox(height: 12),
-            Text(
-              'Angemeldete Geräte: ${data['device_counts']?['android'] ?? 0} Android · ${data['device_counts']?['web'] ?? 0} Web',
-            ),
-            Text(
-              'Letzte 24 Stunden: ${data['delivery_counts_24h']?['accepted'] ?? 0} von FCM angenommen · ${data['delivery_counts_24h']?['failed'] ?? 0} fehlgeschlagen · ${data['delivery_counts_24h']?['queued'] ?? 0} ausstehend',
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: refresh,
-              child: const Text('Status aktualisieren'),
-            ),
-            TextButton(
-              onPressed: () => openRoute(context, '/admin/settings'),
-              child: const Text('Push-Einstellungen öffnen'),
-            ),
-          ],
+    showTitle: false,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AdminWorkspaceHeader(
+          title: 'Benachrichtigungen im Blick',
+          subtitle: 'Freigabe, Geräte und Versandstatus getrennt prüfen.',
+          currentPath: '/admin/push',
+          icon: Icons.notifications_outlined,
         ),
-      ),
+        SizedBox(height: 28),
+        LoadView<Json>(
+          load: () => state.api.get('/notifications/admin/status'),
+          builder: (data, refresh) {
+            final p = context.palette;
+            final devices = AdminWorkSurface(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AdminSectionHeading(
+                    title: 'Geräte & Versand',
+                    subtitle: 'Technische Annahme ist kein Beleg für eine sichtbare Nachricht.',
+                    icon: Icons.send_outlined,
+                  ),
+                  AdminStatusLine(
+                    label: 'Angemeldete Geräte',
+                    value:
+                        '${data['device_counts']?['android'] ?? 0} Android · ${data['device_counts']?['web'] ?? 0} Web',
+                  ),
+                  Divider(color: p.surfaceBorder, height: 1),
+                  AdminStatusLine(
+                    label: 'Von FCM angenommen · 24 Stunden',
+                    value:
+                        '${data['delivery_counts_24h']?['accepted'] ?? 0} Nachrichten',
+                  ),
+                  Divider(color: p.surfaceBorder, height: 1),
+                  AdminStatusLine(
+                    label: 'Fehlgeschlagen · 24 Stunden',
+                    value:
+                        '${data['delivery_counts_24h']?['failed'] ?? 0} Nachrichten',
+                    ready:
+                        (data['delivery_counts_24h']?['failed'] as num? ?? 0) >
+                            0
+                        ? false
+                        : null,
+                  ),
+                  Divider(color: p.surfaceBorder, height: 1),
+                  AdminStatusLine(
+                    label: 'Ausstehend',
+                    value:
+                        '${data['delivery_counts_24h']?['queued'] ?? 0} Nachrichten',
+                  ),
+                ],
+              ),
+            );
+            final config = AdminWorkSurface(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AdminSectionHeading(
+                    title: 'Konfiguration & Nachweise',
+                    subtitle: 'Nur Betriebsdaten. Private Lerninhalte gehören nicht in Push-Nachrichten.',
+                    icon: Icons.fact_check_outlined,
+                  ),
+                  SelectableText(
+                    'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
+                    style: TextStyle(color: p.muted, fontSize: 13),
+                  ),
+                  SizedBox(height: 12),
+                  AdminStatusLine(
+                    label: 'Dienstkonto konfiguriert',
+                    value: data['credential_configured'] == true
+                        ? 'Ja'
+                        : 'Nein',
+                    ready: data['credential_configured'] == true,
+                  ),
+                  AdminStatusLine(
+                    label: 'Künstliche Tests vorbereitet',
+                    value: data['test_available'] == true ? 'Ja' : 'Nein',
+                    ready: data['test_available'] == true,
+                  ),
+                  AdminStatusLine(
+                    label: 'App-/API-/Schlüsselprüfung',
+                    value: '${data['config_verification'] ?? ''}'.isEmpty
+                        ? 'Ausstehend'
+                        : '${data['config_verification']}',
+                    ready: '${data['config_verification'] ?? ''}'.isNotEmpty,
+                  ),
+                  AdminStatusLine(
+                    label: 'Datenschutzentscheidung',
+                    value: '${data['privacy_evidence'] ?? ''}'.isEmpty
+                        ? 'Ausstehend'
+                        : '${data['privacy_evidence']}',
+                    ready: '${data['privacy_evidence'] ?? ''}'.isNotEmpty,
+                  ),
+                ],
+              ),
+            );
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AdminWorkSurface(
+                  color: data['production_available'] == true
+                      ? p.successSurface
+                      : p.warningSurface,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AdminSectionHeading(
+                        title: data['production_available'] == true
+                            ? 'Push ist freigegeben'
+                            : 'Allgemeiner Push-Versand ist gesperrt',
+                        subtitle: 'Die Betreiberfreigabe ersetzt keine persönliche Geräte-Einwilligung.',
+                        icon: Icons.verified_user_outlined,
+                      ),
+                      Text(
+                        '${data['delivery_notice'] ?? 'FCM-Annahme und sichtbare Zustellung sind unterschiedliche Nachweise.'}',
+                        style: TextStyle(color: p.ink),
+                      ),
+                      SizedBox(height: 18),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: refresh,
+                            icon: Icon(Icons.refresh_rounded),
+                            label: Text('Status aktualisieren'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                openRoute(context, '/admin/settings'),
+                            icon: Icon(Icons.tune_rounded),
+                            label: Text('Push-Einstellungen öffnen'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 22),
+                LayoutBuilder(
+                  builder: (context, constraints) => constraints.maxWidth >= 880
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: devices),
+                            SizedBox(width: 22),
+                            Expanded(child: config),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [devices, SizedBox(height: 20), config],
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     ),
   );
 }
@@ -332,32 +456,29 @@ class _NotificationPanelState extends State<NotificationPanel>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: mint,
+                    color: context.palette.mint,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
                     enabled && !blocked && widget.state.push.lastError == null
                         ? Icons.notifications_active_outlined
                         : Icons.notifications_none_rounded,
-                    color: teal,
+                    color: context.palette.teal,
                     size: 26,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Auf diesem Gerät',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (!available)
               Text(
                 widget.state.isChild &&
@@ -366,7 +487,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                         )
                     ? data['config']['notice']
                     : 'Benachrichtigungen sind noch nicht verfügbar. Deine Neuigkeiten findest du hier in der App.',
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: context.palette.muted),
               )
             else ...[
               Text(
@@ -377,29 +498,29 @@ class _NotificationPanelState extends State<NotificationPanel>
                     : widget.state.isChild
                     ? 'Möchtest du an deine Lernzeit erinnert werden?'
                     : 'Erinnerungen und neue Familiennachrichten auf diesem Gerät.',
-                style: const TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               if (enabled && blocked)
-                const Notice(
+                Notice(
                   'Android oder dein Browser blockiert die Benachrichtigungen. Bitte erlaube sie in den Einstellungen.',
                 ),
               if (widget.state.push.lastError != null)
                 Notice(widget.state.push.lastError!),
-              const Text(
+              Text(
                 'Persönliche Inhalte bleiben in der App.',
-                style: TextStyle(fontSize: 13, color: muted),
+                style: TextStyle(fontSize: 13, color: context.palette.muted),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ExpansionTile(
-                childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                title: const Text('Zeiten & Auswahl'),
+                childrenPadding: EdgeInsets.fromLTRB(16, 4, 16, 16),
+                title: Text('Zeiten & Auswahl'),
                 subtitle: Text('Ruhezeit: ${hour(start)}–${hour(end)}'),
                 children: [
                   if (widget.state.isChild)
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Fertige Lernrunden & Lernzeit'),
+                      title: Text('Fertige Lernrunden & Lernzeit'),
                       value: reminders,
                       onChanged: (value) => setState(() => reminders = value),
                     ),
@@ -416,20 +537,18 @@ class _NotificationPanelState extends State<NotificationPanel>
                   if (widget.state.isParent)
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Tagesüberblick'),
+                      title: Text('Tagesüberblick'),
                       value: summaries,
                       onChanged: (value) => setState(() => summaries = value),
                     ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: start,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Ruhe ab',
-                          ),
+                          decoration: InputDecoration(labelText: 'Ruhe ab'),
                           items: [
                             for (var i = 0; i < 24; i++)
                               DropdownMenuItem(value: i, child: Text(hour(i))),
@@ -437,14 +556,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                           onChanged: (value) => setState(() => start = value!),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: end,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Ruhe bis',
-                          ),
+                          decoration: InputDecoration(labelText: 'Ruhe bis'),
                           items: [
                             for (var i = 0; i < 24; i++)
                               DropdownMenuItem(value: i, child: Text(hour(i))),
@@ -456,7 +573,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               ActionButton(
                 label: enabled
                     ? 'Änderungen speichern'
@@ -467,12 +584,12 @@ class _NotificationPanelState extends State<NotificationPanel>
               if (widget.state.push.canOpenSettings)
                 TextButton.icon(
                   onPressed: widget.state.push.openSettings,
-                  icon: const Icon(Icons.settings_outlined),
-                  label: const Text('Android-Einstellungen öffnen'),
+                  icon: Icon(Icons.settings_outlined),
+                  label: Text('Android-Einstellungen öffnen'),
                 ),
             ],
             if (enabled) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Align(
                 child: ActionButton(
                   label: 'Auf diesem Gerät ausschalten',
@@ -482,12 +599,12 @@ class _NotificationPanelState extends State<NotificationPanel>
               ),
             ],
             if (data['tests']['allowed'] == true) ...[
-              const SizedBox(height: 18),
-              const Text(
+              SizedBox(height: 18),
+              Text(
                 'Künstliches Testkonto',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              const Text(
+              Text(
                 'Validierung prüft die Anfrage. Nur eine am Gerät sichtbare Nachricht belegt die Zustellung.',
               ),
               if (enabled)
@@ -507,9 +624,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                             {'mode': mode},
                           );
                           for (var i = 0; i < 12; i++) {
-                            await Future<void>.delayed(
-                              const Duration(seconds: 2),
-                            );
+                            await Future<void>.delayed(Duration(seconds: 2));
                             final status = await widget.state.api.get(
                               '/notifications/tests',
                             );
@@ -531,7 +646,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                 ),
               for (final test in data['tests']['results'])
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: EdgeInsets.only(top: 8),
                   child: Text(
                     '${test['mode'] == 'validate' ? 'Validierung' : 'Testnachricht'}: ${switch (test['status']) {
                       'validated' => 'FCM-Prüfung erfolgreich',
@@ -544,9 +659,9 @@ class _NotificationPanelState extends State<NotificationPanel>
                 ),
             ],
             if (devices.any((device) => device['current'] != true)) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               ExpansionTile(
-                title: const Text('Weitere Geräte'),
+                title: Text('Weitere Geräte'),
                 children: [
                   for (final device in devices.where(
                     (device) => device['current'] != true,
@@ -557,7 +672,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                         device['platform'] == 'android'
                             ? Icons.phone_android_rounded
                             : Icons.web_rounded,
-                        color: muted,
+                        color: context.palette.muted,
                       ),
                       title: Text(
                         device['platform'] == 'android'
@@ -569,7 +684,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                       ),
                       trailing: IconButton(
                         tooltip: 'Benachrichtigungen ausschalten',
-                        icon: const Icon(Icons.notifications_off_outlined),
+                        icon: Icon(Icons.notifications_off_outlined),
                         onPressed: () async {
                           try {
                             await disable(device);

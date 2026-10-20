@@ -31,10 +31,10 @@ class AnswerSupport extends StatelessWidget {
     children: [
       for (final label in supportReasonLabels(attempt))
         Padding(
-          padding: const EdgeInsets.only(top: 6),
+          padding: EdgeInsets.only(top: 6),
           child: Text(
             label,
-            style: const TextStyle(color: muted, fontSize: 14),
+            style: TextStyle(color: context.palette.muted, fontSize: 14),
           ),
         ),
     ],
@@ -62,13 +62,13 @@ class PracticeEvidence extends StatelessWidget {
           ),
         ),
         if (!compact) ...[
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             '${counted(count('attempts'), 'Versuch', 'Versuche')} · ${counted(count('practiced_rounds'), 'Runde', 'Runden')}',
-            style: const TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
           ),
         ],
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -106,10 +106,7 @@ class PracticeEvidence extends StatelessWidget {
                     'uncertain_tasks' => PanelTone.info,
                     _ => PanelTone.accent,
                   },
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -117,17 +114,17 @@ class PracticeEvidence extends StatelessWidget {
                         item.$3,
                         size: 17,
                         color: switch (item.$1) {
-                          'independent_tasks' => successInk,
-                          'needs_practice_tasks' => warningInk,
-                          'uncertain_tasks' => cyanInk,
-                          _ => teal,
+                          'independent_tasks' => context.palette.successInk,
+                          'needs_practice_tasks' => context.palette.warningInk,
+                          'uncertain_tasks' => context.palette.cyanInk,
+                          _ => context.palette.teal,
                         },
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           '${count(item.$1)} ${item.$2}',
-                          style: const TextStyle(fontSize: 13),
+                          style: TextStyle(fontSize: 13),
                         ),
                       ),
                     ],
@@ -136,9 +133,9 @@ class PracticeEvidence extends StatelessWidget {
           ],
         ),
         if (tasks == 0)
-          const Text(
+          Text(
             'Die erste beantwortete Aufgabe erscheint hier.',
-            style: TextStyle(color: muted),
+            style: TextStyle(color: context.palette.muted),
           ),
       ],
     );

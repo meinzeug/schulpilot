@@ -112,3 +112,36 @@ Ausgaben, offenen Reservierungen oder bestehenden Antworten zurücksetzen.
 Keine automatische Rückkehr zu Codex oder Free bei Providerfehlern. Code-Rückwege
 nach der neuen Rundenlöschung müssen den neuen unit-Löschjournalscope erhalten;
 siehe NOTEBOOKS.md. Keine Datenbankrücksicherung über neue Löschungen.
+
+## Ergänzung: angemeldetes Konto und ausführbare Planung20.10.2026
+
+Nach ausdrücklicher Anmeldung durch den Betreiber und Auftrag, erforderliche
+Einstellungen zu ändern, wurden die tatsächlichen Kontoseiten im Browser geprüft.
+Unter `/settings/privacy` gespeichert und nach Neuladen bestätigt:
+ZDR für andere Modelle, Anthropic, OpenAI, Google und SpaceXAI eingeschaltet;
+Retention für andere/Google nur Zero-Retention, Safety-Retention aus;
+Training für bezahlte und kostenlose Endpunkte aus. Promptveröffentlichung und
+Workspace-Datenrabatt bereits aus. Unter Workspace Observability waren
+Prompt-/Ausgabespeicherung und Broadcast bereits aus. Es wurden keine Schlüssel,
+Käufe, Limits oder Modellfreigaben im Konto verändert. Ein separater globaler
+Cache-Schalter wurde nicht nachgewiesen; pro Anfrage bleibt der vorhandene
+`X-OpenRouter-Cache: false`-Header maßgeblich. Diese Ergänzung ersetzt die frühere
+Aussage „Kontoeinstellungen nicht eingesehen“ für den jetzt geprüften Stand.
+
+Ein zusätzlicher normal reservierter `decision`-Auftrag wurde ausschließlich mit
+festem künstlichem Bruchstoff, zwei geprüften vorbereiteten Fragen und einer
+künstlichen Antwort in isoliertem PostgreSQL ausgeführt. Dieselbe produktive
+Adapterlogik/Route (Luna, Medium, Azure-only, ZDR, Deny, kein Fallback) erzeugte
+einen serverseitig validierten ausführbaren Kurzplan. Genau ein Anbieteraufruf,
+Status completed, erfasste Kosten514µUSD =0,000514USD. Konservative zusätzliche
+Probe-Reservierung0,01USD; einschließlich vorheriger0,237499USD ergeben sich
+0,238013USD erfasste künstliche Gesamtabnahme innerhalb0,25USD. Kein zweiter
+Anbieterversuch, keine echten Kinderinhalte, kein Produktions-Lernstand verändert.
+Die einmalige Liveprobe belegt Transport/Schema/Planübernahme für diesen Fall,
+keine allgemeine pädagogische Wirksamkeit.
+
+Lokale ignorierte Belege: `artifacts/brain-real-decision-probe-20261020.json`,
+`brain-real-decision-probe.log` und drei Kontoscreenshots
+`openrouter-zdr-20261020.png`, `openrouter-training-off-20261020.png`,
+`openrouter-logging-off-20261020.png`. Schlüssel und Sitzungen nicht gespeichert
+oder in diese Dokumentation übernommen.

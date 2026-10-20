@@ -165,12 +165,7 @@ void main() {
         final labels = switch (role) {
           'child' => ['Heute', 'Lernen', 'Wörter', 'Hefte', 'Konto'],
           'parent' => ['Familie', 'Wörter', 'Tarif', 'Konto'],
-          _ => [
-            'Betrieb',
-            'Einrichtung',
-            if (width >= 1050) ...['Verkauf', 'Push'],
-            'Konto',
-          ],
+          _ => ['Betrieb', 'Einrichtung', 'Verkauf', 'Push', 'Konto'],
         };
         for (final label in labels) {
           expect(_navText(width, label), findsOneWidget);
@@ -272,8 +267,8 @@ void main() {
     await _open(tester, fixture.state, width: 1440, hostPageFrame: true);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byKey(const ValueKey('workspace-header')), findsNothing);
-    expect(find.text('Verkauf'), findsNothing);
-    expect(find.text('Push'), findsNothing);
+    expect(find.text('Verkauf'), findsOneWidget);
+    expect(find.text('Push'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

@@ -41,7 +41,7 @@ class Api {
   Map<String, String> get headers => {
     'X-Schulpilot-Request': '1',
     'X-Schulpilot-Capabilities':
-        'language-v1,grade-pdf-v1,visual-v1,messages-v1',
+        'language-v1,grade-pdf-v1,visual-v1,messages-v1,adaptive_controller_v2',
     if (!kIsWeb) 'X-Client-Platform': 'native',
     if (token != null) 'Authorization': 'Bearer $token',
   };
@@ -221,6 +221,17 @@ class AppState extends ChangeNotifier {
   late final NotificationInbox inbox = NotificationInbox(api);
   Json? user;
   bool needsSetup = false;
+  bool darkAppearance = true;
+
+  Future<void> setAppearance(bool dark) async {
+    darkAppearance = dark;
+    notifyListeners();
+    try {
+      await storage.write(key: 'appearance', value: dark ? 'dark' : 'light');
+    } catch (_) {
+      // A display preference must never block learning or sign-out.
+    }
+  }
 
   Future<void> checkInstallation() async {
     needsSetup = (await api.get('/setup/status'))['required'] == true;
@@ -267,6 +278,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> restore() async {
+    try {
+      darkAppearance = await storage.read(key: 'appearance') != 'light';
+    } catch (_) {}
     try {
       await checkInstallation();
       if (needsSetup) return;

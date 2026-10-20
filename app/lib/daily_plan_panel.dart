@@ -33,12 +33,12 @@ class DailyPlanPanel extends StatelessWidget {
       builder: (ctx) => AnimatedBuilder(
         animation: state!,
         builder: (_, _) => state!.user?['id'] != owner
-            ? const SizedBox.shrink()
+            ? SizedBox.shrink()
             : SafeArea(
                 child: SizedBox(
                   height: MediaQuery.sizeOf(ctx).height * .8,
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20),
                     child: ListView(
                       children: [
                         Row(
@@ -46,7 +46,7 @@ class DailyPlanPanel extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 'Lerntipps · ${_dayLabel(day['date'])}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -55,15 +55,15 @@ class DailyPlanPanel extends StatelessWidget {
                             IconButton(
                               tooltip: 'Schließen',
                               onPressed: () => Navigator.pop(ctx),
-                              icon: const Icon(Icons.close),
+                              icon: Icon(Icons.close),
                             ),
                           ],
                         ),
                         for (final item in tipContexts(day).take(5)) ...[
-                          const SizedBox(height: 14),
+                          SizedBox(height: 14),
                           Text(
                             '${item['subject']} · ${item['topic']}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                           LearningTips(
                             state!,
@@ -113,7 +113,7 @@ class DailyPlanPanel extends StatelessWidget {
                   day['paused'] == true || day['free_day'] == true
                       ? Icons.weekend_outlined
                       : Icons.calendar_today_outlined,
-                  color: teal,
+                  color: context.palette.teal,
                 ),
                 title: Text(_dayLabel(day['date'])),
                 subtitle: Column(
@@ -134,7 +134,7 @@ class DailyPlanPanel extends StatelessWidget {
                         day['planned_minutes'] == 0
                             ? '—'
                             : 'ca. ${day['planned_minutes']} Min.',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                   ],
                 ),
@@ -146,12 +146,12 @@ class DailyPlanPanel extends StatelessWidget {
                         day['planned_minutes'] == 0
                             ? '—'
                             : 'ca. ${day['planned_minutes']} Min.',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     if (state != null &&
                         childId != null &&
                         tipContexts(day).isNotEmpty)
-                      const Icon(Icons.chevron_right_rounded, size: 18),
+                      Icon(Icons.chevron_right_rounded, size: 18),
                   ],
                 ),
               );
@@ -161,18 +161,18 @@ class DailyPlanPanel extends StatelessWidget {
           childView
               ? 'Du lernst in kleinen Runden. Zum Tagesziel zählt deine aktive Zeit.'
               : 'Vorschlag für die nächsten Tage. Nach dem Mindestziel ist Weiterlernen freiwillig.',
-          style: const TextStyle(color: muted, fontSize: 12),
+          style: TextStyle(color: context.palette.muted, fontSize: 12),
         ),
         if (!childView) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             'Mindestziele: ${plan['daily_goal_minutes'] ?? plan['daily_limit_minutes']} Min. am Tag · ${plan['weekly_goal_minutes'] ?? plan['weekly_limit_minutes']} Min. pro Woche.',
-            style: const TextStyle(color: muted, fontSize: 12),
+            style: TextStyle(color: context.palette.muted, fontSize: 12),
           ),
-          const SizedBox(height: 6),
-          const Text(
+          SizedBox(height: 6),
+          Text(
             'Zum Ziel zählt aktive Lernzeit, keine geschätzte Rundendauer.',
-            style: TextStyle(color: muted, fontSize: 12),
+            style: TextStyle(color: context.palette.muted, fontSize: 12),
           ),
           for (final conflict in plan['conflicts'] as List? ?? [])
             Notice(
@@ -209,9 +209,9 @@ class LearningGoalPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.timer_outlined, color: teal, size: 20),
-              const SizedBox(width: 8),
-              const Expanded(
+              Icon(Icons.timer_outlined, color: context.palette.teal, size: 20),
+              SizedBox(width: 8),
+              Expanded(
                 child: Text(
                   'Lernzeit',
                   style: TextStyle(fontWeight: FontWeight.w700),
@@ -222,36 +222,36 @@ class LearningGoalPanel extends StatelessWidget {
                     ? Icons.check_circle_outline_rounded
                     : Icons.schedule_rounded,
                 size: 19,
-                color: teal,
+                color: context.palette.teal,
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _goal(context, 'Heute', 'daily'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             !required
                 ? 'Heute ohne Mindestziel'
                 : dailyMet
                 ? 'Tagesziel erfüllt'
                 : 'Tagesziel offen',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: muted,
+              color: context.palette.muted,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _goal(context, 'Diese Woche', 'weekly'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             weeklyMet ? 'Wochenziel erfüllt' : 'Wochenziel offen',
-            style: const TextStyle(fontSize: 12, color: muted),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
-          const SizedBox(height: 14),
-          const Text(
+          SizedBox(height: 14),
+          Text(
             'Aktive Lernzeit · Näherung',
-            style: TextStyle(fontSize: 11, color: muted),
+            style: TextStyle(fontSize: 11, color: context.palette.muted),
           ),
         ],
       ),
@@ -272,8 +272,11 @@ class LearningGoalPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(title, style: const TextStyle(fontSize: 12, color: muted)),
-        const SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(fontSize: 12, color: context.palette.muted),
+        ),
+        SizedBox(height: 4),
         Text(
           '$actual / ${learningMinutes(minutes)} Min.',
           style: TextStyle(
@@ -282,7 +285,7 @@ class LearningGoalPanel extends StatelessWidget {
           ),
         ),
         if (ratio != null) ...[
-          const SizedBox(height: 9),
+          SizedBox(height: 9),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(value: ratio, minHeight: 5),

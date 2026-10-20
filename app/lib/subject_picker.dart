@@ -24,7 +24,7 @@ class SubjectField extends StatelessWidget {
     readOnly: true,
     decoration: InputDecoration(
       labelText: 'Fach',
-      suffixIcon: enabled ? const Icon(Icons.expand_more) : null,
+      suffixIcon: enabled ? Icon(Icons.expand_more) : null,
     ),
     onTap: !enabled
         ? null
@@ -36,18 +36,18 @@ class SubjectField extends StatelessWidget {
               builder: (ctx) => AnimatedBuilder(
                 animation: state,
                 builder: (_, _) => owner != state.user?['id']
-                    ? const SizedBox.shrink()
+                    ? SizedBox.shrink()
                     : SafeArea(
                         child: SizedBox(
                           height: MediaQuery.sizeOf(ctx).height * .75,
                           child: Padding(
-                            padding: const EdgeInsets.all(20),
+                            padding: EdgeInsets.all(20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Row(
                                   children: [
-                                    const Expanded(
+                                    Expanded(
                                       child: Text(
                                         'Fach auswählen',
                                         style: TextStyle(
@@ -59,7 +59,7 @@ class SubjectField extends StatelessWidget {
                                     IconButton(
                                       tooltip: 'Schließen',
                                       onPressed: () => Navigator.pop(ctx),
-                                      icon: const Icon(Icons.close),
+                                      icon: Icon(Icons.close),
                                     ),
                                   ],
                                 ),
@@ -73,14 +73,14 @@ class SubjectField extends StatelessWidget {
                                         for (final row in data['items'] as List)
                                           ListTile(
                                             title: Text(row['title']),
-                                            leading: const Icon(
+                                            leading: Icon(
                                               Icons.folder_outlined,
                                             ),
                                             trailing:
                                                 controller.text == row['title']
-                                                ? const Icon(
+                                                ? Icon(
                                                     Icons.check,
-                                                    color: teal,
+                                                    color: context.palette.teal,
                                                   )
                                                 : null,
                                             onTap: () => Navigator.pop(

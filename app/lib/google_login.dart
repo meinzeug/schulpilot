@@ -112,16 +112,16 @@ class GoogleLoginButton extends StatelessWidget {
   Widget build(BuildContext context) => FutureBuilder<Json>(
     future: state.api.get('/auth/google/status'),
     builder: (context, value) {
-      if (value.data?['available'] != true) return const SizedBox.shrink();
+      if (value.data?['available'] != true) return SizedBox.shrink();
       return Padding(
-        padding: const EdgeInsets.only(top: 16),
+        padding: EdgeInsets.only(top: 16),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Für Eltern',
-              style: TextStyle(color: muted, fontSize: 12),
+              style: TextStyle(color: context.palette.muted, fontSize: 12),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _GoogleAction(state),
           ],
         ),
@@ -148,9 +148,9 @@ class _GoogleActionState extends State<_GoogleAction> {
       OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1F1F1F),
-          side: const BorderSide(color: Color(0xFF747775)),
-          minimumSize: const Size(0, 48),
+          foregroundColor: Color(0xFF1F1F1F),
+          side: BorderSide(color: Color(0xFF747775)),
+          minimumSize: Size(0, 48),
         ),
         icon: Image.asset(
           'assets/google/signin-icon.png',
@@ -265,7 +265,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       if (!mounted || generation != current) return;
       await check();
       if (!kIsWeb && mounted && generation == current) {
-        timer = Timer.periodic(const Duration(seconds: 5), (_) {
+        timer = Timer.periodic(Duration(seconds: 5), (_) {
           if (email == null &&
               error == null &&
               !returnToApp &&
@@ -360,9 +360,9 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     appBar: AppBar(title: brand()),
     body: Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(22),
+        padding: EdgeInsets.all(22),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 490),
+          constraints: BoxConstraints(maxWidth: 490),
           child: Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -371,31 +371,29 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                   email != null ? 'Dein Elternkonto' : 'Mit Google anmelden',
                 ),
                 if (error != null) Notice(error!, warning: true),
-                if (busy) const LinearProgressIndicator(),
+                if (busy) LinearProgressIndicator(),
                 if (email != null) ...[
-                  Text(email!, style: const TextStyle(color: muted)),
-                  const SizedBox(height: 18),
+                  Text(email!, style: TextStyle(color: context.palette.muted)),
+                  SizedBox(height: 18),
                   TextField(
                     controller: name,
-                    decoration: const InputDecoration(
-                      labelText: 'Dein Anzeigename',
-                    ),
+                    decoration: InputDecoration(labelText: 'Dein Anzeigename'),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   TextField(
                     controller: family,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Name deiner Familie',
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   TextField(
                     controller: password,
                     obscureText: true,
                     enableSuggestions: false,
                     autocorrect: false,
-                    autofillHints: const [AutofillHints.newPassword],
-                    decoration: const InputDecoration(
+                    autofillHints: [AutofillHints.newPassword],
+                    decoration: InputDecoration(
                       labelText: 'Elternpasswort (mindestens 12 Zeichen)',
                       helperText: 'Für Wiederherstellung und geschützte Kontoeinstellungen.',
                     ),
@@ -404,48 +402,45 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                     contentPadding: EdgeInsets.zero,
                     value: consent,
                     onChanged: (v) => setState(() => consent = v ?? false),
-                    title: const Text(
+                    title: Text(
                       'Ich bin volljährig und zur Einrichtung dieser Familie berechtigt.',
                     ),
                   ),
                   TextButton(
                     onPressed: () => context.push('/privacy'),
-                    child: const Text('Datenschutz lesen'),
+                    child: Text('Datenschutz lesen'),
                   ),
                   FilledButton(
                     onPressed: busy || !consent
                         ? null
                         : () => check(register: true),
-                    child: const Text('Elternkonto erstellen'),
+                    child: Text('Elternkonto erstellen'),
                   ),
                 ] else if (returnToApp) ...[
-                  const Text(
+                  Text(
                     'Google ist bestätigt. Öffne SCHULPILOT, um fortzufahren.',
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => launchUrl(
                       Uri(
                         scheme: 'schulpilot',
                         host: 'google',
                         path: '/complete',
-                        queryParameters: {
-                          'flow': flow!,
-                          'ticket': ?ticket,
-                        },
+                        queryParameters: {'flow': flow!, 'ticket': ?ticket},
                       ),
                       webOnlyWindowName: '_self',
                     ),
-                    child: const Text('SCHULPILOT öffnen'),
+                    child: Text('SCHULPILOT öffnen'),
                   ),
                 ] else if (error == null) ...[
-                  const Text(
+                  Text(
                     'Bestätige deine Anmeldung bei Google. Danach geht es hier weiter.',
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   OutlinedButton(
                     onPressed: busy ? null : check,
-                    child: const Text('Weiter'),
+                    child: Text('Weiter'),
                   ),
                 ],
                 TextButton(
@@ -460,7 +455,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                       );
                     }
                   },
-                  child: const Text('Zurück'),
+                  child: Text('Zurück'),
                 ),
               ],
             ),

@@ -31,12 +31,12 @@ from .schemas import Strict
 from .security import authenticated, child_user, rate_limit
 
 router = APIRouter(tags=["Lernbegleitung"])
-STRATEGY = "school-controller-1"
+STRATEGY = "school-controller-2"
 ActionKind = Literal["check_prior", "explain", "visual_example", "practice", "hint", "check_understanding",
     "recommend_resource", "review_prerequisite", "transfer", "schedule_review", "finish_round", "offer_break",
     "clarify_assessment", "confirm_source", "resume"]
 EVENTS = {"unit_started", "unit_paused", "answer", "hint", "explanation", "introduction", "unit_completed",
-    "feedback", "feedback_seen", "review_scheduled", "coach_review", "coach_support", "language_stimulus"}
+    "feedback", "feedback_seen", "review_scheduled", "coach_review", "coach_support", "language_stimulus", "question_skipped"}
 
 
 class Action(Strict):
@@ -125,12 +125,21 @@ def source_state(db, unit):
 
 
 def facts(db, unit):
+    from . import adaptive_plan, instructional_decisions
+
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     activities = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id).order_by(Activity.created, Activity.id)))
     signature, source_valid, sources = source_state(db, unit)
     by_question = {q["id"]: [a for a in attempts if a.question_id == q["id"]] for q in unit.questions}
-    open_question = next((q for q in unit.questions if not by_question[q["id"]] or (
-        len(by_question[q["id"]]) < 3 and by_question[q["id"]][-1].outcome == "incorrect")), None)
+    deferred = adaptive_plan.deferred(db, unit)
+    current = adaptive_plan.current_question(db, unit)
+    model_step = instructional_decisions.current(db, unit)
+    if model_step and model_step[1]["question_id"]:
+        current = model_step[1]["question_id"]
+    open_question = next((q for q in unit.questions if q["id"] == current), None) if current else None
+    if open_question is None:
+        open_question = next((q for q in unit.questions if q["id"] not in deferred and (not by_question[q["id"]] or (
+            len(by_question[q["id"]]) < 3 and by_question[q["id"]][-1].outcome == "incorrect"))), None)
     misconceptions = []
     if unit.subject.casefold() in ("mathematik", "mathe"):
         for q in unit.questions:
@@ -188,6 +197,8 @@ def local_resources(db, unit, question, need, sources):
 
 
 def decide(db, unit, memory=None):
+    from . import adaptive_plan, instructional_decisions
+
     data = facts(db, unit)
     q = data["question"]
     attempts = data["by_question"].get(q["id"], []) if q else []
@@ -201,6 +212,8 @@ def decide(db, unit, memory=None):
         value.update(kind="confirm_source", phase="entry", reason_code="source_changed",
             title="Der Lernstoff wurde geändert", reason="Die alte Runde bleibt gespeichert. Prüfe zuerst die neue Heftseite.",
             expected_result="Aktuell bestätigter Lernstoff.", on_success="check_prior", on_error="confirm_source")
+    elif unit.status != "completed" and (model_action := instructional_decisions.action(db, unit)):
+        value.update(model_action)
     elif any(a.outcome == "uncertain" for a in data["attempts"]):
         value.update(kind="clarify_assessment", phase="help", reason_code="assessment_pending",
             title="Eine Antwort ist noch offen", reason="Die Prüfung ist unklar. Das zählt nicht als falsche Antwort.",
@@ -212,6 +225,8 @@ def decide(db, unit, memory=None):
                 else "Deine Antworten sind gespeichert. Später prüfst du den Abruf mit neuen Aufgaben.",
             expected_result="Runde beenden oder bewusst eine weitere kleine Runde wählen.",
             on_success="schedule_review", on_error="offer_break")
+    elif adaptive_action := adaptive_plan.decision(db, unit):
+        value.update(adaptive_action)
     elif (memory or {}).get("media_return"):
         value.update(kind="check_understanding", phase="media_return", reason_code="media_return",
             title="Probier es jetzt selbst", reason="Der Link ist kein Lernnachweis. Eine eigene Antwort zeigt, was dir geholfen hat.",
@@ -244,19 +259,48 @@ def decide(db, unit, memory=None):
         value.update(kind="resume", phase="entry", reason_code="paused", title="Mach hier weiter",
             reason="Deine Antwort und Lernposition bleiben gespeichert.", on_success="practice", on_error="offer_break")
     elif not unit.introduction_seen and not data["attempts"] and unit.round_kind not in ("check", "review", "vocabulary"):
-        value.update(kind="check_prior", phase="prior_knowledge", reason_code="new_goal_no_current_evidence",
-            title="Was weißt du schon?", reason="Die erste kleine Aufgabe zeigt, ob du eine Erklärung brauchst.",
-            on_success="practice", on_error="explain")
+        from .coaching import fraction_task_goal
+        from .learning import local_day
+        from .learning_knowledge import evidence
+
+        previous = evidence(db, unit, data["sources"])
+        goal_id = q.get("learning_goal_id") if q else None
+        goal_id = goal_id or (fraction_task_goal(q["prompt"], previous) if q else None)
+        secure = next((g for g in previous if g["id"] == goal_id and g["confidence"] == "repeated_recall"), None)
+        if secure and secure["review_due"] and secure["review_due"] >= local_day(db.get(Child, unit.child_id)).isoformat():
+            value.update(reason_code="secure_prior_evidence", reason="Mehrere selbstständige Abrufprüfungen liegen vor. Beginne mit einer Anwendung.",
+                evidence_refs=secure["evidence_refs"])
+        else:
+            value.update(kind="check_prior", phase="prior_knowledge", reason_code="new_goal_no_current_evidence",
+                title="Was weißt du schon?", reason="Die erste kleine Aufgabe zeigt, ob du eine Erklärung brauchst.",
+                on_success="practice", on_error="explain")
     # Query existing resources before requesting any new explanation.
     if value["kind"] in ("check_prior", "hint", "visual_example", "review_prerequisite", "recommend_resource"):
-        value["resources"] = local_resources(db, unit, q, value["reason_code"], data["sources"])
+        need = "denominators_added" if data["misconceptions"] else value["reason_code"]
+        value["resources"] = local_resources(db, unit, q, need, data["sources"])
+        selected = instructional_decisions.current(db, unit)
+        if selected and selected[1]["kind"] == "recommend_resource":
+            from .learning_tips import contents_for
+
+            plan, step = selected
+            candidate = next((r for r in plan.get("resource_candidates", []) if r["id"] == step["resource_id"]), None)
+            if candidate and unit.subject_id:
+                existing = contents_for(db, db.get(Child, unit.child_id), unit.subject_id, [candidate["topic_id"]], 3)
+                chosen = next((r for r in existing["recommended"] + existing["additional"] if r["id"] == candidate["id"]), None)
+                if chosen:
+                    chosen.update(reason=step["reason"], expected_result=step["expected_result"], knowledge_basis="catalog_title_and_topic")
+                    value["resources"] = [chosen, *[r for r in value["resources"] if r["id"] != chosen["id"]]][:3]
     return Action(**value).model_dump(), data
 
 
 def projection(db, unit, *, include_draft=True):
+    from . import adaptive_plan, instructional_decisions
+
     memory = db.get(LearningMemory, unit.id)
     decision, data = decide(db, unit, memory.working if memory else None)
     working = dict(memory.working) if memory else {}
+    working.pop("adaptive_flow", None)  # Private recipe/source and unrevealed steps.
+    working.pop("instructional_plan", None)
     if not include_draft:
         working.pop("draft", None)  # Unsubmitted input is not a parent activity.
     pending = db.get(Job, working.get("pending_check_job_id")) if working.get("pending_check_job_id") else None
@@ -265,11 +309,23 @@ def projection(db, unit, *, include_draft=True):
         following = db.get(LearningUnit, (pending.result or {}).get("unit_id")) if (pending.result or {}).get("unit_id") else None
         if not following or following.status != "completed":
             preparation = {"id": pending.id, "status": pending.status, "unit_id": following.id if following else None}
-    return {"version": 1, "strategy_version": STRATEGY, "revision": memory.revision if memory else 0,
+    decision_job = db.get(Job, working.get("decision_job_id")) if working.get("decision_job_id") else None
+    decision_preparation = None
+    if decision_job and decision_job.child_id == unit.child_id and decision_job.kind == "decision" and decision_job.payload.get("unit_id") == unit.id:
+        decision_preparation = {"id": decision_job.id, "status": decision_job.status}
+    decision_jobs = list(db.scalars(select(Job.id).where(Job.child_id == unit.child_id, Job.kind == "decision",
+        Job.payload["unit_id"].as_string() == unit.id)))
+    return {"version": 2 if adaptive_plan.enabled(db, unit) else 1, "strategy_version": STRATEGY, "revision": memory.revision if memory else 0,
         "updated": memory.updated if memory else 0, "draft_revision": working.get("draft_revision", 0),
         "plan_revision": memory.plan_revision if memory else 0, "source_signature": data["source_signature"],
         "source_valid": data["source_valid"], "action": decision,
-        "working_memory": working, "preparation": preparation,
+        "working_memory": working, "preparation": preparation, "short_plan": adaptive_plan.public_plan(db, unit),
+        "instructional_plan": instructional_decisions.public(db, unit),
+        "decision_preparation": decision_preparation,
+        "can_request_support_check": not unit.synthetic and data["source_valid"] and preparation is None
+            and any(e.kind == "explanation" for e in data["activities"]),
+        "can_request_decision": unit.status == "active" and not unit.synthetic and data["source_valid"]
+            and bool(data["attempts"]) and len(decision_jobs) < 2,
         "observations": {"answered_tasks": len({a.question_id for a in data["attempts"]}),
             "attempts": len(data["attempts"]), "misconceptions": data["misconceptions"],
             "independent_first_answers": sum(len(values) == 1 and values[0].outcome == "correct" and not values[0].assisted
@@ -285,16 +341,13 @@ def knowledge(db, unit):
     curriculum. Old answers remain the single authoritative observations.
     """
     from .coaching import goal_states
+    from .learning_knowledge import evidence, prerequisites
 
-    signature, valid, _ = source_state(db, unit)
+    signature, valid, sources = source_state(db, unit)
     states = goal_states(db, unit) if valid else []
-    labels = {g["label"]: g["id"] for g in states}
-    rules = [("Zähler und Nenner benennen", "Brüche erweitern"),
-        ("Zähler und Nenner benennen", "Brüche kürzen"), ("Brüche erweitern", "Brüche addieren")]
-    edges = [{"before": labels[a], "after": labels[b], "basis": "reviewed_teaching_rule"}
-        for a, b in rules if a in labels and b in labels]
+    long_term = evidence(db, unit, sources) if valid else []
     return {"version": 1, "source_signature": signature, "source_valid": valid,
-        "goals": states, "prerequisites": edges,
+        "goals": states, "long_term": long_term, "prerequisites": prerequisites(long_term),
         "notice": "Voraussetzungen sind Lernvorschläge. Eine richtige Wiedererkennung belegt keinen freien Abruf."}
 
 
@@ -315,6 +368,10 @@ def observe(db, unit, kind, key, evidence, *, working_patch=None):
     if working_patch is not None:
         memory.working = {**memory.working, **working_patch}
         decision, data = decide(db, unit, memory.working)
+    from .instructional_decisions import event_recorded
+
+    event_recorded(db, unit, kind, working_patch or {})
+    decision, data = decide(db, unit, memory.working)
     if memory.decision != decision or memory.source_signature != data["source_signature"]:
         memory.plan_revision += 1
     memory.decision, memory.source_signature = decision, data["source_signature"]
@@ -335,6 +392,9 @@ def activity_recorded(db, activity):
     db.flush()
     unit = db.get(LearningUnit, activity.unit_id)
     if unit:
+        from .instructional_decisions import event_recorded
+
+        event_recorded(db, unit, activity.kind, activity.detail)
         observe(db, unit, activity.kind, "activity:" + activity.id, ["activity:" + activity.id])
 
 
@@ -403,9 +463,42 @@ class ChooseAction(Strict):
     kind: ActionKind
 
 
+class SkipQuestion(Strict):
+    request_key: str = Field(min_length=8, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    revision: int = Field(ge=0)
+    question_id: str = Field(min_length=1, max_length=80)
+
+
+@router.post("/units/{unit_id}/learning-session/skip")
+def skip_question(unit_id: str, data: SkipQuestion, p=Depends(child_user), db=Depends(get_db)):
+    from . import instructional_decisions, learning
+
+    unit = learning.get_unit(db, p, unit_id, True, True)
+    key = "skip:" + data.request_key
+    previous = db.scalar(select(LearningEvent).where(LearningEvent.unit_id == unit.id, LearningEvent.event_key == key))
+    if previous:
+        if previous.evidence != ["question:" + data.question_id]:
+            raise HTTPException(409, "Dieser Vorgang gehört zu einer anderen Aufgabe.")
+        return learning.unit_data(db, unit)
+    memory = db.get(LearningMemory, unit.id)
+    selected, state = decide(db, unit, memory.working if memory else None)
+    if (unit.status != "active" or not state["source_valid"] or not memory
+            or memory.revision != data.revision or selected["question_id"] != data.question_id):
+        raise HTTPException(409, "Dieser Lernschritt wurde geändert. Lade zuerst deine Runde neu.")
+    if learning.pending_feedback(unit, state["attempts"], state["activities"]):
+        raise HTTPException(409, "Lies zuerst deine gespeicherte Rückmeldung.")
+    if not instructional_decisions.current(db, unit):
+        # No invented replacement or fake completion. The original stays resumable.
+        unit.status, unit.heartbeat = "paused", None
+    learning.record(db, unit.child_id, "question_skipped", {"question_id": data.question_id}, unit.id)
+    observe(db, unit, "question_skipped", key, ["question:" + data.question_id])
+    db.commit()
+    return learning.unit_data(db, unit)
+
+
 @router.post("/units/{unit_id}/learning-session/action")
 def execute(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(get_db)):
-    from . import learning
+    from . import adaptive_plan, instructional_decisions, learning
 
     unit = learning.get_unit(db, p, unit_id, True, True)
     memory = db.get(LearningMemory, unit.id)
@@ -420,14 +513,26 @@ def execute(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
     current, facts_now = decide(db, unit, memory.working if memory else None)
     if not facts_now["source_valid"]:
         raise HTTPException(409, "Der Lernstoff wurde geändert. Prüfe zuerst die aktuelle Heftseite.")
+    if (adaptive_plan.flow(db, unit) or instructional_decisions.current(db, unit)) and data.kind not in ("offer_break", "recommend_resource"):
+        if learning.pending_feedback(unit, facts_now["attempts"], facts_now["activities"]):
+            raise HTTPException(409, "Lies zuerst die gespeicherte Rückmeldung und tippe auf Weiter.")
+        if unit.status != "active":
+            raise HTTPException(409, "Setze zuerst deine gespeicherte Runde fort.")
     allowed = {current["kind"], "offer_break"}
     if unit.status != "completed":
         allowed |= {"explain", "visual_example", "practice", "recommend_resource"}
+        flow = adaptive_plan.flow(db, unit)
+        if flow and flow["phase"] == "explanation":
+            allowed.add("check_understanding")
     else:
         allowed |= {"finish_round", "schedule_review"}
     if data.kind not in allowed:
         raise HTTPException(409, "Diese Aktion gehört nicht zum aktuellen Lernschritt.")
-    if data.kind == "offer_break" and unit.status == "active":
+    if unit.status != "completed" and instructional_decisions.execute(db, unit, data.kind):
+        pass
+    elif unit.status != "completed" and adaptive_plan.execute(db, unit, data.kind):
+        pass
+    elif data.kind == "offer_break" and unit.status == "active":
         unit.status, unit.heartbeat = "paused", None
     elif data.kind in ("practice", "check_prior"):
         unit.introduction_seen = True

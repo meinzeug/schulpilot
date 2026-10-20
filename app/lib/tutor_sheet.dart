@@ -32,8 +32,8 @@ Future<void> showTutorSheet(
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    backgroundColor: Colors.white,
-    constraints: const BoxConstraints(maxWidth: 760),
+    backgroundColor: context.palette.panelSurface,
+    constraints: BoxConstraints(maxWidth: 760),
     builder: (_) => _TutorSheet(state, childId: childId, scope: scope),
   );
 }
@@ -159,7 +159,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     poll?.cancel();
     poll = null;
     if (!active || !hasPending) return;
-    poll = Timer(const Duration(seconds: 3), () {
+    poll = Timer(Duration(seconds: 3), () {
       poll = null;
       if (active && hasPending) unawaited(load());
     });
@@ -329,15 +329,18 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                 sendError != null ||
                 MediaQuery.textScalerOf(context).scale(1) > 1.3;
             final header = Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+              padding: EdgeInsets.fromLTRB(20, 0, 12, 12),
               child: Row(
                 children: [
-                  const Icon(Icons.lightbulb_outline_rounded, color: teal),
-                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.lightbulb_outline_rounded,
+                    color: context.palette.teal,
+                  ),
+                  SizedBox(width: 12),
                   Expanded(
                     child: MathText(
                       editable ? 'Frag zu deinem Stoff' : 'Fragen zum Stoff',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.w800,
                       ),
@@ -346,20 +349,20 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                   IconButton(
                     tooltip: 'Schließen',
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded),
                   ),
                 ],
               ),
             );
             final content = Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!ownerMatches)
-                    const Notice('Bitte melde dich erneut an.')
+                    Notice('Bitte melde dich erneut an.')
                   else if (loading)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.all(32),
                       child: Center(child: CircularProgressIndicator()),
                     )
@@ -368,18 +371,18 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                       Notice(readError!, warning: true),
                       TextButton.icon(
                         onPressed: () => load(),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Verlauf laden'),
+                        icon: Icon(Icons.refresh_rounded),
+                        label: Text('Verlauf laden'),
                       ),
                     ],
                     if (latest == null && readError == null)
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        padding: EdgeInsets.symmetric(vertical: 24),
                         child: MathText(
                           editable
                               ? 'Was möchtest du besser verstehen?'
                               : 'Hier sind noch keine Fragen gespeichert.',
-                          style: const TextStyle(fontSize: 18),
+                          style: TextStyle(fontSize: 18),
                         ),
                       ),
                     if (editable && parentTurn != null) turnCard(parentTurn),
@@ -407,17 +410,17 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                     if (cursor != null)
                       TextButton(
                         onPressed: reading ? null : () => load(older: true),
-                        child: const Text('Ältere Fragen laden'),
+                        child: Text('Ältere Fragen laden'),
                       ),
                   ],
                 ],
               ),
             );
             final composer = !editable
-                ? const SizedBox.shrink()
+                ? SizedBox.shrink()
                 : Padding(
                     key: composerKey,
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -433,10 +436,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 'Warum ist das so?',
                               ])
                                 ActionChip(
-                                  backgroundColor: mint,
+                                  backgroundColor: context.palette.mint,
                                   disabledColor: cream,
-                                  labelStyle: const TextStyle(
-                                    color: ink,
+                                  labelStyle: TextStyle(
+                                    color: context.palette.ink,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -453,10 +456,13 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                         if (replyTo != null)
                           Row(
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: MathText(
                                   'Zu deiner letzten Antwort',
-                                  style: TextStyle(color: muted, fontSize: 12),
+                                  style: TextStyle(
+                                    color: context.palette.muted,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                               IconButton(
@@ -467,7 +473,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                         replyTo = null;
                                         newQuestionMode = true;
                                       }),
-                                icon: const Icon(Icons.close_rounded, size: 18),
+                                icon: Icon(Icons.close_rounded, size: 18),
                               ),
                             ],
                           ),
@@ -480,15 +486,15 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                             children: [
                               TextButton(
                                 onPressed: () => load(),
-                                child: const Text('Verlauf prüfen'),
+                                child: Text('Verlauf prüfen'),
                               ),
                               TextButton(
                                 onPressed: () => send(repeat: unconfirmed),
-                                child: const Text('Erneut senden'),
+                                child: Text('Erneut senden'),
                               ),
                             ],
                           ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -512,9 +518,9 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 24),
+                              padding: EdgeInsets.only(bottom: 24),
                               child: VoiceInputButton(
                                 controller: question,
                                 enabled: !blocked,
@@ -532,14 +538,14 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                               ? null
                               : () => send(),
                           icon: sending
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.arrow_upward_rounded),
+                              : Icon(Icons.arrow_upward_rounded),
                           label: MathText(
                             sending
                                 ? 'Wird gesendet …'
@@ -557,12 +563,15 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                     replyTo = null;
                                     question.clear();
                                   }),
-                            child: const Text('Eine andere Frage stellen'),
+                            child: Text('Eine andere Frage stellen'),
                           ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        SizedBox(height: 8),
+                        Text(
                           'Deine Eltern können Fragen und Antworten sehen.',
-                          style: TextStyle(fontSize: 11, color: muted),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.palette.muted,
+                          ),
                         ),
                       ],
                     ),
@@ -596,22 +605,22 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         if (!collapsed) ...[
           MathText(
             turn['question'] ?? '',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
         ],
         if (turn['source_changed'] == true) ...[
-          const Notice('Die Heftseite wurde inzwischen geändert.'),
-          const SizedBox(height: 12),
+          Notice('Die Heftseite wurde inzwischen geändert.'),
+          SizedBox(height: 12),
         ],
         if (pending) ...[
-          const LinearProgressIndicator(),
-          const SizedBox(height: 14),
-          const Text('Ich schaue in deinem Stoff nach.'),
-          const SizedBox(height: 8),
-          const Text(
+          LinearProgressIndicator(),
+          SizedBox(height: 14),
+          Text('Ich schaue in deinem Stoff nach.'),
+          SizedBox(height: 8),
+          Text(
             'Du kannst später hier weitermachen.',
-            style: TextStyle(color: muted, fontSize: 12),
+            style: TextStyle(color: context.palette.muted, fontSize: 12),
           ),
         ] else if (turn['status'] == 'failed') ...[
           MathText(
@@ -622,33 +631,30 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               !hasPending &&
               !sending &&
               unconfirmed == null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () => retryFailed(turn),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Noch einmal fragen'),
+              icon: Icon(Icons.refresh_rounded),
+              label: Text('Noch einmal fragen'),
             ),
           ],
         ] else if (turn['status'] == 'ready') ...[
           if (reply?['kind'] == 'clarification')
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Tag('Eine Rückfrage'),
             ),
           if (reply?['kind'] == 'not_in_material')
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Tag('Nicht in deinen Heftseiten'),
             ),
           if (reply?['kind'] == 'foundation')
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Tag('Ergänzendes Grundwissen · nicht aus deinem Heft'),
             ),
-          LearningContent(
-            answer,
-            style: const TextStyle(fontSize: 17, height: 1.55),
-          ),
+          LearningContent(answer, style: TextStyle(fontSize: 17, height: 1.55)),
           if (!collapsed && turn['source_changed'] != true)
             LearningTips(
               state,
@@ -662,27 +668,30 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           ),
           if ((reply?['sources'] as List? ?? []).isNotEmpty)
             ExpansionTile(
-              title: const Text('Wo steht das?'),
+              title: Text('Wo steht das?'),
               children: [
                 for (final source in reply!['sources'] as List)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
+                    padding: EdgeInsets.only(bottom: 14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         MathText(
                           source['label'] ?? 'Deine Heftseite',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         if (source['reference_title'] is String)
                           MathText(
                             'Grundwissen nach ${source['reference_title']}',
-                            style: const TextStyle(fontSize: 13, color: muted),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.palette.muted,
+                            ),
                           ),
-                        const SizedBox(height: 5),
+                        SizedBox(height: 5),
                         MathText(
                           '„${source['quote']}“',
-                          style: const TextStyle(color: muted),
+                          style: TextStyle(color: context.palette.muted),
                         ),
                       ],
                     ),
@@ -693,13 +702,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               !collapsed &&
               (reply?['next_question'] as String? ?? '').isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: 12),
               child: MathText(
                 reply!['next_question'],
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
               ),
             ),
           if (state.isChild && !collapsed)
@@ -717,10 +723,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
       ],
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Panel(
-        color: pending ? mint : null,
-        padding: const EdgeInsets.all(16),
+        color: pending ? context.palette.mint : null,
+        padding: EdgeInsets.all(16),
         child: collapsed
             ? ExpansionTile(
                 title: MathText(turn['question'] ?? ''),

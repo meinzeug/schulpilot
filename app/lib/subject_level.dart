@@ -43,9 +43,9 @@ Future<void> editSubjectLevel(
       builder: (ctx, rebuild) => AnimatedBuilder(
         animation: state,
         builder: (_, _) => owner != state.user?['id']
-            ? const SizedBox.shrink()
+            ? SizedBox.shrink()
             : AlertDialog(
-                title: const Text('Stufe festlegen'),
+                title: Text('Stufe festlegen'),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -53,17 +53,17 @@ Future<void> editSubjectLevel(
                     children: [
                       Text(
                         own['title'],
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: selected,
                         isExpanded: true,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Klasse oder Lernjahr',
                         ),
                         items: [
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             value: '',
                             child: Text('Noch nicht festlegen'),
                           ),
@@ -76,10 +76,10 @@ Future<void> editSubjectLevel(
                         onChanged: (value) =>
                             rebuild(() => selected = value ?? ''),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
+                      SizedBox(height: 12),
+                      Text(
                         'Ein Sprachlernjahr ist keine Schulklasse. Wähle es nur, wenn es bekannt ist.',
-                        style: TextStyle(color: muted),
+                        style: TextStyle(color: context.palette.muted),
                       ),
                     ],
                   ),
@@ -87,11 +87,11 @@ Future<void> editSubjectLevel(
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Abbrechen'),
+                    child: Text('Abbrechen'),
                   ),
                   FilledButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Stufe übernehmen'),
+                    child: Text('Stufe übernehmen'),
                   ),
                 ],
               ),

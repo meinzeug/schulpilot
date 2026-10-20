@@ -242,7 +242,7 @@ def report(db, since):
         values = item.pop("latencies")
         item.update(p50_ms=percentile(values, .5), p95_ms=percentile(values, .95))
     policy = None
-    from .db import Job, LearningUnit, OperatorJob, ProviderConfig
+    from .db import Attempt, Job, LearningUnit, OperatorJob, ProviderConfig
     from .model_routing import enabled
 
     config = db.get(ProviderConfig, 1)
@@ -270,6 +270,14 @@ def report(db, since):
     completed = list(db.scalars(select(LearningUnit).where(LearningUnit.id.in_(attributed), LearningUnit.status == "completed")))
     costed = [unit for unit in completed if all(r.cost_micros is not None for r in attributed[unit.id])]
     completed_cost = sum(r.cost_micros for unit in costed for r in attributed[unit.id])
+    # A successful practice goal is narrower than durable mastery. Keep the
+    # accounting population explicit; unknown costs are never averaged as zero.
+    independent = {(a.unit_id, a.question_id) for a in db.scalars(select(Attempt).where(
+        Attempt.unit_id.in_([u.id for u in costed]), Attempt.outcome == "correct", Attempt.assisted.is_(False)))}
+    practiced_goals = {(u.id, q["learning_goal_id"]) for u in costed for q in u.questions
+        if q.get("learning_goal_id") and (u.id, q["id"]) in independent}
+    goal_units = {unit_id for unit_id, _ in practiced_goals}
+    goal_cost = sum(r.cost_micros for unit_id in goal_units for r in attributed[unit_id])
     probes = [item for job in db.scalars(select(OperatorJob).where(OperatorJob.created >= since)) for item in job.report]
     return {"models": grouped, "cost_centres": sorted(children.items(), key=lambda r: -r[1]["held_micros_usd"])[:20],
         "operator_probes": {"calls": len(probes), "billed_micros_usd": sum(item.get("cost_micros_usd") or 0 for item in probes),
@@ -278,6 +286,9 @@ def report(db, since):
         "completed_costed_sessions": len(costed),
         "attributed_completed_cost_micros_usd": completed_cost,
         "cost_per_completed_session_micros_usd": (completed_cost + len(costed) - 1) // len(costed) if costed else None,
+        "independently_practiced_goals": len(practiced_goals),
+        "cost_per_independently_practiced_goal_micros_usd": (goal_cost + len(practiced_goals) - 1) // len(practiced_goals) if practiced_goals else None,
+        "goal_cost_notice": "Verteilung der bekannten Rundenzuordnung auf gespeicherte Lernziele mit selbstständiger Anwendung; keine Beherrschung und keine vollständigen Materialkosten.",
         "attribution_notice": "Nur eindeutig zugeordnete KI-Aufträge; Materialkosten und unbekannte Kosten sind darin nicht vollständig enthalten. Keine Kosten pro beherrschtem Lernziel behauptet.",
         "peak_calls_per_minute": max(minutes.values(), default=0),
         "escalations": sum((r.route_snapshot or {}).get("tier") == "astra" for r in rows),

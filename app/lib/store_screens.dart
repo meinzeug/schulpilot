@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'admin_workspace_ui.dart';
 import 'ui.dart';
 
 String euro(dynamic cents) =>
@@ -518,71 +519,190 @@ class StoreAdminScreen extends StatefulWidget {
 }
 
 class _StoreAdminScreenState extends State<StoreAdminScreen> {
-  int version = 0;
+  int version = 0, section = 0;
+  String orderFilter = 'all';
+  void refresh() => setState(() => version++);
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
     title: 'Verkauf & Zahlungseingänge',
+    showTitle: false,
+    actions: [
+      OutlinedButton.icon(
+        onPressed: refresh,
+        icon: Icon(Icons.refresh_rounded),
+        label: const Text('Aktualisieren'),
+      ),
+    ],
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        LoadView<Json>(
-          key: ValueKey('store-$version'),
-          load: () => widget.state.api.get('/admin/store'),
-          builder: (data, _) => StoreAdminForm(
-            widget.state,
-            data,
-            onSaved: () => setState(() => version++),
-          ),
+        const AdminWorkspaceHeader(
+          title: 'Zahlungen sicher prüfen',
+          subtitle: 'Bestellungen mit dem Bankkonto abgleichen und anschließend freischalten.',
+          currentPath: '/admin/verkauf',
+          icon: Icons.account_balance_outlined,
         ),
         const SizedBox(height: 24),
-        heading('Bestellungen prüfen'),
-        const Text(
-          'Erst mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung.',
+        AdminContextTabs(
+          selected: section,
+          items: const [
+            (Icons.receipt_long_outlined, 'Bestellungen'),
+            (Icons.tune_rounded, 'Verkauf einrichten'),
+          ],
+          onSelected: (index) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            setState(() => section = index);
+          },
         ),
-        const SizedBox(height: 16),
-        LoadView<List<dynamic>>(
-          key: ValueKey('orders-$version'),
-          load: () => widget.state.api.list('/admin/orders'),
-          builder: (orders, _) => Column(
-            children: [
-              if (orders.isEmpty)
-                const Panel(child: Text('Noch keine Bestellungen.')),
-              for (final order in orders)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Panel(
-                    child: Column(
+        const SizedBox(height: 24),
+        Offstage(
+          offstage: section != 1,
+          child: ExcludeFocus(
+            excluding: section != 1,
+            child: LoadView<Json>(
+              key: ValueKey('store-$version'),
+              load: () => widget.state.api.get('/admin/store'),
+              builder: (data, _) =>
+                  StoreAdminForm(widget.state, data, onSaved: refresh),
+            ),
+          ),
+        ),
+        Offstage(
+          offstage: section != 0,
+          child: ExcludeFocus(
+            excluding: section != 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AdminSectionHeading(
+                  title: 'Bestellungen prüfen',
+                  subtitle: 'Erst mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung.',
+                  icon: Icons.fact_check_outlined,
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final item in const [
+                      ('all', 'Alle'),
+                      ('awaiting_payment', 'Zahlung offen'),
+                      ('paid', 'Freigeschaltet'),
+                      ('closed', 'Beendet'),
+                    ])
+                      FilterChip(
+                        label: Text(item.$2),
+                        selected: orderFilter == item.$1,
+                        showCheckmark: false,
+                        onSelected: (_) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(() => orderFilter = item.$1);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                LoadView<List<dynamic>>(
+                  key: ValueKey('orders-$version'),
+                  load: () => widget.state.api.list('/admin/orders'),
+                  builder: (orders, _) {
+                    bool matches(dynamic order) =>
+                        orderFilter == 'all' ||
+                        (orderFilter == 'closed'
+                            ? [
+                                'cancelled',
+                                'refunded',
+                              ].contains(order['status'])
+                            : order['status'] == orderFilter);
+                    final shown = orders.where(matches).length;
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SelectableText(
-                          '${order['payment_reference']} · ${euro(order['amount_cents'])}',
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
+                        if (shown == 0)
+                          const Panel(
+                            child: Text(
+                              'Keine Bestellungen in dieser Ansicht.',
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${order['offer']['name']} · ${calendar(order['created'])} · ${orderStatus(order['status'])}',
-                        ),
-                        if (order['status'] == 'awaiting_payment')
-                          PaymentCheckForm(
-                            widget.state,
-                            order,
-                            onSaved: () => setState(() => version++),
-                          ),
-                        if (order['status'] == 'paid')
-                          PaymentCheckForm(
-                            widget.state,
-                            order,
-                            refund: true,
-                            onSaved: () => setState(() => version++),
+                        for (final order in orders)
+                          Offstage(
+                            key: ValueKey(order['id']),
+                            offstage: !matches(order),
+                            child: ExcludeFocus(
+                              excluding: !matches(order),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: AdminWorkSurface(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Wrap(
+                                        alignment: WrapAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 16,
+                                        runSpacing: 8,
+                                        children: [
+                                          SelectableText(
+                                            '${order['payment_reference']}',
+                                            style: TextStyle(
+                                              fontSize: 19,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          Text(
+                                            euro(order['amount_cents']),
+                                            style: TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w800,
+                                              color: context.palette.teal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '${order['offer']['name']} · ${calendar(order['created'])}',
+                                        style: TextStyle(
+                                          color: context.palette.muted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      SurfaceInset(
+                                        child: Text(
+                                          orderStatus(order['status']),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      if (order['status'] == 'awaiting_payment')
+                                        PaymentCheckForm(
+                                          widget.state,
+                                          order,
+                                          onSaved: refresh,
+                                        ),
+                                      if (order['status'] == 'paid')
+                                        PaymentCheckForm(
+                                          widget.state,
+                                          order,
+                                          refund: true,
+                                          onSaved: refresh,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/coaching_panel.dart';
 import 'package:schulpilot/dashboard.dart';
+import 'package:schulpilot/child_today_widgets.dart';
 import 'package:schulpilot/ui.dart';
 
 Json _overview() =>
@@ -20,9 +21,12 @@ Future<GoRouter> _openHome(
   Json data, {
   List<http.Request>? requests,
   bool settle = true,
+  double width = 360,
+  double textScale = 1,
+  Brightness brightness = Brightness.light,
   void Function(AppState)? onState,
 }) async {
-  tester.view.physicalSize = const Size(360, 780);
+  tester.view.physicalSize = Size(width, 780);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -44,6 +48,7 @@ Future<GoRouter> _openHome(
             }),
           ),
         )
+        ..darkAppearance = brightness == Brightness.dark
         ..user = {
           'id': 'child-user',
           'display_name': 'Mika',
@@ -68,13 +73,26 @@ Future<GoRouter> _openHome(
         builder: (_, _) => const Scaffold(body: Text('Heftbibliothek')),
       ),
       GoRoute(
+        path: '/messages/:id',
+        builder: (_, _) =>
+            const Scaffold(body: Text('Familiennachrichten-Ziel')),
+      ),
+      GoRoute(
         path: '/material/:id',
         builder: (_, _) => const Scaffold(body: Text('Heftseite prüfen')),
       ),
     ],
   );
   await tester.pumpWidget(
-    MaterialApp.router(theme: appTheme(), routerConfig: router),
+    MaterialApp.router(
+      theme: appTheme(brightness: brightness),
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+    ),
   );
   if (settle) {
     await tester.pumpAndSettle();
@@ -95,7 +113,7 @@ void main() {
       data['material_count'] = 1;
       await _openHome(tester, data, requests: requests);
 
-      expect(find.byType(FocusCard), findsOneWidget);
+      expect(find.byType(ChildTodayHero), findsOneWidget);
       expect(find.text('Weiterlernen'), findsOneWidget);
       expect(find.text('Heutige Seiten scannen'), findsOneWidget);
       expect(find.text('1 gespeicherte Seite'), findsOneWidget);
@@ -317,6 +335,192 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('Today shows the saved guidance for its own active main round', (
+    tester,
+  ) async {
+    final requests = <http.Request>[];
+    final data = _overview();
+    data['plan']['today'][0]['status'] = 'active';
+    data['learning_guidance'] = {
+      'unit_id': data['plan']['today'][0]['id'],
+      'title': 'Vergleiche gleich große Teile',
+      'reason': 'Ein kurzer Zwischenschritt hilft dir weiter.',
+      'kind': 'review_prerequisite',
+    };
+    await _openHome(tester, data, requests: requests);
+    final hero = tester.widget<ChildTodayHero>(find.byType(ChildTodayHero));
+    expect(hero.title, 'Vergleiche gleich große Teile');
+    expect(hero.subtitle, contains('Mathematik · Brüche'));
+    expect(find.text('Weiterlernen'), findsOneWidget);
+    expect(requests.where((request) => request.method == 'POST'), isEmpty);
+    await tester.tap(find.text('Weiterlernen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lernrunde-Ziel'), findsOneWidget);
+    expect(
+      requests
+          .where((request) => request.method == 'POST')
+          .map((request) => request.url.path),
+      ['/api/units/${data['plan']['today'][0]['id']}/start'],
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final scenario in ['other_round', 'not_started', 'feedback']) {
+    testWidgets(
+      'Guidance never replaces the main round or unread feedback ($scenario)',
+      (tester) async {
+        final requests = <http.Request>[];
+        final data = _overview();
+        final next = data['plan']['today'][0];
+        next['status'] = scenario == 'not_started' ? 'not_started' : 'paused';
+        if (scenario == 'feedback') next['pending_feedback'] = true;
+        data['learning_guidance'] = {
+          'unit_id': scenario == 'other_round' ? 'another-round' : next['id'],
+          'title': 'Dieser Schritt darf hier nicht erscheinen',
+          'kind': 'practice',
+        };
+        await _openHome(tester, data, requests: requests);
+        expect(
+          find.text('Dieser Schritt darf hier nicht erscheinen'),
+          findsNothing,
+        );
+        expect(
+          tester.widget<ChildTodayHero>(find.byType(ChildTodayHero)).title,
+          scenario == 'feedback' ? 'Deine letzte Antwort' : 'Brüche',
+        );
+        expect(requests.where((request) => request.method != 'GET'), isEmpty);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets('Today keeps family history off the learning entry', (
+    tester,
+  ) async {
+    final requests = <http.Request>[];
+    final data = _overview();
+    data['messages'] = [
+      {
+        'id': 'artificial-message',
+        'body': 'Ein künstlicher privater Gesprächsverlauf',
+        'kind': 'help',
+        'sender_role': 'child',
+        'resolved': false,
+      },
+    ];
+    await _openHome(tester, data, requests: requests);
+    expect(find.byType(ChildTodayHero), findsOneWidget);
+    expect(find.byType(ExpansionTile), findsNothing);
+    expect(
+      find.text('Ein künstlicher privater Gesprächsverlauf'),
+      findsNothing,
+    );
+    expect(find.text('Das interessiert mich'), findsNothing);
+    await tester.ensureVisible(find.text('Nachrichten & Wünsche'));
+    await tester.tap(find.text('Nachrichten & Wünsche'));
+    await tester.pumpAndSettle();
+    expect(find.text('Familiennachrichten-Ziel'), findsOneWidget);
+    expect(requests.where((request) => request.method != 'GET'), isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Plan opens deliberately and starts one chosen saved round', (
+    tester,
+  ) async {
+    final requests = <http.Request>[];
+    final data = _overview();
+    await _openHome(tester, data, requests: requests);
+    expect(find.byType(Dialog), findsNothing);
+    await tester.ensureVisible(find.text('Mein Plan'));
+    await tester.tap(find.text('Mein Plan'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(requests.where((request) => request.method == 'POST'), isEmpty);
+    await tester.tap(find.byTooltip('Lernen starten'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lernrunde-Ziel'), findsOneWidget);
+    expect(find.byType(Dialog), findsNothing);
+    expect(
+      requests
+          .where((request) => request.method == 'POST')
+          .map((request) => request.url.path),
+      ['/api/units/${data['units'][0]['id']}/start'],
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final width in [320.0, 390.0, 1280.0]) {
+    testWidgets(
+      'Illustrated Today preserves actions at $width and double text size',
+      (tester) async {
+        final requests = <http.Request>[];
+        final data = _overview();
+        data['plan']['daily_goal_met'] = false;
+        data['plan']['daily_active_seconds'] = 1199;
+        data['plan']['daily_goal_minutes'] = 20;
+        await _openHome(
+          tester,
+          data,
+          requests: requests,
+          width: width,
+          textScale: 2,
+        );
+        expect(find.byType(ChildTodayHero), findsOneWidget);
+        expect(find.text('Weiterlernen'), findsOneWidget);
+        await tester.ensureVisible(find.text('Heutige Seiten scannen'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.ensureVisible(
+          find.text('Tagesziel offen · Heute ca. 19,9 von 20 Min. aktiv'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Tagesziel geschafft'), findsNothing);
+        expect(requests.where((request) => request.method != 'GET'), isEmpty);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'Today uses the complete $brightness learning station with a real scan entry',
+      (tester) async {
+        final requests = <http.Request>[];
+        final data = _overview();
+        await _openHome(
+          tester,
+          data,
+          requests: requests,
+          width: 390,
+          brightness: brightness,
+        );
+        expect(find.byType(ChildTodayHero), findsOneWidget);
+        expect(find.text('Deine Lernstation'), findsOneWidget);
+        expect(find.text('Weiterlernen'), findsOneWidget);
+        expect(find.text('Heutige Seiten scannen'), findsOneWidget);
+        final heroContext = tester.element(find.byType(ChildTodayHero));
+        expect(heroContext.palette.isDark, brightness == Brightness.dark);
+        final button = tester.widget<FilledButton>(
+          find
+              .ancestor(
+                of: find.text('Weiterlernen'),
+                matching: find.byType(FilledButton),
+              )
+              .first,
+        );
+        final renderedForeground = DefaultTextStyle.of(
+          tester.element(find.text('Weiterlernen')),
+        ).style.color;
+        expect(renderedForeground, Colors.white);
+        expect(button.onPressed, isNotNull);
+        expect(requests.every((request) => request.method == 'GET'), isTrue);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 
   testWidgets(
     'Child AI report exposes uncertainty and keeps details collapsed',

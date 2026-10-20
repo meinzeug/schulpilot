@@ -151,7 +151,7 @@ def choose_tier(function, features, *, economy=False):
     if economy:
         if features.get("poor_image") or features.get("errors", 0) >= 2 or features.get("uncertain", 0):
             return "sol", "recorded_difficulty"
-        if function in ("extract", "coach", "vocabulary_import"):
+        if function in ("extract", "coach", "decision", "vocabulary_import"):
             if features.get("source_chars", 0) <= 8000:
                 return "luna", "bounded_source_or_review"
         if features.get("sources_known"):

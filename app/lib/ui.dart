@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'app_palette.dart';
+export 'app_palette.dart';
 import 'download_panel.dart';
 
 // Shared light-surface palette. Cyan is an accent on navy, not a text color
@@ -55,39 +57,60 @@ void openRoute(BuildContext context, String path) {
   }
 }
 
-ThemeData appTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: teal, surface: Colors.white)
-      .copyWith(
-        primary: teal,
+ThemeData appTheme({Brightness brightness = Brightness.light}) {
+  final p = AppPalette(isDark: brightness == Brightness.dark);
+  final ink = p.ink,
+      teal = p.teal,
+      mint = p.mint,
+      cream = p.cream,
+      muted = p.muted,
+      surfaceLow = p.surfaceLow,
+      surfaceBorder = p.surfaceBorder,
+      controlBorder = p.controlBorder,
+      cyanInk = p.cyanInk,
+      cyanSurface = p.cyanSurface,
+      dangerInk = p.dangerInk;
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: p.actionPurple,
+        brightness: brightness,
+        surface: p.panelSurface,
+      ).copyWith(
+        primary: p.actionPurple,
         onPrimary: Colors.white,
         primaryContainer: mint,
         onPrimaryContainer: ink,
         secondary: cyanInk,
-        onSecondary: Colors.white,
+        onSecondary: p.isDark ? const Color(0xFF081F31) : Colors.white,
         secondaryContainer: cyanSurface,
         onSecondaryContainer: ink,
-        surface: Colors.white,
+        surface: p.panelSurface,
         onSurface: ink,
         onSurfaceVariant: muted,
-        surfaceContainerLowest: Colors.white,
+        surfaceContainerLowest: p.panelSurface,
         surfaceContainerLow: surfaceLow,
         surfaceContainer: cream,
-        surfaceContainerHigh: const Color(0xFFDDE5F1),
-        surfaceContainerHighest: const Color(0xFFD2DDEB),
+        surfaceContainerHigh: p.surfaceHigh,
+        surfaceContainerHighest: p.surfaceHigh,
         outline: controlBorder,
         outlineVariant: surfaceBorder,
         error: dangerInk,
-        onError: Colors.white,
-        errorContainer: dangerSurface,
+        onError: p.isDark ? const Color(0xFF081F31) : Colors.white,
+        errorContainer: p.dangerSurface,
         onErrorContainer: dangerInk,
       );
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    fontFamily: 'Nunito',
+    colorScheme: scheme,
+  );
   final rounded = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(14),
   );
   final focusSide = WidgetStateProperty.resolveWith<BorderSide>((states) {
     if (states.contains(WidgetState.focused)) {
-      return const BorderSide(color: teal, width: 2.5);
+      return BorderSide(color: teal, width: 2.5);
     }
     return BorderSide(
       color: states.contains(WidgetState.disabled)
@@ -98,6 +121,8 @@ ThemeData appTheme() {
   });
   return ThemeData(
     useMaterial3: true,
+    brightness: brightness,
+    fontFamily: 'Nunito',
     colorScheme: scheme,
     scaffoldBackgroundColor: cream,
     visualDensity: VisualDensity.standard,
@@ -105,101 +130,95 @@ ThemeData appTheme() {
     textTheme: base.textTheme
         .apply(bodyColor: ink, displayColor: ink)
         .copyWith(
-          headlineLarge: const TextStyle(
+          headlineLarge: TextStyle(
+            fontFamily: 'SpaceGrotesk',
             fontSize: 40,
             fontWeight: FontWeight.w800,
             color: ink,
             height: 1.12,
             letterSpacing: -1.3,
           ),
-          headlineMedium: const TextStyle(
+          headlineMedium: TextStyle(
+            fontFamily: 'SpaceGrotesk',
             fontSize: 32,
             fontWeight: FontWeight.w800,
             color: ink,
             letterSpacing: -.9,
           ),
-          titleLarge: const TextStyle(
+          titleLarge: TextStyle(
+            fontFamily: 'SpaceGrotesk',
             fontSize: 22,
             fontWeight: FontWeight.w700,
             color: ink,
             letterSpacing: -.4,
           ),
-          titleMedium: const TextStyle(
+          titleMedium: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
             color: ink,
             height: 1.4,
           ),
-          bodyLarge: const TextStyle(fontSize: 16, color: ink, height: 1.55),
-          bodyMedium: const TextStyle(fontSize: 15, color: ink, height: 1.5),
-          bodySmall: const TextStyle(fontSize: 12, color: muted, height: 1.5),
-          labelLarge: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
+          bodyLarge: TextStyle(fontSize: 16, color: ink, height: 1.55),
+          bodyMedium: TextStyle(fontSize: 15, color: ink, height: 1.5),
+          bodySmall: TextStyle(fontSize: 12, color: muted, height: 1.5),
+          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
+    appBarTheme: AppBarTheme(
+      backgroundColor: p.panelSurface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       foregroundColor: ink,
       shape: Border(bottom: BorderSide(color: surfaceBorder)),
     ),
-    dividerTheme: const DividerThemeData(color: surfaceBorder, thickness: 1),
+    dividerTheme: DividerThemeData(color: surfaceBorder, thickness: 1),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceLow,
-      labelStyle: const TextStyle(color: muted, fontSize: 14),
-      hintStyle: const TextStyle(color: muted, fontSize: 14),
-      helperStyle: const TextStyle(color: muted),
-      errorStyle: const TextStyle(color: dangerInk),
+      labelStyle: TextStyle(color: muted, fontSize: 14),
+      hintStyle: TextStyle(color: muted, fontSize: 14),
+      helperStyle: TextStyle(color: muted),
+      errorStyle: TextStyle(color: dangerInk),
       prefixIconColor: muted,
       suffixIconColor: muted,
-      floatingLabelStyle: const TextStyle(
-        color: teal,
-        fontWeight: FontWeight.w700,
-      ),
+      floatingLabelStyle: TextStyle(color: teal, fontWeight: FontWeight.w700),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: controlBorder, width: 1.25),
+        borderSide: BorderSide(color: controlBorder, width: 1.25),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: controlBorder, width: 1.25),
+        borderSide: BorderSide(color: controlBorder, width: 1.25),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: teal, width: 2.5),
+        borderSide: BorderSide(color: teal, width: 2.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: dangerInk, width: 1.5),
+        borderSide: BorderSide(color: dangerInk, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: dangerInk, width: 2.5),
+        borderSide: BorderSide(color: dangerInk, width: 2.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style:
           FilledButton.styleFrom(
-            backgroundColor: teal,
+            backgroundColor: p.actionPurple,
             foregroundColor: Colors.white,
-            disabledBackgroundColor: const Color(0xFFDEE5F0),
+            disabledBackgroundColor: p.surfaceHigh,
             disabledForegroundColor: muted,
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-            minimumSize: const Size(48, 52),
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            textStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            minimumSize: Size(48, 52),
+            padding: EdgeInsets.symmetric(horizontal: 22, vertical: 16),
             shape: rounded,
           ).copyWith(
             side: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.focused)
-                  ? const BorderSide(color: Colors.white, width: 2.5)
+                  ? BorderSide(color: Colors.white, width: 2.5)
                   : BorderSide.none,
             ),
           ),
@@ -207,11 +226,11 @@ ThemeData appTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: ink,
-        backgroundColor: Colors.white,
+        backgroundColor: p.panelSurface,
         disabledForegroundColor: muted,
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-        minimumSize: const Size(48, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        minimumSize: Size(48, 48),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         shape: rounded,
       ).copyWith(side: focusSide),
     ),
@@ -220,17 +239,14 @@ ThemeData appTheme() {
           TextButton.styleFrom(
             foregroundColor: teal,
             disabledForegroundColor: muted,
-            minimumSize: const Size(48, 48),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            textStyle: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+            minimumSize: Size(48, 48),
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             shape: rounded,
           ).copyWith(
             side: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.focused)
-                  ? const BorderSide(color: teal, width: 2.5)
+                  ? BorderSide(color: teal, width: 2.5)
                   : BorderSide.none,
             ),
           ),
@@ -239,12 +255,12 @@ ThemeData appTheme() {
       style:
           IconButton.styleFrom(
             foregroundColor: muted,
-            minimumSize: const Size(48, 48),
+            minimumSize: Size(48, 48),
             shape: rounded,
           ).copyWith(
             side: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.focused)
-                  ? const BorderSide(color: teal, width: 2.5)
+                  ? BorderSide(color: teal, width: 2.5)
                   : BorderSide.none,
             ),
           ),
@@ -254,16 +270,16 @@ ThemeData appTheme() {
       shadowColor: ink.withValues(alpha: .14),
       surfaceTintColor: Colors.transparent,
       margin: EdgeInsets.zero,
-      color: Colors.white,
+      color: p.panelSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: surfaceBorder),
+        side: BorderSide(color: surfaceBorder),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: p.panelSurface,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: teal,
+      indicatorColor: p.actionPurple,
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           color: states.contains(WidgetState.selected) ? Colors.white : muted,
@@ -281,7 +297,7 @@ ThemeData appTheme() {
       ),
       height: 76,
     ),
-    tabBarTheme: const TabBarThemeData(
+    tabBarTheme: TabBarThemeData(
       labelColor: teal,
       unselectedLabelColor: muted,
       labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
@@ -302,14 +318,14 @@ ThemeData appTheme() {
       collapsedIconColor: muted,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: controlBorder),
+        side: BorderSide(color: controlBorder),
       ),
       collapsedShape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: surfaceBorder),
+        side: BorderSide(color: surfaceBorder),
       ),
-      tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      childrenPadding: EdgeInsets.fromLTRB(16, 4, 16, 16),
       clipBehavior: Clip.antiAlias,
     ),
     chipTheme: ChipThemeData(
@@ -323,15 +339,15 @@ ThemeData appTheme() {
           width: states.contains(WidgetState.focused) ? 2.5 : 1,
         ),
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: p.panelSurface,
       selectedColor: mint,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      labelStyle: const TextStyle(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      labelStyle: TextStyle(
         color: teal,
         fontSize: 12,
         fontWeight: FontWeight.w600,
       ),
-      secondaryLabelStyle: const TextStyle(
+      secondaryLabelStyle: TextStyle(
         color: ink,
         fontSize: 12,
         fontWeight: FontWeight.w600,
@@ -339,26 +355,26 @@ ThemeData appTheme() {
       checkmarkColor: teal,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
+    progressIndicatorTheme: ProgressIndicatorThemeData(
       color: teal,
-      linearTrackColor: Color(0xFFD5DFEE),
+      linearTrackColor: p.surfaceHigh,
       linearMinHeight: 8,
       borderRadius: BorderRadius.all(Radius.circular(6)),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: ink,
-      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      backgroundColor: p.isDark ? p.surfaceHigh : ink,
+      contentTextStyle: TextStyle(color: Colors.white, fontSize: 14),
       actionTextColor: electric,
       closeIconColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: p.panelSurface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Colors.white,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: p.panelSurface,
       surfaceTintColor: Colors.transparent,
       showDragHandle: true,
       dragHandleColor: controlBorder,
@@ -367,21 +383,21 @@ ThemeData appTheme() {
       ),
     ),
     popupMenuTheme: PopupMenuThemeData(
-      color: Colors.white,
+      color: p.panelSurface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: surfaceBorder),
+        side: BorderSide(color: surfaceBorder),
       ),
-      textStyle: const TextStyle(color: ink, fontSize: 14),
+      textStyle: TextStyle(color: ink, fontSize: 14),
     ),
-    dataTableTheme: const DataTableThemeData(
+    dataTableTheme: DataTableThemeData(
       headingRowColor: WidgetStatePropertyAll(surfaceLow),
       headingTextStyle: TextStyle(color: ink, fontWeight: FontWeight.w700),
       dataTextStyle: TextStyle(color: ink, fontSize: 14),
       dividerThickness: 1,
     ),
-    listTileTheme: const ListTileThemeData(
+    listTileTheme: ListTileThemeData(
       textColor: ink,
       iconColor: muted,
       selectedColor: teal,
@@ -389,45 +405,48 @@ ThemeData appTheme() {
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
-        color: ink,
+        color: p.isDark ? p.surfaceHigh : ink,
         borderRadius: BorderRadius.circular(8),
       ),
-      textStyle: const TextStyle(color: Colors.white, fontSize: 13),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      textStyle: TextStyle(color: Colors.white, fontSize: 13),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     ),
   );
 }
 
-Widget brand({bool light = false}) => FittedBox(
-  fit: BoxFit.scaleDown,
-  alignment: Alignment.centerLeft,
-  child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEAF8FF),
-          borderRadius: BorderRadius.circular(12),
+Widget brand({bool light = false}) => Builder(
+  builder: (context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.centerLeft,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: Color(0xFFEAF8FF),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Image.asset(
+            'assets/brand/schulpilot-mark.png',
+            width: 30,
+            height: 30,
+            excludeFromSemantics: true,
+          ),
         ),
-        child: Image.asset(
-          'assets/brand/schulpilot-mark.png',
-          width: 30,
-          height: 30,
-          excludeFromSemantics: true,
+        SizedBox(width: 11),
+        Text(
+          'SCHULPILOT',
+          style: TextStyle(
+            fontFamily: 'SpaceGrotesk',
+            fontSize: 19,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .4,
+            color: light ? Colors.white : context.palette.ink,
+          ),
         ),
-      ),
-      const SizedBox(width: 11),
-      Text(
-        'SCHULPILOT',
-        style: TextStyle(
-          fontSize: 19,
-          fontWeight: FontWeight.w900,
-          letterSpacing: .4,
-          color: light ? Colors.white : ink,
-        ),
-      ),
-    ],
+      ],
+    ),
   ),
 );
 
@@ -446,13 +465,17 @@ class Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
     semanticContainer: false,
-    color: color ?? panelColor(tone),
+    color: context.palette.surface(color ?? panelColor(tone)),
     elevation: tone == PanelTone.subtle ? 0 : null,
     shape: tone == PanelTone.neutral
         ? null
         : RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: panelAccent(tone).withValues(alpha: .45)),
+            side: BorderSide(
+              color: context.palette
+                  .resolve(panelAccent(tone))
+                  .withValues(alpha: .65),
+            ),
           ),
     child: Padding(
       padding:
@@ -480,11 +503,11 @@ class SurfaceInset extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: padding,
     decoration: BoxDecoration(
-      color: panelColor(tone),
+      color: context.palette.surface(panelColor(tone)),
       border: Border.all(
         color: tone == PanelTone.subtle || tone == PanelTone.neutral
-            ? surfaceBorder
-            : panelAccent(tone).withValues(alpha: .45),
+            ? context.palette.surfaceBorder
+            : context.palette.resolve(panelAccent(tone)).withValues(alpha: .65),
       ),
       borderRadius: BorderRadius.circular(14),
     ),
@@ -508,156 +531,46 @@ class FocusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    clipBehavior: Clip.antiAlias,
+    padding: const EdgeInsets.all(26),
     decoration: BoxDecoration(
+      color: context.palette.mint,
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: const Color(0xFF526B94)),
-      boxShadow: [
-        BoxShadow(
-          color: ink.withValues(alpha: .18),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ],
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF111C34), Color(0xFF31235E)],
-      ),
+      border: Border.all(color: context.palette.controlBorder),
     ),
-    child: Stack(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Positioned.fill(
-          child: IgnorePointer(child: CustomPaint(painter: _CircuitPainter())),
-        ),
-        Positioned(
-          right: -36,
-          top: -35,
-          child: Container(
-            width: 160,
-            height: 160,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: .05),
+        Row(
+          children: [
+            Icon(icon, color: context.palette.teal, size: 25),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                eyebrow,
+                style: TextStyle(
+                  color: context.palette.teal,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-        Positioned(
-          right: 32,
-          top: 32,
-          child: Icon(
-            icon,
-            size: 58,
-            color: Colors.white.withValues(alpha: .12),
-          ),
+        const SizedBox(height: 20),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.headlineMedium
+              ?.copyWith(fontSize: 29),
         ),
-        Padding(
-          padding: const EdgeInsets.all(26),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow.toUpperCase(),
-                style: const TextStyle(
-                  color: electric,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.3,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.only(right: 30),
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 29,
-                    height: 1.15,
-                    letterSpacing: -.7,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Color(0xFFD4D4EE), height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              FilledButtonTheme(
-                data: FilledButtonThemeData(
-                  style:
-                      FilledButton.styleFrom(
-                        backgroundColor: electric,
-                        foregroundColor: const Color(0xFF101B31),
-                        minimumSize: const Size(48, 52),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 16,
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ).copyWith(
-                        side: WidgetStateProperty.resolveWith(
-                          (states) => states.contains(WidgetState.focused)
-                              ? const BorderSide(color: ink, width: 2.5)
-                              : BorderSide.none,
-                        ),
-                      ),
-                ),
-                child: action,
-              ),
-            ],
-          ),
+        const SizedBox(height: 12),
+        Text(
+          subtitle,
+          style: TextStyle(color: context.palette.muted, height: 1.5),
         ),
+        const SizedBox(height: 24),
+        Align(alignment: Alignment.centerLeft, child: action),
       ],
     ),
   );
-}
-
-class _CircuitPainter extends CustomPainter {
-  const _CircuitPainter();
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grid = Paint()
-      ..color = electric.withValues(alpha: .045)
-      ..strokeWidth = .7;
-    for (double x = size.width * .55; x < size.width; x += 28) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    }
-    for (double y = 0; y < size.height; y += 28) {
-      canvas.drawLine(Offset(size.width * .55, y), Offset(size.width, y), grid);
-    }
-    final line = Paint()
-      ..color = electric.withValues(alpha: .32)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-    final path = Path()
-      ..moveTo(size.width - 94, 0)
-      ..lineTo(size.width - 94, 26)
-      ..lineTo(size.width - 70, 50)
-      ..lineTo(size.width, 50);
-    canvas.drawPath(path, line);
-    canvas.drawCircle(
-      Offset(size.width - 94, 26),
-      3,
-      Paint()..color = electric.withValues(alpha: .6),
-    );
-    canvas.drawLine(
-      Offset(0, size.height - 4),
-      Offset(size.width * .2, size.height - 4),
-      line,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_CircuitPainter oldDelegate) => false;
 }
 
 class Notice extends StatelessWidget {
@@ -675,21 +588,32 @@ class Notice extends StatelessWidget {
     margin: const EdgeInsets.symmetric(vertical: 8),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: warning ? warningSurface : cyanSurface,
+      color: warning
+          ? context.palette.warningSurface
+          : context.palette.cyanSurface,
       border: Border.all(
-        color: (warning ? warningInk : cyanInk).withValues(alpha: .45),
+        color: (warning ? context.palette.warningInk : context.palette.cyanInk)
+            .withValues(alpha: .65),
       ),
       borderRadius: BorderRadius.circular(14),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: warning ? warningInk : cyanInk),
+        Icon(
+          icon,
+          size: 20,
+          color: warning ? context.palette.warningInk : context.palette.cyanInk,
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 14, color: ink, height: 1.5),
+            style: TextStyle(
+              fontSize: 14,
+              color: context.palette.ink,
+              height: 1.5,
+            ),
           ),
         ),
       ],
@@ -705,16 +629,16 @@ class Tag extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
     decoration: BoxDecoration(
-      color: color,
-      border: Border.all(color: surfaceBorder),
+      color: context.palette.surface(color),
+      border: Border.all(color: context.palette.surfaceBorder),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: ink,
+        color: context.palette.ink,
       ),
     ),
   );
@@ -948,10 +872,8 @@ class WorkspaceShell extends StatelessWidget {
       ),
     if (state.isAdmin) ...[
       (Icons.tune_rounded, 'Einrichtung', '/admin/settings'),
-      if (sidebar) ...[
-        (Icons.storefront_outlined, 'Verkauf', '/admin/verkauf'),
-        (Icons.notifications_outlined, 'Push', '/admin/push'),
-      ],
+      (Icons.storefront_outlined, 'Verkauf', '/admin/verkauf'),
+      (Icons.notifications_outlined, 'Push', '/admin/push'),
     ],
     if (browser && state.isOwner && !state.isDemo)
       (Icons.receipt_long_outlined, 'Tarif', '/bestellungen'),
@@ -1003,14 +925,20 @@ class WorkspaceShell extends StatelessWidget {
           : AppBar(
               title: brand(),
               toolbarHeight: 68,
-              actions: [NotificationBell(state), const SizedBox(width: 12)],
+              actions: [
+                AppearanceToggle(state),
+                NotificationBell(state),
+                SizedBox(width: 12),
+              ],
             ),
       bottomNavigationBar: desktop
           ? null
           : DecoratedBox(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: surfaceBorder)),
+              decoration: BoxDecoration(
+                color: context.palette.panelSurface,
+                border: Border(
+                  top: BorderSide(color: context.palette.surfaceBorder),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0x0F14243D),
@@ -1046,11 +974,16 @@ class WorkspaceShell extends StatelessWidget {
               children: [
                 if (desktop)
                   _WorkspaceHeader(
+                    state: state,
                     roleLabel: _roleLabel,
                     section: state.isAdmin && path == '/admin/verkauf'
                         ? 'Verkauf'
                         : state.isAdmin && path == '/admin/push'
                         ? 'Push'
+                        : path.startsWith('/messages/')
+                        ? 'Nachrichten & Wünsche'
+                        : path == '/notifications'
+                        ? 'Neuigkeiten'
                         : entries[selected].$2,
                     displayName: displayName,
                     compact: rail,
@@ -1059,7 +992,7 @@ class WorkspaceShell extends StatelessWidget {
                 Expanded(
                   child: SelectionArea(
                     child: SingleChildScrollView(
-                      key: const ValueKey('workspace-scroll'),
+                      key: ValueKey('workspace-scroll'),
                       padding: EdgeInsets.fromLTRB(
                         sidebar
                             ? 36
@@ -1082,18 +1015,18 @@ class WorkspaceShell extends StatelessWidget {
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           child: Column(
-                            key: const ValueKey('workspace-content'),
+                            key: ValueKey('workspace-content'),
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (state.isDemo)
-                                const Padding(
+                                Padding(
                                   padding: EdgeInsets.only(bottom: 20),
                                   child: Tag('Demo · nur Beispieldaten'),
                                 ),
                               if (!state.isDemo &&
                                   !state.isAdmin &&
                                   state.user?['real_data_enabled'] == false)
-                                const Notice(
+                                Notice(
                                   'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
                                 ),
                               if (showTitle || actions.isNotEmpty) ...[
@@ -1102,27 +1035,27 @@ class WorkspaceShell extends StatelessWidget {
                                   subtitle: showTitle ? subtitle : null,
                                   actions: actions,
                                 ),
-                                const SizedBox(height: 26),
+                                SizedBox(height: 26),
                               ],
                               child,
                               if (browser && path == '/app') ...[
-                                const SizedBox(height: 28),
+                                SizedBox(height: 28),
                                 AndroidDownload(state.api),
                               ],
                               if (!state.isChild || path == '/settings') ...[
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                                 Wrap(
                                   spacing: 12,
                                   children: [
                                     TextButton(
                                       onPressed: () =>
                                           openRoute(context, '/privacy'),
-                                      child: const Text('Datenschutz'),
+                                      child: Text('Datenschutz'),
                                     ),
                                     TextButton(
                                       onPressed: () =>
                                           openRoute(context, '/about'),
-                                      child: const Text('Über SCHULPILOT'),
+                                      child: Text('Über SCHULPILOT'),
                                     ),
                                   ],
                                 ),
@@ -1156,30 +1089,25 @@ class _WorkspaceSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    key: const ValueKey('workspace-sidebar'),
+    key: ValueKey('workspace-sidebar'),
     width: 248,
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [ink, Color(0xFF111A30)],
-      ),
-      border: Border(right: BorderSide(color: Color(0xFF354361))),
+    margin: EdgeInsets.fromLTRB(12, 12, 0, 12),
+    decoration: BoxDecoration(
+      color: context.palette.panelSurface,
+      border: Border.all(color: context.palette.surfaceBorder),
+      borderRadius: BorderRadius.circular(26),
     ),
     child: SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Padding(padding: EdgeInsets.fromLTRB(24, 26, 24, 28), child: brand()),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 26, 24, 28),
-            child: brand(light: true),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 20, 16),
+            padding: EdgeInsets.fromLTRB(28, 0, 20, 16),
             child: Text(
               roleLabel,
-              style: const TextStyle(
-                color: Color(0xFFBBC9E0),
+              style: TextStyle(
+                color: context.palette.muted,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
                 letterSpacing: .4,
@@ -1188,33 +1116,33 @@ class _WorkspaceSidebar extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               children: [
                 for (var i = 0; i < entries.length; i++)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.only(bottom: 8),
                     child: _NavigationSurface(
                       selected: i == selected,
                       child: ListTile(
                         selected: i == selected,
                         focusColor: Colors.transparent,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                         leading: Icon(
                           entries[i].$1,
                           color: i == selected
-                              ? electric
-                              : const Color(0xFFBBC9E0),
+                              ? context.palette.teal
+                              : context.palette.muted,
                           size: 22,
                         ),
                         title: Text(
                           entries[i].$2,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: i == selected
+                                ? context.palette.ink
+                                : context.palette.muted,
                             fontSize: 14,
                             fontWeight: i == selected
                                 ? FontWeight.w700
@@ -1250,14 +1178,16 @@ class _NavigationSurfaceState extends State<_NavigationSurface> {
     onFocusChange: (value) => setState(() => focused = value),
     child: Material(
       color: focused
-          ? const Color(0xFF354B70)
+          ? context.palette.cyanSurface
           : widget.selected
-          ? const Color(0xFF303A60)
+          ? context.palette.mint
           : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: focused || widget.selected ? electric : Colors.transparent,
+          color: focused || widget.selected
+              ? context.palette.teal
+              : Colors.transparent,
           width: focused ? 2.5 : 1,
         ),
       ),
@@ -1273,18 +1203,18 @@ class _WorkspaceRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    key: const ValueKey('workspace-rail'),
+    key: ValueKey('workspace-rail'),
     width: 104,
-    color: ink,
+    color: context.palette.panelSurface,
     child: SafeArea(
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: EdgeInsets.symmetric(vertical: 24),
             child: Container(
-              padding: const EdgeInsets.all(9),
+              padding: EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: cyanSurface,
+                color: context.palette.cyanSurface,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Image.asset(
@@ -1298,19 +1228,17 @@ class _WorkspaceRail extends StatelessWidget {
             child: NavigationRail(
               scrollable: true,
               minWidth: 104,
-              backgroundColor: ink,
-              indicatorColor: const Color(0xFF303A60),
-              selectedIconTheme: const IconThemeData(color: electric),
-              unselectedIconTheme: const IconThemeData(
-                color: Color(0xFFBBC9E0),
-              ),
-              selectedLabelTextStyle: const TextStyle(
-                color: Colors.white,
+              backgroundColor: context.palette.panelSurface,
+              indicatorColor: context.palette.mint,
+              selectedIconTheme: IconThemeData(color: context.palette.teal),
+              unselectedIconTheme: IconThemeData(color: context.palette.muted),
+              selectedLabelTextStyle: TextStyle(
+                color: context.palette.ink,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
               ),
-              unselectedLabelTextStyle: const TextStyle(
-                color: Color(0xFFBBC9E0),
+              unselectedLabelTextStyle: TextStyle(
+                color: context.palette.muted,
                 fontSize: 12,
               ),
               labelType: NavigationRailLabelType.all,
@@ -1332,12 +1260,14 @@ class _WorkspaceRail extends StatelessWidget {
 }
 
 class _WorkspaceHeader extends StatelessWidget {
+  final AppState state;
   final String roleLabel;
   final String section;
   final String displayName;
   final bool compact;
   final Widget notificationBell;
   const _WorkspaceHeader({
+    required this.state,
     required this.roleLabel,
     required this.section,
     required this.displayName,
@@ -1347,12 +1277,12 @@ class _WorkspaceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    key: const ValueKey('workspace-header'),
-    height: 80,
+    key: ValueKey('workspace-header'),
+    height: 88,
     padding: EdgeInsets.symmetric(horizontal: compact ? 28 : 36),
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: surfaceBorder)),
+    decoration: BoxDecoration(
+      color: context.palette.panelSurface,
+      border: Border(bottom: BorderSide(color: context.palette.surfaceBorder)),
     ),
     child: Row(
       children: [
@@ -1364,14 +1294,14 @@ class _WorkspaceHeader extends StatelessWidget {
                   roleLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: muted, fontSize: 13),
+                  style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(
                   Icons.chevron_right_rounded,
-                  color: muted,
+                  color: context.palette.muted,
                   size: 18,
                 ),
               ),
@@ -1380,33 +1310,35 @@ class _WorkspaceHeader extends StatelessWidget {
                   section,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: 16),
+        AppearanceToggle(state),
+        SizedBox(width: 8),
         notificationBell,
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Tooltip(
           message: 'Konto öffnen',
           child: TextButton(
             onPressed: () => context.go('/settings'),
             style: TextButton.styleFrom(
-              foregroundColor: ink,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              foregroundColor: context.palette.ink,
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircleAvatar(
                   radius: 17,
-                  backgroundColor: mint,
-                  foregroundColor: teal,
+                  backgroundColor: context.palette.mint,
+                  foregroundColor: context.palette.teal,
                   child: Text(displayName.characters.first.toUpperCase()),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: compact ? 140 : 200),
                   child: Text(
@@ -1415,8 +1347,8 @@ class _WorkspaceHeader extends StatelessWidget {
                     maxLines: 1,
                   ),
                 ),
-                const SizedBox(width: 6),
-                const Icon(Icons.chevron_right_rounded, size: 18),
+                SizedBox(width: 6),
+                Icon(Icons.chevron_right_rounded, size: 18),
               ],
             ),
           ),
@@ -1433,19 +1365,19 @@ class NotificationBell extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state.inbox,
     builder: (context, _) => IconButton.outlined(
-      key: const ValueKey('notification-bell'),
+      key: ValueKey('notification-bell'),
       tooltip: state.isAdmin ? 'Push-Status' : 'Benachrichtigungen',
       style:
           IconButton.styleFrom(
-            backgroundColor: surfaceLow,
-            foregroundColor: ink,
-            side: const BorderSide(color: controlBorder),
+            backgroundColor: context.palette.surfaceLow,
+            foregroundColor: context.palette.ink,
+            side: BorderSide(color: context.palette.controlBorder),
           ).copyWith(
             side: WidgetStateProperty.resolveWith(
               (states) => BorderSide(
                 color: states.contains(WidgetState.focused)
-                    ? teal
-                    : controlBorder,
+                    ? context.palette.teal
+                    : context.palette.controlBorder,
                 width: states.contains(WidgetState.focused) ? 2.5 : 1,
               ),
             ),
@@ -1455,7 +1387,7 @@ class NotificationBell extends StatelessWidget {
       icon: Badge(
         isLabelVisible: !state.isAdmin && state.inbox.unread > 0,
         label: Text('${state.inbox.unread > 99 ? '99+' : state.inbox.unread}'),
-        child: const Icon(Icons.notifications_none_rounded),
+        child: Icon(Icons.notifications_none_rounded),
       ),
     ),
   );
@@ -1485,7 +1417,10 @@ class _WorkspaceHeading extends StatelessWidget {
           if (subtitle?.isNotEmpty == true)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(subtitle!, style: const TextStyle(color: muted)),
+              child: Text(
+                subtitle!,
+                style: TextStyle(color: context.palette.muted),
+              ),
             ),
         ],
       );
@@ -1519,69 +1454,79 @@ class _WorkspaceHeading extends StatelessWidget {
   );
 }
 
-Widget heading(String title, {String? subtitle, Widget? trailing}) => Padding(
-  padding: const EdgeInsets.only(top: 6, bottom: 18),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: ink,
-                ),
-              ),
-            ),
-            if (subtitle != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 5),
+Widget heading(String title, {String? subtitle, Widget? trailing}) => Builder(
+  builder: (context) => Padding(
+    padding: const EdgeInsets.only(top: 6, bottom: 18),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                header: true,
                 child: Text(
-                  subtitle,
-                  style: const TextStyle(color: muted, fontSize: 13),
+                  title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: context.palette.ink,
+                  ),
                 ),
               ),
-          ],
+              if (subtitle != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
-      ?trailing,
-    ],
+        ?trailing,
+      ],
+    ),
   ),
 );
 
 Widget stat(String value, String label, IconData icon, {Color color = mint}) =>
-    SizedBox(
-      width: 200,
-      child: Panel(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(12),
+    Builder(
+      builder: (context) => SizedBox(
+        width: 200,
+        child: Panel(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: context.palette.surface(color),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: context.palette.teal, size: 22),
               ),
-              child: Icon(icon, color: teal, size: 22),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.w800,
-                color: ink,
+              const SizedBox(height: 15),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w800,
+                  color: context.palette.ink,
+                ),
               ),
-            ),
-            Text(label, style: const TextStyle(fontSize: 12, color: muted)),
-          ],
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, color: context.palette.muted),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1640,9 +1585,9 @@ class AssessmentTrail extends StatelessWidget {
                   '${outcomeLabel(entry['previous_outcome'])} → ${outcomeLabel(entry['outcome'])}',
                 ),
               ),
-            const Text(
+            Text(
               'Deine ursprüngliche Antwort, die Lernzeit und die erfassten Hilfen bleiben erhalten.',
-              style: TextStyle(color: muted, fontSize: 13),
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
           ],
         );
@@ -1705,4 +1650,24 @@ String schoolDate(dynamic value) {
     return 'Termin noch offen';
   }
   return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+}
+
+/// Display choice only. It performs no provider, learning or account request.
+class AppearanceToggle extends StatelessWidget {
+  final AppState state;
+  const AppearanceToggle(this.state, {super.key});
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: state,
+    builder: (context, _) => IconButton.outlined(
+      key: const ValueKey('appearance-toggle'),
+      tooltip: state.darkAppearance ? 'Helles Design' : 'Dunkles Design',
+      onPressed: () => state.setAppearance(!state.darkAppearance),
+      icon: Icon(
+        state.darkAppearance
+            ? Icons.light_mode_outlined
+            : Icons.dark_mode_outlined,
+      ),
+    ),
+  );
 }

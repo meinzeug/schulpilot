@@ -184,7 +184,7 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(identityChanged);
     load();
-    timer = Timer.periodic(const Duration(seconds: 3), (_) {
+    timer = Timer.periodic(Duration(seconds: 3), (_) {
       if (current &&
           foreground &&
           waiting &&
@@ -253,7 +253,7 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (!current) return const SizedBox.shrink();
+    if (!current) return SizedBox.shrink();
     final ready = job?['status'] == 'completed';
     final failed = job != null && !waiting && !ready;
     return PageFrame(
@@ -267,10 +267,10 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
               ready
                   ? Icons.fact_check_outlined
                   : Icons.document_scanner_outlined,
-              color: teal,
+              color: context.palette.teal,
               size: 44,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               ready
                   ? 'Der Text ist bereit.'
@@ -279,34 +279,34 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
                   : error != null
                   ? 'Die Vorbereitung ist gerade nicht erreichbar.'
                   : 'Die KI liest dein Foto …',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (waiting && error == null) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 16),
-              const Text(
+              LinearProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
                 'Du kannst die App schließen. Deine Seite wird weiter vorbereitet.',
               ),
             ],
             if (error is ApiError) Text((error as ApiError).message),
             if (failed || error != null)
-              const Text(
+              Text(
                 'Deine bisherige Seite und Übungen bleiben erhalten. Es wird nichts automatisch erneut gestartet.',
               ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             if (ready)
               FilledButton.icon(
                 onPressed: () =>
                     openRoute(context, '/material/${widget.materialId}'),
-                icon: const Icon(Icons.fact_check_outlined),
-                label: const Text('Seite prüfen'),
+                icon: Icon(Icons.fact_check_outlined),
+                label: Text('Seite prüfen'),
               ),
             if (error != null)
               OutlinedButton.icon(
                 onPressed: load,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Status neu laden'),
+                icon: Icon(Icons.refresh_rounded),
+                label: Text('Status neu laden'),
               ),
             TextButton.icon(
               onPressed: () => openRoute(
@@ -315,8 +315,8 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
                     ? '/library/${material!['child_id']}'
                     : '/app',
               ),
-              icon: const Icon(Icons.folder_outlined),
-              label: const Text('Zu meinen Heften'),
+              icon: Icon(Icons.folder_outlined),
+              label: Text('Zu meinen Heften'),
             ),
           ],
         ),

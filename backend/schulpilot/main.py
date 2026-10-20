@@ -20,6 +20,7 @@ from . import (
     grade_imports,
     grades,
     installation,
+    instructional_decisions,
     language_projects,
     learning,
     learning_controller,
@@ -252,6 +253,7 @@ for router in (
     learning_tips.router,
     learning_controller.router,
     controller_jobs.router,
+    instructional_decisions.router,
     routing_admin.router,
     unit_actions.router,
 ):

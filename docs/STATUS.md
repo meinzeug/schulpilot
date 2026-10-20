@@ -1,3 +1,48 @@
+# Freigabevorbereitung 1.15.0+65 ·20.10.2026
+
+Produktcode und Prüfungen für die neue zustandsbehaftete Lernsteuerung und zwei
+vollständige Erscheinungsbilder werden hier vorbereitet. Zum Zeitpunkt dieses
+Quellcommits läuft Produktion noch mit1.14.3+63; der nachfolgende tatsächliche
+Release-/Build-/Deploymentnachweis ersetzt diesen Kopf nach erfolgreicher Abnahme.
+
+Neuer gemeinsamer Cyber-Arbeitsraum: dunkel und hell, lokal umschaltbar ohne
+Formularverlust oder Serverauftrag. Kinder starten in einer Lernstation mit
+eigener künstlicher Buchdrohne, kompaktem Fotoeingang und klarer Hauptaktion.
+Lernen, Wörter, Nachrichten und Konto gemeinsam neu geordnet. Eltern sehen reale
+Übungsbelege und Handlungsbedarf; Admins Triage und Betriebsaktionen. Einheitliche
+Navigation in allen Breiten, weiterhin Backendrollen und keine Fantasiespielwerte.
+Lokale Nunito-/Space-Grotesk-Schriften mit OFL; kein Font-CDN.
+
+Die Lernsteuerung verbindet vorhandene Antworten, Hilfen, Quellen und Jobgrenzen
+mit einem gespeicherten Kurzplan. Endlicher Bruch-Vorwissenspfad, belegtes
+Langzeitgedächtnis, optionaler begrenzter Modellplan, passende echte Ressourcen,
+Medienrückkehr und ausdrücklich neue Verständnisfragen. Antworten/Hilfen bleiben
+unverändert nachvollziehbar; veraltete Modellantworten werden verworfen.
+Schema0023 bleibt erhalten. Keine Migration privater Antworten in andere Systeme.
+
+OpenRouter-Kontodatenschutz geprüft/gespeichert: ZDR und keine Trainings-/
+Observability-Inhaltsspeicherung. Bestehende freigegebene Route/Revision29 und
+Budgets unverändert. Genau ein weiterer künstlicher normal reservierter Planjob,
+Kosten0,000514USD, gesamte bisherige künstliche Evaluation0,238013USD innerhalb
+0,25USD. Kein echter Kinderinhalt und keine Produktions-Testantwort dieser Prüfung.
+
+Vollständiger Flutterlauf983 Prüfungen bestanden, danach201 überlappende
+Renderer-/Design-/Lernraumprüfungen. Analyse/Ruff sauber, bekannte Schlüssel in617
+Quelldateien nicht gefunden. Künstliche mobile/weite Hell-/Dunkel-Browserprüfung
+bestätigt erreichbare Hauptaktion und erhaltene Rückmeldung nach Reload.
+Abschließender PostgreSQL-Lauf und signierte Builds/Produktivbereitstellung
+stehen zu diesem Quellstand noch aus; keine vorweggenommene Live-Abnahme.
+
+Architektur/Schnittstellen/Beispielspur und Grenzen:
+docs/LEARNING_CONTROLLER_2026_10_20.md. Design, Recherche und Assetherkunft:
+docs/DESIGN_SYSTEM.md sowie CHILD_/PARENT_/ADMIN_WORKSPACE_2026_10_20.md.
+Rückweg ist die vor Deployment aktive1.14.3+63, Release20261020T160732Z-421e0ea;
+neuere Antworten/Löschjournale dürfen nie durch einen alten Datenstand ersetzt werden.
+
+---
+
+Nachfolgend historische Produktionsnachweise.
+
 # Produktionsstand 1.14.2+62 · 20.10.2026
 
 Live: Release `20261020T132931Z-091b791`, Produktcommit

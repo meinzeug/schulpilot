@@ -56,24 +56,21 @@ class PreparationCard extends StatelessWidget {
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: EdgeInsets.only(top: 12),
       child: Panel(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: processing
-              ? const SizedBox(
+              ? SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.fact_check_outlined, color: teal),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+              : Icon(Icons.fact_check_outlined, color: context.palette.teal),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${schoolDate(preparation['date'])} · $action'),
-          trailing: const Icon(Icons.chevron_right_rounded),
+          trailing: Icon(Icons.chevron_right_rounded),
           onTap: open,
         ),
       ),

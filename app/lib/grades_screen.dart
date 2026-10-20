@@ -6,6 +6,7 @@ import 'api.dart';
 import 'grade_import_screen.dart';
 import 'ui.dart';
 import 'parent_child_navigation.dart';
+import 'parent_workspace_ui.dart';
 
 const gradeKinds = <String, String>{
   'classwork': 'Klassenarbeit',
@@ -166,18 +167,18 @@ class _GradesScreenState extends State<GradesScreen> {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Passendes Lernziel anlegen?'),
-        content: const Text(
+        title: Text('Passendes Lernziel anlegen?'),
+        content: Text(
           'Der bestätigte Heftstoff wird als verbindlicher Lernauftrag eingeplant. Übungen entstehen erst beim bewussten Start der Runde.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Abbrechen'),
+            child: Text('Abbrechen'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Lernziel anlegen'),
+            child: Text('Lernziel anlegen'),
           ),
         ],
       ),
@@ -196,18 +197,18 @@ class _GradesScreenState extends State<GradesScreen> {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Note entfernen?'),
+        title: Text('Note entfernen?'),
         content: Text(
           grade['assignment_id'] == null ? 'Dieser Eintrag wird entfernt.' : 'Die Note wird entfernt. Das bereits angelegte Lernziel bleibt erhalten und kann im Lernplan geändert werden.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Behalten'),
+            child: Text('Behalten'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Entfernen'),
+            child: Text('Entfernen'),
           ),
         ],
       ),
@@ -225,18 +226,19 @@ class _GradesScreenState extends State<GradesScreen> {
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
     title: 'Noten & Lernschwerpunkte',
+    showTitle: false,
     actions: [
       if (manage)
         OutlinedButton.icon(
           onPressed: saving ? null : importPdf,
-          icon: const Icon(Icons.picture_as_pdf_outlined),
-          label: const Text('PDF importieren'),
+          icon: Icon(Icons.picture_as_pdf_outlined),
+          label: Text('PDF importieren'),
         ),
       if (manage)
         FilledButton.icon(
           onPressed: saving ? null : () => edit(),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Note eintragen'),
+          icon: Icon(Icons.add_rounded),
+          label: Text('Note eintragen'),
         ),
     ],
     child: !current
@@ -250,15 +252,25 @@ class _GradesScreenState extends State<GradesScreen> {
                 childName: data?['child_name'],
                 subtitle: 'Schulnoten · getrennt vom Übungsstand',
               ),
+              const ParentWorkspaceHero(
+                eyebrow: 'SCHULE IM BLICK',
+                title: 'Noten & Lernschwerpunkte',
+                subtitle: 'Eingetragene Schulnoten ordnen und Lernschwerpunkte bewusst begleiten. Der Übungsstand bleibt ein eigener Blick auf das Lernen.',
+                icon: Icons.school_outlined,
+              ),
+              const SizedBox(height: 24),
               if (loading || saving) const LinearProgressIndicator(),
               if (error != null) ...[
                 Notice(
                   error is ApiError ? (error as ApiError).message : 'Das hat gerade nicht geklappt. Bitte erneut versuchen.',
                 ),
-                TextButton(onPressed: load, child: const Text('Neu laden')),
+                TextButton(onPressed: load, child: Text('Neu laden')),
               ],
               if (data != null) ...[
-                heading('Fächer & eingetragene Noten'),
+                const ParentSectionHeading(
+                  title: 'Fächer & eingetragene Noten',
+                  icon: Icons.assignment_outlined,
+                ),
                 for (final focus in data!['focus'] as List)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -268,7 +280,7 @@ class _GradesScreenState extends State<GradesScreen> {
                         children: [
                           Text(
                             focus['subject'],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
                             ),
@@ -278,17 +290,20 @@ class _GradesScreenState extends State<GradesScreen> {
                             focus['average'] == null
                                 ? 'Unterschiedliche Notensysteme'
                                 : '${focus['scale'] == 'points_0_15' ? 'Punkteschnitt' : 'Notenschnitt'}: ${gradeNumber(focus['average'])}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                           Text(
                             '${focus['observations']} aktuelle Einträge',
-                            style: const TextStyle(color: muted, fontSize: 12),
+                            style: TextStyle(
+                              color: context.palette.muted,
+                              fontSize: 12,
+                            ),
                           ),
                           if ((focus['undated_observations'] ?? 0) > 0)
                             Text(
                               '${focus['undated_observations']} davon ohne Einzeldatum · aktuelles Schuljahr',
-                              style: const TextStyle(
-                                color: muted,
+                              style: TextStyle(
+                                color: context.palette.muted,
                                 fontSize: 12,
                               ),
                             ),
@@ -305,8 +320,8 @@ class _GradesScreenState extends State<GradesScreen> {
                                 'declining' => 'Zuletzt schwächer',
                                 _ => 'Zuletzt ähnlich',
                               },
-                              style: const TextStyle(
-                                color: muted,
+                              style: TextStyle(
+                                color: context.palette.muted,
                                 fontSize: 13,
                               ),
                             ),
@@ -343,7 +358,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 for (final raw in data!['items'] as List)
                   _gradeCard(Json.from(raw)),
                 if ((data!['items'] as List).isEmpty)
-                  const Notice(
+                  Notice(
                     'Noch keine Noten eingetragen. Der Lernplan funktioniert auch ohne Noten.',
                   ),
                 Wrap(
@@ -359,7 +374,7 @@ class _GradesScreenState extends State<GradesScreen> {
                               page--;
                               load();
                             },
-                      icon: const Icon(Icons.chevron_left_rounded),
+                      icon: Icon(Icons.chevron_left_rounded),
                     ),
                     Text(
                       'Seite ${data!['pagination']['page']} von ${data!['pagination']['pages']}',
@@ -372,13 +387,13 @@ class _GradesScreenState extends State<GradesScreen> {
                               page++;
                               load();
                             },
-                      icon: const Icon(Icons.chevron_right_rounded),
+                      icon: Icon(Icons.chevron_right_rounded),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 ExpansionTile(
-                  title: const Text('Einfluss auf den Lernplan'),
+                  title: Text('Einfluss auf den Lernplan'),
                   children: [
                     Panel(
                       child: Column(
@@ -386,10 +401,8 @@ class _GradesScreenState extends State<GradesScreen> {
                         children: [
                           SwitchListTile.adaptive(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text(
-                              'Noten im Lernplan berücksichtigen',
-                            ),
-                            subtitle: const Text(
+                            title: Text('Noten im Lernplan berücksichtigen'),
+                            subtitle: Text(
                               'Mehr Gewicht für Fächer, die gerade Unterstützung brauchen.',
                             ),
                             value: data!['planning_enabled'] == true,
@@ -402,26 +415,35 @@ class _GradesScreenState extends State<GradesScreen> {
                                     );
                                   }),
                           ),
-                          const Text(
+                          Text(
                             'Die Mindestlernziele bleiben gleich. Andere Fächer und feste Elternaufträge bleiben im Plan.',
-                            style: TextStyle(color: muted, fontSize: 13),
+                            style: TextStyle(
+                              color: context.palette.muted,
+                              fontSize: 13,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
                     ExpansionTile(
-                      title: const Text('Wie wird das berücksichtigt?'),
+                      title: Text('Wie wird das berücksichtigt?'),
                       childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                       children: [
                         Text(
                           data!['notice'],
-                          style: const TextStyle(color: muted, fontSize: 13),
+                          style: TextStyle(
+                            color: context.palette.muted,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Ein gewichteter Schnitt ab 3 bzw. bis 9 Punkte erhöht das Gewicht etwas; ab 4 bzw. bis 6 Punkte stärker. Ein schwächerer Verlauf zählt zusätzlich. Die Gewichtung lässt sich hier ausschalten.',
-                          style: TextStyle(color: muted, fontSize: 13),
+                          style: TextStyle(
+                            color: context.palette.muted,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -444,15 +466,15 @@ class _GradesScreenState extends State<GradesScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: mint,
+                  color: context.palette.mint,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   '${gradeNumber(grade['value'])}${grade['scale'] == 'points_0_15' ? ' P.' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 23,
-                    color: teal,
+                    color: context.palette.teal,
                   ),
                 ),
               ),
@@ -463,14 +485,17 @@ class _GradesScreenState extends State<GradesScreen> {
                   children: [
                     Text(
                       grade['subject'],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
                     ),
                     Text(
                       '${gradeKinds[grade['kind']]} · ${grade['date_label'] ?? grade['assessed_on']}',
-                      style: const TextStyle(color: muted, fontSize: 13),
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 13,
+                      ),
                     ),
                     if (grade['topic'] != '') Text(grade['topic']),
                   ],
@@ -508,7 +533,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 onPressed: saving || grade['assignment_id'] != null
                     ? null
                     : () => goal(grade),
-                icon: const Icon(Icons.playlist_add_check_rounded),
+                icon: Icon(Icons.playlist_add_check_rounded),
                 label: Text(
                   grade['assignment_id'] == null
                       ? 'Passendes Lernziel anlegen'
@@ -724,7 +749,7 @@ class _GradeEditorState extends State<GradeEditor> {
                         );
                       }
                     },
-              icon: const Icon(Icons.calendar_month_outlined),
+              icon: Icon(Icons.calendar_month_outlined),
               label: Text(
                 day == null
                     ? 'Einzeldatum unbekannt · Datum ergänzen'
@@ -732,7 +757,7 @@ class _GradeEditorState extends State<GradeEditor> {
               ),
             ),
             ExpansionTile(
-              title: const Text('Weitere Angaben'),
+              title: Text('Weitere Angaben'),
               children: [
                 DropdownButtonFormField<int>(
                   initialValue: weight,
@@ -763,12 +788,9 @@ class _GradeEditorState extends State<GradeEditor> {
     actions: [
       TextButton(
         onPressed: saving ? null : () => Navigator.pop(context, false),
-        child: const Text('Abbrechen'),
+        child: Text('Abbrechen'),
       ),
-      FilledButton(
-        onPressed: saving ? null : save,
-        child: const Text('Speichern'),
-      ),
+      FilledButton(onPressed: saving ? null : save, child: Text('Speichern')),
     ],
   );
 }

@@ -1,3 +1,8 @@
+Erweiterung20.10.2026 für1.15.0+65: Tatsächlich ausführbare Kurzpläne, langfristige
+Belege, individuelle Modellplanung und künstliche Bruchspur stehen in
+[LEARNING_CONTROLLER_2026_10_20.md](LEARNING_CONTROLLER_2026_10_20.md).
+Die folgenden Abschnitte dokumentieren zusätzlich den historischen Einstieg49.
+
 # Zustandsbehaftete Lernbegleitung und OpenRouter
 
 Stand: 19.10.2026, Erweiterung für 1.10.0+49, additive Migration 0023.

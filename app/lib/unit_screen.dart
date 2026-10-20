@@ -18,6 +18,7 @@ import 'parent_child_navigation.dart';
 import 'math_content.dart';
 import 'subject_graphic.dart';
 import 'practice_evidence.dart';
+import 'adaptive_learning_step.dart';
 
 class UnitScreen extends StatefulWidget {
   final AppState state;
@@ -105,8 +106,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     state.addListener(accountChanged);
     text.addListener(draftChanged);
     load();
-    timer = Timer.periodic(const Duration(seconds: 20), (_) => beat());
-    liveClock = Timer.periodic(const Duration(seconds: 1), (_) => tickClock());
+    timer = Timer.periodic(Duration(seconds: 20), (_) => beat());
+    liveClock = Timer.periodic(Duration(seconds: 1), (_) => tickClock());
   }
 
   @override
@@ -147,12 +148,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       feedbackAttemptId = answeredText = null;
       helpExpanded = clockDetails = actionBusy = false;
       actionError = null;
+      instructionalRequestKey = null;
       ownerId = state.user?['id'];
       savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
       draftOffline = draftConflict = false;
       needsTimeBaseline = true;
       breakDismissed = false;
       clockAnchor = null;
+      instructionalRequestKey = null;
       pendingSeconds = 0;
       clockOffline = clockWasRunning = false;
       lastInteraction = interactionNow;
@@ -160,13 +163,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       text.clear();
       updatingDraft = false;
       if (timer?.isActive != true) {
-        timer = Timer.periodic(const Duration(seconds: 20), (_) => beat());
+        timer = Timer.periodic(Duration(seconds: 20), (_) => beat());
       }
       if (liveClock?.isActive != true) {
-        liveClock = Timer.periodic(
-          const Duration(seconds: 1),
-          (_) => tickClock(),
-        );
+        liveClock = Timer.periodic(Duration(seconds: 1), (_) => tickClock());
       }
       load();
     }
@@ -216,7 +216,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     draftTimer?.cancel();
     draftTimer = Timer(
-      const Duration(milliseconds: 900),
+      Duration(milliseconds: 900),
       () => unawaited(saveDraft()),
     );
   }
@@ -432,10 +432,107 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Json? get currentQuestion {
     if (awaitingContinue && answeredQuestion != null) return answeredQuestion;
+    final selected = modelStep;
+    if (selected != null && selected['question_id'] != null) {
+      for (final question in unit?['questions'] as List? ?? []) {
+        if (question['id'] == selected['question_id']) {
+          return Json.from(question as Map);
+        }
+      }
+    }
+    final plan = shortPlan;
+    if (plan != null &&
+        ['probe', 'application', 'retry'].contains(plan['phase'])) {
+      for (final question in unit?['questions'] as List? ?? []) {
+        if (question['id'] == plan['current_question_id']) {
+          return Json.from(question as Map);
+        }
+      }
+    }
     for (final question in unit?['questions'] as List? ?? []) {
       if (!done(question)) return Json.from(question as Map);
     }
     return null;
+  }
+
+  Json? get shortPlan {
+    final value = unit?['learning_session']?['short_plan'];
+    return value is Map ? Json.from(value) : null;
+  }
+
+  Json? get modelPlan {
+    final value = unit?['learning_session']?['instructional_plan'];
+    return value is Map ? Json.from(value) : null;
+  }
+
+  Json? get modelStep {
+    final plan = modelPlan;
+    final steps = plan?['steps'] as List? ?? [];
+    final cursor = plan?['cursor'];
+    return cursor is int && cursor >= 0 && cursor < steps.length
+        ? Json.from(steps[cursor] as Map)
+        : null;
+  }
+
+  String? get adaptiveAction {
+    if (unit?['status'] != 'active') return null;
+    final selected = modelStep;
+    if (selected != null) {
+      final kind = selected['kind'];
+      if (['practice', 'check_understanding'].contains(kind)) return null;
+      if (['explain', 'visual_example', 'hint'].contains(kind) &&
+          modelPlan?['shown'] == true) {
+        return 'practice';
+      }
+      return switch (kind) {
+        'hint' => 'model_hint',
+        'recommend_resource' => 'model_resource',
+        'clarify_assessment' => 'model_clarify',
+        _ => kind?.toString(),
+      };
+    }
+    final plan = shortPlan;
+    switch (plan?['phase']) {
+      case 'offer_probe':
+        return 'review_prerequisite';
+      case 'explanation':
+        return plan?['explanation_seen'] == true
+            ? 'check_understanding'
+            : 'visual_example';
+      case 'change_support':
+        return plan?['explanation_seen'] == true
+            ? 'practice'
+            : 'visual_example';
+    }
+    final session = unit?['learning_session'];
+    if (session?['can_request_decision'] == true &&
+        [
+          'change_explanation',
+          'denominators_added',
+          'child_requested_smaller_step',
+        ].contains(session?['action']?['reason_code'])) {
+      return 'model_plan';
+    }
+    return null;
+  }
+
+  Future<void> advanceAdaptive(String kind) async {
+    final id = widget.unitId, owner = ownerId;
+    if (awaitingContinue) await acknowledgeFeedback();
+    if (requestIsCurrent(id, owner) && !awaitingContinue && unit != null) {
+      if (kind == 'model_hint' && currentQuestion != null) {
+        await requestHint(unit!, currentQuestion!);
+        await load();
+      } else if (kind == 'model_resource') {
+        await showTips(unit!);
+      } else if (kind == 'model_clarify') {
+        await moreHelp(unit!);
+      } else if (kind == 'model_plan') {
+        await prepareInstructionalPlan();
+      } else {
+        await controllerAction(unit!, kind);
+      }
+    }
   }
 
   void syncQuestionDraft() {
@@ -643,7 +740,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           'queued',
           'running',
         ].contains(unit?['learning_session']?['preparation']?['status'])) {
-      coachingPoll ??= Timer.periodic(const Duration(seconds: 3), (_) {
+      coachingPoll ??= Timer.periodic(Duration(seconds: 3), (_) {
         if (visible && routeVisible && state.user?['id'] == ownerId) load();
       });
     } else {
@@ -659,7 +756,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       if (mounted && target != null) {
         Scrollable.ensureVisible(
           target,
-          duration: const Duration(milliseconds: 220),
+          duration: Duration(milliseconds: 220),
           alignment: 0,
         );
       }
@@ -667,8 +764,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Widget askButton(Json u) => TextButton.icon(
-    icon: const Icon(Icons.chat_bubble_outline_rounded),
-    label: const Text('Frag nach'),
+    icon: Icon(Icons.chat_bubble_outline_rounded),
+    label: Text('Frag nach'),
     onPressed: () => showTutorSheet(
       context,
       state,
@@ -679,7 +776,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   bool done(dynamic q) {
     final attempts = q['attempts'] as List;
-    return attempts.length >= 3 ||
+    return q['controller_deferred'] == true ||
+        attempts.length >= 3 ||
         attempts.any(
           (a) => a['outcome'] == 'correct' || a['outcome'] == 'uncertain',
         );
@@ -688,7 +786,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (state.user?['id'] != ownerId) {
-      return const Scaffold(
+      return Scaffold(
         body: SafeArea(
           child: Center(child: MathText('Bitte melde dich erneut an.')),
         ),
@@ -708,7 +806,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ],
           )
         : u == null
-        ? const Center(child: CircularProgressIndicator())
+        ? Center(child: CircularProgressIndicator())
         : KeyedSubtree(key: stepTop, child: body(context));
     if (!state.isChild) {
       return PageFrame(
@@ -729,7 +827,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       );
     }
     if (state.user?['id'] != ownerId) {
-      return const Scaffold(
+      return Scaffold(
         body: SafeArea(
           child: Center(child: MathText('Bitte melde dich erneut an.')),
         ),
@@ -745,6 +843,19 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         : u?['introduction_seen'] == false
         ? 0
         : 1;
+    var progressLabel = 'Aufgabe $number von ${questions.length}';
+    if (shortPlan != null || modelPlan != null) {
+      final answered = questions
+          .where((q) => (q['attempts'] as List? ?? []).isNotEmpty)
+          .length;
+      progressLabel =
+          '$answered ${answered == 1 ? 'Aufgabe' : 'Aufgaben'} bearbeitet';
+    }
+    if (shortPlan?['phase'] == 'probe') {
+      progressLabel = 'Ein kleiner Zwischenschritt';
+    } else if (['application', 'retry'].contains(shortPlan?['phase'])) {
+      progressLabel = 'Neue Anwendung';
+    }
     return PopScope(
       canPop: leaving,
       onPopInvokedWithResult: (didPop, _) {
@@ -757,7 +868,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           title: u?['topic']?.toString() ?? 'Deine Lernrunde',
           phase: phase,
           progress: phase == 1 && number != null && number > 0
-              ? 'Aufgabe $number von ${questions.length}'
+              ? progressLabel
               : null,
           scrollController: roomScroll,
           clock: u == null ? null : learningClock(u),
@@ -780,7 +891,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         actionError is ApiError
                             ? (actionError as ApiError).message
                             : 'Das hat gerade nicht geklappt. Deine Antworten bleiben gespeichert.',
-                        style: const TextStyle(fontSize: 14, color: dangerInk),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: context.palette.dangerInk,
+                        ),
                       ),
                       TextButton.icon(
                         onPressed: actionBusy
@@ -791,8 +905,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                   setState(() => actionError = null);
                                 }
                               },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Gespeicherten Stand laden'),
+                        icon: Icon(Icons.refresh),
+                        label: Text('Gespeicherten Stand laden'),
                       ),
                     ],
                   ),
@@ -839,14 +953,30 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     late String label;
     late Future<void> Function() action;
     var enabled = true;
+    final nextAdaptive = adaptiveAction;
     if (awaitingContinue) {
       final closed = done(answeredQuestion);
-      label = !closed
-          ? 'Noch einmal versuchen'
-          : u['status'] == 'completed'
+      label = u['status'] == 'completed'
           ? 'Ergebnis ansehen'
-          : 'Weiter';
+          : nextAdaptive != null || closed
+          ? 'Weiter'
+          : 'Noch einmal versuchen';
       action = acknowledgeFeedback;
+    } else if (nextAdaptive != null && u['status'] != 'completed') {
+      label = switch (nextAdaptive) {
+        'review_prerequisite' => 'Zwischenschritt prüfen',
+        'visual_example' => 'Erklärung ansehen',
+        'explain' => 'Erklärung ansehen',
+        'check_understanding' => 'Neue Aufgabe probieren',
+        'model_hint' => 'Kleinen Tipp ansehen',
+        'model_resource' => 'Andere Erklärung ansehen',
+        'model_clarify' => 'Offene Prüfung klären',
+        'model_plan' => 'Passenden Lernweg finden',
+        'offer_break' => 'Pause machen',
+        'practice' => 'Weiter zur Aufgabe',
+        _ => 'Noch einmal mit Hilfe probieren',
+      };
+      action = () => advanceAdaptive(nextAdaptive);
     } else if (u['status'] == 'paused' &&
         preparation is Map &&
         ['queued', 'running', 'completed'].contains(preparation['status'])) {
@@ -878,12 +1008,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       action = () => submitAnswer(u, question);
     }
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 52),
+      constraints: BoxConstraints(minHeight: 52),
       child: FilledButton.icon(
-        key: const ValueKey('learning-primary-action'),
+        key: ValueKey('learning-primary-action'),
         onPressed: actionBusy || !enabled ? null : () => perform(action),
         icon: actionBusy
-            ? const SizedBox(
+            ? SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
@@ -941,6 +1071,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       setState(() {
         unit = data;
         restoreFeedback(data);
+        syncQuestionDraft();
       });
       revealStep();
     }
@@ -987,7 +1118,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       final leave = await showDialog<bool>(
         context: context,
         builder: (dialog) => AlertDialog(
-          title: const Text('Jetzt eine Pause machen?'),
+          title: Text('Jetzt eine Pause machen?'),
           content: Text(
             u?['learning_session'] is Map
                 ? 'Deine Eingabe bleibt gespeichert. Du kannst später hier weiterlernen.'
@@ -996,11 +1127,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Hier bleiben'),
+              child: Text('Hier bleiben'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Pause machen'),
+              child: Text('Pause machen'),
             ),
           ],
         ),
@@ -1075,8 +1206,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       children: [
         Row(
           children: [
-            const Icon(Icons.timer_outlined, size: 17, color: teal),
-            const SizedBox(width: 7),
+            Icon(Icons.timer_outlined, size: 17, color: context.palette.teal),
+            SizedBox(width: 7),
             Expanded(
               child: Text(
                 measured == null
@@ -1089,14 +1220,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       ? 'learning-unit-clock'
                       : 'learning-day-clock',
                 ),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
             IconButton(
-              key: const ValueKey('learning-time-details'),
+              key: ValueKey('learning-time-details'),
               tooltip: clockDetails ? 'Zeitdetails schließen' : 'Zeitdetails',
               onPressed: () => setState(() => clockDetails = !clockDetails),
               icon: Icon(
@@ -1110,30 +1238,30 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         if (measured != null)
           Text(
             'Diese Einheit ${clockText(currentUnit)}',
-            key: const ValueKey('learning-unit-clock'),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF53617A)),
+            key: ValueKey('learning-unit-clock'),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
         if (required)
           Text(
             stateText,
-            key: const ValueKey('learning-goal-state'),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            key: ValueKey('learning-goal-state'),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
         if (clockOffline)
-          const Text(
+          Text(
             'Zeit pausiert · Verbindung fehlt',
             style: TextStyle(fontSize: 12),
           ),
         if (clockDetails) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if (required)
             LinearProgressIndicator(
               value: progress,
-              key: const ValueKey('learning-day-progress'),
+              key: ValueKey('learning-day-progress'),
             ),
           if (!required && measured != null)
-            MathText(stateText, style: const TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
+            MathText(stateText, style: TextStyle(fontSize: 12)),
+          SizedBox(height: 6),
           MathText(
             clockOffline
                 ? 'Zeit pausiert · Verbindung fehlt'
@@ -1142,9 +1270,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 : localOnly
                 ? 'Zeit pausiert · letzter Zwischenstand'
                 : 'Gespeicherte aktive Übungszeit · Näherung',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF53617A)),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
         ],
       ],
     );
@@ -1168,7 +1296,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             }),
           ),
         )
-      : const SizedBox.shrink();
+      : SizedBox.shrink();
 
   Widget body(BuildContext context) {
     final u = unit!;
@@ -1187,10 +1315,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ? 'Spätere Wiederholung'
                     : 'Selbst erzeugte Übung',
               ),
-              if (u['synthetic']) const Tag('Beispiel'),
+              if (u['synthetic']) Tag('Beispiel'),
             ],
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: 22),
           Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1201,40 +1329,40 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
           ),
           unitTips(u),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           if (u['status'] == 'completed') ...[
             if (u['round_kind'] == 'vocabulary')
               vocabularyResult(u)
             else
               CoachingPanel(state: state, unit: u, refresh: load),
             askButton(u),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
           for (final q in questions)
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: EdgeInsets.only(bottom: 16),
               child: Panel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Tag(typeLabel(q['type'])),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     MathText(
                       q['prompt'],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     if ((q['attempts'] as List).isEmpty)
-                      const Text(
+                      Text(
                         'Nicht begonnen.',
-                        style: TextStyle(color: muted),
+                        style: TextStyle(color: context.palette.muted),
                       ),
                     for (final a in q['attempts'] as List)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: 8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1248,20 +1376,23 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           ],
                         ),
                       ),
-                    const Divider(height: 28),
+                    Divider(height: 28),
                     SubjectPresentation(
                       q['presentation'] is Map
                           ? Json.from(q['presentation'])
                           : null,
                     ),
                     MathText('Aufgabenerklärung: ${q['explanation']}'),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     MathText(
                       '${counted(q['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')} genutzt. Verfügbare Hinweise:',
-                      style: const TextStyle(fontSize: 12, color: muted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.palette.muted,
+                      ),
                     ),
                     for (final h in q['hints'] as List)
-                      MathText('• $h', style: const TextStyle(fontSize: 13)),
+                      MathText('• $h', style: TextStyle(fontSize: 13)),
                   ],
                 ),
               ),
@@ -1299,9 +1430,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   ? Icons.pause_circle_outline_rounded
                   : Icons.play_circle_outline_rounded,
               size: 40,
-              color: teal,
+              color: context.palette.teal,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             MathText(
               u['status'] == 'paused'
                   ? prepared
@@ -1310,28 +1441,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         ? 'Deine Lernprobe wird vorbereitet.'
                         : 'Deine Runde wartet auf dich.'
                   : 'Bereit für deine Runde?',
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             MathText(
               u['status'] == 'paused'
                   ? prepared || preparing
                         ? 'Deine bisherige Runde und Eingabe bleiben gespeichert.'
                         : 'Geprüfte Antworten sind gespeichert.'
                   : '${questions.length} Aufgaben · Schritt für Schritt',
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16),
             ),
             if (prepared || preparing) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextButton(
                 onPressed: actionBusy
                     ? null
                     : () => perform(() => startUnit(u)),
-                child: const Text('Mit der bisherigen Aufgabe weiter'),
+                child: Text('Mit der bisherigen Aufgabe weiter'),
               ),
             ],
             if (u['synthetic'] == true) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               sampleNotice(u),
             ],
           ],
@@ -1345,21 +1476,25 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.psychology_alt_outlined, size: 40, color: teal),
-              const SizedBox(height: 16),
-              const Text(
+              Icon(
+                Icons.psychology_alt_outlined,
+                size: 40,
+                color: context.palette.teal,
+              ),
+              SizedBox(height: 16),
+              Text(
                 'Was weißt du schon?',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 10),
-              const Text(
+              SizedBox(height: 10),
+              Text(
                 'Probiere die erste Aufgabe. Wenn du Hilfe brauchst, gehen wir einen Schritt zusammen.',
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => showExplanation(context, u),
-                icon: const Icon(Icons.auto_stories_outlined),
-                label: const Text('Erst die Erklärung ansehen'),
+                icon: Icon(Icons.auto_stories_outlined),
+                label: Text('Erst die Erklärung ansehen'),
               ),
             ],
           ),
@@ -1369,25 +1504,70 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Schau dir das kurz an',
               style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             LearningExplanation(text: u['explanation']),
             if (!['spaced_review', 'study_recall'].contains(u['round_kind']))
               unitTips(u),
             if (u['synthetic'] == true) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               sampleNotice(u),
             ],
           ],
         ),
       );
     }
+    final selected = modelStep;
+    if (selected != null &&
+        !['practice', 'check_understanding'].contains(selected['kind'])) {
+      return AdaptiveLearningStep(
+        plan: {
+          'phase': 'explanation',
+          'title':
+              u['learning_session']?['action']?['title'] ??
+              'Dein nächster Lernschritt',
+          if (modelPlan?['explanation'] is Map)
+            'explanation': modelPlan!['explanation'],
+          if (selected['kind'] == 'hint' && hint != null)
+            'explanation': {'text': hint},
+          'message': selected['kind'] == 'recommend_resource'
+              ? 'Eine andere Erklärung kann dir weiterhelfen. Danach probierst du es selbst.'
+              : selected['kind'] == 'clarify_assessment'
+              ? 'Diese Antwort ist noch offen. Das zählt nicht als Fehler. Du kannst die Prüfung klären lassen oder eine Pause machen.'
+              : selected['kind'] == 'offer_break'
+              ? 'Deine Runde bleibt gespeichert. Nach einer kurzen Pause geht es hier weiter.'
+              : null,
+        },
+        onResource: selected['kind'] == 'recommend_resource'
+            ? () => showTips(u)
+            : null,
+      );
+    }
+    final plan = shortPlan;
+    if (plan != null &&
+        [
+          'offer_probe',
+          'explanation',
+          'change_support',
+        ].contains(plan['phase'])) {
+      return AdaptiveLearningStep(
+        plan: plan,
+        onKeepTrying: actionBusy
+            ? null
+            : () => perform(() => controllerAction(u, 'practice')),
+        onResource:
+            (u['learning_session']?['action']?['resources'] as List? ?? [])
+                .isEmpty
+            ? null
+            : () => showTips(u),
+      );
+    }
     final q = currentQuestion;
     if (q == null) {
-      return const Panel(child: MathText('Deine Antworten sind gespeichert.'));
+      return Panel(child: MathText('Deine Antworten sind gespeichert.'));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1396,7 +1576,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Notice(
+              Notice(
                 'Diese Aufgabe wurde auf einem anderen Gerät geändert. Welche Eingabe möchtest du behalten?',
                 warning: true,
               ),
@@ -1404,13 +1584,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 onPressed: actionBusy
                     ? null
                     : () => perform(() => resolveDraft(keepMine: false)),
-                child: const Text('Gespeicherte Eingabe laden'),
+                child: Text('Gespeicherte Eingabe laden'),
               ),
               TextButton(
                 onPressed: actionBusy
                     ? null
                     : () => perform(() => resolveDraft(keepMine: true)),
-                child: const Text('Meine Eingabe hier behalten'),
+                child: Text('Meine Eingabe hier behalten'),
               ),
             ],
           ),
@@ -1418,34 +1598,31 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Notice('Dein Entwurf bleibt auf diesem Gerät.'),
+              Notice('Dein Entwurf bleibt auf diesem Gerät.'),
               TextButton.icon(
                 onPressed: savingDraft ? null : saveDraft,
-                icon: const Icon(Icons.sync),
-                label: const Text('Eingabe jetzt speichern'),
+                icon: Icon(Icons.sync),
+                label: Text('Eingabe jetzt speichern'),
               ),
             ],
           ),
         if (u['break_recommended'] == true && !breakDismissed) ...[
           breakRecommendation(u),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
         ],
-        if (u['synthetic'] == true) ...[
-          sampleNotice(u),
-          const SizedBox(height: 8),
-        ],
+        if (u['synthetic'] == true) ...[sampleNotice(u), SizedBox(height: 8)],
         Panel(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               questionPrompt(q),
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
-                stages: const {'given'},
+                stages: {'given'},
               ),
               if (q['language'] is Map) languagePrompt(q),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               if (q['type'] == 'choice')
                 RadioGroup<String>(
                   groupValue: choice,
@@ -1457,13 +1634,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     children: [
                       for (final option in q['options'] as List)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+                          padding: EdgeInsets.only(bottom: 10),
                           child: Material(
-                            color: choice == option ? mint : surfaceLow,
+                            color: choice == option
+                                ? context.palette.mint
+                                : context.palette.surfaceLow,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                               side: BorderSide(
-                                color: choice == option ? teal : controlBorder,
+                                color: choice == option
+                                    ? context.palette.teal
+                                    : context.palette.controlBorder,
                                 width: choice == option ? 2 : 1,
                               ),
                             ),
@@ -1473,14 +1654,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                               enabled: !actionBusy,
                               title: MathText(
                                 option,
-                                style: const TextStyle(fontSize: 17),
+                                style: TextStyle(fontSize: 17),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
+                              contentPadding: EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 5,
                               ),
                               minTileHeight: 58,
-                              activeColor: teal,
+                              activeColor: context.palette.teal,
                             ),
                           ),
                         ),
@@ -1490,29 +1671,29 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               if (q['type'] == 'match')
                 for (final pair in q['options'] as List)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
+                    padding: EdgeInsets.only(bottom: 18),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         MathText(
                           pair,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         OutlinedButton.icon(
                           key: ValueKey('match-${q['id']}-$pair'),
                           onPressed: actionBusy
                               ? null
                               : () => chooseMatch(q, pair),
-                          icon: const Icon(Icons.swap_horiz_rounded),
+                          icon: Icon(Icons.swap_horiz_rounded),
                           label: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: EdgeInsets.symmetric(vertical: 12),
                             child: MathText(
                               matches[pair] ?? 'Was passt dazu?',
-                              style: const TextStyle(fontSize: 16),
+                              style: TextStyle(fontSize: 16),
                             ),
                           ),
                         ),
@@ -1534,10 +1715,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     maxLength: q['type'] == 'short' ? 500 : 200,
                     minLines: 1,
                     maxLines: q['type'] == 'short' ? 4 : 2,
-                    scrollPadding: const EdgeInsets.all(20),
-                    decoration: const InputDecoration(
-                      labelText: 'Deine Antwort',
-                    ),
+                    scrollPadding: EdgeInsets.all(20),
+                    decoration: InputDecoration(labelText: 'Deine Antwort'),
                   ),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -1555,7 +1734,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ],
           ),
         ),
-        if (helpExpanded) ...[const SizedBox(height: 12), inlineHelp(u, q)],
+        if (helpExpanded) ...[SizedBox(height: 12), inlineHelp(u, q)],
       ],
     );
   }
@@ -1565,16 +1744,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final cue = meta['cue']?.toString() ?? '';
     final bank = languageBank ?? meta['word_bank'] as List? ?? [];
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: EdgeInsets.only(top: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (meta['generated_example'] == true)
-            const Tag('Erzeugtes Übungsbeispiel'),
+            Tag('Erzeugtes Übungsbeispiel'),
           if (cue.isNotEmpty) ...[
             MathText(
               cue,
-              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
             ),
             ReadAloudButton(text: cue, locale: meta['cue_locale'] ?? 'de-DE'),
           ],
@@ -1601,9 +1780,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   ),
               ],
             ),
-            const Text(
+            Text(
               'Höre erst zu, dann antworte. Ohne passende Stimme wähle im Wortschatz eine Lese- oder Schreibübung.',
-              style: TextStyle(fontSize: 13, color: muted),
+              style: TextStyle(fontSize: 13, color: context.palette.muted),
             ),
           ],
           if (bank.isNotEmpty) ...[
@@ -1638,7 +1817,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       usedBank.clear();
                       text.clear();
                     }),
-              child: const Text('Neu zusammensetzen'),
+              child: Text('Neu zusammensetzen'),
             ),
             TextButton.icon(
               onPressed: actionBusy || usedBank.isEmpty
@@ -1657,8 +1836,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         usedBank.clear();
                       }
                     }),
-              icon: const Icon(Icons.undo_rounded),
-              label: const Text('Letzten Baustein zurück'),
+              icon: Icon(Icons.undo_rounded),
+              label: Text('Letzten Baustein zurück'),
             ),
           ],
           if (meta['skill'] == 'spelling' && bank.isEmpty)
@@ -1686,13 +1865,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         });
                       }
                     }),
-              icon: const Icon(Icons.extension_outlined),
-              label: const Text('Mit Bausteinen üben · Hilfe'),
+              icon: Icon(Icons.extension_outlined),
+              label: Text('Mit Bausteinen üben · Hilfe'),
             ),
           if (speechAnswer)
-            const Text(
+            Text(
               'Mit Spracheingabe · zählt als unterstützte Antwort',
-              style: TextStyle(fontSize: 13, color: muted),
+              style: TextStyle(fontSize: 13, color: context.palette.muted),
             ),
         ],
       ),
@@ -1702,7 +1881,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Widget feedbackAudio(Json q, String explanationText) {
     final segments = q['language_feedback'] as List?;
     if (q['language'] is! Map) return ReadAloudButton(text: explanationText);
-    if (segments == null) return const SizedBox.shrink();
+    if (segments == null) return SizedBox.shrink();
     return Wrap(
       spacing: 8,
       children: [
@@ -1725,25 +1904,25 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Panel(
-          color: mint,
+          color: context.palette.mint,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.check_circle_outline_rounded,
-                color: teal,
+                color: context.palette.teal,
                 size: 38,
               ),
-              const SizedBox(height: 12),
-              const Text(
+              SizedBox(height: 12),
+              Text(
                 'Deine Wörterrunde ist bearbeitet.',
                 style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               MathText(
                 '${questions.length} Aufgaben bearbeitet · $independent beim ersten Versuch ohne Hilfe richtig',
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               MathText(
                 (result['skills'] as List? ?? [])
                     .map((skill) => languageSkills[skill] ?? skill)
@@ -1751,21 +1930,21 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ),
               if (result['next_due'] != null)
                 MathText('Wieder üben: ${result['next_due']}'),
-              const SizedBox(height: 12),
-              const Text(
+              SizedBox(height: 12),
+              Text(
                 'Heute geübt. Später probierst du diese Wörter noch einmal ohne Vorlage.',
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               FilledButton(
                 onPressed: () =>
                     openRoute(context, '/vocabulary/${u['child_id']}'),
-                child: const Text('Zu meinen Wörtern'),
+                child: Text('Zu meinen Wörtern'),
               ),
             ],
           ),
         ),
         if (state.isChild) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           LearningNextStep(
             state: state,
             childId: u['child_id'],
@@ -1782,7 +1961,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       Expanded(
         child: LearningContent(
           q['prompt'],
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
             height: 1.35,
@@ -1807,13 +1986,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: MathText(
                 'Was passt zu „$pair“?',
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
               ),
             ),
             Expanded(
@@ -1828,7 +2004,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           value: value,
                           title: MathText(
                             value,
-                            style: const TextStyle(fontSize: 17),
+                            style: TextStyle(fontSize: 17),
                           ),
                           minVerticalPadding: 16,
                         ),
@@ -1838,10 +2014,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               child: TextButton(
                 onPressed: () => Navigator.pop(sheet),
-                child: const Text('Zurück zur Aufgabe'),
+                child: Text('Zurück zur Aufgabe'),
               ),
             ),
           ],
@@ -1857,12 +2033,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Widget sampleNotice(Json u) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: EdgeInsets.only(bottom: 12),
     child: MathText(
       u['provider'] == 'synthetic'
           ? 'Beispielübung · ohne KI erstellt.'
           : 'Beispielstoff · mit KI erstellte Übungen.',
-      style: const TextStyle(fontSize: 12, color: muted),
+      style: TextStyle(fontSize: 12, color: context.palette.muted),
     ),
   );
 
@@ -1909,7 +2085,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           Scrollable.ensureVisible(
             target,
             alignment: 0,
-            duration: const Duration(milliseconds: 180),
+            duration: Duration(milliseconds: 180),
           );
         }
       });
@@ -1981,7 +2157,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final q = answeredQuestion!;
     final language = q['language'] is Map
         ? Json.from(q['language'])
-        : const <String, dynamic>{};
+        : <String, dynamic>{};
     final cue = language['cue']?.toString() ?? '';
     final languageContext = language['context']?.toString() ?? '';
     final closed = done(q);
@@ -2015,38 +2191,35 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               : uncertain
               ? PanelTone.info
               : PanelTone.warning,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               questionPrompt(q),
               if (cue.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 MathText(
                   cue,
-                  key: const ValueKey('feedback-language-cue'),
-                  style: const TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  key: ValueKey('feedback-language-cue'),
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
                 ),
               ],
               if (languageContext.isNotEmpty)
                 MathText('Kontext: $languageContext'),
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
-                stages: const {'given'},
+                stages: {'given'},
               ),
-              const SizedBox(height: 18),
-              const Text(
+              SizedBox(height: 18),
+              Text(
                 'Deine Antwort',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF53617A),
+                  color: context.palette.muted,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               SurfaceInset(
                 tone: PanelTone.neutral,
                 child: q['type'] == 'match'
@@ -2059,7 +2232,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             i++
                           )
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              padding: EdgeInsets.symmetric(vertical: 5),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -2085,8 +2258,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                                         q['options'][i],
                                                   )['outcome'] ==
                                               'correct'
-                                          ? successInk
-                                          : warningInk,
+                                          ? context.palette.successInk
+                                          : context.palette.warningInk,
                                       semanticLabel:
                                           (lastEvaluation['parts'] as List)
                                                   .firstWhere(
@@ -2098,12 +2271,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                           ? 'Richtig zugeordnet'
                                           : 'Dieses Paar noch einmal versuchen',
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                   ],
                                   Expanded(
                                     child: MathText(
                                       '${q['options'][i]} → ${i < matchingAnswers.length ? matchingAnswers[i] : ''}',
-                                      style: const TextStyle(fontSize: 17),
+                                      style: TextStyle(fontSize: 17),
                                     ),
                                   ),
                                 ],
@@ -2113,16 +2286,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       )
                     : MathText(
                         answer,
-                        key: const ValueKey('feedback-own-answer'),
-                        style: const TextStyle(
+                        key: ValueKey('feedback-own-answer'),
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
               ),
-              const SizedBox(height: 18),
-              const Divider(),
-              const SizedBox(height: 12),
+              SizedBox(height: 18),
+              Divider(),
+              SizedBox(height: 12),
               Semantics(
                 key: ValueKey('feedback-${feedbackAttemptId ?? q['id']}'),
                 liveRegion: true,
@@ -2135,17 +2308,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           ? Icons.check_circle_rounded
                           : Icons.lightbulb_outline_rounded,
                       color: correct
-                          ? successInk
+                          ? context.palette.successInk
                           : uncertain
-                          ? cyanInk
-                          : warningInk,
+                          ? context.palette.cyanInk
+                          : context.palette.warningInk,
                       size: 28,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: MathText(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 23,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2154,16 +2327,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               if (uncertain && !openContribution)
-                const Text(
+                Text(
                   'Deine Antwort ist gespeichert. Die Prüfung ist offen – das bedeutet nicht, dass du falsch liegst.',
                   style: TextStyle(fontSize: 16),
                 )
               else if (!correct)
                 MathText(
-                  closed ? 'Diese Aufgabe kommt später noch einmal dran.' : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',
-                  style: const TextStyle(fontSize: 16),
+                  adaptiveAction != null
+                      ? 'Deine Antwort ist gespeichert. Weiter führt dich zum nächsten kleinen Schritt.'
+                      : closed
+                      ? 'Diese Aufgabe kommt später noch einmal dran.'
+                      : 'Versuch es noch einmal. Unter Hilfe findest du einen Tipp.',
+                  style: TextStyle(fontSize: 16),
                 )
               else if (answerAssisted)
                 MathText(
@@ -2181,13 +2358,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                 .contains('another_attempt')
                       ? 'Im weiteren Versuch geschafft. Gut, dass du drangeblieben bist.'
                       : 'Mit Unterstützung oder im weiteren Versuch gelöst. Gut, dass du drangeblieben bist.',
-                  style: const TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 16),
                 ),
               if (lastEvaluation?['reason'] is String) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 MathText(
                   lastEvaluation!['reason'],
-                  style: const TextStyle(fontSize: 15),
+                  style: TextStyle(fontSize: 15),
                 ),
               ],
               if ((q['attempts'] as List? ?? []).isNotEmpty)
@@ -2198,7 +2375,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     [],
               ),
               if (uncertain && !openContribution && state.isChild) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 if (u['supports_recheck'] == true && q['language'] is! Map)
                   OutlinedButton.icon(
                     onPressed: actionBusy
@@ -2223,8 +2400,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                             });
                             state.refreshState();
                           }),
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('Antwort erneut prüfen'),
+                    icon: Icon(Icons.fact_check_outlined),
+                    label: Text('Antwort erneut prüfen'),
                   ),
                 TextButton.icon(
                   onPressed: actionBusy
@@ -2235,23 +2412,23 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                           childId: u['child_id'],
                           unitId: u['id'],
                         ),
-                  icon: const Icon(Icons.chat_bubble_outline_rounded),
-                  label: const Text('Mit der Lernhilfe klären'),
+                  icon: Icon(Icons.chat_bubble_outline_rounded),
+                  label: Text('Mit der Lernhilfe klären'),
                 ),
               ],
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
-                stages: const {'solution'},
+                stages: {'solution'},
               ),
               if (explanation?.trim().isNotEmpty == true) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 if (correct)
                   ExpansionTile(
-                    title: const Text('Warum das stimmt'),
+                    title: Text('Warum das stimmt'),
                     children: [
                       LearningContent(
                         explanation!,
-                        style: const TextStyle(fontSize: 17, height: 1.5),
+                        style: TextStyle(fontSize: 17, height: 1.5),
                       ),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -2262,7 +2439,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 else ...[
                   LearningContent(
                     explanation!,
-                    style: const TextStyle(fontSize: 17, height: 1.5),
+                    style: TextStyle(fontSize: 17, height: 1.5),
                   ),
                   Align(
                     alignment: Alignment.centerLeft,
@@ -2274,7 +2451,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
         ),
         if (helpExpanded && !closed) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           inlineHelp(u, q),
         ],
       ],
@@ -2306,9 +2483,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       children: [
         Row(
           children: [
-            const Icon(Icons.lightbulb_outline_rounded, color: teal),
-            const SizedBox(width: 8),
-            const Expanded(
+            Icon(Icons.lightbulb_outline_rounded, color: context.palette.teal),
+            SizedBox(width: 8),
+            Expanded(
               child: MathText(
                 'Dein Tipp',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
@@ -2319,18 +2496,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ],
         ),
         if (hint != null)
-          LearningContent(
-            hint!,
-            style: const TextStyle(fontSize: 17, height: 1.5),
-          ),
+          LearningContent(hint!, style: TextStyle(fontSize: 17, height: 1.5)),
         SubjectPresentation(
           q['presentation'] is Map ? Json.from(q['presentation']) : null,
-          stages: const {'hint1', 'hint2', 'hint3'},
+          stages: {'hint1', 'hint2', 'hint3'},
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (u['learning_session']?['action']?['reason_code'] ==
             'denominators_added')
-          const Text(
+          Text(
             'Vergleiche gleich große Teile: Beim Addieren bleibt der gemeinsame Nenner stehen.',
           ),
         Wrap(
@@ -2341,18 +2515,18 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               onPressed: actionBusy || hintExhausted
                   ? null
                   : () => perform(() => requestHint(u, q)),
-              child: const Text('Noch ein Tipp'),
+              child: Text('Noch ein Tipp'),
             ),
             TextButton(
               onPressed: actionBusy ? null : () => perform(() => moreHelp(u)),
-              child: const Text('Mehr Hilfe'),
+              child: Text('Mehr Hilfe'),
             ),
             if ((u['learning_session']?['action']?['resources'] as List? ?? [])
                 .isNotEmpty)
               TextButton.icon(
                 onPressed: () => showTips(u),
-                icon: const Icon(Icons.ondemand_video_outlined),
-                label: const Text('Andere Erklärung ansehen'),
+                icon: Icon(Icons.ondemand_video_outlined),
+                label: Text('Andere Erklärung ansehen'),
               ),
           ],
         ),
@@ -2369,12 +2543,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       showDragHandle: true,
       builder: (sheet) => SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
                 child: MathText(
                   'Was hilft dir jetzt?',
@@ -2399,22 +2573,48 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     'Eine Frage stellen',
                     Icons.chat_bubble_outline_rounded,
                   ),
+                if (u['learning_session']?['can_request_decision'] == true)
+                  (
+                    'plan',
+                    'Einen passenden Lernweg vorbereiten',
+                    Icons.route_rounded,
+                  ),
+                if (u['learning_session']?['can_request_support_check'] == true)
+                  (
+                    'support_check',
+                    'Nach der Erklärung neu probieren',
+                    Icons.psychology_outlined,
+                  ),
+                if (['queued', 'running'].contains(
+                  u['learning_session']?['decision_preparation']?['status'],
+                ))
+                  (
+                    'plan_status',
+                    'Vorbereitung ansehen',
+                    Icons.hourglass_top_rounded,
+                  ),
                 (
                   'parents',
                   'Meine Eltern fragen',
                   Icons.volunteer_activism_outlined,
                 ),
                 ('difficulty', 'Die Aufgabe passt nicht', Icons.tune_rounded),
+                if (u['status'] == 'active' && currentQuestion != null)
+                  (
+                    'skip',
+                    'Für später aufheben',
+                    Icons.bookmark_outline_rounded,
+                  ),
               ])
                 ListTile(
-                  leading: Icon(option.$3, color: teal),
+                  leading: Icon(option.$3, color: context.palette.teal),
                   title: MathText(option.$2),
                   minVerticalPadding: 12,
                   onTap: () => Navigator.pop(sheet, option.$1),
                 ),
               TextButton(
                 onPressed: () => Navigator.pop(sheet),
-                child: const Text('Zurück zur Aufgabe'),
+                child: Text('Zurück zur Aufgabe'),
               ),
             ],
           ),
@@ -2425,6 +2625,42 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return;
     }
     switch (selected) {
+      case 'skip':
+        if (awaitingContinue) await acknowledgeFeedback();
+        if (!requestIsCurrent(u['id'], requestedOwner)) return;
+        final session = await state.api.get(
+          '/units/${u['id']}/learning-session',
+        );
+        if (!requestIsCurrent(u['id'], requestedOwner)) return;
+        final updated = await state.api.post(
+          '/units/${u['id']}/learning-session/skip',
+          {
+            'request_key': tipRequestKey(),
+            'revision': session['revision'],
+            'question_id': currentQuestion?['id'],
+          },
+        );
+        if (requestIsCurrent(u['id'], requestedOwner)) {
+          setState(() {
+            unit = updated;
+            syncQuestionDraft();
+          });
+        }
+      case 'support_check':
+        if (awaitingContinue) await acknowledgeFeedback();
+        if (requestIsCurrent(u['id'], requestedOwner)) {
+          await prepareInstructionalPlan(supportCheck: true);
+        }
+      case 'plan':
+        if (awaitingContinue) await acknowledgeFeedback();
+        if (requestIsCurrent(u['id'], requestedOwner)) {
+          await prepareInstructionalPlan();
+        }
+      case 'plan_status':
+        final id = u['learning_session']?['decision_preparation']?['id'];
+        if (id is String) {
+          openRoute(context, '/learning-preparation/${u['child_id']}/$id');
+        }
       case 'tips':
         await showTips(u);
       case 'explanation':
@@ -2443,6 +2679,32 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
   }
 
+  String? instructionalRequestKey;
+
+  Future<void> prepareInstructionalPlan({bool supportCheck = false}) async {
+    final id = widget.unitId, owner = ownerId;
+    final route = ModalRoute.of(context);
+    final session = await state.api.get('/units/$id/learning-session');
+    if (!requestIsCurrent(id, owner) || route?.isCurrent == false) return;
+    instructionalRequestKey ??= tipRequestKey();
+    final endpoint = supportCheck ? 'check' : 'plan';
+    final result = await state.api.post(
+      '/units/$id/learning-session/$endpoint',
+      {
+        'request_key': instructionalRequestKey,
+        'revision': session['revision'],
+        'kind': supportCheck ? 'check_understanding' : 'practice',
+      },
+    );
+    if (mounted && requestIsCurrent(id, owner) && (route?.isCurrent ?? true)) {
+      instructionalRequestKey = null;
+      openRoute(
+        context,
+        '/learning-preparation/${unit!['child_id']}/${result['id']}',
+      );
+    }
+  }
+
   Future<void> showTips(Json u) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -2452,7 +2714,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       builder: (context) => FractionallySizedBox(
         heightFactor: .85,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: LearningTips(
             state,
             childId: u['child_id'],
@@ -2470,28 +2732,28 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Widget breakRecommendation(Json u) => Panel(
-    color: mint,
+    color: context.palette.mint,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Zeit für eine kurze Pause?',
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         MathText('${u['break_minutes'] ?? 5} Minuten Pause tun gut.'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Wrap(
           spacing: 8,
           children: [
             TextButton.icon(
               onPressed: () => pauseUnit(u),
-              icon: const Icon(Icons.pause_rounded),
-              label: const Text('Pause machen'),
+              icon: Icon(Icons.pause_rounded),
+              label: Text('Pause machen'),
             ),
             TextButton(
               onPressed: () => setState(() => breakDismissed = true),
-              child: const Text('Weiterlernen'),
+              child: Text('Weiterlernen'),
             ),
           ],
         ),
@@ -2539,7 +2801,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final continuePractice = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kurz erklärt'),
+        title: Text('Kurz erklärt'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2562,7 +2824,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Weiter üben'),
+            child: Text('Weiter üben'),
           ),
         ],
       ),
@@ -2586,20 +2848,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Deine Eltern um Hilfe bitten?'),
+          title: Text('Deine Eltern um Hilfe bitten?'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 MathText('Es geht um ${u['topic']}.'),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextField(
                   controller: note,
                   minLines: 1,
                   maxLines: 3,
                   maxLength: 600,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Möchtest du etwas dazuschreiben?',
                     hintText: 'Du kannst das Feld leer lassen.',
                   ),
@@ -2610,7 +2872,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Abbrechen'),
+              child: Text('Abbrechen'),
             ),
             ActionButton(
               label: 'Hilfe anfragen',
@@ -2655,7 +2917,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
               child: MathText(
                 'Wie ist die Aufgabe für dich?',
@@ -2689,11 +2951,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ],
             ])
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(
+                contentPadding: EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 8,
                 ),
-                leading: Icon(item.$3, color: teal),
+                leading: Icon(item.$3, color: context.palette.teal),
                 title: MathText(item.$2),
                 onTap: () async {
                   try {
@@ -2714,7 +2976,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   }
                 },
               ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
         ),
       ),

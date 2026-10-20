@@ -10,6 +10,7 @@ import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/dashboard.dart';
+import 'package:schulpilot/child_today_widgets.dart';
 import 'package:schulpilot/ui.dart';
 
 Json childDay() {
@@ -194,8 +195,8 @@ void main() {
           },
         ];
         await mount(tester, data, requests, width: width);
-        final card = tester.widget<FocusCard>(find.byType(FocusCard));
-        expect(card.eyebrow, 'Deine Lernrunde');
+        final card = tester.widget<ChildTodayHero>(find.byType(ChildTodayHero));
+        expect(card.eyebrow, 'Deine Lernstation');
         expect(card.title, 'Brüche fortsetzen');
         expect(
           find.textContaining('2 von 5 Aufgaben abgeschlossen'),
@@ -272,7 +273,7 @@ void main() {
     data['units'][0].remove('closed_questions');
     await mount(tester, data, []);
     expect(
-      tester.widget<FocusCard>(find.byType(FocusCard)).subtitle,
+      tester.widget<ChildTodayHero>(find.byType(ChildTodayHero)).subtitle,
       'Mathematik',
     );
     expect(find.textContaining('Aufgaben abgeschlossen'), findsNothing);
@@ -288,7 +289,7 @@ void main() {
       data['materials'][0]['status'] = 'extracted';
       await mount(tester, data, requests, width: 320);
       expect(
-        tester.widget<FocusCard>(find.byType(FocusCard)).title,
+        tester.widget<ChildTodayHero>(find.byType(ChildTodayHero)).title,
         'Brüche fortsetzen',
       );
       await tap(tester, 'Heftseite prüfen');
@@ -316,7 +317,7 @@ void main() {
       };
       await mount(tester, data, requests, width: 320);
       expect(
-        tester.widget<FocusCard>(find.byType(FocusCard)).title,
+        tester.widget<ChildTodayHero>(find.byType(ChildTodayHero)).title,
         'Deine letzte Antwort',
       );
       expect(find.text('Freiwillig weiterlernen'), findsNothing);
@@ -356,7 +357,10 @@ void main() {
       final data = childDay(), requests = <http.Request>[];
       data['learning_preparation'] = {'id': 'own-job', 'status': 'queued'};
       await mount(tester, data, requests);
-      expect(tester.widget<FocusCard>(find.byType(FocusCard)).title, 'Brüche');
+      expect(
+        tester.widget<ChildTodayHero>(find.byType(ChildTodayHero)).title,
+        'Brüche',
+      );
       expect(find.text('Runde wird vorbereitet'), findsOneWidget);
       await tap(tester, 'Weiterlernen');
       expect(find.text('Gespeicherte Runde'), findsOneWidget);

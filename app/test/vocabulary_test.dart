@@ -232,7 +232,7 @@ void main() {
       (tester) async {
         final requests = <http.Request>[];
         await open(tester, requests, width: width);
-        expect(find.text('Meine Wörter'), findsWidgets);
+        expect(find.text('Wörter entdecken. Sicher anwenden.'), findsOneWidget);
         expect(find.text('Apfel'), findsOneWidget);
         expect(
           find.text('apple'),

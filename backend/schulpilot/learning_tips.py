@@ -205,7 +205,7 @@ def projection(db, p, child, kind, resource, *, limit=3):
 
         action, _ = decide(db, resource)
         focused = action["resources"]
-        by_id = {item["id"]: item for item in focused + contents["recommended"] + contents["additional"]}
+        by_id = {item["id"]: item for item in contents["recommended"] + contents["additional"] + focused}
         ordered = list(dict.fromkeys(item["id"] for item in focused + contents["recommended"] + contents["additional"]))
         selected_items = [by_id[key] for key in ordered][:limit]
         contents["recommended"] = [item for item in selected_items if item["relation"] == "known_level"]

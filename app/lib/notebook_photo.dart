@@ -115,7 +115,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.broken_image_outlined, color: muted),
+              Icon(Icons.broken_image_outlined, color: context.palette.muted),
               if (!widget.thumbnail) ...[
                 const SizedBox(height: 10),
                 Text(error!, textAlign: TextAlign.center),
@@ -197,7 +197,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
             }
 
             return Material(
-              color: surfaceLow,
+              color: context.palette.surfaceLow,
               child: Padding(
                 padding: const EdgeInsets.all(8),
                 child: Wrap(

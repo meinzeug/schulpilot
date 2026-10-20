@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'lesson_voice.dart';
 import 'learning_navigation.dart';
 import 'language_options.dart';
@@ -65,9 +66,12 @@ class FamilyVocabularyScreen extends StatelessWidget {
                       child: Panel(
                         child: ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
-                            backgroundColor: mint,
-                            child: Icon(Icons.translate_rounded, color: teal),
+                          leading: CircleAvatar(
+                            backgroundColor: context.palette.mint,
+                            child: Icon(
+                              Icons.translate_rounded,
+                              color: context.palette.teal,
+                            ),
                           ),
                           title: Text(
                             child['display_name'],
@@ -113,6 +117,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   List<Json> imports = [];
   String? error, collection, loadedQuery;
   String locale = 'en-GB';
+  String section = 'words';
   int page = 1, generation = 0;
   bool busy = false, due = false, loading = true;
   bool sourceOffered = false;
@@ -583,9 +588,12 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                             ),
                             if (decisions[index] == null ||
                                 decisions[index] == 'later')
-                              const Text(
+                              Text(
                                 'Bleibt zum späteren Prüfen erhalten.',
-                                style: TextStyle(color: muted, fontSize: 13),
+                                style: TextStyle(
+                                  color: context.palette.muted,
+                                  fontSize: 13,
+                                ),
                               ),
                           ],
                         ),
@@ -930,21 +938,24 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
         : data?['child']?['display_name'] == null
         ? 'Wortschatz & Abruf'
         : '${data!['child']['display_name']} · Wortschatz',
-    actions: [
-      TextButton.icon(
-        onPressed: () => openRoute(
-          context,
-          '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
-        ),
-        icon: const Icon(Icons.auto_stories_rounded),
-        label: const Text('Wörter anwenden'),
-      ),
-      IconButton(
-        tooltip: 'Aktualisieren',
-        onPressed: busy || loading ? null : load,
-        icon: const Icon(Icons.refresh_rounded),
-      ),
-    ],
+    showTitle: !widget.state.isChild,
+    actions: widget.state.isChild
+        ? const []
+        : [
+            TextButton.icon(
+              onPressed: () => openRoute(
+                context,
+                '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
+              ),
+              icon: const Icon(Icons.auto_stories_rounded),
+              label: const Text('Wörter anwenden'),
+            ),
+            IconButton(
+              tooltip: 'Aktualisieren',
+              onPressed: busy || loading ? null : load,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
     child: !current
         ? const SizedBox.shrink()
         : Column(
@@ -956,64 +967,136 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                   selected: 'words',
                   childName: data?['child']?['display_name'],
                 ),
-              Panel(
-                color: mint,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.translate_rounded, color: teal, size: 36),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.state.isChild
-                          ? 'Deine Wörter. Kleine Runden.'
-                          : 'Erkennen, Schreiben und Hören getrennt sehen.',
-                      style: const TextStyle(
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
+              if (widget.state.isChild) ...[
+                ChildSectionHero(
+                  eyebrow: 'Wörter',
+                  title: 'Wörter entdecken. Sicher anwenden.',
+                  description: 'Schreiben, erkennen oder hören: Wähle deine nächste Wörterrunde.',
+                  icon: Icons.translate_rounded,
+                  facts: [
+                    if (data != null) ...[
+                      ChildHeroFact(
+                        icon: Icons.style_outlined,
+                        label: counted(
+                          data!['summary']['confirmed_words'] as int,
+                          'bestätigtes Wort',
+                          'bestätigte Wörter',
+                        ),
                       ),
+                      ChildHeroFact(
+                        icon: Icons.replay_rounded,
+                        label:
+                            '${data!['summary']['due_words']} zum Wiederholen · ${data!['summary']['new_words']} neu',
+                      ),
+                    ],
+                  ],
+                  action: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: context.palette.actionPurple,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: context.palette.surfaceLow,
+                        disabledForegroundColor: context.palette.muted,
+                        minimumSize: const Size(0, 52),
+                      ),
+                      onPressed:
+                          busy ||
+                              loading ||
+                              (data?['items'] as List? ?? []).isEmpty
+                          ? null
+                          : startRound,
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: const Text('Wörter üben'),
                     ),
-                    const SizedBox(height: 12),
-                    if (data != null)
-                      Text(
-                        '${counted(data!['summary']['confirmed_words'] as int, 'bestätigtes Wort', 'bestätigte Wörter')} · ${data!['summary']['due_words']} zum Wiederholen · ${data!['summary']['new_words']} neu',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => openRoute(
+                        context,
+                        '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
                       ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        if (widget.state.isChild)
-                          FilledButton.icon(
-                            onPressed:
-                                busy || (data?['items'] as List? ?? []).isEmpty
-                                ? null
-                                : startRound,
-                            icon: const Icon(Icons.play_arrow_rounded),
-                            label: const Text('Wörter üben'),
-                          ),
-                        if (widget.state.isChild || widget.state.canManage)
-                          OutlinedButton.icon(
-                            onPressed: busy ? null : importDialog,
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Wörter hinzufügen'),
-                          ),
-                        if (widget.state.isChild || widget.state.canManage)
-                          TextButton.icon(
-                            onPressed: busy
-                                ? null
-                                : () => importMaterial(
-                                    context,
-                                    widget.state,
-                                    widget.childId,
-                                  ),
-                            icon: const Icon(Icons.add_a_photo_outlined),
-                            label: const Text('Vokabelseite fotografieren'),
-                          ),
-                      ],
+                      icon: const Icon(Icons.auto_stories_rounded),
+                      label: const Text('Wörter anwenden'),
+                    ),
+                    IconButton(
+                      tooltip: 'Aktualisieren',
+                      onPressed: busy || loading ? null : load,
+                      icon: const Icon(Icons.refresh_rounded),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 10),
+              ] else
+                Panel(
+                  color: context.palette.mint,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.translate_rounded,
+                        color: context.palette.teal,
+                        size: 36,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.state.isChild
+                            ? 'Deine Wörter. Kleine Runden.'
+                            : 'Erkennen, Schreiben und Hören getrennt sehen.',
+                        style: const TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (data != null)
+                        Text(
+                          '${counted(data!['summary']['confirmed_words'] as int, 'bestätigtes Wort', 'bestätigte Wörter')} · ${data!['summary']['due_words']} zum Wiederholen · ${data!['summary']['new_words']} neu',
+                        ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          if (widget.state.isChild)
+                            FilledButton.icon(
+                              onPressed:
+                                  busy ||
+                                      (data?['items'] as List? ?? []).isEmpty
+                                  ? null
+                                  : startRound,
+                              icon: const Icon(Icons.play_arrow_rounded),
+                              label: const Text('Wörter üben'),
+                            ),
+                          if (widget.state.isChild || widget.state.canManage)
+                            OutlinedButton.icon(
+                              onPressed: busy ? null : importDialog,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('Wörter hinzufügen'),
+                            ),
+                          if (widget.state.isChild || widget.state.canManage)
+                            TextButton.icon(
+                              onPressed: busy
+                                  ? null
+                                  : () => importMaterial(
+                                      context,
+                                      widget.state,
+                                      widget.childId,
+                                    ),
+                              icon: const Icon(Icons.add_a_photo_outlined),
+                              label: const Text('Vokabelseite fotografieren'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               if (error != null) ...[
                 Notice(error!, warning: true),
                 Align(
@@ -1025,319 +1108,455 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 ),
               ],
               if (busy) const LinearProgressIndicator(),
-              for (final round in data?['open_rounds'] as List? ?? [])
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.play_circle_outline_rounded,
-                    color: teal,
-                  ),
-                  title: Text(round['topic']),
-                  subtitle: Text(switch (round['status']) {
-                    'not_started' => 'Vorbereitet · noch nicht begonnen',
-                    'paused' => 'Pausiert · fortsetzen',
-                    _ => 'Begonnen · fortsetzen',
-                  }),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => openRoute(context, '/unit/${round['id']}'),
-                ),
-              const SizedBox(height: 20),
-              for (final row in imports.where(
-                (row) => row['status'] != 'confirmed',
-              ))
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    row['status'] == 'failed'
-                        ? Icons.error_outline_rounded
-                        : Icons.menu_book_rounded,
-                    color: teal,
-                  ),
-                  title: Text(row['title']),
-                  subtitle: Text(
-                    row['status'] == 'review'
-                        ? 'Wörter prüfen und bestätigen'
-                        : row['status'] == 'failed'
-                        ? row['error'] ?? 'Erkennung fehlgeschlagen'
-                        : 'Wörter werden erkannt …',
-                  ),
-                  trailing:
-                      row['status'] == 'review' &&
-                          (widget.state.isChild || widget.state.canManage)
-                      ? TextButton(
-                          onPressed: busy ? null : () => reviewDialog(row),
-                          child: const Text('Prüfen'),
-                        )
-                      : null,
-                ),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  SizedBox(
-                    width: 270,
-                    child: DropdownButtonFormField<String>(
-                      key: ValueKey(locale),
-                      initialValue: locale,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Sprache'),
-                      items: [
-                        for (final e in learningLocales.entries)
-                          DropdownMenuItem(value: e.key, child: Text(e.value)),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (v) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(() {
-                                locale = v!;
-                                collection = null;
-                                page = 1;
-                              });
-                              load();
-                            },
+              if ((data?['open_rounds'] as List? ?? []).isNotEmpty) ...[
+                const SizedBox(height: 12),
+                heading('Deine vorbereiteten Runden'),
+                for (final round in data!['open_rounds'] as List)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ChildActionTile(
+                      title: round['topic'],
+                      subtitle: switch (round['status']) {
+                        'not_started' => 'Vorbereitet · noch nicht begonnen',
+                        'paused' => 'Pausiert · fortsetzen',
+                        _ => 'Begonnen · fortsetzen',
+                      },
+                      icon: Icons.play_circle_outline_rounded,
+                      onTap: () async {
+                        try {
+                          if (widget.state.isChild) {
+                            await openPlanItem(
+                              context,
+                              widget.state,
+                              {
+                                'child': {'id': widget.childId},
+                              },
+                              {'kind': 'unit', 'id': round['id']},
+                            );
+                          } else {
+                            openRoute(context, '/unit/${round['id']}');
+                          }
+                        } catch (error) {
+                          if (context.mounted && current) {
+                            showError(context, error);
+                          }
+                        }
+                      },
                     ),
                   ),
-                  SizedBox(
-                    width: 260,
-                    child: DropdownButtonFormField<String>(
-                      key: ValueKey(
-                        '$locale:$collection:${data?['collections']}',
-                      ),
-                      initialValue: collection ?? '',
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Sammlung'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: '',
-                          child: Text('Alle Sammlungen'),
-                        ),
-                        for (final row in data?['collections'] as List? ?? [])
-                          if (row['target_locale'] == locale)
-                            DropdownMenuItem(
-                              value: row['id'].toString(),
-                              child: Text(
-                                row['title'],
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (v) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(() {
-                                collection = v == '' ? null : v;
-                                page = 1;
-                              });
-                              load();
-                            },
-                    ),
-                  ),
-                  FilterChip(
-                    label: const Text('Fällig oder neu'),
-                    selected: due,
-                    onSelected: (v) {
-                      setState(() {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        due = v;
-                        page = 1;
-                      });
-                      load();
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: search,
-                maxLength: 100,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  labelText: 'Wörter suchen',
-                  counterText: '',
-                  suffixIcon: IconButton(
-                    tooltip: 'Suchen',
-                    icon: const Icon(Icons.search_rounded),
-                    onPressed: () {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      page = 1;
-                      load();
-                    },
-                  ),
-                ),
-                onSubmitted: (_) {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  page = 1;
-                  load();
-                },
-              ),
-              if (filtered)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: resetFilters,
-                    icon: const Icon(Icons.filter_alt_off_outlined),
-                    label: const Text('Filter zurücksetzen'),
-                  ),
-                ),
+              ],
               const SizedBox(height: 16),
-              if (loading) const Center(child: CircularProgressIndicator()),
-              if (data != null && (data!['items'] as List).isEmpty)
-                Panel(
-                  child: Text(
-                    filtered
-                        ? 'Keine passenden Wörter gefunden. Ändere die Suche oder setze die Filter zurück.'
-                        : 'Hier sind noch keine Wörter in dieser Sprache. Füge deine ersten Schulwörter hinzu.',
-                  ),
-                ),
-              for (final item in data?['items'] as List? ?? [])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Panel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                widget.state.isChild &&
-                                        !revealed.contains(item['id'])
-                                    ? item['meaning']
-                                    : item['word'],
-                                style: const TextStyle(
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            if (widget.state.isChild || widget.state.canManage)
-                              IconButton(
-                                tooltip: 'Wort korrigieren',
-                                onPressed: busy
-                                    ? null
-                                    : () => edit(Json.from(item)),
-                                icon: const Icon(Icons.edit_outlined),
-                              ),
-                          ],
-                        ),
-                        if (!widget.state.isChild ||
-                            revealed.contains(item['id']))
-                          Text(
-                            item['meaning'],
-                            style: const TextStyle(fontSize: 18),
-                          )
-                        else
-                          TextButton(
-                            onPressed: busy
-                                ? null
-                                : () => run(() async {
-                                    await widget.state.api.post(
-                                      '$base/${item['id']}/reveal',
-                                    );
-                                    if (current) {
-                                      setState(() => revealed.add(item['id']));
-                                    }
-                                  }),
-                            child: const Text('Wort aufdecken'),
-                          ),
-                        if ((item['context'] ?? '').toString().isNotEmpty)
-                          Text(
-                            'Kontext: ${widget.state.isChild && !revealed.contains(item['id']) ? item['cue_context'] ?? '' : item['context']}',
-                          ),
-                        if (item['source_changed'] == true)
-                          const Notice(
-                            'Heftseite geändert. Bitte diesen Eintrag prüfen oder korrigieren.',
-                            warning: true,
-                          ),
-                        Text(
-                          item['origin'] == 'material'
-                              ? 'Aus deinem Heft'
-                              : 'Selbst eingetragen',
-                          style: const TextStyle(fontSize: 12, color: muted),
-                        ),
-                        if ((item['reviews'] as List).isNotEmpty)
-                          ExpansionTile(
-                            tilePadding: EdgeInsets.zero,
-                            title: Text(
-                              '${counted((item['reviews'] as List).length, 'Lernmodus', 'Lernmodi')} · Stand ansehen',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            children: [
-                              for (final state in item['reviews'] as List)
-                                Text(
-                                  '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'Antwort noch offen' : 'wieder am ${friendlyDate(state['due'])}'}',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                            ],
-                          ),
-                        if (!widget.state.isChild ||
-                            revealed.contains(item['id']))
-                          Wrap(
-                            children: [
-                              ReadAloudButton(
-                                text: item['word'],
-                                locale: item['target_locale'],
-                                beforeRead: !widget.state.isChild
-                                    ? null
-                                    : () async {
-                                        await widget.state.api.post(
-                                          '$base/${item['id']}/reveal',
-                                        );
-                                      },
-                              ),
-                              ReadAloudButton(
-                                text: item['word'],
-                                locale: item['target_locale'],
-                                slow: true,
-                                beforeRead: !widget.state.isChild
-                                    ? null
-                                    : () async {
-                                        await widget.state.api.post(
-                                          '$base/${item['id']}/reveal',
-                                        );
-                                      },
-                              ),
-                            ],
-                          ),
-                      ],
+              if (widget.state.isChild) ...[
+                ChildSectionTabs(
+                  tabs: const [
+                    (
+                      id: 'words',
+                      label: 'Wortschatz',
+                      icon: Icons.style_outlined,
                     ),
-                  ),
-                ),
-              if (data != null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      tooltip: 'Vorherige Wortseite',
-                      onPressed: page > 1
-                          ? () {
-                              page--;
-                              load();
-                            }
-                          : null,
-                      icon: const Icon(Icons.chevron_left_rounded),
+                    (
+                      id: 'review',
+                      label: 'Prüfen',
+                      icon: Icons.fact_check_outlined,
                     ),
-                    Expanded(
-                      child: Text(
-                        'Seite $page · ${counted(data!['pagination']['total'] as int, 'Wort', 'Wörter')}',
-                        textAlign: TextAlign.center,
+                  ],
+                  selected: section,
+                  onSelected: (value) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => section = value);
+                  },
+                ),
+                const SizedBox(height: 20),
+                if (section == 'words') ...[
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: busy ? null : importDialog,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Wörter hinzufügen'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => importMaterial(
+                                context,
+                                widget.state,
+                                widget.childId,
+                              ),
+                        icon: const Icon(Icons.add_a_photo_outlined),
+                        label: const Text('Vokabelseite fotografieren'),
+                      ),
+                    ],
+                  ),
+                  if (imports.any((row) => row['status'] != 'confirmed'))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: ChildActionTile(
+                        title: 'Es gibt noch Wörter zum Prüfen',
+                        subtitle: 'Erst wenn du die Wortpaare bestätigst, übst du damit.',
+                        icon: Icons.fact_check_outlined,
+                        onTap: () => setState(() => section = 'review'),
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Nächste Wortseite',
-                      onPressed:
-                          page * 15 < (data!['pagination']['total'] as int)
-                          ? () {
-                              page++;
-                              load();
-                            }
+                  const SizedBox(height: 20),
+                ],
+              ],
+              if (!widget.state.isChild || section == 'review') ...[
+                heading(
+                  'Wörter prüfen',
+                  subtitle: 'Deine bestätigten Wörter bleiben im Wortschatz. Hier prüfst du neue Vorschläge.',
+                ),
+                if (imports.every((row) => row['status'] == 'confirmed'))
+                  const Panel(
+                    tone: PanelTone.subtle,
+                    child: Text(
+                      'Alles geprüft. Neue Wortpaare kannst du im Wortschatz hinzufügen.',
+                    ),
+                  ),
+                for (final row in imports.where(
+                  (row) => row['status'] != 'confirmed',
+                ))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ChildActionTile(
+                      title: row['title'],
+                      subtitle: row['status'] == 'review'
+                          ? 'Wörter prüfen und bestätigen'
+                          : row['status'] == 'failed'
+                          ? row['error'] ?? 'Erkennung fehlgeschlagen'
+                          : 'Wörter werden erkannt …',
+                      icon: row['status'] == 'failed'
+                          ? Icons.error_outline_rounded
+                          : Icons.menu_book_rounded,
+                      onTap:
+                          row['status'] == 'review' &&
+                              !busy &&
+                              (widget.state.isChild || widget.state.canManage)
+                          ? () => reviewDialog(row)
                           : null,
-                      icon: const Icon(Icons.chevron_right_rounded),
+                      trailing:
+                          row['status'] == 'review' &&
+                              (widget.state.isChild || widget.state.canManage)
+                          ? Text(
+                              'Prüfen',
+                              style: TextStyle(
+                                color: context.palette.teal,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          : Icon(
+                              Icons.info_outline_rounded,
+                              color: context.palette.muted,
+                            ),
+                    ),
+                  ),
+              ],
+              if (!widget.state.isChild || section == 'words') ...[
+                heading('Dein Wortschatz'),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: 270,
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey(locale),
+                        initialValue: locale,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Sprache'),
+                        items: [
+                          for (final e in learningLocales.entries)
+                            DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                        ],
+                        onChanged: busy
+                            ? null
+                            : (v) {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                setState(() {
+                                  locale = v!;
+                                  collection = null;
+                                  page = 1;
+                                });
+                                load();
+                              },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 260,
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey(
+                          '$locale:$collection:${data?['collections']}',
+                        ),
+                        initialValue: collection ?? '',
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Sammlung',
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: '',
+                            child: Text('Alle Sammlungen'),
+                          ),
+                          for (final row in data?['collections'] as List? ?? [])
+                            if (row['target_locale'] == locale)
+                              DropdownMenuItem(
+                                value: row['id'].toString(),
+                                child: Text(
+                                  row['title'],
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                        ],
+                        onChanged: busy
+                            ? null
+                            : (v) {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                setState(() {
+                                  collection = v == '' ? null : v;
+                                  page = 1;
+                                });
+                                load();
+                              },
+                      ),
+                    ),
+                    FilterChip(
+                      label: const Text('Fällig oder neu'),
+                      selected: due,
+                      onSelected: (v) {
+                        setState(() {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          due = v;
+                          page = 1;
+                        });
+                        load();
+                      },
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: search,
+                  maxLength: 100,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    labelText: 'Wörter suchen',
+                    counterText: '',
+                    suffixIcon: IconButton(
+                      tooltip: 'Suchen',
+                      icon: const Icon(Icons.search_rounded),
+                      onPressed: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        page = 1;
+                        load();
+                      },
+                    ),
+                  ),
+                  onSubmitted: (_) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    page = 1;
+                    load();
+                  },
+                ),
+                if (filtered)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: resetFilters,
+                      icon: const Icon(Icons.filter_alt_off_outlined),
+                      label: const Text('Filter zurücksetzen'),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                if (loading) const Center(child: CircularProgressIndicator()),
+                if (data != null && (data!['items'] as List).isEmpty)
+                  Panel(
+                    child: Text(
+                      filtered
+                          ? 'Keine passenden Wörter gefunden. Ändere die Suche oder setze die Filter zurück.'
+                          : 'Hier sind noch keine Wörter in dieser Sprache. Füge deine ersten Schulwörter hinzu.',
+                    ),
+                  ),
+                for (final item in data?['items'] as List? ?? [])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Panel(
+                      color: widget.state.isChild ? context.palette.mint : null,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (widget.state.isChild) ...[
+                            Text(
+                              revealed.contains(item['id'])
+                                  ? 'Wort und Bedeutung'
+                                  : 'Welches Wort passt?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: context.palette.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  widget.state.isChild &&
+                                          !revealed.contains(item['id'])
+                                      ? item['meaning']
+                                      : item['word'],
+                                  textAlign: widget.state.isChild
+                                      ? TextAlign.center
+                                      : TextAlign.start,
+                                  style: TextStyle(
+                                    fontFamily: widget.state.isChild
+                                        ? 'SpaceGrotesk'
+                                        : null,
+                                    fontSize: widget.state.isChild ? 28 : 21,
+                                    color: context.palette.ink,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              if (widget.state.isChild ||
+                                  widget.state.canManage)
+                                IconButton(
+                                  tooltip: 'Wort korrigieren',
+                                  onPressed: busy
+                                      ? null
+                                      : () => edit(Json.from(item)),
+                                  icon: const Icon(Icons.edit_outlined),
+                                ),
+                            ],
+                          ),
+                          if (!widget.state.isChild ||
+                              revealed.contains(item['id']))
+                            Text(
+                              item['meaning'],
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          else
+                            TextButton(
+                              onPressed: busy
+                                  ? null
+                                  : () => run(() async {
+                                      await widget.state.api.post(
+                                        '$base/${item['id']}/reveal',
+                                      );
+                                      if (current) {
+                                        setState(
+                                          () => revealed.add(item['id']),
+                                        );
+                                      }
+                                    }),
+                              child: const Text('Wort aufdecken'),
+                            ),
+                          if ((item['context'] ?? '').toString().isNotEmpty)
+                            Text(
+                              'Kontext: ${widget.state.isChild && !revealed.contains(item['id']) ? item['cue_context'] ?? '' : item['context']}',
+                            ),
+                          if (item['source_changed'] == true)
+                            const Notice(
+                              'Heftseite geändert. Bitte diesen Eintrag prüfen oder korrigieren.',
+                              warning: true,
+                            ),
+                          Text(
+                            item['origin'] == 'material'
+                                ? 'Aus deinem Heft'
+                                : 'Selbst eingetragen',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.palette.muted,
+                            ),
+                          ),
+                          if ((item['reviews'] as List).isNotEmpty)
+                            ExpansionTile(
+                              tilePadding: EdgeInsets.zero,
+                              title: Text(
+                                '${counted((item['reviews'] as List).length, 'Lernmodus', 'Lernmodi')} · Stand ansehen',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              children: [
+                                for (final state in item['reviews'] as List)
+                                  Text(
+                                    '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'Antwort noch offen' : 'wieder am ${friendlyDate(state['due'])}'}',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                              ],
+                            ),
+                          if (!widget.state.isChild ||
+                              revealed.contains(item['id']))
+                            Wrap(
+                              children: [
+                                ReadAloudButton(
+                                  text: item['word'],
+                                  locale: item['target_locale'],
+                                  beforeRead: !widget.state.isChild
+                                      ? null
+                                      : () async {
+                                          await widget.state.api.post(
+                                            '$base/${item['id']}/reveal',
+                                          );
+                                        },
+                                ),
+                                ReadAloudButton(
+                                  text: item['word'],
+                                  locale: item['target_locale'],
+                                  slow: true,
+                                  beforeRead: !widget.state.isChild
+                                      ? null
+                                      : () async {
+                                          await widget.state.api.post(
+                                            '$base/${item['id']}/reveal',
+                                          );
+                                        },
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (data != null)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        tooltip: 'Vorherige Wortseite',
+                        onPressed: page > 1
+                            ? () {
+                                page--;
+                                load();
+                              }
+                            : null,
+                        icon: const Icon(Icons.chevron_left_rounded),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Seite $page · ${counted(data!['pagination']['total'] as int, 'Wort', 'Wörter')}',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Nächste Wortseite',
+                        onPressed:
+                            page * 15 < (data!['pagination']['total'] as int)
+                            ? () {
+                                page++;
+                                load();
+                              }
+                            : null,
+                        icon: const Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
+                  ),
+              ],
               if (data != null && !widget.state.isChild) ...[
                 const SizedBox(height: 24),
                 heading('Geprüfte Fähigkeiten'),

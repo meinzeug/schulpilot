@@ -24,6 +24,20 @@ def _excerpt(content, match):
     return content[max(start, match.start() - 100) : max(start, match.start() - 100) + 350].strip()
 
 
+def unlike_quote(sources):
+    """A taught unlike-denominator procedure, never a mere topic mention."""
+    for source in sources:
+        for match in re.finditer(r"[^.!?\n]+(?:[.!?\n]+|$)", source["content"]):
+            clause = match.group().strip()
+            if (len(clause) <= 350 and re.search(r"addier|addition", clause, re.I)
+                    and re.search(r"ungleichnam", clause, re.I)
+                    and re.search(r"gemeinsam\w*\s+nenner", clause, re.I)
+                    and re.search(r"erweiter|gleichnamig\s+mach", clause, re.I)
+                    and not re.search(r"\b(?:nicht|später|falsch|niemals)\b|erst\s+nächste", clause, re.I)):
+                return clause
+    return None
+
+
 def _procedure_quote(sources, label):
     """Require a general rule in one clause, not nearby vocabulary/examples."""
     operation = {
@@ -121,7 +135,11 @@ def _catalog(materials, subject, topic):
                 catalog[label] = {
                     component: components[component] for component in sorted(components, key=positions.get)
                 }
-        else:
+        elif label in ("Brüche addieren", "Brüche kürzen", "Brüche erweitern"):
+            unlike = unlike_quote(sources) if label == "Brüche addieren" else None
+            if unlike:
+                catalog[label] = {"add_unlike": unlike}
+                continue
             quote = _procedure_quote(sources, label)
             if quote:
                 operation = {"Brüche addieren": "add", "Brüche kürzen": "reduce", "Brüche erweitern": "expand"}[label]
@@ -131,7 +149,9 @@ def _catalog(materials, subject, topic):
 
 def _numbers(operation):
     """Finite small proper fractions; no negatives or mixed-number arithmetic."""
-    if operation == "add":
+    if operation == "add_unlike":
+        yield from ((1, 3, 1, 6), (1, 4, 1, 8), (2, 5, 1, 10), (1, 6, 1, 3), (1, 3, 1, 12), (1, 4, 1, 6))
+    elif operation == "add":
         for denominator in range(3, 13):
             for first in range(1, denominator - 1):
                 for second in range(first, denominator - first):
@@ -157,7 +177,15 @@ def _numbers(operation):
 def _task(operation, numbers, phase):
     numerator, denominator = numbers[:2]
     prefix = PHASE_TEXT[phase]
-    if operation == "add":
+    if operation == "add_unlike":
+        second, other_denominator = numbers[2:]
+        common = math.lcm(denominator, other_denominator)
+        prompt = f"Berechne {numerator}/{denominator} + {second}/{other_denominator}. "
+        total = numerator * (common // denominator) + second * (common // other_denominator)
+        answer = f"{total}/{common}"
+        help_text = "Erweitere zuerst auf dieselbe Einteilung und addiere danach die Zähler."
+        ending = f" Gib das Ergebnis als Bruch mit dem Nenner {common} an."
+    elif operation == "add":
         second = numbers[2]
         prompt = f"Berechne {numerator}/{denominator} + {second}/{denominator}. "
         answer = f"{numerator + second}/{denominator}"

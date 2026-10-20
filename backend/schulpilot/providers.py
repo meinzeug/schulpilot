@@ -107,6 +107,10 @@ def is_mathematics(subject):
 
 
 def system_text(function, *, review_only=False):
+    if function == "decision":
+        from .instructional_decisions import RULES
+
+        return SYSTEM + "\n" + RULES
     if function == "language_project":
         return (SYSTEM + "\nDies ist die ausdrücklich angeforderte schulische Sprachwerkstatt. "
                 "Anleitungen, Hinweise und explanation auf Deutsch; fremdsprachliche Beispiele ausschließlich in cue. "
@@ -870,6 +874,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         "coach": s.CoachingOutput,
         "tutor": TutorOutput,
     }.get(function, s.UnitOutput)
+    if function == "decision":
+        from .instructional_decisions import DecisionOutput
+
+        model_type = DecisionOutput
     if function == "vocabulary_import":
         from .language_tasks import VocabularyOutput
 
@@ -945,6 +953,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
 
         response_type = augmented_model(response_type)
     schema = strict_schema(response_type, preserve_limits=config.provider in ("openrouter", "codex"))
+    if function == "decision":
+        from .instructional_decisions import schema_refs
+
+        schema_refs(schema, payload)
     if controller_proposal:
         proposal = schema["$defs"]["ActionProposal"]["properties"]
         proposal["question_ids"]["items"]["enum"] = [q["question_id"] for q in payload["completed_questions"]]

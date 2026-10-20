@@ -62,9 +62,9 @@ class LearningContent extends StatelessWidget {
             ),
           ),
         if (compact && parts.length > 3)
-          const Text(
+          Text(
             'Weitere Abschnitte im ganzen Text.',
-            style: TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
           ),
       ],
     );
@@ -125,9 +125,9 @@ class _Section extends StatelessWidget {
             const SizedBox(height: 8),
             MathText(text, style: body),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Die Zeichnung siehst du im vergrößerbaren Heftfoto.',
-              style: TextStyle(fontSize: 13, color: muted),
+              style: TextStyle(fontSize: 13, color: context.palette.muted),
             ),
           ],
         ),
@@ -245,12 +245,12 @@ class _BookTable extends StatelessWidget {
         primary: false,
         child: Table(
           defaultColumnWidth: FixedColumnWidth(columnWidth),
-          border: TableBorder.all(color: const Color(0xFFB8C6D9)),
+          border: TableBorder.all(color: context.palette.surfaceBorder),
           children: [
             for (final row in rows.indexed)
               TableRow(
                 decoration: row.$1 == 0
-                    ? const BoxDecoration(color: Color(0xFFF2F5FA))
+                    ? BoxDecoration(color: context.palette.surfaceLow)
                     : null,
                 children: [
                   for (final cell in row.$2)

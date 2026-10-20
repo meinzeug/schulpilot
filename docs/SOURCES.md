@@ -1,3 +1,37 @@
+Lernsteuerung und gemeinsamer Arbeitsraum20.10.2026, Zielversion1.15.0+65:
+
+Eigene vorhandene Attempt-/Activity-/Quellen-/Jobmodelle und gepinnte Flutter-
+Darstellung. Keine neuen Dart-/Python-Pakete, Lernanbieter, Microservices oder höheren
+Kontingente. Zwei Erscheinungsbilder mit lokal gebündelten Schriften und einer
+aus künstlicher Beschreibung erzeugten öffentlichen Einstiegsillustration.
+Kein externer Fontabruf oder neuer Bilddienst in der Anwendung.
+Fachliche Regeln und Grenzen, Schnittstellen und Testspuren:
+[LEARNING_CONTROLLER_2026_10_20.md](LEARNING_CONTROLLER_2026_10_20.md),
+[PARENT_WORKSPACE_2026_10_20.md](PARENT_WORKSPACE_2026_10_20.md),
+[ADMIN_WORKSPACE_2026_10_20.md](ADMIN_WORKSPACE_2026_10_20.md).
+
+
+Schriftquellen, lokal gebündelt, OFL1.1, am20.10.2026 geprüft:
+- [Nunito](https://github.com/googlefonts/nunito/tree/8c6a9bb9732545b9ed53f29ec5e1ab0ff53c4e6f),
+  `Nunito[wght].ttf`, SHA256 `bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207`.
+- [Space Grotesk](https://github.com/floriankarsten/space-grotesk/tree/03507d024a01282884232081fc6011c09ff4e849),
+  `SpaceGrotesk[wght].ttf`, SHA256 `acad6de1fc93436f5c0f1f4137751ef04f1aea3063e7036535970ffcfbd79f72`.
+- Eigene synthetische Cyber-Buchdrohne über das eingebaute Bildwerkzeug;
+  Prompt, Asset und Hash in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
+- Produktdokumentation von Duolingo, Khan Academy Kids, ANTON, Google Classroom,
+  Todoist, Linear und Brilliant: konkrete Primärlinks, Übertragungsentscheidung
+  und Grenzen in den drei Workspace-Dokumenten. Keine behauptete Studie zur
+  Lernwirkung oder vollständige native Fremdproduktprüfung.
+
+Direkt geprüfte angemeldete OpenRouter-Kontoseiten20.10.2026:
+[Datenschutz](https://openrouter.ai/settings/privacy),
+[Workspace-Observability](https://openrouter.ai/workspaces/default/observability).
+Betreiber beauftragte Einsicht und Änderung; tatsächliche Schalter/Prüfgrenzen
+in [OPENROUTER_ACTIVATION_2026_10_20.md](OPENROUTER_ACTIVATION_2026_10_20.md).
+Ein zusätzlicher künstlicher normal reservierter Planungsauftrag erfolgreich,
+erfasste Anbieter-Kosten0,000514USD; gesamte bisherige künstliche Abnahme
+0,238013USD innerhalb0,25USD. Kein Test mit echten Kinderinhalten.
+
 Kinder-Funktionsprüfung20.10.2026, Zielversion1.14.4+64:
 
 Eigene bestehende Quellen-/Runden-/Nachrichtenmodelle, gepinnte Flutter-

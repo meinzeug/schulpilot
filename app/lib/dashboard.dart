@@ -5,13 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'child_messages.dart';
 import 'collection_screen.dart';
 import 'daily_plan_panel.dart';
 import 'learning_tips.dart';
-import 'preparation_card.dart';
+import 'child_today_widgets.dart';
 import 'learning_navigation.dart';
 import 'parent_child_navigation.dart';
 import 'parent_overview.dart';
+import 'parent_workspace_ui.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
 
@@ -31,8 +33,8 @@ class DashboardScreen extends StatelessWidget {
         subtitle: 'Anbieter und Plattform verwalten.',
         child: FilledButton.icon(
           onPressed: () => context.go('/admin'),
-          icon: const Icon(Icons.shield_outlined),
-          label: const Text('KI & Betrieb öffnen'),
+          icon: Icon(Icons.shield_outlined),
+          label: Text('KI & Betrieb öffnen'),
         ),
       );
     }
@@ -49,7 +51,7 @@ class DashboardScreen extends StatelessWidget {
       return PageFrame(
         state: state,
         title: 'Deine Familien',
-        child: const Notice(
+        child: Notice(
           'Diesem Elternkonto ist derzeit keine Familie zugeordnet. Einladungen können über den E-Mail-Link angenommen werden.',
         ),
       );
@@ -57,50 +59,47 @@ class DashboardScreen extends StatelessWidget {
     return PageFrame(
       state: state,
       title: 'Deine Familie',
-      subtitle: 'Heute gelernt. Morgen sicherer.',
-      actions: [
-        if (state.canManage)
-          OutlinedButton.icon(
-            onPressed: () => showChildDialog(context, state).then((_) {
-              if (context.mounted) context.go('/app');
-            }),
-            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-            label: const Text('Kind hinzufügen'),
-          ),
-      ],
+      showTitle: false,
       child: LoadView<Json>(
         key: ValueKey('${state.familyId}-${state.revision}'),
         load: () => state.api.get('/families/${state.familyId}'),
         builder: (family, refresh) {
-          final children = family['children'] as List;
+          final children = (family['children'] as List? ?? [])
+              .whereType<Map>()
+              .map(Json.from)
+              .toList();
           final answerCount = children.fold<int>(
             0,
-            (sum, c) => sum + (c['summary']['answer_count'] as int),
+            (sum, c) =>
+                sum + (c['summary']?['answer_count'] as num? ?? 0).toInt(),
           );
           final completed = children.fold<int>(
             0,
-            (sum, c) => sum + (c['summary']['completed_units'] as int),
+            (sum, c) =>
+                sum + (c['summary']?['completed_units'] as num? ?? 0).toInt(),
           );
           final help = children.fold<int>(
             0,
-            (sum, c) => sum + (c['summary']['help_requests'] as int),
+            (sum, c) =>
+                sum + (c['summary']?['help_requests'] as num? ?? 0).toInt(),
           );
+          bool hasSummary(String key) =>
+              children.every((child) => child['summary']?[key] is num);
           final highlightHelp = children.any(
             (c) =>
-                c['preferences']['notify_help'] != false &&
-                c['summary']['help_requests'] > 0,
+                c['preferences']?['notify_help'] != false &&
+                (c['summary']?['help_requests'] as num? ?? 0) > 0,
           );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (families.length > 1)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
+                  padding: EdgeInsets.only(bottom: 20),
                   child: DropdownButtonFormField<String>(
                     initialValue: state.familyId,
-                    decoration: const InputDecoration(
-                      labelText: 'Familie auswählen',
-                    ),
+                    decoration: InputDecoration(labelText: 'Familie auswählen'),
+                    isExpanded: true,
                     items: families
                         .map(
                           (f) => DropdownMenuItem<String>(
@@ -115,62 +114,53 @@ class DashboardScreen extends StatelessWidget {
                     },
                   ),
                 ),
-              Panel(
-                tone: PanelTone.info,
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const CircleAvatar(
-                      backgroundColor: mint,
-                      child: Icon(Icons.diversity_1_rounded, color: teal),
+              ParentWorkspaceHero(
+                eyebrow: 'DEIN FAMILIENBEREICH',
+                title: family['name']?.toString() ?? 'Deine Familie',
+                subtitle: highlightHelp
+                    ? 'Ein Hilfewunsch wartet auf dich. Sieh direkt, wo du heute unterstützen kannst.'
+                    : 'Nah dran am Lernweg. Ergebnisse, nächste Schritte und Nachrichten an einem Ort.',
+                facts: [
+                  if (hasSummary('answer_count'))
+                    ParentHeroFact(
+                      icon: Icons.fact_check_outlined,
+                      label:
+                          '${counted(answerCount, 'Antwort', 'Antworten')} heute',
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            family['name'],
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            highlightHelp
-                                ? 'Ein Hilfewunsch wartet auf dich.'
-                                : 'Euer Lernen heute im Blick.',
-                            style: const TextStyle(color: muted),
-                          ),
-                          const SizedBox(height: 14),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              Tag(
-                                '$completed ${completed == 1 ? 'Runde' : 'Runden'}',
-                              ),
-                              Tag('$answerCount Antworten'),
-                              Tag(
-                                '$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                  if (hasSummary('completed_units'))
+                    ParentHeroFact(
+                      icon: Icons.check_circle_outline_rounded,
+                      label:
+                          '$completed ${completed == 1 ? 'Runde' : 'Runden'} heute',
                     ),
-                  ],
-                ),
+                  if (hasSummary('help_requests'))
+                    ParentHeroFact(
+                      icon: Icons.volunteer_activism_outlined,
+                      label:
+                          '$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'} heute',
+                    ),
+                ],
+                actions: [
+                  if (state.canManage && children.isNotEmpty)
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          showChildDialog(context, state).then((_) {
+                            if (context.mounted) refresh();
+                          }),
+                      icon: Icon(Icons.person_add_alt_1_rounded, size: 18),
+                      label: Text('Kind hinzufügen'),
+                    ),
+                ],
               ),
-              const SizedBox(height: 24),
-              heading(
-                'Deine Kinder',
-                trailing: IconButton(
+              SizedBox(height: 26),
+              ParentSectionHeading(
+                title: 'Deine Kinder',
+                subtitle: 'Öffne den Lernüberblick oder gehe direkt zu einem Bereich.',
+                icon: Icons.diversity_1_rounded,
+                action: IconButton(
                   tooltip: 'Aktualisieren',
                   onPressed: refresh,
-                  icon: const Icon(Icons.refresh),
+                  icon: Icon(Icons.refresh_rounded),
                 ),
               ),
               if (children.isEmpty)
@@ -178,37 +168,27 @@ class DashboardScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Hier beginnt euer gemeinsamer Lernweg.'),
-                      const SizedBox(height: 16),
-                      ActionButton(
-                        label: 'Ersten Kinderzugang einrichten',
-                        onPressed: () async {
-                          await showChildDialog(context, state);
-                          refresh();
-                        },
-                      ),
+                      Text('Hier beginnt euer gemeinsamer Lernweg.'),
+                      SizedBox(height: 16),
+                      if (state.canManage)
+                        ActionButton(
+                          label: 'Ersten Kinderzugang einrichten',
+                          onPressed: () async {
+                            await showChildDialog(context, state);
+                            refresh();
+                          },
+                        ),
                     ],
                   ),
                 )
               else
-                LayoutBuilder(
-                  builder: (context, size) => Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      for (final child in children)
-                        SizedBox(
-                          width: size.maxWidth > 760
-                              ? (size.maxWidth - 16) / 2
-                              : size.maxWidth,
-                          child: _FamilyChildCard(
-                            child: Map<String, dynamic>.from(child),
-                          ),
-                        ),
-                    ],
-                  ),
+                Column(
+                  children: [
+                    for (final child in children)
+                      _FamilyChildCard(child: Json.from(child)),
+                  ],
                 ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               if (state.demoCredentials != null) demoAccess(context, state),
             ],
           );
@@ -224,96 +204,159 @@ class _FamilyChildCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final summary = child['summary'] as Json;
+    final childId = child['id'];
+    if (childId is! String || childId.isEmpty) {
+      return Notice(
+        'Ein Kinderzugang konnte nicht vollständig geladen werden. Bitte erneut laden.',
+      );
+    }
+    final palette = context.palette;
+    final summary = Json.from(child['summary'] as Map? ?? {});
+    final displayName = child['display_name']?.toString().trim();
+    final name = displayName == null || displayName.isEmpty
+        ? 'Kinderzugang'
+        : displayName;
     final time = child['learning_time'];
     final help = summary['help_requests'] as num? ?? 0;
     final open = child['open_assignments'];
-    return Panel(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: mint,
-                child: Text(
-                  (child['display_name'] as String).characters.firstOrNull
-                          ?.toUpperCase() ??
-                      'S',
-                  style: const TextStyle(
-                    color: teal,
-                    fontWeight: FontWeight.w700,
-                  ),
+    final identity = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: palette.mint,
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Text(
+                name.characters.first.toUpperCase(),
+                style: TextStyle(
+                  color: palette.teal,
+                  fontSize: 27,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      child['display_name'],
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      'Klasse ${child['grade']}',
-                      style: const TextStyle(fontSize: 12, color: muted),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (time is Map)
-            LearningGoalPanel(
-              plan: Map<String, dynamic>.from(time),
-              compact: true,
-            )
-          else
-            Text(
-              'Heute ca. ${learningMinutes(summary['active_minutes_approx'])} Min. aktiv',
-              style: const TextStyle(color: muted),
             ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (open is num)
-                Tag(
-                  '$open ${open == 1 ? 'offener Auftrag' : 'offene Aufträge'}',
-                ),
-              if (help > 0 && child['preferences']?['notify_help'] != false)
-                Tag('$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}'),
-              Tag(
-                '${counted(summary['completed_units'] as num? ?? 0, 'Runde', 'Runden')} heute',
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: palette.ink,
+                      fontSize: 25,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    child['grade'] == null
+                        ? 'Klassenstufe nicht angegeben'
+                        : 'Klasse ${child['grade']}',
+                    style: TextStyle(color: palette.muted, fontSize: 13),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            summary['support'],
-            style: const TextStyle(fontSize: 13, color: muted),
-          ),
-          const SizedBox(height: 18),
-          ActionButton(
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (open is num)
+              Tag('$open ${open == 1 ? 'offener Auftrag' : 'offene Aufträge'}'),
+            if (help > 0 && child['preferences']?['notify_help'] != false)
+              Tag('$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}'),
+            if (summary['completed_units'] is num)
+              Tag(
+                '${counted(summary['completed_units'], 'Runde', 'Runden')} heute',
+              ),
+          ],
+        ),
+        SizedBox(height: 12),
+        Text(
+          summary['support']?.toString() ??
+              'Noch keine Rückmeldung zum heutigen Lernen.',
+          style: TextStyle(color: palette.muted, fontSize: 14),
+        ),
+        SizedBox(height: 18),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ActionButton(
             label: 'Lernüberblick öffnen',
             icon: Icons.arrow_forward_rounded,
-            onPressed: () async => openRoute(context, '/child/${child['id']}'),
+            onPressed: () async => openRoute(context, '/child/$childId'),
           ),
-        ],
+        ),
+        SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final destination in [
+              ('progress', 'Lernstand', Icons.insights_rounded),
+              ('plan', 'Plan', Icons.event_note_rounded),
+              ('messages', 'Nachrichten', Icons.chat_bubble_outline_rounded),
+            ])
+              TextButton.icon(
+                onPressed: () => openRoute(
+                  context,
+                  ParentChildNavigation.location(childId, destination.$1),
+                ),
+                icon: Icon(destination.$3, size: 18),
+                label: Text(destination.$2),
+              ),
+          ],
+        ),
+      ],
+    );
+    final Widget measuredTime = time is Map && time.isNotEmpty
+        ? LearningGoalPanel(plan: Json.from(time), compact: true)
+        : Text(
+            summary['active_minutes_approx'] is num
+                ? 'Heute ca. ${learningMinutes(summary['active_minutes_approx'])} Min. aktiv'
+                : 'Noch keine Zeitdaten verfügbar.',
+            style: TextStyle(color: palette.muted),
+          );
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: 26),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: palette.surfaceBorder)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 760 &&
+              MediaQuery.textScalerOf(context).scale(1) <= 1.3) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 5, child: identity),
+                SizedBox(width: 40),
+                Expanded(flex: 3, child: measuredTime),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [identity, SizedBox(height: 20), measuredTime],
+          );
+        },
       ),
     );
   }
 }
 
 Widget demoAccess(BuildContext context, AppState state) => Panel(
-  color: const Color(0xFFFFF4E6),
+  color: context.palette.warningSurface,
   child: Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -323,9 +366,9 @@ Widget demoAccess(BuildContext context, AppState state) => Panel(
       ),
       SelectableText(
         'Eltern: ${state.demoCredentials!['parent_username']}\nPasswort: ${state.demoCredentials!['parent_password']}\n\nKind: ${state.demoCredentials!['child_username']}\nPasswort: ${state.demoCredentials!['child_password']}',
-        style: const TextStyle(fontSize: 13, height: 1.7),
+        style: TextStyle(fontSize: 13, height: 1.7),
       ),
-      const SizedBox(height: 16),
+      SizedBox(height: 16),
       ActionButton(
         label: state.isChild
             ? 'Mit dem Demo-Elternkonto anmelden'
@@ -359,16 +402,14 @@ Future<void> showChildDialog(BuildContext context, AppState state) async {
   await showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Eigenen Kinderzugang einrichten'),
+      title: Text('Eigenen Kinderzugang einrichten'),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Notice(
-                'Dein Kind meldet sich mit Benutzername und Passwort an.',
-              ),
+              Notice('Dein Kind meldet sich mit Benutzername und Passwort an.'),
               for (final item in [
                 (name, 'Anzeigename'),
                 (username, 'Eindeutiger Benutzername (mind. 5 Zeichen)'),
@@ -377,7 +418,7 @@ Future<void> showChildDialog(BuildContext context, AppState state) async {
                 (subjects, 'Fächer, durch Komma getrennt'),
               ])
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: EdgeInsets.only(bottom: 14),
                   child: TextField(
                     controller: item.$1,
                     obscureText: item.$1 == password,
@@ -391,7 +432,7 @@ Future<void> showChildDialog(BuildContext context, AppState state) async {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Abbrechen'),
+          child: Text('Abbrechen'),
         ),
         ActionButton(
           label: 'Kinderzugang erstellen',
@@ -540,7 +581,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state,
     builder: (context, _) => !sameAccount
-        ? const SizedBox.shrink()
+        ? SizedBox.shrink()
         : PageFrame(
             state: state,
             title: state.isChild
@@ -550,15 +591,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 : tab == 3
                 ? 'Lernverlauf'
                 : 'Lernüberblick',
-            showTitle: state.isChild,
-            actions: [
-              if (state.isChild)
-                IconButton(
-                  onPressed: refresh,
-                  tooltip: 'Aktualisieren',
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-            ],
+            showTitle: false,
             child: LoadView<Json>(
               key: ValueKey('${widget.childId}-${state.user?['id']}'),
               revision: '$version-${state.revision}',
@@ -599,10 +632,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                     ),
                     if (tab == 0) ParentOverview(data: data),
                     if (tab == 1) ...[
-                      heading(
-                        'Plan & Termine',
+                      ParentWorkspaceHero(
+                        eyebrow: 'GEMEINSAM PLANEN',
+                        title: 'Plan & Termine',
                         subtitle: 'Vorschläge und verbindliche Aufträge getrennt im Blick.',
+                        icon: Icons.event_note_rounded,
                       ),
+                      SizedBox(height: 24),
                       if ((plan['week'] as List? ?? []).isNotEmpty) ...[
                         Panel(
                           child: DailyPlanPanel(
@@ -611,9 +647,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                             childId: child['id'],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                       ],
-                      heading('Heute eingeplant'),
+                      ParentSectionHeading(
+                        title: 'Heute eingeplant',
+                        icon: Icons.today_rounded,
+                      ),
                       if ((plan['today'] as List? ?? []).isEmpty)
                         Notice(
                           plan['goal_required'] == true &&
@@ -628,37 +667,38 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         TextButton(
                           onPressed: () =>
                               openRoute(context, '/learning/${child['id']}'),
-                          child: const Text(
-                            'Alle gespeicherten Runden ansehen',
-                          ),
+                          child: Text('Alle gespeicherten Runden ansehen'),
                         ),
                       if ((plan['notices'] as List? ?? []).isNotEmpty)
                         ExpansionTile(
-                          title: const Text('Hinweise zur Planung'),
+                          title: Text('Hinweise zur Planung'),
                           children: [
                             for (final notice in plan['notices'])
                               Notice(notice),
                           ],
                         ),
-                      const SizedBox(height: 20),
-                      heading('Lernziele & Einstellungen'),
+                      SizedBox(height: 20),
+                      ParentSectionHeading(
+                        title: 'Lernziele & Einstellungen',
+                        icon: Icons.tune_rounded,
+                      ),
                       Panel(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             Text(
                               'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
-                              style: const TextStyle(color: muted),
+                              style: TextStyle(color: context.palette.muted),
                             ),
-                            const SizedBox(height: 18),
+                            SizedBox(height: 18),
                             if (state.canManage)
                               ActionButton(
                                 label: 'Lernvorgaben anpassen',
@@ -675,11 +715,14 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 26),
-                      heading('Lernaufträge & Klassenarbeiten'),
+                      SizedBox(height: 26),
+                      ParentSectionHeading(
+                        title: 'Lernaufträge & Klassenarbeiten',
+                        icon: Icons.assignment_outlined,
+                      ),
                       if (state.canManage)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
+                          padding: EdgeInsets.only(bottom: 20),
                           child: ActionButton(
                             label: 'Auftrag oder Klassenarbeit anlegen',
                             icon: Icons.add_rounded,
@@ -697,7 +740,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       if ((data['assignments'] as List)
                           .where((a) => a['done'] != true)
                           .isEmpty)
-                        const Notice(
+                        Notice(
                           'Keine offenen Lernaufträge oder Klassenarbeiten.',
                         ),
                       if ((data['assignments'] as List).any(
@@ -705,7 +748,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       ))
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Erledigte Aufträge anzeigen'),
+                          title: Text('Erledigte Aufträge anzeigen'),
                           value: showCompletedAssignments,
                           onChanged: (value) =>
                               setState(() => showCompletedAssignments = value),
@@ -714,7 +757,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         (a) => showCompletedAssignments || a['done'] != true,
                       ))
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.only(bottom: 12),
                           child: Panel(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,17 +778,15 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                           ? 'Verbindlich'
                                           : 'Freiwillig',
                                     ),
-                                    if (a['done']) const Tag('Bearbeitet'),
+                                    if (a['done']) Tag('Bearbeitet'),
                                     if (a['source_status'] == 'needs_review')
-                                      const Tag(
-                                        'Quelle geändert · Auftrag prüfen',
-                                      ),
+                                      Tag('Quelle geändert · Auftrag prüfen'),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                SizedBox(height: 12),
                                 Text(
                                   '${a['subject']} · ${a['topic']}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -776,9 +817,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                           );
                                           refresh();
                                         },
-                                        child: const Text(
-                                          'Ändern / neu planen',
-                                        ),
+                                        child: Text('Ändern / neu planen'),
                                       ),
                                       ActionButton(
                                         label: 'Ziel als erledigt markieren',
@@ -814,7 +853,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         ),
                     ],
                     if (tab == 3) ...[
-                      heading('Aufgaben, Antworten & Unterstützung'),
+                      ParentWorkspaceHero(
+                        eyebrow: 'EUER LERNWEG',
+                        title: 'Aufgaben, Antworten & Unterstützung',
+                        subtitle: 'Gespeicherte Antworten und genutzte Hilfen nachvollziehen. Begonnene und abgeschlossene Runden bleiben unterscheidbar.',
+                        icon: Icons.history_rounded,
+                      ),
+                      SizedBox(height: 24),
                       PagedCollection(
                         state,
                         key: ValueKey('parent-learning-${child['id']}'),
@@ -822,7 +867,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         learning: true,
                         initialSection: 'completed',
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       LoadView<List<dynamic>>(
                         load: () =>
                             state.api.list('/children/${child['id']}/activity'),
@@ -830,19 +875,22 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              heading('Zeitlicher Verlauf'),
+                              ParentSectionHeading(
+                                title: 'Zeitlicher Verlauf',
+                                icon: Icons.timeline_rounded,
+                              ),
                               for (final a in activities.where(
                                 (a) => !technicalActivity(a['kind']),
                               ))
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 14),
+                                  padding: EdgeInsets.only(bottom: 14),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${DateFormat('dd.MM. HH:mm').format(DateTime.fromMillisecondsSinceEpoch((a['created'] * 1000).toInt()).toLocal())} · ${activityLabel(a['kind'])}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13,
                                         ),
@@ -850,17 +898,17 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                       if (a['detail']['text'] != null)
                                         Text(
                                           a['detail']['text'],
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13,
-                                            color: muted,
+                                            color: context.palette.muted,
                                           ),
                                         ),
                                       if (a['detail']['topic'] != null)
                                         Text(
                                           a['detail']['topic'],
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13,
-                                            color: muted,
+                                            color: context.palette.muted,
                                           ),
                                         ),
                                     ],
@@ -870,7 +918,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                 (a) => technicalActivity(a['kind']),
                               ))
                                 ExpansionTile(
-                                  title: const Text('Technische Ereignisse'),
+                                  title: Text('Technische Ereignisse'),
                                   children: [
                                     for (final a in activities.where(
                                       (a) => technicalActivity(a['kind']),
@@ -915,7 +963,6 @@ class _ChildHomeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final child = data['child'] as Json;
     final plan = data['plan'] as Json;
-    final today = plan['today'] as List? ?? [];
     final capture = data['daily_capture'] as Json? ?? {};
     final needsCapture = (capture['status'] ?? 'empty') == 'empty';
     final pending = _pendingMaterials(data);
@@ -950,6 +997,19 @@ class _ChildHomeContent extends StatelessWidget {
     final continuing =
         canLearn && ['active', 'paused'].contains(next['status']);
     final feedbackWaiting = next?['pending_feedback'] == true;
+    final proposedGuidance = data['learning_guidance'];
+    // A saved controller decision may refine this round, never replace a
+    // different planned round or hide its unread answer feedback.
+    final guidance =
+        !feedbackWaiting &&
+            continuing &&
+            next['kind'] == 'unit' &&
+            proposedGuidance is Map &&
+            proposedGuidance['unit_id'] == next['id'] &&
+            proposedGuidance['title'] is String &&
+            (proposedGuidance['title'] as String).trim().isNotEmpty
+        ? Json.from(proposedGuidance)
+        : null;
     final count = details['question_count'];
     final closed = details['closed_questions'];
     final progress =
@@ -1002,14 +1062,22 @@ class _ChildHomeContent extends StatelessWidget {
     final dailyGoal =
         plan['daily_goal_minutes'] ?? child['preferences']?['daily_minutes'];
     final completed = (plan['completed_today'] as num? ?? 0).toInt();
-    final familyMessages = data['messages'] as List? ?? [];
+    final pageCount =
+        data['material_count'] as num? ??
+        (data['materials'] as List? ?? []).length;
     final otherTopics =
         canLearn ||
         learningJob != null ||
         pendingReview != null ||
-        (data['material_count'] as num? ??
-                (data['materials'] as List? ?? []).length) >
-            0;
+        pageCount > 0;
+    final name = state.user?['display_name'] ?? child['display_name'] ?? 'du';
+    final day = DateTime.tryParse(plan['date']?.toString() ?? '');
+    final photoLabel = photosWaiting
+        ? 'Heftfotos fortsetzen'
+        : needsCapture
+        ? 'Heutige Seiten scannen'
+        : 'Heutige Heftseiten';
+
     void openPhotos() {
       if (pending.isNotEmpty && pending.first['school_day_id'] == null) {
         openRoute(context, '/material/${pending.first['id']}');
@@ -1021,203 +1089,224 @@ class _ChildHomeContent extends StatelessWidget {
       }
     }
 
-    Widget learningJobStatus() => Panel(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.hourglass_top_rounded, color: teal),
-        title: const Text('Runde wird vorbereitet'),
-        subtitle: const Text('Du kannst später zurückkommen.'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => openRoute(
-          context,
-          '/learning-preparation/${child['id']}/${learningJob!['id']}',
-        ),
+    Future<void> noNewPages() async {
+      try {
+        await state.api.post('/children/${child['id']}/day-check-in');
+        refresh();
+      } catch (error) {
+        if (context.mounted) showError(context, error);
+      }
+    }
+
+    final noPagesButton = Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton(
+        onPressed: noNewPages,
+        child: Text('Heute keine neuen Seiten'),
       ),
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (canLearn)
-          FocusCard(
-            eyebrow: 'Deine Lernrunde',
-            title: feedbackWaiting
-                ? 'Deine letzte Antwort'
-                : next['topic'] ?? 'Mit deinem Stoff weiter',
-            subtitle:
-                '$obligation${next['subject']}${progress == null ? '' : '\n$progress'}${details['estimated_minutes'] is num ? '\nEtwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
-            icon: Icons.auto_stories_rounded,
-            action: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Verstehen · Üben · Rückblick',
-                  style: TextStyle(color: Color(0xFFD4D4EE), fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                ActionButton(
-                  label: learnLabel,
-                  icon: Icons.play_arrow_rounded,
-                  onPressed: () async {
-                    if (feedbackWaiting) {
-                      openRoute(context, '/unit/${next['id']}');
-                    } else {
-                      await openPlanItem(context, state, data, next);
-                    }
-                  },
-                ),
-              ],
-            ),
-          )
-        else if (learningJob != null)
-          FocusCard(
-            eyebrow: 'Deine Lernrunde',
-            title: 'Deine Runde wird vorbereitet.',
-            subtitle: 'Du kannst die App schließen und später weitermachen.',
-            icon: Icons.hourglass_top_rounded,
-            action: SizedBox(
-              width: double.infinity,
-              child: ActionButton(
-                label: 'Vorbereitung ansehen',
-                onPressed: () async => openRoute(
-                  context,
-                  '/learning-preparation/${child['id']}/${learningJob['id']}',
-                ),
-              ),
-            ),
-          )
-        else if (pendingReview != null)
-          FocusCard(
-            eyebrow: 'Deine Lernrunde',
-            title: 'Dein Rückblick wartet.',
-            subtitle: 'Deine Antworten sind gespeichert.',
-            icon: Icons.fact_check_outlined,
-            action: SizedBox(
-              width: double.infinity,
-              child: ActionButton(
-                label: 'Rückblick ansehen',
-                onPressed: () async =>
-                    openRoute(context, '/unit/${pendingReview['id']}'),
-              ),
-            ),
-          )
-        else if (firstPreparation != null)
-          PreparationCard(
-            childId: child['id'],
-            preparation: firstPreparation,
-            primary: true,
-          )
-        else
-          FocusCard(
-            eyebrow: 'Nach der Schule',
-            title: photosWaiting
-                ? 'Deine Heftfotos warten.'
-                : 'Was war heute dran?',
-            subtitle: photosWaiting
-                ? 'Schau kurz nach, ob alles stimmt.'
-                : 'Fotografiere deine neuen Heftseiten.',
-            icon: Icons.document_scanner_rounded,
-            action: SizedBox(
-              width: double.infinity,
-              child: ActionButton(
-                label: photosWaiting
-                    ? 'Heftfotos fortsetzen'
-                    : 'Heutige Seiten scannen',
-                icon: Icons.add_a_photo_outlined,
-                onPressed: () async => openPhotos(),
-              ),
-            ),
+    Widget hero;
+    if (canLearn) {
+      hero = ChildTodayHero(
+        eyebrow: 'Deine Lernstation',
+        title: feedbackWaiting
+            ? 'Deine letzte Antwort'
+            : guidance?['title'] ?? next['topic'] ?? 'Mit deinem Stoff weiter',
+        subtitle:
+            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''}${progress == null ? '' : '\n$progress'}${details['estimated_minutes'] is num ? '\nEtwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
+        action: ActionButton(
+          label: learnLabel,
+          icon: feedbackWaiting
+              ? Icons.chat_bubble_outline_rounded
+              : Icons.play_arrow_rounded,
+          onPressed: () async {
+            if (feedbackWaiting) {
+              openRoute(context, '/unit/${next['id']}');
+            } else {
+              await openPlanItem(context, state, data, next);
+            }
+          },
+        ),
+      );
+    } else if (learningJob != null) {
+      hero = ChildTodayHero(
+        eyebrow: 'Gleich geht’s weiter',
+        title: 'Deine Runde wird vorbereitet.',
+        subtitle: 'Du kannst die App schließen und später weitermachen.',
+        learning: false,
+        action: ActionButton(
+          label: 'Vorbereitung ansehen',
+          icon: Icons.hourglass_top_rounded,
+          onPressed: () async => openRoute(
+            context,
+            '/learning-preparation/${child['id']}/${learningJob['id']}',
           ),
-        if (!photoPrimary || otherTopics)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 0,
-              children: [
-                if (!photoPrimary)
-                  TextButton.icon(
-                    onPressed: () => openRoute(
-                      context,
-                      '/after-school/${child['id']}?capture=1',
-                    ),
-                    icon: const Icon(Icons.add_a_photo_outlined, size: 20),
-                    label: Text(
-                      needsCapture
-                          ? 'Heutige Seiten scannen'
-                          : 'Heutige Heftseiten',
-                    ),
-                  ),
-                if (otherTopics)
-                  TextButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/learn/${child['id']}'),
-                    icon: const Icon(Icons.explore_outlined, size: 20),
-                    label: const Text('Anderes Thema'),
-                  ),
-              ],
-            ),
+        ),
+      );
+    } else if (pendingReview != null) {
+      hero = ChildTodayHero(
+        eyebrow: 'Deine Lernrunde',
+        title: 'Dein Rückblick wartet.',
+        subtitle: 'Deine Antworten sind gespeichert.',
+        learning: false,
+        action: ActionButton(
+          label: 'Rückblick ansehen',
+          icon: Icons.fact_check_outlined,
+          onPressed: () async =>
+              openRoute(context, '/unit/${pendingReview['id']}'),
+        ),
+      );
+    } else if (firstPreparation != null) {
+      final status = firstPreparation['status'];
+      hero = ChildTodayHero(
+        eyebrow: 'Nach der Schule',
+        title: status == 'processing'
+            ? 'Deine Fotos sind abgegeben.'
+            : status == 'needs_review'
+            ? 'Deine Heftseiten sind erkannt.'
+            : status == 'needs_photo'
+            ? 'Ein Foto braucht dich.'
+            : 'Die Vorbereitung wartet.',
+        subtitle: status == 'processing'
+            ? 'Dein Stoff wird vorbereitet. Du kannst später zurückkommen.'
+            : status == 'needs_photo'
+            ? 'Eine Seite ist noch nicht gut lesbar.'
+            : 'Schau kurz nach, ob alles stimmt.',
+        learning: false,
+        action: ActionButton(
+          label: status == 'needs_review'
+              ? 'Heftseiten prüfen'
+              : status == 'needs_photo'
+              ? 'Foto prüfen'
+              : 'Vorbereitung ansehen',
+          icon: status == 'processing'
+              ? Icons.hourglass_top_rounded
+              : Icons.fact_check_outlined,
+          onPressed: () async => openRoute(
+            context,
+            '/after-school/${child['id']}?day=${firstPreparation['day_id']}',
           ),
-        if (activeMinutes is num && dailyGoal is num) ...[
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                goalMet && goalRequired
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.schedule_rounded,
-                color: teal,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  goalRequired
-                      ? '${goalMet ? 'Tagesziel geschafft' : 'Tagesziel offen'} · Heute ca. ${learningMinutes(activeMinutes)} von ${learningMinutes(dailyGoal)} Min. aktiv'
-                      : 'Heute ca. ${learningMinutes(activeMinutes)} Min. aktiv · ohne festes Lernziel',
-                  style: const TextStyle(color: muted, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ],
-        if (needsCapture && !photosWaiting)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () async {
-                try {
-                  await state.api.post('/children/${child['id']}/day-check-in');
-                  refresh();
-                } catch (error) {
-                  if (context.mounted) showError(context, error);
-                }
-              },
-              child: const Text('Heute keine neuen Seiten'),
-            ),
-          ),
-        if (canLearn && learningJob != null) ...[
-          const SizedBox(height: 10),
-          learningJobStatus(),
-        ],
-        if (canLearn && pendingReview != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: OutlinedButton.icon(
-              onPressed: () =>
-                  openRoute(context, '/unit/${pendingReview['id']}'),
-              icon: const Icon(Icons.fact_check_outlined),
-              label: const Text('Rückblick ansehen'),
-            ),
-          ),
-        for (final preparation in preparations.where(
+        ),
+      );
+    } else {
+      hero = ChildTodayHero(
+        eyebrow: 'Dein Stoff. Dein nächster Schritt.',
+        title: photosWaiting
+            ? 'Deine Heftfotos warten.'
+            : 'Was entdecken wir heute?',
+        subtitle: photosWaiting ? 'Schau kurz nach, ob alles stimmt.' : 'Bring deine Heftseiten mit. Dann geht’s Schritt für Schritt los.',
+        learning: false,
+        action: ActionButton(
+          label: photosWaiting
+              ? 'Heftfotos fortsetzen'
+              : 'Heutige Seiten scannen',
+          icon: Icons.add_a_photo_outlined,
+          onPressed: () async => openPhotos(),
+        ),
+      );
+    }
+    final remainingPreparations = preparations
+        .where(
           (value) =>
               canLearn ||
               learningJob != null ||
               pendingReview != null ||
               value != firstPreparation,
-        ))
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hallo, $name!',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: context.palette.ink,
+                        height: 1.2,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      day == null
+                          ? 'Dein nächster kleiner Schritt wartet.'
+                          : 'Dein Lerntag · ${DateFormat('dd.MM.yyyy').format(day)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.palette.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: refresh,
+                tooltip: 'Aktualisieren',
+                icon: Icon(Icons.refresh_rounded, color: context.palette.muted),
+              ),
+            ],
+          ),
+        ),
+        hero,
+        if (!photoPrimary) ...[
+          SizedBox(height: 14),
+          ChildTodayTile(
+            title: photosWaiting
+                ? photoLabel
+                : needsCapture
+                ? 'Heutige Seiten scannen'
+                : 'Heutige Heftseiten',
+            subtitle: photosWaiting
+                ? 'Deine angefangenen Fotos sind noch da.'
+                : 'Neue Fotos aus der Schule hinzufügen.',
+            icon: Icons.add_a_photo_outlined,
+            accent: context.palette.cyanInk,
+            onTap: () =>
+                openRoute(context, '/after-school/${child['id']}?capture=1'),
+            footer: needsCapture && !photosWaiting ? noPagesButton : null,
+          ),
+        ] else if (needsCapture && !photosWaiting)
+          noPagesButton,
+        if (otherTopics)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => openRoute(context, '/learn/${child['id']}'),
+              icon: Icon(Icons.explore_outlined, size: 20),
+              label: Text('Anderes Thema'),
+            ),
+          ),
+        if (canLearn && learningJob != null) ...[
+          SizedBox(height: 10),
+          ChildTodayTile(
+            title: 'Runde wird vorbereitet',
+            subtitle: 'Du kannst später zurückkommen.',
+            icon: Icons.hourglass_top_rounded,
+            onTap: () => openRoute(
+              context,
+              '/learning-preparation/${child['id']}/${learningJob['id']}',
+            ),
+          ),
+        ],
+        if (canLearn && pendingReview != null) ...[
+          SizedBox(height: 10),
+          ChildTodayTile(
+            title: 'Rückblick ansehen',
+            subtitle: 'Deine Antworten sind gespeichert.',
+            icon: Icons.fact_check_outlined,
+            onTap: () => openRoute(context, '/unit/${pendingReview['id']}'),
+          ),
+        ],
+        for (final preparation in remainingPreparations)
           _ChildPreparationLink(childId: child['id'], preparation: preparation),
         if (!photoPrimary &&
             pending.isNotEmpty &&
@@ -1227,116 +1316,216 @@ class _ChildHomeContent extends StatelessWidget {
             child: TextButton.icon(
               onPressed: () =>
                   openRoute(context, '/material/${pending.first['id']}'),
-              icon: const Icon(Icons.fact_check_outlined, size: 20),
-              label: const Text('Heftseite prüfen'),
+              icon: Icon(Icons.fact_check_outlined, size: 20),
+              label: Text('Heftseite prüfen'),
             ),
           ),
-        const SizedBox(height: 10),
+        if (activeMinutes is num && dailyGoal is num) ...[
+          SizedBox(height: 16),
+          ChildTodayProgress(
+            activeMinutes: activeMinutes.toDouble(),
+            goalMinutes: dailyGoal.toDouble(),
+            goalRequired: goalRequired,
+            goalMet: goalMet,
+            completed: completed,
+            description: goalRequired
+                ? '${goalMet ? 'Tagesziel geschafft' : 'Tagesziel offen'} · Heute ca. ${learningMinutes(activeMinutes)} von ${learningMinutes(dailyGoal)} Min. aktiv'
+                : 'Heute ca. ${learningMinutes(activeMinutes)} Min. aktiv · ohne festes Lernziel',
+          ),
+        ],
+        SizedBox(height: 22),
+        Text(
+          'Dein Überblick',
+          style: TextStyle(
+            fontFamily: 'SpaceGrotesk',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: context.palette.ink,
+          ),
+        ),
+        SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _showChildPlan(context, state, data),
+              icon: Icon(Icons.route_rounded),
+              label: Text('Mein Plan'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => openRoute(context, '/messages/${child['id']}'),
+              icon: Icon(Icons.forum_rounded),
+              label: Text('Nachrichten & Wünsche'),
+            ),
+          ],
+        ),
+        SizedBox(height: 14),
+        Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          children: [
+            TextButton.icon(
+              onPressed: () => showHomeHelp(
+                context,
+                state,
+                childId: child['id'],
+                unitId: next != null && next['kind'] == 'unit'
+                    ? next['id']
+                    : null,
+                refresh: refresh,
+              ),
+              icon: Icon(Icons.volunteer_activism_outlined, size: 21),
+              label: Text('Ich brauche Hilfe'),
+            ),
+            TextButton.icon(
+              onPressed: () => openRoute(context, '/library/${child['id']}'),
+              icon: Icon(Icons.folder_open_rounded, size: 21),
+              label: Text('Meine Heftseiten'),
+            ),
+          ],
+        ),
+        Text(
+          counted(pageCount, 'gespeicherte Seite', 'gespeicherte Seiten'),
+          style: TextStyle(color: context.palette.muted, fontSize: 12),
+        ),
+        SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: () => showHomeHelp(
-              context,
-              state,
-              childId: child['id'],
-              unitId: next != null && next['kind'] == 'unit'
-                  ? next['id']
-                  : null,
-              refresh: refresh,
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: Text('Was sehen meine Eltern?'),
+                content: Text(
+                  'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in Schulpilot.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text('Verstanden'),
+                  ),
+                ],
+              ),
             ),
-            icon: const Icon(Icons.volunteer_activism_outlined, size: 21),
-            label: const Text('Ich brauche Hilfe'),
+            icon: Icon(Icons.visibility_outlined, size: 18),
+            label: Text('Was sehen meine Eltern?'),
           ),
-        ),
-        if (completed > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 16),
-            child: Text(
-              '${completed == 1 ? 'Eine Runde' : '$completed Runden'} heute geschafft.',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        _ChildHomeDisclosure(
-          icon: Icons.checklist_rounded,
-          title: 'Mein Plan',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (today.isEmpty)
-                Text(
-                  !goalRequired
-                      ? 'Heute ohne festes Tagesziel.'
-                      : goalMet
-                      ? 'Dein Tagesziel ist geschafft.'
-                      : 'Dein Tagesziel ist noch offen.',
-                  style: const TextStyle(color: muted),
-                ),
-              for (final item in today)
-                _ChildPlanRow(state: state, data: data, item: item),
-              if ((plan['week'] as List? ?? []).isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Die nächsten Lerntage',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                DailyPlanPanel(
-                  plan: plan,
-                  childView: true,
-                  state: state,
-                  childId: child['id'],
-                ),
-              ],
-              for (final notice in plan['notices'] as List? ?? [])
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(notice, style: const TextStyle(color: muted)),
-                ),
-            ],
-          ),
-        ),
-        _collectionLink(
-          context,
-          Icons.folder_open_rounded,
-          'Meine Heftseiten',
-          data['material_count'] == null
-              ? 'Deine gesammelten Seiten'
-              : counted(
-                  data['material_count'] as num,
-                  'gespeicherte Seite',
-                  'gespeicherte Seiten',
-                ),
-          '/library/${child['id']}',
-        ),
-        _ChildHomeDisclosure(
-          icon: Icons.chat_bubble_outline_rounded,
-          title: familyMessages.isEmpty
-              ? 'Nachrichten & Wünsche'
-              : 'Nachrichten & Wünsche (${familyMessages.length})',
-          child: messages(context, state, data, refresh),
-        ),
-        ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-          leading: const Icon(
-            Icons.visibility_outlined,
-            size: 20,
-            color: muted,
-          ),
-          title: const Text(
-            'Was sehen meine Eltern?',
-            style: TextStyle(fontSize: 13, color: muted),
-          ),
-          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-          children: const [
-            Text(
-              'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in Schulpilot.',
-              style: TextStyle(color: muted, fontSize: 13),
-            ),
-          ],
         ),
         if (state.demoCredentials != null) demoAccess(context, state),
       ],
     );
+  }
+}
+
+Future<void> _showChildPlan(
+  BuildContext context,
+  AppState state,
+  Json data,
+) async {
+  final owner = state.user?['id'];
+  final child = data['child'] as Json;
+  final plan = data['plan'] as Json;
+  final today = plan['today'] as List? ?? [];
+  final chosen = await showDialog<dynamic>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 760,
+          maxHeight: MediaQuery.sizeOf(dialogContext).height * .85,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 14, 10, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.route_outlined, color: context.palette.teal),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Mein Plan',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    tooltip: 'Schließen',
+                    icon: Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Ein Schritt nach dem anderen. Du entscheidest, wann du startest.',
+                      style: TextStyle(color: context.palette.muted),
+                    ),
+                    SizedBox(height: 14),
+                    if (today.isEmpty)
+                      Text(
+                        plan['goal_required'] == false
+                            ? 'Heute ohne festes Tagesziel.'
+                            : plan['daily_goal_met'] == true
+                            ? 'Dein Tagesziel ist geschafft.'
+                            : 'Dein Tagesziel ist noch offen.',
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                    for (final item in today)
+                      _ChildPlanRow(
+                        state: state,
+                        data: data,
+                        item: item,
+                        onOpen: () => Navigator.pop(dialogContext, item),
+                      ),
+                    if ((plan['week'] as List? ?? []).isNotEmpty) ...[
+                      SizedBox(height: 16),
+                      Text(
+                        'Die nächsten Lerntage',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: 8),
+                      DailyPlanPanel(
+                        plan: plan,
+                        childView: true,
+                        state: state,
+                        childId: child['id'],
+                      ),
+                    ],
+                    for (final notice in plan['notices'] as List? ?? [])
+                      Padding(
+                        padding: EdgeInsets.only(top: 12),
+                        child: Text(
+                          notice,
+                          style: TextStyle(color: context.palette.muted),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (chosen != null && context.mounted && state.user?['id'] == owner) {
+    try {
+      await openPlanItem(context, state, data, chosen);
+    } catch (error) {
+      if (context.mounted) showError(context, error);
+    }
   }
 }
 
@@ -1359,27 +1548,24 @@ class _ChildPreparationLink extends StatelessWidget {
         ? 'Deine Fotos sind abgegeben.'
         : 'Vorbereitung ansehen';
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: EdgeInsets.only(top: 10),
       child: Panel(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(
             status == 'processing'
                 ? Icons.hourglass_top_rounded
                 : Icons.fact_check_outlined,
-            color: teal,
+            color: context.palette.teal,
           ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(
             status == 'processing'
                 ? 'Wird im Hintergrund vorbereitet.'
                 : _shortDate(preparation['date']),
           ),
-          trailing: const Icon(Icons.chevron_right_rounded),
+          trailing: Icon(Icons.chevron_right_rounded),
           onTap: () => openRoute(
             context,
             '/after-school/$childId?day=${preparation['day_id']}',
@@ -1390,60 +1576,16 @@ class _ChildPreparationLink extends StatelessWidget {
   }
 }
 
-Widget _collectionLink(
-  BuildContext context,
-  IconData icon,
-  String title,
-  String subtitle,
-  String route,
-) => Padding(
-  padding: const EdgeInsets.only(bottom: 10),
-  child: Panel(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    child: ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: teal),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: () => openRoute(context, route),
-    ),
-  ),
-);
-
-class _ChildHomeDisclosure extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final Widget child;
-  const _ChildHomeDisclosure({
-    required this.icon,
-    required this.title,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Panel(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ExpansionTile(
-        leading: Icon(icon, color: teal, size: 22),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        children: [child],
-      ),
-    ),
-  );
-}
-
 class _ChildPlanRow extends StatelessWidget {
   final AppState state;
   final Json data;
   final dynamic item;
+  final VoidCallback? onOpen;
   const _ChildPlanRow({
     required this.state,
     required this.data,
     required this.item,
+    this.onOpen,
   });
 
   @override
@@ -1458,10 +1600,7 @@ class _ChildPlanRow extends StatelessWidget {
         : 'Übung';
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(
-        item['topic'],
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      title: Text(item['topic'], style: TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}',
       ),
@@ -1469,8 +1608,12 @@ class _ChildPlanRow extends StatelessWidget {
       trailing: available
           ? IconButton(
               tooltip: 'Lernen starten',
-              icon: const Icon(Icons.play_arrow_rounded, color: teal),
+              icon: Icon(Icons.play_arrow_rounded, color: context.palette.teal),
               onPressed: () async {
+                if (onOpen != null) {
+                  onOpen!();
+                  return;
+                }
                 try {
                   await openPlanItem(context, state, data, item);
                 } catch (e) {
@@ -1557,37 +1700,34 @@ Widget planTile(
   dynamic item, {
   required bool parent,
 }) => Padding(
-  padding: const EdgeInsets.only(bottom: 12),
+  padding: EdgeInsets.only(bottom: 12),
   child: Panel(
-    padding: const EdgeInsets.all(20),
+    padding: EdgeInsets.all(20),
     child: Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: mint,
+            color: context.palette.mint,
             borderRadius: BorderRadius.circular(13),
           ),
           child: Icon(
             item['kind'] == 'review'
                 ? Icons.event_repeat_rounded
                 : Icons.auto_stories_outlined,
-            color: teal,
+            color: context.palette.teal,
           ),
         ),
-        const SizedBox(width: 15),
+        SizedBox(width: 15),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '${item['subject']} · ${item['topic']}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Wrap(
                 spacing: 7,
                 runSpacing: 5,
@@ -1616,7 +1756,10 @@ Widget planTile(
                     0))
           IconButton(
             tooltip: 'Lernen starten',
-            icon: const Icon(Icons.arrow_forward_rounded, color: teal),
+            icon: Icon(
+              Icons.arrow_forward_rounded,
+              color: context.palette.teal,
+            ),
             onPressed: () async {
               try {
                 await openPlanItem(context, state, data, item);
@@ -1642,12 +1785,13 @@ class MessagesScreen extends StatelessWidget {
     listenable: state,
     builder: (context, _) =>
         state.user == null || state.user?['id'] != accountId || state.isAdmin
-        ? const SizedBox.shrink()
+        ? SizedBox.shrink()
         : PageFrame(
             state: state,
             title: state.isChild
                 ? 'Nachrichten & Wünsche'
                 : 'Familiennachrichten',
+            showTitle: !state.isChild,
             child: LoadView<Json>(
               key: ValueKey('messages:${state.user?['id']}:$childId'),
               revision: state.revision,
@@ -1663,6 +1807,15 @@ class MessagesScreen extends StatelessWidget {
                       selected: 'messages',
                       childName: data['child']['display_name'],
                     ),
+                  if (state.isParent) ...[
+                    ParentWorkspaceHero(
+                      eyebrow: 'IM AUSTAUSCH',
+                      title: 'Familiennachrichten',
+                      subtitle: 'Hilfewünsche, Ideen und Antworten an einem Ort. Der Lernstand bleibt davon getrennt.',
+                      icon: Icons.forum_outlined,
+                    ),
+                    SizedBox(height: 20),
+                  ],
                   messages(context, state, data, refresh, standalone: true),
                 ],
               ),
@@ -1677,132 +1830,151 @@ Widget messages(
   Json data,
   VoidCallback refresh, {
   bool standalone = false,
-}) => Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    if (!standalone) ...[
-      heading(state.isChild ? 'Hilfe und Ideen' : 'Familiennachrichten'),
-      TextButton.icon(
-        onPressed: () => openRoute(context, '/messages/${data['child']['id']}'),
-        icon: const Icon(Icons.forum_outlined),
-        label: const Text('Nachrichten öffnen'),
+}) {
+  if (standalone && state.isChild) {
+    return ChildMessagesHub(
+      state,
+      key: ValueKey('mailbox:${state.user?['id']}:${data['child']['id']}'),
+      data: data,
+      onCompose: (kind, title) => showLearningMessage(
+        context,
+        state,
+        childId: data['child']['id'],
+        kind: kind,
+        title: title,
+        refresh: refresh,
       ),
-    ],
-    if (state.isChild || state.canManage)
-      Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          for (final item
-              in (state.isChild
-                  ? [
-                      ('help', 'Ich brauche Hilfe'),
-                      ('interest', 'Das interessiert mich'),
-                      ('plan_change', 'Planänderung vorschlagen'),
-                    ]
-                  : [('reply', 'Kurze Nachricht senden')]))
-            ActionButton(
-              label: item.$2,
-              secondary: item.$1 != 'help',
-              icon: item.$1 == 'help'
-                  ? Icons.volunteer_activism_outlined
-                  : Icons.chat_bubble_outline,
-              onPressed: () => showLearningMessage(
-                context,
-                state,
-                childId: data['child']['id'],
-                kind: item.$1,
-                title: item.$2,
-                refresh: refresh,
+    );
+  }
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (!standalone) ...[
+        heading(state.isChild ? 'Hilfe und Ideen' : 'Familiennachrichten'),
+        TextButton.icon(
+          onPressed: () =>
+              openRoute(context, '/messages/${data['child']['id']}'),
+          icon: Icon(Icons.forum_outlined),
+          label: Text('Nachrichten öffnen'),
+        ),
+      ],
+      if (state.isChild || state.canManage)
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final item
+                in (state.isChild
+                    ? [
+                        ('help', 'Ich brauche Hilfe'),
+                        ('interest', 'Das interessiert mich'),
+                        ('plan_change', 'Planänderung vorschlagen'),
+                      ]
+                    : [('reply', 'Kurze Nachricht senden')]))
+              ActionButton(
+                label: item.$2,
+                secondary: item.$1 != 'help',
+                icon: item.$1 == 'help'
+                    ? Icons.volunteer_activism_outlined
+                    : Icons.chat_bubble_outline,
+                onPressed: () => showLearningMessage(
+                  context,
+                  state,
+                  childId: data['child']['id'],
+                  kind: item.$1,
+                  title: item.$2,
+                  refresh: refresh,
+                ),
               ),
-            ),
-        ],
-      ),
-    const SizedBox(height: 20),
-    if ((data['messages'] as List).isEmpty)
-      const Notice(
-        'Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.',
-      ),
-    for (final m in data['messages'] as List)
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      m['kind'] == 'preparation'
-                          ? 'Deine Heftseiten'
-                          : m['kind'] == 'reminder'
-                          ? 'Dein Lernplan'
-                          : m['sender_role'] == 'system'
-                          ? 'Von Schulpilot'
-                          : m['sender_role'] == 'child'
-                          ? (state.isChild ? 'Von dir' : 'Von deinem Kind')
-                          : (state.isChild
-                                ? 'Von deinen Eltern'
-                                : 'Von einem Elternteil'),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+          ],
+        ),
+      SizedBox(height: 20),
+      if ((data['messages'] as List).isEmpty)
+        Notice('Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.'),
+      for (final m in data['messages'] as List)
+        Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        m['kind'] == 'preparation'
+                            ? 'Deine Heftseiten'
+                            : m['kind'] == 'reminder'
+                            ? 'Dein Lernplan'
+                            : m['sender_role'] == 'system'
+                            ? 'Von Schulpilot'
+                            : m['sender_role'] == 'child'
+                            ? (state.isChild ? 'Von dir' : 'Von deinem Kind')
+                            : (state.isChild
+                                  ? 'Von deinen Eltern'
+                                  : 'Von einem Elternteil'),
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Tag(
+                      m['resolved']
+                          ? 'Besprochen'
+                          : m['kind'] == 'help'
+                          ? 'Hilfewunsch'
+                          : 'Nachricht',
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Text(m['body']),
+                if (m['context_unavailable'] == true)
+                  Text(
+                    'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
                     ),
                   ),
-                  Tag(
-                    m['resolved']
-                        ? 'Besprochen'
-                        : m['kind'] == 'help'
-                        ? 'Hilfewunsch'
-                        : 'Nachricht',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(m['body']),
-              if (m['context_unavailable'] == true)
-                const Text(
-                  'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
-                  style: TextStyle(color: muted, fontSize: 13),
-                ),
-              if (m['context'] is Map && (m['context'] as Map).isNotEmpty)
-                TextButton.icon(
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Dazu ansehen'),
-                  onPressed: () {
-                    final scope = m['context'] as Map;
-                    openRoute(
-                      context,
-                      scope['unit_id'] != null
-                          ? '/unit/${scope['unit_id']}'
-                          : scope['material_id'] != null
-                          ? '/material/${scope['material_id']}'
-                          : '/after-school/${data['child']['id']}?day=${scope['day_id']}',
-                    );
-                  },
-                ),
-              if (!state.isChild &&
-                  state.canManage &&
-                  m['kind'] == 'help' &&
-                  m['resolved'] != true)
-                TextButton(
-                  onPressed: () async {
-                    try {
-                      await state.api.post(
-                        '/children/${data['child']['id']}/messages/${m['id']}/resolve',
+                if (m['context'] is Map && (m['context'] as Map).isNotEmpty)
+                  TextButton.icon(
+                    icon: Icon(Icons.arrow_forward_rounded),
+                    label: Text('Dazu ansehen'),
+                    onPressed: () {
+                      final scope = m['context'] as Map;
+                      openRoute(
+                        context,
+                        scope['unit_id'] != null
+                            ? '/unit/${scope['unit_id']}'
+                            : scope['material_id'] != null
+                            ? '/material/${scope['material_id']}'
+                            : '/after-school/${data['child']['id']}?day=${scope['day_id']}',
                       );
-                      refresh();
-                    } catch (e) {
-                      if (context.mounted) showError(context, e);
-                    }
-                  },
-                  child: const Text('Als besprochen markieren'),
-                ),
-            ],
+                    },
+                  ),
+                if (!state.isChild &&
+                    state.canManage &&
+                    m['kind'] == 'help' &&
+                    m['resolved'] != true)
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await state.api.post(
+                          '/children/${data['child']['id']}/messages/${m['id']}/resolve',
+                        );
+                        refresh();
+                      } catch (e) {
+                        if (context.mounted) showError(context, e);
+                      }
+                    },
+                    child: Text('Als besprochen markieren'),
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
-  ],
-);
+    ],
+  );
+}
 
 Future<void> showHomeHelp(
   BuildContext context,
@@ -1819,7 +1991,7 @@ Future<void> showHomeHelp(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
               child: Text(
                 'Wobei brauchst du Hilfe?',
@@ -1858,21 +2030,21 @@ Future<void> showHomeHelp(
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Gespeicherten Stand neu laden'),
-        content: const Text(
+        title: Text('Gespeicherten Stand neu laden'),
+        content: Text(
           'Prüfe deine Internetverbindung. Lade dann den Stand neu. Geprüfte Antworten und gespeicherte Heftseiten bleiben erhalten.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Zurück'),
+            child: Text('Zurück'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               refresh();
             },
-            child: const Text('Erneut laden'),
+            child: Text('Erneut laden'),
           ),
         ],
       ),
@@ -1914,13 +2086,13 @@ Future<void> showLearningMessage(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('An: Deine berechtigten Eltern'),
-            const SizedBox(height: 12),
+            Text('An: Deine berechtigten Eltern'),
+            SizedBox(height: 12),
             TextField(
               controller: controller,
               maxLines: 3,
               maxLength: 1000,
-              decoration: const InputDecoration(labelText: 'Deine Nachricht'),
+              decoration: InputDecoration(labelText: 'Deine Nachricht'),
             ),
           ],
         ),
@@ -1928,7 +2100,7 @@ Future<void> showLearningMessage(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Abbrechen'),
+          child: Text('Abbrechen'),
         ),
         ActionButton(
           label: help ? 'Um Hilfe bitten' : 'Senden',
@@ -2028,8 +2200,8 @@ Future<void> assignmentDialog(
                     DropdownButtonFormField<String>(
                       initialValue: kind,
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Art'),
-                      items: const [
+                      decoration: InputDecoration(labelText: 'Art'),
+                      items: [
                         DropdownMenuItem(
                           value: 'parent',
                           child: Text('Lernauftrag'),
@@ -2041,14 +2213,14 @@ Future<void> assignmentDialog(
                       ],
                       onChanged: (v) => set(() => kind = v!),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     for (final item in [
                       (subject, 'Fach'),
                       (topic, 'Thema / Lernziel'),
                       (note, 'Was soll geübt werden?'),
                     ])
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
+                        padding: EdgeInsets.only(bottom: 14),
                         child: TextFormField(
                           controller: item.$1,
                           maxLength: item.$1 == subject
@@ -2069,7 +2241,7 @@ Future<void> assignmentDialog(
                       (scheduled, 'Frühester Lernbeginn'),
                     ])
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
+                        padding: EdgeInsets.only(bottom: 14),
                         child: TextFormField(
                           controller: item.$1,
                           keyboardType: TextInputType.datetime,
@@ -2084,7 +2256,7 @@ Future<void> assignmentDialog(
                             hintText: 'TT.MM.JJJJ',
                             suffixIcon: IconButton(
                               tooltip: '${item.$2} im Kalender auswählen',
-                              icon: const Icon(Icons.calendar_month_outlined),
+                              icon: Icon(Icons.calendar_month_outlined),
                               onPressed: () async {
                                 final picked = await showDatePicker(
                                   context: ctx,
@@ -2123,7 +2295,7 @@ Future<void> assignmentDialog(
                           });
                         }
                       },
-                      icon: const Icon(Icons.folder_open_rounded),
+                      icon: Icon(Icons.folder_open_rounded),
                       label: Text(
                         materialId == null
                             ? 'Heftseite auswählen (optional)'
@@ -2139,15 +2311,15 @@ Future<void> assignmentDialog(
                           materialId = null;
                           selectedMaterialTitle = null;
                         }),
-                        child: const Text('Ohne Heftseite fortfahren'),
+                        child: Text('Ohne Heftseite fortfahren'),
                       ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Verbindlich einplanen'),
+                      title: Text('Verbindlich einplanen'),
                       value: mandatory,
                       onChanged: (v) => set(() => mandatory = v),
                     ),
-                    const Notice(
+                    Notice(
                       'Du gibst Ziel und Stoff vor. Die passenden Übungen entstehen daraus; ein Termin erzeugt keinen unbegrenzten Tagesplan.',
                     ),
                   ],
@@ -2158,7 +2330,7 @@ Future<void> assignmentDialog(
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Abbrechen'),
+              child: Text('Abbrechen'),
             ),
             ActionButton(
               label: 'Speichern',
@@ -2234,7 +2406,7 @@ Future<void> preferencesDialog(
     String suffix = 'Min.',
     String? helper,
   }) => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
+    padding: EdgeInsets.only(bottom: 16),
     child: TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
@@ -2256,9 +2428,9 @@ Future<void> preferencesDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, set) => AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        title: const Text('Lernziele & Plan'),
-        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        title: Text('Lernziele & Plan'),
+        contentPadding: EdgeInsets.fromLTRB(20, 16, 20, 0),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
@@ -2323,18 +2495,18 @@ Future<void> preferencesDialog(
                       children: [
                         TextFormField(
                           controller: focus,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Fächer',
                             hintText: 'Zum Beispiel Mathematik, Englisch',
                             helperText: 'Mehrere Fächer mit Komma trennen.',
                             helperMaxLines: 2,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         TextFormField(
                           controller: repeat,
                           maxLines: 2,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Themen zum Wiederholen',
                             hintText: 'Mathematik: Brüche, Englisch: Verben',
                             helperText:
@@ -2342,23 +2514,20 @@ Future<void> preferencesDialog(
                             helperMaxLines: 2,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         ExpansionTile(
-                          title: const Text('Fächer auf Tage verteilen'),
-                          subtitle: const Text('Ohne Auswahl: alle Lerntage'),
+                          title: Text('Fächer auf Tage verteilen'),
+                          subtitle: Text('Ohne Auswahl: alle Lerntage'),
                           children: [
                             for (final subject
                                 in child['subjects'] as List) ...[
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 12,
-                                    bottom: 8,
-                                  ),
+                                  padding: EdgeInsets.only(top: 12, bottom: 8),
                                   child: Text(
                                     subject,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -2417,7 +2586,7 @@ Future<void> preferencesDialog(
                         hintText: 'JJJJ-MM-TT',
                         suffixIcon: IconButton(
                           tooltip: 'Auszeit aufheben',
-                          icon: const Icon(Icons.close_rounded),
+                          icon: Icon(Icons.close_rounded),
                           onPressed: () => pause.clear(),
                         ),
                       ),
@@ -2439,15 +2608,15 @@ Future<void> preferencesDialog(
                       children: [
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Lernerinnerung in der App'),
+                          title: Text('Lernerinnerung in der App'),
                           value: p['reminders'] == true,
                           onChanged: (value) =>
                               set(() => p['reminders'] = value),
                         ),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Push am Kindergerät erlauben'),
-                          subtitle: const Text(
+                          title: Text('Push am Kindergerät erlauben'),
+                          subtitle: Text(
                             'Dein Kind schaltet Push auf seinem Gerät selbst ein.',
                           ),
                           value: p['push_consent'] == true,
@@ -2456,12 +2625,12 @@ Future<void> preferencesDialog(
                         ),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text('Hilfewünsche hervorheben'),
+                          title: Text('Hilfewünsche hervorheben'),
                           value: p['notify_help'] == true,
                           onChanged: (value) =>
                               set(() => p['notify_help'] = value),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         numeric(
                           quietStart,
                           'Ruhezeit ab',
@@ -2475,9 +2644,12 @@ Future<void> preferencesDialog(
                   ),
                   Text(
                     'Zeitzone: ${p['timezone'] ?? 'Europe/Berlin'}',
-                    style: const TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                 ],
               ),
             ),
@@ -2486,7 +2658,7 @@ Future<void> preferencesDialog(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Abbrechen'),
+            child: Text('Abbrechen'),
           ),
           ActionButton(
             label: 'Speichern',
@@ -2525,7 +2697,7 @@ Future<void> preferencesDialog(
     ),
   );
   // Dialog route transitions may still paint its fields during this frame.
-  await Future<void>.delayed(const Duration(milliseconds: 200));
+  await Future<void>.delayed(Duration(milliseconds: 200));
   for (final c in [
     daily,
     weekly,
@@ -2552,22 +2724,22 @@ class _PreferenceSection extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 26),
+    padding: EdgeInsets.only(bottom: 26),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
         ),
         if (description != null) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             description!,
-            style: const TextStyle(fontSize: 12, color: muted),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
         ],
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         child,
       ],
     ),

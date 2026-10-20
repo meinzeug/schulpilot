@@ -111,7 +111,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
         });
         poll?.cancel();
         if (['queued', 'running'].contains(result['status'])) {
-          poll = Timer(const Duration(seconds: 3), load);
+          poll = Timer(Duration(seconds: 3), load);
         }
       } else {
         final results = await Future.wait([
@@ -231,47 +231,47 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
     actions: [
       TextButton.icon(
         onPressed: () => openRoute(context, '/vocabulary/${widget.childId}'),
-        icon: const Icon(Icons.translate_rounded),
-        label: const Text('Meine Wörter'),
+        icon: Icon(Icons.translate_rounded),
+        label: Text('Meine Wörter'),
       ),
       IconButton(
         tooltip: 'Aktualisieren',
         onPressed: busy ? null : load,
-        icon: const Icon(Icons.refresh_rounded),
+        icon: Icon(Icons.refresh_rounded),
       ),
     ],
     child: !current
-        ? const SizedBox.shrink()
+        ? SizedBox.shrink()
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (error != null) Notice(error!, warning: true),
-              if (loading || busy) const LinearProgressIndicator(),
+              if (loading || busy) LinearProgressIndicator(),
               if (project != null)
                 projectView(project!)
               else if (widget.projectId == null) ...[
                 if (widget.state.isChild)
                   Panel(
-                    color: mint,
+                    color: context.palette.mint,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           'Wörter anwenden. Zusammenhänge verstehen.',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
+                        SizedBox(height: 12),
+                        Text(
                           'Wähle dein Ziel und ein paar bestätigte Wörter. Daraus entsteht eine kleine Übung mit Hilfe.',
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         DropdownButtonFormField<String>(
                           initialValue: locale,
                           isExpanded: true,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Lernsprache bestätigen',
                           ),
                           items: [
@@ -291,11 +291,11 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                   load();
                                 },
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           initialValue: mode,
                           isExpanded: true,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Was möchtest du üben?',
                           ),
                           items: [
@@ -309,13 +309,13 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                               ? null
                               : (v) => setState(() => mode = v!),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         TextField(
                           controller: goal,
                           maxLength: 500,
                           minLines: 1,
                           maxLines: 3,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Dein konkretes Lernziel',
                           ),
                         ),
@@ -326,11 +326,11 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                               ? material
                               : '',
                           isExpanded: true,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Passende bestätigte Heftseite',
                           ),
                           items: [
-                            const DropdownMenuItem(
+                            DropdownMenuItem(
                               value: '',
                               child: Text('Nur ausgewählte Wörter'),
                             ),
@@ -349,19 +349,19 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                   () => material = v == '' ? null : v,
                                 ),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
+                        SizedBox(height: 16),
+                        Text(
                           'Welche Wörter gehören dazu? Bis zu 10 auswählen.',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         if (words.isEmpty)
                           TextButton(
                             onPressed: () => openRoute(
                               context,
                               '/vocabulary/${widget.childId}',
                             ),
-                            child: const Text('Zuerst Schulwörter bestätigen'),
+                            child: Text('Zuerst Schulwörter bestätigen'),
                           ),
                         Wrap(
                           spacing: 8,
@@ -387,15 +387,15 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         if (mode == 'grammar') ...[
                           DropdownButtonFormField<String>(
                             initialValue: grammar,
                             isExpanded: true,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Dieses Thema ist im ausgewählten Heft bestätigt',
                             ),
-                            items: const [
+                            items: [
                               DropdownMenuItem(
                                 value: 'simple_present',
                                 child: Text('Simple Present'),
@@ -411,7 +411,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                             ],
                             onChanged: (v) => setState(() => grammar = v!),
                           ),
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(vertical: 12),
                             child: Text(
                               'Nur beginnen, wenn ihr dieses Thema wirklich im Unterricht hattet. Die Heftquelle wird geprüft.',
@@ -425,14 +425,14 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                             'translation',
                             'email',
                           ].contains(mode),
-                          title: const Text('Mein eigener Text oder Entwurf'),
+                          title: Text('Mein eigener Text oder Entwurf'),
                           children: [
                             TextField(
                               controller: draft,
                               minLines: 4,
                               maxLines: 9,
                               maxLength: 4000,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Schreibe zuerst deinen Versuch',
                               ),
                             ),
@@ -443,7 +443,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         FilledButton.icon(
                           onPressed:
                               busy ||
@@ -451,40 +451,43 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                   goal.text.trim().length < 3
                               ? null
                               : () => create(),
-                          icon: const Icon(Icons.auto_awesome_rounded),
+                          icon: Icon(Icons.auto_awesome_rounded),
                           label: Text(
                             busy
                                 ? 'Wird vorbereitet …'
                                 : 'Mein Lernprojekt vorbereiten',
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        SizedBox(height: 8),
+                        Text(
                           'Ein KI-Auftrag. Danach übst du mit gespeicherten Aufgaben. Neue Beispiele sind Übungen, keine neuen Heftquellen.',
-                          style: TextStyle(fontSize: 12, color: muted),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.palette.muted,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 heading('Deine gespeicherten Lernprojekte'),
                 if (projects.isEmpty && !loading)
-                  const Text(
+                  Text(
                     'Hier findest du später deine vorbereiteten Projekte und eigenen Entwürfe.',
                   ),
                 for (final row in projects)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.auto_stories_rounded,
-                      color: teal,
+                      color: context.palette.teal,
                     ),
                     title: Text(workshopModes[row['mode']] ?? row['mode']),
                     subtitle: Text(
                       '${row['goal']}\n${statusLabel(row['status'])}',
                     ),
                     isThreeLine: true,
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    trailing: Icon(Icons.chevron_right_rounded),
                     onTap: () => openRoute(
                       context,
                       '/language-projects/${widget.childId}?project=${row['id']}',
@@ -501,7 +504,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                               load();
                             }
                           : null,
-                      icon: const Icon(Icons.chevron_left_rounded),
+                      icon: Icon(Icons.chevron_left_rounded),
                     ),
                     Expanded(
                       child: Text('Seite $page', textAlign: TextAlign.center),
@@ -514,7 +517,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                               load();
                             }
                           : null,
-                      icon: const Icon(Icons.chevron_right_rounded),
+                      icon: Icon(Icons.chevron_right_rounded),
                     ),
                   ],
                 ),
@@ -534,27 +537,22 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
             children: [
               Text(
                 workshopModes[row['mode']] ?? 'Sprachprojekt',
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Text(row['goal']),
               if (row['mode'] == 'dialog')
                 Text('Schritt ${row['step']} von höchstens 4'),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Tag(statusLabel(row['status'])),
               if (row['error'] != null) Notice(row['error'], warning: true),
               if (row['status'] == 'failed')
-                const Text(
-                  'Deine Wörter und dein Entwurf bleiben gespeichert.',
-                ),
+                Text('Deine Wörter und dein Entwurf bleiben gespeichert.'),
               if (widget.state.isChild && row['can_retry'] == true) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: busy ? null : () => retryProject(row),
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: Icon(Icons.refresh_rounded),
                   label: Text(
                     busy ? 'Wird vorbereitet …' : 'Erneut vorbereiten',
                   ),
@@ -562,16 +560,16 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
               ],
               if ((row['draft'] ?? '').toString().isNotEmpty)
                 ExpansionTile(
-                  title: const Text('Mein gespeicherter Versuch'),
+                  title: Text('Mein gespeicherter Versuch'),
                   children: [SelectableText(row['draft'])],
                 ),
               if (result != null) ...[
-                const SizedBox(height: 18),
-                const Tag('Erzeugte Lernhilfe'),
-                const SizedBox(height: 10),
+                SizedBox(height: 18),
+                Tag('Erzeugte Lernhilfe'),
+                SizedBox(height: 10),
                 SelectableText(
                   result['response'] ?? '',
-                  style: const TextStyle(fontSize: 17, height: 1.5),
+                  style: TextStyle(fontSize: 17, height: 1.5),
                 ),
                 ReadAloudButton(
                   text: result['response'] ?? '',
@@ -579,11 +577,11 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                 ),
                 for (final criterion in result['criteria'] as List? ?? [])
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: EdgeInsets.symmetric(vertical: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Vorschlag zu deinem Entwurf',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
@@ -598,14 +596,14 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                   ),
                 if (result['source_excerpt'] != null)
                   ExpansionTile(
-                    title: const Text('Beleg im bestätigten Stoff'),
+                    title: Text('Beleg im bestätigten Stoff'),
                     children: [Text(result['source_excerpt'])],
                   ),
                 if (row['unit_id'] != null)
                   FilledButton.icon(
                     onPressed: () =>
                         openRoute(context, '/unit/${row['unit_id']}'),
-                    icon: const Icon(Icons.play_arrow_rounded),
+                    icon: Icon(Icons.play_arrow_rounded),
                     label: Text(
                       widget.state.isChild
                           ? 'Mit den Aufgaben üben'
@@ -617,13 +615,13 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
           ),
         ),
         if (row['can_continue'] == true && widget.state.isChild) ...[
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Panel(
-            color: mint,
+            color: context.palette.mint,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Deine Antwort im Gespräch',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
@@ -632,7 +630,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                   minLines: 2,
                   maxLines: 5,
                   maxLength: 4000,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Schreibe selbst weiter',
                   ),
                 ),
@@ -643,17 +641,17 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                 ),
                 FilledButton(
                   onPressed: busy ? null : () => create(previous: row),
-                  child: const Text('Nächster Gesprächsschritt'),
+                  child: Text('Nächster Gesprächsschritt'),
                 ),
               ],
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextButton(
           onPressed: () =>
               openRoute(context, '/language-projects/${widget.childId}'),
-          child: const Text('Zur Sprachwerkstatt'),
+          child: Text('Zur Sprachwerkstatt'),
         ),
       ],
     );

@@ -424,12 +424,18 @@ void main() {
       final foreground = DefaultTextStyle.of(tester.element(find.text(label)))
           .style
           .color!;
-      final background = label == 'Offen'
-          ? appTheme().chipTheme.selectedColor!
-          : appTheme().chipTheme.backgroundColor!;
-      final contrast =
-          (background.computeLuminance() + .05) /
-          (foreground.computeLuminance() + .05);
+      final button = tester.widget<OutlinedButton>(
+        find
+            .ancestor(
+              of: find.text(label),
+              matching: find.byType(OutlinedButton),
+            )
+            .first,
+      );
+      final background = button.style!.backgroundColor!.resolve({})!;
+      final a = background.computeLuminance(),
+          b = foreground.computeLuminance();
+      final contrast = ((a > b ? a : b) + .05) / ((a > b ? b : a) + .05);
       expect(contrast, greaterThanOrEqualTo(4.5), reason: label);
     }
     final tileSemantics = tester

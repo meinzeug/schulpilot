@@ -116,7 +116,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
 
   @override
   Widget build(BuildContext context) {
-    if (!current) return const SizedBox();
+    if (!current) return SizedBox();
     if (allPages) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -125,11 +125,11 @@ class _NotebookShelfState extends State<NotebookShelf> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: () => setState(() => allPages = false),
-              icon: const Icon(Icons.folder_open_rounded),
-              label: const Text('Zu den Heftern'),
+              icon: Icon(Icons.folder_open_rounded),
+              label: Text('Zu den Heftern'),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           widget.allPages,
         ],
       );
@@ -168,11 +168,11 @@ class _NotebookShelfState extends State<NotebookShelf> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          key: const ValueKey('notebook-toolbar'),
-          padding: const EdgeInsets.all(4),
+          key: ValueKey('notebook-toolbar'),
+          padding: EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: surfaceBorder),
+            color: context.palette.panelSurface,
+            border: Border.all(color: context.palette.surfaceBorder),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -182,7 +182,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
                 tooltip: 'Fach suchen',
                 isSelected: showSearch,
                 onPressed: toggleSearch,
-                icon: const Icon(Icons.search_rounded),
+                icon: Icon(Icons.search_rounded),
               ),
               IconButton(
                 tooltip: 'Meine Fächer',
@@ -195,8 +195,8 @@ class _NotebookShelfState extends State<NotebookShelf> {
                   setState(() => ownOnly = !ownOnly);
                   remember();
                 },
-                icon: const Icon(Icons.filter_alt_outlined),
-                selectedIcon: const Icon(Icons.filter_alt_rounded),
+                icon: Icon(Icons.filter_alt_outlined),
+                selectedIcon: Icon(Icons.filter_alt_rounded),
               ),
               IconButton(
                 tooltip: list ? 'Kacheln' : 'Liste',
@@ -213,8 +213,8 @@ class _NotebookShelfState extends State<NotebookShelf> {
                 IconButton(
                   tooltip: 'Neue Heftfotos',
                   onPressed: widget.onAddPhoto,
-                  color: teal,
-                  icon: const Icon(Icons.add_a_photo_outlined),
+                  color: context.palette.teal,
+                  icon: Icon(Icons.add_a_photo_outlined),
                 ),
               PopupMenuButton<String>(
                 tooltip: 'Weitere Optionen',
@@ -233,28 +233,25 @@ class _NotebookShelfState extends State<NotebookShelf> {
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'pages',
-                    child: Text('Alle Heftseiten'),
-                  ),
-                  const PopupMenuItem(value: 'words', child: Text('Wörter')),
-                  const PopupMenuItem(
+                  PopupMenuItem(value: 'pages', child: Text('Alle Heftseiten')),
+                  PopupMenuItem(value: 'words', child: Text('Wörter')),
+                  PopupMenuItem(
                     value: 'refresh',
                     child: Text('Hefter aktualisieren'),
                   ),
                   if (!widget.state.isChild)
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'overview',
                       child: Text('Zum Lernüberblick'),
                     ),
                 ],
-                icon: const Icon(Icons.more_horiz_rounded),
+                icon: Icon(Icons.more_horiz_rounded),
               ),
             ],
           ),
         ),
         if (showSearch) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           TextField(
             controller: search,
             focusNode: searchFocus,
@@ -264,11 +261,11 @@ class _NotebookShelfState extends State<NotebookShelf> {
             onSubmitted: (_) => searchFocus.unfocus(),
             decoration: InputDecoration(
               hintText: 'Fach suchen',
-              prefixIcon: const Icon(Icons.search_rounded),
+              prefixIcon: Icon(Icons.search_rounded),
               suffixIcon: IconButton(
                 tooltip: 'Suche schließen',
                 onPressed: toggleSearch,
-                icon: const Icon(Icons.close_rounded),
+                icon: Icon(Icons.close_rounded),
               ),
             ),
             onChanged: (_) {
@@ -277,18 +274,15 @@ class _NotebookShelfState extends State<NotebookShelf> {
             },
           ),
         ],
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (error != null) ...[
           Notice(error!, warning: true),
           Align(
             alignment: Alignment.centerLeft,
-            child: OutlinedButton(
-              onPressed: load,
-              child: const Text('Erneut laden'),
-            ),
+            child: OutlinedButton(onPressed: load, child: Text('Erneut laden')),
           ),
         ] else if (data == null)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(40),
             child: Center(child: CircularProgressIndicator()),
           )
@@ -309,7 +303,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
                     });
                     remember();
                   },
-                  child: const Text('Alle Fächer zeigen'),
+                  child: Text('Alle Fächer zeigen'),
                 ),
               ],
             ),
@@ -317,12 +311,12 @@ class _NotebookShelfState extends State<NotebookShelf> {
         else if (list) ...[
           for (final item in visible)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 12),
               child: Material(
-                color: Colors.white,
+                color: context.palette.panelSurface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
-                  side: const BorderSide(color: surfaceBorder),
+                  side: BorderSide(color: context.palette.surfaceBorder),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: ListTile(
@@ -334,10 +328,10 @@ class _NotebookShelfState extends State<NotebookShelf> {
                   ),
                   title: Text(
                     '${item['title']}',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   subtitle: Text(pageLabel(item)),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: Icon(Icons.chevron_right_rounded),
                   onTap: () => open(item),
                 ),
               ),
@@ -352,7 +346,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
                   : 4;
               return GridView.builder(
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                physics: NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
                   mainAxisExtent: constraints.maxWidth < 350 ? 244 : 280,
@@ -378,41 +372,44 @@ class _NotebookShelfState extends State<NotebookShelf> {
     onTap: () => open(item),
     excludeSemantics: true,
     child: Material(
-      color: Colors.white,
+      color: context.palette.panelSurface,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: surfaceBorder),
+        side: BorderSide(color: context.palette.surfaceBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => open(item),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+          padding: EdgeInsets.fromLTRB(10, 8, 10, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(child: NotebookCover(item['cover_key'])),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 '${item['title']}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: ink,
+                  color: context.palette.ink,
                   fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 pageLabel(item),
-                style: const TextStyle(color: muted, fontSize: 13),
+                style: TextStyle(color: context.palette.muted, fontSize: 13),
               ),
               if ((item['review_count'] as num? ?? 0) > 0)
                 Text(
                   '${item['review_count']} noch prüfen',
-                  style: const TextStyle(color: warningInk, fontSize: 12),
+                  style: TextStyle(
+                    color: context.palette.warningInk,
+                    fontSize: 12,
+                  ),
                 ),
             ],
           ),

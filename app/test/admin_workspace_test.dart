@@ -34,9 +34,12 @@ Future<void> mount(
   double width = 390,
   bool installation = false,
   bool providerUnavailable = false,
+  Brightness brightness = Brightness.light,
 }) async {
-  await tester.binding.setSurfaceSize(Size(width, 900));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = Size(width, 900);
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   final state = AppState(
     api: Api(
       base: 'https://example.invalid/api',
@@ -51,6 +54,9 @@ Future<void> mount(
         }
         return jsonResponse(switch (request.url.path) {
           '/api/admin/provider' => provider(),
+          '/api/admin/provider/check' => {
+            'status': 'Künstliche gespeicherte Konfiguration erreichbar',
+          },
           '/api/admin/operations' => {
             'jobs': {'queued': 2, 'running': 1},
             'stalled_queued': 1,
@@ -65,12 +71,14 @@ Future<void> mount(
               'plan': 'Pilot',
               'child_limit': 2,
               'call_limit': 10,
+              'budget_micros': 1000000,
             },
             {
               'id': 'synthetic-family-b',
               'plan': 'Plus',
               'child_limit': 4,
               'call_limit': 30,
+              'budget_micros': 2000000,
             },
           ],
           '/api/admin/audit' => <Json>[],
@@ -96,7 +104,10 @@ Future<void> mount(
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    MaterialApp.router(theme: appTheme(), routerConfig: router),
+    MaterialApp.router(
+      theme: appTheme(brightness: brightness),
+      routerConfig: router,
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -186,6 +197,116 @@ void main() {
     },
   );
 
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'wide family administration uses operational table in ${brightness.name}',
+      (tester) async {
+        final requests = <http.Request>[];
+        await mount(tester, requests, width: 1440, brightness: brightness);
+        await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
+        expect(find.byType(DataTable), findsOneWidget);
+        expect(find.textContaining('synthetic-family-a'), findsOneWidget);
+        expect(find.text('Familienkennung'), findsOneWidget);
+        expect(
+          requests.every(
+            (request) =>
+                request.method == 'GET' &&
+                !request.url.path.contains('/children/'),
+          ),
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'checking stored provider configuration preserves unsaved fields and secret',
+    (tester) async {
+      final requests = <http.Request>[];
+      await mount(tester, requests);
+      await tap(tester, find.widgetWithText(ChoiceChip, 'KI-Konfiguration'));
+      final model = find.widgetWithText(
+        TextField,
+        'Modell-ID für Lerneinheiten (laut Anbieter)',
+      );
+      final secret = find.widgetWithText(
+        TextField,
+        'Neuer API-Schlüssel (optional)',
+      );
+      await tester.ensureVisible(model);
+      await tester.enterText(model, 'synthetic-unsaved-model');
+      await tester.ensureVisible(secret);
+      await tester.enterText(secret, 'synthetic-unsaved-secret');
+      await tap(tester, find.text('Gespeicherte Verbindung prüfen'));
+      expect(
+        tester.widget<TextField>(model).controller!.text,
+        'synthetic-unsaved-model',
+      );
+      expect(
+        tester.widget<TextField>(secret).controller!.text,
+        'synthetic-unsaved-secret',
+      );
+      final mutations = requests
+          .where((request) => request.method != 'GET')
+          .toList();
+      expect(mutations.length, 1);
+      expect(mutations.single.method, 'POST');
+      expect(mutations.single.url.path, '/api/admin/provider/check');
+      expect(
+        mutations.single.body,
+        isNot(contains('synthetic-unsaved-secret')),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final saveFamily in [false, true]) {
+    testWidgets(
+      'family dialog save=$saveFamily preserves unrelated provider draft',
+      (tester) async {
+        final requests = <http.Request>[];
+        await mount(tester, requests);
+        await tap(tester, find.widgetWithText(ChoiceChip, 'KI-Konfiguration'));
+        final model = find.widgetWithText(
+          TextField,
+          'Modell-ID für Lerneinheiten (laut Anbieter)',
+        );
+        await tester.ensureVisible(model);
+        await tester.enterText(model, 'synthetic-provider-draft');
+        await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
+        await tap(
+          tester,
+          find.widgetWithText(OutlinedButton, 'Tarif bearbeiten').first,
+        );
+        expect(
+          tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable,
+          isTrue,
+        );
+        await tap(tester, find.text(saveFamily ? 'Speichern' : 'Abbrechen'));
+        await tap(tester, find.widgetWithText(ChoiceChip, 'KI-Konfiguration'));
+        expect(
+          tester.widget<TextField>(model).controller!.text,
+          'synthetic-provider-draft',
+        );
+        final mutations = requests
+            .where((request) => request.method != 'GET')
+            .toList();
+        expect(mutations.length, saveFamily ? 1 : 0);
+        if (saveFamily) {
+          expect(
+            mutations.single.url.path,
+            '/api/admin/families/synthetic-family-a/entitlements',
+          );
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
   testWidgets('hidden admin drafts cannot receive browser keyboard focus', (
     tester,
   ) async {
@@ -255,14 +376,26 @@ void main() {
         find.textContaining('Künstlicher Verbindungsfehler'),
         findsOneWidget,
       );
+      expect(find.text('Betriebsübersicht'), findsOneWidget);
+      expect(find.text('Worker · noch kein Signal'), findsOneWidget);
+      expect(find.text('Deine Plattform im Blick'), findsOneWidget);
+      await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
+      expect(find.textContaining('synthetic-family-a'), findsOneWidget);
+      await tap(tester, find.widgetWithText(ChoiceChip, 'Übersicht'));
       await tap(tester, find.text('KI-Aufrufe sofort stoppen'));
       expect(
         requests.where((request) => request.method == 'POST').single.url.path,
         '/api/admin/emergency-stop',
       );
       await tap(tester, find.byTooltip('Schnellzugriff'));
-      expect(find.text('Push prüfen'), findsOneWidget);
-      expect(find.text('Betriebseinstellungen'), findsOneWidget);
+      expect(
+        find.widgetWithText(PopupMenuItem<String>, 'Push prüfen'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(PopupMenuItem<String>, 'Betriebseinstellungen'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

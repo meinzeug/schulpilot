@@ -87,7 +87,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
       final file =
           await (widget.pickPdf?.call() ??
               openFile(
-                acceptedTypeGroups: const [
+                acceptedTypeGroups: [
                   XTypeGroup(
                     label: 'PDF',
                     extensions: ['pdf'],
@@ -199,24 +199,27 @@ class _GradePdfImportState extends State<GradePdfImport> {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    insetPadding: const EdgeInsets.all(12),
+    insetPadding: EdgeInsets.all(12),
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 760, maxHeight: 850),
+      constraints: BoxConstraints(maxWidth: 760, maxHeight: 850),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: !current
-            ? const SizedBox()
+            ? SizedBox()
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.picture_as_pdf_outlined, color: ink),
-                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: context.palette.ink,
+                      ),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Noten für ${widget.childName}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 21,
                             fontWeight: FontWeight.w800,
                           ),
@@ -225,20 +228,20 @@ class _GradePdfImportState extends State<GradePdfImport> {
                       IconButton(
                         tooltip: 'Schließen',
                         onPressed: () => Navigator.pop(context, result != null),
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close),
                       ),
                     ],
                   ),
-                  if (busy) const LinearProgressIndicator(),
+                  if (busy) LinearProgressIndicator(),
                   if (error != null) Notice(error!, warning: true),
                   if (result != null) ...[
-                    const Spacer(),
-                    const Icon(
+                    Spacer(),
+                    Icon(
                       Icons.check_circle_outline,
                       size: 56,
-                      color: teal,
+                      color: context.palette.teal,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Text(
                       '${result!['added']} neue Noten · ${result!['linked']} zugeordnet · ${result!['updated']} aktualisiert',
                       textAlign: TextAlign.center,
@@ -247,20 +250,20 @@ class _GradePdfImportState extends State<GradePdfImport> {
                       '${result!['unchanged']} unverändert · ${result!['skipped']} ausgelassen',
                       textAlign: TextAlign.center,
                     ),
-                    const Spacer(),
+                    Spacer(),
                     FilledButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Fertig'),
+                      child: Text('Fertig'),
                     ),
                   ] else if (preview == null) ...[
-                    const Spacer(),
-                    const Icon(
+                    Spacer(),
+                    Icon(
                       Icons.upload_file_outlined,
                       size: 64,
-                      color: teal,
+                      color: context.palette.teal,
                     ),
-                    const SizedBox(height: 18),
-                    const Text(
+                    SizedBox(height: 18),
+                    Text(
                       'Fuxnoten-PDF hochladen',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -268,43 +271,49 @@ class _GradePdfImportState extends State<GradePdfImport> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'Aktuelles Schuljahr · Vorschau vor dem Speichern. Bereits importierte Noten werden wiedererkannt.',
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
+                    SizedBox(height: 10),
+                    Text(
                       'Die PDF wird lokal auf unserem Server gelesen und nicht an eine KI gesendet.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: muted, fontSize: 13),
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 13,
+                      ),
                     ),
-                    const Spacer(),
+                    Spacer(),
                     if (bytes != null)
                       OutlinedButton(
                         onPressed: busy ? null : upload,
-                        child: const Text('Upload erneut versuchen'),
+                        child: Text('Upload erneut versuchen'),
                       ),
                     FilledButton.icon(
                       onPressed: busy ? null : selectFile,
-                      icon: const Icon(Icons.folder_open_outlined),
-                      label: const Text('PDF auswählen'),
+                      icon: Icon(Icons.folder_open_outlined),
+                      label: Text('PDF auswählen'),
                     ),
                   ] else ...[
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
                       'Schuljahr ${preview!['school_year']}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     Text(
                       '${items.length} Einzelnoten · ${preview!['counts']['existing']} bereits übernommen',
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'Gleiche Note, neuer Eintrag? Ordne vorhandene Noten bewusst zu. Geänderte PDF-Werte werden erst nach deiner Auswahl übernommen.',
-                      style: TextStyle(color: muted, fontSize: 13),
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 13,
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Expanded(
                       child: ListView.builder(
                         itemCount: items.length,
@@ -312,11 +321,14 @@ class _GradePdfImportState extends State<GradePdfImport> {
                       ),
                     ),
                     ExpansionTile(
-                      title: const Text('Datum & Gewichtung'),
+                      title: Text('Datum & Gewichtung'),
                       children: [
                         Text(
                           preview!['notice'],
-                          style: const TextStyle(color: muted, fontSize: 13),
+                          style: TextStyle(
+                            color: context.palette.muted,
+                            fontSize: 13,
+                          ),
                         ),
                         Row(
                           children: [
@@ -327,7 +339,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                 (v) => setState(() => classworkWeight = v),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: weight(
                                 'Sonstige',
@@ -340,10 +352,10 @@ class _GradePdfImportState extends State<GradePdfImport> {
                       ],
                     ),
                     if (!complete)
-                      const Text(
+                      Text(
                         'Bitte offene Zuordnungen auswählen.',
                         style: TextStyle(
-                          color: ink,
+                          color: context.palette.ink,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -354,11 +366,11 @@ class _GradePdfImportState extends State<GradePdfImport> {
                       children: [
                         TextButton(
                           onPressed: busy ? null : refresh,
-                          child: const Text('Vorschau neu laden'),
+                          child: Text('Vorschau neu laden'),
                         ),
                         FilledButton(
                           onPressed: busy || !complete ? null : save,
-                          child: const Text('Auswahl übernehmen'),
+                          child: Text('Auswahl übernehmen'),
                         ),
                       ],
                     ),
@@ -387,47 +399,50 @@ class _GradePdfImportState extends State<GradePdfImport> {
   Widget entry(Json row) {
     final status = row['status'];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               '${row['subject']} · Note ${row['value']}',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
             Text(
               '${row['semester']}. Halbjahr · ${row['kind'] == 'classwork' ? 'Klassenarbeit' : 'Sonstige Leistung'} ${row['slot']}',
-              style: const TextStyle(color: muted, fontSize: 13),
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
             if (status == 'existing')
-              const Text('Bereits übernommen', style: TextStyle(color: teal)),
+              Text(
+                'Bereits übernommen',
+                style: TextStyle(color: context.palette.teal),
+              ),
             if (status == 'ignored')
-              const Text(
+              Text(
                 'Zuvor ausgelassen oder entfernt',
-                style: TextStyle(color: muted),
+                style: TextStyle(color: context.palette.muted),
               ),
             if (status == 'changed')
               Text('Bisher gespeichert: ${row['existing_value']}'),
             if (status != 'existing' && status != 'ignored') ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 key: ValueKey('${row['slot_key']}-${choices[row['slot_key']]}'),
                 initialValue: choices[row['slot_key']],
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Übernahme'),
+                decoration: InputDecoration(labelText: 'Übernahme'),
                 items: [
                   if (status == 'new' || status == 'possible_match')
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'add',
                       child: Text('Als zusätzliche Note übernehmen'),
                     ),
                   if (status == 'changed') ...[
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'update',
                       child: Text('Gespeicherte Note aktualisieren'),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'keep',
                       child: Text('Gespeicherte Note behalten'),
                     ),
@@ -440,7 +455,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  const DropdownMenuItem(
+                  DropdownMenuItem(
                     value: 'skip',
                     child: Text('Nicht übernehmen'),
                   ),

@@ -192,6 +192,7 @@ void main() {
           ),
         );
         expect(find.text('1 · Zwei gleich große Ganze'), findsOneWidget);
+        expect(find.textContaining('noch unterschiedlich groß'), findsOneWidget);
         expect(
           find.bySemanticsLabel(RegExp('1 von 3 gleich großen Teilen')),
           findsOneWidget,
@@ -200,6 +201,7 @@ void main() {
         await tester.ensureVisible(find.text('Gleich einteilen'));
         await tester.tap(find.text('Gleich einteilen'));
         await tester.pumpAndSettle();
+        expect(find.textContaining('noch unterschiedlich groß'), findsNothing);
         expect(
           find.bySemanticsLabel(RegExp('2 von 6 gleich großen Teilen')),
           findsOneWidget,

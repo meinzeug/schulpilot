@@ -318,7 +318,7 @@ class AssignedCoachingReviewOutput(CoachingReviewOutput):
 
 
 class CoachingOutput(CoachingReviewOutput):
-    learning_goals: list[LearningGoal] = Field(min_length=1, max_length=4)
+    learning_goals: list[LearningGoal] = Field(min_length=1, max_length=6)
 
 
 class UnitCreate(Strict):
