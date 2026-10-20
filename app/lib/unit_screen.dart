@@ -2499,7 +2499,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Future<void> showExplanation(BuildContext context, Json u) async {
     final requestedOwner = ownerId;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
-    final q = currentQuestion;
+    final introduction = u['introduction_seen'] == false;
+    final q = introduction ? null : currentQuestion;
     final data = await state.api.post(
       '/units/${u['id']}/explanation',
       u['supports_question_explanation'] == true && q != null
@@ -2507,7 +2508,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           : null,
     );
     if (!context.mounted || !requestIsCurrent(u['id'], requestedOwner)) return;
-    await showDialog(
+    final continuePractice = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Kurz erklärt'),
@@ -2532,12 +2533,20 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Weiter üben'),
           ),
         ],
       ),
     );
+    if (continuePractice == true &&
+        introduction &&
+        requestIsCurrent(u['id'], requestedOwner) &&
+        ModalRoute.of(context)?.isCurrent != false &&
+        unit?['status'] == 'active' &&
+        unit?['introduction_seen'] == false) {
+      await perform(() => finishIntroduction(unit!));
+    }
   }
 
   Future<void> requestParentHelp(BuildContext context, Json u) async {

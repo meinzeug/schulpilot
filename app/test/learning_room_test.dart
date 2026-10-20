@@ -148,6 +148,19 @@ class SavedRound {
       value['status'] = 'active';
       return jsonReply(value);
     }
+    if (path.endsWith('/explanation')) {
+      final body = request.body.isEmpty ? null : jsonDecode(request.body);
+      return jsonReply({
+        'explanation': body == null
+            ? value['explanation']
+            : 'Erklärung einer einzelnen Aufgabe.',
+        'question_id': body?['question_id'],
+      });
+    }
+    if (path.endsWith('/introduction')) {
+      value['introduction_seen'] = true;
+      return jsonReply(value);
+    }
     if (path.endsWith('/answer')) {
       expect(value['pending_feedback'], isNull);
       final body = jsonDecode(request.body) as Json;
@@ -345,6 +358,50 @@ void main() {
       ); // Do not reveal the answer stimulus.
       expect(server.answers, 0);
       expect(server.acknowledgements, 0);
+    },
+  );
+
+  testWidgets(
+    'The optional introduction explains the material and its continue action opens practice',
+    (tester) async {
+      final server = SavedRound();
+      server.value['introduction_seen'] = false;
+      server.value['supports_question_explanation'] = true;
+      server.value['learning_session'] = {
+        'action': {'kind': 'check_prior'},
+      };
+      server.value['explanation'] = 'Allgemeiner bestätigter Heftstoff.';
+      await openRound(tester, server);
+      await tapText(tester, 'Erst die Erklärung ansehen');
+      expect(find.text('Allgemeiner bestätigter Heftstoff.'), findsOneWidget);
+      expect(find.text('Erklärung einer einzelnen Aufgabe.'), findsNothing);
+      await tapText(tester, 'Weiter üben');
+      expect(find.text('Was bedeutet cat?'), findsOneWidget);
+      expect(server.value['introduction_seen'], true);
+      expect(server.answers, 0);
+      expect(
+        server.calls.where((c) => c.endsWith('/introduction')),
+        hasLength(1),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Dismissing the optional explanation leaves introduction and answers untouched',
+    (tester) async {
+      final server = SavedRound();
+      server.value['introduction_seen'] = false;
+      server.value['learning_session'] = {
+        'action': {'kind': 'check_prior'},
+      };
+      await openRound(tester, server);
+      await tapText(tester, 'Erst die Erklärung ansehen');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(server.value['introduction_seen'], false);
+      expect(server.answers, 0);
+      expect(server.calls.where((c) => c.endsWith('/introduction')), isEmpty);
     },
   );
 
