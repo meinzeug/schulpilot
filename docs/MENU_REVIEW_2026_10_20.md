@@ -19,7 +19,7 @@ Eingabe; keine weiteren gedruckten Heftbilder und keine Bild-KI für Appinhalte.
 | Glocke | Laden und leere Liste unterscheiden. Keine offene Vorbereitung zu inzwischen null Heftseiten und keine neue Prüfaufforderung zu bereits bestätigten Wortimporten. GET löscht keine Nachrichten/Lesebelege und startet keine KI. |
 | Konto | Klarer Kindertitel und Geräteaktionen „Hier abmelden“/„Gerät abmelden“. Aktionen unter der Beschreibung lassen lange Gerätenamen und große Schrift zu. Rechte/Sitzungswiderruf unverändert. |
 | Formeln/Tabellen | Echter Layoutfehler gefunden: intrinsische Spaltenmessung ist mit bestimmten Formelwidgets unvereinbar. Begrenzte responsive feste Spalten erlauben Formeln in Tabellen, große Schrift und horizontales Lesen. Trennzeichen innerhalb von TeX/Normen/Beträgen und maskierte Pipes bleiben Zellinhalt. |
-| Erklärungen | Überschriften, Tabellen und eingerückten Code auch ohne Leerzeile trennen. Mehrzeilige Matrizen zusammenhalten. Eine neue Erklärung beginnt bei Schritt eins; eine Überschrift bleibt bei ihrem ersten inhaltlichen Schritt. Kurze TeX-Brüche und Norm-/Betragszeichen für das Vorlesen bereinigen. |
+| Erklärungen | Überschriften, Tabellen und eingerückten Code auch ohne Leerzeile trennen. Mehrzeilige Matrizen zusammenhalten. Eine neue Erklärung beginnt bei Schritt eins; eine Überschrift bleibt bei ihrem ersten inhaltlichen Schritt. Kurze TeX-Brüche und Norm-/Betragszeichen für das Vorlesen bereinigen. Nach langem Scrollen bei einem Schrittwechsel wieder den Anfang zeigen. |
 
 Neue Clients melden `messages-v1`; ältere Clients behalten ihre bisherigen
 Benachrichtigungsrouten. Das Headerfeld erteilt keine Rechte. Der Reader nutzt die
@@ -61,3 +61,8 @@ Web, signierte Direct-APK und Play-AAB werden aus derselben Produktrevision geba
 Tatsächlicher Healthcheck, APK-Hash, Dienste, Sicherungsstand und kompatibler
 Rückweg werden nach dem Deployment hier und in STATUS/Handoff dokumentiert.
 Privates Bildmaterial und Browserbelege verbleiben außerhalb von Git.
+
+Nachprüfung im Web bei 200 %: Ein langer Erklärungsschritt hatte seinen alten
+Scrollversatz auf den nächsten übertragen. Der neue Regressionstest scheitert
+vor dem Fix und prüft danach einen sichtbaren Schrittanfang. Dieser letzte
+Darstellungsfix wird vor der ersten Bereitstellung von Version 59 eingebaut.

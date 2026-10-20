@@ -155,6 +155,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'Changing a long explanation step reveals its beginning instead of keeping the old scroll offset',
+    (tester) async {
+      final scroll = ScrollController();
+      final paragraph = r'\(x^2\)' + '\nEine lange künstliche Erklärung.' * 24;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: 320,
+                height: 300,
+                child: SingleChildScrollView(
+                  controller: scroll,
+                  child: LearningExplanation(text: '$paragraph\n\n$paragraph'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Nächster Schritt'));
+      await tester.pumpAndSettle();
+      expect(scroll.offset, greaterThan(100));
+      await tester.tap(find.text('Nächster Schritt'));
+      await tester.pumpAndSettle();
+      expect(find.text('Schritt 2 von 2'), findsOneWidget);
+      expect(scroll.offset, closeTo(0, 1));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      scroll.dispose();
+    },
+  );
+
   for (final scale in [1.0, 2.0]) {
     testWidgets('A narrow card contains a long formula at text scale $scale', (
       tester,

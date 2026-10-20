@@ -91,3 +91,7 @@ respektieren explizite Mathematik und maskierte Trennzeichen. Formelwidgets dür
 keine intrinsische Tabellenbreitenmessung auslösen: begrenzte responsive feste
 Spalten und horizontales Lesen verwenden. Neue Erklärungen beginnen wieder bei
 Schritt eins; gespeicherte Quellen und fachliche Lösungen nicht umschreiben.
+
+Nach einem Erklärungsschrittwechsel den Anfang des neuen Schritts sichtbar machen,
+auch nach langem Scrollen und bei großer Schrift. Gleiches gilt beim Austausch
+der Erklärung. Keine Quellen-/Antwortänderung und keine zusätzliche KI dabei.

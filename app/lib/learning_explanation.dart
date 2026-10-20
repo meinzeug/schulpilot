@@ -18,11 +18,29 @@ class LearningExplanation extends StatefulWidget {
 
 class _LearningExplanationState extends State<LearningExplanation> {
   int step = 0;
+  final stepTop = GlobalKey();
+
+  void revealBeginning() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = stepTop.currentContext;
+      if (mounted && target != null) {
+        Scrollable.ensureVisible(target, alignment: 0);
+      }
+    });
+  }
+
+  void changeStep(int next) {
+    setState(() => step = next);
+    revealBeginning();
+  }
 
   @override
   void didUpdateWidget(LearningExplanation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) step = 0;
+    if (oldWidget.text != widget.text) {
+      step = 0;
+      revealBeginning();
+    }
   }
 
   @override
@@ -61,6 +79,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
     if (chunks.isEmpty) return const SizedBox.shrink();
     final current = step.clamp(0, chunks.length - 1);
     return Column(
+      key: stepTop,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (chunks.length > 1) ...[
@@ -87,13 +106,13 @@ class _LearningExplanationState extends State<LearningExplanation> {
             children: [
               IconButton(
                 tooltip: 'Vorheriger Erklärungsschritt',
-                onPressed: current == 0 ? null : () => setState(() => step--),
+                onPressed: current == 0 ? null : () => changeStep(current - 1),
                 icon: const Icon(Icons.chevron_left_rounded),
               ),
               TextButton.icon(
                 onPressed: current + 1 == chunks.length
                     ? null
-                    : () => setState(() => step++),
+                    : () => changeStep(current + 1),
                 icon: const Icon(Icons.chevron_right_rounded),
                 label: const Text('Nächster Schritt'),
               ),
