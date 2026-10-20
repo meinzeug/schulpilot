@@ -1,3 +1,54 @@
+SCHULPILOT 1.12.2+58 · bereitgestellt · 20.10.2026
+
+Website https://schulpilot.dorfspy.de · API /api
+Release20261020T104607Z-f3a631a
+Produktcommit f3a631ac6e7876e8cbd4a7bb755e2385cda449f6, main gepusht.
+Healthcheck status=ok / Version 1.12.2, Schema 0023 unverändert. API/Worker/Caddy aktiv,
+Sicherungsdienst erfolgreich. Nachträglicher Dokumentationscommit ohne Clientänderung.
+
+Aktuelle Nutzerkorrektur: keine neuen gedruckten Heftbilder erstellen. Normale
+Handschrift bleibt Eingabe; Darstellung IN Aufgaben und Hilfen verbessern.
+Lokaler gemeinsamer Formelsatz, Tabellen/Code, zehn begrenzte neue Grafikfamilien.
+Quellen-/Offenlegungsprüfung erhalten. Hinweisgrafiken bleiben nach Laden sichtbar,
+lange Tipps beginnen oben, Vorlesetexte ohne TeX-Abstandsbefehle. Doppelte
+Formelskalierung bei Großschrift behoben, Web bei 200 % nachgeprüft.
+
+870 Fluttertests vollständig, 277 gezielte, Analyse/Ruff sauber.294 PG-Prüfungen
+und 63 gezielte Nachprüfungen bestanden (überlappende Mengen).127 Formelfälle,
+28 neue Grafikfälle plus 48 bisherige Fachfälle. Kein vollständiger Lehrplan-/TalkBack-
+oder realer Smartphone-Nachweis. Lokale Mockausgaben sind kein KI-Erfolg.
+
+Produktiv eine bestehende künstliche HANDSCHRIFT normal neu gelesen, alle drei Themen/
+Formeln/fünf Zeichnungsbereiche geprüft und bestätigt. Quelle/Antworten erhalten.
+Echte Heft-Hilfe zu 6 cm × 4 cm: 20 cm Umfang / 24 cm² Fläche, Formeln und Quellen korrekt.
+Auf 58 gespeichert erneut geöffnet, GET-only. Danach zehn bestätigte Seiten, fünf fertige Runden,
+18 beantwortete Aufgaben / 21 Versuche, null aktive Jobs. Keine neuen Kinderantworten.
+
+Providerrevision 29 unverändert, bezahlter sparsamer OpenRouter-Mix, Luna/Sol,
+feste Upstreams, keine Fallbacks/Kontingenterhöhung. Zwei neue Aufträge zusammen
+0,001876 USD berichtet. Einschließlich alter Abnahme 0,225889 USD berichtet,
+mit konservativer Obergrenze alter ungeklärter 400er höchstens 0,239375 USD < 0,25 USD.
+Unbekannte Gebühren/Reservierungen erhalten; Kosten ohne Bildgenerierung/Codex.
+Keine weiteren KI-Proben für Layout nötig. Kontoeinstellungen nicht eingesehen.
+
+Build 58 Web/Direct-APK/Play-AAB erfolgreich. APK 72.284.703 Bytes,
+SHA256 7a3f2e082573174e07b2f3ac0feb70a36ce7478cbcaf5f7be81c5fc3dbb9a7bf
+https://schulpilot.dorfspy.de/downloads/schulpilot-android.apk
+Öffentlicher Download/Server/Manifest identisch. AAB 68.025.009 Bytes, Signatur geprüft,
+kein Play-Upload. Bekannten Provider-Key in 575 Quelldateien/beiden Archiven nicht gefunden.
+
+Details: docs/SCIENTIFIC_QA_2026_10_20.md, docs/SCIENTIFIC_CONTENT.md,
+docs/STATUS.md und docs/SOURCES.md. Frühere Gesamt-App-Prüfung bleibt in
+APP_AUDIT_2026_10_20.md/OPENROUTER_ACTIVATION_2026_10_20.md dokumentiert.
+Screenshots/Diagnoseartefakte ignoriert, keine privaten Inhalte in Git.
+
+Rückweg previous 20261020T102707Z-79c80ff (57, Schema 0023), verliert Skalierungsfix.
+Neue KI anhalten / aktive abarbeiten, deploy/activate.py <id> --rollback-compatible.
+Kein DB-Restore über Antworten/Löschjournal, kein ungefragter Providerwechsel.
+
+--- HISTORISCHER STAND55 ---
+Der folgende Kopf galt vor den Darstellungsänderungen. Aktueller Stand ist oben.
+
 SCHULPILOT 1.11.5+55 · bereitgestellt · 20.10.2026
 
 Website https://schulpilot.dorfspy.de · API /api

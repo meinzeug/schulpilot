@@ -1,4 +1,4 @@
-Fachliche Darstellung, geprüft20.10.2026, Zielversion1.12.2+58:
+Fachliche Darstellung, geprüft20.10.2026, bereitgestellt1.12.2+58:
 
 - [flutter_math_fork0.7.4](https://pub.dev/packages/flutter_math_fork/versions/0.7.4),
   [lokale Math-API](https://pub.dev/documentation/flutter_math_fork/0.7.4/flutter_math/Math-class.html):
@@ -13,6 +13,9 @@ Fachliche Darstellung, geprüft20.10.2026, Zielversion1.12.2+58:
 - Eigene endliche Vektor-/Canvas-Zeichnungen aus überprüften Parametern und
   Beziehungen. Keine fremden Schulbuchabbildungen oder privaten Heftinhalte in
   den neuen Repositoryfixtures. Bisherige Modelle/Preise/Providerlimits erhalten.
+
+Produktive Nachweise, abschließende Tests und Grenzen:
+[SCIENTIFIC_QA_2026_10_20.md](SCIENTIFIC_QA_2026_10_20.md).
 
 # Offizielle Quellen und geprüfte Versionen
 

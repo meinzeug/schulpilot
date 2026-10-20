@@ -1,4 +1,53 @@
-# Produktionsstand 1.11.5+55 · 20.10.2026
+# Produktionsstand 1.12.2+58 · 20.10.2026
+
+Live: Release `20261020T104607Z-f3a631a`, Produktcommit
+`f3a631ac6e7876e8cbd4a7bb755e2385cda449f6`, main gepusht, Schema 0023.
+Healthcheck status=ok/Version 1.12.2; API, Worker und Caddy aktiv. Sicherung
+vor Aktivierung erfolgreich. Web, signierte Direct-APK und Play-AAB 58 gebaut.
+Der abschließende Dokumentationscommit verändert die gebauten Clientquellen nicht.
+
+Die Nutzerkorrektur ist umgesetzt: normale handschriftliche Schulhefter bleiben
+die Eingabe. Formeln, Tabellen, Code und begrenzte Fachgrafiken werden direkt in
+Aufgaben, geöffneten Hilfen, Rückmeldungen und Heft-Hilfe lesbar dargestellt.
+Keine gedruckten Ersatzhefte hochgeladen. Lokaler Formelsatz benötigt keine
+zusätzlichen KI-Aufträge. Zehn neue Grafikfamilien ergänzen die bisherigen Typen;
+Quellenbindung und Offenlegungsstufen bleiben erhalten. Verlorene Hinweisgrafiken,
+Tippscrollposition, gesprochene TeX-Steuerzeichen und doppelte Großschriftskalierung
+behoben. Umfang und Grenzen: [SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
+
+870 Fluttertests vollständig bestanden, 277 gezielte Tests, Analyse/Ruff sauber.
+294 PostgreSQL-Integrationsprüfungen und 63 gezielte Nachprüfungen bestanden
+(überschneidende Mengen). 127 Formelfälle/28 neue Grafikfälle; keine vollständige
+Lehrplan-, Smartphone- oder TalkBack-Abnahme behauptet. Tatsächlicher
+Handschrift-/OCR-/Formelhilfetest im normalen Kinderzugang erfolgreich, gespeicherte
+Hilfe auf 58 ohne neue KI wieder geöffnet. Danach zehn bestätigte Seiten, fünf
+abgeschlossene Runden, 18 beantwortete Aufgaben und 21 Antwortversuche.
+
+OpenRouter-Sparbetrieb Revision 29 unverändert: Luna für kleine OCR/Hilfen,
+Sol für umfangreicheren Bedarf; feste Upstreams, kein Fallback, Grenzen erhalten.
+Zwei zusätzliche echte Aufträge: 0,001876 USD berichtet. Mit vorheriger Abnahme
+0,225889 USD berichtet; einschließlich konservativer Obergrenze der alten
+ungeklärten 400er höchstens 0,239375 USD, unter 0,25 USD. Keine Aussage über
+unbekannte Kontogebühren oder Bildgenerierungs-/Codex-Kosten.
+
+APK 58: 72.284.703 Bytes, SHA256
+`7a3f2e082573174e07b2f3ac0feb70a36ce7478cbcaf5f7be81c5fc3dbb9a7bf`.
+Öffentlicher Download/Serverdatei/Manifest abgeglichen; AAB 68.025.009 Bytes,
+Signaturprüfung erfolgreich, kein Play-Upload. Beide Archive und 575 Quelldateien
+auf den bekannten Provider-Schlüssel geprüft, kein Treffer.
+
+Prüfprotokoll samt Produktionsnachweisen/Kosten/Rückweg:
+[SCIENTIFIC_QA_2026_10_20.md](SCIENTIFIC_QA_2026_10_20.md).
+Kompatibler Rückweg `20261020T102707Z-79c80ff` (57), verliert letzten Skalierungsfix.
+Vor Rückweg neue KI-Aufträge anhalten und aktive abarbeiten; kein DB-Restore über
+neue Antworten oder Löschjournal. Provider nur bewusst revisionsgebunden ändern.
+
+---
+
+Der folgende Stand dokumentiert die frühere App-Abnahme auf 55. Seine Kosten,
+Artefakte und Rückweg sind historische Zwischenstände; aktueller Kopf oben gilt.
+
+# Historischer Produktionsstand 1.11.5+55 · 20.10.2026
 
 Live: Release `20261020T074833Z-65e3ea6`, Produktcode
 `65e3ea64996e4ef3547489ea393b661721f4232f`, Schema0023. Healthcheck status=ok,

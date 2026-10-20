@@ -1,6 +1,6 @@
 # Fachliche Darstellung in Aufgaben und Hilfen
 
-Ausbauauftrag20.10.2026, Zielversion1.12.2+58. Gemeint ist die Darstellung
+Ausbauauftrag20.10.2026, bereitgestellte Version1.12.2+58. Gemeint ist die Darstellung
 **innerhalb der App**: Aufgaben, Auswahloptionen, Hinweise, Erklärungen,
 Antwortfeedback und Heftfragen. Eingaben bleiben gewöhnliche fotografierte,
 auch handschriftliche Schulhefter. Gedruckte KI-Testseiten sind kein neues
@@ -164,3 +164,8 @@ innerhalb des Formel-/Bruchwidgets wird deshalb nur der zweite Textskalierungs-
 durchgang abgeschaltet. Standalone-Formeln und normaler Text behalten ihre
 Systemschriftgröße. Der neue Test misst das tatsächliche globale Höhenverhältnis
 für TeX und ältere Brüche: vor dem Fix deutlich über2, danach bei200%genau2.
+
+Abschluss58: 870 Fluttertests vollständig bestanden,277gezielte Nachprüfungen
+und Analyse ohne Befund. Auf1.12.2gespeicherte produktive Heft-Hilfe nach Reload
+ohne neue KI erneut geöffnet. Release, Hashes, Kosten und Grenzen:
+[SCIENTIFIC_QA_2026_10_20.md](SCIENTIFIC_QA_2026_10_20.md).
