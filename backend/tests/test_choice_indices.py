@@ -162,8 +162,11 @@ def test_package_topics_expand_only_within_time_and_total_question_budget(groups
         assert branch["properties"]["questions"]["maxItems"] == count
 
 
-def test_five_topic_package_uses_all_confirmed_topics_in_one_bounded_request(transport):
+@pytest.mark.parametrize("paid", [False, True])
+def test_five_topic_package_uses_all_confirmed_topics_in_one_bounded_request(transport, paid):
     config, output, _, calls = transport
+    if paid:
+        config.model, config.openrouter_free_only = "synthetic-paid-fixture", False
     questions = output["units"][0]["questions"]
     for index in range(3):
         questions.append({**copy.deepcopy(questions[1]), "id": f"topic_{index}"})
@@ -175,8 +178,11 @@ def test_five_topic_package_uses_all_confirmed_topics_in_one_bounded_request(tra
     assert len(submitted["selected_groups"][0]["topics"]) == 5
 
 
-def test_provider_cannot_silently_shrink_a_five_topic_package(transport):
+@pytest.mark.parametrize("paid", [False, True])
+def test_provider_cannot_silently_shrink_a_five_topic_package(transport, paid):
     config, _, _, calls = transport
+    if paid:
+        config.model, config.openrouter_free_only = "synthetic-paid-fixture", False
     with pytest.raises(ProviderError, match="Lernumfang"):
         request_provider(config, "package", multipage_payload())
     assert len(calls) == 1

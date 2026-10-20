@@ -507,7 +507,7 @@ def prepare_package_schema(schema, payload):
                     distinct.setdefault(topic.strip().casefold(), topic.strip())
         topics[group["id"]] = list(distinct.values())
         # Three minutes remain for reading/feedback. At most five questions
-        # per unit and six overall keep the existing free output budget.
+        # per unit and six overall bound the first package, not the learning path.
         desired[group["id"]] = min(5, max(2, len(distinct)), max(2, group["estimated_minutes"] - 3))
     targets = {group["id"]: 2 for group in groups}
     while sum(targets.values()) < 6:
@@ -1098,9 +1098,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             )
         if function == "package":
             instructions += " Beachte instructional_support je selected_groups-Eintrag: guided_example braucht besonders kleine erklärte Zwischenschritte."
-    compact_free = (
+    compact_openrouter = (
         config.provider == "openrouter"
-        and config.model.endswith(":free")
         and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project")
         and not review_only
     )
@@ -1112,7 +1111,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         and payload["study_block"].get("mode") in ("understand", "detective", "apply")
         and not is_mathematics(payload.get("required_subject"))
     )
-    if compact_free:
+    if compact_openrouter:
         task_count = (
             "Erstelle pro Einheit GENAU die in selected_groups.question_count vorgegebene Anzahl Aufgaben. "
             if function == "package" and payload.get("selected_groups")
@@ -1194,7 +1193,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short"]
                     props["accepted"].update(maxItems=0)
     package_targets = {}
-    if (compact_free or config.provider == "codex") and function == "package":
+    if (compact_openrouter or config.provider == "codex") and function == "package":
         payload, package_targets = prepare_package_schema(schema, payload)
         if package_targets:
             instructions += (

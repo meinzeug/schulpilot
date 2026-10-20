@@ -108,7 +108,8 @@ class RoundRequest(Strict):
     collection_id: str | None = Field(default=None, max_length=32)
     direction: Literal["target_to_de", "de_to_target"] = "de_to_target"
     skill: Literal["recognition", "recall", "spelling", "listening"] = "spelling"
-    count: int = Field(default=3, ge=2, le=5)
+    # Local confirmed-word rounds do not share the 2–5 task AI-project cap.
+    count: int = Field(default=10, ge=2, le=15)
     voluntary: bool = False
 
 

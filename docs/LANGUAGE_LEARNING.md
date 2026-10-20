@@ -136,7 +136,15 @@ Notenverbesserung oder Audioqualität aus diesen technischen Tests.
 
 ## Verbindliche Modellentscheidungen
 
-Eine Runde enthält höchstens fünf Aufgaben (bei einem letzten Wort auch eine).
+Seit dem ausdrücklichen Betreiberauftrag vom20.10.2026 enthält eine lokale
+Wortschatzrunde standardmäßig zehn Vokabeln; der Dialog bietet fünf, zehn oder
+fünfzehn an. Der Server akzeptiert weiterhin alte explizite Größen zwei bis fünf
+und begrenzt neue Runden auf fünfzehn. Nur tatsächlich verfügbare bestätigte neue
+oder fällige Wörter auswählen; bei geringerer Auswahl kürzer, bei einem letzten
+Wort auch eine Aufgabe. Zusätzliche Wiederholung bleibt ausdrücklich.
+Begonnene Snapshots unverändert fortsetzen, keine Erweiterung vorhandener Runden.
+Diese Aufgaben entstehen lokal ohne KI-Aufruf; das separate Zwei-bis-fünf-Limit
+für generierte Sprachprojekte und andere KI-Etappen bleibt erhalten.
 LearningUnit/Attempt bleiben die
 maßgeblichen Lernbelege; Wiederholungsereignisse referenzieren genau einen
 Attempt und sind keine zusätzliche Leistung. Bedeutung, Schreibabruf und Hören

@@ -24,8 +24,8 @@ def child_login(api, username="test-child"):
     api.headers.update(CAPS)
 
 
-def import_words(api, child, key="vocabulary-import-0001"):
-    pairs = [
+def import_words(api, child, key="vocabulary-import-0001", pairs=None):
+    pairs = pairs if pairs is not None else [
         {"word": "apple", "meaning": "Apfel"},
         {"word": "dog", "meaning": "Hund"},
         {"word": "school", "meaning": "Schule"},
@@ -58,6 +58,52 @@ def round_(api, child, *, key="vocabulary-round-00001", skill="spelling", direct
 def correct_answer(unit_id, question_id):
     with DB() as db:
         return next(q["answer"] for q in db.get(LearningUnit, unit_id).questions if q["id"] == question_id)
+
+
+@pytest.mark.parametrize("available,count,expected", [(16, None, 10), (16, 15, 15), (9, 10, 9)])
+def test_larger_local_word_rounds_are_bounded_idempotent_and_preserve_resume(api, household, available, count, expected):
+    from schulpilot.db import Usage
+
+    _, child = household
+    import_words(api, child, pairs=[{"word": f"term{i}", "meaning": f"Wort{i}"} for i in range(available)])
+    child_login(api)
+    data = {"target_locale": "en-GB", "skill": "spelling"}
+    if count is not None:
+        data["count"] = count
+    url = f"/api/children/{child['id']}/vocabulary/rounds"
+    headers = {"Idempotency-Key": "larger-round-00000001"}
+    response = api.post(url, json=data, headers=headers)
+    assert response.status_code == 201, response.text
+    unit_id = response.json()["unit_id"]
+    unit = api.get(f"/api/units/{unit_id}").json()
+    assert len(unit["questions"]) == expected
+    assert len({q["language"]["vocabulary_item_id"] for q in unit["questions"]}) == expected
+    assert all("answer" not in q for q in unit["questions"])
+    assert api.post(url, json=data, headers=headers).json()["unit_id"] == unit_id
+    assert api.post(url, json={**data, "count": 2}, headers=headers).status_code == 409
+    resumed = api.post(url, json={**data, "count": 5}, headers={"Idempotency-Key": "resume-larger-round"})
+    assert resumed.json() == {"unit_id": unit_id, "resumed": True}
+    assert api.post(url, json={**data, "count": 16}, headers={"Idempotency-Key": "oversized-word-round"}).status_code == 422
+    with DB() as db:
+        assert len(db.get(LearningUnit, unit_id).questions) == expected
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+        assert db.scalar(select(func.count()).select_from(VocabularyReviewEvent)) == 0
+    if expected == 15:
+        assert api.post(f"/api/units/{unit_id}/start").status_code == 200
+        for question in unit["questions"]:
+            answer = api.post(f"/api/units/{unit_id}/questions/{question['id']}/answer", json={
+                "answer": correct_answer(unit_id, question["id"]),
+                "request_id": "large-word-answer-" + question["id"],
+            })
+            assert answer.status_code == 200, answer.text
+        result = api.get(f"/api/units/{unit_id}").json()
+        assert result["status"] == "completed" and result["vocabulary_result"]["answered_tasks"] == 15
+        assert result["coaching"]["status"] == "not_needed"
+        with DB() as db:
+            assert db.scalar(select(func.count()).select_from(Attempt)) == 15
+            assert db.scalar(select(func.count()).select_from(VocabularyReviewEvent)) == 15
+            assert db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
 def test_manual_to_round_plan_parent_and_idempotent_attempts(api, household):

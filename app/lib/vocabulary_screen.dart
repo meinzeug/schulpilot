@@ -633,70 +633,89 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     var skill = 'spelling';
     var direction = 'de_to_target';
     var voluntary = false;
+    var count = 10;
     final selection = await showDialog<Json>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => AlertDialog(
           title: const Text('Deine nächste Wörterrunde'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(learningLocales[locale]!),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: skill,
-                isExpanded: true,
-                items: [
-                  for (final key in [
-                    'spelling',
-                    'recognition',
-                    'recall',
-                    'listening',
-                  ])
-                    DropdownMenuItem(
-                      value: key,
-                      child: Text(languageSkills[key]!),
-                    ),
-                ],
-                onChanged: (value) => update(() {
-                  skill = value!;
-                  direction = ['recognition', 'listening'].contains(skill)
-                      ? 'target_to_de'
-                      : 'de_to_target';
-                }),
-              ),
-              if (skill == 'recall')
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(learningLocales[locale]!),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: direction,
+                  initialValue: skill,
                   isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'de_to_target',
-                      child: Text('Deutsch in die Lernsprache'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'target_to_de',
-                      child: Text('Lernsprache ins Deutsche'),
-                    ),
+                  items: [
+                    for (final key in [
+                      'spelling',
+                      'recognition',
+                      'recall',
+                      'listening',
+                    ])
+                      DropdownMenuItem(
+                        value: key,
+                        child: Text(languageSkills[key]!),
+                      ),
                   ],
-                  onChanged: (v) => update(() => direction = v!),
+                  onChanged: (value) => update(() {
+                    skill = value!;
+                    direction = ['recognition', 'listening'].contains(skill)
+                        ? 'target_to_de'
+                        : 'de_to_target';
+                  }),
                 ),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Zusätzliche Runde'),
-                subtitle: const Text('Auch bereits geübte Wörter'),
-                value: voluntary,
-                onChanged: (v) => update(() => voluntary = v!),
-              ),
-              const Text(
-                'Bis zu 3 Aufgaben. Wir merken uns, was du wieder üben solltest.',
-              ),
-              if (skill == 'listening')
-                const Text(
-                  'Du brauchst eine passende Gerätestimme. Der Hörtext wird auf deinem Gerät verarbeitet; das ist kein abgeschirmter Hörtest.',
+                if (skill == 'recall')
+                  DropdownButtonFormField<String>(
+                    initialValue: direction,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'de_to_target',
+                        child: Text('Deutsch in die Lernsprache'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'target_to_de',
+                        child: Text('Lernsprache ins Deutsche'),
+                      ),
+                    ],
+                    onChanged: (v) => update(() => direction = v!),
+                  ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: count,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Vokabeln pro Runde',
+                  ),
+                  items: [
+                    for (final size in [5, 10, 15])
+                      DropdownMenuItem(
+                        value: size,
+                        child: Text('$size Vokabeln'),
+                      ),
+                  ],
+                  onChanged: (value) => update(() => count = value!),
                 ),
-            ],
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Zusätzliche Runde'),
+                  subtitle: const Text('Auch bereits geübte Wörter'),
+                  value: voluntary,
+                  onChanged: (v) => update(() => voluntary = v!),
+                ),
+                Text(
+                  'Bis zu $count Vokabeln. Sind weniger verfügbar, übst du diese.',
+                ),
+                if (skill == 'listening')
+                  const Text(
+                    'Du brauchst eine passende Gerätestimme. Der Hörtext wird auf deinem Gerät verarbeitet; das ist kein abgeschirmter Hörtest.',
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -709,7 +728,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                 'collection_id': collection,
                 'skill': skill,
                 'direction': direction,
-                'count': 3,
+                'count': count,
                 'voluntary': voluntary,
               }),
               child: const Text('Runde beginnen'),

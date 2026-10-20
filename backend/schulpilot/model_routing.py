@@ -13,7 +13,7 @@ from .db import Attempt, Job, LearningUnit, Material, ProviderConfig, SchoolDay,
 from .schemas import Strict
 
 ROUTING_VERSION = "school-2"
-PROMPT_VERSION = "school-20261020-2"
+PROMPT_VERSION = "school-20261020-3"
 
 
 class ModelRoute(Strict):

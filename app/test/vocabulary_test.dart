@@ -297,11 +297,31 @@ void main() {
       expect(body['skill'], 'spelling');
       expect(body['direction'], 'de_to_target');
       expect(body['target_locale'], 'en-GB');
+      expect(body['count'], 10);
       expect(post.headers['Idempotency-Key'], isNotEmpty);
       expect(
         post.headers['X-Schulpilot-Capabilities']!.split(','),
         contains('language-v1'),
       );
+    },
+  );
+
+  testWidgets(
+    'A larger local round can be selected on a short phone without creating it early',
+    (tester) async {
+      final requests = <http.Request>[];
+      await open(tester, requests);
+      tester.view.physicalSize = const Size(320, 600);
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Wörter üben'));
+      expect(find.text('10 Vokabeln'), findsOneWidget);
+      await tap(tester, find.byType(DropdownButtonFormField<int>));
+      await tap(tester, find.text('15 Vokabeln').last);
+      expect(requests.where((r) => r.method == 'POST'), isEmpty);
+      await tap(tester, find.text('Runde beginnen'));
+      final post = requests.singleWhere((r) => r.method == 'POST');
+      expect(jsonDecode(post.body)['count'], 15);
+      expect(tester.takeException(), isNull);
     },
   );
 
