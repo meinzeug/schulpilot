@@ -316,6 +316,39 @@ void main() {
   );
 
   testWidgets(
+    'Wrong vocabulary feedback preserves the cue and never calls a retry solved',
+    (tester) async {
+      final q = question('apple', type: 'short')
+        ..['prompt'] = 'Schreibe das Wort auf Englisch:'
+        ..['options'] = <String>[]
+        ..['language'] = {
+          'cue': 'Apfel',
+          'context': 'Lebensmittel',
+          'skill': 'spelling',
+          'target_locale': 'en-GB',
+          'answer_locale': 'en-GB',
+          'stimulus': 'apple',
+        };
+      final server = SavedRound(questions: [q])..pending(answer: 'appel');
+      (q['attempts'] as List).single['evaluation'] = {
+        'support_reasons': ['another_attempt'],
+      };
+      await openRound(tester, server);
+      expect(find.text('Apfel'), findsOneWidget);
+      expect(find.text('Kontext: Lebensmittel'), findsOneWidget);
+      expect(find.text('appel'), findsOneWidget);
+      expect(find.text('Noch nicht ganz'), findsOneWidget);
+      expect(find.textContaining('gelöst'), findsNothing);
+      expect(
+        find.text('apple'),
+        findsNothing,
+      ); // Do not reveal the answer stimulus.
+      expect(server.answers, 0);
+      expect(server.acknowledgements, 0);
+    },
+  );
+
+  testWidgets(
     'A wrong answer keeps context; help loads a real tip and retry only acknowledges',
     (tester) async {
       final server = SavedRound();

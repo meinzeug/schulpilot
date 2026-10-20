@@ -413,7 +413,7 @@ void main() {
             'support_reasons': ['another_attempt'],
           },
         }).single,
-        contains('weiteren Versuch'),
+        contains('noch einmal versucht'),
       );
       expect(
         supportReasonLabels({

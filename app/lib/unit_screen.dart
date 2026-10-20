@@ -1954,6 +1954,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Widget answerFeedback(BuildContext context, Json u) {
     final q = answeredQuestion!;
+    final language = q['language'] is Map
+        ? Json.from(q['language'])
+        : const <String, dynamic>{};
+    final cue = language['cue']?.toString() ?? '';
+    final languageContext = language['context']?.toString() ?? '';
     final closed = done(q);
     final correct = answerOutcome == 'correct';
     final uncertain = answerOutcome == 'uncertain';
@@ -1990,6 +1995,19 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               questionPrompt(q),
+              if (cue.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                MathText(
+                  cue,
+                  key: const ValueKey('feedback-language-cue'),
+                  style: const TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+              if (languageContext.isNotEmpty)
+                MathText('Kontext: $languageContext'),
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
                 stages: const {'given'},

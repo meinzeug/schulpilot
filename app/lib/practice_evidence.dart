@@ -10,7 +10,7 @@ List<String> supportReasonLabels(Json attempt) {
   const labels = {
     'hint': 'Ein Aufgabenhinweis wurde verwendet.',
     'explanation': 'Eine Erklärung wurde vor der Antwort geöffnet.',
-    'another_attempt': 'Die Aufgabe wurde in einem weiteren Versuch gelöst.',
+    'another_attempt': 'Du hast es noch einmal versucht.',
     'recent_solution':
         'Das Wort oder die Lösung war kurz vorher als Vorlage zu sehen.',
     'speech_transcript': 'Die Antwort wurde eingesprochen; das prüft keine eigene Rechtschreibung.',
