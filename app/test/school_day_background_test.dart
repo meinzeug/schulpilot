@@ -424,6 +424,9 @@ void main() {
       await tapText(tester, 'Noch eine Seite hinzufügen');
       expect(find.text('Fotos auswählen'), findsOneWidget);
       expect(server.pages.single['confirmed'], true);
+      await tapText(tester, 'Mit diesen Seiten weiter');
+      expect(find.text('Alle Seiten geprüft!'), findsOneWidget);
+      expect(find.text('Im Hintergrund vorbereiten'), findsOneWidget);
       expect(server.submissions, 0);
       expect(server.starts, 0);
       expect(tester.takeException(), isNull);

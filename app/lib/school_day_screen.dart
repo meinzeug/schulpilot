@@ -1075,6 +1075,20 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
               style: const TextStyle(color: muted),
             ),
           ),
+        if (!hasPhotos && savedCount > 0 && allowUploads)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: ActionButton(
+              label: 'Mit diesen Seiten weiter',
+              icon: Icons.arrow_forward_rounded,
+              onPressed: () => run(() async {
+                await state.api.put('/school-days/${day!['id']}/stage', {
+                  'stage': 'review',
+                });
+                if (mounted) setState(() => captureRequested = false);
+              }),
+            ),
+          ),
         if (hasPhotos) ...[
           const SizedBox(height: 20),
           Text(
