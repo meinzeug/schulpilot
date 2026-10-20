@@ -29,7 +29,7 @@ NON_TRANSLATION = re.compile(
 METADATA = re.compile(
     r"\b(?:app[ -]?test|künstliche? testseite|keine echte hausaufgabe|testblatt|wasserzeichen|"
     r"copyright|alle rechte vorbehalten)\b|^\s*(?:seite|page)\s+\d+\s*$|^\s*\d{1,2}[./]\d{1,2}[./]\d{2,4}\s*$", re.I)
-WORD_SECTION = re.compile(r"\b(?:vokabel\w*|vocabulary|word ?list|wortschatz|übersetzungen|translations)\b", re.I)
+WORD_SECTION = re.compile(r"\b(?:vokabel\w*|vocabulary|word ?list|wortschatz|wörter|übersetzungen|translations)\b", re.I)
 
 
 def pair_key(line, word, meaning):
@@ -66,7 +66,13 @@ def preview(subject, topic, content, source_blocks=None):
             unpaired += 1
             rejected.append({"line": line_number, "kind": "grammar_or_example", "reason": "Grammatik oder Beispiel, keine Übersetzung."})
             continue
-        if WORD_SECTION.fullmatch(heading.strip("# :.")):
+        section, separator, label = heading.partition(":")
+        named_section = (
+            separator and label.strip() and len(label) <= 80
+            and not re.search(r"[=|\t]", line)
+            and WORD_SECTION.fullmatch(section.strip("# :."))
+        )
+        if named_section or WORD_SECTION.fullmatch(heading.strip("# :.")):
             word_section, columns = True, None
             continue
         cells = re.split(r"\||\t+| {2,}|=|(?<=\s)[—–-](?=\s)|:(?=\s)", line)

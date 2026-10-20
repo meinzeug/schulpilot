@@ -177,6 +177,15 @@ def test_extra_table_columns_require_explicit_headers_and_preserve_their_meaning
     assert preview(None, None, None) is None
 
 
+def test_named_word_sections_are_headings_without_hiding_actual_colon_pairs():
+    result = preview("Englisch", "Wörter zu Schule und Tieren", "1. Wörter: school\nbook = Buch\npencil: Bleistift\n2. Wörter: animals\ndog = Hund\ncat: Katze\n3. Wortschatz: food\napple = Apfel")
+    assert [(p["word"], p["meaning"]) for p in result["pairs"]] == [
+        ("book", "Buch"), ("pencil", "Bleistift"), ("dog", "Hund"), ("cat", "Katze"), ("apple", "Apfel"),
+    ]
+    literal = preview("Englisch", "Vocabulary", "words = Wörter\nword list = Wortliste")
+    assert [(p["word"], p["meaning"]) for p in literal["pairs"]] == [("words", "Wörter"), ("word list", "Wortliste")]
+
+
 def test_mixed_vocabulary_and_grammar_page_never_turns_a_rule_into_a_word_pair():
     result = preview("Englisch", "Meine Vokabelseite", "apple = Apfel\nschool = Schule\ndog = Hund\nbook = Buch\nfriend = Freund\n"
                      "Simple Present\nhe, she, it: -s am Verb\nHe goes to school.\nI go to school.")
