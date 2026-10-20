@@ -280,7 +280,7 @@ void main() {
         expect(find.text('30:00 / 100 Min.'), findsOneWidget);
         expect(find.text('Tagesziel offen'), findsOneWidget);
         expect(find.text('Tagesziel erfüllt'), findsNothing);
-        expect(find.text('Offene Aufträge: 1'), findsOneWidget);
+        expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
         expect(find.text('1 Hilfewunsch heute'), findsOneWidget);
         expect(
           find.text('Anliegen und Antworten findet ihr in den Nachrichten.'),
@@ -499,6 +499,37 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+    'Mandatory and optional assignments have distinct counts in the overview',
+    (tester) async {
+      final data = parentOverview(), requests = <http.Request>[];
+      data['assignments'].addAll([
+        for (var i = 0; i < 4; i++)
+          {'id': 'optional-$i', 'mandatory': false, 'done': false},
+      ]);
+      data['practice_summary'] = {
+        'practiced_tasks': 4,
+        'attempts': 5,
+        'practiced_rounds': 2,
+        'completed_rounds': 1,
+        'ongoing_rounds': 1,
+      };
+      await mountParent(tester, data, requests);
+      expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
+      expect(
+        find.textContaining('4 freiwillige Aufträge im Plan.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Runden mit Antworten: 1 abgeschlossen · 1 noch offen'),
+        findsOneWidget,
+      );
+      expect(requests.every((r) => r.method == 'GET'), isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets(
     'Plan is addressable, hides completed assignments and viewing remains GET only',

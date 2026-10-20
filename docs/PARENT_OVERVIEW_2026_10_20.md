@@ -2,7 +2,7 @@
 
 Betreiberauftrag: Lernüberblick eines vorhandenen Kindes im angemeldeten
 Elternzugang neu ordnen, Lernstand verständlich zeigen und Menüs/Unterseiten
-aufräumen. Zielversion **1.14.0+60**; produktive Abnahme siehe Abschluss unten.
+aufräumen. Zielversion **1.14.1+61**; produktive Abnahme siehe Abschluss unten.
 Keine privaten Namen, Kennungen, Fotos, Antworten oder Screenshots im Repository.
 
 ## Darstellung und Navigation
@@ -66,9 +66,24 @@ Das ist keine vollständige Screenreader-/WCAG-Zertifizierung oder Messung eines
 Lernerfolgs. Browseransichten dienen der Bedien-/Darstellungsabnahme. Eingescannte
 handschriftliche Heftseiten und bisherige Lernergebnisse bleiben erhalten.
 
+## Live-Nachprüfung der ersten Bereitstellung
+
+1.14.0+60 / `20261020T124231Z-8bbd152`, Quelle
+`8bbd152080c854d66946e9f74d82788ecd13e7d8`, wurde technisch erfolgreich geprüft.
+Alle acht Elternbereiche und der Fach-/Themen-/Rundenrückweg im Browser erreichbar.
+897 Fluttertests vollständig bestanden. Public-APK-Bytes/Hash stimmen, Sicherung
+und Dienste gesund. Keine neue Antwort, Nachricht oder Lernplanung eingetragen.
+
+Die vorhandenen freiwilligen Aufträge zeigten eine sprachliche Unklarheit in der
+Übersicht: Die Zahl offener Aufträge war schon vorher nur auf Pflichtaufträge
+bezogen. 1.14.1 benennt das ausdrücklich und zeigt freiwillige Aufträge getrennt.
+Rundensummen sind ausdrücklich Runden mit gespeicherten Antworten; eine noch
+unbeantwortete vorbereitete/pausierte Runde wird damit nicht als geübt ausgegeben.
+Ein zusätzlicher GET-only-Regressionsfall sichert die Trennung.
+
 ## Bereitstellung
 
-Noch nicht abgeschlossen. Vor Aktivierung vollständige Tests, Analyse,
+Die abschließende Nachbesserung ist noch nicht bereitgestellt. Vor Aktivierung vollständige Tests, Analyse,
 Diff-/Geheimnisprüfung und Web/Direct-APK/Play-AAB bauen. Deployment sichert die
 betroffenen Konfigurationen und Datenbank. Rückweg ist das bisherige Release
-1.13.0+59 (`20261020T115520Z-0720f90`), Schema 0023.
+1.14.0+60 (`20261020T124231Z-8bbd152`), Schema 0023.

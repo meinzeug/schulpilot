@@ -31,6 +31,14 @@ class ParentOverview extends StatelessWidget {
               (a['source_status'] ?? 'confirmed') == 'confirmed',
         )
         .length;
+    final voluntaryAssignments = (data['assignments'] as List? ?? [])
+        .where(
+          (a) =>
+              a['done'] != true &&
+              a['mandatory'] != true &&
+              (a['source_status'] ?? 'confirmed') == 'confirmed',
+        )
+        .length;
     final subjects = data['subject_progress'] as List? ?? [];
     final guidance = data['learning_guidance'] as Map?;
     final seen = <(String, String)>{};
@@ -100,10 +108,14 @@ class ParentOverview extends StatelessWidget {
               const Divider(height: 28),
               _OverviewAction(
                 icon: Icons.event_note_rounded,
-                title: 'Offene Aufträge: $assignments',
-                detail: assignments == 0
-                    ? 'Keine offenen verbindlichen Aufträge.'
-                    : 'Verbindliche Lernziele und Termine im Plan prüfen.',
+                title: 'Offene Pflichtaufträge: $assignments',
+                detail: [
+                  assignments == 0
+                      ? 'Keine offenen verbindlichen Aufträge.'
+                      : 'Verbindliche Lernziele und Termine im Plan prüfen.',
+                  if (voluntaryAssignments > 0)
+                    '${counted(voluntaryAssignments, 'freiwilliger Auftrag', 'freiwillige Aufträge')} im Plan.',
+                ].join(' '),
                 action: 'Plan ansehen',
                 onTap: () => section('plan'),
               ),
@@ -373,7 +385,7 @@ class ParentPracticeSummary extends StatelessWidget {
               evidence['ongoing_rounds'] is num) ...[
             const SizedBox(height: 6),
             Text(
-              'Davon ${count('completed_rounds')} abgeschlossen · ${count('ongoing_rounds')} noch offen',
+              'Runden mit Antworten: ${count('completed_rounds')} abgeschlossen · ${count('ongoing_rounds')} noch offen',
               style: const TextStyle(color: muted, fontSize: 13),
             ),
           ],
