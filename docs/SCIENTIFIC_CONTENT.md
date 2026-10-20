@@ -1,6 +1,6 @@
 # Fachliche Darstellung in Aufgaben und Hilfen
 
-Ausbauauftrag20.10.2026, Zielversion1.12.0+56. Gemeint ist die Darstellung
+Ausbauauftrag20.10.2026, Zielversion1.12.1+57. Gemeint ist die Darstellung
 **innerhalb der App**: Aufgaben, Auswahloptionen, Hinweise, Erklärungen,
 Antwortfeedback und Heftfragen. Eingaben bleiben gewöhnliche fotografierte,
 auch handschriftliche Schulhefter. Gedruckte KI-Testseiten sind kein neues
@@ -138,3 +138,22 @@ Die spätere Nullstelle eines Achsenticks wird relativ zur Achsenspanne
 normalisiert; kleine echte Messwerte und vollständige Datenpunktwerte bleiben
 erhalten. Zwei veraltete Rückblicktest-Assertions auf ein null-Platzhalterfeld
 wurden an den bereits bestehenden OpenRouter-Vertrag ohne dieses Feld angepasst.
+
+Zusätzliche Nachprüfung57: reine TeX-Abstands-/Klammergrößenbefehle aus den
+Vorlesetexten entfernen, Operatoren und Einheiten erhalten. Fachgrafiken verwenden
+dieselbe gesprochene Beschreibung im Bild-Alternativtext; gängige
+TeX-Steuerzeichen sind dort bereinigt. Dies erweitert die partielle Formelvorlesehilfe, ersetzt
+keine vollständige mathematische Sprachausgabe.
+Prozess-/Kreislaufbeschreibungen nennen jede tatsächliche Pfeilrichtung auch
+sprachlich; die Bildbeschreibung ersetzt eine doppelte vorgelesene sichtbare
+Wiederholung. Numerische Datenbelege bleiben unverändert.
+
+Produktiver Praxistest auf56: eine bereits geprüfte künstliche Handschriftseite
+im normalen angemeldeten Kinderzugang bewusst erneut gelesen. Alle drei Themen,
+Formeln und fünf Zeichnungsbereiche erhalten; Originalausschnitte tatsächlich
+geöffnet, Seite ausdrücklich bestätigt. Echte quellengebundene Heft-Hilfe zu
+Umfang/Fläche6cm×4cm fachlich richtig mit gesetzten Formeln und Einheiten.
+Luna/Revision29: OCR4766Input-/1669Ausgabetokens,0,001312USD;
+Tutor3704Input-/387Ausgabetokens,0,000564USD berichtet. Zusammen0,001876USD,
+keine neue Lernrunde oder Antwortversuche. Alte Reservierungen/Unklarheiten
+erhalten. Nachprüfung57:276gezielte Fluttertests bestanden, Analyse ohne Befund.

@@ -135,6 +135,15 @@ void main() {
     );
     expect(learningParagraphs('Vorher\n\n\\[a+\n\nb=c\\]\n\nDanach').length, 3);
   });
+  test('Spoken formulas remove layout commands while preserving operators and units', () {
+    final spoken = MathText.spoken(
+      r'\(U=2\cdot\left(6\,\mathrm{cm}+4\,\mathrm{cm}\right)\quad A=24\,\mathrm{cm}^2\)',
+    );
+    expect(spoken, r'U=2 mal (6 cm+4 cm) A=24 cm hoch 2');
+    expect(spoken, isNot(contains(r'\')));
+    expect(MathText.spoken(r'\(A\rightarrow B\)'), contains('ergibt'));
+    expect(MathText.spoken(r'\(f(x)=\sin(x)\)'), 'f(x)=Sinus(x)');
+  });
   test(
     'bounded parsing leaves money, dates, URLs and unclosed math intact',
     () {

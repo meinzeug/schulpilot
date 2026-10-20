@@ -75,6 +75,20 @@ bool safeFormula(String expression) {
 }
 
 String spokenFormula(String expression) => expression
+    .replaceAll(RegExp(r'\\(?:left|right)\s*(?=[()\[\]{}|.\\])'), '')
+    .replaceAll(RegExp(r'\\(?:qquad|quad|enspace)\b'), ' ')
+    .replaceAll(RegExp(r'\\[,;:]'), ' ')
+    .replaceAll(r'\!', '')
+    .replaceAllMapped(
+      RegExp(r'\\(sin|cos|tan|ln|log)\b'),
+      (m) => const {
+        'sin': 'Sinus',
+        'cos': 'Kosinus',
+        'tan': 'Tangens',
+        'ln': 'natürlicher Logarithmus',
+        'log': 'Logarithmus',
+      }[m[1]]!,
+    )
     .replaceAllMapped(
       RegExp(r'\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}'),
       (m) => '${m[1]} durch ${m[2]}',
@@ -84,7 +98,7 @@ String spokenFormula(String expression) => expression
       (m) => 'Wurzel aus ${m[1]}',
     )
     .replaceAllMapped(
-      RegExp(r'\\(?:mathrm|text|mathbf|mathit)\{([^{}]+)\}'),
+      RegExp(r'\\(?:mathrm|text|mathbf|mathit|operatorname)\{([^{}]+)\}'),
       (m) => m[1]!,
     )
     .replaceAll(r'\int', ' Integral ')

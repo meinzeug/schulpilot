@@ -24,6 +24,17 @@ void main() {
     expect(ScienceGraphic.tickLabel(-8e-15, 12), '0');
     expect(ScienceGraphic.tickLabel(1e-15, 4e-15), '1e-15');
     expect(ScienceGraphic.number(0.123456789), '0,123456789');
+    final branch = ScienceGraphic(
+      Map<String, dynamic>.from(
+        cases.firstWhere(
+          (c) => c['id'] == 'PROCESS02',
+        )['question']['presentation']['blocks'][0],
+      ),
+    );
+    expect(
+      branch.connectionsDescription,
+      'Prüfung führt zu Fall A; Prüfung führt zu Fall B',
+    );
   });
   for (final width in [320.0, 1440.0]) {
     for (final scale in [1.0, 2.0]) {

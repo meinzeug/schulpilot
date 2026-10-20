@@ -24,6 +24,9 @@ class ScienceGraphic extends StatelessWidget {
   List<double> get numbers =>
       (block['numbers'] as List).map((v) => (v as num).toDouble()).toList();
   List<String> get labels => (block['labels'] as List).cast<String>();
+  String get connectionsDescription => ((block['connections'] as List?) ?? [])
+      .map((e) => '${labels[e['start']]} führt zu ${labels[e['end']]}')
+      .join('; ');
   static String number(num value) => value == value.roundToDouble()
       ? '${value.toInt()}'
       : '$value'.replaceAll('.', ',');
@@ -59,7 +62,7 @@ class ScienceGraphic extends StatelessWidget {
     'function_curve' =>
       'Graph der belegten Standardfunktion. ${curveNames[block['variant']]}. Sichtbarer Ausschnitt: $curveDomain.${block['variant'] == 'reciprocal' ? ' Bei x=0 bleibt die Kurve unterbrochen.' : ''}',
     'process_graph' || 'process_cycle' =>
-      '${block['kind'] == 'process_cycle' ? 'Geschlossener Kreislauf' : 'Gerichtetes Ablaufschema'} aus den belegten Pfeilen. ${labels.indexed.map((v) => '${v.$1 + 1}: ${v.$2}').join('; ')}.',
+      '${block['kind'] == 'process_cycle' ? 'Geschlossener Kreislauf' : 'Gerichtetes Ablaufschema'} aus den belegten Pfeilen. ${labels.indexed.map((v) => '${v.$1 + 1}: ${v.$2}').join('; ')}. Pfeile: $connectionsDescription.',
     'function_graph' =>
       'Funktionsgraph des belegten Polynoms: a=${number(numbers[0])}, b=${number(numbers[1])}, c=${number(numbers[2])}. Die Achsen zeigen x und y. Dargestellter Ausschnitt: x von −4 bis 4.',
     'data_plot' =>
@@ -141,7 +144,7 @@ class ScienceGraphic extends StatelessWidget {
           else
             Semantics(
               image: true,
-              label: description,
+              label: MathText.spoken(description),
               child: ExcludeSemantics(
                 child: SizedBox(
                   height:
@@ -161,10 +164,18 @@ class ScienceGraphic extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 12),
-          MathText(
-            description,
-            style: const TextStyle(fontSize: 15, height: 1.5),
-          ),
+          if (block['kind'] == 'logic_table')
+            MathText(
+              description,
+              style: const TextStyle(fontSize: 15, height: 1.5),
+            )
+          else
+            ExcludeSemantics(
+              child: MathText(
+                description,
+                style: const TextStyle(fontSize: 15, height: 1.5),
+              ),
+            ),
           if (block['kind'] == 'data_plot')
             Wrap(
               spacing: 12,
