@@ -11,6 +11,8 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/daily_plan_panel.dart';
 import 'package:schulpilot/dashboard.dart';
 import 'package:schulpilot/ui.dart';
+import 'package:schulpilot/parent_child_navigation.dart';
+import 'package:schulpilot/parent_overview.dart';
 
 Json parentOverview() {
   final data = jsonDecode(
@@ -83,6 +85,7 @@ Future<({AppState state, GoRouter router})> mountParent(
   double width = 390,
   String permission = 'owner',
   bool familyHome = false,
+  double textScale = 1,
   List<Json> activities = const [],
 }) async {
   await tester.binding.setSurfaceSize(Size(width, 844));
@@ -143,8 +146,11 @@ Future<({AppState state, GoRouter router})> mountParent(
       GoRoute(path: '/app', builder: (_, _) => DashboardScreen(state)),
       GoRoute(
         path: '/child/:id',
-        builder: (_, _) =>
-            ChildDetailScreen(state, childId: data['child']['id']),
+        builder: (_, route) => ChildDetailScreen(
+          state,
+          childId: data['child']['id'],
+          section: route.uri.queryParameters['bereich'] ?? 'overview',
+        ),
       ),
       GoRoute(
         path: '/elsewhere',
@@ -154,16 +160,35 @@ Future<({AppState state, GoRouter router})> mountParent(
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    MaterialApp.router(theme: appTheme(), routerConfig: router),
+    MaterialApp.router(
+      theme: appTheme(),
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+    ),
   );
   await tester.pumpAndSettle();
   return (state: state, router: router);
 }
 
 Future<void> tapText(WidgetTester tester, String label) async {
-  await tester.ensureVisible(find.text(label));
+  if (label == 'Verlauf') {
+    await tester.ensureVisible(find.byType(ParentChildNavigation));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ParentChildNavigation),
+        matching: find.byType(DropdownButtonFormField<String>),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+  await tester.ensureVisible(find.text(label).last);
   await tester.pumpAndSettle();
-  await tester.tap(find.text(label));
+  await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
 }
 
@@ -244,16 +269,21 @@ void main() {
         expect(find.text('5 Versuche · 1 Runde'), findsOneWidget);
         expect(
           find.textContaining('Nächste Wiederholung: 20.10.2026'),
+          findsNothing,
+        );
+        await tapText(tester, 'Festigung & nächste Wiederholungen');
+        expect(
+          find.textContaining('Nächste Wiederholung: 20.10.2026'),
           findsOneWidget,
         );
         expect(find.text('12:00 / 20 Min.'), findsOneWidget);
         expect(find.text('30:00 / 100 Min.'), findsOneWidget);
         expect(find.text('Tagesziel offen'), findsOneWidget);
         expect(find.text('Tagesziel erfüllt'), findsNothing);
-        expect(find.text('Offene Aufträge'), findsOneWidget);
-        expect(find.text('1 Hilfewunsch'), findsOneWidget);
+        expect(find.text('Offene Aufträge: 1'), findsOneWidget);
+        expect(find.text('1 Hilfewunsch heute'), findsOneWidget);
         expect(
-          find.text('Ein gespeicherter Hilfewunsch wartet.'),
+          find.text('Anliegen und Antworten findet ihr in den Nachrichten.'),
           findsOneWidget,
         );
         final progress = tester
@@ -407,6 +437,102 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  for (final width in [320.0, 390.0, 1440.0]) {
+    testWidgets(
+      'Parent evidence keeps all categories and large text at $width',
+      (tester) async {
+        final data = parentOverview(), requests = <http.Request>[];
+        data['practice_summary'] = {
+          'practiced_tasks': 11,
+          'attempts': 15,
+          'practiced_rounds': 4,
+          'independent_tasks': 3,
+          'assisted_tasks': 2,
+          'needs_practice_tasks': 1,
+          'uncertain_tasks': 1,
+          'reflection_tasks': 4,
+          'completed_rounds': 2,
+          'ongoing_rounds': 2,
+        };
+        await mountParent(tester, data, requests, width: width, textScale: 2);
+        expect(find.text('11 Aufgaben geübt'), findsOneWidget);
+        expect(find.text('3 alleine gelöst'), findsOneWidget);
+        expect(find.text('2 mit Hilfe gelöst'), findsOneWidget);
+        expect(find.text('1 weiter üben'), findsOneWidget);
+        expect(find.text('1 Bewertung offen'), findsOneWidget);
+        expect(find.text('4 eigene Beiträge'), findsOneWidget);
+        expect(find.text('Im ersten Versuch'), findsOneWidget);
+        expect(find.text('Oder nach erneutem Versuch'), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.byType(ParentPracticeSummary)).dy,
+          lessThan(tester.getTopLeft(find.text('Was jetzt wichtig ist')).dy),
+        );
+        expect(find.text('Erledigte Aufträge anzeigen'), findsNothing);
+        expect(requests.every((r) => r.method == 'GET'), isTrue);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets('Seven-day plan remains readable at 320 px and double text', (
+    tester,
+  ) async {
+    final data = parentOverview(), requests = <http.Request>[];
+    data['plan']['week'] = [
+      for (var day = 20; day < 27; day++)
+        {
+          'date': '2026-10-$day',
+          'free_day': false,
+          'paused': false,
+          'planned_minutes': 20,
+          'items': [
+            {'kind': 'none', 'subject': 'Mathematik und Naturwissenschaften'},
+          ],
+        },
+    ];
+    await mountParent(tester, data, requests, width: 320, textScale: 2);
+    await tapText(tester, 'Plan ansehen');
+    expect(find.text('ca. 20 Min.'), findsNWidgets(7));
+    expect(requests.every((r) => r.method == 'GET'), isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'Plan is addressable, hides completed assignments and viewing remains GET only',
+    (tester) async {
+      final requests = <http.Request>[];
+      await mountParent(tester, parentOverview(), requests);
+      await tapText(tester, 'Plan ansehen');
+      expect(
+        tester
+            .widget<ChildDetailScreen>(find.byType(ChildDetailScreen).last)
+            .section,
+        'plan',
+      );
+      expect(find.text('Mathematik · Brüche'), findsWidgets);
+      expect(find.text('Englisch · Verben'), findsNothing);
+      await tapText(tester, 'Erledigte Aufträge anzeigen');
+      expect(find.text('Englisch · Verben'), findsOneWidget);
+      expect(requests.every((r) => r.method == 'GET'), isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Logout immediately hides the cached parent child contents', (
+    tester,
+  ) async {
+    final mounted = await mountParent(tester, parentOverview(), []);
+    expect(find.text('Lernstand auf einen Blick'), findsOneWidget);
+    mounted.state.user = null;
+    mounted.state.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.byType(ParentOverview), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
     'Grouped parent mobile form saves minimum goals through existing API fields and preserves unrelated settings',

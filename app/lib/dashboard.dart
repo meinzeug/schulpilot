@@ -5,14 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
-import 'coaching_panel.dart';
 import 'collection_screen.dart';
 import 'daily_plan_panel.dart';
 import 'learning_tips.dart';
 import 'preparation_card.dart';
 import 'learning_navigation.dart';
-import 'material_screen.dart';
-import 'practice_evidence.dart';
+import 'parent_child_navigation.dart';
+import 'parent_overview.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
 
@@ -313,135 +312,6 @@ class _FamilyChildCard extends StatelessWidget {
   }
 }
 
-class ParentLearningBrief extends StatelessWidget {
-  final Json data;
-  const ParentLearningBrief({super.key, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final evidence = data['practice_summary'] as Map? ?? {};
-    final day = data['day_summary'] as Map? ?? {};
-    final plan = data['plan'] as Map? ?? {};
-    final next = (plan['today'] as List? ?? []).firstOrNull;
-    final guidance = data['learning_guidance'] as Map?;
-    final independent = (evidence['independent_tasks'] as num? ?? 0).toInt();
-    final open = (evidence['uncertain_tasks'] as num? ?? 0).toInt();
-    final help = (day['help_requests'] as num? ?? 0).toInt();
-    final descriptions = [
-      (
-        Icons.check_circle_outline_rounded,
-        'Das gelang',
-        independent > 0
-            ? 'Bisher $independent Aufgaben beim ersten Versuch selbstständig richtig gelöst.'
-            : 'Die gespeicherten Antworten zeigen den bisherigen Übungsweg. Ohne Antworten gibt es noch keine Einschätzung.',
-      ),
-      (
-        Icons.auto_stories_outlined,
-        'Das übernimmt die App',
-        open > 0
-            ? 'Für $open offene Bewertungen gibt es eine Antwortprüfung in der Lernrunde. Offen bedeutet nicht falsch.'
-            : guidance != null
-            ? '${guidance['subject']} · ${guidance['topic']}: ${guidance['title']}. ${guidance['reason']}'
-            : next is Map
-            ? 'Als Nächstes: ${next['subject']} · ${next['topic']}. Die Übungen kommen in kleinen Runden.'
-            : 'Gespeicherten Stoff in kleinen Runden üben und später erneut abrufen.',
-      ),
-      (
-        Icons.volunteer_activism_outlined,
-        'Jetzt für euch',
-        help > 0
-            ? '$help Hilfewunsch${help == 1 ? '' : 'wünsche'} wartet${help == 1 ? '' : 'n'}. Öffnet das konkrete Anliegen unter Nachrichten.'
-            : day['coaching_support_topics'] is List &&
-                  (day['coaching_support_topics'] as List).isNotEmpty
-            ? day['support']?.toString() ?? 'Ein gemeinsamer Blick auf den gespeicherten Lernschritt kann helfen.'
-            : 'Kein ausdrücklicher Hilfewunsch. Die App führt zunächst mit Erklärungen und passenden Übungen weiter.',
-      ),
-    ];
-    return Panel(
-      tone: help > 0 ? PanelTone.warning : PanelTone.info,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final item in descriptions) ...[
-            if (item != descriptions.first) const Divider(height: 26),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(item.$1, color: teal, size: 23),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.$2,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(item.$3, style: const TextStyle(height: 1.4)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ParentStatusCard extends StatelessWidget {
-  final String title, value, detail, action;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool highlighted;
-  const _ParentStatusCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.detail,
-    required this.action,
-    required this.onTap,
-    this.highlighted = false,
-  });
-
-  @override
-  Widget build(BuildContext context) => Panel(
-    tone: highlighted ? PanelTone.accent : PanelTone.neutral,
-    padding: const EdgeInsets.all(20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: teal, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
-        Text(detail, style: const TextStyle(color: muted, fontSize: 13)),
-        const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(onPressed: onTap, child: Text(action)),
-        ),
-      ],
-    ),
-  );
-}
-
 Widget demoAccess(BuildContext context, AppState state) => Panel(
   color: const Color(0xFFFFF4E6),
   child: Column(
@@ -553,11 +423,13 @@ class ChildDetailScreen extends StatefulWidget {
   final AppState state;
   final String childId;
   final bool childMode;
+  final String section;
   const ChildDetailScreen(
     this.state, {
     super.key,
     required this.childId,
     this.childMode = false,
+    this.section = 'overview',
   });
   @override
   State<ChildDetailScreen> createState() => _ChildDetailScreenState();
@@ -565,7 +437,12 @@ class ChildDetailScreen extends StatefulWidget {
 
 class _ChildDetailScreenState extends State<ChildDetailScreen>
     with WidgetsBindingObserver {
-  int tab = 0;
+  int get tab => switch (widget.section) {
+    'plan' => 1,
+    'verlauf' => 3,
+    _ => 0,
+  };
+  bool showCompletedAssignments = false;
   int version = 0;
   Timer? preparationPoll;
   GoRouter? observedRouter;
@@ -660,602 +537,367 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   }
 
   @override
-  Widget build(BuildContext context) => PageFrame(
-    state: state,
-    title: state.isChild
-        ? 'Hallo, ${state.user?['display_name'] ?? 'du'}!'
-        : 'Lernüberblick',
-    actions: [
-      if (!state.isChild)
-        TextButton.icon(
-          onPressed: () => openRoute(context, '/vocabulary/${widget.childId}'),
-          icon: const Icon(Icons.translate_rounded),
-          label: const Text('Wortschatz'),
-        ),
-      if (!state.isChild) ...[
-        TextButton.icon(
-          onPressed: () => openRoute(context, '/progress/${widget.childId}'),
-          icon: const Icon(Icons.insights_rounded),
-          label: const Text('Fächer & Fortschritt'),
-        ),
-        TextButton.icon(
-          onPressed: () => openRoute(context, '/grades/${widget.childId}'),
-          icon: const Icon(Icons.school_outlined),
-          label: const Text('Noten'),
-        ),
-      ],
-      if (state.isChild)
-        IconButton(
-          onPressed: refresh,
-          tooltip: 'Aktualisieren',
-          icon: const Icon(Icons.refresh_rounded),
-        )
-      else
-        OutlinedButton.icon(
-          onPressed: refresh,
-          icon: const Icon(Icons.refresh, size: 18),
-          label: const Text('Aktualisieren'),
-        ),
-    ],
-    child: LoadView<Json>(
-      key: ValueKey('${widget.childId}-${state.user?['id']}'),
-      revision: '$version-${state.revision}',
-      load: () async {
-        reading = true;
-        try {
-          return await state.api.get(
-            '/children/${widget.childId}/overview?compact=true',
-          );
-        } finally {
-          reading = false;
-        }
-      },
-      builder: (data, reload) {
-        watchPreparation(data);
-        if (state.isChild) {
-          return _ChildHomeContent(state: state, data: data, refresh: refresh);
-        }
-        final child = data['child'] as Json;
-        final plan = data['plan'] as Json;
-        final openAssignments = (data['assignments'] as List? ?? [])
-            .where(
-              (assignment) =>
-                  assignment['done'] != true &&
-                  assignment['mandatory'] == true &&
-                  (assignment['source_status'] ?? 'confirmed') == 'confirmed',
-            )
-            .length;
-        final helpRequests =
-            (data['day_summary']?['help_requests'] as num? ?? 0).toInt();
-        final seenTopics = <(String, String)>{};
-        final uniquePaths = (data['learning_paths'] as List? ?? [])
-            .where(
-              (path) => seenTopics.add((
-                path['subject'].toString().toLowerCase(),
-                path['topic'].toString().toLowerCase(),
-              )),
-            )
-            .toList();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: mint,
-                  child: Text(
-                    (child['display_name'] as String).characters.firstOrNull ??
-                        'S',
-                    style: const TextStyle(color: teal, fontSize: 22),
-                  ),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: state,
+    builder: (context, _) => !sameAccount
+        ? const SizedBox.shrink()
+        : PageFrame(
+            state: state,
+            title: state.isChild
+                ? 'Hallo, ${state.user?['display_name'] ?? 'du'}!'
+                : tab == 1
+                ? 'Plan & Termine'
+                : tab == 3
+                ? 'Lernverlauf'
+                : 'Lernüberblick',
+            showTitle: state.isChild,
+            actions: [
+              if (state.isChild)
+                IconButton(
+                  onPressed: refresh,
+                  tooltip: 'Aktualisieren',
+                  icon: const Icon(Icons.refresh_rounded),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        child['display_name'],
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
+            ],
+            child: LoadView<Json>(
+              key: ValueKey('${widget.childId}-${state.user?['id']}'),
+              revision: '$version-${state.revision}',
+              load: () async {
+                reading = true;
+                try {
+                  return await state.api.get(
+                    '/children/${widget.childId}/overview?compact=true',
+                  );
+                } finally {
+                  reading = false;
+                }
+              },
+              builder: (data, reload) {
+                watchPreparation(data);
+                if (state.isChild) {
+                  return _ChildHomeContent(
+                    state: state,
+                    data: data,
+                    refresh: refresh,
+                  );
+                }
+                final child = data['child'] as Json;
+                final plan = data['plan'] as Json;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ParentChildNavigation(
+                      childId: child['id'],
+                      onRefresh: refresh,
+                      selected: tab == 1
+                          ? 'plan'
+                          : tab == 3
+                          ? 'history'
+                          : 'overview',
+                      childName: child['display_name'],
+                      subtitle: 'Klasse ${child['grade']}',
+                    ),
+                    if (tab == 0) ParentOverview(data: data),
+                    if (tab == 1) ...[
+                      heading(
+                        'Plan & Termine',
+                        subtitle: 'Vorschläge und verbindliche Aufträge getrennt im Blick.',
+                      ),
+                      if ((plan['week'] as List? ?? []).isNotEmpty) ...[
+                        Panel(
+                          child: DailyPlanPanel(
+                            plan: plan,
+                            state: state,
+                            childId: child['id'],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                      heading('Heute eingeplant'),
+                      if ((plan['today'] as List? ?? []).isEmpty)
+                        Notice(
+                          plan['goal_required'] == true &&
+                                  plan['daily_goal_met'] != true
+                              ? 'Keine weitere Runde fest eingeplant. Das Mindestziel ist noch offen; freiwilliges Weiterlernen bleibt möglich.'
+                              : 'Heute ist keine weitere Runde fest eingeplant. Weiterlernen bleibt möglich.',
+                        ),
+                      for (final item in plan['today'] as List? ?? [])
+                        planTile(context, state, data, item, parent: true),
+                      if ((plan['today_count'] as num? ?? 0) >
+                          (plan['today'] as List? ?? []).length)
+                        TextButton(
+                          onPressed: () =>
+                              openRoute(context, '/learning/${child['id']}'),
+                          child: const Text(
+                            'Alle gespeicherten Runden ansehen',
+                          ),
+                        ),
+                      if ((plan['notices'] as List? ?? []).isNotEmpty)
+                        ExpansionTile(
+                          title: const Text('Hinweise zur Planung'),
+                          children: [
+                            for (final notice in plan['notices'])
+                              Notice(notice),
+                          ],
+                        ),
+                      const SizedBox(height: 20),
+                      heading('Lernziele & Einstellungen'),
+                      Panel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
+                              style: const TextStyle(color: muted),
+                            ),
+                            const SizedBox(height: 18),
+                            if (state.canManage)
+                              ActionButton(
+                                label: 'Lernvorgaben anpassen',
+                                icon: Icons.tune_rounded,
+                                onPressed: () async {
+                                  await preferencesDialog(
+                                    context,
+                                    state,
+                                    child,
+                                  );
+                                  refresh();
+                                },
+                              ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Klasse ${child['grade']} · ${(child['subjects'] as List).join(' · ')}',
-                        style: const TextStyle(color: muted, fontSize: 13),
+                      const SizedBox(height: 26),
+                      heading('Lernaufträge & Klassenarbeiten'),
+                      if (state.canManage)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: ActionButton(
+                            label: 'Auftrag oder Klassenarbeit anlegen',
+                            icon: Icons.add_rounded,
+                            onPressed: () async {
+                              await assignmentDialog(
+                                context,
+                                state,
+                                child,
+                                data['materials'],
+                              );
+                              refresh();
+                            },
+                          ),
+                        ),
+                      if ((data['assignments'] as List)
+                          .where((a) => a['done'] != true)
+                          .isEmpty)
+                        const Notice(
+                          'Keine offenen Lernaufträge oder Klassenarbeiten.',
+                        ),
+                      if ((data['assignments'] as List).any(
+                        (a) => a['done'] == true,
+                      ))
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Erledigte Aufträge anzeigen'),
+                          value: showCompletedAssignments,
+                          onChanged: (value) =>
+                              setState(() => showCompletedAssignments = value),
+                        ),
+                      for (final a in (data['assignments'] as List).where(
+                        (a) => showCompletedAssignments || a['done'] != true,
+                      ))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Panel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    Tag(
+                                      a['kind'] == 'exam'
+                                          ? 'Klassenarbeit'
+                                          : (a['origin_kind'] ?? a['kind']) ==
+                                                'homework'
+                                          ? 'Notierte Hausaufgabe'
+                                          : 'Elternauftrag',
+                                    ),
+                                    Tag(
+                                      a['mandatory']
+                                          ? 'Verbindlich'
+                                          : 'Freiwillig',
+                                    ),
+                                    if (a['done']) const Tag('Bearbeitet'),
+                                    if (a['source_status'] == 'needs_review')
+                                      const Tag(
+                                        'Quelle geändert · Auftrag prüfen',
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '${a['subject']} · ${a['topic']}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (a['due'] != null)
+                                  Text('Termin: ${friendlyDate(a['due'])}'),
+                                Text(a['note'] ?? ''),
+                                LearningTips(
+                                  state,
+                                  childId: child['id'],
+                                  kind: 'assignment',
+                                  resourceId: a['id'],
+                                ),
+                                if (state.canManage)
+                                  Wrap(
+                                    spacing: 12,
+                                    children: [
+                                      TextButton(
+                                        onPressed: () async {
+                                          await assignmentDialog(
+                                            context,
+                                            state,
+                                            child,
+                                            data['materials'],
+                                            existing: Map<String, dynamic>.from(
+                                              a,
+                                            ),
+                                          );
+                                          refresh();
+                                        },
+                                        child: const Text(
+                                          'Ändern / neu planen',
+                                        ),
+                                      ),
+                                      ActionButton(
+                                        label: 'Ziel als erledigt markieren',
+                                        secondary: true,
+                                        onPressed: () async {
+                                          await state.api.post(
+                                            '/children/${child['id']}/assignments/${a['id']}/complete',
+                                          );
+                                          refresh();
+                                        },
+                                      ),
+                                      ActionButton(
+                                        label: 'Entfernen',
+                                        secondary: true,
+                                        onPressed: () async {
+                                          if (await confirmDialog(
+                                            context,
+                                            'Auftrag entfernen?',
+                                            'Das Ziel wird aus dem Plan entfernt. Bisherige Antworten bleiben gespeichert.',
+                                          )) {
+                                            await state.api.delete(
+                                              '/children/${child['id']}/assignments/${a['id']}',
+                                            );
+                                            refresh();
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                    if (tab == 3) ...[
+                      heading('Aufgaben, Antworten & Unterstützung'),
+                      PagedCollection(
+                        state,
+                        key: ValueKey('parent-learning-${child['id']}'),
+                        childId: child['id'],
+                        learning: true,
+                        initialSection: 'completed',
+                      ),
+                      const SizedBox(height: 20),
+                      LoadView<List<dynamic>>(
+                        load: () =>
+                            state.api.list('/children/${child['id']}/activity'),
+                        builder: (activities, _) => Panel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              heading('Zeitlicher Verlauf'),
+                              for (final a in activities.where(
+                                (a) => !technicalActivity(a['kind']),
+                              ))
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${DateFormat('dd.MM. HH:mm').format(DateTime.fromMillisecondsSinceEpoch((a['created'] * 1000).toInt()).toLocal())} · ${activityLabel(a['kind'])}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      if (a['detail']['text'] != null)
+                                        Text(
+                                          a['detail']['text'],
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: muted,
+                                          ),
+                                        ),
+                                      if (a['detail']['topic'] != null)
+                                        Text(
+                                          a['detail']['topic'],
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: muted,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              if (activities.any(
+                                (a) => technicalActivity(a['kind']),
+                              ))
+                                ExpansionTile(
+                                  title: const Text('Technische Ereignisse'),
+                                  children: [
+                                    for (final a in activities.where(
+                                      (a) => technicalActivity(a['kind']),
+                                    ))
+                                      ListTile(
+                                        dense: true,
+                                        title: Text(a['kind']),
+                                        subtitle: Text(
+                                          DateFormat('dd.MM. HH:mm').format(
+                                            DateTime.fromMillisecondsSinceEpoch(
+                                              (a['created'] * 1000).toInt(),
+                                            ).toLocal(),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            if (tab == 0) ...[
-              ParentLearningBrief(data: data),
-              const SizedBox(height: 18),
-            ],
-            LayoutBuilder(
-              builder: (context, size) {
-                final columns = size.maxWidth >= 900
-                    ? 3
-                    : size.maxWidth >= 620
-                    ? 2
-                    : 1;
-                final width = (size.maxWidth - (columns - 1) * 12) / columns;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    SizedBox(
-                      width: width,
-                      child: LearningGoalPanel(plan: plan),
-                    ),
-                    SizedBox(
-                      width: width,
-                      child: _ParentStatusCard(
-                        title: 'Offene Aufträge',
-                        value: '$openAssignments',
-                        icon: Icons.checklist_rounded,
-                        detail: openAssignments == 0
-                            ? 'Keine offenen Aufträge.'
-                            : 'Aufträge und Termine gemeinsam im Blick.',
-                        action: 'Plan ansehen',
-                        onTap: () => setState(() => tab = 1),
-                      ),
-                    ),
-                    SizedBox(
-                      width: width,
-                      child: _ParentStatusCard(
-                        title: 'Unterstützung',
-                        value: helpRequests > 0
-                            ? '$helpRequests ${helpRequests == 1 ? 'Hilfewunsch' : 'Hilfewünsche'}'
-                            : 'Heutiger Einblick',
-                        icon: Icons.volunteer_activism_outlined,
-                        detail:
-                            data['day_summary']?['support'] ??
-                            'Noch keine Rückmeldung.',
-                        highlighted: helpRequests > 0,
-                        action: helpRequests > 0
-                            ? 'Nachrichten ansehen'
-                            : 'Verlauf ansehen',
-                        onTap: () =>
-                            setState(() => tab = helpRequests > 0 ? 4 : 3),
-                      ),
-                    ),
                   ],
                 );
               },
             ),
-            const SizedBox(height: 24),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final entry in [
-                    ('Überblick', Icons.space_dashboard_outlined),
-                    ('Plan', Icons.event_note_rounded),
-                    ('Heftseiten', Icons.photo_library_outlined),
-                    ('Verlauf', Icons.history_rounded),
-                    ('Nachrichten', Icons.chat_bubble_outline_rounded),
-                  ].indexed)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        avatar: Icon(entry.$2.$2, size: 17),
-                        label: Text(entry.$2.$1),
-                        selected: tab == entry.$1,
-                        onSelected: (_) => setState(() => tab = entry.$1),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (tab == 0) ...[
-              FocusCard(
-                eyebrow: 'Tagespaket',
-                title: 'Der Stoff von heute',
-                subtitle: 'Heftseiten und Lernpaket im Überblick.',
-                action: ActionButton(
-                  label: 'Heutiges Tagespaket ansehen',
-                  icon: Icons.document_scanner_rounded,
-                  onPressed: () async =>
-                      openRoute(context, '/after-school/${child['id']}'),
-                ),
-              ),
-              for (final preparation
-                  in (data['pending_preparations'] as List? ?? []).cast<Json>())
-                PreparationCard(childId: child['id'], preparation: preparation),
-              const SizedBox(height: 24),
-              ExpansionTile(
-                leading: const Icon(Icons.insights_rounded, color: teal),
-                title: const Text('Rückblick auf sieben Tage'),
-                subtitle: Text(
-                  '${counted(data['week_summary']['completed_units'] as num? ?? 0, 'Einheit', 'Einheiten')} · ${counted(data['week_summary']['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
-                ),
-                childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      data['week_summary']['support'],
-                      style: const TextStyle(color: muted),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              heading(
-                'Was steht heute an?',
-                subtitle:
-                    'Vorschlag: ca. ${plan['planned_minutes'] ?? plan['available_minutes']} Minuten · ${plan['completed_today']} heute abgeschlossen',
-              ),
-              for (final notice in plan['notices'] as List) Notice(notice),
-              if ((plan['today'] as List).isEmpty)
-                Notice(
-                  plan['goal_required'] == true &&
-                          plan['daily_goal_met'] != true
-                      ? 'Das Mindestziel ist noch offen. Im Lernraum geht es mit weiteren Runden weiter.'
-                      : 'Heute sind keine weiteren Runden fest eingeplant. Gespeicherten Stoff findest du im Lernraum.',
-                ),
-              for (final item in plan['today'] as List)
-                planTile(context, state, data, item, parent: true),
-              const SizedBox(height: 24),
-              if (data['practice_summary'] is Map) ...[
-                heading('Fortschritt in allen Fächern'),
-                Panel(
-                  child: PracticeEvidence(Json.from(data['practice_summary'])),
-                ),
-                const SizedBox(height: 12),
-                for (final subject in data['subject_progress'] as List? ?? [])
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Panel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            subject['subject'],
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          PracticeEvidence(Json.from(subject), compact: true),
-                        ],
-                      ),
-                    ),
-                  ),
-                TextButton.icon(
-                  onPressed: () =>
-                      openRoute(context, '/progress/${widget.childId}'),
-                  icon: const Icon(Icons.insights_rounded),
-                  label: const Text('Alle Fächer, Themen und Übungen'),
-                ),
-                const SizedBox(height: 24),
-              ],
-              if (uniquePaths.isNotEmpty) ...[
-                heading('Betreut weiterlernen'),
-                for (final path in uniquePaths)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        LearningProgressPanel(Map<String, dynamic>.from(path)),
-                        const SizedBox(height: 8),
-                        ActionButton(
-                          label: 'Lernbegleitung und Antworten ansehen',
-                          secondary: true,
-                          onPressed: () async => openRoute(
-                            context,
-                            '/unit/${path['latest_unit_id']}',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 16),
-              ],
-              heading('Später noch einmal'),
-              for (final mastery in data['mastery'] as List)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Panel(
-                    padding: const EdgeInsets.all(18),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.event_repeat_rounded, color: teal),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${mastery['subject']} · ${mastery['topic']}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                'Nächste Wiederholung: ${friendlyDate(mastery['next_review'])} · ${mastery['description']}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: muted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if ((plan['week'] as List? ?? []).isNotEmpty) ...[
-                heading('Die nächsten sieben Tage'),
-                DailyPlanPanel(plan: plan, state: state, childId: child['id']),
-              ],
-              if ((data['mastery'] as List).isEmpty &&
-                  (plan['later'] as List).isEmpty)
-                const Text(
-                  'Nach der ersten Einheit planen wir die passende Wiederholung.',
-                  style: TextStyle(color: muted),
-                ),
-            ],
-            if (tab == 1) ...[
-              heading('Lernen, das in euren Alltag passt'),
-              Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Mindestziele: ${child['preferences']['daily_minutes']} Min. am Tag · ${child['preferences']['weekly_minutes']} Min. pro Woche',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Empfohlene Runde: ${child['preferences']['session_minutes']} Min. · Pausenempfehlung: ${child['preferences']['break_minutes']} Min.\nSchwerpunkte: ${(child['preferences']['focus_subjects'] as List).join(', ')}',
-                      style: const TextStyle(color: muted),
-                    ),
-                    const SizedBox(height: 18),
-                    if (state.canManage)
-                      ActionButton(
-                        label: 'Lernvorgaben anpassen',
-                        icon: Icons.tune_rounded,
-                        onPressed: () async {
-                          await preferencesDialog(context, state, child);
-                          refresh();
-                        },
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 26),
-              heading('Lernaufträge & Klassenarbeiten'),
-              if (state.canManage)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: ActionButton(
-                    label: 'Auftrag oder Klassenarbeit anlegen',
-                    icon: Icons.add_rounded,
-                    onPressed: () async {
-                      await assignmentDialog(
-                        context,
-                        state,
-                        child,
-                        data['materials'],
-                      );
-                      refresh();
-                    },
-                  ),
-                ),
-              for (final a in data['assignments'] as List)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Panel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            Tag(
-                              a['kind'] == 'exam'
-                                  ? 'Klassenarbeit'
-                                  : (a['origin_kind'] ?? a['kind']) ==
-                                        'homework'
-                                  ? 'Notierte Hausaufgabe'
-                                  : 'Elternauftrag',
-                            ),
-                            Tag(a['mandatory'] ? 'Verbindlich' : 'Freiwillig'),
-                            if (a['done']) const Tag('Bearbeitet'),
-                            if (a['source_status'] == 'needs_review')
-                              const Tag('Quelle geändert · Auftrag prüfen'),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '${a['subject']} · ${a['topic']}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (a['due'] != null)
-                          Text('Termin: ${friendlyDate(a['due'])}'),
-                        Text(a['note'] ?? ''),
-                        LearningTips(
-                          state,
-                          childId: child['id'],
-                          kind: 'assignment',
-                          resourceId: a['id'],
-                        ),
-                        if (state.canManage)
-                          Wrap(
-                            spacing: 12,
-                            children: [
-                              TextButton(
-                                onPressed: () async {
-                                  await assignmentDialog(
-                                    context,
-                                    state,
-                                    child,
-                                    data['materials'],
-                                    existing: Map<String, dynamic>.from(a),
-                                  );
-                                  refresh();
-                                },
-                                child: const Text('Ändern / neu planen'),
-                              ),
-                              ActionButton(
-                                label: 'Ziel als erledigt markieren',
-                                secondary: true,
-                                onPressed: () async {
-                                  await state.api.post(
-                                    '/children/${child['id']}/assignments/${a['id']}/complete',
-                                  );
-                                  refresh();
-                                },
-                              ),
-                              ActionButton(
-                                label: 'Entfernen',
-                                secondary: true,
-                                onPressed: () async {
-                                  if (await confirmDialog(
-                                    context,
-                                    'Auftrag entfernen?',
-                                    'Das Ziel wird aus dem Plan entfernt. Bisherige Antworten bleiben gespeichert.',
-                                  )) {
-                                    await state.api.delete(
-                                      '/children/${child['id']}/assignments/${a['id']}',
-                                    );
-                                    refresh();
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-            if (tab == 2) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/library/${child['id']}'),
-                    icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('Bibliothek öffnen'),
-                  ),
-                  if (state.canManage)
-                    TextButton.icon(
-                      onPressed: () async {
-                        await importMaterial(context, state, child['id']);
-                        refresh();
-                      },
-                      icon: const Icon(Icons.add_a_photo_outlined),
-                      label: const Text('Heftfoto hinzufügen'),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              PagedCollection(
-                state,
-                key: ValueKey('parent-materials-${child['id']}'),
-                childId: child['id'],
-              ),
-            ],
-            if (tab == 3) ...[
-              heading('Aufgaben, Antworten & Unterstützung'),
-              PagedCollection(
-                state,
-                key: ValueKey('parent-learning-${child['id']}'),
-                childId: child['id'],
-                learning: true,
-                initialSection: 'completed',
-              ),
-              const SizedBox(height: 20),
-              LoadView<List<dynamic>>(
-                load: () => state.api.list('/children/${child['id']}/activity'),
-                builder: (activities, _) => Panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      heading('Zeitlicher Verlauf'),
-                      for (final a in activities.where(
-                        (a) => !technicalActivity(a['kind']),
-                      ))
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${DateFormat('dd.MM. HH:mm').format(DateTime.fromMillisecondsSinceEpoch((a['created'] * 1000).toInt()).toLocal())} · ${activityLabel(a['kind'])}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              if (a['detail']['text'] != null)
-                                Text(
-                                  a['detail']['text'],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: muted,
-                                  ),
-                                ),
-                              if (a['detail']['topic'] != null)
-                                Text(
-                                  a['detail']['topic'],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: muted,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      if (activities.any((a) => technicalActivity(a['kind'])))
-                        ExpansionTile(
-                          title: const Text('Technische Ereignisse'),
-                          children: [
-                            for (final a in activities.where(
-                              (a) => technicalActivity(a['kind']),
-                            ))
-                              ListTile(
-                                dense: true,
-                                title: Text(a['kind']),
-                                subtitle: Text(
-                                  DateFormat('dd.MM. HH:mm').format(
-                                    DateTime.fromMillisecondsSinceEpoch(
-                                      (a['created'] * 1000).toInt(),
-                                    ).toLocal(),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            if (tab == 4) messages(context, state, data, refresh),
-          ],
-        );
-      },
-    ),
+          ),
   );
 }
 
@@ -2012,8 +1654,18 @@ class MessagesScreen extends StatelessWidget {
               // Reuse the authorized compact projection; never fetch task answers here.
               load: () =>
                   state.api.get('/children/$childId/overview?compact=true'),
-              builder: (data, refresh) =>
+              builder: (data, refresh) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (state.isParent)
+                    ParentChildNavigation(
+                      childId: childId,
+                      selected: 'messages',
+                      childName: data['child']['display_name'],
+                    ),
                   messages(context, state, data, refresh, standalone: true),
+                ],
+              ),
             ),
           ),
   );

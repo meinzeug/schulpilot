@@ -13,6 +13,7 @@ import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 
 /// A bounded window of real pages from one stable school subject.
 class NotebookScreen extends StatefulWidget {
@@ -631,6 +632,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.state.isParent)
+            ParentChildNavigation(
+              childId: widget.childId,
+              selected: 'materials',
+            ),
           Row(
             children: [
               IconButton(

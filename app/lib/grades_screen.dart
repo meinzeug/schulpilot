@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'grade_import_screen.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 
 const gradeKinds = <String, String>{
   'classwork': 'Klassenarbeit',
@@ -82,6 +83,7 @@ class _GradesScreenState extends State<GradesScreen> {
     setState(() {
       loading = true;
       error = null;
+      data = null;
     });
     try {
       final result = await widget.state.api.get(
@@ -225,13 +227,13 @@ class _GradesScreenState extends State<GradesScreen> {
     title: 'Noten & Lernschwerpunkte',
     actions: [
       if (manage)
-        FilledButton.icon(
+        OutlinedButton.icon(
           onPressed: saving ? null : importPdf,
           icon: const Icon(Icons.picture_as_pdf_outlined),
           label: const Text('PDF importieren'),
         ),
       if (manage)
-        OutlinedButton.icon(
+        FilledButton.icon(
           onPressed: saving ? null : () => edit(),
           icon: const Icon(Icons.add_rounded),
           label: const Text('Note eintragen'),
@@ -242,22 +244,11 @@ class _GradesScreenState extends State<GradesScreen> {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
-                spacing: 12,
-                children: [
-                  TextButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/progress/${widget.childId}'),
-                    icon: const Icon(Icons.insights_rounded),
-                    label: const Text('Fächer & Fortschritt'),
-                  ),
-                  TextButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/child/${widget.childId}'),
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: const Text('Zum Lernplan'),
-                  ),
-                ],
+              ParentChildNavigation(
+                childId: widget.childId,
+                selected: 'grades',
+                childName: data?['child_name'],
+                subtitle: 'Schulnoten · getrennt vom Übungsstand',
               ),
               if (loading || saving) const LinearProgressIndicator(),
               if (error != null) ...[
@@ -267,35 +258,7 @@ class _GradesScreenState extends State<GradesScreen> {
                 TextButton(onPressed: load, child: const Text('Neu laden')),
               ],
               if (data != null) ...[
-                if (data!['child_name'] is String) heading(data!['child_name']),
-                Panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Noten im Lernplan berücksichtigen'),
-                        subtitle: const Text(
-                          'Mehr Gewicht für Fächer, die gerade Unterstützung brauchen.',
-                        ),
-                        value: data!['planning_enabled'] == true,
-                        onChanged: !manage || saving
-                            ? null
-                            : (value) => change(() async {
-                                await widget.state.api.put(
-                                  '/children/${widget.childId}/grade-settings',
-                                  {'enabled': value},
-                                );
-                              }),
-                      ),
-                      const Text(
-                        'Die verfügbare Lernzeit bleibt gleich. Andere Fächer und feste Elternaufträge bleiben im Plan.',
-                        style: TextStyle(color: muted, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
+                heading('Fächer & eingetragene Noten'),
                 for (final focus in data!['focus'] as List)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -351,21 +314,6 @@ class _GradesScreenState extends State<GradesScreen> {
                       ),
                     ),
                   ),
-                ExpansionTile(
-                  title: const Text('Wie wird das berücksichtigt?'),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                  children: [
-                    Text(
-                      data!['notice'],
-                      style: const TextStyle(color: muted, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Ein gewichteter Schnitt ab 3 bzw. bis 9 Punkte erhöht das Gewicht etwas; ab 4 bzw. bis 6 Punkte stärker. Ein schwächerer Verlauf zählt zusätzlich. Die Gewichtung lässt sich oben ausschalten.',
-                      style: TextStyle(color: muted, fontSize: 13),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   key: ValueKey('grade-subject-$subject'),
@@ -425,6 +373,57 @@ class _GradesScreenState extends State<GradesScreen> {
                               load();
                             },
                       icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ExpansionTile(
+                  title: const Text('Einfluss auf den Lernplan'),
+                  children: [
+                    Panel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Noten im Lernplan berücksichtigen',
+                            ),
+                            subtitle: const Text(
+                              'Mehr Gewicht für Fächer, die gerade Unterstützung brauchen.',
+                            ),
+                            value: data!['planning_enabled'] == true,
+                            onChanged: !manage || saving
+                                ? null
+                                : (value) => change(() async {
+                                    await widget.state.api.put(
+                                      '/children/${widget.childId}/grade-settings',
+                                      {'enabled': value},
+                                    );
+                                  }),
+                          ),
+                          const Text(
+                            'Die Mindestlernziele bleiben gleich. Andere Fächer und feste Elternaufträge bleiben im Plan.',
+                            style: TextStyle(color: muted, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ExpansionTile(
+                      title: const Text('Wie wird das berücksichtigt?'),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      children: [
+                        Text(
+                          data!['notice'],
+                          style: const TextStyle(color: muted, fontSize: 13),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Ein gewichteter Schnitt ab 3 bzw. bis 9 Punkte erhöht das Gewicht etwas; ab 4 bzw. bis 6 Punkte stärker. Ein schwächerer Verlauf zählt zusätzlich. Die Gewichtung lässt sich hier ausschalten.',
+                          style: TextStyle(color: muted, fontSize: 13),
+                        ),
+                      ],
                     ),
                   ],
                 ),

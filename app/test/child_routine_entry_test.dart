@@ -429,7 +429,13 @@ void main() {
     (tester) async {
       await mount(tester, childDay(), [], learning: true, parent: true);
       expect(find.byType(TextField), findsOneWidget);
-      expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(PagedCollection),
+          matching: find.byType(DropdownButtonFormField<String>),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Suchen & filtern'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },

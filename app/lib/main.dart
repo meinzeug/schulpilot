@@ -253,8 +253,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/child/:id',
-        builder: (context, s) =>
-            ChildDetailScreen(widget.state, childId: s.pathParameters['id']!),
+        builder: (context, s) => ChildDetailScreen(
+          widget.state,
+          childId: s.pathParameters['id']!,
+          section: s.uri.queryParameters['bereich'] ?? 'overview',
+        ),
       ),
       GoRoute(
         path: '/after-school/:id',
@@ -321,6 +324,8 @@ class _SchulpilotAppState extends State<SchulpilotApp>
             'progress:${s.pathParameters['id']}:${widget.state.user?['id']}',
           ),
           childId: s.pathParameters['id']!,
+          initialSubject: s.uri.queryParameters['fach'],
+          initialTopic: s.uri.queryParameters['thema'],
         ),
       ),
       GoRoute(

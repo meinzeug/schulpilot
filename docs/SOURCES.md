@@ -1,3 +1,10 @@
+Elternübersicht20.10.2026, Zielversion1.14.0+60:
+
+Eigene vorhandene serverseitige Lernstandsprojektion (`learning_progress.py`),
+kompakter Überblick und gemeinsame Flutter-Palette. Keine SDK-, Anbieter-,
+Preis- oder Kontingentänderung. Darstellung/Prüfung und Abnahme:
+[PARENT_OVERVIEW_2026_10_20.md](PARENT_OVERVIEW_2026_10_20.md).
+
 Menü- und Leseflussprüfung20.10.2026, bereitgestellt1.13.0+59:
 
 Keine SDK-, Anbieter- oder Preisänderung. Die vorhandene gemeinsame Flutter-

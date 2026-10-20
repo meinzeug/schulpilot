@@ -95,3 +95,12 @@ Schritt eins; gespeicherte Quellen und fachliche Lösungen nicht umschreiben.
 Nach einem Erklärungsschrittwechsel den Anfang des neuen Schritts sichtbar machen,
 auch nach langem Scrollen und bei großer Schrift. Gleiches gilt beim Austausch
 der Erklärung. Keine Quellen-/Antwortänderung und keine zusätzliche KI dabei.
+
+## Elternübersicht ab 1.14.0
+
+Fachlicher Übungsstand steht vor Planung und Verwaltung. Ergebnisse sind
+beantwortete Aufgaben mit getrennten Kategorien; Wissensprozente werden daraus
+nicht abgeleitet. Serverzeit/Mindestziele bleiben ein eigener Bereich. Eine
+gemeinsame Kindnavigation und kompakte mobile Bereichsauswahl verbinden die
+Detailseiten. Noteneinstellungen und Wiederholungsdetails bei Bedarf aufklappen.
+Abnahme: [PARENT_OVERVIEW_2026_10_20.md](PARENT_OVERVIEW_2026_10_20.md).

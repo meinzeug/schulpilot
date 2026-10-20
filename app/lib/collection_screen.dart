@@ -11,6 +11,7 @@ import 'material_screen.dart';
 import 'material_actions.dart';
 import 'notebook_shelf.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 
 class CollectionScreen extends StatelessWidget {
   final AppState state;
@@ -51,32 +52,45 @@ class CollectionScreen extends StatelessWidget {
           label: const Text('Zum Lernüberblick'),
         ),
     ],
-    child: learning
-        ? PagedCollection(
-            state,
-            key: ValueKey('${state.user?['id']}:$childId:$learning'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (state.isParent)
+          ParentChildNavigation(
             childId: childId,
-            learning: learning,
-          )
-        : NotebookShelf(
-            state,
-            key: ValueKey('shelf:${state.user?['id']}:$childId'),
-            childId: childId,
-            allPages: PagedCollection(state, childId: childId),
-            onAddPhoto: state.isChild || state.canManage
-                ? () async {
-                    if (state.isChild) {
-                      openRoute(context, '/after-school/$childId?capture=1');
-                    } else {
-                      try {
-                        await importMaterial(context, state, childId);
-                      } catch (error) {
-                        if (context.mounted) showError(context, error);
-                      }
-                    }
-                  }
-                : null,
+            selected: learning ? 'history' : 'materials',
           ),
+        learning
+            ? PagedCollection(
+                state,
+                key: ValueKey('${state.user?['id']}:$childId:$learning'),
+                childId: childId,
+                learning: learning,
+              )
+            : NotebookShelf(
+                state,
+                key: ValueKey('shelf:${state.user?['id']}:$childId'),
+                childId: childId,
+                allPages: PagedCollection(state, childId: childId),
+                onAddPhoto: state.isChild || state.canManage
+                    ? () async {
+                        if (state.isChild) {
+                          openRoute(
+                            context,
+                            '/after-school/$childId?capture=1',
+                          );
+                        } else {
+                          try {
+                            await importMaterial(context, state, childId);
+                          } catch (error) {
+                            if (context.mounted) showError(context, error);
+                          }
+                        }
+                      }
+                    : null,
+              ),
+      ],
+    ),
   );
 }
 

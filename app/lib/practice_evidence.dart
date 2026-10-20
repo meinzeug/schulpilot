@@ -86,7 +86,9 @@ class PracticeEvidence extends StatelessWidget {
               ),
               (
                 'reflection_tasks',
-                'eigene Beiträge',
+                count('reflection_tasks') == 1
+                    ? 'eigener Beitrag'
+                    : 'eigene Beiträge',
                 Icons.chat_bubble_outline_rounded,
               ),
               ('needs_practice_tasks', 'weiter üben', Icons.replay_rounded),

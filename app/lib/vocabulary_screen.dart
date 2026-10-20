@@ -9,6 +9,7 @@ import 'language_options.dart';
 import 'material_screen.dart';
 import 'material_words.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 
 export 'language_options.dart';
 
@@ -941,6 +942,12 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!widget.state.isChild)
+                ParentChildNavigation(
+                  childId: widget.childId,
+                  selected: 'words',
+                  childName: data?['child']?['display_name'],
+                ),
               Panel(
                 color: mint,
                 child: Column(

@@ -88,8 +88,12 @@ Future<({AppState state, GoRouter router})> mount(
     routes: [
       GoRoute(
         path: '/progress/:id',
-        builder: (_, s) =>
-            ProgressScreen(state, childId: s.pathParameters['id']!),
+        builder: (_, s) => ProgressScreen(
+          state,
+          childId: s.pathParameters['id']!,
+          initialSubject: s.uri.queryParameters['fach'],
+          initialTopic: s.uri.queryParameters['thema'],
+        ),
       ),
       GoRoute(
         path: '/grades/:id',
@@ -213,6 +217,41 @@ void main() {
   );
 
   testWidgets(
+    'A restored subject filter can return to all subjects even at the bare progress URL',
+    (tester) async {
+      final reads = <http.Request>[];
+      final mounted = await mount(tester, (r) async {
+        reads.add(r);
+        return reply({
+          'child_name': 'Mika (Beispiel)',
+          'level': r.url.queryParameters['subject'] == null
+              ? 'subjects'
+              : 'topics',
+          'selected_totals': evidence(),
+          'items': [],
+          'pagination': {'page': 1, 'pages': 1},
+        });
+      });
+      mounted.router.go('/app');
+      await tester.pumpAndSettle();
+      mounted.state.collectionViews['progress:kid'] = {
+        'subject': 'Mathematik',
+        'page': 1,
+      };
+      mounted.router.go('/progress/kid');
+      await tester.pumpAndSettle();
+      expect(reads.last.url.queryParameters['subject'], 'Mathematik');
+      await tester.ensureVisible(find.text('Alle Fächer'));
+      await tester.tap(find.text('Alle Fächer'));
+      await tester.pumpAndSettle();
+      expect(reads.last.url.queryParameters.containsKey('subject'), false);
+      expect(find.text('Fächer'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
     'A late response after account change cannot reveal the former child',
     (tester) async {
       final late = Completer<http.Response>();
@@ -278,6 +317,33 @@ void main() {
   }
 
   testWidgets(
+    'Changing a grade filter never presents old grades under the new subject',
+    (tester) async {
+      final response = Completer<http.Response>();
+      var calls = 0;
+      await mount(tester, (r) async {
+        expect(r.method, 'GET');
+        if (++calls == 1) return reply(grades());
+        return response.future;
+      }, gradePage: true);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('grade-subject-null')),
+      );
+      await tester.tap(find.byKey(const ValueKey('grade-subject-null')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mathematik').last);
+      await tester.pump();
+      expect(find.text('Notenschnitt: 4,5'), findsNothing);
+      response.complete(reply({'detail': 'Künstlicher Ladefehler'}, 503));
+      await tester.pumpAndSettle();
+      expect(find.text('Künstlicher Ladefehler'), findsOneWidget);
+      expect(find.text('Notenschnitt: 4,5'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
     'Read-only family member sees grades without managing accounts or results',
     (tester) async {
       await mount(
@@ -287,6 +353,9 @@ void main() {
       );
       expect(find.text('Notenschnitt: 4,5'), findsOneWidget);
       expect(find.text('Note eintragen'), findsNothing);
+      await tester.ensureVisible(find.text('Einfluss auf den Lernplan'));
+      await tester.tap(find.text('Einfluss auf den Lernplan'));
+      await tester.pumpAndSettle();
       expect(
         tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
         isNull,

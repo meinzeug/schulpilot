@@ -96,44 +96,66 @@ class DailyPlanPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final day in days)
-          ListTile(
-            onTap:
-                state != null && childId != null && tipContexts(day).isNotEmpty
-                ? () => openTips(context, day)
-                : null,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              day['paused'] == true || day['free_day'] == true
-                  ? Icons.weekend_outlined
-                  : Icons.calendar_today_outlined,
-              color: teal,
-            ),
-            title: Text(_dayLabel(day['date'])),
-            subtitle: Text(
-              day['paused'] == true || day['free_day'] == true
-                  ? 'Ohne festes Tagesziel'
-                  : (day['items'] as List? ?? []).isEmpty
-                  ? 'Noch offen'
-                  : (day['items'] as List)
-                        .map((item) => item['subject'])
-                        .toSet()
-                        .join(' · '),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  day['planned_minutes'] == 0
-                      ? '—'
-                      : 'ca. ${day['planned_minutes']} Min.',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow =
+                  constraints.maxWidth < 420 ||
+                  MediaQuery.textScalerOf(context).scale(1) > 1.3;
+              return ListTile(
+                onTap:
+                    state != null &&
+                        childId != null &&
+                        tipContexts(day).isNotEmpty
+                    ? () => openTips(context, day)
+                    : null,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  day['paused'] == true || day['free_day'] == true
+                      ? Icons.weekend_outlined
+                      : Icons.calendar_today_outlined,
+                  color: teal,
                 ),
-                if (state != null &&
-                    childId != null &&
-                    tipContexts(day).isNotEmpty)
-                  const Icon(Icons.chevron_right_rounded, size: 18),
-              ],
-            ),
+                title: Text(_dayLabel(day['date'])),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      day['paused'] == true || day['free_day'] == true
+                          ? 'Ohne festes Tagesziel'
+                          : (day['items'] as List? ?? []).isEmpty
+                          ? 'Noch offen'
+                          : (day['items'] as List)
+                                .map((item) => item['subject'])
+                                .toSet()
+                                .join(' · '),
+                    ),
+                    if (narrow)
+                      Text(
+                        day['planned_minutes'] == 0
+                            ? '—'
+                            : 'ca. ${day['planned_minutes']} Min.',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!narrow)
+                      Text(
+                        day['planned_minutes'] == 0
+                            ? '—'
+                            : 'ca. ${day['planned_minutes']} Min.',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    if (state != null &&
+                        childId != null &&
+                        tipContexts(day).isNotEmpty)
+                      const Icon(Icons.chevron_right_rounded, size: 18),
+                  ],
+                ),
+              );
+            },
           ),
         Text(
           childView

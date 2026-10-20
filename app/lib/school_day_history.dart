@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 
 class SchoolDayHistory extends StatefulWidget {
   final AppState state;
@@ -52,6 +53,8 @@ class _SchoolDayHistoryState extends State<SchoolDayHistory> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.state.isParent)
+          ParentChildNavigation(childId: widget.childId, selected: 'materials'),
         if (error != null) Notice(error!, warning: true),
         if (days.isEmpty && !loading && error == null)
           const Notice('Noch keine Schultage gespeichert.'),

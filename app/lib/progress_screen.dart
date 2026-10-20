@@ -2,12 +2,24 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'practice_evidence.dart';
+import 'parent_child_navigation.dart';
+import 'parent_overview.dart';
+
+import 'package:go_router/go_router.dart';
+
 import 'ui.dart';
 
 class ProgressScreen extends StatefulWidget {
   final AppState state;
   final String childId;
-  const ProgressScreen(this.state, {super.key, required this.childId});
+  final String? initialSubject, initialTopic;
+  const ProgressScreen(
+    this.state, {
+    super.key,
+    required this.childId,
+    this.initialSubject,
+    this.initialTopic,
+  });
 
   @override
   State<ProgressScreen> createState() => _ProgressScreenState();
@@ -28,9 +40,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
     super.initState();
     owner = widget.state.user?['id'] ?? '';
     final saved = widget.state.collectionViews[cacheKey];
-    subject = saved?['subject'];
-    topic = saved?['topic'];
-    page = saved?['page'] ?? 1;
+    subject = widget.initialSubject ?? saved?['subject'];
+    topic = widget.initialSubject != null
+        ? widget.initialTopic
+        : saved?['topic'];
+    page = widget.initialSubject != null ? 1 : saved?['page'] ?? 1;
     widget.state.addListener(identityChanged);
     load();
   }
@@ -48,9 +62,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   void didUpdateWidget(covariant ProgressScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.childId != widget.childId) {
+    if (oldWidget.childId != widget.childId ||
+        oldWidget.initialSubject != widget.initialSubject ||
+        oldWidget.initialTopic != widget.initialTopic) {
+      if (oldWidget.childId == widget.childId &&
+          subject == widget.initialSubject &&
+          topic == widget.initialTopic) {
+        return;
+      }
       generation++;
-      subject = topic = null;
+      subject = widget.initialSubject;
+      topic = widget.initialTopic;
       page = 1;
       data = null;
       load();
@@ -106,28 +128,25 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   void choose({String? nextSubject, String? nextTopic}) {
+    if (nextSubject == subject && nextTopic == topic) return;
     subject = nextSubject;
     topic = nextTopic;
     page = 1;
     load();
+    // Keep nested details addressable and browser Back/reload meaningful.
+    context.go(
+      Uri(
+        path: '/progress/${widget.childId}',
+        queryParameters: {'fach': ?nextSubject, 'thema': ?nextTopic},
+      ).toString(),
+    );
   }
 
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
-    title: widget.state.isChild ? 'Dein Lernstand' : 'Fächer & Fortschritt',
+    title: widget.state.isChild ? 'Dein Lernstand' : 'Lernstand',
     actions: [
-      TextButton.icon(
-        onPressed: () => openRoute(context, '/vocabulary/${widget.childId}'),
-        icon: const Icon(Icons.translate_rounded),
-        label: const Text('Wortschatz'),
-      ),
-      if (!widget.state.isChild)
-        OutlinedButton.icon(
-          onPressed: () => openRoute(context, '/grades/${widget.childId}'),
-          icon: const Icon(Icons.school_outlined),
-          label: const Text('Noten'),
-        ),
       IconButton(
         onPressed: loading ? null : load,
         tooltip: 'Aktualisieren',
@@ -139,6 +158,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!widget.state.isChild)
+                ParentChildNavigation(
+                  childId: widget.childId,
+                  selected: 'progress',
+                  childName: data?['child_name'],
+                ),
               if (subject != null)
                 Align(
                   alignment: Alignment.centerLeft,
@@ -166,17 +191,27 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 ),
               ],
               if (data != null && error == null) ...[
-                if (!widget.state.isChild && data!['child_name'] is String)
-                  heading(data!['child_name']),
-                Panel(
-                  child: PracticeEvidence(Json.from(data!['selected_totals'])),
-                ),
+                if (!widget.state.isChild)
+                  ParentPracticeSummary(Json.from(data!['selected_totals']))
+                else
+                  Panel(
+                    child: PracticeEvidence(
+                      Json.from(data!['selected_totals']),
+                    ),
+                  ),
                 const SizedBox(height: 10),
                 const Text(
                   'Jede Übung zählt. Wiederholte Versuche bleiben sichtbar.',
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
                 const SizedBox(height: 24),
+                heading(
+                  data!['level'] == 'subjects'
+                      ? 'Fächer'
+                      : data!['level'] == 'topics'
+                      ? 'Themen'
+                      : 'Gespeicherte Runden',
+                ),
                 for (final item in data!['items'] as List)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),

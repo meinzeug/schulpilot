@@ -14,6 +14,7 @@ import 'learning_next_step.dart';
 import 'vocabulary_screen.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 import 'math_content.dart';
 import 'subject_graphic.dart';
 import 'practice_evidence.dart';
@@ -714,7 +715,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         state: state,
         title: 'Einblick in die Lerneinheit',
         subtitle: 'Aufgaben, Antworten und Hilfen.',
-        child: content,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (state.isParent && u?['child_id'] is String)
+              ParentChildNavigation(
+                childId: u!['child_id'],
+                selected: 'history',
+              ),
+            content,
+          ],
+        ),
       );
     }
     if (state.user?['id'] != ownerId) {

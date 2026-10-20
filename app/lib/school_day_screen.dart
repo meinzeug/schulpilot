@@ -15,6 +15,7 @@ import 'notebook_photo.dart';
 import 'study_path_panel.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'parent_child_navigation.dart';
 
 class SchoolDayScreen extends StatefulWidget {
   final AppState state;
@@ -1528,6 +1529,12 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (state.isParent)
+            ParentChildNavigation(
+              childId: widget.childId,
+              selected: 'materials',
+              childName: day?['child']?['display_name'],
+            ),
           Row(
             children: [
               for (final item in [
