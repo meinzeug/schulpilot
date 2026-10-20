@@ -107,8 +107,25 @@ class _GalleryState extends State<Gallery> {
     if (request.url.path.endsWith('/explanation')) {
       return reply({
         'explanation':
-            r'Die lokale Erklärung setzt auch \[\int_0^1 x^2\,dx=\frac13\] und erhält Tabellen.'
-            '\n\nA | B\n--- | ---\n1 | 2\n\n```python\nfor x in range(3):\n    print(x)\n```',
+            '# Künstliche Darstellungsprüfung\n'
+            r'Fläche unter einer Kurve: \[\int_0^1 x^2\,dx=\frac13\]'
+            '\nGröße | Wert\n--- | ---\n'
+            r'Betrag | $|x|$'
+            '\n'
+            r'Verhältnis | \(\frac{s}{t}\)'
+            '\n'
+            r'Norm | \(\left\|v\right\|\)'
+            '\n'
+            'Die Matrix bleibt zusammen.\n'
+            r'\begin{pmatrix}'
+            '\n'
+            r'1 & 2 \\'
+            '\n'
+            r'3 & 4'
+            '\n'
+            r'\end{pmatrix}'
+            '\n\n'
+            'Danach eingerückter Code.\n```python\nfor x in range(3):\n    print(x)\n```\nEnde der lokalen Prüfung.',
       });
     }
     return reply({

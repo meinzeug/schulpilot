@@ -20,10 +20,23 @@ class _LearningExplanationState extends State<LearningExplanation> {
   int step = 0;
 
   @override
+  void didUpdateWidget(LearningExplanation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) step = 0;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final paragraphs = learningParagraphs(widget.text);
     final chunks = <String>[];
-    for (final paragraph in paragraphs) {
+    var heading = '';
+    for (final section in paragraphs) {
+      if (RegExp(r'^#{1,3}\s+').hasMatch(section)) {
+        heading = '${heading.isEmpty ? '' : '$heading\n'}$section';
+        continue;
+      }
+      final paragraph = '${heading.isEmpty ? '' : '$heading\n'}$section';
+      heading = '';
       if (paragraph.length <= 280 ||
           formulaSegments(paragraph).isNotEmpty ||
           paragraph.contains('```') ||
@@ -44,6 +57,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
         if (chunk.isNotEmpty) chunks.add(chunk);
       }
     }
+    if (heading.isNotEmpty) chunks.add(heading);
     if (chunks.isEmpty) return const SizedBox.shrink();
     final current = step.clamp(0, chunks.length - 1);
     return Column(

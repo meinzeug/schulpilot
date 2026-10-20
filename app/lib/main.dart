@@ -147,6 +147,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path.startsWith('/bestellen/') ||
           path.startsWith('/admin') ||
           path.startsWith('/child/') ||
+          path.startsWith('/messages/') ||
           path.startsWith('/after-school/') ||
           path.startsWith('/material/') ||
           path.startsWith('/library/') ||
@@ -171,6 +172,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       }
       if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
       if ((path == '/words' ||
+              path.startsWith('/messages/') ||
               path.startsWith('/vocabulary/') ||
               path.startsWith('/language-projects/')) &&
           widget.state.isAdmin) {
@@ -243,6 +245,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       GoRoute(
         path: '/app',
         builder: (context, s) => DashboardScreen(widget.state),
+      ),
+      GoRoute(
+        path: '/messages/:id',
+        builder: (context, s) =>
+            MessagesScreen(widget.state, childId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/child/:id',

@@ -40,7 +40,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
     widget.state.addListener(identityChanged);
     final saved = widget.state.collectionViews[memoryKey];
     list = saved?['list'] == true;
-    ownOnly = saved?['own_only'] == true;
+    ownOnly = saved?['own_only'] as bool? ?? widget.state.isChild;
     search.text = saved?['q'] ?? '';
     showSearch = search.text.isNotEmpty;
     load();

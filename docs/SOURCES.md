@@ -1,3 +1,12 @@
+Menü- und Leseflussprüfung20.10.2026, Zielversion1.13.0+59:
+
+Keine SDK-, Anbieter- oder Preisänderung. Die vorhandene gemeinsame Flutter-
+Oberfläche und dieselbe gepinnte Formelengine werden weiterverwendet. Neu sind
+lokale Zustands-/Lesekorrekturen, ein berechtigter Nachrichtenweg und gebündelte
+Prüfungen verlinkter Quellen. Änderungen und tatsächliche Abnahme stehen in
+[MENU_REVIEW_2026_10_20.md](MENU_REVIEW_2026_10_20.md). Anbieterrevision und Grenzen
+der vorherigen Abnahme bleiben unverändert.
+
 Fachliche Darstellung, geprüft20.10.2026, bereitgestellt1.12.2+58:
 
 - [flutter_math_fork0.7.4](https://pub.dev/packages/flutter_math_fork/versions/0.7.4),

@@ -5,6 +5,23 @@ Kinder und berechtigte Eltern sehen bis zu 50 gespeicherte Neuigkeiten aus den
 letzten 30 Tagen. Beim Betriebsadmin öffnet sie ausschließlich `/admin/push`.
 Die Übersicht funktioniert ohne Geräte-Push und ohne Firebase-Initialisierung.
 
+## Direkter Nachrichtenweg ab 1.13.0
+
+Neue Clients melden `messages-v1` und öffnen bei Elternantworten/Hilfewünschen
+`/messages/<child_id>`. Dort ist zuerst die Nachricht lesbar; der zugehörige
+Lernstoff ist eine eigene bewusste Aktion. Der Reader verwendet die bestehende
+berechtigte kompakte Übersicht, keine Aufgabenantworten oder neue KI. Eltern mit
+Leserechten können lesen, weiterhin keine Nachricht senden. Betriebskonten werden
+abgewiesen. Ältere Clients behalten ihre bisherigen Routen.
+
+Gelöschte/fremde Verweise werden beim Lesen ausgeblendet; der ursprüngliche
+Nachrichtentext und gespeicherte Kontext bleiben erhalten. Die begrenzten
+Nachrichten werden stabil nach Datum/ID sortiert. Quellen- und Absenderprüfungen
+werden gebündelt geladen. Vorbereitungsnachrichten zu einem inzwischen leeren
+Schultag und Prüfaufforderungen zu bereits bestätigten Wortimporten erscheinen
+nicht mehr als offene Neuigkeit. GET löscht weder Nachrichten noch Lesebelege.
+Laden und eine tatsächlich leere Liste sind sichtbare unterschiedliche Zustände.
+
 ## Gerätefreigabe
 
 1. Eltern erlauben beim Kind unter Lernvorgaben → Erinnerungen & Ruhezeiten

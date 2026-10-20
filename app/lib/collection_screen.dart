@@ -1026,7 +1026,7 @@ class _PagedCollectionState extends State<PagedCollection> {
                   ),
                 if (widget.learning) ...[
                   Text(
-                    [
+                    {
                       if (count > 0)
                         '$closed von $count Aufgaben'
                       else
@@ -1041,7 +1041,7 @@ class _PagedCollectionState extends State<PagedCollection> {
                         'Ab ${DateFormat('dd.MM.').format(scheduled)}'
                       else if (item['status'] != null)
                         statusLabel(item['status']),
-                    ].join(' · '),
+                    }.join(' · '),
                   ),
                   if (date != null)
                     Text(

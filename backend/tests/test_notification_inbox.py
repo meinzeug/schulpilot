@@ -177,3 +177,98 @@ def test_completed_word_import_notifies_with_consent_quiet_and_source_session_re
         db.get(Child, child["id"]).preferences = {"push_consent": False, "quiet_start": 0, "quiet_end": 0}
         assert n.due_kinds(db, stored, int(now())) == []
     assert any(row["kind"] == "words_ready" for row in api.get("/api/notifications/inbox").json()["items"])
+
+
+def test_human_notices_open_message_reader_only_for_capable_clients(api, household):
+    owner, child = household
+    with DB.begin() as db:
+        db.add(Message(child_id=child["id"], kind="help", body="Synthetic request",
+                       context={"unit_id": "synthetic-unit"}))
+    new = api.get("/api/notifications/inbox", headers={"X-Schulpilot-Capabilities": "visual-v1,messages-v1"}).json()
+    assert new["items"][0]["route"] == f"/messages/{child['id']}"
+    # Existing Android clients do not know the new route.
+    for capabilities in ("visual-v1", "messages-v10"):
+        old = api.get("/api/notifications/inbox", headers={"X-Schulpilot-Capabilities": capabilities}).json()
+        assert old["items"][0]["route"] == "/unit/synthetic-unit"
+    with DB.begin() as db:
+        db.add(Message(child_id=child["id"], sender_id=owner["id"], kind="reply", body="Synthetic reply",
+                       context={"unit_id": "synthetic-unit"}))
+    login = api.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"}).json()
+    api.headers["Authorization"] = "Bearer " + login["token"]
+    new = api.get("/api/notifications/inbox", headers={"X-Schulpilot-Capabilities": "messages-v1"}).json()
+    assert new["items"][0]["route"] == f"/messages/{child['id']}"
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Job)) == 0
+        assert db.scalar(select(func.count()).select_from(NotificationRead)) == 0
+
+
+def test_empty_deleted_day_is_not_offered_as_a_zero_page_notice(api, household):
+    from schulpilot.db import Material, SchoolDay
+
+    _, child = household
+    with DB.begin() as db:
+        empty = SchoolDay(id=uid(), child_id=child["id"], school_date="2026-10-19")
+        full = SchoolDay(id=uid(), child_id=child["id"], school_date="2026-10-20", preparation={"status": "needs_review"})
+        db.add_all([empty, full])
+        db.flush()
+        db.add(Material(child_id=child["id"], school_day_id=full.id, title="Synthetic source", subject="Mathematik"))
+        db.add_all([Message(child_id=child["id"], kind="preparation", body="Synthetic preparation", context={"day_id": d.id})
+                    for d in (empty, full)])
+        full_id = full.id
+    for _ in range(2):
+        data = api.get("/api/notifications/inbox").json()
+        assert data["unread"] == len(data["items"]) == 1
+        assert data["items"][0]["title"] == "1 Heftseite · Mathematik · Bitte prüfen"
+        assert data["items"][0]["route"].endswith(full_id)
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Message)) == 2
+        assert db.scalar(select(func.count()).select_from(NotificationRead)) == 0
+        assert db.scalar(select(func.count()).select_from(Job)) == 0
+
+
+def test_confirmed_word_import_does_not_keep_asking_for_review(api, household):
+    owner, child = household
+    with DB.begin() as db:
+        job = Job(id=uid(), child_id=child["id"], kind="vocabulary_import", status="completed", payload={},
+                  finished=int(now()), idempotency=uid())
+        db.add(job)
+        db.flush()
+        row = VocabularyImport(id=uid(), child_id=child["id"], user_id=owner["id"], request_key=uid(),
+                               request_digest="x" * 64, target_locale="en-GB", title="Synthetic words",
+                               status="review", job_id=job.id)
+        db.add(row)
+        row_id = row.id
+    assert api.get("/api/notifications/inbox").json()["unread"] == 1
+    with DB.begin() as db:
+        db.get(VocabularyImport, row_id).status = "confirmed"
+    assert api.get("/api/notifications/inbox").json()["items"] == []
+    with DB() as db:
+        assert db.get(VocabularyImport, row_id).status == "confirmed"
+        assert db.scalar(select(func.count()).select_from(Job)) == 1
+
+
+def test_message_reader_keeps_text_but_hides_deleted_or_foreign_context_without_writes(api, household):
+    from schulpilot.db import Activity, Material
+
+    owner, child = household
+    sibling = create_child(api, owner, "message-sibling")
+    with DB.begin() as db:
+        own = Material(id=uid(), child_id=child["id"], title="Synthetic own source")
+        foreign = Material(id=uid(), child_id=sibling["id"], title="Synthetic sibling source")
+        db.add_all([own, foreign])
+        db.flush()
+        db.add_all([Message(child_id=child["id"], kind="reply", body=body, context={"material_id": target})
+                    for body, target in (("Own context", own.id), ("Deleted context", uid()), ("Foreign context", foreign.id))])
+        expected = {m.body: m.context for m in db.scalars(select(Message).where(Message.child_id == child["id"]))}
+        before = db.scalar(select(func.count()).select_from(Activity))
+    rows = api.get(f"/api/children/{child['id']}/overview?compact=true").json()["messages"]
+    assert len(rows) == 3
+    own = next(row for row in rows if row["body"] == "Own context")
+    assert own["context"] and own["context_unavailable"] is False
+    for row in rows:
+        if row["body"] != "Own context":
+            assert row["context"] is None and row["context_unavailable"] is True
+    with DB() as db:
+        assert {m.body: m.context for m in db.scalars(select(Message).where(Message.child_id == child["id"]))} == expected
+        assert db.scalar(select(func.count()).select_from(Activity)) == before
+        assert db.scalar(select(func.count()).select_from(Job)) == 0

@@ -70,3 +70,24 @@ Webview oder externe Schrift-/Bilddienste ein. Mindestgröße18, geräumige Brü
 große Schrift und horizontales Lesen breiter Formeln; normale Lerntexte bleiben
 im gemeinsamen Design. Tabellen/Code/Fachgrafiken stehen direkt in Aufgaben und
 geöffneten Hilfen. Umfang und Grenzen: [SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
+
+## Menüs und gemischter Lernstoff ab 1.13.0
+
+Die rollenbezogene Hauptnavigation bleibt erhalten. Kinder starten unter Hefte
+mit vorhandenen Seiten; der vollständige Fachkatalog bleibt über den bestehenden
+Filter erreichbar. Bereits im Konto gewählte Ansichten bleiben erhalten. Keine
+neue Rolle oder Freigabe durch diese Voreinstellung.
+
+Wortfilter müssen Ladestand, fehlende Treffer und einen Ladefehler unterscheiden.
+Alte Wörter dürfen beim Wechsel der Sprache/Sammlung/Suche nicht unter den neuen
+Filtern bearbeitet oder geübt werden. Ein Rückweg setzt die Filter der gewählten
+Sprache zurück; es wird dadurch kein Lernauftrag gestartet. Geräteaktionen heißen
+„Hier abmelden“ oder „Gerät abmelden“ und stehen bei langen Namen/großer Schrift
+unterhalb der Gerätebeschreibung.
+
+Gemischte Erklärungen erkennen Überschriften, Tabellen und Code auch ohne leere
+Trennzeile. Matrizen/TeX-Umgebungen und Code bleiben zusammen. Tabellenzellen
+respektieren explizite Mathematik und maskierte Trennzeichen. Formelwidgets dürfen
+keine intrinsische Tabellenbreitenmessung auslösen: begrenzte responsive feste
+Spalten und horizontales Lesen verwenden. Neue Erklärungen beginnen wieder bei
+Schritt eins; gespeicherte Quellen und fachliche Lösungen nicht umschreiben.

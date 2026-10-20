@@ -25,7 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) => PageFrame(
     state: state,
-    title: 'Zugänge & Einstellungen',
+    title: state.isChild ? 'Dein Konto' : 'Zugänge & Einstellungen',
     subtitle: 'Zugänge, Geräte und Benachrichtigungen.',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,25 +125,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 for (final s in sessions)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.devices_rounded, color: teal),
-                    title: Text(s['device']),
-                    subtitle: Text(
-                      s['current'] ? 'Dieses Gerät' : 'Zugang aktiv',
-                    ),
-                    trailing: ActionButton(
-                      label: 'Widerrufen',
-                      secondary: true,
-                      onPressed: () async {
-                        await state.api.delete('/auth/sessions/${s['id']}');
-                        if (s['current']) {
-                          await state.clear();
-                          if (context.mounted) context.go('/login');
-                        } else {
-                          refresh();
-                        }
-                      },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.devices_rounded,
+                            color: teal,
+                          ),
+                          title: Text(s['device']),
+                          subtitle: Text(
+                            s['current']
+                                ? 'Dieses Gerät'
+                                : 'Weiteres angemeldetes Gerät',
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ActionButton(
+                            label: s['current']
+                                ? 'Hier abmelden'
+                                : 'Gerät abmelden',
+                            secondary: true,
+                            onPressed: () async {
+                              await state.api.delete(
+                                '/auth/sessions/${s['id']}',
+                              );
+                              if (s['current']) {
+                                await state.clear();
+                                if (context.mounted) context.go('/login');
+                              } else {
+                                refresh();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],

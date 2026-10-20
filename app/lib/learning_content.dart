@@ -91,10 +91,6 @@ class _Section extends StatelessWidget {
         ),
       );
     }
-    if (block['kind'] == 'table' || _tableRows(text) != null) {
-      final rows = _tableRows(text, explicit: block['kind'] == 'table');
-      if (rows != null) return _BookTable(rows);
-    }
     if (block['kind'] == 'code' || text.trimLeft().startsWith('```')) {
       return SurfaceInset(
         child: SingleChildScrollView(
@@ -111,6 +107,10 @@ class _Section extends StatelessWidget {
           ),
         ),
       );
+    }
+    if (block['kind'] == 'table' || _tableRows(text) != null) {
+      final rows = _tableRows(text, explicit: block['kind'] == 'table');
+      if (rows != null) return _BookTable(rows);
     }
     if (block['kind'] == 'diagram_text') {
       return SurfaceInset(
@@ -134,16 +134,26 @@ class _Section extends StatelessWidget {
       );
     }
     if (block['kind'] == 'formula') {
+      // A matrix/aligned environment is one expression, including its newlines.
+      final delimited = RegExp(r'\\[\[(]|\$').hasMatch(text);
+      final environment = text.contains(r'\begin{');
       return LayoutBuilder(
         builder: (context, constraints) => SurfaceInset(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final line
-                  in text.split('\n').where((s) => s.trim().isNotEmpty))
-                if (formulaSegments(line).isNotEmpty)
-                  MathText(line, style: body)
-                else
+              if (delimited)
+                MathText(text, style: body)
+              else if (environment)
+                FormulaNotation(
+                  expression: text,
+                  style: body,
+                  display: true,
+                  maxWidth: (constraints.maxWidth - 32).clamp(80, 720),
+                )
+              else
+                for (final line
+                    in text.split('\n').where((s) => s.trim().isNotEmpty))
                   FormulaNotation(
                     expression: line,
                     style: body,
@@ -170,12 +180,15 @@ List<List<String>>? _tableRows(String text, {bool explicit = false}) {
   final rows = <List<String>>[];
   for (final line in lines) {
     if (!line.contains('|') && !line.contains('\t')) return null;
-    var cells = line
-        .split(line.contains('|') ? '|' : '\t')
-        .map((c) => c.trim())
-        .toList();
-    if (line.trimLeft().startsWith('|')) cells.removeAt(0);
-    if (line.trimRight().endsWith('|') && cells.isNotEmpty) cells.removeLast();
+    var cells = _tableCells(line);
+    if (line.trimLeft().startsWith('|') && cells.first.isEmpty) {
+      cells.removeAt(0);
+    }
+    if (line.trimRight().endsWith('|') &&
+        cells.isNotEmpty &&
+        cells.last.isEmpty) {
+      cells.removeLast();
+    }
     if (cells.length < 2 ||
         cells.length > 8 ||
         cells.any((s) => s.length > 500)) {
@@ -188,49 +201,81 @@ List<List<String>>? _tableRows(String text, {bool explicit = false}) {
   return rows.length >= 2 ? rows : null;
 }
 
+List<String> _tableCells(String line) {
+  // Pipes inside explicit TeX or an escaped literal are cell content.
+  final protected = formulaSegments(line);
+  final cells = <String>[];
+  var start = 0;
+  final delimiter = line.contains('\t') ? '\t' : '|';
+  for (var i = 0; i < line.length; i++) {
+    if (line[i] != delimiter ||
+        protected.any((part) => i >= part.start && i < part.end)) {
+      continue;
+    }
+    var escapes = 0;
+    for (var j = i - 1; j >= 0 && line[j] == r'\'; j--) {
+      escapes++;
+    }
+    if (delimiter == '|' && escapes.isOdd) continue;
+    cells.add(line.substring(start, i).trim());
+    start = i + 1;
+  }
+  cells.add(line.substring(start).trim());
+  return cells;
+}
+
 class _BookTable extends StatelessWidget {
   final List<List<String>> rows;
   const _BookTable(this.rows);
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Table(
-      defaultColumnWidth: const IntrinsicColumnWidth(),
-      border: TableBorder.all(color: const Color(0xFFB8C6D9)),
-      children: [
-        for (final row in rows.indexed)
-          TableRow(
-            decoration: row.$1 == 0
-                ? const BoxDecoration(color: Color(0xFFF2F5FA))
-                : null,
-            children: [
-              for (final cell in row.$2)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: 240,
-                    minWidth: 64,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: MathText(
-                      cell,
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.5,
-                        fontWeight: row.$1 == 0
-                            ? FontWeight.w700
-                            : FontWeight.normal,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
+      final available = constraints.hasBoundedWidth
+          ? constraints.maxWidth
+          : MediaQuery.sizeOf(context).width;
+      final columnWidth = (available / rows.first.length).clamp(
+        120 * scale,
+        240 * scale,
+      );
+      // The formula engine intentionally cannot answer intrinsic layout queries.
+      // Fixed, responsive columns also bound long text and keep large text readable.
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        primary: false,
+        child: Table(
+          defaultColumnWidth: FixedColumnWidth(columnWidth),
+          border: TableBorder.all(color: const Color(0xFFB8C6D9)),
+          children: [
+            for (final row in rows.indexed)
+              TableRow(
+                decoration: row.$1 == 0
+                    ? const BoxDecoration(color: Color(0xFFF2F5FA))
+                    : null,
+                children: [
+                  for (final cell in row.$2)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: MathText(
+                        cell,
+                        style: TextStyle(
+                          fontSize: 16,
+                          height: 1.5,
+                          fontWeight: row.$1 == 0
+                              ? FontWeight.w700
+                              : FontWeight.normal,
+                        ),
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
-      ],
-    ),
+                ],
+              ),
+          ],
+        ),
+      );
+    },
   );
 }
 
@@ -244,19 +289,42 @@ List<String> learningParagraphs(String text) {
     buffer = StringBuffer();
   }
 
-  for (final line in text.split('\n')) {
+  final lines = text.split('\n');
+  bool tableLine(String line) => line.contains('|') || line.contains('\t');
+  bool separator(String line) =>
+      RegExp(r'^\s*\|?\s*:?-{2,}:?\s*\|').hasMatch(line);
+  bool inTable = false;
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    final fence = line.trimLeft().startsWith('```');
+    final heading = RegExp(r'^#{1,3}\s+').hasMatch(line);
+    final tableStart =
+        tableLine(line) &&
+        (line.contains('\t') ||
+            i + 1 < lines.length && separator(lines[i + 1]));
+    if (!code && !display && !dollars) {
+      if (fence ||
+          heading ||
+          tableStart && !inTable ||
+          inTable && !tableLine(line)) {
+        flush();
+      }
+      if (tableStart) inTable = true;
+      if (inTable && !tableLine(line)) inTable = false;
+    }
     if (line.trim().isEmpty && !code && !display && !dollars) {
       flush();
       continue;
     }
     if (buffer.isNotEmpty) buffer.write('\n');
     buffer.write(line);
-    if (RegExp(r'```').allMatches(line).length.isOdd) code = !code;
+    if (fence) code = !code;
     if (!code) {
       if (line.contains(r'\[')) display = true;
       if (line.contains(r'\]')) display = false;
       if (RegExp(r'\$\$').allMatches(line).length.isOdd) dollars = !dollars;
     }
+    if (!code && !display && !dollars && (fence || heading)) flush();
   }
   flush();
   return result;

@@ -4,7 +4,7 @@ GET never creates events or jobs. Read receipts contain no copied private text.
 Membership is checked again on every read and acknowledgement.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import load_only
@@ -30,7 +30,7 @@ LIMIT = 50
 router = APIRouter(prefix="/notifications", tags=["Neuigkeiten"])
 
 
-def recent_events(db, user, current=None):
+def recent_events(db, user, current=None, *, direct_messages=False):
     if user.role not in ("child", "parent"):
         if user.role == "admin":
             audit(db, user.id, "admin.private_access_denied", "notification-inbox")
@@ -93,7 +93,11 @@ def recent_events(db, user, current=None):
                 else "/settings"
             )
         context = row.context or {}
-        if context.get("unit_id"):
+        # Human messages open the actual reply/request first. Context remains a
+        # separate explicit link there; opening a notice must not start a round.
+        if direct_messages and row.kind in ("reply", "help", "interest", "plan_change"):
+            route = f"/messages/{row.child_id}"
+        elif context.get("unit_id"):
             route = f"/unit/{context['unit_id']}"
         elif context.get("material_id"):
             route = f"/material/{context['material_id']}"
@@ -110,6 +114,8 @@ def recent_events(db, user, current=None):
             seen_preparations.add(day_id)
             source_rows = list(db.execute(select(Material.subject).where(Material.school_day_id == day_id, Material.child_id == row.child_id)))
             count = len(source_rows)
+            if count == 0:
+                continue
             subjects = sorted({r.subject for r in source_rows if r.subject})
             prefix = f"{count} Heftseite{'n' if count != 1 else ''}" + (" · " + ", ".join(subjects[:2]) if subjects else "")
             current_status = (day.preparation or {}).get("status")
@@ -124,7 +130,7 @@ def recent_events(db, user, current=None):
     ):
         rows = db.execute(
             select(model, Job)
-            .options(load_only(model.id, model.child_id), load_only(Job.status, Job.finished))
+            .options(load_only(model.id, model.child_id, model.status), load_only(Job.status, Job.finished))
             .join(Job, Job.id == model.job_id)
             .where(
                 model.child_id.in_(ids),
@@ -136,6 +142,8 @@ def recent_events(db, user, current=None):
             .limit(LIMIT)
         )
         for row, job in rows:
+            if model == VocabularyImport and row.status == "confirmed":
+                continue
             failed = job.status == "failed"
             route = (
                 f"/language-projects/{row.child_id}?project={row.id}"
@@ -157,8 +165,9 @@ def recent_events(db, user, current=None):
 
 
 @router.get("/inbox")
-def inbox(p=Depends(authenticated), db=Depends(get_db)):
-    items = recent_events(db, p.user)
+def inbox(p=Depends(authenticated), db=Depends(get_db),
+          capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
+    items = recent_events(db, p.user, direct_messages="messages-v1" in (capabilities or "").split(","))
     read = set(
         db.scalars(
             select(NotificationRead.event_key).where(

@@ -68,6 +68,7 @@ Future<(AppState, GoRouter)> open(
   bool parent = false,
   bool workshop = false,
   Json? wordListing,
+  Future<http.Response> Function(http.Request)? respond,
 }) async {
   tester.view.physicalSize = Size(width, 900);
   tester.view.devicePixelRatio = 1;
@@ -79,6 +80,7 @@ Future<(AppState, GoRouter)> open(
             base: 'https://example.invalid/api',
             client: MockClient((request) async {
               requests.add(request);
+              if (respond != null) return respond(request);
               if (request.url.path.endsWith('/imports')) {
                 if (request.method == 'POST') {
                   final body = jsonDecode(request.body);

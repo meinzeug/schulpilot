@@ -195,3 +195,12 @@ müssen mindestens diesen journalfähigen Stand verwenden. Ein Code-Rückweg auf
 braucht einen gesonderten Rückbau, der die neue Journalprüfung und Rundenbereinigung
 erhält; alte Wiederherstellungswerkzeuge würden den unbekannten Scope ablehnen.
 Keine Rücksicherung über neuere Antworten oder Löschungen durchführen.
+
+### Kinder-Voreinstellung ab 1.13.0
+
+Ohne gespeicherte Ansichtspräferenz ist „Meine Fächer“ im Kinderzugang bereits
+aktiv. Damit erscheinen zuerst Fächer mit tatsächlich vorhandenen Seiten und
+gegebenenfalls „Noch zuordnen“. Alle Fächer bleiben über den vorhandenen Filter
+zugänglich. Eine im selben angemeldeten Konto bewusst gespeicherte volle Ansicht
+hat Vorrang; Eltern behalten die bisherige Voreinstellung. Keine Fachzuordnung,
+Quellenbestätigung oder KI durch Öffnen/Umschalten der Ansicht.

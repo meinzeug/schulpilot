@@ -228,6 +228,10 @@ void main() {
       'Subject shelf keeps empty subjects and opens a real album at $width',
       (tester) async {
         final (_, _, requests) = await open(tester, shelf: true, width: width);
+        expect(find.text('Biologie'), findsNothing);
+        expect(find.text('Mathematik'), findsOneWidget);
+        expect(find.text('Noch zuordnen'), findsOneWidget);
+        await tap(tester, find.byTooltip('Meine Fächer'));
         expect(find.text('Biologie'), findsOneWidget);
         expect(find.text('Noch keine Seiten'), findsOneWidget);
         expect(

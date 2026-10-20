@@ -12,10 +12,13 @@ class NotificationInbox extends ChangeNotifier {
   int _generation = 0;
   int _readRevision = 0;
   bool _foreground = true, _loading = false;
+  bool _disposed = false;
   Timer? _timer;
   List<Json> items = [];
   int unread = 0;
   String? error;
+  bool hasLoaded = false;
+  bool get loading => _loading;
 
   void activate(String? account) {
     if (_account == account) return;
@@ -24,6 +27,7 @@ class NotificationInbox extends ChangeNotifier {
     items = [];
     unread = 0;
     error = null;
+    hasLoaded = false;
     _loading = false;
     _timer?.cancel();
     if (account != null) {
@@ -46,6 +50,10 @@ class NotificationInbox extends ChangeNotifier {
     final generation = _generation;
     final readRevision = _readRevision;
     _loading = true;
+    // Refresh can begin while a sibling (the bell) is being rebuilt on navigation.
+    scheduleMicrotask(() {
+      if (!_disposed && generation == _generation) notifyListeners();
+    });
     try {
       final data = await api.get('/notifications/inbox');
       if (generation != _generation || readRevision != _readRevision) return;
@@ -54,10 +62,11 @@ class NotificationInbox extends ChangeNotifier {
           .toList();
       unread = data['unread'] as int? ?? 0;
       error = null;
+      hasLoaded = true;
     } catch (_) {
       if (generation == _generation) error = 'Neuigkeiten konnten nicht geladen werden. Bitte versuche es erneut.';
     } finally {
-      if (generation == _generation) {
+      if (!_disposed && generation == _generation) {
         _loading = false;
         notifyListeners();
       }
@@ -80,6 +89,8 @@ class NotificationInbox extends ChangeNotifier {
   void clear() => activate(null);
   @override
   void dispose() {
+    _disposed = true;
+    _generation++;
     _timer?.cancel();
     super.dispose();
   }

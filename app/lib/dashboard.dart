@@ -1988,15 +1988,54 @@ Widget planTile(
   ),
 );
 
+class MessagesScreen extends StatelessWidget {
+  final AppState state;
+  final String childId;
+  final String? accountId;
+  MessagesScreen(this.state, {super.key, required this.childId})
+    : accountId = state.user?['id'];
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: state,
+    builder: (context, _) =>
+        state.user == null || state.user?['id'] != accountId || state.isAdmin
+        ? const SizedBox.shrink()
+        : PageFrame(
+            state: state,
+            title: state.isChild
+                ? 'Nachrichten & Wünsche'
+                : 'Familiennachrichten',
+            child: LoadView<Json>(
+              key: ValueKey('messages:${state.user?['id']}:$childId'),
+              revision: state.revision,
+              // Reuse the authorized compact projection; never fetch task answers here.
+              load: () =>
+                  state.api.get('/children/$childId/overview?compact=true'),
+              builder: (data, refresh) =>
+                  messages(context, state, data, refresh, standalone: true),
+            ),
+          ),
+  );
+}
+
 Widget messages(
   BuildContext context,
   AppState state,
   Json data,
-  VoidCallback refresh,
-) => Column(
+  VoidCallback refresh, {
+  bool standalone = false,
+}) => Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    heading(state.isChild ? 'Hilfe und Ideen' : 'Familiennachrichten'),
+    if (!standalone) ...[
+      heading(state.isChild ? 'Hilfe und Ideen' : 'Familiennachrichten'),
+      TextButton.icon(
+        onPressed: () => openRoute(context, '/messages/${data['child']['id']}'),
+        icon: const Icon(Icons.forum_outlined),
+        label: const Text('Nachrichten öffnen'),
+      ),
+    ],
     if (state.isChild || state.canManage)
       Wrap(
         spacing: 10,
@@ -2028,6 +2067,10 @@ Widget messages(
         ],
       ),
     const SizedBox(height: 20),
+    if ((data['messages'] as List).isEmpty)
+      const Notice(
+        'Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.',
+      ),
     for (final m in data['messages'] as List)
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -2064,6 +2107,11 @@ Widget messages(
               ),
               const SizedBox(height: 10),
               Text(m['body']),
+              if (m['context_unavailable'] == true)
+                const Text(
+                  'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
+                  style: TextStyle(color: muted, fontSize: 13),
+                ),
               if (m['context'] is Map && (m['context'] as Map).isNotEmpty)
                 TextButton.icon(
                   icon: const Icon(Icons.arrow_forward_rounded),

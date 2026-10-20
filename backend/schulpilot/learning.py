@@ -45,6 +45,34 @@ def record(db, child_id, kind, detail=None, unit_id=None):
     activity_recorded(db, activity)
 
 
+def message_previews(db, child_id):
+    """Bounded private reader; deleted references never turn into clickable links."""
+    rows = list(db.scalars(select(Message).where(Message.child_id == child_id)
+                           .order_by(Message.created.desc(), Message.id.desc()).limit(100)))
+    models = {"unit_id": LearningUnit, "material_id": Material, "day_id": SchoolDay}
+    contexts = [m.context for m in rows if isinstance(m.context, dict) and len(m.context) == 1]
+    existing = set()
+    for key, model in models.items():
+        ids = {context[key] for context in contexts if isinstance(context.get(key), str)}
+        if ids:
+            existing.update((key, target) for target in db.scalars(
+                select(model.id).where(model.child_id == child_id, model.id.in_(ids))))
+    sender_ids = {m.sender_id for m in rows if m.sender_id}
+    roles = dict(db.execute(select(User.id, User.role).where(User.id.in_(sender_ids))).all()) if sender_ids else {}
+    result = []
+    for m in rows:
+        context = m.context if isinstance(m.context, dict) and len(m.context) == 1 else {}
+        # Do not hash malformed historical values, or expose another child's IDs.
+        available = any(isinstance(value, str) and (key, value) in existing for key, value in context.items())
+        result.append({
+            "id": m.id, "kind": m.kind, "body": m.body, "resolved": m.resolved,
+            "sender_role": roles.get(m.sender_id, "system"),
+            "context": context if available else None,
+            "context_unavailable": bool(m.context) and not available, "created": m.created,
+        })
+    return result
+
+
 def material_data(material):
     from .material_tasks import preview as task_preview
     from .material_vocabulary import preview
@@ -969,22 +997,7 @@ def overview(child_id: str, p=Depends(authenticated), db=Depends(get_db), *, com
         "practice_summary": totals(ledger),
         "subject_progress": subject_progress[:4] if compact else subject_progress,
         "subject_count": len(subject_progress),
-        "messages": [
-            {
-                "id": m.id,
-                "kind": m.kind,
-                "body": m.body,
-                "resolved": m.resolved,
-                "sender_role": db.get(User, m.sender_id).role
-                if m.sender_id and db.get(User, m.sender_id)
-                else "system",
-                "context": m.context,
-                "created": m.created,
-            }
-            for m in db.scalars(
-                select(Message).where(Message.child_id == child.id).order_by(Message.created.desc()).limit(100)
-            )
-        ],
+        "messages": message_previews(db, child.id),
     }
 
 

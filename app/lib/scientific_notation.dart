@@ -18,7 +18,8 @@ List<FormulaSegment> formulaSegments(String text) {
     final content = match[1] ?? match[2] ?? match[3] ?? match[4]!;
     // A pair of currency signs in ordinary prose is not a math instruction.
     if (match[4] != null &&
-        !RegExp(r'[=^_\\+*/<>∑∫√]|^[\d.,\s-]+$').hasMatch(content)) {
+        !RegExp(r'[=^_\\+*/<>∑∫√|]|^[\d.,\s-]+$|^[A-Za-z]$')
+            .hasMatch(content)) {
       continue;
     }
     segments.add(
@@ -29,6 +30,17 @@ List<FormulaSegment> formulaSegments(String text) {
         match[1] != null || match[3] != null,
       ),
     );
+  }
+  // Legacy multiline matrices/case distinctions need one renderer, including
+  // when the saved answer did not add outer display delimiters.
+  final environments = RegExp(
+    r'\\begin\{(matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|aligned|alignedat|gathered|cases|array)\}[\s\S]*?\\end\{\1\}',
+  );
+  for (final match in environments.allMatches(text).take(40)) {
+    if (segments.length < 40 &&
+        !segments.any((s) => match.start < s.end && match.end > s.start)) {
+      segments.add(FormulaSegment(match.start, match.end, match[0]!, true));
+    }
   }
   // Older saved explanations sometimes contain a complete TeX line without
   // delimiters. Recognize only such explicit commands, never ordinary prose.
@@ -92,6 +104,15 @@ String spokenFormula(String expression) => expression
     .replaceAllMapped(
       RegExp(r'\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}'),
       (m) => '${m[1]} durch ${m[2]}',
+    )
+    .replaceAllMapped(
+      RegExp(r'\\(?:d|t)?frac(?![A-Za-z])\s*([\dA-Za-z])\s*([\dA-Za-z])'),
+      (m) => '${m[1]} durch ${m[2]}',
+    )
+    .replaceAllMapped(RegExp(r'\\\|([^|]+?)\\\|'), (m) => 'Norm von ${m[1]}')
+    .replaceAllMapped(
+      RegExp(r'(?<!\\)\|([^|]+)\|'),
+      (m) => 'Betrag von ${m[1]}',
     )
     .replaceAllMapped(
       RegExp(r'\\sqrt\{([^{}]+)\}'),

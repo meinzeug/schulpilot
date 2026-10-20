@@ -109,10 +109,10 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   final search = TextEditingController();
   Json? data;
   List<Json> imports = [];
-  String? error, collection;
+  String? error, collection, loadedQuery;
   String locale = 'en-GB';
   int page = 1, generation = 0;
-  bool busy = false, due = false;
+  bool busy = false, due = false, loading = true;
   bool sourceOffered = false;
   late String owner;
   Timer? poll;
@@ -159,6 +159,21 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
   Future<void> load() async {
     if (!current) return;
     final request = ++generation;
+    final query = jsonEncode([
+      locale,
+      collection,
+      due,
+      search.text.trim(),
+      page,
+    ]);
+    poll?.cancel();
+    setState(() {
+      loading = true;
+      error = null;
+      // Filters already describe the next request. Never offer old words under
+      // the new language/collection, including while the request fails.
+      if (query != loadedQuery) data = null;
+    });
     try {
       final responses = await Future.wait([
         widget.state.api.get(
@@ -168,7 +183,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
               'page': '$page',
               'page_size': '15',
               'locale': locale,
-              'search': search.text,
+              'search': search.text.trim(),
               'due': '$due',
               'collection': ?collection,
             },
@@ -179,10 +194,12 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       if (!current || request != generation) return;
       setState(() {
         data = responses[0];
+        loadedQuery = query;
         imports = (responses[1]['imports'] as List)
             .map((row) => Json.from(row))
             .toList();
         error = null;
+        loading = false;
       });
       poll?.cancel();
       if (imports.any((row) => ['queued', 'running'].contains(row['status']))) {
@@ -197,8 +214,27 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
         });
       }
     } catch (e) {
-      if (current && request == generation) setState(() => error = '$e');
+      if (current && request == generation) {
+        setState(() {
+          error = '$e';
+          loading = false;
+        });
+      }
     }
+  }
+
+  bool get filtered =>
+      search.text.trim().isNotEmpty || due || collection != null;
+
+  void resetFilters() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      search.clear();
+      due = false;
+      collection = null;
+      page = 1;
+    });
+    load();
   }
 
   Future<void> handleSource() async {
@@ -896,7 +932,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       ),
       IconButton(
         tooltip: 'Aktualisieren',
-        onPressed: busy ? null : load,
+        onPressed: busy || loading ? null : load,
         icon: const Icon(Icons.refresh_rounded),
       ),
     ],
@@ -963,7 +999,16 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                   ],
                 ),
               ),
-              if (error != null) Notice(error!, warning: true),
+              if (error != null) ...[
+                Notice(error!, warning: true),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton(
+                    onPressed: load,
+                    child: const Text('Erneut laden'),
+                  ),
+                ),
+              ],
               if (busy) const LinearProgressIndicator(),
               for (final round in data?['open_rounds'] as List? ?? [])
                 ListTile(
@@ -1079,6 +1124,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     selected: due,
                     onSelected: (v) {
                       setState(() {
+                        FocusManager.instance.primaryFocus?.unfocus();
                         due = v;
                         page = 1;
                       });
@@ -1090,9 +1136,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: search,
+                maxLength: 100,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   labelText: 'Wörter suchen',
+                  counterText: '',
                   suffixIcon: IconButton(
                     tooltip: 'Suchen',
                     icon: const Icon(Icons.search_rounded),
@@ -1109,13 +1157,23 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                   load();
                 },
               ),
+              if (filtered)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: resetFilters,
+                    icon: const Icon(Icons.filter_alt_off_outlined),
+                    label: const Text('Filter zurücksetzen'),
+                  ),
+                ),
               const SizedBox(height: 16),
-              if (data == null && error == null)
-                const Center(child: CircularProgressIndicator()),
+              if (loading) const Center(child: CircularProgressIndicator()),
               if (data != null && (data!['items'] as List).isEmpty)
-                const Panel(
+                Panel(
                   child: Text(
-                    'Hier sind noch keine passenden Wörter. Füge deine ersten Schulwörter hinzu.',
+                    filtered
+                        ? 'Keine passenden Wörter gefunden. Ändere die Suche oder setze die Filter zurück.'
+                        : 'Hier sind noch keine Wörter in dieser Sprache. Füge deine ersten Schulwörter hinzu.',
                   ),
                 ),
               for (final item in data?['items'] as List? ?? [])
@@ -1188,7 +1246,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                           ExpansionTile(
                             tilePadding: EdgeInsets.zero,
                             title: Text(
-                              '${(item['reviews'] as List).length} Lernmodi · Stand ansehen',
+                              '${counted((item['reviews'] as List).length, 'Lernmodus', 'Lernmodi')} · Stand ansehen',
                               style: const TextStyle(fontSize: 13),
                             ),
                             children: [

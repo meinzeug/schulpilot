@@ -57,13 +57,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Expanded(child: heading('Deine Neuigkeiten')),
                       IconButton(
                         tooltip: 'Aktualisieren',
-                        onPressed: inbox.refresh,
+                        onPressed: inbox.loading ? null : inbox.refresh,
                         icon: const Icon(Icons.refresh_rounded),
                       ),
                     ],
                   ),
+                  if (inbox.loading) const LinearProgressIndicator(),
                   if (inbox.error != null) Notice(inbox.error!),
-                  if (inbox.items.isEmpty && inbox.error == null)
+                  if (inbox.hasLoaded &&
+                      inbox.items.isEmpty &&
+                      inbox.error == null)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Text(

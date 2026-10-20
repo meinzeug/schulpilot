@@ -40,7 +40,8 @@ class Api {
 
   Map<String, String> get headers => {
     'X-Schulpilot-Request': '1',
-    'X-Schulpilot-Capabilities': 'language-v1,grade-pdf-v1,visual-v1',
+    'X-Schulpilot-Capabilities':
+        'language-v1,grade-pdf-v1,visual-v1,messages-v1',
     if (!kIsWeb) 'X-Client-Platform': 'native',
     if (token != null) 'Authorization': 'Bearer $token',
   };
