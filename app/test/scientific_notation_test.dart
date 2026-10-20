@@ -144,6 +144,37 @@ void main() {
     expect(MathText.spoken(r'\(A\rightarrow B\)'), contains('ergibt'));
     expect(MathText.spoken(r'\(f(x)=\sin(x)\)'), 'f(x)=Sinus(x)');
   });
+  testWidgets(
+    'Inline formulas and legacy fractions scale once with large text',
+    (tester) async {
+      for (final sample in [r'\(\frac{1}{2}\)', '1/2']) {
+        final heights = <double>[];
+        for (final scale in [1.0, 2.0]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              home: MediaQuery(
+                data: MediaQueryData(
+                  size: const Size(400, 800),
+                  textScaler: TextScaler.linear(scale),
+                ),
+                child: Scaffold(
+                  body: MathText(sample, style: const TextStyle(fontSize: 20)),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final formula = find.byWidgetPredicate(
+            (w) => w is FormulaNotation || w is FractionNotation,
+          );
+          heights.add(
+            (tester.getBottomRight(formula) - tester.getTopLeft(formula)).dy,
+          );
+        }
+        expect(heights[1] / heights[0], closeTo(2, .05), reason: sample);
+      }
+    },
+  );
   test(
     'bounded parsing leaves money, dates, URLs and unclosed math intact',
     () {

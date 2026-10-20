@@ -85,11 +85,14 @@ class MathText extends Text {
       spans.add(
         WidgetSpan(
           alignment: PlaceholderAlignment.middle,
-          child: FormulaNotation(
-            expression: segment.expression,
-            style: base,
-            display: segment.display,
-            maxWidth: (MediaQuery.sizeOf(context).width - 96).clamp(120, 720),
+          // RichText scales WidgetSpans. Disable only the child's second pass.
+          child: MediaQuery.withNoTextScaling(
+            child: FormulaNotation(
+              expression: segment.expression,
+              style: base,
+              display: segment.display,
+              maxWidth: (MediaQuery.sizeOf(context).width - 96).clamp(120, 720),
+            ),
           ),
         ),
       );
@@ -128,10 +131,12 @@ class MathText extends Text {
       spans.add(
         WidgetSpan(
           alignment: PlaceholderAlignment.middle,
-          child: FractionNotation(
-            numerator: numerator,
-            denominator: denominator,
-            style: base,
+          child: MediaQuery.withNoTextScaling(
+            child: FractionNotation(
+              numerator: numerator,
+              denominator: denominator,
+              style: base,
+            ),
           ),
         ),
       );

@@ -1,6 +1,6 @@
 # Fachliche Darstellung in Aufgaben und Hilfen
 
-Ausbauauftrag20.10.2026, Zielversion1.12.1+57. Gemeint ist die Darstellung
+Ausbauauftrag20.10.2026, Zielversion1.12.2+58. Gemeint ist die Darstellung
 **innerhalb der App**: Aufgaben, Auswahloptionen, Hinweise, Erklärungen,
 Antwortfeedback und Heftfragen. Eingaben bleiben gewöhnliche fotografierte,
 auch handschriftliche Schulhefter. Gedruckte KI-Testseiten sind kein neues
@@ -157,3 +157,10 @@ Luna/Revision29: OCR4766Input-/1669Ausgabetokens,0,001312USD;
 Tutor3704Input-/387Ausgabetokens,0,000564USD berichtet. Zusammen0,001876USD,
 keine neue Lernrunde oder Antwortversuche. Alte Reservierungen/Unklarheiten
 erhalten. Nachprüfung57:276gezielte Fluttertests bestanden, Analyse ohne Befund.
+
+Nachprüfung58: Der echte Web-Großschrifttest zeigt eine doppelte Skalierung von
+WidgetSpans. Das gepinnte Flutter skaliert das gesamte eingebettete Widget bereits;
+innerhalb des Formel-/Bruchwidgets wird deshalb nur der zweite Textskalierungs-
+durchgang abgeschaltet. Standalone-Formeln und normaler Text behalten ihre
+Systemschriftgröße. Der neue Test misst das tatsächliche globale Höhenverhältnis
+für TeX und ältere Brüche: vor dem Fix deutlich über2, danach bei200%genau2.
