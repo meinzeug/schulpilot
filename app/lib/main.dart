@@ -173,6 +173,9 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           (!kIsWeb || widget.state.isChild)) {
         return '/app';
       }
+      if (widget.state.isAdmin && (path == '/' || path == '/app')) {
+        return '/admin';
+      }
       if (path == '/' && widget.state.user != null) return '/app';
       if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
       if (path == '/notifications' && widget.state.isAdmin) {

@@ -114,3 +114,8 @@ Integration im Releaseprotokoll ausgewiesen.
 Keine Backendberechtigungen, Providerfreigaben, Budgets, Schlüssel, Käufe,
 Modellrouten oder Produktionskonfigurationen werden durch die Gestaltung
 geändert.
+
+Anmelde-/Altlink-Rückweg: main.dart führt authentifizierte Administratoren von
+`/` und `/app` unmittelbar nach `/admin`. Die frühere zusätzliche Einstiegsseite
+ist damit kein Umweg vor dem Betriebscockpit. Zwei Routerregressionen prüfen den
+Start auch bei nicht erreichbarer Providerabfrage und ohne schreibende Aufträge.
