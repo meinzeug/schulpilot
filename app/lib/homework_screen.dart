@@ -874,8 +874,14 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                       if ((selected!['instruction_quote'] ?? '')
                               .toString()
                               .isNotEmpty &&
-                          selected!['instruction_quote'] !=
-                              selected!['source_quote'])
+                          !selected!['source_quote']
+                              .toString()
+                              .replaceAll(RegExp(r'\s+'), ' ')
+                              .contains(
+                                selected!['instruction_quote']
+                                    .toString()
+                                    .replaceAll(RegExp(r'\s+'), ' '),
+                              ))
                         LearningContent(selected!['instruction_quote']),
                       LearningContent(selected!['source_quote']),
                       if (canWrite) ...[

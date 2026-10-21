@@ -31,6 +31,7 @@ instruction_quote enthält die dazugehörige wörtliche Arbeitsanweisung oder ge
 falls nicht vorhanden leer. Bewahre damit den Auftrag auch bei einzelnen Unteraufgaben.
 Kurzer Titel ohne Lösung. Beispiele nicht als verpflichtende Aufgaben ausgeben. Bei fehlenden
 Angaben freundlich konkret nachfragen; Unsicherheit erhalten. more_tasks ehrlich angeben.
+Erfasse auch zusätzliche Arbeitsaufträge wie Begründen oder Beschreiben; Regeln selbst sind keine Pflichtaufgaben.
 Alle anderen Aktionen: tasks leer. Bearbeite nur homework.task.source_quote.
 Hilf beim VERSTEHEN des Sinns und der nächsten eigenen Handlung. Gib NIE die fertige Lösung
 der Originalaufgabe, keinen fertigen Antwortsatz, keine ausgefüllte Lücke und kein Endergebnis.
@@ -109,6 +110,19 @@ def bind_sources(schema, payload):
     task = schema["$defs"]["Task"]
     replace(task["properties"], task["required"], "source_quote", optional=False)
     replace(task["properties"], task["required"], "instruction_quote", optional=True)
+    action = (payload.get("homework") or {}).get("action", "analyze")
+    schema["properties"]["phase"]["enum"] = ["analyzed" if action == "analyze" else "feedback" if action == "check" else "scaffold", "clarify"]
+    if action != "analyze":
+        # The source is already selected and checked by the server. No model
+        # decision about the help's phase or its task reference is needed.
+        quote = payload["homework"]["task"]["source_quote"][:600]
+        if quote not in candidates:
+            candidates.append(quote)
+        schema["properties"]["source_quote_index"] = {"type": "integer", "enum": [candidates.index(quote)]}
+        schema["properties"]["tasks"]["maxItems"] = 0
+        schema["properties"]["understanding_question"] = {"type": "string", "minLength": 1, "maxLength": 240}
+    if action != "example":
+        schema["properties"]["example"] = {"type": "null"}
     return {**payload, "homework_source_candidates": candidates}, candidates
 
 
@@ -155,10 +169,15 @@ def enrich_context(db, child, turn, payload):
         raise HTTPException(422, "Schreibe zuerst deinen eigenen Versuch auf.")
     if action == "analyze" and (data.get("analysis_id") or data.get("task_id") or data.get("draft")):
         raise HTTPException(422, "Die erste Aufgabenübersicht benötigt noch keinen eigenen Versuch.")
+    selected_content = None
+    if task:
+        instruction = task.get("instruction_quote", "")
+        selected_content = "\n".join([instruction, task["source_quote"]]) if (
+            instruction and normalized(instruction) not in normalized(task["source_quote"])) else task["source_quote"]
     return {**payload, "homework": {k: data[k] for k in ("action", "draft", "hint_level") if k in data}
             | {"task": {k: task.get(k, "") for k in ("title", "source_quote", "instruction_quote")} if task else None}, "sources": [
         {**source, "content": source["content"] if action == "analyze" else
-         "\n".join(v for v in (task.get("instruction_quote"), task["source_quote"]) if v)}
+         selected_content}
         for source in payload["sources"]], "foundations": []}
 
 

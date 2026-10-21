@@ -290,6 +290,41 @@ def test_provider_adapter_decodes_bound_homework_evidence(book, monkeypatch):
     assert "source_quote_index" in calls[0]["text"]["format"]["schema"]["required"]
 
 
+@pytest.mark.parametrize("action,phase", [("question", "scaffold"), ("explain", "scaffold"), ("check", "feedback"), ("example", "scaffold")])
+def test_help_schema_binds_phase_and_selected_task_instead_of_guessing(action, phase):
+    from schulpilot.providers import strict_schema
+
+    schema = strict_schema(homework.HomeworkOutput, preserve_limits=True)
+    _, candidates = homework.bind_sources(schema, {"homework": {"action": action, "task": {"source_quote": TEXT}},
+                                                   "sources": [{"content": TEXT}]})
+    assert schema["properties"]["phase"]["enum"] == [phase, "clarify"]
+    indices = schema["properties"]["source_quote_index"]["enum"]
+    assert [candidates[index] for index in indices] == [TEXT]
+    assert schema["properties"]["tasks"]["maxItems"] == 0
+    assert schema["properties"]["understanding_question"]["type"] == "string"
+    if action != "example":
+        assert schema["properties"]["example"] == {"type": "null"}
+
+
+def test_existing_instruction_is_not_duplicated_and_example_is_in_followup_context(book, transport):
+    aid = analyze(book, transport)
+    with DB.begin() as db:
+        turn = db.get(TutorTurn, aid)
+        reply = copy.deepcopy(turn.reply)
+        reply["tasks"][0]["instruction_quote"] = TEXT
+        turn.reply = reply
+    example = {"task": "Ein anderes Rechteck ist 5 cm lang und 3 cm breit.", "first_step": "Notiere 5 mal 3."}
+    transport["output"] = output(example=example)
+    previous = ask(book, "example", analysis=aid)
+    finish()
+    transport["output"] = output()
+    assert ask(book, "question", analysis=aid, reply_to=previous.json()["id"]).status_code == 202
+    finish()
+    context = transport["calls"][-1]
+    assert context["sources"][0]["content"] == TEXT
+    assert context["history"][-1]["example"] == example
+
+
 def test_validation_audit_is_static_and_does_not_store_model_text(book, transport):
     aid = analyze(book, transport)
     transport["output"] = output(source_quote="Private invented reference must not appear in audit")

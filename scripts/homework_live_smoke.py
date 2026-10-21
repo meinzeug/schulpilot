@@ -118,7 +118,7 @@ def main():
         login(child, data, "child")
         login(parent, data, "parent")
         try:
-            assert expect(child.get("/health"))["version"] == "1.16.1"
+            assert expect(child.get("/health"))["version"] == "1.16.2"
             for spec in manifest:
                 row = data["journal"].setdefault(spec["name"], {"name": spec["name"], "upload_key": "hwqa-upload-" + secrets.token_hex(16)})
                 save(data)
