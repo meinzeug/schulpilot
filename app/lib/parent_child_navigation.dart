@@ -20,7 +20,8 @@ class ParentChildNavigation extends StatelessWidget {
   static const destinations = [
     ('overview', 'Überblick', Icons.space_dashboard_outlined),
     ('progress', 'Lernstand', Icons.insights_rounded),
-    ('plan', 'Plan & Termine', Icons.event_note_rounded),
+    ('plan', 'Lernplan', Icons.route_outlined),
+    ('homework', 'Hausaufgaben', Icons.edit_note_rounded),
     ('materials', 'Hefte', Icons.auto_stories_outlined),
     ('words', 'Wörter', Icons.translate_rounded),
     ('grades', 'Noten', Icons.school_outlined),
@@ -30,7 +31,8 @@ class ParentChildNavigation extends StatelessWidget {
 
   static String location(String childId, String section) => switch (section) {
     'progress' => '/progress/$childId',
-    'plan' => '/child/$childId?bereich=plan',
+    'plan' => '/parent-plan/$childId',
+    'homework' => '/parent-homework/$childId',
     'history' => '/child/$childId?bereich=verlauf',
     'materials' => '/library/$childId',
     'words' => '/vocabulary/$childId',

@@ -160,15 +160,21 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                 SizedBox(height: 20),
                 if (ready)
                   ActionButton(
-                    label: 'Los geht’s',
-                    icon: Icons.play_arrow_rounded,
+                    label: widget.state.isChild
+                        ? 'Los geht’s'
+                        : 'Übungen ansehen',
+                    icon: widget.state.isChild
+                        ? Icons.play_arrow_rounded
+                        : Icons.visibility_outlined,
                     onPressed: () async {
                       if (!sameOwner) return;
                       final route = ModalRoute.of(context);
                       if (route?.isCurrent == false) return;
                       final requestJob = widget.jobId;
                       final id = job!['result']['unit_id'];
-                      await widget.state.api.post('/units/$id/start');
+                      if (widget.state.isChild) {
+                        await widget.state.api.post('/units/$id/start');
+                      }
                       if (context.mounted &&
                           sameOwner &&
                           (route?.isCurrent ?? true) &&
@@ -185,9 +191,16 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                   ),
                 SizedBox(height: 12),
                 TextButton.icon(
-                  onPressed: () => openRoute(context, '/app'),
+                  onPressed: () => openRoute(
+                    context,
+                    widget.state.isParent
+                        ? '/parent-plan/${widget.childId}'
+                        : '/app',
+                  ),
                   icon: Icon(Icons.home_outlined),
-                  label: Text('Zur Startseite'),
+                  label: Text(
+                    widget.state.isParent ? 'Zum Lernplan' : 'Zur Startseite',
+                  ),
                 ),
               ],
             ),

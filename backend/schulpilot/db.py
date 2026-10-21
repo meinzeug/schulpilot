@@ -151,6 +151,7 @@ class Child(Base):
     region = Column(String(80), default="", nullable=False)
     preferences = Column(JSON, default=dict, nullable=False)
     grade_planning_enabled = Column(Boolean, default=True, server_default=true(), nullable=False)
+    parent_review_settings = Column(JSON, default=dict, server_default="{}", nullable=False)
 
 
 class Subject(Base):
@@ -356,6 +357,8 @@ class Assignment(Base):
     kind = Column(String(24), nullable=False)  # parent, exam, homework, interest
     origin_kind = Column(String(24))
     source_key = Column(String(64))
+    request_digest = Column(String(64))
+    source_unit_id = Column(ForeignKey("learning_units.id", ondelete="SET NULL", use_alter=True, name="fk_assignment_source_unit"))
     source_revisions = Column(JSON, default=list, server_default="[]", nullable=False)
     source_status = Column(String(20), default="confirmed", server_default="confirmed", nullable=False)
     subject = Column(String(80), nullable=False)
@@ -497,6 +500,22 @@ class TutorTurn(Base):
     source_revisions = Column(JSON, default=list, nullable=False)
     job_id = Column(ForeignKey("jobs.id", ondelete="SET NULL"))
     created = Column(Integer, default=lambda: int(now()), nullable=False, index=True)
+
+
+class ParentLearningReview(Base):
+    __tablename__ = "parent_learning_reviews"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    family_id = Column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False)
+    requested_by = Column(ForeignKey("users.id", ondelete="SET NULL"))
+    job_id = Column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    signature = Column(String(64), nullable=False)
+    observations = Column(JSON, default=dict, nullable=False)
+    report = Column(JSON)
+    status = Column(String(20), default="queued", nullable=False)
+    error = Column(String(500))
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    finished = Column(Integer)
 
 
 class Attempt(Base):

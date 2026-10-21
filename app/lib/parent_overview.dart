@@ -6,6 +6,7 @@ import 'coaching_panel.dart';
 import 'daily_plan_panel.dart';
 import 'parent_child_navigation.dart';
 import 'parent_workspace_ui.dart';
+import 'parent_insights_panel.dart';
 import 'practice_evidence.dart';
 import 'preparation_card.dart';
 import 'ui.dart';
@@ -13,7 +14,14 @@ import 'ui.dart';
 /// A read-only projection of saved server evidence, with planning kept separate.
 class ParentOverview extends StatelessWidget {
   final Json data;
-  const ParentOverview({super.key, required this.data});
+  final AppState? state;
+  final int revision;
+  const ParentOverview({
+    super.key,
+    required this.data,
+    this.state,
+    this.revision = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +73,13 @@ class ParentOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (state != null)
+          ParentInsightsPanel(
+            state!,
+            childId: childId,
+            compact: true,
+            revision: revision,
+          ),
         ParentWorkspaceHero(
           eyebrow: 'EUER LERNKOMPASS',
           title: 'Lernstand auf einen Blick',

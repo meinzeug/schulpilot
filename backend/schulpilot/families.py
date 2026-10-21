@@ -462,7 +462,10 @@ def export_child(db, child):
     for model in (LearningTipContext, LearningTipInteraction, CatalogRefresh):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
             for row in db.scalars(select(model).where(model.child_id == child.id))]
-    for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay, TutorTurn):
+    from .db import ParentLearningReview
+
+    result["parent_review_settings"] = child.parent_review_settings
+    for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay, TutorTurn, ParentLearningReview):
         rows = list(db.scalars(select(model).where(model.child_id == child.id)))
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns} for row in rows]
     from .grades import grade_data

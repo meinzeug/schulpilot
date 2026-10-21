@@ -483,6 +483,12 @@ def create_unit(
             )
         if assignment.material_id:
             material_id = assignment.material_id
+        if assignment.source_revisions:
+            for ref in assignment.source_revisions:
+                source = db.get(Material, ref["id"])
+                if not source or source.child_id != child.id or not source.confirmed or source.revision != ref["revision"]:
+                    raise HTTPException(409, "Die Auftragsquellen wurden geändert. Bitte das Lernziel zuerst prüfen.")
+            review_sources = assignment.source_revisions
     if data.review_of:
         previous = db.get(LearningUnit, data.review_of)
         if not previous or previous.child_id != child.id or previous.status != "completed":

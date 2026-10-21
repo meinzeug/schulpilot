@@ -1,5 +1,12 @@
 # Zwei Erscheinungsbilder: Cyber-Lerncockpit
 
+Elternausbau21.10.2026: gleiche Kindnavigation mit Lernstand, Lernplan und
+Hausaufgaben. Lernkompass zeigt aktuelle Aufgabenbelege vor der datierten
+KI-Einschätzung; drei klare Lernplanansichten statt verschachtelter Formulare.
+Hausaufgabenlisten kennzeichnen Selbstangaben ausdrücklich. Gemeinsame Palette,
+große Trefferflächen und begrenzte Kartenbreite bleiben erhalten. Fachlicher
+Ablauf und Datenschutz in [PARENT_LEARNING.md](PARENT_LEARNING.md).
+
 Stand20.10.2026, Zielversion1.15.0+65. Gemeinsame Flutter-Oberfläche für Web und
 Android; Kinder, Eltern und Administration verwenden dieselben semantischen
 Farben in `app/lib/app_palette.dart` und kontrollierten Komponenten in `ui.dart`.

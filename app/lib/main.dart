@@ -13,6 +13,8 @@ import 'collection_screen.dart';
 import 'notebook_screen.dart';
 import 'material_screen.dart';
 import 'homework_screen.dart';
+import 'parent_homework_screen.dart';
+import 'parent_plan_screen.dart';
 import 'material_actions.dart';
 import 'settings_screen.dart';
 import 'installation_screen.dart';
@@ -184,6 +186,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         return '/admin/push';
       }
       if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
+      if ((path.startsWith('/parent-plan/') ||
+              path.startsWith('/parent-homework/')) &&
+          !widget.state.isParent) {
+        return '/app';
+      }
       if ((path == '/words' ||
               path.startsWith('/messages/') ||
               path.startsWith('/vocabulary/') ||
@@ -304,6 +311,20 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           ),
           childId: s.pathParameters['id']!,
           subjectId: s.pathParameters['subjectId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/parent-plan/:childId',
+        builder: (context, s) => ParentPlanScreen(
+          widget.state,
+          childId: s.pathParameters['childId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/parent-homework/:childId',
+        builder: (context, s) => ParentHomeworkScreen(
+          widget.state,
+          childId: s.pathParameters['childId']!,
         ),
       ),
       GoRoute(

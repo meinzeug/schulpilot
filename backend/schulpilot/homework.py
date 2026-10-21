@@ -345,7 +345,8 @@ def overview(child_id: str, cursor: str | None = Query(None, max_length=32), p=D
 
 @router.get("/materials/{material_id}/homework")
 def detail(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
-    material, _ = own_material(db, p, material_id)
+    material, child = own_material(db, p, material_id)
+    from .db import User
     from .materials import material_view
     from .tutor import turn_data
 
@@ -358,7 +359,7 @@ def detail(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
         state.pop("draft", None)
         state.pop("drafts", None)
         state.pop("question", None)
-    return {"material": material_view(material.id, p, db), "state": state,
+    return {"material": material_view(material.id, p, db), "state": state, "child_name": db.get(User, child.user_id).display_name,
             "source_changed": bool(state and state.get("source_revision") != material.revision),
             "turns": [turn_data(db, turn) for turn in turns], "older_history": len(turns) == 40}
 
@@ -406,7 +407,7 @@ def save_state(material_id: str, data: StateUpdate, p=Depends(child_user), db=De
                     + bool((m.homework_state or {}).get("question")) for m in other_drafts)
         if count + sum(bool(v) for v in data.drafts.values()) + bool(data.question) > 8:
             raise HTTPException(409, "Es sind bereits acht Entwürfe offen. Speichere oder leere zuerst einen anderen Versuch.")
-    material.homework_state = {**data.model_dump(exclude={"request_key", "revision"}),
+    material.homework_state = {**data.model_dump(exclude={"request_key", "revision"}), "done": list(dict.fromkeys(data.done)),
         "revision": data.revision + 1, "draft_updated": int(now()),
         "requests": [*state.get("requests", [])[-7:], {"key": data.request_key, "digest": fingerprint}]}
     db.commit()

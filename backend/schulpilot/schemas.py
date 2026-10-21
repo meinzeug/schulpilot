@@ -124,6 +124,8 @@ class AssignmentCreate(Strict):
     due: date | None = None
     scheduled_for: date | None = None
     material_id: str | None = None
+    source_unit_id: str | None = None
+    revision: int | None = Field(default=None, ge=1)
     mandatory: bool = True
 
     @model_validator(mode="after")

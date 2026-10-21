@@ -71,7 +71,20 @@ Future<({AppState state, GoRouter router})> mount(
       AppState(
           api: Api(
             base: 'https://example.invalid/api',
-            client: MockClient(handle),
+            client: MockClient((r) async {
+              if (r.url.path.endsWith('/parent-insights')) {
+                expect(r.method, 'GET');
+                return reply({
+                  'settings': {'enabled': false, 'revision': 0},
+                  'topics': [],
+                  'totals': {},
+                  'history': [],
+                  'can_manage': true,
+                  'eligible': false,
+                });
+              }
+              return handle(r);
+            }),
           ),
         )
         ..user = {

@@ -11,6 +11,7 @@ import 'daily_plan_panel.dart';
 import 'learning_tips.dart';
 import 'child_today_widgets.dart';
 import 'learning_navigation.dart';
+import 'homework_screen.dart' show homeworkKey;
 import 'parent_child_navigation.dart';
 import 'parent_overview.dart';
 import 'parent_workspace_ui.dart';
@@ -630,7 +631,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       childName: child['display_name'],
                       subtitle: 'Klasse ${child['grade']}',
                     ),
-                    if (tab == 0) ParentOverview(data: data),
+                    if (tab == 0)
+                      ParentOverview(
+                        data: data,
+                        state: state,
+                        revision: version,
+                      ),
                     if (tab == 1) ...[
                       ParentWorkspaceHero(
                         eyebrow: 'GEMEINSAM PLANEN',
@@ -2151,13 +2157,22 @@ Future<void> assignmentDialog(
   List materials, {
   Json? existing,
   Json? source,
+  Json? sourceUnit,
   String? plannedFor,
 }) async {
   final subject = TextEditingController(
-        text: existing?['subject'] ?? source?['subject'] ?? 'Mathematik',
+        text:
+            existing?['subject'] ??
+            source?['subject'] ??
+            sourceUnit?['subject'] ??
+            'Mathematik',
       ),
       topic = TextEditingController(
-        text: existing?['topic'] ?? source?['topic'] ?? '',
+        text:
+            existing?['topic'] ??
+            source?['topic'] ??
+            sourceUnit?['topic'] ??
+            '',
       ),
       note = TextEditingController(text: existing?['note'] ?? ''),
       due = TextEditingController(
@@ -2171,6 +2186,8 @@ Future<void> assignmentDialog(
   final form = GlobalKey<FormState>();
   String kind = existing?['kind'] == 'exam' ? 'exam' : 'parent';
   String? materialId = existing?['material_id'] ?? source?['id'];
+  String? sourceUnitId = existing?['source_unit_id'] ?? sourceUnit?['id'];
+  final requestKey = homeworkKey();
   bool mandatory = existing?['mandatory'] ?? true;
   String? selectedMaterialTitle =
       source?['title'] ??
@@ -2288,6 +2305,7 @@ Future<void> assignmentDialog(
                         if (selected != null && ctx.mounted) {
                           set(() {
                             materialId = selected['id'];
+                            sourceUnitId = null;
                             selectedMaterialTitle =
                                 selected['topic']?.toString().isNotEmpty == true
                                 ? selected['topic']
@@ -2309,6 +2327,7 @@ Future<void> assignmentDialog(
                       TextButton(
                         onPressed: () => set(() {
                           materialId = null;
+                          sourceUnitId = null;
                           selectedMaterialTitle = null;
                         }),
                         child: Text('Ohne Heftseite fortfahren'),
@@ -2350,12 +2369,16 @@ Future<void> assignmentDialog(
                       : DateFormat('yyyy-MM-dd')
                             .format(planningDate(scheduled.text)!),
                   'material_id': materialId,
+                  'source_unit_id': sourceUnitId,
+                  if (existing != null && existing['revision'] != null)
+                    'revision': existing['revision'],
                   'mandatory': mandatory,
                 };
                 if (existing == null) {
                   await state.api.post(
                     '/children/${child['id']}/assignments',
                     body,
+                    {'Idempotency-Key': requestKey},
                   );
                 } else {
                   await state.api.put(

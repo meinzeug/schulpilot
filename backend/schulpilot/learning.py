@@ -131,7 +131,7 @@ def material_data(material):
 def assignment_data(assignment):
     return {
         k: getattr(assignment, k)
-        for k in ("id", "kind", "origin_kind", "source_status", "source_revisions", "subject", "topic", "note", "due", "scheduled_for", "mandatory", "done", "material_id")
+        for k in ("id", "revision", "kind", "origin_kind", "source_status", "source_revisions", "subject", "topic", "note", "due", "scheduled_for", "mandatory", "done", "material_id", "source_unit_id")
     }
 
 
@@ -703,6 +703,9 @@ def plan(db, child, *, learning_paths=None, include_language=True):
         item["_grade_priority"] = grade_priorities.get(subject_key(item["subject"]), 0)
         if item["_grade_priority"]:
             item["focus_reason"] = "Diesen Stoff üben wir besonders regelmäßig."
+    from .parent_insights import apply_guidance
+
+    apply_guidance(db, child, candidates)
     proposal = distribute(
         candidates,
         prefs,
@@ -1034,14 +1037,21 @@ def activity(child_id: str, before: int | None = None, p=Depends(authenticated),
 
 
 @router.post("/children/{child_id}/assignments", status_code=201)
-def add_assignment(child_id: str, data: s.AssignmentCreate, p=Depends(parent), db=Depends(get_db)):
-    child = child_access(db, p, child_id, write=True)
-    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
-    if data.material_id:
-        material = db.get(Material, data.material_id)
-        if not material or material.child_id != child.id:
-            raise HTTPException(404, "Material nicht gefunden.")
-    a = Assignment(child_id=child.id, **data.model_dump(mode="json"))
+def add_assignment(child_id: str, data: s.AssignmentCreate, key: str = Header(default="", alias="Idempotency-Key"), p=Depends(parent), db=Depends(get_db)):
+    from .parent_insights import fingerprint, lock_parent
+    from .parent_plans import assignment_values
+
+    child = lock_parent(db, p, child_id)
+    if len(key) > 80:
+        raise HTTPException(422, "Anfrageschlüssel ist zu lang.")
+    source_key = fingerprint(["parent-topic", p.user.id, key]) if key else None
+    request_digest = fingerprint(data.model_dump(mode="json"))
+    old = db.scalar(select(Assignment).where(Assignment.source_key == source_key)) if key else None
+    if old:
+        if old.child_id != child.id or old.request_digest != request_digest:
+            raise HTTPException(409, "Dieser Schlüssel gehört zu einem anderen Lernziel.")
+        return assignment_data(old)
+    a = Assignment(child_id=child.id, **assignment_values(db, child, data), source_key=source_key, request_digest=request_digest)
     db.add(a)
     record(db, child.id, "parent_assignment", {"subject": data.subject, "topic": data.topic, "due": a.due})
     db.commit()
@@ -1050,16 +1060,16 @@ def add_assignment(child_id: str, data: s.AssignmentCreate, p=Depends(parent), d
 
 @router.put("/children/{child_id}/assignments/{assignment_id}")
 def edit_assignment(child_id: str, assignment_id: str, data: s.AssignmentCreate, p=Depends(parent), db=Depends(get_db)):
-    child_access(db, p, child_id, write=True)
-    db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
+    from .parent_insights import lock_parent
+    from .parent_plans import assignment_values
+
+    child = lock_parent(db, p, child_id)
     a = db.get(Assignment, assignment_id)
     if not a or a.child_id != child_id:
         raise HTTPException(404, "Lernauftrag nicht gefunden.")
-    if data.material_id:
-        material = db.get(Material, data.material_id)
-        if not material or material.child_id != child_id:
-            raise HTTPException(404, "Material nicht gefunden.")
-    values = data.model_dump(mode="json")
+    if data.revision is not None and data.revision != a.revision:
+        raise HTTPException(409, "Das Lernziel wurde inzwischen geändert. Bitte neu laden.")
+    values = assignment_values(db, child, data, a)
     if a.origin_kind is None:
         a.origin_kind = a.kind
     a.source_status = "confirmed"  # a managing parent explicitly reviews it

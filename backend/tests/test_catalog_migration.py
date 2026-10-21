@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from schulpilot.db import Attempt, Child, Family, LearningUnit, User, engine
-from sqlalchemy import text
+from schulpilot.db import Attempt, Family, LearningUnit, User, engine
+from sqlalchemy import MetaData, Table, text
 
 
 def test_postgres_catalog_upgrade_keeps_private_sources_answers_and_stable_subjects():
@@ -42,7 +42,9 @@ def test_postgres_catalog_upgrade_keeps_private_sources_answers_and_stable_subje
                     verified=True,
                 )
             )
-            db.execute(Child.__table__.insert().values(id="c", family_id="f", user_id="u", grade=6))
+            historical = Table("children", MetaData(), autoload_with=db)
+            db.execute(historical.insert().values(id="c", family_id="f", user_id="u", grade=6, subjects=[],
+                school_type="", region="", preferences={}, grade_planning_enabled=True))
             subject = db.scalar(text("SELECT id FROM subjects WHERE key='mathematik'"))
             db.execute(
                 text(

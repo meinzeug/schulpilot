@@ -131,6 +131,9 @@ def remove(db, child, ids, *, journal=True):
     ids = set(ids)
     if not ids:
         return 0
+    from .parent_insights import invalidate
+
+    invalidate(db, child.id)
     rows = list(
         db.scalars(
             select(LearningUnit)

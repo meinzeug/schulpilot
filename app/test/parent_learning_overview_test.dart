@@ -13,6 +13,7 @@ import 'package:schulpilot/dashboard.dart';
 import 'package:schulpilot/ui.dart';
 import 'package:schulpilot/parent_child_navigation.dart';
 import 'package:schulpilot/parent_overview.dart';
+import 'package:schulpilot/parent_plan_screen.dart';
 
 Json parentOverview() {
   final data = jsonDecode(
@@ -95,6 +96,17 @@ Future<({AppState state, GoRouter router})> mountParent(
           api: Api(
             base: 'https://example.invalid/api',
             client: MockClient((request) async {
+              if (request.url.path.endsWith('/parent-insights')) {
+                expect(request.method, 'GET');
+                return jsonResponse({
+                  'settings': {'enabled': false, 'revision': 0},
+                  'topics': [],
+                  'totals': {},
+                  'history': [],
+                  'can_manage': permission != 'view',
+                  'eligible': false,
+                });
+              }
               requests.add(request);
               expect(
                 request.method,
@@ -104,6 +116,24 @@ Future<({AppState state, GoRouter router})> mountParent(
               );
               if (request.url.path.endsWith('/activity')) {
                 return jsonResponse(activities);
+              }
+              if (request.url.path.endsWith('/learning-plan')) {
+                return jsonResponse({
+                  'child': data['child'],
+                  'plan': data['plan'],
+                  'pagination': {'page': 1, 'pages': 1},
+                  'instructional_plans': [],
+                  'recent_round_topics': [],
+                  'can_manage': permission != 'view',
+                  'topics': (data['assignments'] as List)
+                      .where(
+                        (a) =>
+                            request.url.queryParameters['include_completed'] ==
+                                'true' ||
+                            a['done'] != true,
+                      )
+                      .toList(),
+                });
               }
               if (request.url.path.endsWith('/learning')) {
                 return jsonResponse({
@@ -151,6 +181,11 @@ Future<({AppState state, GoRouter router})> mountParent(
           childId: data['child']['id'],
           section: route.uri.queryParameters['bereich'] ?? 'overview',
         ),
+      ),
+      GoRoute(
+        path: '/parent-plan/:id',
+        builder: (_, s) =>
+            ParentPlanScreen(state, childId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/elsewhere',
@@ -430,9 +465,10 @@ void main() {
       final requests = <http.Request>[];
       await mountParent(tester, parentOverview(), requests, permission: 'view');
       await tapText(tester, 'Plan ansehen');
+      await tapText(tester, 'Woche & Vorgaben');
       expect(find.text('Lernvorgaben anpassen'), findsNothing);
       expect(find.text('Auftrag oder Klassenarbeit anlegen'), findsNothing);
-      expect(find.textContaining('Mindestziele:'), findsOneWidget);
+      expect(find.textContaining('Mindestziel:'), findsOneWidget);
       expect(requests.every((request) => request.method == 'GET'), true);
       await tester.pumpWidget(const SizedBox());
     },
@@ -488,13 +524,20 @@ void main() {
           'paused': false,
           'planned_minutes': 20,
           'items': [
-            {'kind': 'none', 'subject': 'Mathematik und Naturwissenschaften'},
+            {
+              'kind': 'none',
+              'id': 'example',
+              'subject': 'Mathematik und Naturwissenschaften',
+              'topic': 'Künstliches Thema',
+              'estimated_minutes': 20,
+            },
           ],
         },
     ];
     await mountParent(tester, data, requests, width: 320, textScale: 2);
     await tapText(tester, 'Plan ansehen');
-    expect(find.text('ca. 20 Min.'), findsNWidgets(7));
+    await tapText(tester, 'Woche & Vorgaben');
+    expect(find.text('20 Minuten vorgeschlagen'), findsNWidgets(14));
     expect(requests.every((r) => r.method == 'GET'), isTrue);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -537,15 +580,11 @@ void main() {
       final requests = <http.Request>[];
       await mountParent(tester, parentOverview(), requests);
       await tapText(tester, 'Plan ansehen');
-      expect(
-        tester
-            .widget<ChildDetailScreen>(find.byType(ChildDetailScreen).last)
-            .section,
-        'plan',
-      );
+      expect(find.byType(ParentPlanScreen), findsOneWidget);
+      await tapText(tester, 'Meine Themen');
       expect(find.text('Mathematik · Brüche'), findsWidgets);
       expect(find.text('Englisch · Verben'), findsNothing);
-      await tapText(tester, 'Erledigte Aufträge anzeigen');
+      await tapText(tester, 'Abgeschlossene Themen mit anzeigen');
       expect(find.text('Englisch · Verben'), findsOneWidget);
       expect(requests.every((r) => r.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);

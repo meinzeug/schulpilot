@@ -11,6 +11,7 @@ import 'learning_content.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
+import 'parent_child_navigation.dart';
 import 'ui.dart';
 
 String homeworkKey() =>
@@ -720,14 +721,17 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     return PageFrame(
       state: widget.state,
       title: 'Hausaufgaben',
+      showTitle: widget.state.isChild,
       subtitle: 'Verstehen. Selbst versuchen. Deinen Weg finden.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.state.isParent) ParentChildNavigation(childId: widget.childId,
+            childName: data?['child_name'], selected: 'homework', subtitle: 'Gespeicherte Aufgaben & Lernhilfen'),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => context.go('/homework/${widget.childId}'),
+              onPressed: () => context.go(widget.state.isParent ? '/parent-homework/${widget.childId}' : '/homework/${widget.childId}'),
               icon: Icon(Icons.arrow_back),
               label: Text('Alle Hausaufgabenfotos'),
             ),

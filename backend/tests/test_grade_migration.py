@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from schulpilot.db import Base, Child, Family, GradeImport, SchoolGrade, User, engine
-from sqlalchemy import inspect, select, text
+from sqlalchemy import MetaData, Table, inspect, select, text
 
 
 def test_head_migration_matches_mapped_columns_and_grade_import_is_readable():
@@ -73,7 +73,10 @@ def test_real_postgres_grade_upgrade_preserves_dated_rows_and_unknown_dates():
                     verified=True,
                 )
             )
-            con.execute(Child.__table__.insert().values(id="c", family_id="f", user_id="u", grade=6, subjects=[]))
+            # Seed the historical schema without defaults from the current ORM.
+            historical = Table("children", MetaData(), autoload_with=con)
+            con.execute(historical.insert().values(id="c", family_id="f", user_id="u", grade=6, subjects=[],
+                school_type="", region="", preferences={}, grade_planning_enabled=True))
             con.execute(
                 text(
                     "INSERT INTO school_grades(id,child_id,subject,topic,kind,scale,value,weight,assessed_on,note,revision,created,updated) "

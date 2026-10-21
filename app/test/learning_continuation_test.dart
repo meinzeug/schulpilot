@@ -387,4 +387,34 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     router.dispose();
   });
+
+  testWidgets(
+    'Parents inspect a prepared round without starting child activity',
+    (tester) async {
+      final state = stateFor((r) async {
+        expect(r.method, 'GET');
+        return response({
+          'kind': 'unit',
+          'status': 'completed',
+          'result': {'unit_id': 'ready'},
+        });
+      })..user = {'id': 'parent', 'role': 'parent'};
+      final router = routerFor(
+        state,
+        LearningPreparationScreen(state, childId: 'child', jobId: 'job'),
+      );
+      await tester.pumpWidget(
+        MaterialApp.router(theme: appTheme(), routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Los geht’s'), findsNothing);
+      expect(find.text('Zum Lernplan'), findsOneWidget);
+      await tester.ensureVisible(find.text('Übungen ansehen'));
+      await tester.tap(find.text('Übungen ansehen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Saved unit opened'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      router.dispose();
+    },
+  );
 }

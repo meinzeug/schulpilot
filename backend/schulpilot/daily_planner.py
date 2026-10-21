@@ -130,6 +130,7 @@ def distribute(candidates, prefs, today, *, daily_seconds=0, weekly_seconds=0, c
                     (weighted_subjects if weighted_plan else subjects).get(item["subject"], 0) / (1 + item.get("_grade_priority", 0)),
                     -item.get("_grade_priority", 0),
                     {"continue": 0, "review": 1, "parent_goal": 0, "material": 2}[item["reason"]],
+                    item.get("_ai_rank", 999),
                     lanes.get(recent, 0),
                     not recent,
                     item["subject"] not in prefs.focus_subjects,

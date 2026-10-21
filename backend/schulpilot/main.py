@@ -31,6 +31,8 @@ from . import (
     materials,
     notification_inbox,
     notifications,
+    parent_insights,
+    parent_plans,
     public_privacy,
     releases,
     routing_admin,
@@ -256,6 +258,8 @@ for router in (
     learning_controller.router,
     controller_jobs.router,
     instructional_decisions.router,
+    parent_insights.router,
+    parent_plans.router,
     routing_admin.router,
     unit_actions.router,
 ):

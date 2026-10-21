@@ -1,3 +1,11 @@
+Eltern-Lernkompass21.10.2026, Zielversion1.17.0+70: eigene bestehende
+Attempt-/Activity-Auswertung, reservierte Jobs und begrenzter OpenRouter-
+Entscheidungsauftrag. Kein zusätzlicher Anbieter, neues Paket oder Microservice.
+Additive Migration0025; gemeinsame Flutter-Navigation, Themenplanung und
+Eltern-Hausaufgabenansicht. Fachliche Abgrenzung und Schnittstellen in
+[PARENT_LEARNING.md](PARENT_LEARNING.md); tatsächliche Freigabe in STATUS.md.
+Keine aus Bildschirmlaufzeit abgeleitete KI-Kompetenz oder Wirksamkeitsbehauptung.
+
 Hausaufgabenwerkstatt21.10.2026, Version1.16.2+69: eigener Fotobereich,
 quellengeprüfte Aufgabenübersicht, gestufte Lernhilfen und lokale Rechenprüfung.
 Bestehender Foto-/Tutor-/Reservierungsweg, keine zusätzlichen Laufzeitpakete oder

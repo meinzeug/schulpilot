@@ -98,8 +98,8 @@ def process(job_id):
 
         process_language(job_id)
         return
-    if kind in ("coach", "coach_practice", "study_block", "tutor", "controller_check", "decision"):
-        from . import coaching, controller_jobs, instructional_decisions, study_path, tutor
+    if kind in ("coach", "coach_practice", "study_block", "tutor", "controller_check", "decision", "parent_review"):
+        from . import coaching, controller_jobs, instructional_decisions, parent_insights, study_path, tutor
 
         {
             "coach": coaching.process,
@@ -108,6 +108,7 @@ def process(job_id):
             "tutor": tutor.process,
             "controller_check": controller_jobs.process,
             "decision": instructional_decisions.process,
+            "parent_review": parent_insights.process,
         }[kind](job_id)
         return
     result = None
@@ -211,6 +212,9 @@ def process(job_id):
                 "recent_outcomes": difficulties,
                 "review": bool(job.payload.get("review_of")),
             }
+            if assignment and job.kind == "unit":
+                payload.update(required_subject=assignment.subject, required_topic=assignment.topic,
+                               parent_topic=not material and not source_pages)
             if job.kind in ("unit", "package"):
                 from .grades import subject_key
                 from .learning_guidance import strategies
@@ -537,6 +541,9 @@ def maintenance():
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
         db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))
+        from .db import ParentLearningReview
+
+        db.execute(delete(ParentLearningReview).where(ParentLearningReview.created < int(now()) - 365 * 86400))
         from .homework import clear_drafts
 
         clear_drafts(db)
@@ -638,6 +645,9 @@ def main():
                 from .ai_accounting import reconcile_one
 
                 reconcile_one()
+                from .parent_insights import schedule_one
+
+                schedule_one()
                 last_maintenance = now()
             with DB() as db:
                 job_id = claim(db)
