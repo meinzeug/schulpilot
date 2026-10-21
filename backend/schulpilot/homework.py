@@ -478,11 +478,56 @@ def validate_practice_output(data, previous_prompts):
     from .providers import ProviderError
 
     seen = set().union(*(_practice_signatures(prompt) for prompt in previous_prompts))
+    original_operands = {part for signature in seen if signature[0] == "fraction" and signature[1][0] == "add"
+                         for part in signature[1][1]}
     for question in data["questions"]:
         signatures = _practice_signatures(question["prompt"])
-        if signatures & seen:
+        repeats_operand = any(signature[0] == "fraction" and signature[1][0] == "expand" and signature[1][1] in original_operands
+                              for signature in signatures)
+        if signatures & seen or repeats_operand:
             raise ProviderError("Die neue Lernrunde wiederholt eine Hausaufgabe oder bereits gestellte Frage. Deine bisherigen Antworten bleiben erhalten.")
         seen.update(signatures)
+    # Only finite numeric patterns are compared here. A general rule sentence
+    # may be repeated; a worked answer to an original or new check may not.
+    known_numbers = {signature for signature in seen if signature[0] != "text"}
+    explanation = data.get("explanation", "")
+    for paragraph in [explanation, *re.split(r"\n\s*\n", explanation), *explanation.splitlines()]:
+        if _practice_signatures(paragraph) & known_numbers:
+            raise ProviderError("Das Erklärbeispiel nimmt eine Hausaufgabe oder neue Prüfaufgabe vorweg. Die Runde wurde nicht übernommen.")
+
+
+def practice_math_history(materials, previous_prompts):
+    """Expose every original fraction term to the existing finite planner.
+
+    OCR paragraphs can contain several expressions or LaTeX. Their numeric
+    signatures are local planning exclusions, never new source statements.
+    """
+    prompts = [*(m.get("content", "") for m in materials), *previous_prompts]
+    history = list(prompts)
+    for prompt in prompts:
+        for kind, *value in sorted(_practice_signatures(prompt), key=repr):
+            if kind != "fraction":
+                continue
+            signature = value[0]
+            if signature[0] == "add":
+                first, second = signature[1]
+                history.append(f"{first[0]}/{first[1]} + {second[0]}/{second[1]}")
+            elif signature[0] == "expand":
+                history.append(f"Erweitere {signature[1][0]}/{signature[1][1]} mit dem Faktor {signature[2]}.")
+            elif signature[0] == "reduce":
+                history.append(f"Kürze {signature[1][0]}/{signature[1][1]} vollständig.")
+            elif signature[0] == "component":
+                history.append(f"Nenne den {signature[1]} von {signature[2][0]}/{signature[2][1]}.")
+    return list(dict.fromkeys(history))
+
+
+def practice_math_exclusions(materials):
+    """Original operands are not new expansion checks, for any allowed factor."""
+    bases = set()
+    for material in materials:
+        content = re.sub(r"\\(?:d?frac)\{(\d+)\}\{(\d+)\}", r"\1/\2", material.get("content", ""))
+        bases.update(re.findall(r"\b(\d{1,4})\s*/\s*([1-9]\d{0,3})\b", content))
+    return [f"Erweitere {a}/{b} mit dem Faktor {factor}." for a, b in sorted(bases) for factor in (2, 3, 4)]
 
 
 class PracticeRequest(Strict):

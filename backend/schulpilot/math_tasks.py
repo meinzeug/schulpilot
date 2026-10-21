@@ -60,6 +60,22 @@ def _procedure_quote(sources, label):
         )
         if re.search(restricted, content, re.I):
             return None
+    if label == "Brüche erweitern":
+        # A short workbook imperative states the same general operation as
+        # multiplying both parts. Preserve its literal OCR line breaks. This
+        # does not authorize addition or a rule that merely mentions expansion.
+        for material in sources:
+            match = re.search(
+                r"\bErweitere\s+Zähler\s+und\s+Nenner\s+mit\s+(?:derselben|der\s+gleichen)\s+(?:ganzen\s+)?Zahl\b(?:[.!]|(?=\s*(?:\n\s*\n|$)))",
+                material["content"], re.I,
+            )
+            if match and len(match[0]) <= 350:
+                start = max(0, material["content"].rfind(".", 0, match.start()) + 1,
+                            material["content"].rfind("!", 0, match.start()) + 1,
+                            material["content"].rfind("?", 0, match.start()) + 1)
+                prefix = material["content"][start:match.start()]
+                if not re.search(r"\b(?:nicht|niemals|keinesfalls|falsch\w*|morgen|später)\b", prefix, re.I):
+                    return match[0]
     for material in sources:
         for match in re.finditer(r"[^.!?;\r\n]+(?:[.!?;\r\n]+|$)", material["content"]):
             quote = match.group().strip()
@@ -235,7 +251,7 @@ def _task(operation, numbers, phase):
     return prompt + prefix + ": " + help_text + ending, answer
 
 
-def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, seed, *, required_labels=None):
+def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, seed, *, required_labels=None, excluded_prompts=()):
     """Return exact source-backed task specifications, or [] for unknown skills.
 
     Callers supply already authorized, confirmed source snapshots. Explicitly
@@ -269,8 +285,11 @@ def fraction_tasks(materials, subject, topic, previous_prompts, phase, count, se
             label = min(counts, key=counts.get)
             labels.append(label)
             counts[label] += 1
-    used_prompts = {normalized_prompt(prompt) for prompt in previous_prompts}
-    used_signatures = {fraction_task_signature(prompt) for prompt in previous_prompts} - {None}
+    # Exclusions prevent a known example without pretending it was practiced;
+    # goal balancing above still uses only the supplied practice history.
+    forbidden = [*previous_prompts, *excluded_prompts]
+    used_prompts = {normalized_prompt(prompt) for prompt in forbidden}
+    used_signatures = {fraction_task_signature(prompt) for prompt in forbidden} - {None}
     component_counts = {"numerator": 0, "denominator": 0}
     for prompt in previous_prompts:
         signature = fraction_task_signature(prompt)

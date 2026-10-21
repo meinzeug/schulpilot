@@ -231,6 +231,52 @@ def test_only_source_defined_fraction_component_is_used():
         assert_mathematically_correct(task)
 
 
+def test_explicit_workbook_expansion_imperative_survives_literal_ocr_line_breaks():
+    source = ("Zum Addieren brauchen die Brüche denselben\nNenner. "
+              "Erweitere Zähler und Nenner mit\nderselben Zahl.\n\nHausaufgaben\n"
+              r"1) Berechne \(\frac{1}{3} + \frac{1}{6}\).")
+    planned = tasks(materials=[{"content": source}], phase="apply", count=2)
+    goals = source_goals([{"content": source}], "Mathematik", "Brüche addieren")
+    expected = next(goal["id"] for goal in goals if goal["label"] == "Brüche erweitern")
+    assert len(planned) == 2
+    for task in planned:
+        assert task["source_excerpt"] == "Erweitere Zähler und Nenner mit\nderselben Zahl."
+        assert fraction_task_goal(task["prompt"], goals) == expected
+        assert fraction_task_signature(task["prompt"])[0] == "expand"
+        assert_mathematically_correct(task)
+
+
+def test_excluded_examples_are_not_counted_as_practice_when_balancing_goals():
+    original = tasks()
+    planned = fraction_tasks(MATERIALS, "Mathematik", "Brüche", [], "understand", 4, "synthetic-stage",
+        excluded_prompts=[task["prompt"] for task in original])
+    goals = source_goals(MATERIALS, "Mathematik", "Brüche")
+    labels = {goal["id"]: goal["label"] for goal in goals}
+    assert [labels[fraction_task_goal(task["prompt"], goals)] for task in planned] == LABELS
+    assert not {fraction_task_signature(task["prompt"]) for task in planned} & {
+        fraction_task_signature(task["prompt"]) for task in original}
+    for task in planned:
+        assert_mathematically_correct(task)
+
+
+def test_exhausted_exclusions_stop_before_generation_without_substitute_tasks():
+    exclusions = [f"Kürze {a}/{b} vollständig." for b in range(2, 37) for a in range(1, b)]
+    with pytest.raises(ProviderError, match="keine neuen kleinen Zahlenaufgaben"):
+        fraction_tasks([MATERIALS[2]], "Mathematik", "Brüche", [], "apply", 2, "artificial",
+            excluded_prompts=exclusions)
+
+
+@pytest.mark.parametrize("source", [
+    "Nicht so: Erweitere Zähler und Nenner mit derselben Zahl.",
+    "Falsches Beispiel: Erweitere Zähler und Nenner mit derselben Zahl.",
+    "Morgen: Erweitere Zähler und Nenner mit derselben Zahl.",
+    "Erweitere Zähler und Nenner mit derselben Zahl nicht.",
+    "Erweitere Zähler und Nenner mit derselben Zahl, aber nur mit dem Faktor 2.",
+])
+def test_short_expansion_imperative_never_bypasses_negation_future_or_fixed_factors(source):
+    assert tasks(materials=[{"content": source}], count=2) == []
+
+
 def test_addition_alone_does_not_require_an_unconfirmed_reduction_procedure():
     planned = tasks(materials=[MATERIALS[1]], count=5)
     assert len(planned) == 5

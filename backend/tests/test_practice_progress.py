@@ -1,11 +1,12 @@
 """Every persisted exercise contributes, regardless of schedule or minimum."""
 
-
+import pytest
 from schulpilot import coaching
 from schulpilot.db import DB, Activity, Attempt, Child, LearningUnit, now
 from schulpilot.learning import local_day
 from schulpilot.learning_progress import read_ledger, totals
 from schulpilot.synthetic import sample_unit
+from sqlalchemy import select
 from test_learning import child_client, prepared
 
 
@@ -41,6 +42,36 @@ def test_partial_exercise_and_retries_are_immediate_and_identical_for_parent_and
         assert second["assisted_tasks"] == 1 and second["independent_tasks"] == second["needs_practice_tasks"] == 0
         assert second["hints_used"] == 1
         assert child.get(f"/api/units/{unit_id}").json()["learning_progress"]["practice"]["practiced_tasks"] == 1
+
+
+@pytest.mark.parametrize("outcome,bucket", [("correct", "assisted_tasks"),
+    ("uncertain", "uncertain_tasks"), ("incorrect", "needs_practice_tasks")])
+def test_exact_timestamp_ties_use_saved_attempt_order_not_random_ids(api, outcome, bucket):
+    demo, unit_id = prepared(api)
+    with DB.begin() as db:
+        db.add(Attempt(id="f" * 32, unit_id=unit_id, question_id="sum", answer="synthetic first",
+            outcome="incorrect", assisted=False, created=100.25, evaluation={"attempt_number": 1}))
+        db.flush()
+        db.add(Attempt(id="0" * 32, unit_id=unit_id, question_id="sum", answer="synthetic second",
+            outcome=outcome, assisted=True, created=100.25, evaluation={"attempt_number": 2}))
+    data = api.get(f"/api/children/{demo['child_id']}/learning-progress").json()["totals"]
+    assert data["practiced_tasks"] == 1 and data["attempts"] == 2
+    assert data[bucket] == 1 and data["independent_tasks"] == 0
+    assert sum(data[key] for key in ("assisted_tasks", "uncertain_tasks", "needs_practice_tasks")) == 1
+    with DB() as db:
+        assert [(a.id, a.outcome, a.assisted, a.created) for a in db.scalars(select(Attempt).order_by(Attempt.id))] == [
+            ("0" * 32, outcome, True, 100.25), ("f" * 32, "incorrect", False, 100.25)]
+
+
+def test_real_timestamp_order_remains_authoritative_for_legacy_attempts(api):
+    demo, unit_id = prepared(api)
+    with DB.begin() as db:
+        db.add(Attempt(id="f" * 32, unit_id=unit_id, question_id="sum", answer="synthetic first",
+            outcome="incorrect", assisted=False, created=100.25, evaluation={"attempt_number": 3}))
+        db.add(Attempt(id="0" * 32, unit_id=unit_id, question_id="sum", answer="synthetic newer legacy",
+            outcome="correct", assisted=True, created=100.5, evaluation=None))
+    data = api.get(f"/api/children/{demo['child_id']}/learning-progress").json()["totals"]
+    assert data["assisted_tasks"] == 1 and data["needs_practice_tasks"] == 0
 
 
 def test_voluntary_normal_rounds_after_minimum_on_free_day_and_different_roots_all_count(api):

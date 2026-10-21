@@ -16,27 +16,49 @@ router = APIRouter(tags=["Lernstand nach Fächern"])
 COUNTERS = ("practiced_tasks", "attempts", "independent_tasks", "assisted_tasks", "needs_practice_tasks", "uncertain_tasks", "reflection_tasks")
 
 
-def read_ledger(db, child_id, unit_ids=None):
+def _latest_attempts(child_id, unit_ids=None):
     conditions = [LearningUnit.child_id == child_id]
     if unit_ids is not None:
         if not unit_ids:
-            return []
+            return None
         conditions.append(LearningUnit.id.in_(unit_ids))
     partition = (Attempt.unit_id, Attempt.question_id)
     latest = (
         select(
             Attempt.unit_id,
+            Attempt.question_id,
             Attempt.outcome,
             Attempt.assisted,
             Attempt.created,
             func.coalesce(Attempt.evaluation["method"].as_string(), "").label("evaluation_method"),
             func.count().over(partition_by=partition).label("attempts"),
-            func.row_number().over(partition_by=partition, order_by=(Attempt.created.desc(), Attempt.id.desc())).label("position"),
+            # Preserve the recorded order when exact timestamps tie. Current
+            # answers already store their per-question attempt number; random
+            # UUID order must not turn a later success back into an old error.
+            # Legacy rows without that number retain the stable old fallback.
+            func.row_number().over(partition_by=partition, order_by=(Attempt.created.desc(),
+                func.coalesce(Attempt.evaluation["attempt_number"].as_integer(), 0).desc(),
+                Attempt.id.desc())).label("position"),
         )
         .join(LearningUnit, LearningUnit.id == Attempt.unit_id)
         .where(*conditions)
         .subquery()
     )
+    return latest
+
+
+def read_task_ledger(db, child_id, unit_ids=None):
+    """Latest task verdicts only, for bounded goal aggregation without answers."""
+    latest = _latest_attempts(child_id, unit_ids)
+    if latest is None:
+        return []
+    return [dict(row) for row in db.execute(select(latest).where(latest.c.position == 1)).mappings()]
+
+
+def read_ledger(db, child_id, unit_ids=None):
+    latest = _latest_attempts(child_id, unit_ids)
+    if latest is None:
+        return []
     reflection = latest.c.evaluation_method == "open_learning_v1"
     correct = latest.c.outcome == "correct"
     independent = and_(correct, latest.c.assisted.is_(False), latest.c.attempts == 1)

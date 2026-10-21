@@ -274,6 +274,10 @@ def process(job_id):
                     learning_goals=goals_for(db, previous_unit),
                     focus_goal_ids=focus_ids(db, previous_unit, "check"),
                 )
+                if len(source_pages) == 1 and source_pages[0].purpose == "homework":
+                    # Provider context only. The existing review job and its
+                    # authority/revision checks are not turned into a new job.
+                    payload.update(homework_practice=True, homework_original_prompts=[source_pages[0].content])
             image_bytes = (
                 (settings.data_dir / "uploads" / material.path).read_bytes()
                 if job.kind == "extract" and material and material.path

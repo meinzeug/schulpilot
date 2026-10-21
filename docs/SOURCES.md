@@ -4,7 +4,10 @@ verwendet normale Reservierung und gespeicherte Vorbereitung. Endliche Prüfunge
 bekannter Originalfragen/Zahlenterme vor Speicherung; keine allgemeine semantische
 Äquivalenzgarantie. Regelbasierter Bruchcheck erklärt Ergebnisabweichung ohne
 Originalergebnis. Keine neuen Pakete, Dienste oder Providerfreigaben; Liveprobe
-und tatsächliche Kosten in STATUS.md.
+und tatsächliche Kosten in STATUS.md. Elternstrategie parent-review-3 erhält nur
+beantwortete, gespeicherte Zielaggregate; unbekannte Teilziele bleiben offen.
+Exakte Zeitstempelgleichstände im Übungsledger verwenden die vorhandene
+Versuchsnummer als nachgeordneten Sortierschlüssel, keine Antwortkorrektur.
 
 Erneute Eltern-/Kinderprüfung21.10.2026, Version1.17.3+73: eigene bestehende
 Quellen-, Lernplan-, Tutor- und Gerätezustände; keine neuen Pakete, Dienste,

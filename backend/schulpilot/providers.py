@@ -905,26 +905,49 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     if tasks:
         payload = {**payload, "practice_tasks": tasks}
     math_examples = []
-    if function == "unit" and (payload.get("study_block") or tasks):
+    homework_math_goals = {}
+    if function == "unit" and (payload.get("study_block") or tasks or payload.get("homework_practice")):
         from .math_tasks import fraction_tasks
 
         material_items = payload.get("materials") or [payload.get("material") or {"content": ""}]
         phase = payload.get("study_block", {}).get("mode") or (
-            "understand" if payload.get("practice_kind") == "repair" else "recall"
+            "understand" if payload.get("practice_kind") == "repair" else "apply" if payload.get("homework_practice") and not payload.get("review") else "recall"
         )
         previous = payload.get("previous_prompts") or []
+        excluded = []
+        if payload.get("homework_practice"):
+            from .homework import practice_math_exclusions, practice_math_history
+
+            previous = practice_math_history(material_items, previous)
+            excluded = practice_math_exclusions(material_items)
         math_examples = fraction_tasks(
             material_items,
             payload.get("required_subject", ""),
             payload.get("required_topic", ""),
             previous,
             phase,
-            payload.get("study_block", {}).get("question_count") or len(tasks or []),
+            payload.get("study_block", {}).get("question_count") or len(tasks or []) or (2 if payload.get("homework_practice") else 0),
             json.dumps([phase, payload.get("required_topic"), previous], ensure_ascii=False),
             required_labels=[task["label"] for task in tasks] if tasks else None,
+            excluded_prompts=excluded,
         )
         if math_examples:
             payload = {**payload, "math_tasks": math_examples}
+            if payload.get("homework_practice"):
+                from .coaching import fraction_task_goal, source_goals
+
+                if model_type is s.UnitOutput:
+                    goals = source_goals(material_items, payload["required_subject"], payload["required_topic"])
+                    by_id = {goal["id"]: goal for goal in goals}
+                    homework_math_goals = {example["id"]: fraction_task_goal(example["prompt"], goals) for example in math_examples}
+                    if any(goal_id not in by_id for goal_id in homework_math_goals.values()):
+                        raise ProviderError("Die geplanten Hausaufgabenübungen haben kein passendes bestätigtes Lernziel.")
+                    focus = [by_id[goal_id]["label"] for goal_id in homework_math_goals.values()]
+                else:
+                    # Follow-up IDs are already fixed by practice_tasks and
+                    # must never be replaced by a fresh source-catalog index.
+                    focus = [task["label"] for task in tasks or []]
+                payload = {**payload, "homework_practice_focus": list(dict.fromkeys(focus))}
     from . import subject_content
 
     review_only = function == "coach" and bool(payload.get("defer_practice"))
@@ -1170,6 +1193,9 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Auch ein gelöstes Erklärungsbeispiel verwendet andere Daten als die Originalhausaufgabe und als die neuen Prüfaufgaben. "
             "Verlange nur im Material belegte Verfahren und Voraussetzungen. Keine höhere Schwierigkeit oder neuen Themen. "
             "Die ursprünglichen Aufgaben und ihre Ergebnisse gehören nicht in diese Lernrunde."
+            " homework_practice_focus nennt die tatsächlich geprüften Voraussetzungen. "
+            "Wenn die Aufgaben nur Erweitern prüfen, beginne: 'Für das Addieren prüfen wir zuerst das Erweitern.' "
+            "Behaupte dann keine vollständige Prüfung oder Beherrschung des Addierens."
         )
     if function in ("unit", "package") and not payload.get("review"):
         instructions += (
@@ -1327,6 +1353,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         )
     if math_examples:
         bind_math_tasks(schema, math_examples)
+        schema["properties"]["questions"].update(minItems=len(math_examples), maxItems=len(math_examples))
         instructions += (
             "\nmath_tasks enthält bereits geplante NEUE Rechenbeispiele zum bestätigten Verfahren. "
             "Zahlen und Lösungen wurden rechnerisch geprüft. Übernimm id, type, prompt, answer, "
@@ -1653,6 +1680,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 )
             ):
                 raise ProviderError("Die KI hat die geprüften Rechenvorgaben verändert. Die Runde wurde verworfen.")
+            if homework_math_goals:
+                # The initial-unit schema never asks the model for goal IDs.
+                # Bind each validated fixed question to its source-backed goal.
+                for question in data["questions"]:
+                    question["learning_goal_id"] = homework_math_goals[question["id"]]
+        if function == "unit" and payload.get("homework_practice"):
+            from .homework import validate_practice_output
+
+            originals = payload.get("homework_original_prompts") or [material.get("content", "") for material in material_items]
+            validate_practice_output(data, [*originals, *(payload.get("previous_prompts") or [])])
         if excerpt_candidates is not None and any(
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):

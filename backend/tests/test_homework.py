@@ -177,7 +177,7 @@ def test_homework_practice_is_explicit_idempotent_single_source_and_resumable(bo
     assert len(calls) == 1
 
 
-@pytest.mark.parametrize("damage", ["original", "revision", "revoked", "subject"])
+@pytest.mark.parametrize("damage", ["original", "revision", "revoked", "subject", "intro"])
 def test_homework_practice_rejects_repetition_stale_sources_or_revocation(book, monkeypatch, damage):
     from schulpilot import worker
 
@@ -191,6 +191,8 @@ def test_homework_practice_rejects_repetition_stale_sources_or_revocation(book, 
             data["questions"][0]["prompt"] = "Neue Übung: Ein Rechteck ist 4 cm lang und 7 cm breit. Berechne seine Fläche."
         if damage == "subject":
             data["subject"] = "Physik"
+        if damage == "intro":
+            data["explanation"] = "Neues Beispiel: Ein Rechteck ist 6 cm lang und 3 cm breit. Seine Fläche ist 18 cm²."
         with DB.begin() as db:
             if damage == "revision":
                 db.get(Material, book["material_id"]).revision += 1
@@ -289,6 +291,272 @@ def test_homework_practice_prompt_is_scoped_and_normal_unit_requests_stay_unchan
     assert "Neue Anwendung nach bearbeiteten Hausaufgaben" not in calls[0]["instructions"]
     assert "Neue Anwendung nach bearbeiteten Hausaufgaben" in calls[1]["instructions"]
     assert "andere Zahlen" in calls[1]["instructions"]
+
+
+FRACTION_HOMEWORK = ("Mathematik • Brüche addieren\n\n"
+    "Zum Addieren brauchen die Brüche denselben\nNenner. Erweitere Zähler und Nenner mit\nderselben Zahl.\n\n"
+    "Hausaufgaben\n\n" r"1) Berechne \(\frac{1}{3} + \frac{1}{6}\)." "\n\n"
+    r"2) Berechne \(\frac{2}{5} + \frac{1}{10}\).")
+
+
+@pytest.mark.parametrize("damage", [None, "key", "missing", "goal"])
+def test_homework_fraction_practice_is_preplanned_and_goal_bound_before_transport(book, monkeypatch, damage):
+    import httpx
+    from schulpilot import providers
+    from schulpilot.coaching import fraction_task_goal, fraction_task_signature, source_goals
+    from schulpilot.db import ProviderConfig
+
+    calls = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, url, headers, json):
+            calls.append(json)
+            outgoing = __import__("json").loads(json["input"][0]["content"][0]["text"])
+            planned = outgoing["math_tasks"]
+            assert len(planned) == 2 and outgoing["homework_practice_focus"] == ["Brüche erweitern"]
+            schema = json["text"]["format"]["schema"]
+            assert schema["properties"]["questions"]["minItems"] == schema["properties"]["questions"]["maxItems"] == 2
+            branches = schema["$defs"]["Question"]["anyOf"]
+            assert len(branches) == 2
+            for task, branch in zip(planned, branches, strict=True):
+                props = branch["properties"]
+                for field in ("id", "type", "prompt", "answer"):
+                    assert props[field]["enum"] == [task[field]]
+                assert "learning_goal_id" not in props
+                assert props["options"]["maxItems"] == props["accepted"]["maxItems"] == 0
+                signature = fraction_task_signature(task["prompt"])
+                assert signature[0] == "expand" and signature[2] in ("2", "3", "4")
+                assert signature[1] not in {("1", "3"), ("1", "6"), ("2", "5"), ("1", "10")}
+            unit = {"subject": "Mathematik", "topic": "Brüche addieren",
+                "explanation": "Für das Addieren prüfen wir zuerst das Erweitern. Neues Erklärbeispiel: Erweitere 1/13 mit dem Faktor 2: 2/26.",
+                "questions": [{**{key: value for key, value in task.items() if key != "source_excerpt"},
+                    "hints": ["Erweitere beide Zahlen mit dem angegebenen Faktor."],
+                    "explanation": "Multipliziere Zähler und Nenner mit dem genannten Faktor."} for task in planned]}
+            if damage == "key":
+                unit["questions"][0]["answer"] = "999/1000"
+            elif damage == "missing":
+                unit["questions"] = unit["questions"][:1]
+            elif damage == "goal":
+                unit["questions"][0]["learning_goal_id"] = "g1"
+            return httpx.Response(200, json={"status": "completed", "output": [{"type": "message",
+                "content": [{"type": "output_text", "text": __import__("json").dumps(unit)}]}],
+                "usage": {"input_tokens": 50, "output_tokens": 80}})
+
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+    payload = {"material": {"subject": "Mathematik", "topic": "Brüche addieren", "content": FRACTION_HOMEWORK},
+        "homework_practice": True, "required_subject": "Mathematik", "required_topic": "Brüche addieren",
+        "previous_prompts": [r"Berechne \(\frac{1}{3}+\frac{1}{6}\) und \(\frac{2}{5}+\frac{1}{10}\)."]}
+    if damage:
+        with pytest.raises(providers.ProviderError):
+            providers.request_provider(config, "unit", payload)
+    else:
+        result = providers.request_provider(config, "unit", payload)
+        goals = source_goals([payload["material"]], "Mathematik", "Brüche addieren")
+        expansion = next(goal["id"] for goal in goals if goal["label"] == "Brüche erweitern")
+        assert len(result.data["questions"]) == 2
+        assert all(q["learning_goal_id"] == expansion == fraction_task_goal(q["prompt"], goals) for q in result.data["questions"])
+        homework.validate_practice_output(result.data, [FRACTION_HOMEWORK])
+    assert len(calls) == 1  # Rejected transport output never causes a fallback.
+
+
+def test_homework_fraction_planning_excludes_all_original_latex_terms():
+    from schulpilot.coaching import fraction_task_signature
+
+    history = homework.practice_math_history([{"content": FRACTION_HOMEWORK}], [])
+    signatures = {fraction_task_signature(prompt) for prompt in history}
+    assert fraction_task_signature("1/3 + 1/6") in signatures
+    assert fraction_task_signature("2/5 + 1/10") in signatures
+    assert FRACTION_HOMEWORK in history
+    excluded = homework.practice_math_exclusions([{"content": FRACTION_HOMEWORK}])
+    assert len(excluded) == 12
+    assert {fraction_task_signature(prompt) for prompt in excluded} == {
+        ("expand", operand, str(factor)) for operand in (("1", "3"), ("1", "6"), ("2", "5"), ("1", "10")) for factor in (2, 3, 4)}
+
+
+def test_homework_original_addition_operand_is_not_a_new_expansion_check():
+    from schulpilot.providers import ProviderError
+
+    for factor in (2, 3, 4):
+        with pytest.raises(ProviderError, match="wiederholt"):
+            homework.validate_practice_output({"questions": [{"prompt": f"Erweitere 1/3 mit dem Faktor {factor}."}]}, [FRACTION_HOMEWORK])
+    homework.validate_practice_output({"questions": [{"prompt": "Erweitere 2/7 mit dem Faktor 3."}]}, [FRACTION_HOMEWORK])
+
+
+def test_homework_coach_context_keeps_verified_prerequisite_goals_and_originals(book):
+    from schulpilot import coaching
+    from schulpilot.db import UnitCoaching
+
+    prepare(book)
+    with DB.begin() as db:
+        material, unit = db.get(Material, book["material_id"]), db.get(LearningUnit, book["unit_id"])
+        material.content, material.topic = FRACTION_HOMEWORK, "Brüche addieren"
+        unit.subject, unit.topic = "Mathematik", material.topic
+        unit.questions = [{"id": "q1", "type": "short", "prompt": "Erweitere 2/7 mit dem Faktor 3.",
+            "answer": "6/21", "accepted": [], "options": [], "hints": ["Multipliziere beide Zahlen."],
+            "explanation": "Beide Zahlen werden mit drei multipliziert.", "learning_goal_id": "g2"}]
+    with DB() as db:
+        unit = db.get(LearningUnit, book["unit_id"])
+        signature, context, _ = coaching.context(db, unit)
+        assert [(g["id"], g["label"]) for g in context["learning_goals"]] == [("g2", "Brüche erweitern")]
+        assert context["homework_practice"] is True and context["homework_original_prompts"] == [FRACTION_HOMEWORK]
+        assert context["completed_questions"][0]["learning_goal_id"] == "g2"
+        # A previous complete catalogue is never narrowed or renumbered.
+        previous = coaching.source_goals([{"content": FRACTION_HOMEWORK}], "Mathematik", "Brüche addieren")
+    with DB.begin() as db:
+        db.add(UnitCoaching(unit_id=book["unit_id"], status="ready", report={"learning_goals": previous}))
+    with DB() as db:
+        _, context, _ = coaching.context(db, db.get(LearningUnit, book["unit_id"]))
+        assert context["learning_goals"] == previous
+        assert context["homework_original_prompts"] == [FRACTION_HOMEWORK]
+    with DB.begin() as db:
+        db.get(Material, book["material_id"]).content += "\nNeue bestätigte Ergänzung."
+    with DB() as db:
+        assert coaching.context(db, db.get(LearningUnit, book["unit_id"]))[0] != signature
+
+
+def test_non_math_homework_coach_keeps_originals_without_inventing_goal_ids(book):
+    from schulpilot import coaching
+
+    prepare(book)
+    with DB.begin() as db:
+        material, unit = db.get(Material, book["material_id"]), db.get(LearningUnit, book["unit_id"])
+        material.subject, material.topic, material.content = "Englisch", "Simple past", "Yesterday I ____ (play) football."
+        unit.subject, unit.topic = material.subject, material.topic
+        unit.questions = [{"id": "q1", "type": "short", "prompt": "Complete: Last week we ____ (visit) our aunt.",
+            "answer": "visited", "accepted": [], "options": [], "hints": ["Think about the past."],
+            "explanation": "A regular verb has an ed ending."}]
+    with DB() as db:
+        _, context, _ = coaching.context(db, db.get(LearningUnit, book["unit_id"]))
+        assert context["homework_practice"] is True
+        assert context["homework_original_prompts"] == ["Yesterday I ____ (play) football."]
+        assert context["learning_goals"] == []
+        assert context["completed_questions"][0]["learning_goal_id"] is None
+
+
+@pytest.mark.parametrize("damage", [None, "goal", "intro"])
+@pytest.mark.parametrize("kind,phase", [("repair", "zum Verstehen"), ("check", "zum Erinnern")])
+def test_homework_followup_preserves_existing_goal_ids_repair_phase_and_original_exclusions(book, monkeypatch, damage, kind, phase):
+    import httpx
+    from schulpilot import providers
+    from schulpilot.coaching import fraction_task_signature
+    from schulpilot.db import ProviderConfig
+
+    calls = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, url, headers, json):
+            calls.append(json)
+            outgoing = __import__("json").loads(json["input"][0]["content"][0]["text"])
+            planned = outgoing["math_tasks"]
+            assert len(planned) == 2 and all(phase in task["prompt"] for task in planned)
+            assert outgoing["homework_original_prompts"] == [FRACTION_HOMEWORK]
+            assert all(fraction_task_signature(task["prompt"])[1] not in {("1", "3"), ("1", "6"), ("2", "5"), ("1", "10")} for task in planned)
+            schema = json["text"]["format"]["schema"]
+            assert schema["properties"]["questions"]["minItems"] == schema["properties"]["questions"]["maxItems"] == 2
+            assert all(branch["properties"]["learning_goal_id"]["enum"] == ["g1"]
+                       for branch in schema["$defs"]["PracticeQuestion"]["anyOf"])
+            unit = {"subject": "Mathematik", "topic": "Brüche addieren",
+                "explanation": "Für das Addieren prüfen wir zuerst das Erweitern. Neues Erklärbeispiel: Erweitere 1/13 mit dem Faktor 2: 2/26.",
+                "questions": [{**{key: value for key, value in task.items() if key != "source_excerpt"},
+                    "hints": ["Multipliziere beide Zahlen mit dem angegebenen Faktor."],
+                    "explanation": "Erweitere beide Zahlen mit derselben Zahl.", "learning_goal_id": "g1"} for task in planned]}
+            if damage == "goal":
+                unit["questions"][0]["learning_goal_id"] = "g2"
+            elif damage == "intro":
+                unit["explanation"] = planned[0]["prompt"] + " " + planned[0]["answer"]
+            return httpx.Response(200, json={"status": "completed", "output": [{"type": "message",
+                "content": [{"type": "output_text", "text": __import__("json").dumps(unit)}]}],
+                "usage": {"input_tokens": 50, "output_tokens": 80}})
+
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+    payload = {"material": {"subject": "Mathematik", "topic": "Brüche addieren", "content": FRACTION_HOMEWORK},
+        "review": True, "practice_kind": kind, "homework_practice": True,
+        "homework_original_prompts": [FRACTION_HOMEWORK], "required_subject": "Mathematik", "required_topic": "Brüche addieren",
+        "learning_goals": [{"id": "g1", "label": "Brüche erweitern", "source_excerpt": "Erweitere Zähler und Nenner mit\nderselben Zahl."}],
+        "focus_goal_ids": ["g1"], "previous_prompts": ["Andere Tagesrunde: Erweitere 2/7 mit dem Faktor 3."]}
+    if damage:
+        with pytest.raises(providers.ProviderError):
+            providers.request_provider(config, "unit", payload)
+    else:
+        result = providers.request_provider(config, "unit", payload)
+        assert all(q["learning_goal_id"] == "g1" for q in result.data["questions"])
+    assert len(calls) == 1
+
+
+def test_generic_homework_recall_job_preserves_original_context_without_new_job_authority_flags(book, monkeypatch):
+    from schulpilot import worker
+    from schulpilot.db import UnitCoaching, now
+
+    prepare(book)
+    with DB.begin() as db:
+        source, unit = db.get(Material, book["material_id"]), db.get(LearningUnit, book["unit_id"])
+        source.content, source.topic = FRACTION_HOMEWORK, "Brüche addieren"
+        unit.subject, unit.topic, unit.status, unit.completed = "Mathematik", source.topic, "completed", int(now())
+        unit.questions = [{"id": "q1", "type": "short", "prompt": "Erweitere 2/7 mit dem Faktor 3.",
+            "answer": "6/21", "accepted": [], "options": [], "hints": ["Multipliziere beide Zahlen."],
+            "explanation": "Beide Zahlen werden mit drei multipliziert.", "learning_goal_id": "g2"}]
+        db.add(UnitCoaching(unit_id=unit.id, status="ready", decision="check", report={"learning_goals": [
+            {"id": "g2", "label": "Brüche erweitern", "source_excerpt": "Erweitere Zähler und Nenner mit\nderselben Zahl."}]}))
+    response = book["client"].post(f"/api/children/{book['child']['id']}/units",
+        json={"review_of": book["unit_id"]}, headers={"Idempotency-Key": uuid.uuid4().hex})
+    assert response.status_code == 202, response.text
+    calls = []
+
+    def generate(config, function, payload, *args, **kwargs):
+        calls.append(payload)
+        assert function == "unit" and payload["review"] is True and payload["homework_practice"] is True
+        assert payload["homework_original_prompts"] == [FRACTION_HOMEWORK] and payload["focus_goal_ids"] == ["g2"]
+        return Result({"subject": "Mathematik", "topic": "Brüche addieren", "explanation": "Prüfe erneut das Erweitern.",
+            "questions": [{"id": f"q{i}", "type": "short", "prompt": f"Erweitere {a}/{b} mit dem Faktor 2.",
+                "answer": f"{a * 2}/{b * 2}", "accepted": [], "options": [], "hints": ["Multipliziere beide Zahlen."],
+                "explanation": "Beide Zahlen werden verdoppelt.", "learning_goal_id": "g2"} for i, (a, b) in enumerate(((3, 7), (4, 9)), 1)]},
+            50, 80, 12)
+
+    monkeypatch.setattr(worker, "request_provider", generate)
+    finish()
+    with DB() as db:
+        job = db.get(Job, response.json()["id"])
+        assert job.status == "completed", job.error
+        assert "homework_practice" not in job.payload and "session_id" not in job.payload
+        saved = db.get(LearningUnit, job.result["unit_id"])
+        assert saved.round_kind == "spaced_review" and all(q["learning_goal_id"] == "g2" for q in saved.questions)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("explanation", [
+    r"Neues Beispiel: Berechne \(\frac{1}{3} + \frac{1}{6}\). Das ergibt 1/2.",
+    "Neues Beispiel: Erweitere 2/7 mit dem Faktor 3: 6/21.",
+])
+def test_homework_intro_cannot_work_out_an_original_or_new_fraction_check(explanation):
+    from schulpilot.providers import ProviderError
+
+    data = {"explanation": explanation, "questions": [{"prompt": "Erweitere 2/7 mit dem Faktor 3."}]}
+    with pytest.raises(ProviderError, match="vorweg"):
+        homework.validate_practice_output(data, [FRACTION_HOMEWORK])
+    data["explanation"] = "Neues Beispiel: Erweitere 1/13 mit dem Faktor 2: 2/26."
+    homework.validate_practice_output(data, [FRACTION_HOMEWORK])
 
 
 @pytest.mark.parametrize("action", ["explain", "hint", "plan", "example", "check", "question"])

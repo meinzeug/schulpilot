@@ -149,6 +149,41 @@ Dies ist eine endliche Sicherung, kein allgemeiner semantischer Nachweis neuer
 Fragen in allen Fächern. Unklare oder abgelehnte Ergebnisse werden nicht durch
 Ersatzfragen oder automatische Modellreparaturen verdeckt.
 
+Ausdrücklich belegte Bruchverfahren verwenden auch hier den bestehenden endlichen
+`fraction_tasks`-Planer vor dem Modellaufruf. Zwei neue Zahlenaufgaben werden im
+Schema gebunden und nach der Antwort unverändert geprüft; die KI ergänzt Einführung,
+Hinweise und Erklärungen. OCR-Zeilenumbrüche in der eindeutigen Anweisung „Erweitere
+Zähler und Nenner mit derselben Zahl“ bleiben im wörtlichen Beleg erhalten.
+Diese Anweisung belegt Erweitern, keine fehlende vollständige Additionsregel.
+Die geprüfte Lernziel-ID wird erst serverseitig an die validierte Aufgabe gebunden.
+Der erklärte Fokus lautet in diesem Fall: „Für das Addieren prüfen wir zuerst das
+Erweitern.“ Bekannte Bruch-/Rechensignaturen aus Original- oder Prüfaufgaben dürfen
+auch nicht als ausgearbeitetes Einführungsbeispiel vorweggenommen werden.
+Gedruckte Originalbrüche sind zusätzlich für alle drei erlaubten Erweiterungsfaktoren
+gesperrt. Eine schon erklärte Original-Teilrechnung zählt dadurch nicht als neue
+Voraussetzungsprüfung. Solche Ausschlüsse sind kein Übungsverlauf und verändern
+die Häufigkeitsgewichtung der Lernziele nicht. Der endliche Zahlpool und bestehende
+Abbruchregeln bleiben erhalten; bei Erschöpfung wird keine Ersatzfrage erzeugt.
+
+Der reguläre Coach erhält bei einer einzelnen bestätigten Hausaufgabenquelle
+einen eigenen `homework_original_prompts`-Kontext. Er bleibt auch erhalten, wenn
+Tagesfragen den begrenzten Übungsverlauf ersetzen. Dieser Kontext ist kein neuer
+Jobtyp und übernimmt keine Sitzung aus einem alten Auftrag. Bestehende Coach-
+Berechtigungs- und Quellenprüfungen laufen vor und nach jeder Anfrage unverändert.
+Der erste Rückblick zu bereits gebundenen Zahlenaufgaben enthält nur deren
+tatsächlich geprüfte Voraussetzungen; ein gespeicherter früherer Zielkatalog wird
+nie umgeschrieben. Folgeaufgaben behalten ihre bestehenden Ziel-IDs, Original-
+Ausschlüsse und den Erklärungsschutz. Gezieltes Nachlernen verwendet weiterhin
+die Phase Verstehen; der erstmalige Hausaufgaben-Übergang verwendet Anwenden.
+
+Bei ausdrücklich belegten Bruchregeln nutzt dieser Anschluss den vorhandenen
+endlichen Rechenplaner vor dem Modellaufruf. Die kurze wörtliche Regel „Erweitere
+Zähler und Nenner mit derselben Zahl“ zählt einschließlich OCR-Zeilenumbrüchen als
+Erweiterungsregel. Ein bloßes Additionsthema ersetzt keine vollständige
+Additionsregel. Fragen werden nach Schema- und Rechenprüfung serverseitig an ihr
+belegtes Teilziel gebunden. Bekannte numerische Original-/Prüfaufgaben dürfen auch
+im Erklärungsbeispiel nicht erneut erscheinen.
+
 Der Worker prüft Kinderanmeldung, Familie, Tarif, bestätigte Quellenrevision und
 Providerrevision vor und nach dem Modellaufruf. Abmeldung oder Quellenänderung
 verhindert die Übernahme; bereits angefallener Verbrauch bleibt erhalten.

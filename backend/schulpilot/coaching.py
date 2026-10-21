@@ -560,6 +560,8 @@ def context(db, unit):
         else None
     )
     completed_questions = observations(db, unit)
+    homework_practice = (len(materials) == 1 and bool(unit.questions)
+                         and db.get(Material, materials[0]["id"]).purpose == "homework")
     learning_goals = goals_for(db, unit)
     if not learning_goals:
         candidates = source_goals(materials, unit.subject, unit.topic)
@@ -577,6 +579,16 @@ def context(db, unit):
                     candidates.append({"id":f"g{len(candidates)+1}", "label":"Fläche eines Dreiecks berechnen", "source_excerpt":text[start:start+350]})
                     break
         candidate_ids = {goal["id"] for goal in candidates}
+        if homework_practice and all(question.get("learning_goal_id") for question in unit.questions):
+            assigned = {question["learning_goal_id"] for question in unit.questions}
+            if assigned <= candidate_ids and all(
+                fraction_task_goal(question["prompt"], candidates) == question["learning_goal_id"]
+                for question in unit.questions
+            ):
+                # First homework checks may test only a prerequisite. Keep
+                # their verified IDs; do not prescribe an untested broad topic.
+                candidates = [goal for goal in candidates if goal["id"] in assigned]
+                candidate_ids = assigned
         # A fraction-only catalogue must never prescribe the entire mixed
         # fraction/geometry round. Let the same reserved review propose quoted
         # goals for the complete source instead; stored catalogues remain binding.
@@ -595,6 +607,8 @@ def context(db, unit):
         "observations": completed_questions,
         "learning_goals": learning_goals,
     }
+    if homework_practice:
+        snapshot["homework_original_prompts"] = [materials[0]["content"]]
     signature = hashlib.sha256(json.dumps(snapshot, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     _, chain = root_and_units(db, unit)
     payload = {
@@ -607,6 +621,10 @@ def context(db, unit):
         "previous_prompts": [q["prompt"] for previous in chain for q in previous.questions][-80:],
         "learning_goals": snapshot["learning_goals"],
     }
+    if homework_practice:
+        # Provider context only: the persisted coach job retains its existing
+        # authority/session checks and never becomes a generic homework job.
+        payload.update(homework_practice=True, homework_original_prompts=snapshot["homework_original_prompts"])
     return signature, payload, [{"id": m["id"], "revision": m["revision"]} for m in materials]
 
 
