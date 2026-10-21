@@ -505,13 +505,23 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             : 'visual_example';
     }
     final session = unit?['learning_session'];
-    if (session?['can_request_decision'] == true &&
-        [
-          'change_explanation',
-          'denominators_added',
-          'child_requested_smaller_step',
-        ].contains(session?['action']?['reason_code'])) {
-      return 'model_plan';
+    if ([
+      'change_explanation',
+      'denominators_added',
+      'child_requested_smaller_step',
+    ].contains(session?['action']?['reason_code'])) {
+      if (session?['can_request_decision'] == true) return 'model_plan';
+      if (session?['can_request_decision'] == false) {
+        // A spent planning allowance does not hide the already saved help.
+        // Existing plan steps above remain available without another model.
+        return switch (session?['action']?['kind']) {
+          'explain' || 'visual_example' => 'saved_explanation',
+          'hint' => 'model_hint',
+          'recommend_resource' => 'model_resource',
+          'offer_break' => 'offer_break',
+          _ => null,
+        };
+      }
     }
     return null;
   }
@@ -529,6 +539,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         await moreHelp(unit!);
       } else if (kind == 'model_plan') {
         await prepareInstructionalPlan();
+      } else if (kind == 'saved_explanation') {
+        if (mounted) await showExplanation(context, unit!);
       } else {
         await controllerAction(unit!, kind);
       }
@@ -972,6 +984,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         'model_resource' => 'Andere Erklärung ansehen',
         'model_clarify' => 'Offene Prüfung klären',
         'model_plan' => 'Passenden Lernweg finden',
+        'saved_explanation' => 'Erklärung ansehen',
         'offer_break' => 'Pause machen',
         'practice' => 'Weiter zur Aufgabe',
         _ => 'Noch einmal mit Hilfe probieren',
@@ -2690,6 +2703,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final route = ModalRoute.of(context);
     final session = await state.api.get('/units/$id/learning-session');
     if (!requestIsCurrent(id, owner) || route?.isCurrent == false) return;
+    final permission = supportCheck
+        ? 'can_request_support_check'
+        : 'can_request_decision';
+    if (session[permission] == false) {
+      // The permission may change after rendering the button. A fresh refusal
+      // only refreshes saved state; it must not start a rejected paid request.
+      // Missing flags retain the existing older-backend protocol.
+      if (unit != null) setState(() => unit!['learning_session'] = session);
+      await load();
+      return;
+    }
     instructionalRequestKey ??= tipRequestKey();
     final endpoint = supportCheck ? 'check' : 'plan';
     final result = await state.api.post(

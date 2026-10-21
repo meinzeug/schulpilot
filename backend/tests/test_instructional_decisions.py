@@ -89,6 +89,8 @@ def execute(client, uid, kind, key):
 def test_bounded_model_plan_is_reserved_once_executed_and_replanned_from_actual_answer(profile, monkeypatch):
     client, uid, _, _, _ = profile
     calls = []
+    reviews = []
+    monkeypatch.setattr("schulpilot.coaching.schedule", lambda unit_id, **kw: reviews.append((unit_id, kw)))
 
     def model(config, function, payload):
         assert function == "decision"
@@ -112,16 +114,142 @@ def test_bounded_model_plan_is_reserved_once_executed_and_replanned_from_actual_
     assert value["learning_session"]["action"]["question_id"] == "new_sum"
     assert client.post(f"/api/units/{uid}/questions/sum/answer", json={"answer": "2/4"}).status_code == 409
     response = client.post(
-        f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "3/6", "request_id": "new-model-answer-0001"}
+        f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "3/6", "request_id": "new-model-answer-0001", "guided_feedback": True}
     )
     assert response.status_code == 200, response.text
     assert response.json()["outcome"] == "correct" and not response.json()["assisted"]
+    assert response.json()["unit"]["status"] == "completed"
+    assert response.json()["unit"]["pending_feedback"]["attempt_id"] == response.json()["attempt_id"]
+    assert client.get(f"/api/units/{uid}").json()["pending_feedback"]["outcome"] == "correct"
+    assert client.post(f"/api/units/{uid}/feedback/acknowledge", json={"attempt_id": response.json()["attempt_id"]}).json()["pending_feedback"] is None
+    assert next(q for q in response.json()["unit"]["questions"] if q["id"] == "sum")["controller_deferred"]
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(Usage)) == 1
         assert db.scalar(select(func.count()).select_from(Attempt)) == 3
         assert db.get(LearningMemory, uid).working["instructional_plan"]["outcomes"][0]["outcome"] == "correct"
         assert db.get(Job, first.json()["id"]).status == "completed"
+        assert [a.outcome for a in db.scalars(select(Attempt).where(Attempt.unit_id == uid, Attempt.question_id == "sum").order_by(Attempt.created))] == ["incorrect", "incorrect"]
+        assert db.get(LearningMemory, uid).working["instructional_deferrals"]["question_ids"] == ["sum"]
+        assert db.scalar(select(func.count()).select_from(Activity).where(Activity.unit_id == uid, Activity.kind == "unit_completed")) == 1
     assert len(calls) == 1
+    assert reviews == [(uid, {"automatic": True})]
+
+
+@pytest.mark.parametrize("same_question", [False, True])
+def test_hint_or_return_to_shown_question_does_not_defer_an_incorrect_answer(profile, monkeypatch, same_question):
+    client, uid, *_ = profile
+
+    def model(_c, _f, payload):
+        plan = sample_plan(payload)
+        if same_question:
+            plan["steps"][1].update(kind="practice", question_id="sum", learning_goal_id=plan["steps"][0]["learning_goal_id"])
+        else:
+            plan["steps"][0]["kind"] = "hint"
+        return Result(plan, 100, 100, 0)
+
+    monkeypatch.setattr("schulpilot.providers.request_provider", model)
+    assert request(client, uid).status_code == 202
+    process_next()
+    if same_question:
+        execute(client, uid, "explain", "same-question-show-0001")
+    else:
+        assert client.post(f"/api/units/{uid}/questions/sum/hint").status_code == 200
+    execute(client, uid, "practice", "not-deferred-next-0001")
+    with DB() as db:
+        assert not decisions.deferred(db, db.get(LearningUnit, uid))
+        assert "instructional_deferrals" not in db.get(LearningMemory, uid).working
+
+
+@pytest.mark.parametrize("trigger", ["paused_resume", "active_resume", "seen_ack", "finish_action"])
+def test_exhausted_legacy_plan_recovers_only_on_conscious_post_and_preserves_answers(profile, monkeypatch, trigger):
+    from schulpilot import learning
+
+    client, uid, _, _, _ = profile
+    monkeypatch.setattr("schulpilot.providers.request_provider", lambda _c, _f, payload: Result(sample_plan(payload), 100, 100, 0))
+    reviews = []
+    monkeypatch.setattr("schulpilot.coaching.schedule", lambda unit_id, **kw: reviews.append((unit_id, kw)))
+    assert request(client, uid).status_code == 202
+    process_next()
+    execute(client, uid, "explain", "legacy-explanation-0001")
+    execute(client, uid, "practice", "legacy-continue-0001")
+    # Reproduce release76: the answer and its acknowledgement were saved, but
+    # no deferral/round completion was persisted by the old implementation.
+    with monkeypatch.context() as old:
+        old.setattr(learning, "complete_round", lambda *_a, **_kw: False)
+        response = client.post(f"/api/units/{uid}/questions/new_sum/answer",
+            json={"answer": "3/6", "request_id": "legacy-independent-0001", "guided_feedback": True})
+        assert response.status_code == 200, response.text
+        attempt_id = response.json()["attempt_id"]
+        assert client.post(f"/api/units/{uid}/feedback/acknowledge", json={"attempt_id": attempt_id}).status_code == 200
+    with DB.begin() as db:
+        memory = db.get(LearningMemory, uid)
+        working = dict(memory.working)
+        working.pop("instructional_deferrals")
+        working["instructional_plan"].pop("source_signature")
+        memory.working = working
+        if trigger == "paused_resume":
+            db.get(LearningUnit, uid).status = "paused"
+        before = [(a.id, a.question_id, a.outcome, a.assisted, a.answer) for a in db.scalars(select(Attempt).where(Attempt.unit_id == uid).order_by(Attempt.created))]
+        counts = (db.scalar(select(func.count()).select_from(Activity)), db.scalar(select(func.count()).select_from(Usage)), memory.revision)
+    for _ in range(2):
+        value = client.get(f"/api/units/{uid}").json()
+        assert value["status"] != "completed"
+        assert value["learning_session"]["action"]["kind"] == "finish_round"
+        assert not value["learning_session"]["can_request_decision"]
+        assert value["pending_feedback"] is None
+    with DB() as db:
+        assert counts == (db.scalar(select(func.count()).select_from(Activity)), db.scalar(select(func.count()).select_from(Usage)), db.get(LearningMemory, uid).revision)
+        assert "instructional_deferrals" not in db.get(LearningMemory, uid).working
+    if trigger.endswith("resume"):
+        response = client.post(f"/api/units/{uid}/start")
+    elif trigger == "seen_ack":
+        response = client.post(f"/api/units/{uid}/feedback/acknowledge", json={"attempt_id": attempt_id})
+    else:
+        response = client.post(f"/api/units/{uid}/learning-session/action", json={
+            "kind": "finish_round", "request_key": "legacy-finish-0001", "revision": value["learning_session"]["revision"]})
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "completed"
+    assert response.json()["pending_feedback"] is None
+    assert client.post(f"/api/units/{uid}/start").json()["status"] == "completed"
+    with DB() as db:
+        assert before == [(a.id, a.question_id, a.outcome, a.assisted, a.answer) for a in db.scalars(select(Attempt).where(Attempt.unit_id == uid).order_by(Attempt.created))]
+        assert db.get(LearningMemory, uid).working["instructional_deferrals"]["question_ids"] == ["sum"]
+        assert db.scalar(select(func.count()).select_from(Usage)) == counts[1]
+        assert db.scalar(select(func.count()).select_from(Activity).where(Activity.unit_id == uid, Activity.kind == "unit_completed")) == 1
+    assert reviews == [(uid, {"automatic": True})]
+
+
+@pytest.mark.parametrize("change", ["source", "unshown", "hint", "foreign_outcome"])
+def test_legacy_deferral_requires_current_sources_shown_solution_and_actual_successor(profile, monkeypatch, change):
+    from schulpilot import learning
+
+    client, uid, mid, _, _ = profile
+    monkeypatch.setattr("schulpilot.providers.request_provider", lambda _c, _f, payload: Result(sample_plan(payload), 100, 100, 0))
+    assert request(client, uid).status_code == 202
+    process_next()
+    execute(client, uid, "explain", "legacy-guard-show-0001")
+    execute(client, uid, "practice", "legacy-guard-next-0001")
+    with monkeypatch.context() as old:
+        old.setattr(learning, "complete_round", lambda *_a, **_kw: False)
+        assert client.post(f"/api/units/{uid}/questions/new_sum/answer", json={"answer": "3/6"}).status_code == 200
+    with DB.begin() as db:
+        memory = db.get(LearningMemory, uid)
+        working = dict(memory.working)
+        working.pop("instructional_deferrals")
+        working["instructional_plan"].pop("source_signature")
+        if change == "source":
+            db.get(Material, mid).revision += 1
+        elif change == "unshown":
+            for event in db.scalars(select(Activity).where(Activity.unit_id == uid, Activity.kind == "explanation")):
+                db.delete(event)
+        elif change == "hint":
+            working["instructional_plan"]["steps"][0]["kind"] = "hint"
+        else:
+            working["instructional_plan"]["outcomes"][0]["attempt_ref"] = "attempt:another-unit"
+        memory.working = working
+    with DB() as db:
+        assert not decisions.deferred(db, db.get(LearningUnit, uid))
+    assert client.get(f"/api/units/{uid}").json()["learning_session"]["action"]["kind"] != "finish_round"
 
 
 @pytest.mark.parametrize("fault", ["question", "evidence", "resource", "cycle", "shown_check"])

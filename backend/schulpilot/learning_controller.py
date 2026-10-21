@@ -131,7 +131,7 @@ def facts(db, unit):
     activities = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id).order_by(Activity.created, Activity.id)))
     signature, source_valid, sources = source_state(db, unit)
     by_question = {q["id"]: [a for a in attempts if a.question_id == q["id"]] for q in unit.questions}
-    deferred = adaptive_plan.deferred(db, unit)
+    deferred = adaptive_plan.deferred(db, unit) | instructional_decisions.deferred(db, unit)
     current = adaptive_plan.current_question(db, unit)
     model_step = instructional_decisions.current(db, unit)
     if model_step and model_step[1]["question_id"]:
@@ -198,6 +198,7 @@ def local_resources(db, unit, question, need, sources):
 
 def decide(db, unit, memory=None):
     from . import adaptive_plan, instructional_decisions
+    from .learning import completion_ready
 
     data = facts(db, unit)
     q = data["question"]
@@ -218,7 +219,8 @@ def decide(db, unit, memory=None):
         value.update(kind="clarify_assessment", phase="help", reason_code="assessment_pending",
             title="Eine Antwort ist noch offen", reason="Die Prüfung ist unklar. Das zählt nicht als falsche Antwort.",
             expected_result="Eine nachvollziehbar geklärte Bewertung.", on_success="practice", on_error="clarify_assessment")
-    elif unit.status == "completed":
+    elif unit.status == "completed" or (instructional_decisions.deferred(db, unit)
+            and completion_ready(db, unit, data["attempts"])):
         supported = any(a.assisted or a.outcome != "correct" for a in data["attempts"])
         value.update(kind="finish_round", phase="finish", reason_code="round_completed_supported" if supported else "round_completed",
             title="Deine Runde ist fertig", reason="Nach der Hilfe probierst du es später mit einer neuen Aufgabe allein." if supported
@@ -301,6 +303,7 @@ def projection(db, unit, *, include_draft=True):
     working = dict(memory.working) if memory else {}
     working.pop("adaptive_flow", None)  # Private recipe/source and unrevealed steps.
     working.pop("instructional_plan", None)
+    working.pop("instructional_deferrals", None)
     if not include_draft:
         working.pop("draft", None)  # Unsubmitted input is not a parent activity.
     pending = db.get(Job, working.get("pending_check_job_id")) if working.get("pending_check_job_id") else None
@@ -325,7 +328,7 @@ def projection(db, unit, *, include_draft=True):
         "can_request_support_check": not unit.synthetic and data["source_valid"] and preparation is None
             and any(e.kind == "explanation" for e in data["activities"]),
         "can_request_decision": unit.status == "active" and not unit.synthetic and data["source_valid"]
-            and bool(data["attempts"]) and len(decision_jobs) < 2,
+            and decision["kind"] != "finish_round" and bool(data["attempts"]) and len(decision_jobs) < 2,
         "observations": {"answered_tasks": len({a.question_id for a in data["attempts"]}),
             "attempts": len(data["attempts"]), "misconceptions": data["misconceptions"],
             "independent_first_answers": sum(len(values) == 1 and values[0].outcome == "correct" and not values[0].assisted
@@ -543,7 +546,10 @@ def execute(unit_id: str, data: ChooseAction, p=Depends(child_user), db=Depends(
         from .catalog_jobs import refresh_context
 
         refresh_context(db, "unit", unit)
+    recovered = learning.recover_instructional_round(db, unit)
     observe(db, unit, "action_selected", "action:" + data.request_key, [data.kind],
         working_patch={"phase": "practice" if data.kind in ("practice", "check_prior") else current["phase"]})
     db.commit()
+    if recovered:
+        learning.schedule_completed_review(db, unit)
     return learning.unit_data(db, unit)

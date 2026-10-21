@@ -279,7 +279,9 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
         history.setdefault(row.attempt_id, []).append({"previous_outcome": row.previous_outcome,
             "outcome": row.outcome, "rules_version": row.rules_version, "created": row.created})
     questions = []
-    deferred_questions = adaptive_plan.deferred(db, unit)
+    from .instructional_decisions import deferred as instructional_deferred
+
+    deferred_questions = adaptive_plan.deferred(db, unit) | instructional_deferred(db, unit)
     for q in unit.questions:
         value = dict(q)
         if not include_answers:
@@ -1149,6 +1151,10 @@ def start(unit_id: str, p=Depends(child_user), db=Depends(get_db),
         return unit_data(db, unit)
     if reason := learning_block(db, unit):
         raise HTTPException(409, reason)
+    if recover_instructional_round(db, unit):
+        db.commit()
+        schedule_completed_review(db, unit)
+        return unit_data(db, unit)
     if unit.status == "active":
         return unit_data(db, unit)
     child = db.get(Child, unit.child_id)
@@ -1444,6 +1450,64 @@ def update_mastery(db, unit, attempts):
     mastery.last_practiced = today.isoformat()
 
 
+def completion_ready(db, unit, attempts=None):
+    from . import adaptive_plan, instructional_decisions
+
+    if unit.status not in ("active", "paused") or not unit.questions:
+        return False
+    attempts = attempts if attempts is not None else list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id)))
+    deferred = adaptive_plan.deferred(db, unit) | instructional_decisions.deferred(db, unit)
+    active_flow = adaptive_plan.flow(db, unit)
+    flow_pending = active_flow and active_flow["phase"] not in ("offer_probe", "closed")
+    return not flow_pending and not instructional_decisions.current(db, unit) and all(
+        q["id"] in deferred
+        or any(a.question_id == q["id"] and a.outcome in ("correct", "uncertain") for a in attempts)
+        or sum(a.question_id == q["id"] for a in attempts) >= 3
+        for q in unit.questions
+    )
+
+
+def complete_round(db, unit, attempts=None):
+    """Close saved work under the existing unit→child lock order, without an answer."""
+    from . import instructional_decisions
+    from .subject_content import open_learning_unit
+
+    if not completion_ready(db, unit, attempts):
+        return False
+    db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
+    if learning_block(db, unit):
+        return False
+    attempts = attempts if attempts is not None else list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    instructional_decisions.persist_deferred(db, unit, instructional_decisions.deferred(db, unit))
+    unit.status, unit.completed, unit.heartbeat = "completed", int(now()), None
+    if unit.round_kind != "vocabulary" and not open_learning_unit(unit):
+        update_mastery(db, unit, attempts)
+    record(db, unit.child_id, "unit_completed", {"topic": unit.topic}, unit.id)
+    return True
+
+
+def recover_instructional_round(db, unit):
+    """Only a conscious POST reconciles a previously exhausted saved plan."""
+    from . import instructional_decisions
+    from .learning_controller import source_state
+
+    if not source_state(db, unit)[1] or not instructional_decisions.deferred(db, unit):
+        return False
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
+    if pending_feedback(unit, attempts, events):
+        return False
+    return complete_round(db, unit, attempts)
+
+
+def schedule_completed_review(db, unit):
+    if unit.round_kind != "vocabulary":
+        from .coaching import schedule
+
+        schedule(unit.id, automatic=True)
+        db.expire_all()
+
+
 @router.post("/units/{unit_id}/questions/{question_id}/answer")
 def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(child_user), db=Depends(get_db),
            capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
@@ -1566,35 +1630,10 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         record(db, unit.child_id, "feedback_pending", {"attempt_id": attempt.id}, unit.id)
     record(db, unit.child_id, "answer", {"question_id": question_id, "outcome": outcome}, unit.id)
     attempts = [*existing, attempt]
-    deferred_questions = adaptive_plan.deferred(db, unit)
-    active_flow = adaptive_plan.flow(db, unit)
-    flow_pending = active_flow and active_flow["phase"] not in ("offer_probe", "closed")
-    done = not flow_pending and all(
-        x["id"] in deferred_questions
-        or
-        any(a.question_id == x["id"] and a.outcome in ("correct", "uncertain") for a in attempts)
-        or sum(a.question_id == x["id"] for a in attempts) >= 3
-        for x in unit.questions
-    )
-    if done:
-        # Serialize mastery updates across units of the same child.
-        db.execute(update(Child).where(Child.id == unit.child_id).values(grade=Child.grade))
-        unit.status = "completed"
-        unit.completed = int(now())
-        unit.heartbeat = None
-        from .subject_content import open_learning_unit
-
-        if unit.round_kind != "vocabulary" and not open_learning_unit(unit):
-            update_mastery(db, unit, attempts)
-        # An exercise is evidence of practice. Only a parent can close the
-        # binding goal; a single completed unit cannot establish full mastery.
-        record(db, unit.child_id, "unit_completed", {"topic": unit.topic}, unit.id)
+    done = complete_round(db, unit, attempts)
     db.commit()
-    if done and unit.round_kind != "vocabulary":
-        from .coaching import schedule
-
-        schedule(unit.id, automatic=True)
-        db.expire_all()
+    if done:
+        schedule_completed_review(db, unit)
         unit = db.get(LearningUnit, unit_id)
     return answer_response(db, unit, q, attempt)
 
@@ -1640,13 +1679,19 @@ def acknowledge_feedback(
         raise HTTPException(404, "Rückmeldung nicht gefunden.")
     events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
     if any(e.kind == "feedback_seen" and e.detail.get("attempt_id") == attempt.id for e in events):
+        if recover_instructional_round(db, unit):
+            db.commit()
+            schedule_completed_review(db, unit)
         return unit_data(db, unit)
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
     pending = pending_feedback(unit, attempts, events)
     if not pending or pending["attempt_id"] != attempt.id:
         raise HTTPException(409, "Die Rückmeldung hat sich geändert. Bitte die Runde neu laden.")
     record(db, unit.child_id, "feedback_seen", {"attempt_id": attempt.id}, unit.id)
+    recovered = recover_instructional_round(db, unit)
     db.commit()
+    if recovered:
+        schedule_completed_review(db, unit)
     return unit_data(db, unit)
 
 

@@ -178,3 +178,20 @@ einen neuen Versuch, auch bei unverändertem Antworttext. Die lokale
 Sendeidentität endet erst dort. Unbekanntes Transportergebnis oder fehlgeschlagene
 Quittierung behalten dieselbe Kennung; Doppeltaps erzeugen keine zweite Antwort.
 Der gespeicherte Feedbackpfad und der lokale Legacyablauf folgen derselben Regel.
+
+### Abschluss nach einer gezeigten Lösung
+
+Wenn ein gespeicherter Kurzplan nach einer tatsächlich gezeigten Erklärung
+bewusst zu einer anderen Aufgabe führt, bleibt die zuvor falsch beantwortete
+Aufgabe für späteres neues Üben zurückgestellt. `instructional_decisions.deferred`
+bindet diesen Navigationszustand an die aktuelle Quelle; die falschen Attempts
+bleiben unverändert. Ein bloßer Hinweis oder die Rückkehr zur gleichen Aufgabe
+stellt nichts zurück. `learning.complete_round` schließt erst nach dem Ende des
+Plans und den übrigen beantworteten Aufgaben ab. Letztes Antwortfeedback bleibt
+bis zum ausdrücklichen Weiter erhalten.
+
+Für bereits erschöpfte ältere Pläne wird der Wechsel nur aus gespeichertem
+Planjob, gezeigter Erklärung und tatsächlichem Folge-Attempt abgeleitet. GETs
+zeigen diesen Stand ohne Schreibzugriff; erst bewusstes Fortsetzen, Quittieren
+oder Abschließen speichert ihn. Dabei entstehen weder ein zusätzlicher Attempt
+noch ein neuer KI-Plan. Der reguläre Abschlussrückblick bleibt einmalig reserviert.

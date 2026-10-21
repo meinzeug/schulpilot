@@ -1,3 +1,12 @@
+Live-Abschlussprüfung21.10.2026, Version1.18.3+77: gespeicherte, quellengebundene
+Zurückstellung nach einer ausdrücklich gezeigten Lösung und Wechsel auf eine
+andere Prüfaufgabe. Originalantworten bleiben unverändert als Übungsbedarf.
+Bestehende erschöpfte KI-Kurzpläne werden lokal anhand ihrer gespeicherten
+Aktionsbelege wiederaufgenommen; kein GET startet KI oder schließt die Runde.
+Verbrauchte Planfreigaben werden vor einem bewussten POST erneut geprüft.
+Keine neuen Pakete, Providerfreigaben, Kontingente oder Datenbankmigrationen.
+Tatsächlicher künstlicher Browserdurchlauf in AFTERNOON_EVALUATION_2026_10_21.md.
+
 Live-Nachprüfung21.10.2026, Version1.18.2+76: bewusst erneut abgegebene gleiche
 falsche Antwort nach quittiertem Feedback muss einen eigenen Versuch erhalten.
 Transportwiederholungen behalten ihre Idempotenz; weder Antworten noch Hilfen

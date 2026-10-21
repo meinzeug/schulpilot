@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import Field
 from sqlalchemy import select, update
 
-from .db import DB, Child, Job, LearningMemory, LearningUnit, Usage, get_db, now
+from .db import DB, Activity, Attempt, Child, Job, LearningMemory, LearningUnit, Usage, get_db, now
 from .learning_controller import ChooseAction
 from .schemas import Strict
 from .security import child_user
@@ -62,6 +62,63 @@ def current(db, unit):
     if not plan or plan["cursor"] >= len(plan["steps"]):
         return None
     return plan, plan["steps"][plan["cursor"]]
+
+
+def deferred(db, unit):
+    """A shown solution can leave an incorrect question for later new practice.
+
+    This is navigation state, never an answer or a successful learning proof.
+    The legacy inference is deliberately limited to a saved explanation followed
+    by an actual answer on its direct, different-question successor.
+    """
+    from .learning_controller import source_state
+
+    memory = db.get(LearningMemory, unit.id)
+    if not memory:
+        return set()
+    signature, valid, _ = source_state(db, unit)
+    if not valid:
+        return set()
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    by_question = {q["id"]: [a for a in attempts if a.question_id == q["id"]] for q in unit.questions}
+    unfinished = {qid for qid, values in by_question.items() if values and all(a.outcome == "incorrect" for a in values)}
+    saved = memory.working.get("instructional_deferrals") or {}
+    result = set(saved.get("question_ids", [])) & unfinished if saved.get("source_signature") == signature else set()
+    plan = stored(db, unit)
+    if not plan or memory.source_signature != signature or plan.get("source_signature", signature) != signature:
+        return result
+    job = db.get(Job, plan.get("job_id")) if plan.get("job_id") else None
+    if not job or job.kind != "decision" or job.child_id != unit.child_id or job.payload.get("unit_id") != unit.id or job.status != "completed":
+        return result
+    activities = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")))
+    by_id = {"attempt:" + a.id: a for a in attempts}
+    steps = plan.get("steps", [])
+    for index, step in enumerate(steps):
+        qid, target = step.get("question_id"), step.get("on_success")
+        if step.get("kind") not in ("explain", "visual_example") or qid not in unfinished or target is None or not index < target < len(steps):
+            continue
+        following = steps[target]
+        if following.get("kind") not in ("practice", "check_understanding") or following.get("question_id") == qid:
+            continue
+        shown = [e for e in activities if e.detail.get("question_id") == qid and e.detail.get("via") == "model_short_plan"
+            and e.created >= (job.finished or job.created)
+            and any(ref in by_id and by_id[ref].question_id == qid and int(by_id[ref].created) <= e.created for ref in step.get("evidence_refs", []))]
+        if any(outcome.get("step") == target and (a := by_id.get(outcome.get("attempt_ref"))) is not None
+                and a.question_id == following.get("question_id") and any(a.created >= e.created for e in shown)
+                for outcome in plan.get("outcomes", [])):
+            result.add(qid)
+    return result
+
+
+def persist_deferred(db, unit, question_ids):
+    """Caller holds the unit lock; GET projections only call deferred()."""
+    from .learning_controller import source_state
+
+    signature, valid, _ = source_state(db, unit)
+    if valid and question_ids:
+        memory = db.get(LearningMemory, unit.id)
+        memory.working = {**memory.working, "instructional_deferrals": {
+            "source_signature": signature, "question_ids": sorted(question_ids)}}
 
 
 def context(db, unit):
@@ -232,7 +289,14 @@ def execute(db, unit, kind):
         return False
     plan, step = selected
     if kind == "practice" and plan.get("shown") and step["kind"] in ("explain", "visual_example", "hint"):
-        plan["cursor"] = step["on_success"] if step["on_success"] is not None else len(plan["steps"])
+        target = step["on_success"]
+        following = plan["steps"][target] if target is not None else None
+        if (step["kind"] in ("explain", "visual_example") and following
+                and following["kind"] in ("practice", "check_understanding") and following["question_id"] != step["question_id"]):
+            previous = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id, Attempt.question_id == step["question_id"])))
+            if previous and all(a.outcome == "incorrect" for a in previous):
+                persist_deferred(db, unit, deferred(db, unit) | {step["question_id"]})
+        plan["cursor"] = target if target is not None else len(plan["steps"])
         plan["shown"] = False
         save(db, unit, plan)
         return True
@@ -334,7 +398,10 @@ def process(job_id):
             if not unit or unit.status != "active" or context(db, unit)[0] != job.payload["signature"]:
                 raise ProviderError("Der Lernstand wurde während der Planung geändert.")
             plan = validate(result.data, payload)
-            plan.update(cursor=0, shown=False, strategy_version=VERSION, job_id=job.id)
+            from .learning_controller import source_state
+
+            plan.update(cursor=0, shown=False, strategy_version=VERSION, job_id=job.id,
+                source_signature=source_state(db, unit)[0])
             plan["resource_candidates"] = payload["resources"]
             save(db, unit, plan)
             observe(db, unit, "instructional_plan_ready", "decision:" + job.id,
