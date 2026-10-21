@@ -522,3 +522,11 @@ Gate-Sessions laufen vollständig außerhalb des Eventloops; der RAM-Cleanup
 wartet dort niemals auf einen belegten Lock. Die Setup-/Familienrechte sowie Pool- und Budgetgrößen bleiben erhalten.
 Der Evaluationsbericht trennt fehlgeschlagenen 81-Versuch, Wiederherstellung,
 gezielte Engpassregression und tatsächliche spätere Medienabnahme.
+
+Abschließende 82-Medienabnahme: Der isolierte aiortc-Prüfer verknüpft echte
+Media-/SSRC-MSID mit dem tatsächlichen Transceiver-MID und Receivertrack. Der
+Negativfall verweigert unbekannte Stream-IDs; Auflösung oder Reihenfolge ersetzen
+keine Metadaten. Der tatsächliche 300s-Lauf bestätigt Kamera und Bildschirm,
+spätes Angebot nach 143,36s, Bildschirmstopp und weiterlaufende Kamera/Audio.
+15 periodische Healthprüfungen während des Gesprächs erfolgreich (maximal 0,029s). Die früheren
+Prüferfehler bleiben unverändert in den Vorversuchsberichten erhalten.

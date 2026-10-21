@@ -46,10 +46,12 @@ Signalisierung. Kind- und annehmende Elternsitzung sind gebunden, Schlüssel
 idempotent, aktive Slots eindeutig. Sperren: Elternsitzung vor Unit→Child→Call
 bei Annahme; bestehende Lernpfade behalten Unit vor Child. Signale liegen begrenzt
 im API-Arbeitsspeicher (128 Gespräche, insgesamt 4 MB), niemals in Logs,
-SQL oder Backups. SDP-/ICE-Inhalte gelten90 Sekunden und werden zusätzlich durch
-einen API-eigenen1-Sekunden-Cleanup ohne Seitenaufruf entfernt. Sequenzzähler und ein
+SQL oder Backups. SDP-/ICE-Inhalte gelten 90 Sekunden und werden zusätzlich durch
+einen API-eigenen 1-Sekunden-Cleanup ohne Seitenaufruf entfernt. Bei belegtem
+RAM-Lock entfällt nur der aktuelle Tick; Lesen/Schreiben prüft die Gültigkeit
+weiterhin unmittelbar. Sequenzzähler und ein
 begrenzter Hashindex für Wiederholungen bleiben bis zum festen Gesprächsende
-plus90 Sekunden erhalten. Eine spät gestartete Bildschirmfreigabe liegt dadurch
+plus 90 Sekunden erhalten. Eine spät gestartete Bildschirmfreigabe liegt dadurch
 weiter oberhalb des gespeicherten Empfangscursors. Reads und Heartbeats verlängern
 diese Grenze nicht; volle Kapazität verdrängt keine aktiven Gesprächszähler.
 Die aktuelle API verwendet einen Prozess. Mehrere API-Prozesse

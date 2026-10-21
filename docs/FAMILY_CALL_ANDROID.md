@@ -151,6 +151,54 @@ hörbaren Ton noch die korrekte Anzeige der Kinder-Videospuren; die zunächst
 dunklen Remote-Kacheln wurden als eigener Fehler zur Prüfung weitergegeben.
 Der reguläre Elternlogout entfernte die native Gerätebindung und den Klingelstatus.
 
+### Ergänzende Medienabnahme bis 1.19.3+82
+
+Die signierte Version 1.19.1+80 wurde mit dem künstlichen Elternprofil zusätzlich
+aus dem belegten Hintergrund angerufen. Die echte native Anrufmeldung wurde
+angenommen; nach der ausdrücklichen App-Annahme waren Kinderkamera,
+Kinderbildschirm und eigene Kamera visuell sichtbar. Der reguläre Logout
+entfernte Gerätebindung und Klingelstatus. Dies ist ein eigener 80er-Nachweis,
+keine erneut behauptete FCM-Zustellung mit Version 82.
+
+Die Gegenproben deckten drei tatsächliche Fehler auf: Der native Renderer-Mute
+des Plugins schaltete unerwartet das Android-Mikrofon stumm; ein nach 90 Sekunden
+zurückgesetzter Signalcursor verschluckte späte Bildschirmangebote; eine
+synchrone Datenbankabfrage in asynchroner Middleware konnte bei erschöpftem
+Pool den API-Ereignisloop blockieren. Die Korrekturen wurden getrennt getestet.
+Die signierte 1.19.3+82 wurde danach regulär auf demselben künstlichen Emulator
+installiert. Explizites Mikrofon-Aus/An ließ die beobachteten globalen
+Android-Mutezustände jeweils unverändert auf `false`.
+
+In der abschließenden zusammenhängenden 82er-Probe wurde die Erklärung zur
+Freigabe zuerst geöffnet. Erst 110 Sekunden nach der beobachteten Verbindung
+wurden „Bereich auswählen und teilen“ und der echte Android-Systemdialog
+bewusst bestätigt. Das Bildschirmangebot erreichte den Gegenpart 143,36 Sekunden
+nach dem ersten Angebot. Die Zuordnung von Kamera und Bildschirm wurde anhand
+der signalisierten Stream-MSID und des empfangenden Transceiver-MID geprüft;
+Auflösung oder Reihenfolge allein wurden nicht als Quellenbeweis verwendet.
+Der Gegenpart empfing 3.155 Kamera-, 73 Bildschirm- und 14.794 Audioframes;
+die Bildschirmspur hatte 1080 × 2400 Pixel. Der Gegenpeer speicherte ausschließlich
+Zähler und Abmessungen. Die QA-Screenshots zeigen nur die künstliche Appumgebung.
+
+Nach 36,75 Sekunden tatsächlicher Bildschirmfreigabe wurde bewusst gestoppt:
+Android meldete keine aktive Medienprojektion mehr, während der Kamera-/
+Mikrofon-Vordergrunddienst aktiv blieb. Sein Typ wechselte von `224`
+(Kamera/Mikrofon/Projektion) auf `192` (Kamera/Mikrofon). Ein drittes Angebot
+wurde beantwortet; die Bildschirmframes blieben stehen, Kamera und Audio
+liefen weiter. Über 300,26 Sekunden bestanden 15 öffentliche API-Prüfungen
+(langsamste 0,029 Sekunden). Nach normalem Gesprächsende und regulärem
+Kinderlogout waren Projektion, Capture-Dienst, Gerätebindung und Klingelstatus
+entfernt; alle beobachteten Android-Mikrofon-Mutezustände waren `false`.
+Der kurzlebige Emulator wurde anschließend vollständig beendet.
+
+Die neutralen Testaggregate liegen außerhalb von Git in
+`artifacts/family-call80/parent-fcm-media-acceptance.json` und
+`artifacts/family-call82/native-final-acceptance.json`; frühere Fehlversuche
+bleiben separat erhalten. Die echte native Glockensemantik
+„Benachrichtigungen“ wurde ebenfalls geprüft. Der Emulator hatte keine
+Audioausgabe: hörbares Klingeln auf einem physischen Smartphone sowie
+Sprachverständlichkeit und Tonqualität sind damit weiterhin nicht abgenommen.
+
 ## Primärquellen
 
 - [Android: CallStyle](https://developer.android.com/develop/ui/compose/notifications/call-style)

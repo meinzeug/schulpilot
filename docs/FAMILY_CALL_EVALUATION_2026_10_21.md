@@ -1,10 +1,11 @@
 # Familienanrufe: Abnahme am 21.10.2026
 
-Produktversion **1.19.0+79**, Commit
-`f24e19c5438956a38ddf9c87224e6d42403a3382`, Produktionsrelease
-`20261021T180510Z-f24e19c`. Architektur und Bedienung stehen in
+Produktversion **1.19.3+82**, Commit
+`e58e6c4e98411052bda37378d158cf9d30a360b2`, Produktionsrelease
+`20261021T194514Z-e58e6c4`. Architektur und Bedienung stehen in
 [FAMILY_CALLS.md](FAMILY_CALLS.md), die Android-Anbindung in
-[FAMILY_CALL_ANDROID.md](FAMILY_CALL_ANDROID.md).
+[FAMILY_CALL_ANDROID.md](FAMILY_CALL_ANDROID.md). Die folgenden Abschnitte trennen
+die ursprüngliche Abnahme 79 und die nachfolgenden Korrekturen80–82.
 
 ## Umfang und Daten
 
@@ -19,7 +20,7 @@ Passwörter, Sitzungen und FCM-Tokens stehen weder hier noch in Git. Eine angeno
 FCM-Anfrage, eine lokal erzeugte Android-Meldung und eine tatsächlich zugestellte
 Meldung sind unterschiedliche Nachweise.
 
-## Automatisierte Fälle
+## Automatisierte Fälle des ursprünglichen Anrufreleases 79
 
 | Prüfung | Nachweis |
 | --- | --- |
@@ -81,7 +82,7 @@ der App. Protokoll: `artifacts/family-call79/parent79-background-result.json`,
 Bild: `android-fcm-background79.png` im selben Ordner.
 
 Dieser Hintergrundnachweis ist eine echte Zustellung und bleibt vom Offline-
-CallStyle-Test getrennt. Ein angenommener Produktionsanruf wird zusätzlich geprüft.
+CallStyle-Test getrennt. Angenommene Anrufe und Medien werden in den folgenden Gegenproben separat belegt.
 Hörbares Klingeln auf einem physischen Telefon wird daraus nicht abgeleitet.
 
 Der erste Livecall wurde im Test nicht angenommen. Die Produktionsdaten belegten
@@ -204,42 +205,70 @@ Liveversuch und seine neutrale Diagnose bleiben als separate Nachweise erhalten:
 `artifacts/family-call81/live-parent-attempt1.json`, `timeout-diagnostic.json`,
 `rollback.log`, `rollback-health.json` und die native lokale Medienbereinigung.
 
+## Abschließende tatsächliche 82-Gegenprobe
+
+Die erste 82-Probe hatte bereits 240 Sekunden stabile Kamera-/Audioübertragung
+und zwölf erfolgreiche Healthchecks (maximal 0,037s). Der QA-Helfer hatte jedoch
+die bewusst getrennte In-App-Erklärung nicht bestätigt. Der erste Druck öffnet
+dieses Panel; erst „Bereich auswählen und teilen“ startet die Systemauswahl.
+Der korrigierte Helfer folgt diesem Ablauf, ohne Produktberechtigungen zu ändern.
+Die nächste Probe übertrug 263 neue 1080×2400-Frames nach einer späten Freigabe,
+blieb im Prüfer aber wegen dessen unvollständiger Trackkennung source=unknown.
+Der Prüfer berücksichtigt jetzt tatsächliche Media-/SSRC-MSID und die Receiver-
+Zuordnung über Transceiver-MID. Ein synthetischer Negativtest lässt fremde IDs
+weiter unbekannt; Auflösung und Ankunftsreihenfolge bestimmen keine Quellrolle.
+Alle Vorversuche bleiben unverändert erhalten. Die finale Probe bestätigt
+beide Quellen anhand echter Metadaten und den getrennten Bildschirmstopp.
+
+In der abschließenden Probe erschien das erste Screenangebot nach
+**143,36 Sekunden** seit Erstangebot.
+Kamera, Audio und ein eigener Bildschirmtrack wurden über den erzwungenen
+Produktionsrelay tatsächlich empfangen. Beobachtung: 300,26 Sekunden;
+15 Healthchecks erfolgreich, langsamster 0,029 Sekunden.
+3 Kinderangebote und 3 Elternantworten wurden verarbeitet.
+Nach Screenstopp lief Kamera/Mikrofon weiter; Projection endete. Bewusstes Mic
+AUS/AN, globale Schutzschalter und abschließende Dienstbereinigung wurden nativ
+beobachtet. Ende und Logout sind diesmal zusätzlich durch erfolgreiche HTTP-
+Antworten bestätigt. Die nicht bestätigt abgemeldete Elternsitzung des fehlgeschlagenen
+81-Versuchs wurde separat und ausschließlich im künstlichen Haushalt auditiert
+widerrufen. Abschließend 10 künstliche Anrufe, null außerhalb,
+keine aktiven Calls und keine QA-Pushgeräte.
+
+Der endgültige Backendstand besteht 136 isolierte PostgreSQL-Fälle einschließlich
+vollständiger Installation und neuer Engpassfälle. Der absichtlich injizierte alte
+Inlinepfad scheitert in beiden Poolfällen; der reparierte Pfad besteht alle sechs
+neuen Fälle. Der unveränderte native/UI-Code behält 83 Flutterfälle, sechs Kotlin-
+Regelfälle und die saubere vollständige Analyse. Keine doppelte Summierung der
+19 abschließenden Headerfälle. Protokolle liegen in `artifacts/family-call82/`,
+die Flutterprotokolle in `artifacts/family-call81-*.log`.
+
 ## Auslieferung und Rückweg
 
-Web, Direct-APK und Play-AAB wurden mit der fixierten Toolchain aus demselben
-Produktcommit gebaut. Paket, Version, Signierer und Bundlevalidierung sind geprüft.
-Das Play-Artefakt enthält keine APK-Installerberechtigung. Der öffentliche vollständige
-APK-Download stimmt mit dem lokalen signierten Paket überein:
+Web, Direct-APK und Play-AAB stammen aus demselben geprüften Produktcommit.
+Signaturen, Version, Paket, Quellbindung und Play-Bundle sind validiert. Der
+öffentliche vollständige APK-Download stimmt überein:
 
-- APK: 111449251 Bytes, SHA-256
-  `9de9d7baf1ba1aab0467d5a8129fdef5cff8dd93ea65928e86573887a797a52e`.
-- AAB: 88862355 Bytes, SHA-256
-  `f44b43db8dc656f37121c2a1f9bd55cdd61652b46769122d41fecb9b20f5e337`.
+- APK: 111662243 Bytes, SHA-256
+  `9bbc8ba3b16f4a2cef13fc4f467072aba9afaba3ef6d2df7dea9b117ef535e1a`.
+- AAB: 88908351 Bytes, SHA-256
+  `646702fb157cb54dca7310ae4ad475c651a230a3e2cb8ffde632542814d7f1a7`.
 
-Vor dem Deployment wurden Konfiguration und Datenbank gesichert. Schema 0026,
-API, Worker und Caddy sind nach dem Wechsel geprüft; der vorhandene eigene TURN-
-Dienst und Zertifikattimer laufen. Die konkrete Portfreigabe wurde vom Betreiber
-ausdrücklich bestätigt. Die Anruffunktion wurde nach den Relaytests über die
-geschützte Serverumgebung aktiviert und der Operatorwechsel auditiert.
+681 Quellen/Assets und 350 Archiveinträge wurden gegen 14 vorhandene Secretquellen
+geprüft: keine Treffer. Der Relay-Schlüssel wurde zusätzlich ausschließlich im
+Speicher gegen 779 Dateien und dieselben 350 Einträge verglichen: keine Treffer.
+Private Schlüssel und QA-Anmeldedaten wurden nicht in Git übernommen.
 
-Die Geheimnisprüfung fand in 678 Quellen/Assets und 350 APK-/AAB-Einträgen bei
-16 vorhandenen Secretquellen keinen Treffer. Der neue serverseitige TURN-Schlüssel
-wurde zusätzlich ausschließlich im Speicher gegen 776 Dateien und dieselben
-350 Archiveinträge geprüft: ebenfalls kein Treffer.
+Konfiguration und Datenbank wurden vor dem Deployment gesichert. Schema 0026,
+API, Worker, Caddy, TURN und Zertifikattimer sind gesund; Sicherung erfolgreich.
+Providerrevision 29 mit OpenRouter Paid/Economy/ZDR bleibt unverändert. Die
+Anruffunktion wurde nach dem geprüften Poolfix mit erneut gesicherter Umgebung
+und Audit wieder aktiviert. Kein Play-Upload. Familienanrufe verbrauchen keine KI.
 
-Bei einem Anrufproblem zunächst `SCHULPILOT_CALLS_ENABLED=false` setzen und die
-aktuellen App-Dienste neu starten. Ein Vorwärtsfix erhält die aktuelle
-Wiederherstellungs-, Export- und Aufbewahrungslogik.
-
-Release 78, `20261021T164256Z-7367ee4`, ist nur ein begrenzter Notfallrückweg.
-Das Schema 0026 ist additiv, wurde aber nicht mit einer laufenden alten 78-API
-abgenommen. Dessen normaler Migrations- und Restoreprüfpfad kennt Revision 0026
-nicht. Eine Notfallaktivierung benötigt deshalb ausdrücklich
-`--rollback-compatible`; sie darf weder das Schema zurücksetzen noch aktuelle
-Antworten oder Pushgeräte durch eine alte Datenbanksicherung ersetzen. Für einen
-längeren Rückbetrieb wären zusätzlich eine 0026-fähige Restoreprüfung und die
-aktuelle Call-Aufbewahrungs-/Exportpflege erforderlich. Kein langfristig vollständig
-geprüfter Rückbetrieb wird behauptet. Es erfolgte kein Play-Upload.
+Bei Anrufproblemen zuerst `SCHULPILOT_CALLS_ENABLED=false` setzen und die aktuellen
+App-Dienste neu starten. Der vorherige 80-Release `20261021T184832Z-fe3810f` ist
+als Rückweg vorhanden und kennt Schema 0026. Der tatsächliche Rückweg 81→80 wurde
+ohne Datenbankrücksetzung durchgeführt und öffentlich geprüft. Keine aktuelle
+Antwort durch eine alte Sicherung ersetzen.
 
 ## Angeschlossenes physisches Smartphone
 

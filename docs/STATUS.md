@@ -1,4 +1,70 @@
-# Produktionsstand 1.19.0+79 · 21.10.2026
+# Produktionsstand 1.19.3+82 · 21.10.2026
+
+Live: `20261021T194514Z-e58e6c4`, Produktcommit
+`e58e6c4e98411052bda37378d158cf9d30a360b2`, main gepusht.
+Anruffunktion nach Sicherung und Audit wieder aktiviert.
+
+- Livehilfe bei Heute, Aufgaben, Rückblick, Nachrichten und Hausaufgaben:
+  ausdrücklicher Anruf an berechtigte Eltern, Bildschirmfreigabe separat.
+  Keine Aufzeichnung, Fernsteuerung oder KI-Verarbeitung der Gesprächsmedien.
+- Späte Bildschirmangebote erhalten durch stabile Sequenzzähler ihren Platz oberhalb
+  bestehender Empfangscursor. Private SDP-/ICE-Inhalte verfallen weiter nach 90 Sekunden;
+  begrenzter Hashindex und Zähler enden mit der festen Anruffrist. Ein eigener
+  API-Timer bereinigt ohne Seitenaufruf und wartet nie blockierend auf seinen Lock.
+- Fehlgeschlagene Capture-/Angebotsschritte stoppen nur die Bildschirmfreigabe,
+  räumen ausstehende Flags auf und erlauben einen bewussten Neuversuch. Nach
+  Bildschirmstopp entfällt nur der Android-Projection-Diensttyp; Kamera/Ton bleiben.
+- Die echte 81-Probe deckte eine vorhandene API-Blockade auf: 15 Poolplätze waren
+  belegt, während die synchrone Installationsprüfung im Async-Eventloop wartete.
+  Kontrollierter Rückweg auf 80 ohne Datenbankrücksetzung; 82 verlagert die gesamte
+  Gate-Session in einen Worker und erhält Setup-Sperre sowie redigierte Fehler.
+  Der alte Pfad scheitert im kontrollierten Engpasstest, der neue bleibt ansprechbar.
+
+136 gemeinsame PostgreSQLfälle einschließlich kompletter Installation, Pool-/
+Eventloop-Konkurrenz, Anrufrechten, Migrationen, Push, Inbox, Tutor und Feedback
+bestanden. Die 83 Flutterfälle und sechs Kotlin-Regelfälle für den unveränderten
+Clientcode sowie vollständige Flutter-Analyse bleiben gültig; 19 abschließende
+Headerfälle sind eine Teilmenge, keine zusätzliche Gesamtzahl. Ruff/Diff sauber.
+
+Die signierte 80-APK hat echte FCM-Hintergrundzustellung und CallStyle-Annahme sowie
+zwei gleichzeitig sichtbare Kinder-Videobilder und die eigene Elternkamera belegt.
+Die abschließende 82-APK überträgt echte Emulator-Kamera, Audio und den ausdrücklich
+geteilten Bildschirm über den erzwungenen Produktionsrelay: 143,36 Sekunden
+zwischen Erstangebot und erstem Screenangebot, 300,26 Sekunden Beobachtung. Bildschirmstopp
+beendet Projection bei weiterlaufendem Kamera-/Mic-Dienst; bewusstes Mic AUS/AN
+lässt globale Schutzschalter unverändert. 15 Healthchecks während des
+Gesprächs erfolgreich, langsamster 0,029 Sekunden. Danach regulär beendet und
+abgemeldet; die unbestätigt abgemeldete Sitzung des fehlgeschlagenen 81-Tests gezielt
+im künstlichen Haushalt widerrufen und auditiert. 10 künstliche Anrufe insgesamt, null außerhalb; keine aktiven Calls oder QA-Pushgeräte.
+
+Web, Direct-APK und Play-AAB aus demselben Produktcommit signiert/validiert.
+Öffentlicher APK-Voll-Download stimmt überein. APK 111662243 Bytes, SHA256
+`9bbc8ba3b16f4a2cef13fc4f467072aba9afaba3ef6d2df7dea9b117ef535e1a`;
+AAB 88908351 Bytes, SHA256
+`646702fb157cb54dca7310ae4ad475c651a230a3e2cb8ffde632542814d7f1a7`.
+Play ohne APK-Installerberechtigung; kein Play-Upload. 681 Quellen/Assets und 350
+Archiveinträge gegen 14 lokale Secretquellen ohne Treffer; Relaysecret zusätzlich
+nur im Speicher gegen 779 Dateien und dieselben 350 Einträge geprüft: 0 Treffer.
+
+API/Worker/Caddy und eigener TURN-/Zertifikattimer aktiv, Sicherung erfolgreich,
+Schema 0026, Providerrevision 29 Paid/Economy/ZDR unverändert. Familienanrufe nutzen
+keine KI. Rückweg: zunächst `SCHULPILOT_CALLS_ENABLED=false` und Dienste neu starten; vorheriger 80-Release
+`20261021T184832Z-fe3810f` kennt 0026. Keine Datenbankrücksetzung auf alte Antworten.
+
+Physisches Smartphone weiterhin nicht in die VM importiert: BeagleOS-Konfiguration
+gefunden, Thinclient erreichbar, SSH-Identität abweichend und USB-Tunnel gestört.
+BeagleOS-Verwaltung im Browser benötigt noch die eigene Anmeldung. Keine
+Hostkeyprüfung umgangen, kein allgemeiner USB-Listener gestartet. Hörbares Klingeln
+auf dem physischen Telefon bleibt ungeprüft. Nur der eigene kurzlebige Emulator
+wurde auf bestätigte UTC gesetzt und nach den Tests beendet.
+
+Details: [FAMILY_CALLS.md](FAMILY_CALLS.md),
+[FAMILY_CALL_ANDROID.md](FAMILY_CALL_ANDROID.md),
+[FAMILY_CALL_EVALUATION_2026_10_21.md](FAMILY_CALL_EVALUATION_2026_10_21.md).
+
+---
+
+# Historischer Zwischenstand 1.19.0+79 · 21.10.2026
 
 Live: `20261021T180510Z-f24e19c`, Produktcommit
 `f24e19c5438956a38ddf9c87224e6d42403a3382`, main gepusht.
