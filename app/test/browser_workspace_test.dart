@@ -317,12 +317,16 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
-  testWidgets('Browser account header opens the current account settings', (
+  testWidgets('Browser account header offers current account settings', (
     tester,
   ) async {
     final fixture = _account('child');
     final router = await _open(tester, fixture.state, width: 960);
     await tester.tap(find.byTooltip('Konto öffnen'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/app');
+    expect(find.text('Abmelden'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('account-settings')));
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, '/settings');
     expect(tester.takeException(), isNull);

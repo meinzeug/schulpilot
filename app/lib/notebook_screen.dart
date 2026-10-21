@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'learning_tips.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
@@ -493,7 +494,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       useSafeArea: true,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, set) => Padding(
+        builder: (ctx, set) => SingleChildScrollView(
           padding: EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -506,6 +507,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
               SizedBox(height: 18),
               DropdownButtonFormField<String>(
                 initialValue: draftSort,
+                isExpanded: true,
+                itemHeight: null,
                 decoration: InputDecoration(labelText: 'Reihenfolge'),
                 items: [
                   DropdownMenuItem(
@@ -524,6 +527,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
               SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: draftStatus,
+                isExpanded: true,
+                itemHeight: null,
                 decoration: InputDecoration(labelText: 'Seitenstatus'),
                 items: [
                   DropdownMenuItem(value: 'all', child: Text('Alle Seiten')),
@@ -551,8 +556,6 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     firstDate: DateTime(2000),
                     lastDate: DateTime(2200),
                     initialDateRange: draftDates,
-                    builder: (context, child) =>
-                        Theme(data: appTheme(), child: child!),
                   );
                   if (ctx.mounted && result != null) {
                     set(() => draftDates = result);
@@ -620,6 +623,23 @@ class _NotebookScreenState extends State<NotebookScreen> {
     }
   }
 
+  String get pageSummary => data == null
+      ? (loading ? 'Seiten laden…' : '')
+      : '$total ${total == 1 ? 'Seite' : 'Seiten'} · ${sort == 'newest' ? 'Neueste zuerst' : 'Älteste zuerst'}${status == 'confirmed'
+            ? ' · Geprüft'
+            : status == 'review'
+            ? ' · Noch prüfen'
+            : ''}${dates == null ? '' : ' · Zeitraum'}';
+
+  void selectView(String value) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      view = value;
+      clearSelection();
+    });
+    remember();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!current) return SizedBox();
@@ -635,41 +655,94 @@ class _NotebookScreenState extends State<NotebookScreen> {
               childId: widget.childId,
               selected: 'materials',
             ),
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Alle Hefter',
-                onPressed: () => context.go('/library/${widget.childId}'),
-                icon: Icon(Icons.arrow_back_rounded),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  subject?['title'] ?? 'Dein Hefter',
-                  maxLines: 2,
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (widget.state.isChild || canManage)
-                IconButton(
-                  tooltip: 'Heftfoto hinzufügen',
+          if (widget.state.isChild) ...[
+            ChildSectionHero(
+              eyebrow: 'Hefte',
+              title: subject?['title'] ?? 'Dein Hefter',
+              description: 'Deine Seiten an einem Ort. Blättere durch deinen Hefter oder öffne den Text zum Lernen.',
+              icon: Icons.auto_stories_outlined,
+              action: Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
                   onPressed: addPhoto,
-                  icon: Icon(Icons.add_a_photo_outlined),
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                  label: const Text('Heftfoto hinzufügen'),
                 ),
-              if (widget.subjectId != 'unassigned')
-                IconButton(
-                  tooltip: 'Themen entdecken',
-                  onPressed: () => showTopicBrowser(
-                    context,
-                    widget.state,
-                    widget.childId,
-                    widget.subjectId,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                TextButton.icon(
+                  onPressed: () => context.go('/library/${widget.childId}'),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Alle Hefter'),
+                ),
+                if (widget.subjectId != 'unassigned')
+                  TextButton.icon(
+                    onPressed: () => showTopicBrowser(
+                      context,
+                      widget.state,
+                      widget.childId,
+                      widget.subjectId,
+                    ),
+                    icon: const Icon(Icons.ondemand_video_outlined),
+                    label: const Text('Themen entdecken'),
                   ),
-                  icon: Icon(Icons.ondemand_video_outlined),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ChildSectionTabs(
+              tabs: const [
+                (
+                  id: 'album',
+                  label: 'Blättern',
+                  icon: Icons.auto_stories_outlined,
                 ),
-            ],
-          ),
+                (id: 'grid', label: 'Kacheln', icon: Icons.grid_view_rounded),
+                (id: 'list', label: 'Liste', icon: Icons.view_list_rounded),
+              ],
+              selected: view,
+              onSelected: selectView,
+            ),
+          ] else
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'Alle Hefter',
+                  onPressed: () => context.go('/library/${widget.childId}'),
+                  icon: Icon(Icons.arrow_back_rounded),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    subject?['title'] ?? 'Dein Hefter',
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                if (widget.state.isChild || canManage)
+                  IconButton(
+                    tooltip: 'Heftfoto hinzufügen',
+                    onPressed: addPhoto,
+                    icon: Icon(Icons.add_a_photo_outlined),
+                  ),
+                if (widget.subjectId != 'unassigned')
+                  IconButton(
+                    tooltip: 'Themen entdecken',
+                    onPressed: () => showTopicBrowser(
+                      context,
+                      widget.state,
+                      widget.childId,
+                      widget.subjectId,
+                    ),
+                    icon: Icon(Icons.ondemand_video_outlined),
+                  ),
+              ],
+            ),
           SizedBox(height: 14),
           Panel(
             tone: PanelTone.subtle,
@@ -699,66 +772,87 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ),
                   SizedBox(height: 10),
                 ],
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    for (final mode in [
-                      ('album', 'Blättern', Icons.auto_stories_outlined),
-                      ('grid', 'Kacheln', Icons.grid_view_rounded),
-                      ('list', 'Liste', Icons.view_list_rounded),
-                    ])
-                      ChoiceChip(
-                        label: Text(mode.$2),
-                        avatar: Icon(mode.$3, size: 19),
-                        showCheckmark: false,
-                        selected: view == mode.$1,
-                        onSelected: (_) {
-                          setState(() {
-                            view = mode.$1;
-                            clearSelection();
-                          });
-                          remember();
-                        },
+                if (!widget.state.isChild)
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      for (final mode in [
+                        ('album', 'Blättern', Icons.auto_stories_outlined),
+                        ('grid', 'Kacheln', Icons.grid_view_rounded),
+                        ('list', 'Liste', Icons.view_list_rounded),
+                      ])
+                        ChoiceChip(
+                          label: Text(mode.$2),
+                          avatar: Icon(mode.$3, size: 19),
+                          showCheckmark: false,
+                          selected: view == mode.$1,
+                          onSelected: (_) => selectView(mode.$1),
+                        ),
+                    ],
+                  ),
+                if (widget.state.isChild) ...[
+                  Text(
+                    pageSummary,
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      if (!showSearch)
+                        Tooltip(
+                          message: 'Im Hefter suchen',
+                          child: OutlinedButton.icon(
+                            onPressed: toggleSearch,
+                            icon: const Icon(Icons.search_rounded),
+                            label: const Text('Im Hefter suchen'),
+                          ),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: filters,
+                        icon: const Icon(Icons.tune_rounded),
+                        label: const Text('Filter'),
                       ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        data == null
-                            ? (loading ? 'Seiten laden…' : '')
-                            : '$total ${total == 1 ? 'Seite' : 'Seiten'} · ${sort == 'newest' ? 'Neueste zuerst' : 'Älteste zuerst'}${status == 'confirmed'
-                                  ? ' · Geprüft'
-                                  : status == 'review'
-                                  ? ' · Noch prüfen'
-                                  : ''}${dates == null ? '' : ' · Zeitraum'}',
-                        style: TextStyle(
-                          color: context.palette.muted,
-                          fontSize: 12,
+                      IconButton(
+                        tooltip: 'Seiten aktualisieren',
+                        onPressed: subject == null ? loadSubject : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  ),
+                ] else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          pageSummary,
+                          style: TextStyle(
+                            color: context.palette.muted,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    ),
-                    if (!showSearch)
+                      if (!showSearch)
+                        IconButton(
+                          tooltip: 'Im Hefter suchen',
+                          onPressed: toggleSearch,
+                          icon: Icon(Icons.search_rounded),
+                        ),
                       IconButton(
-                        tooltip: 'Im Hefter suchen',
-                        onPressed: toggleSearch,
-                        icon: Icon(Icons.search_rounded),
+                        tooltip: 'Filter',
+                        onPressed: filters,
+                        icon: Icon(Icons.tune_rounded),
                       ),
-                    IconButton(
-                      tooltip: 'Filter',
-                      onPressed: filters,
-                      icon: Icon(Icons.tune_rounded),
-                    ),
-                    IconButton(
-                      tooltip: 'Seiten aktualisieren',
-                      onPressed: subject == null ? loadSubject : load,
-                      icon: Icon(Icons.refresh_rounded),
-                    ),
-                  ],
-                ),
+                      IconButton(
+                        tooltip: 'Seiten aktualisieren',
+                        onPressed: subject == null ? loadSubject : load,
+                        icon: Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

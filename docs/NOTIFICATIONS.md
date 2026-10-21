@@ -101,6 +101,16 @@ kein Zustellbeleg. Private Tokens und Nachrichten sind dort nicht zugänglich.
 
 ## Prüfung und Betrieb
 
+Ab1.18.4 öffnet die gemeinsame Headerglocke ein Klappmenü mit maximal vier
+vorhandenen Neuigkeiten und „Alle anzeigen“ zur vollständigen bisherigen Seite.
+Öffnen/Neuladen liest ausschließlich den vorhandenen Posteingang. Erst der
+bewusste Klick auf einen Eintrag setzt dessen kontogebundene Lesemarkierung und
+öffnet das bereits serverseitig geprüfte Ziel. Leere und fehlgeschlagene Abrufe
+haben eigene Zustände. Betreiber sehen ausschließlich den Push-Betrieb, keinen
+privaten Familienposteingang. Das Kontomenü enthält Einstellungen und Abmelden.
+Verzögerte Abmeldeantworten dürfen eine inzwischen neu angemeldete Sitzung nicht
+löschen; Identitätsprüfung gilt auch bei erneuter Anmeldung desselben Kontos.
+
 Gezielte Prüfung:
 
 ```sh

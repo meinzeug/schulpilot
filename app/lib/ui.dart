@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'app_palette.dart';
@@ -939,7 +940,8 @@ class WorkspaceShell extends StatelessWidget {
               actions: [
                 AppearanceToggle(state),
                 NotificationBell(state),
-                SizedBox(width: 12),
+                AccountMenu(state, compact: true),
+                SizedBox(width: 8),
               ],
             ),
       bottomNavigationBar: desktop
@@ -1362,75 +1364,397 @@ class _WorkspaceHeader extends StatelessWidget {
         SizedBox(width: 8),
         notificationBell,
         SizedBox(width: 8),
-        Tooltip(
-          message: 'Konto öffnen',
-          child: TextButton(
-            onPressed: () => context.go('/settings'),
-            style: TextButton.styleFrom(
-              foregroundColor: context.palette.ink,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 17,
-                  backgroundColor: context.palette.mint,
-                  foregroundColor: context.palette.teal,
-                  child: Text(displayName.characters.first.toUpperCase()),
-                ),
-                SizedBox(width: 10),
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: compact ? 140 : 200),
-                  child: Text(
-                    displayName,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-                SizedBox(width: 6),
-                Icon(Icons.chevron_right_rounded, size: 18),
-              ],
-            ),
-          ),
-        ),
+        AccountMenu(state, nameWidth: compact ? 140 : 200),
       ],
     ),
   );
 }
 
-class NotificationBell extends StatelessWidget {
+bool _sameHeaderAccount(AppState state, Json? snapshot) =>
+    snapshot != null && identical(state.user, snapshot);
+
+MenuStyle _headerMenuStyle(BuildContext context, {double width = 352}) =>
+    MenuStyle(
+      backgroundColor: WidgetStatePropertyAll(context.palette.panelSurface),
+      side: WidgetStatePropertyAll(
+        BorderSide(color: context.palette.surfaceBorder),
+      ),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      maximumSize: WidgetStatePropertyAll(
+        Size(
+          (MediaQuery.sizeOf(context).width - 24).clamp(0, width),
+          (MediaQuery.sizeOf(context).height - 100).clamp(120, 640),
+        ),
+      ),
+    );
+
+class AccountMenu extends StatefulWidget {
+  final AppState state;
+  final bool compact;
+  final double nameWidth;
+  const AccountMenu(
+    this.state, {
+    super.key,
+    this.compact = false,
+    this.nameWidth = 200,
+  });
+  @override
+  State<AccountMenu> createState() => _AccountMenuState();
+}
+
+class _AccountMenuState extends State<AccountMenu> {
+  final _menu = MenuController();
+  Json? _snapshot;
+  bool _signingOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _snapshot = widget.state.user;
+    widget.state.addListener(_changed);
+  }
+
+  @override
+  void didUpdateWidget(covariant AccountMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != widget.state) {
+      oldWidget.state.removeListener(_changed);
+      widget.state.addListener(_changed);
+      _changed();
+    }
+  }
+
+  void _changed() {
+    if (!_sameHeaderAccount(widget.state, _snapshot)) _menu.close();
+    if (mounted) {
+      setState(() {
+        _snapshot = widget.state.user;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(_changed);
+    super.dispose();
+  }
+
+  Future<void> _logout(Json? snapshot) async {
+    final account = snapshot?['id'] as String?;
+    if (_signingOut ||
+        account == null ||
+        !_sameHeaderAccount(widget.state, snapshot)) {
+      return;
+    }
+    setState(() => _signingOut = true);
+    try {
+      await widget.state.logout(expectedAccountId: account);
+      if (mounted && widget.state.user == null) context.go('/login');
+    } catch (error) {
+      if (mounted && _sameHeaderAccount(widget.state, snapshot)) {
+        showError(context, error);
+      }
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final snapshot = state.user;
+    final rawName = (state.user?['display_name'] as String?)?.trim();
+    final name = rawName == null || rawName.isEmpty ? 'Konto' : rawName;
+    final avatar = CircleAvatar(
+      radius: 17,
+      backgroundColor: context.palette.mint,
+      foregroundColor: context.palette.teal,
+      child: Text(name.characters.first.toUpperCase()),
+    );
+    return MenuAnchor(
+      controller: _menu,
+      crossAxisUnconstrained: false,
+      style: _headerMenuStyle(context, width: 288),
+      menuChildren: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: Text(name, style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        MenuItemButton(
+          key: ValueKey('account-settings'),
+          leadingIcon: Icon(Icons.settings_outlined),
+          onPressed: _signingOut
+              ? null
+              : () {
+                  if (_sameHeaderAccount(state, snapshot)) {
+                    context.go('/settings');
+                  }
+                },
+          child: Text('Einstellungen'),
+        ),
+        MenuItemButton(
+          key: ValueKey('account-logout'),
+          leadingIcon: Icon(Icons.logout_rounded),
+          onPressed: _signingOut ? null : () => _logout(snapshot),
+          child: Text(_signingOut ? 'Wird abgemeldet …' : 'Abmelden'),
+        ),
+      ],
+      builder: (context, menu, _) {
+        void toggle() => menu.isOpen ? menu.close() : menu.open();
+        return widget.compact
+            ? IconButton(
+                key: ValueKey('account-menu'),
+                tooltip: 'Konto öffnen',
+                onPressed: _signingOut ? null : toggle,
+                icon: avatar,
+              )
+            : Tooltip(
+                message: 'Konto öffnen',
+                child: TextButton(
+                  key: ValueKey('account-menu'),
+                  onPressed: _signingOut ? null : toggle,
+                  style: TextButton.styleFrom(
+                    foregroundColor: context.palette.ink,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      avatar,
+                      SizedBox(width: 10),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: widget.nameWidth),
+                        child: Text(
+                          name,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      Icon(Icons.expand_more_rounded, size: 18),
+                    ],
+                  ),
+                ),
+              );
+      },
+    );
+  }
+}
+
+class NotificationBell extends StatefulWidget {
   final AppState state;
   const NotificationBell(this.state, {super.key});
   @override
+  State<NotificationBell> createState() => _NotificationBellState();
+}
+
+class _NotificationBellState extends State<NotificationBell> {
+  final _menu = MenuController();
+  Json? _snapshot;
+
+  @override
+  void initState() {
+    super.initState();
+    _snapshot = widget.state.user;
+    widget.state.addListener(_changed);
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationBell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != widget.state) {
+      oldWidget.state.removeListener(_changed);
+      widget.state.addListener(_changed);
+      _changed();
+    }
+  }
+
+  void _changed() {
+    if (!_sameHeaderAccount(widget.state, _snapshot)) _menu.close();
+    if (mounted) {
+      setState(() {
+        _snapshot = widget.state.user;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(_changed);
+    super.dispose();
+  }
+
+  Future<void> _openItem(Json item, Json? snapshot) async {
+    final state = widget.state;
+    if (!_sameHeaderAccount(state, snapshot)) return;
+    try {
+      await state.inbox.markRead([item['id'] as String]);
+      if (mounted && _sameHeaderAccount(state, snapshot)) {
+        context.go(item['route'] as String);
+      }
+    } catch (error) {
+      if (mounted && _sameHeaderAccount(state, snapshot)) {
+        showError(context, error);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: state.inbox,
-    builder: (context, _) => IconButton.outlined(
-      key: ValueKey('notification-bell'),
-      tooltip: state.isAdmin ? 'Push-Status' : 'Benachrichtigungen',
-      style:
-          IconButton.styleFrom(
-            backgroundColor: context.palette.surfaceLow,
-            foregroundColor: context.palette.ink,
-            side: BorderSide(color: context.palette.controlBorder),
-          ).copyWith(
-            side: WidgetStateProperty.resolveWith(
-              (states) => BorderSide(
-                color: states.contains(WidgetState.focused)
-                    ? context.palette.teal
-                    : context.palette.controlBorder,
-                width: states.contains(WidgetState.focused) ? 2.5 : 1,
-              ),
+    listenable: widget.state.inbox,
+    builder: (context, _) {
+      final state = widget.state;
+      final inbox = state.inbox;
+      final account = state.user?['id'] as String?;
+      final snapshot = state.user;
+      final width = (MediaQuery.sizeOf(context).width - 56)
+          .clamp(0, 320)
+          .toDouble();
+      return MenuAnchor(
+        controller: _menu,
+        crossAxisUnconstrained: false,
+        style: _headerMenuStyle(context),
+        onOpen: () {
+          if (!state.isAdmin) {
+            inbox.activate(account);
+            inbox.refresh();
+          }
+        },
+        menuChildren: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Text(
+              state.isAdmin ? 'Push-Betrieb' : 'Deine Neuigkeiten',
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
-      onPressed: () =>
-          context.go(state.isAdmin ? '/admin/push' : '/notifications'),
-      icon: Badge(
-        isLabelVisible: !state.isAdmin && state.inbox.unread > 0,
-        label: Text('${state.inbox.unread > 99 ? '99+' : state.inbox.unread}'),
-        child: Icon(Icons.notifications_none_rounded),
-      ),
-    ),
+          if (state.isAdmin)
+            SizedBox(
+              width: width,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'Geräte und Versandstatus prüfen.',
+                  style: TextStyle(color: context.palette.muted),
+                ),
+              ),
+            )
+          else ...[
+            if (inbox.loading)
+              SizedBox(width: width, child: LinearProgressIndicator()),
+            if (inbox.error != null)
+              SizedBox(
+                width: width,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    inbox.error!,
+                    style: TextStyle(color: context.palette.dangerInk),
+                  ),
+                ),
+              ),
+            if (!inbox.loading && !inbox.hasLoaded && inbox.error == null)
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Neuigkeiten werden geladen …'),
+              ),
+            if (inbox.hasLoaded && inbox.items.isEmpty && inbox.error == null)
+              SizedBox(
+                width: width,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Hier erscheint Neues zu deinem Lernen und deiner Familie.',
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                ),
+              ),
+            for (final item in inbox.items.take(4))
+              MenuItemButton(
+                key: ValueKey('notice-preview-${item['id']}'),
+                leadingIcon: Icon(
+                  item['read'] == true
+                      ? Icons.notifications_none_rounded
+                      : Icons.notifications_active_outlined,
+                  color: item['read'] == true
+                      ? context.palette.muted
+                      : context.palette.teal,
+                ),
+                onPressed: () => _openItem(item, snapshot),
+                child: SizedBox(
+                  width: (width - 64).clamp(0, 256).toDouble(),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['title'] as String,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: item['read'] == true
+                                ? FontWeight.w500
+                                : FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '${state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.palette.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          Divider(height: 12),
+          MenuItemButton(
+            key: ValueKey('notifications-all'),
+            leadingIcon: Icon(Icons.list_alt_rounded),
+            onPressed: () {
+              if (_sameHeaderAccount(state, snapshot)) {
+                context.go(state.isAdmin ? '/admin/push' : '/notifications');
+              }
+            },
+            child: Text('Alle anzeigen'),
+          ),
+        ],
+        builder: (context, menu, _) => IconButton.outlined(
+          key: ValueKey('notification-bell'),
+          tooltip: state.isAdmin ? 'Push-Status' : 'Benachrichtigungen',
+          style:
+              IconButton.styleFrom(
+                backgroundColor: context.palette.surfaceLow,
+                foregroundColor: context.palette.ink,
+                side: BorderSide(color: context.palette.controlBorder),
+              ).copyWith(
+                side: WidgetStateProperty.resolveWith(
+                  (states) => BorderSide(
+                    color: states.contains(WidgetState.focused)
+                        ? context.palette.teal
+                        : context.palette.controlBorder,
+                    width: states.contains(WidgetState.focused) ? 2.5 : 1,
+                  ),
+                ),
+              ),
+          onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+          icon: Badge(
+            isLabelVisible: !state.isAdmin && state.inbox.unread > 0,
+            label: Text(
+              '${state.inbox.unread > 99 ? '99+' : state.inbox.unread}',
+            ),
+            child: Icon(Icons.notifications_none_rounded),
+          ),
+        ),
+      );
+    },
   );
 }
 

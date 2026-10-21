@@ -1,5 +1,15 @@
 # Zwei Erscheinungsbilder: Cyber-Lerncockpit
 
+Vereinheitlichung1.18.4: Kinder-Hausaufgaben und Hefte nutzen dieselben
+`ChildSectionHero`-/`ChildSectionTabs`-/Aktionsbausteine wie Lernen, Wörter und
+Konto. Ein sichtbarer Fotoeinstieg, beschriftete Suche/Filter und klare Rückwege
+ersetzen die älteren Kopf-/Iconleisten. Hefterdetails behalten Blättern, Kacheln
+und Liste. Elternansichten und Quellen-/Uploadrechte bleiben erhalten. „Meine
+Fächer“ zeigt weiter ausschließlich vorhandene Seiten einschließlich unzugeordneter
+Quellen. Kartenanzahl und Höhe berücksichtigen große Schrift auch bei320px.
+Headerglocke und Kontoname öffnen in beiden Erscheinungsbildern dieselben
+kontogebundenen Klappmenüs; mobile Trefferflächen bleiben mindestens48px.
+
 Elternausbau21.10.2026: gleiche Kindnavigation mit Lernstand, Lernplan und
 Hausaufgaben. Lernkompass zeigt aktuelle Aufgabenbelege vor der datierten
 KI-Einschätzung; drei klare Lernplanansichten statt verschachtelter Formulare.

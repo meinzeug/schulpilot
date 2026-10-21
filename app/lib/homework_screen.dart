@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'camera_recovery.dart';
+import 'child_section_ui.dart';
 import 'learning_content.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
@@ -185,70 +186,67 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
     title: 'Hausaufgaben',
+    showTitle: !widget.state.isChild,
     subtitle: 'Du findest den Weg. Ich helfe dir beim Verstehen.',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.state.isChild)
-          Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.edit_note_rounded,
-                  size: 48,
-                  color: context.palette.teal,
+        if (widget.state.isChild) ...[
+          ChildSectionHero(
+            eyebrow: 'Hausaufgaben',
+            title: 'Was hast du heute auf?',
+            description: 'Buch, Arbeitsblatt oder Hefter: Fotografiere die Aufgabe. Dann schauen wir gemeinsam, was zu tun ist.',
+            icon: Icons.edit_note_rounded,
+            action: Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: busy ? null : (pending == null ? capture : upload),
+                icon: Icon(
+                  pending == null ? Icons.add_a_photo_outlined : Icons.refresh,
                 ),
-                SizedBox(height: 12),
-                Text(
-                  'Was hast du heute auf?',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                label: Text(
+                  busy
+                      ? 'Foto wird abgegeben …'
+                      : pending == null
+                      ? 'Hausaufgaben fotografieren'
+                      : 'Upload wiederholen',
                 ),
-                SizedBox(height: 10),
-                Text(
-                  'Buch, Arbeitsblatt oder Hefter: Fotografiere die Aufgabe. Dann schauen wir gemeinsam, was zu tun ist.',
-                ),
-                SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: busy ? null : (pending == null ? capture : upload),
-                  icon: Icon(
-                    pending == null
-                        ? Icons.add_a_photo_outlined
-                        : Icons.refresh,
-                  ),
-                  label: Text(
-                    busy
-                        ? 'Foto wird abgegeben …'
-                        : pending == null
-                        ? 'Hausaufgaben fotografieren'
-                        : 'Upload wiederholen',
-                  ),
-                ),
-                if (widget.state.recoveredPhoto != null &&
-                    widget.state.recoveredPhotoPurpose == 'homework')
-                  TextButton.icon(
-                    onPressed: busy || pending != null ? null : recoverPhoto,
-                    icon: Icon(Icons.restore_rounded),
-                    label: Text('Wiedergefundenes Foto prüfen'),
-                  ),
-                SizedBox(height: 12),
-                Text(
-                  'Das Foto wird mit der KI gelesen. Prüfe den erkannten Text, bevor du dir helfen lässt.',
-                  style: TextStyle(color: context.palette.muted),
-                ),
-              ],
+              ),
             ),
           ),
+          SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (widget.state.recoveredPhoto != null &&
+                  widget.state.recoveredPhotoPurpose == 'homework')
+                TextButton.icon(
+                  onPressed: busy || pending != null ? null : recoverPhoto,
+                  icon: Icon(Icons.restore_rounded),
+                  label: Text('Wiedergefundenes Foto prüfen'),
+                ),
+              IconButton(
+                tooltip: 'Aktualisieren',
+                onPressed: loading || busy ? null : load,
+                icon: Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Das Foto wird mit der KI gelesen. Prüfe den erkannten Text, bevor du dir helfen lässt.',
+            style: TextStyle(color: context.palette.muted, height: 1.5),
+          ),
+        ],
         if (error != null)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Notice(error!, warning: true),
           ),
         SizedBox(height: 22),
-        Text(
-          'Deine Aufgabenfotos',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        heading('Deine Aufgabenfotos'),
         SizedBox(height: 12),
         if (loading && photos.isEmpty)
           Center(child: CircularProgressIndicator()),
@@ -261,40 +259,57 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         for (final photo in photos)
           Padding(
             padding: EdgeInsets.only(bottom: 10),
-            child: Panel(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  photo['confirmed'] == true
-                      ? Icons.assignment_outlined
-                      : Icons.document_scanner_outlined,
-                ),
-                title: Text(
-                  (photo['topic'] as String? ?? '').isNotEmpty
-                      ? photo['topic']
-                      : 'Neues Hausaufgabenfoto',
-                ),
-                subtitle: Text(
-                  photo['confirmed'] == true
-                      ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt'
-                      : 'Foto und erkannten Text prüfen',
-                ),
-                trailing: Icon(Icons.arrow_forward_rounded),
-                onTap: () =>
-                    context.go('/homework/${widget.childId}/${photo['id']}'),
-              ),
-            ),
+            child: widget.state.isChild
+                ? ChildActionTile(
+                    title: (photo['topic'] as String? ?? '').isNotEmpty
+                        ? photo['topic']
+                        : 'Neues Hausaufgabenfoto',
+                    subtitle: photo['confirmed'] == true
+                        ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt'
+                        : 'Foto und erkannten Text prüfen',
+                    icon: photo['confirmed'] == true
+                        ? Icons.assignment_outlined
+                        : Icons.document_scanner_outlined,
+                    onTap: () => context.go(
+                      '/homework/${widget.childId}/${photo['id']}',
+                    ),
+                  )
+                : Panel(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        photo['confirmed'] == true
+                            ? Icons.assignment_outlined
+                            : Icons.document_scanner_outlined,
+                      ),
+                      title: Text(
+                        (photo['topic'] as String? ?? '').isNotEmpty
+                            ? photo['topic']
+                            : 'Neues Hausaufgabenfoto',
+                      ),
+                      subtitle: Text(
+                        photo['confirmed'] == true
+                            ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt'
+                            : 'Foto und erkannten Text prüfen',
+                      ),
+                      trailing: Icon(Icons.arrow_forward_rounded),
+                      onTap: () => context.go(
+                        '/homework/${widget.childId}/${photo['id']}',
+                      ),
+                    ),
+                  ),
           ),
         if (cursor != null)
           TextButton(
             onPressed: loading ? null : () => load(more: true),
             child: Text('Weitere Fotos'),
           ),
-        TextButton.icon(
-          onPressed: loading ? null : load,
-          icon: Icon(Icons.refresh),
-          label: Text('Aktualisieren'),
-        ),
+        if (!widget.state.isChild)
+          TextButton.icon(
+            onPressed: loading ? null : load,
+            icon: Icon(Icons.refresh),
+            label: Text('Aktualisieren'),
+          ),
       ],
     ),
   );
@@ -870,7 +885,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     return PageFrame(
       state: widget.state,
       title: 'Hausaufgaben',
-      showTitle: widget.state.isChild,
+      showTitle: false,
       subtitle: 'Verstehen. Selbst versuchen. Deinen Weg finden.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -882,6 +897,17 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
               selected: 'homework',
               subtitle: 'Gespeicherte Aufgaben & Lernhilfen',
             ),
+          if (widget.state.isChild) ...[
+            ChildSectionHero(
+              eyebrow: 'Hausaufgaben',
+              title: (photo?['topic'] ?? '').toString().trim().isNotEmpty
+                  ? photo!['topic']
+                  : 'Schritt für Schritt.',
+              description: 'Verstehen. Selbst versuchen. Deinen Weg finden.',
+              icon: Icons.edit_note_rounded,
+            ),
+            SizedBox(height: 12),
+          ],
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(

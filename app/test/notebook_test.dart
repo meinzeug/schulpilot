@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 import 'package:schulpilot/api.dart';
+import 'package:schulpilot/child_section_ui.dart';
 import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/notebook_cover.dart';
 import 'package:schulpilot/notebook_photo.dart';
@@ -89,6 +90,7 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
   bool parent = false,
   bool canManage = false,
   bool settle = true,
+  Brightness brightness = Brightness.light,
   Future<http.Response> Function(http.Request)? respond,
 }) async {
   tester.view.physicalSize = Size(width, 1000);
@@ -173,7 +175,7 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
   addTearDown(router.dispose);
   await tester.pumpWidget(
     MaterialApp.router(
-      theme: appTheme(),
+      theme: appTheme(brightness: brightness),
       routerConfig: router,
       builder: (_, child) => MediaQuery(
         data: MediaQueryData(
@@ -223,33 +225,50 @@ void main() {
     },
   );
 
-  for (final width in [320.0, 1280.0]) {
+  for (final (width, textScale, brightness) in [
+    (320.0, 1.0, Brightness.light),
+    (1280.0, 1.0, Brightness.light),
+    (320.0, 2.0, Brightness.light),
+    (320.0, 2.0, Brightness.dark),
+  ]) {
     testWidgets(
-      'Subject shelf keeps empty subjects and opens a real album at $width',
+      'Subject shelf keeps filters and pure GET navigation at $width $textScale $brightness',
       (tester) async {
-        final (_, _, requests) = await open(tester, shelf: true, width: width);
+        final (_, _, requests) = await open(
+          tester,
+          shelf: true,
+          width: width,
+          textScale: textScale,
+          brightness: brightness,
+        );
         expect(find.text('Biologie'), findsNothing);
         expect(find.text('Mathematik'), findsOneWidget);
         expect(find.text('Noch zuordnen'), findsOneWidget);
-        await tap(tester, find.byTooltip('Meine Fächer'));
+        await tap(tester, find.text('Alle Fächer'));
         expect(find.text('Biologie'), findsOneWidget);
         expect(find.text('Noch keine Seiten'), findsOneWidget);
+        final mathPosition = tester.getTopLeft(find.text('Mathematik'));
+        final bioPosition = tester.getTopLeft(find.text('Biologie'));
         expect(
-          tester.getTopLeft(find.text('Mathematik')).dx,
-          lessThan(tester.getTopLeft(find.text('Biologie')).dx),
+          mathPosition.dy < bioPosition.dy ||
+              (mathPosition.dy == bioPosition.dy &&
+                  mathPosition.dx < bioPosition.dx),
+          isTrue,
         );
         expect(requests, hasLength(1));
         expect(requests.single.url.path.endsWith('/subjects'), isTrue);
         expect(find.byType(TextField), findsNothing);
-        expect(
-          tester.getSize(find.byKey(const ValueKey('notebook-toolbar'))).height,
-          lessThanOrEqualTo(64),
-        );
-        expect(
-          tester.getTopLeft(find.byType(NotebookCover).first).dy,
-          lessThan(300),
-        );
-        await tap(tester, find.byTooltip('Fach suchen'));
+        if (textScale == 1) {
+          expect(
+            tester
+                .getSize(find.byKey(const ValueKey('notebook-toolbar')))
+                .height,
+            lessThanOrEqualTo(64),
+          );
+        }
+        expect(find.text('Dein Stoff. Gut sortiert.'), findsOneWidget);
+        expect(find.byType(NotebookCover), findsWidgets);
+        await tap(tester, find.text('Fach suchen'));
         await tester.enterText(find.byType(TextField), 'Biologie');
         await tester.testTextInput.receiveAction(TextInputAction.search);
         await tester.pumpAndSettle();
@@ -258,16 +277,22 @@ void main() {
         expect(find.text('Biologie'), findsWidgets);
         await tap(tester, find.byTooltip('Suche schließen'));
         expect(find.byType(TextField), findsNothing);
-        await tap(tester, find.byTooltip('Meine Fächer'));
+        await tap(tester, find.text('Meine Fächer'));
         expect(find.text('Biologie'), findsNothing);
         expect(find.text('Mathematik'), findsOneWidget);
         expect(find.text('Noch zuordnen'), findsOneWidget);
-        await tap(tester, find.byTooltip('Meine Fächer'));
+        await tap(tester, find.text('Alle Fächer'));
         await tap(tester, find.byTooltip('Liste'));
         expect(find.byType(GridView), findsNothing);
         await tap(tester, find.byTooltip('Kacheln'));
         expect(find.byType(GridView), findsOneWidget);
         expect(requests, hasLength(1));
+        await tap(tester, find.text('Alle Seiten'));
+        expect(requests.every((r) => r.method == 'GET'), isTrue);
+        expect(requests.last.url.path.endsWith('/materials'), isTrue);
+        expect(requests.last.url.queryParameters['subject_id'], isNull);
+        await tap(tester, find.text('Alle Fächer'));
+        expect(find.text('Biologie'), findsOneWidget);
         await tap(tester, find.text('Biologie'));
         expect(
           requests
@@ -815,4 +840,76 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  for (final brightness in Brightness.values) {
+    for (final width in [320.0, 1280.0]) {
+      testWidgets(
+        'Child notebook uses shared heading and accessible view controls at $width $brightness',
+        (tester) async {
+          final (_, _, requests) = await open(
+            tester,
+            width: width,
+            brightness: brightness,
+            textScale: width == 320 ? 2 : 1,
+            photos: false,
+          );
+          expect(find.byType(ChildSectionHero), findsOneWidget);
+          expect(find.byType(ChildSectionTabs), findsOneWidget);
+          expect(find.byType(ChoiceChip), findsNothing);
+          final photoButton = find.descendant(
+            of: find.byType(ChildSectionHero),
+            matching: find.byType(FilledButton),
+          );
+          expect(tester.getSize(photoButton).height, greaterThanOrEqualTo(54));
+          expect(find.text('Alle Hefter'), findsOneWidget);
+          expect(find.text('Themen entdecken'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+
+          await tap(tester, find.text('Liste'));
+          expect(
+            tester
+                .widget<ChildSectionTabs>(find.byType(ChildSectionTabs))
+                .selected,
+            'list',
+          );
+          expect(find.byType(ListView), findsOneWidget);
+          await tap(tester, find.text('Filter'));
+          expect(find.text('Seitenstatus'), findsOneWidget);
+          if (width == 1280) {
+            await tap(tester, find.text('Zeitraum wählen'));
+            expect(
+              Theme.of(tester.element(find.byType(DateRangePickerDialog)))
+                  .brightness,
+              brightness,
+            );
+            await tap(tester, find.byType(CloseButton));
+          }
+          await tap(tester, find.text('Anzeigen'));
+          expect(tester.takeException(), isNull);
+          expect(requests.every((request) => request.method == 'GET'), isTrue);
+
+          await tap(tester, find.text('Heftfoto hinzufügen'));
+          expect(find.text('Deine neuen Heftfotos'), findsOneWidget);
+          expect(requests.every((request) => request.method == 'GET'), isTrue);
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
+  }
+
+  testWidgets('Parent notebook retains existing heading and view controls', (
+    tester,
+  ) async {
+    final (_, _, requests) = await open(tester, parent: true, canManage: true);
+    expect(find.byType(ChildSectionHero), findsNothing);
+    expect(find.byType(ChildSectionTabs), findsNothing);
+    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.byTooltip('Heftfoto hinzufügen'), findsOneWidget);
+    expect(find.byTooltip('Alle Hefter'), findsOneWidget);
+    await tap(tester, find.text('Liste'));
+    expect(find.byType(ListView), findsOneWidget);
+    expect(requests.every((request) => request.method == 'GET'), isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

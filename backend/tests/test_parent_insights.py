@@ -386,7 +386,9 @@ def test_actual_openrouter_parent_prompt_has_no_task_generation_instructions(api
     instructions = json.dumps(requests[0]["messages"][0], ensure_ascii=False)
     assert "GENAU 2 Aufgaben" not in instructions and "AUSGABEFORMAT FÜR AUSWAHLAUFGABEN" not in instructions
     schema = requests[0]["response_format"]["json_schema"]["schema"]
-    assert schema["$defs"]["Finding"]["properties"]["topic_ref"]["enum"] == [ref]
+    finding = schema["properties"]["findings"]["items"]["anyOf"][0]["properties"]
+    assert finding["topic_ref"]["enum"] == [ref]
+    assert finding["need"]["enum"] == ["practice", "support", "assessment_open"]
 
 
 def test_selected_historical_report_stays_in_picker_beyond_the_latest_twelve(api, book):

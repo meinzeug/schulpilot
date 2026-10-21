@@ -238,6 +238,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Deine Neuigkeiten'), findsOneWidget);
         expect(find.text('Deine Eltern haben geantwortet'), findsOneWidget);
+        expect(router.routeInformationProvider.value.uri.path, '/app');
+        expect(find.text('Alle anzeigen'), findsOneWidget);
+        expect(requests.every((r) => r.startsWith('GET')), isTrue);
+        await tester.tap(find.byKey(const ValueKey('notifications-all')));
+        await tester.pumpAndSettle();
         expect(find.textContaining('Deine Eltern können'), findsOneWidget);
         expect(requests.every((r) => r.startsWith('GET')), isTrue);
         await tester.tap(find.text('Deine Eltern haben geantwortet'));

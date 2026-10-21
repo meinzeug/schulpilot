@@ -25,6 +25,18 @@ class CollectionScreen extends StatelessWidget {
     this.learning = false,
   });
 
+  Future<void> addPhoto(BuildContext context) async {
+    if (state.isChild) {
+      openRoute(context, '/after-school/$childId?capture=1');
+      return;
+    }
+    try {
+      await importMaterial(context, state, childId);
+    } catch (error) {
+      if (context.mounted) showError(context, error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: state,
@@ -33,7 +45,7 @@ class CollectionScreen extends StatelessWidget {
         : state.isChild
         ? 'Meine Hefte'
         : 'Heftseiten',
-    showTitle: !state.isChild || !learning,
+    showTitle: !state.isChild,
     actions: [
       if (learning && !state.isChild)
         TextButton.icon(
@@ -83,6 +95,23 @@ class CollectionScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
         ],
+        if (!learning && state.isChild) ...[
+          ChildSectionHero(
+            eyebrow: 'Hefte',
+            title: 'Dein Stoff. Gut sortiert.',
+            description: 'Öffne einen Hefter oder finde eine Seite. Hier bleibt dein Schulstoff zusammen.',
+            icon: Icons.folder_copy_outlined,
+            action: Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: () => addPhoto(context),
+                icon: const Icon(Icons.add_a_photo_outlined),
+                label: const Text('Neue Heftfotos'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+        ],
         learning
             ? PagedCollection(
                 state,
@@ -96,20 +125,7 @@ class CollectionScreen extends StatelessWidget {
                 childId: childId,
                 allPages: PagedCollection(state, childId: childId),
                 onAddPhoto: state.isChild || state.canManage
-                    ? () async {
-                        if (state.isChild) {
-                          openRoute(
-                            context,
-                            '/after-school/$childId?capture=1',
-                          );
-                        } else {
-                          try {
-                            await importMaterial(context, state, childId);
-                          } catch (error) {
-                            if (context.mounted) showError(context, error);
-                          }
-                        }
-                      }
+                    ? () => addPhoto(context)
                     : null,
               ),
       ],

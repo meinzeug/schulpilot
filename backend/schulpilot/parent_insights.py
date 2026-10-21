@@ -1,11 +1,12 @@
 """Evidence-first parent reviews; bounded, opt-in daily work, never on GET."""
 
+import copy
 import json
 import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import Field
+from pydantic import Field, ValidationError
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import load_only
 
@@ -35,6 +36,8 @@ Ein einzelner Fehler ist kein dauerhaftes Defizit. Mit Hilfe oder erst erneut ge
 selbstständiger Erstversuch. Unklare Bewertungen sind NICHT falsch. Ein einzelner Erfolg beweist
 keine dauerhafte Beherrschung. Wiederholter späterer Abruf darf nicht erfunden werden.
 Wähle maximal sechs belegte Schwerpunkte aus topics; topic_ref muss jeweils exakt passen.
+Verwende jedes Thema in findings höchstens einmal. Wähle dafür einen durch die Belege
+erlaubten Schwerpunkt; weitere Kategorien desselben Themas zeigt die Anwendung als Fakten.
 need: practice bei offenen Fehlern, support bei benötigter Hilfe/weiteren Versuchen,
 assessment_open bei unklarer Bewertung, independent_success bei selbstständig gelösten Aufgaben.
 interpretation ist eine vorsichtige, kurze fachliche Einordnung ohne erfundene Fehlerursache;
@@ -72,6 +75,20 @@ class ReviewOutput(Strict):
 class ReviewSettings(Strict):
     revision: int = Field(ge=0)
     enabled: bool
+
+
+class ReviewValidationError(ValueError):
+    """Finite local diagnostics, never provider text or private field values."""
+
+    code = "invalid_output"
+    REASONS = frozenset({"schema_mismatch", "repeated_topic", "unknown_topic", "unsupported_finding",
+                         "no_open_assessment", "unexpected_exercise", "unsafe_content"})
+
+    def __init__(self, reason):
+        if reason not in self.REASONS:
+            raise ValueError("Unknown review validation category")
+        super().__init__(reason)
+        self.reason = reason
 
 
 def fingerprint(value):
@@ -190,32 +207,61 @@ def facts(db, child):
     return signature, payload, topics, totals(ledger)
 
 
+def finding_needs(topic):
+    evidence = {"practice": topic["needs_practice_tasks"], "support": topic["assisted_tasks"],
+                "assessment_open": topic["uncertain_tasks"], "independent_success": topic["independent_tasks"]}
+    return tuple(need for need, count in evidence.items() if count)
+
+
 def bind_schema(schema, payload):
-    refs = [t["ref"] for t in payload["topics"]]
-    for name in ("Finding", "PlanStep"):
-        schema["$defs"][name]["properties"]["topic_ref"]["enum"] = refs
+    """Constrain paid output to the same topic/evidence pairs we validate.
+
+    Group identical permissions rather than duplicating full definitions for
+    every topic. The ordinary provider adapter subsequently prunes unused defs.
+    """
+    findings, plans = {}, {}
+    actions = schema["$defs"]["PlanStep"]["properties"]["action"]["enum"]
+    for topic in payload["topics"]:
+        findings.setdefault(finding_needs(topic), []).append(topic["ref"])
+        permitted = tuple(action for action in actions if action != "clarify_assessment" or topic["uncertain_tasks"])
+        plans.setdefault(permitted, []).append(topic["ref"])
+    for field, name, category, groups in (("findings", "Finding", "need", findings),
+                                          ("plan", "PlanStep", "action", plans)):
+        branches = []
+        for allowed, refs in groups.items():
+            branch = copy.deepcopy(schema["$defs"][name])
+            branch["properties"]["topic_ref"]["enum"] = refs
+            branch["properties"][category]["enum"] = list(allowed)
+            branches.append(branch)
+        schema["properties"][field]["items"] = {"anyOf": branches}
+    schema["properties"]["findings"]["maxItems"] = min(6, len(payload["topics"]))
 
 
 def validate(value, payload):
-    out = ReviewOutput.model_validate(value).model_dump()
+    try:
+        out = ReviewOutput.model_validate(value).model_dump()
+    except ValidationError:
+        raise ReviewValidationError("schema_mismatch") from None
     topics = {t["ref"]: t for t in payload["topics"]}
     if len({f["topic_ref"] for f in out["findings"]}) != len(out["findings"]):
-        raise ValueError("Repeated finding")
+        raise ReviewValidationError("repeated_topic")
     for finding in out["findings"]:
+        if finding["topic_ref"] not in topics:
+            raise ReviewValidationError("unknown_topic")
         t = topics[finding["topic_ref"]]
-        evidence = {"practice": t["needs_practice_tasks"], "support": t["assisted_tasks"],
-                    "assessment_open": t["uncertain_tasks"], "independent_success": t["independent_tasks"]}
-        if not evidence[finding["need"]]:
-            raise ValueError("Unsupported finding")
+        if finding["need"] not in finding_needs(t):
+            raise ReviewValidationError("unsupported_finding")
     for step in out["plan"]:
+        if step["topic_ref"] not in topics:
+            raise ReviewValidationError("unknown_topic")
         t = topics[step["topic_ref"]]
         if step["action"] == "clarify_assessment" and not t["uncertain_tasks"]:
-            raise ValueError("No open assessment")
+            raise ReviewValidationError("no_open_assessment")
     visible = json.dumps(out, ensure_ascii=False)
     if re.search(r"\b(?:Aufgabe\s+\d+|Optionen\s*:|(?:Antwort|Lösung)\s*:)", visible, re.I):
-        raise ValueError("Unexpected generated exercises in parent review")
+        raise ReviewValidationError("unexpected_exercise")
     if re.search(r"https?://|www\.|<\s*(?:script|iframe|svg)|\b(?:ADHS|Dyskalkulie|Legasthenie|Intelligenzquotient)\b|\d\s*%", visible, re.I):
-        raise ValueError("Unsupported diagnosis or active content")
+        raise ReviewValidationError("unsafe_content")
     return out
 
 
@@ -439,6 +485,8 @@ def process(job_id):
                 billing = result or getattr(error, "billing_result", None)
                 if not dispatched:
                     billing = Result({}, 0, 0, 0, cost_source="cancelled", telemetry={"pre_dispatch": True})
+                if billing and isinstance(error, ReviewValidationError):
+                    billing.telemetry = {**(billing.telemetry or {}), "validation_reason": error.reason}
                 settle(db, usage, billing, failed=True)
 
 

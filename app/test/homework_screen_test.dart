@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
+import 'package:schulpilot/child_section_ui.dart';
 import 'package:schulpilot/homework_screen.dart';
 import 'package:schulpilot/ui.dart';
 
@@ -175,6 +176,7 @@ void main() {
             scale: width == 320 ? 2 : 1,
           );
           expect(find.text('Erkläre es mir'), findsOneWidget);
+          expect(find.byType(ChildSectionHero), findsOneWidget);
           expect(
             find.text('Die Fläche ist der Platz innerhalb des Rechtecks.'),
             findsOneWidget,
@@ -228,25 +230,97 @@ void main() {
     },
   );
 
-  testWidgets('Overview is pure GET and presents one photo action', (
-    tester,
-  ) async {
-    final methods = <String>[];
-    final state = account(
-      MockClient((r) async {
-        methods.add(r.method);
-        return reply(
-          r.url.path == '/api/app-release'
-              ? {'available': false}
-              : {'photos': [], 'next_cursor': null},
-        );
-      }),
-    );
-    await open(tester, state, overview: true);
-    expect(find.text('Hausaufgaben fotografieren'), findsOneWidget);
-    expect(methods.every((m) => m == 'GET'), isTrue);
-    expect(tester.takeException(), isNull);
-  });
+  for (final brightness in Brightness.values) {
+    for (final width in [320.0, 1440.0]) {
+      testWidgets(
+        'Overview uses the shared child heading at $width in $brightness without AI',
+        (tester) async {
+          final methods = <String>[];
+          final state = account(
+            MockClient((r) async {
+              methods.add(r.method);
+              return reply(
+                r.url.path == '/api/app-release'
+                    ? {'available': false}
+                    : {'photos': [], 'next_cursor': null},
+              );
+            }),
+          );
+          await open(
+            tester,
+            state,
+            overview: true,
+            brightness: brightness,
+            width: width,
+            scale: width == 320 ? 2 : 1,
+          );
+          expect(find.byType(ChildSectionHero), findsOneWidget);
+          expect(find.text('Was hast du heute auf?'), findsOneWidget);
+          final photoAction = find.widgetWithText(
+            FilledButton,
+            'Hausaufgaben fotografieren',
+          );
+          expect(photoAction, findsOneWidget);
+          expect(tester.getSize(photoAction).height, greaterThanOrEqualTo(52));
+          expect(find.byTooltip('Aktualisieren'), findsOneWidget);
+          expect(methods.every((m) => m == 'GET'), isTrue);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'Shared photo card opens saved homework without generating help',
+    (tester) async {
+      final methods = <String>[];
+      final state = account(
+        MockClient((r) async {
+          methods.add(r.method);
+          if (r.url.path == '/api/app-release') {
+            return reply({'available': false});
+          }
+          return reply(
+            r.url.path == '/api/children/child/homework'
+                ? {
+                    'photos': [
+                      {
+                        'id': 'photo',
+                        'topic': 'Flächen verstehen und begründen',
+                        'subject': 'Mathematik',
+                        'confirmed': true,
+                        'marked_done': 1,
+                      },
+                    ],
+                    'next_cursor': null,
+                  }
+                : fixture(),
+          );
+        }),
+      );
+      final semantics = tester.ensureSemantics();
+    try {
+      await open(tester, state, overview: true, width: 320, scale: 2);
+      final card = find.byType(ChildActionTile);
+      expect(card, findsOneWidget);
+      expect(find.text('Mathematik · 1 selbst abgehakt'), findsOneWidget);
+      await tester.ensureVisible(card);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(card).getSemanticsData().flagsCollection.isButton,
+        isTrue,
+      );
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+      expect(find.text('Alle Hausaufgabenfotos'), findsOneWidget);
+      expect(find.text('Erkläre es mir'), findsOneWidget);
+      expect(methods.every((m) => m == 'GET'), isTrue);
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
+    },
+  );
 
   testWidgets(
     'Parent sees submitted help but cannot enter or submit as child',
@@ -263,6 +337,7 @@ void main() {
         role: 'parent',
       );
       await open(tester, state);
+      expect(find.byType(ChildSectionHero), findsNothing);
       expect(find.byType(TextField), findsNothing);
       expect(find.text('Erkläre es mir'), findsNothing);
       expect(
@@ -311,7 +386,10 @@ void main() {
       await tester.tap(find.text('Bestätigen'));
       await tester.pumpAndSettle();
       expect(find.text('Gespeicherten Entwurf laden'), findsNothing);
-      expect(find.textContaining('noch nicht sicher gespeichert'), findsNothing);
+      expect(
+        find.textContaining('noch nicht sicher gespeichert'),
+        findsNothing,
+      );
       expect(find.text('Mein eigener noch nicht gesendeter Weg'), findsNothing);
       expect(puts, 1);
       expect(tester.takeException(), isNull);

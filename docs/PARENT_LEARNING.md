@@ -54,6 +54,24 @@ historisch erhalten und werden nicht als aktuelle Planungsstrategie verwendet.
 
 ## Regelmäßige Auswertung und Kosten
 
+Ab Version1.18.4 bindet `finding_needs` erlaubte Schwerpunktkategorien an die
+tatsächlich gespeicherten Belege. `bind_schema` übernimmt dieselbe Entscheidung
+vor dem kostenpflichtigen Aufruf in das private Schema: Themen mit ausschließlich
+unterstützten Erfolgen erlauben beispielsweise keinen offenen Fehler als Befund.
+`clarify_assessment` ist nur bei unklarer Bewertung erlaubt. Gleiche Berechtigungen
+werden im Schema gruppiert, statt vollständige Definitionen pro Thema zu senden.
+Der fachliche Validator bleibt streng; doppelte Themen werden zusätzlich im
+Prompt ausdrücklich ausgeschlossen. Keine automatische Korrektur eines erfundenen
+Befundes, kein zweiter Modellaufruf nach einer Ablehnung.
+
+Lokale Ablehnungen verwenden `invalid_output` und genau eine von sieben festen
+`validation_reason`-Kategorien. Keine Pydantic-Fehlerwerte, Modelltexte oder
+Kinderantworten in der Telemetrie. Frühere Berichte und Abrechnung bleiben erhalten.
+Beim konkret beauftragten Fehler vom21.10. war der Anbieteraufruf erfolgreich,
+die anschließende lokale Prüfung scheiterte. Der historische Antwortinhalt wurde
+nicht gespeichert; die genaue damalige Regel ist deshalb nicht rekonstruierbar.
+Die Schema-/Validatorlücke ist unabhängig davon mit synthetischen Fällen belegt.
+
 Pro Kind zunächst ausgeschaltet; ein verwaltendes Elternmitglied kann
 „Regelmäßig mit KI auswerten“ ausdrücklich aktivieren und jederzeit abschalten.
 Diese revisionsgebundene Erlaubnis übersteht die Elternabmeldung, keine Sitzung

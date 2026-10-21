@@ -46,7 +46,7 @@ class Api {
     if (token != null) 'Authorization': 'Bearer $token',
   };
 
-  dynamic decode(http.Response response) {
+  dynamic decode(http.Response response, {bool notifyUnauthorized = true}) {
     if (response.statusCode == 204 && response.bodyBytes.isEmpty) {
       return <String, dynamic>{};
     }
@@ -62,7 +62,9 @@ class Api {
       );
     }
     if (response.statusCode >= 400) {
-      if (response.statusCode == 401) onUnauthorized?.call();
+      if (response.statusCode == 401 && notifyUnauthorized) {
+        onUnauthorized?.call();
+      }
       final detail = data is Map ? data['detail'] : null;
       final fields = data is Map ? data['fields'] as List? : null;
       throw ApiError(
@@ -91,6 +93,9 @@ class Api {
         await http.Response.fromStream(
           await client.send(request).timeout(const Duration(seconds: 35)),
         ).timeout(const Duration(seconds: 35)),
+        // Logout handles an already revoked session itself, with the captured
+        // account guard. A late 401 must not clear a newer login.
+        notifyUnauthorized: !(method == 'POST' && path == '/auth/logout'),
       );
     } on ApiError {
       rethrow;
@@ -357,22 +362,35 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Future<void> logout() async {
+  Future<void> logout({String? expectedAccountId}) async {
+    final expectedUser = user;
+    bool currentAccount() =>
+        identical(user, expectedUser) &&
+        (expectedAccountId == null || user?['id'] == expectedAccountId);
+    if (!currentAccount()) return;
     await LessonVoiceSession.shared.stop();
+    if (!currentAccount()) return;
     if (!kIsWeb) await storage.delete(key: 'google_login_proof');
+    if (!currentAccount()) return;
     try {
       await api.post('/auth/logout');
     } on ApiError catch (e) {
       if (e.status != 401) rethrow;
     }
-    await clear();
+    if (!currentAccount()) return;
+    await clear(expectedUser: expectedUser);
   }
 
-  Future<void> clear() async {
+  Future<void> clear({Json? expectedUser}) async {
+    bool currentAccount() =>
+        expectedUser == null || identical(user, expectedUser);
+    if (!currentAccount()) return;
     await LessonVoiceSession.shared.stop();
+    if (!currentAccount()) return;
     collectionViews.clear();
     inbox.clear();
     await push.forget();
+    if (!currentAccount()) return;
     api.token = null;
     user = null;
     familyId = null;
@@ -380,11 +398,16 @@ class AppState extends ChangeNotifier {
     recoveredPhotoPurpose = 'notebook';
     recoveredPhotos.clear();
     await pendingUploads.clear();
+    if (expectedUser != null && user != null) return;
     await learningDrafts.clear();
+    if (expectedUser != null && user != null) return;
     if (!kIsWeb) {
       await storage.delete(key: 'session');
+      if (expectedUser != null && user != null) return;
       await storage.delete(key: 'camera_child');
+      if (expectedUser != null && user != null) return;
       await storage.delete(key: 'camera_context');
+      if (expectedUser != null && user != null) return;
     }
     notifyListeners();
   }

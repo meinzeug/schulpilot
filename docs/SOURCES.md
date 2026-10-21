@@ -437,3 +437,24 @@ Benachrichtigungsglocke und Android-Zustellung, geprüft am 17.10.2026:
   qa/notebook_audit_images_20261020.json; Bilder außerhalb von Git in
   artifacts/notebook-audit-20261020. Alle neun vor Upload visuell durchgesehen;
   keine echten Kinderinhalte oder übernommenen Schulbuchseiten.
+## Vereinheitlichung und Elternbericht-Prüfung ·21.10.2026 ·1.18.4+78
+
+Eigene bestehende Flutter-Bausteine in child_section_ui.dart, ui.dart,
+homework_screen.dart, collection_screen.dart, notebook_shelf.dart und
+notebook_screen.dart geprüft und gemeinsam verwendet. Keine neuen Pakete,
+Bildanbieter oder externen Designassets.130 gemeinsame Flutterfälle bestanden,
+einschließlich320px/zweifacher Schrift, hell/dunkel, Rollen und verspäteter
+Abmeldung. Tatsächliche Browserprüfung mit ausschließlich künstlichem lokalem
+Kind/Elternzugang ohne KI-Schlüssel: Seitenköpfe, Hefterdetail, Filter, Glocke,
+Alle anzeigen, explizite Lesemarkierung, Einstellungen und Abmelden.
+
+Elternbericht: eigener parent_insights.py-/Provideradapterpfad untersucht;
+Schema erlaubt nur dieselben beleggebundenen Kategorien wie validate.
+33PostgreSQL- und14SQLitefälle bestanden (unterschiedliche Läufe, nicht addiert),
+einschließlich aller15 nichtleeren Belegkombinationen, sieben Ablehnungsgründe,
+normaler Abrechnung und einmaligem Mocktransport. Keine echten Kindereingaben
+für diese Tests. Die ausdrücklich beauftragte Diagnose des konkreten Berichts
+war auditiert; OpenRouter-Generationmetadaten bestätigten erfolgreichen Transport,
+aber enthielten keinen Antwortinhalt. Historische Einzelursache bleibt unbekannt.
+Ausgabeschema-/Validatorlücke ist durch synthetische Fälle unabhängig belegt.
+Providerrevision, Modellmix, Budget und Datenschutzeinstellungen unverändert.

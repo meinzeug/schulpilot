@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'child_section_ui.dart';
 import 'notebook_cover.dart';
 import 'ui.dart';
 
@@ -114,6 +115,28 @@ class _NotebookShelfState extends State<NotebookShelf> {
     }
   }
 
+  Widget sectionTabs() => ChildSectionTabs(
+    tabs: const [
+      (id: 'mine', label: 'Meine Fächer', icon: Icons.folder_open_rounded),
+      (id: 'all', label: 'Alle Fächer', icon: Icons.school_outlined),
+      (id: 'pages', label: 'Alle Seiten', icon: Icons.photo_library_outlined),
+    ],
+    selected: allPages
+        ? 'pages'
+        : ownOnly
+        ? 'mine'
+        : 'all',
+    onSelected: (value) {
+      if (!current) return;
+      searchFocus.unfocus();
+      setState(() {
+        allPages = value == 'pages';
+        if (!allPages) ownOnly = value == 'mine';
+      });
+      remember();
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     if (!current) return SizedBox();
@@ -121,15 +144,18 @@ class _NotebookShelfState extends State<NotebookShelf> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => setState(() => allPages = false),
-              icon: Icon(Icons.folder_open_rounded),
-              label: Text('Zu den Heftern'),
+          if (widget.state.isChild)
+            sectionTabs()
+          else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => allPages = false),
+                icon: Icon(Icons.folder_open_rounded),
+                label: Text('Zu den Heftern'),
+              ),
             ),
-          ),
-          SizedBox(height: 12),
+          const SizedBox(height: 16),
           widget.allPages,
         ],
       );
@@ -167,38 +193,20 @@ class _NotebookShelfState extends State<NotebookShelf> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          key: ValueKey('notebook-toolbar'),
-          padding: EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: context.palette.panelSurface,
-            border: Border.all(color: context.palette.surfaceBorder),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        if (widget.state.isChild) ...[
+          sectionTabs(),
+          const SizedBox(height: 16),
+          Row(
+            key: const ValueKey('notebook-toolbar'),
             children: [
-              IconButton(
-                tooltip: 'Fach suchen',
-                isSelected: showSearch,
-                onPressed: toggleSearch,
-                icon: Icon(Icons.search_rounded),
-              ),
-              IconButton(
-                tooltip: 'Meine Fächer',
-                isSelected: ownOnly,
-                style: IconButton.styleFrom(
-                  backgroundColor: ownOnly ? mint : Colors.transparent,
-                  foregroundColor: ownOnly ? teal : muted,
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: toggleSearch,
+                  icon: const Icon(Icons.search_rounded),
+                  label: Text(showSearch ? 'Suche schließen' : 'Fach suchen'),
                 ),
-                onPressed: () {
-                  setState(() => ownOnly = !ownOnly);
-                  remember();
-                },
-                icon: Icon(Icons.filter_alt_outlined),
-                selectedIcon: Icon(Icons.filter_alt_rounded),
               ),
-              IconButton(
+              IconButton.filledTonal(
                 tooltip: list ? 'Kacheln' : 'Liste',
                 onPressed: () {
                   searchFocus.unfocus();
@@ -209,47 +217,101 @@ class _NotebookShelfState extends State<NotebookShelf> {
                   list ? Icons.grid_view_rounded : Icons.view_list_rounded,
                 ),
               ),
-              if (widget.onAddPhoto != null)
-                IconButton(
-                  tooltip: 'Neue Heftfotos',
-                  onPressed: widget.onAddPhoto,
-                  color: context.palette.teal,
-                  icon: Icon(Icons.add_a_photo_outlined),
-                ),
-              PopupMenuButton<String>(
-                tooltip: 'Weitere Optionen',
-                onOpened: searchFocus.unfocus,
-                onSelected: (value) {
-                  if (!current) return;
-                  switch (value) {
-                    case 'pages':
-                      setState(() => allPages = true);
-                    case 'words':
-                      openRoute(context, '/vocabulary/${widget.childId}');
-                    case 'refresh':
-                      load();
-                    case 'overview':
-                      openRoute(context, '/child/${widget.childId}');
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(value: 'pages', child: Text('Alle Heftseiten')),
-                  PopupMenuItem(value: 'words', child: Text('Wörter')),
-                  PopupMenuItem(
-                    value: 'refresh',
-                    child: Text('Hefter aktualisieren'),
-                  ),
-                  if (!widget.state.isChild)
-                    PopupMenuItem(
-                      value: 'overview',
-                      child: Text('Zum Lernüberblick'),
-                    ),
-                ],
-                icon: Icon(Icons.more_horiz_rounded),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: 'Hefter aktualisieren',
+                onPressed: load,
+                icon: const Icon(Icons.refresh_rounded),
               ),
             ],
           ),
-        ),
+        ] else
+          Container(
+            key: ValueKey('notebook-toolbar'),
+            padding: EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: context.palette.panelSurface,
+              border: Border.all(color: context.palette.surfaceBorder),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  tooltip: 'Fach suchen',
+                  isSelected: showSearch,
+                  onPressed: toggleSearch,
+                  icon: Icon(Icons.search_rounded),
+                ),
+                IconButton(
+                  tooltip: 'Meine Fächer',
+                  isSelected: ownOnly,
+                  style: IconButton.styleFrom(
+                    backgroundColor: ownOnly ? mint : Colors.transparent,
+                    foregroundColor: ownOnly ? teal : muted,
+                  ),
+                  onPressed: () {
+                    setState(() => ownOnly = !ownOnly);
+                    remember();
+                  },
+                  icon: Icon(Icons.filter_alt_outlined),
+                  selectedIcon: Icon(Icons.filter_alt_rounded),
+                ),
+                IconButton(
+                  tooltip: list ? 'Kacheln' : 'Liste',
+                  onPressed: () {
+                    searchFocus.unfocus();
+                    setState(() => list = !list);
+                    remember();
+                  },
+                  icon: Icon(
+                    list ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                  ),
+                ),
+                if (widget.onAddPhoto != null)
+                  IconButton(
+                    tooltip: 'Neue Heftfotos',
+                    onPressed: widget.onAddPhoto,
+                    color: context.palette.teal,
+                    icon: Icon(Icons.add_a_photo_outlined),
+                  ),
+                PopupMenuButton<String>(
+                  tooltip: 'Weitere Optionen',
+                  onOpened: searchFocus.unfocus,
+                  onSelected: (value) {
+                    if (!current) return;
+                    switch (value) {
+                      case 'pages':
+                        setState(() => allPages = true);
+                      case 'words':
+                        openRoute(context, '/vocabulary/${widget.childId}');
+                      case 'refresh':
+                        load();
+                      case 'overview':
+                        openRoute(context, '/child/${widget.childId}');
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'pages',
+                      child: Text('Alle Heftseiten'),
+                    ),
+                    PopupMenuItem(value: 'words', child: Text('Wörter')),
+                    PopupMenuItem(
+                      value: 'refresh',
+                      child: Text('Hefter aktualisieren'),
+                    ),
+                    if (!widget.state.isChild)
+                      PopupMenuItem(
+                        value: 'overview',
+                        child: Text('Zum Lernüberblick'),
+                      ),
+                  ],
+                  icon: Icon(Icons.more_horiz_rounded),
+                ),
+              ],
+            ),
+          ),
         if (showSearch) ...[
           SizedBox(height: 10),
           TextField(
@@ -339,17 +401,23 @@ class _NotebookShelfState extends State<NotebookShelf> {
         ] else
           LayoutBuilder(
             builder: (context, constraints) {
-              final columns = constraints.maxWidth < 500
+              final baseColumns = constraints.maxWidth < 500
                   ? 2
                   : constraints.maxWidth < 800
                   ? 3
                   : 4;
+              final textScale = MediaQuery.textScalerOf(context).scale(15) / 15;
+              final columns = (constraints.maxWidth / (110 * textScale))
+                  .floor()
+                  .clamp(1, baseColumns);
               return GridView.builder(
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
-                  mainAxisExtent: constraints.maxWidth < 350 ? 244 : 280,
+                  mainAxisExtent:
+                      (constraints.maxWidth < 350 ? 244.0 : 280.0) +
+                      (textScale - 1).clamp(0.0, 3.0).toDouble() * 100,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 16,
                 ),
