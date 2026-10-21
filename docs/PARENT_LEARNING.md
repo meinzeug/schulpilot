@@ -1,6 +1,6 @@
 # Eltern-Lernkompass, Lernplan und Hausaufgaben
 
-Implementierungsstand21.10.2026, Zielversion1.17.2+72. Tatsächlicher Freigabe-,
+Implementierungsstand21.10.2026, Version1.17.2+72. Tatsächlicher Freigabe-,
 Test- und Produktionsstand stehen in STATUS.md. Keine neuen Laufzeitpakete oder
 Dienste; bestehender FastAPI-Worker, PostgreSQL, OpenRouter-Routing und Flutter.
 
@@ -136,3 +136,44 @@ und signierter Belegstand; außerdem Quellenänderung, Widerruf, Budgetgrenze,
 Providerausfall, regelmäßige Freigabe, Priorisierung/Elterntermine, Export/Löschung,
 mehrseitige Übernahme und privates Hausaufgabenlesen. Widgettests in
 `app/test/parent_insights_test.dart` und bestehende Navigation-/Lernstandstests.
+
+## Tatsächlicher künstlicher Produktionsnachweis21.10.2026
+
+Eigener regulärer, ausdrücklich künstlicher Haushalt, kein öffentlicher Demo-
+Sonderpfad, keine Antwort im echten Kinderprofil. Festes Testbudget0,25USD und
+zwölf Aufrufe; weder Providerrevision29 noch Familien-/Systemgrenzen geändert.
+
+| Ausgang / Ereignis | Tatsächliche Entscheidung und gespeichertes Ergebnis |
+| --- | --- |
+| Neues Elternthema ohne Foto | Sol erzeugt eine Einführung und zwei kontrollierte Aufgaben:47+26=73 und81−35=46. Fach/Thema exakt gebunden; erneute Vorbereitung verwendet die vorhandene Runde. |
+| Bestätigtes künstliches Rechteckfoto | Luna gliedert zwei Hausaufgaben, Eltern sehen1von2Häkchen und das Original. Nicht abgeschickte Antwort/Frage bleiben verborgen. |
+| Elternauftrag aus bestätigter Quelle | Luna erzeugt eine Begriffsfrage und die neue Rechnung6cm×3cm=18cm². Thema aus dieser Runde wird mit derselben Quellenrevision übernommen. Dies ist eine normale Lernrunde mit ausgearbeitetem Beispiel, keine zusätzliche Hausaufgaben-Tutorhilfe. |
+| Vier künstliche Antworten | Zwei selbstständig richtig, eine mit Hinweis richtig, eine zunächst unklar; die erste KI-Auswertung behandelt unklar ausdrücklich als offen, nicht als Fehler. |
+| Rechenprüfung korrigiert | Die eigene alte Antwort0auf81−35 wird ausdrücklich nachgeprüft: falsch statt unklar. Antwort, Hilfenutzung, Datum und Anzahl bleiben erhalten; genau ein Assessment-Eintrag trotz zweimaligem POST, null Anbieteraufrufe. |
+| Regelmäßige Auswertung | Elternfreigabe aktiv; ausschließlich im künstlichen Kind wurde der bereits vergangene Tagesabstand auditierbar simuliert. Der reguläre Worker erzeugt selbstständig einen neuen Bericht: ein Übungsschwerpunkt plus ein Thema mit Unterstützung, danach Verständnisprüfung, neue Anwendung und späterer Abruf. Kein globaler Uhr-/Budget-/Versuchszählerwechsel. |
+| Lesen / neu laden | Mehrfaches Lesen von Bericht und Lernplan verändert Usage nicht. Kein neuer Bericht ohne neue Belege; entsprechende Zeit-/Revisionsfälle zusätzlich auf isoliertem PostgreSQL geprüft. |
+
+Neun tatsächliche OpenRouter-Aufrufe inklusive normaler Rundenrückblicke und der
+inhaltlich ungeeigneten ersten Zusammenfassung unter70:41066µUSD=0,041066USD,
+keine unbekannten Kosten. Modelle `openai/gpt-6-luna` und `openai/gpt-6.1-sol`.
+Die korrigierte ausdrücklich angeforderte Elternauswertung kostete459µUSD; die
+regulär vom Worker erzeugte Folgeauswertung613µUSD. Keine automatische Reparatur
+oder Rücksetzung früherer Kosten. Der Produktionshaushalt wurde über die normale
+berechtigte Kontolöschung entfernt, anschließend Konten, Quellen, Runden und
+Berichte sowie unveränderte Providerrevision serverseitig geprüft. Verbrauch und
+authentifiziertes Löschjournal bleiben bestehen.
+
+Browserprüfung mit denselben tatsächlichen künstlichen Antworten als ausdrücklich
+lokaler Bedienprobe: Thema anlegen, gemeinsame Bereichsauswahl, Wochenplan,
+Hausaufgabenfilter, Aufgabenstatus, geschütztes Originalfoto, Themen-Beleglink,
+Desktop/Mobil sowie hell/dunkel. Die lokale Vorschau besitzt keinen KI-Schlüssel
+oder Worker. Sie beweist Darstellung/Navigation, keine zusätzlichen Liveaufrufe.
+Die eigentlichen Livefälle liefen über die normale Produktions-API.
+
+Vollständige Flutter-Reihe1022Tests bestanden; nach der letzten direkten
+Themen-Belegnavigation37 betroffene Widgettests und Flutteranalyse sauber.
+162 Backendfälle bei Integration,149 Rechen-/Bewertungsfälle,107 Adapter-/Planungs-
+fälle und19 abschließende Elternfälle bestanden; überlappende Läufe werden nicht
+addiert. PostgreSQL-Migration0025 tatsächlich bis zum Head geprüft. Keine neue
+physische Android-/Kamera-, vollständige WCAG- oder Lernwirkungsabnahme behauptet.
+Build-/Produktionsstand und Rückweg stehen im Kopf von STATUS.md.

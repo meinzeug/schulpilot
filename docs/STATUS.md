@@ -1,3 +1,68 @@
+# Produktionsstand1.17.2+72 ·21.10.2026
+
+Live: Release `20261021T094655Z-019d20e`, Produktcommit
+`019d20e5b0d288698530584ab349e8a126a1c51d`, main gepusht. Elternbereich erweitert:
+
+- Lernkompass aus sämtlichen gespeicherten Aufgabenbelegen mit getrennten
+  Kategorien für selbstständig, unterstützt/erneut, weiter üben und unklar.
+  Vorsichtige KI-Einschätzung, nächste Überprüfung und Berichtshistorie.
+- Regelmäßige KI-Auswertung pro Kind ausdrücklich aktivierbar, bei neuen Belegen
+  höchstens täglich im bestehenden Budget. Kein Modellaufruf beim Lesen.
+- Detaillierter Lernplan mit KI-Schwerpunkten, tatsächlichen gespeicherten
+  Kurzplänen, Wochenvorschlag und eigenen Elternaufträgen aus bestätigten Seiten,
+  vorhandenen Übungen oder neuen Themen ohne Foto. Vorbereitung bewusst und
+  idempotent; vorhandene Runden/Antworten bleiben erhalten.
+- Eltern-Hausaufgaben je Kind mit Filtern, Originalfoto, Teilaufgaben und
+  abgegebener Begleitung. Häkchen sind Selbstangaben; ungesendete Entwürfe bleiben
+  kindprivat. Gemeinsame Bereichsauswahl, direkte Themenbelege ohne Berichtsschleife.
+
+Details, Schnittstellen, gespeicherte Daten, regelmäßige Freigabe, Kosten und
+konkrete Testspuren: [PARENT_LEARNING.md](PARENT_LEARNING.md).
+Der Hausaufgabenbereich für Kinder und die fünf echten künstlichen Foto-/KI-
+prüfungen aus69 bleiben enthalten, siehe [HOMEWORK.md](HOMEWORK.md).
+
+Eigener künstlicher regulärer Produktionshaushalt: neues Thema, bestätigte
+Fotoquelle, Übernahme aus Übung, selbstständige/unterstützte Antworten,
+Elternauswertung und regulärer Worker tatsächlich mit OpenRouter getestet.
+9Aufrufe inklusive Rundenrückblicken und der ersten ungeeigneten Zusammenfassung,
+41066µUSD=0,041066USD; unbekannte Kosten0. Budget0,25USD/12Aufrufe und
+Providerrevision29 erhalten. Keinerlei Testantworten im echten Kinderprofil.
+Produktions-Testkonto normal gelöscht und Konten/Quellen/Runden/Berichte separat
+nachgeprüft; Verbrauch und Löschjournal erhalten. Private QA-Zugangsdaten entfernt.
+
+Zwei echte Befunde korrigiert: einfacher Rechenterm81−35 mit Antwort0 blieb zuvor
+unklar; `subject_rules_v5` prüft vollständige Zweizahlterme samt Musterlösung exakt.
+Ausdrückliche Nachprüfung korrigiert nur das Urteil mit Audit, keine neue Antwort
+oder verlorene Hilfe, null Anbieteraufrufe. Allgemeine Aufgabenanweisungen werden
+nicht mehr an Planungs-/Elternberichte angehängt; Strategie `parent-review-2`.
+Die neue echte KI-Auswertung bleibt bei den gespeicherten Belegen. Die regelmäßige
+Folgeauswertung nimmt die korrigierte Datenlage als Übungsschwerpunkt auf.
+Nur der Tagesabstand des künstlichen Kindes wurde für diese Ablaufprüfung
+simuliert, keine globale Zeit, Budget- oder Versuchszähleränderung.
+
+1022Fluttertests bei Integration bestanden; abschließend37 betroffene Widgettests,
+Flutteranalyse,19Elternfälle auf PostgreSQL16 sowie Ruff sauber. Zusätzlich149
+Bewertungs- und107Adapter-/Planungsfälle bestanden, bei Integration162Backendfälle;
+überlappende Läufe nicht addieren. Migration0025 tatsächlich bis Head geprüft.
+Browser: Elternformular, einheitliche Navigation, Wochenplan, Bericht→Themenbelege,
+Hausaufgabenfilter/Originalfoto,390px/1280px und hell/dunkel. Ausschließlich lokale
+Bedienprobe mit echten künstlichen Produktionsantworten; keine zusätzliche lokale
+KI. Die kurzlebige Vorschau hat keinen Providerzugang oder Worker.
+Keine neue physische Android-, vollständige WCAG- oder Lernwirkungsabnahme.
+
+Web und signierte Direct-APK/Play-AAB72 gebaut und separat validiert, kein Play-
+Upload. Aktuelle API/Worker/Caddy gesund, Schema0025, reguläre Sicherung erfolgreich.
+Rückweg: vorherige71 (`20261021T092711Z-31a1c55`), gleiches Schema0025;
+für diesen Coderückweg keine Datenbankrücksetzung. Andere Dienste nicht geändert.
+APK75072918Bytes, SHA256
+`e6aa6c235d8549029b1838c489553a385152cfffc251ccd56136849d5d6ce9f6`;
+AAB70506697Bytes, SHA256
+`2d22fc25345c2ae09028e393f362ce1238920f31fd1d77dbb81fdbdfb6c9c094`.
+Signierer/Paket/Version/Bundletool geprüft, Play ohne APK-Installerberechtigung.
+Öffentlicher APK-Voll-Download entspricht dem lokalen Release.
+
+---
+
 # Produktionsstand1.16.2+69 ·21.10.2026
 
 Live: Release `20261021T073101Z-56b8849`, Produktcommit
@@ -33,9 +98,7 @@ AAB70286004Bytes, SHA256
 Signierer/Paket/Version/Bundletool geprüft, Play ohne APK-Installerberechtigung.
 Öffentlicher APK-Voll-Download entspricht dem lokalen Release.
 
-Aktueller zusätzlicher Auftrag: Eltern-Lernstand mit regelmäßiger kostenbegrenzter
-KI-Auswertung, Hausaufgabenübersicht je Kind und ausgebauter Lernplan mit eigenen
-Themen. Noch nicht als fertig oder ausgeliefert behaupten.
+Der damals offene Elternzusatzauftrag ist im oben dokumentierten aktuellen Stand umgesetzt.
 
 ---
 

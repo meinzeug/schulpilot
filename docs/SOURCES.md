@@ -1,4 +1,4 @@
-Eltern-Lernkompass21.10.2026, Zielversion1.17.2+72: eigene bestehende
+Eltern-Lernkompass21.10.2026, Version1.17.2+72: eigene bestehende
 Attempt-/Activity-Auswertung, reservierte Jobs und begrenzter OpenRouter-
 Entscheidungsauftrag. Kein zusätzlicher Anbieter, neues Paket oder Microservice.
 Additive Migration0025; gemeinsame Flutter-Navigation, Themenplanung und
