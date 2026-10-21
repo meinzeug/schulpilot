@@ -12,7 +12,7 @@ from math import gcd
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
-VERSION = "subject_rules_v3"
+VERSION = "subject_rules_v4"
 
 
 def fraction_addition_hint(question, answer):
@@ -90,6 +90,56 @@ def arithmetic(question, answer):
                   form="correct" if instruction or denominator or re.search(r"vollständig", prompt, re.I) else "not_requested")
 
 
+def rectangle_area(question, answer):
+    """Check a bounded, explicit rectangle problem, not arbitrary word problems.
+
+    The prompt supplies the output unit, so a bare number is sufficient unless
+    writing the unit is itself explicitly requested. Verify the stored key
+    against the given sides before accepting any answer or answer variant.
+    """
+    if question["type"] not in ("short", "gap"):
+        return None
+    number = r"\d{1,6}(?:[.,]\d{1,6})?"
+    length = rf"({number})\s*(mm|cm|dm|km|m)"
+    area = r"(mm|cm|dm|km|m)(?:²|\^2|2)"
+    prompt = " ".join(question["prompt"].lower().split())
+    match = re.fullmatch(
+        rf"(?:(?:übung|aufgabe|neues übungsbeispiel):\s*)?(?:ein|das) rechteck ist "
+        rf"{length}\s+lang\s+und\s+{length}\s+breit[.!]\s*"
+        rf"(?:wie groß ist (?:seine|die) fläche|berechne (?:seine|die) fläche)"
+        rf"(?:\s+in\s+{area})?[?.!]?"
+        r"(?:\s*(?:gib (?:das ergebnis|die antwort) mit (?:der )?einheit an|nenne zahl und einheit)[.!]?)?",
+        prompt,
+    )
+    if not match or match[2] != match[4]:
+        return None
+    first, second = (Fraction(match[i].replace(",", ".")) for i in (1, 3))
+    if first <= 0 or second <= 0:
+        return None
+    expected = first * second
+    unit = match[5] or match[2]
+    # Mixed output units are deliberately left to an explicit conversion task.
+    if unit != match[2]:
+        return None
+
+    def quantity(text):
+        value = re.fullmatch(rf"\s*({number})(?:\s*{area})?\s*", text)
+        return (Fraction(value[1].replace(",", ".")), value[2]) if value else None
+
+    key, supplied = quantity(question["answer"]), quantity(answer)
+    if not key or key[0] != expected or (key[1] and key[1] != unit):
+        return result("uncertain", "Die gespeicherte Musterlösung passt nicht zur Rechteckfläche. Die Aufgabe muss geklärt werden.")
+    if not supplied:
+        return None
+    if supplied[0] != expected:
+        return result("incorrect", "Multipliziere die Länge mit der Breite. Prüfe noch einmal dein Ergebnis.")
+    if supplied[1] and supplied[1] != unit:
+        return result("incorrect", "Der Zahlenwert stimmt. Prüfe die verlangte Flächeneinheit.", content="correct", form="incorrect")
+    if re.search(r"mit (?:der )?einheit|zahl und einheit", prompt) and not supplied[1]:
+        return result("incorrect", "Der Zahlenwert stimmt. Ergänze noch die ausdrücklich verlangte Flächeneinheit.", content="correct", form="incorrect")
+    return result("correct", "Die Fläche stimmt: Länge mal Breite ergibt den gesuchten Flächeninhalt.")
+
+
 def triangle_area(question, answer):
     from .subject_content import legacy_presentation
 
@@ -114,7 +164,7 @@ def triangle_area(question, answer):
         return result("incorrect", "Prüfe erst Grundseite mal senkrechte Höhe. Danach halbierst du das Ergebnis.")
     if supplied[1] and supplied[1] != block["unit"]:
         return result("incorrect", "Der Zahlenwert stimmt; prüfe die Flächeneinheit.", content="correct", form="incorrect")
-    if re.search(r"mit\s+(?:der\s+)?einheit|in\s+(?:cm|m)(?:²|\^2|2)", question["prompt"], re.I) and not supplied[1]:
+    if re.search(r"mit\s+(?:der\s+)?einheit|zahl\s+und\s+einheit", question["prompt"], re.I) and not supplied[1]:
         return result("incorrect", "Der Zahlenwert stimmt. Ergänze noch die verlangte Flächeneinheit.", content="correct", form="incorrect")
     return result("correct", "Du hast Grundseite und senkrechte Höhe multipliziert und das Ergebnis halbiert.")
 
@@ -146,6 +196,8 @@ def closed_concept(question, answer):
 def evaluate(question, answer):
     if (question.get("presentation") or {}).get("evidence_kind") in ("reflection", "creative", "self_report", "movement"):
         return result("uncertain", "Deine Idee ist gespeichert. Gefühle, kreative Ideen oder körperliche Ausführung werden hier nicht als richtig oder falsch gemessen.", method="open_learning_v1")
+    if checked := rectangle_area(question, answer):
+        return checked
     if checked := triangle_area(question, answer):
         return checked
     if question.get("language"):

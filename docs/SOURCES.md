@@ -1,3 +1,9 @@
+Flächenbewertung21.10.2026, Version1.15.1+66: eigene konservative, exakt mit
+`Fraction` geprüfte Rechteckregel und einheitliche Behandlung bereits vorgegebener
+Flächeneinheiten. Künstliche Testwerte; keine neuen Pakete, Provideraufrufe oder
+angehobenen Kontingente. Regelversion `subject_rules_v4`, Umfang und Grenzen in
+[AREA_ASSESSMENT_2026_10_21.md](AREA_ASSESSMENT_2026_10_21.md).
+
 Lernsteuerung und gemeinsamer Arbeitsraum20.10.2026, bereitgestellt1.15.0+65
 (20261020T184923Z-872d505, Produktcommit872d505375894ffd4e1c173af5a1d6513aff0e75):
 
