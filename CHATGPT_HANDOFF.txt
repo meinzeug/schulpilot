@@ -1,3 +1,58 @@
+# Produktionsstand1.18.3+77 ·21.10.2026
+
+Live: `20261021T150342Z-14fe339`, Produktcommit
+`14fe339f579b84c85d54ee31cbb4f33d49d98569`, main gepusht. Vollständiger künstlicher
+Nachmittag mit echter OpenRouter-KI über normale Produktionskonten und tatsächliche
+Browserbedienung vom Fotoimport bis zum Elternbericht durchgeführt. Keine Antworten
+oder Änderungen im echten Kinderprofil. Ausführliche Ereignismatrix, Grenzen und
+Schnittstellen: [AFTERNOON_EVALUATION_2026_10_21.md](AFTERNOON_EVALUATION_2026_10_21.md).
+
+- Hausaufgaben: wörtlicher begrenzter Nachbaraufgaben-Kontext für „ersten Schritt“,
+  sinnvolles lokales Bruchfeedback und abgeglichener Speicherfehler. Bewusster
+  Übergang „Mit neuen Aufgaben prüfen“ nutzt bestätigte Quelle und normale Reservierung.
+- Neue Bruchfragen werden vor der KI exakt geplant; Originale/alte Fragen bleiben
+  ausgeschlossen. Erweiterungseinführung enthält ein anderes belegtes Beispiel,
+  keinen vollständigen Additionsweg. Zielzuordnung bleibt serverseitig gebunden.
+- Eine bewusst erneut abgegebene gleiche falsche Antwort erhält nach quittiertem
+  Feedback einen neuen Versuch. Unklare Transportwiederholungen bleiben idempotent.
+- KI-Erklärung mit gezeigter Lösung → andere Prüfaufgabe speichert eine eigene
+  quellengebundene Zurückstellung. Originalfehler bleiben Übungsbedarf; neuer und
+  alter Kurzplan schließen bewusst lokal ab, ohne weitere Antwort/Reparaturplanung.
+  GET bleibt lesend, letzte Rückmeldung bleibt bis Weiter sichtbar. Verbrauchte
+  Planfreigabe wird vor POST nochmals geprüft; gespeicherte Hilfe bleibt erreichbar.
+- Elternbericht erhält nur beantwortete Zielaggregate. Live:6 Aufgaben,9 Versuche,
+  2 selbstständig,2 unterstützt,2 weiter üben,0 unklar;3 Runden abgeschlossen.
+  Alle6 dem tatsächlichen Teilziel Erweitern zugeordnet. Eltern-KI grenzt von
+  Addition ab und plant Verstehen→neue eigene Aufgabe→späterer Abruf; keine
+  erfundene dauerhafte Beherrschung. Drei Hausaufgabenhäkchen zählen separat.
+
+Wirklicher Verbrauch:16 fertige KI-Aufrufe,0,088137USD,0 unbekannte Kosten;
+Luna/Sol im unveränderten Economy-Modellmix, Providerrevision29, Paid/ZDR erhalten.
+Alle Fehleraufrufe/Rückblicke enthalten.12:56 gespeicherte Aktivität;15-Minuten-
+Mindestziel korrekt noch offen, keine Warte-/Buildzeit oder Uhrverstellung.
+
+Abschlussregression77:79 gemeinsame PostgreSQLfälle,21 unterschiedliche gezielte
+Entscheidungsplanfälle unter PostgreSQL und21 im vollständigen SQLite-Replay
+bestanden;35 abschließende Flutterfälle sowie Ruff/Analyse/Diffprüfung grün.
+Frühere featurebezogene Prüfungen im Bericht separat, nicht aufsummiert.
+Web und signierte APK/AAB77 gebaut, Bundle/Signer/Paket/Version geprüft;
+Play ohne APK-Installerberechtigung. Geheimnisprüfung649 Quellen/Assets und344
+Archiveinträge/16 bekannte Secretquellen ohne Treffer; Provider-Key/Base64 ebenfalls0.
+Öffentlicher APK-Voll-Download stimmt überein. APK75236762Bytes, SHA256
+`55d7cff65a4b86c6ecce83eab71e22b7ff7f990a8bf26f4234ea91ac94999238`;
+AAB70583093Bytes, SHA256
+`d0e5cdf0a8ee2e4b1cb55e41934a51434fb9bf37b934da9debc0703a32436d93`.
+API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema0025.
+Rückweg:76 (`20261021T142904Z-d8e78c4`), gleiches Schema; keine DB-Rücksetzung.
+Kein Play-Upload. Kein physischer Androidkamera-/vollständiger WCAG-/Langzeitnachweis.
+
+Bereinigung offen: Alle künstlichen Browser-/API-Sitzungen abgemeldet. Die
+Dauerlöschung des vier Stunden begrenzten Testhaushalts wurde vom automatischen
+Freigabereview wegen fehlender ausdrücklicher Löschfreigabe abgelehnt; beim Betreiber
+gezielt angefragt. Kein Umgehungsversuch. Testzugangsdaten nur lokal ignoriert0600.
+
+---
+
 # Produktionsstand1.17.3+73 ·21.10.2026
 
 Live: Release `20261021T120244Z-1b014ea`, Produktcommit
