@@ -628,6 +628,9 @@ def maintenance():
             else:
                 db.add(ServiceState(name="erasure_compaction", updated=int(now())))
     with DB.begin() as db:
+        from .family_calls import maintenance as expire_family_calls
+
+        expire_family_calls(db)
         prepare_notifications(db)
 
 

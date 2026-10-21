@@ -12,6 +12,7 @@ import 'learning_tips.dart';
 import 'child_today_widgets.dart';
 import 'learning_navigation.dart';
 import 'homework_screen.dart' show homeworkKey;
+import 'family_call_screen.dart';
 import 'parent_child_navigation.dart';
 import 'parent_overview.dart';
 import 'parent_workspace_ui.dart';
@@ -1886,7 +1887,7 @@ Widget messages(
             for (final item
                 in (state.isChild
                     ? [
-                        ('help', 'Ich brauche Hilfe'),
+                        ('help', 'Eltern live dazuholen'),
                         ('interest', 'Das interessiert mich'),
                         ('plan_change', 'Planänderung vorschlagen'),
                       ]
@@ -2091,7 +2092,24 @@ Future<void> showLearningMessage(
   required String kind,
   required String title,
   required VoidCallback refresh,
+  bool offerLiveCall = true,
 }) async {
+  if (kind == 'help' && offerLiveCall && state.isChild) {
+    await showFamilyHelp(
+      context,
+      state,
+      sendMessage: () => showLearningMessage(
+        context,
+        state,
+        childId: childId,
+        kind: kind,
+        title: title,
+        refresh: refresh,
+        offerLiveCall: false,
+      ),
+    );
+    return;
+  }
   final help = kind == 'help';
   final controller = TextEditingController(
     text: help ? 'Ich brauche Unterstützung beim Lernen.' : '',

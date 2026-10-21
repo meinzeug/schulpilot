@@ -9,6 +9,7 @@ import 'notification_inbox.dart';
 import 'pending_uploads.dart';
 import 'lesson_voice.dart';
 import 'learning_drafts.dart';
+import 'family_call_service.dart';
 
 import 'transport.dart' if (dart.library.js_interop) 'transport_web.dart';
 
@@ -27,6 +28,7 @@ class Api {
   final String base;
   String? token;
   VoidCallback? onUnauthorized;
+  Object? Function()? currentAccount;
   Api({http.Client? client, String? base})
     : client = client ?? createClient(),
       base =
@@ -81,6 +83,7 @@ class Api {
     Json? body,
     Map<String, String>? extra,
   ]) async {
+    final requestAccount = currentAccount?.call();
     try {
       final request = http.Request(method, Uri.parse('$base$path'));
       request.headers.addAll({
@@ -95,7 +98,10 @@ class Api {
         ).timeout(const Duration(seconds: 35)),
         // Logout handles an already revoked session itself, with the captured
         // account guard. A late 401 must not clear a newer login.
-        notifyUnauthorized: !(method == 'POST' && path == '/auth/logout'),
+        notifyUnauthorized:
+            !(method == 'POST' && path == '/auth/logout') &&
+            (currentAccount == null ||
+                identical(requestAccount, currentAccount!())),
       );
     } on ApiError {
       rethrow;
@@ -223,6 +229,9 @@ class AppState extends ChangeNotifier {
   late final LearningDraftStore learningDrafts = LearningDraftStore(storage);
   late final PushClient push = PushClient(api);
   late final NotificationInbox inbox = NotificationInbox(api);
+  final FamilyCallService Function(AppState state)? familyCallFactory;
+  late final FamilyCallService familyCalls =
+      familyCallFactory?.call(this) ?? FamilyCallService(this);
   Json? user;
   bool needsSetup = false;
   bool darkAppearance = true;
@@ -250,13 +259,20 @@ class AppState extends ChangeNotifier {
   final List<Uint8List> recoveredPhotos = [];
   // Only view preferences; never persisted, and cleared on account changes.
   final Map<String, Json> collectionViews = {};
-  AppState({Api? api, FlutterSecureStorage? storage})
+  AppState({Api? api, FlutterSecureStorage? storage, this.familyCallFactory})
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
-    this.api.onUnauthorized = () => Future<void>.microtask(clear);
+    this.api.currentAccount = () => user;
+    this.api.onUnauthorized = () {
+      final expectedUser = user;
+      if (expectedUser != null) {
+        Future<void>.microtask(() => clear(expectedUser: expectedUser));
+      }
+    };
     push.onActivity = () {
       refreshState();
       inbox.refresh();
+      familyCalls.refresh(force: true);
     };
   }
   bool get isParent => user?['role'] == 'parent';
@@ -318,6 +334,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> accept(Json response) async {
+    if (user != null) await familyCalls.clear();
     if (user != null && user!['id'] != response['user']['id']) {
       await LessonVoiceSession.shared.stop();
       collectionViews.clear();
@@ -368,6 +385,14 @@ class AppState extends ChangeNotifier {
         identical(user, expectedUser) &&
         (expectedAccountId == null || user?['id'] == expectedAccountId);
     if (!currentAccount()) return;
+    if (familyCalls.live) {
+      await familyCalls.end().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () {},
+      );
+    }
+    await familyCalls.clear();
+    if (!currentAccount()) return;
     await LessonVoiceSession.shared.stop();
     if (!currentAccount()) return;
     if (!kIsWeb) await storage.delete(key: 'google_login_proof');
@@ -384,6 +409,8 @@ class AppState extends ChangeNotifier {
   Future<void> clear({Json? expectedUser}) async {
     bool currentAccount() =>
         expectedUser == null || identical(user, expectedUser);
+    if (!currentAccount()) return;
+    await familyCalls.clear();
     if (!currentAccount()) return;
     await LessonVoiceSession.shared.stop();
     if (!currentAccount()) return;

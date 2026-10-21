@@ -96,6 +96,17 @@ try:
         source = release / "deploy" / name
         if source.is_file():
             shutil.copy2(source, Path("/etc/systemd/system") / name)
+    # An existing operator-installed relay is maintained, never auto-installed.
+    turn = Path("/etc/schulpilot-turn")
+    if (turn / "turnserver.conf").is_file():
+        for name in ("schulpilot-turn.service", "schulpilot-turn-cert.service", "schulpilot-turn-cert.timer"):
+            source = release / "deploy" / name
+            if source.is_file():
+                shutil.copy2(source, Path("/etc/systemd/system") / name)
+        source = release / "deploy/turn_certificate.py"
+        if source.is_file():
+            shutil.copy2(source, turn / "refresh_certificate.py")
+            (turn / "refresh_certificate.py").chmod(0o644)
     subprocess.run(["systemctl", "daemon-reload"], check=True)
     timers = ["schulpilot-backup.timer"]
     if (release / "deploy/schulpilot-restore-check.timer").is_file():

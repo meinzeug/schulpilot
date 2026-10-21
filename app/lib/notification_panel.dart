@@ -349,7 +349,7 @@ class PushAdminScreen extends StatelessWidget {
 
 class _NotificationPanelState extends State<NotificationPanel>
     with WidgetsBindingObserver {
-  bool reminders = true, help = true, summaries = false;
+  bool reminders = true, help = true, summaries = false, familyCalls = false;
   bool preferencesLoaded = false;
   int start = 20, end = 8, version = 0;
   String timezone = 'Europe/Berlin';
@@ -385,6 +385,7 @@ class _NotificationPanelState extends State<NotificationPanel>
           reminders = device['reminders'] == true;
           help = device['help_requests'] == true;
           summaries = device['summaries'] == true;
+          familyCalls = device['family_calls'] == true;
           start = device['quiet_start'];
           end = device['quiet_end'];
           timezone = device['timezone'];
@@ -394,8 +395,10 @@ class _NotificationPanelState extends State<NotificationPanel>
       preferencesLoaded = true;
     }
     Json native = {};
+    Json calls = {};
     try {
       native = await widget.state.push.deviceStatus();
+      if (widget.state.isParent) calls = await widget.state.push.callStatus();
     } catch (_) {
       /* Show unknown, never an invented success. */
     }
@@ -404,6 +407,7 @@ class _NotificationPanelState extends State<NotificationPanel>
       'devices': devices,
       'tests': tests,
       'native': native,
+      'calls': calls,
     };
   }
 
@@ -416,6 +420,10 @@ class _NotificationPanelState extends State<NotificationPanel>
         'reminders': reminders,
         'help_requests': help,
         'summaries': summaries,
+        'family_calls':
+            widget.state.isParent &&
+            widget.state.push.canOpenSettings &&
+            familyCalls,
       });
     } on ApiError {
       if (mounted) setState(() => version++);
@@ -511,6 +519,44 @@ class _NotificationPanelState extends State<NotificationPanel>
                 'Persönliche Inhalte bleiben in der App.',
                 style: TextStyle(fontSize: 13, color: context.palette.muted),
               ),
+              if (widget.state.isParent &&
+                  widget.state.push.canOpenSettings) ...[
+                SizedBox(height: 12),
+                SwitchListTile(
+                  key: ValueKey('family-call-device-opt-in'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Familienanrufe auf diesem Gerät'),
+                  subtitle: Text(
+                    'Gesondert erlauben und unten speichern. Die Kategorie „Familienanrufe“ verwendet einen Klingelton. Ruhezeiten, Lautlos und Gerätesperren bleiben wirksam.',
+                  ),
+                  value: familyCalls,
+                  onChanged: (value) => setState(() => familyCalls = value),
+                ),
+                if (enabled && familyCalls && data['calls']['channel'] == false)
+                  Notice(
+                    'Die Android-Kategorie „Familienanrufe“ ist ausgeschaltet. Eingehende Anrufe klingeln so nicht.',
+                  ),
+                if (enabled && familyCalls && data['calls']['sound'] == false)
+                  Notice(
+                    'Für „Familienanrufe“ ist kein Klingelton eingestellt. Wähle in den Android-Einstellungen einen Ton, wenn das Gerät klingeln soll.',
+                  ),
+                if (enabled && familyCalls && data['calls']['audible'] == false)
+                  Notice(
+                    'Dein Gerät ist lautlos, sehr leise oder im Nicht-stören-Modus. Dadurch kann ein Anruf ohne hörbaren Klingelton erscheinen.',
+                  ),
+                if (enabled &&
+                    familyCalls &&
+                    data['calls']['heads_up'] == false)
+                  Notice(
+                    'Android zeigt Familienanrufe ohne hervorgehobenen Hinweis. Die Kategorie kannst du in den Android-Einstellungen anpassen.',
+                  ),
+                if (widget.state.push.canOpenSettings)
+                  TextButton.icon(
+                    onPressed: widget.state.push.openCallSettings,
+                    icon: Icon(Icons.phone_in_talk_outlined),
+                    label: Text('Android-Anrufeinstellungen öffnen'),
+                  ),
+              ],
               SizedBox(height: 16),
               ExpansionTile(
                 childrenPadding: EdgeInsets.fromLTRB(16, 4, 16, 16),

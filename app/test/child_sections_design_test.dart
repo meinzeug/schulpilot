@@ -114,7 +114,7 @@ void main() {
         await words.tap(tester, find.text('Besprochen'));
         expect(find.text('Diese Frage ist besprochen.'), findsOneWidget);
         expect(find.text('Kannst du mir helfen?'), findsNothing);
-        await words.tap(tester, find.text('Eltern fragen'));
+        await words.tap(tester, find.text('Eltern live dazuholen'));
         expect(composed, ['interest', 'help']);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());

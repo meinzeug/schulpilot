@@ -1558,6 +1558,11 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
     previous = [a for a in existing if a.question_id == question_id]
     if previous and (previous[-1].outcome in ("correct", "uncertain") or len(previous) >= 3):
         raise HTTPException(409, "Diese Aufgabe wurde bereits abgeschlossen.")
+    # Live parent support is an actual aid, including when the child opened a
+    # different exercise during the call. Earlier answers remain untouched.
+    from .family_calls import record_answer_help
+
+    record_answer_help(db, p, unit)
     explained = bool(
         any(not e.detail.get("question_id") or e.detail.get("question_id") == question_id
             for e in db.scalars(select(Activity).where(Activity.unit_id == unit.id, Activity.kind == "explanation")))

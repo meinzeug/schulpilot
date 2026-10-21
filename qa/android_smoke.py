@@ -6,6 +6,7 @@ server-side revocation and deletion. Web smoke covers all four task widgets.
 """
 
 import json
+import os
 import re
 import subprocess
 import time
@@ -14,7 +15,10 @@ from pathlib import Path
 
 import httpx
 
-ADB = [str(Path.home() / "android-sdk/platform-tools/adb"), "-s", "emulator-5580"]
+SERIAL = os.getenv("SCHULPILOT_QA_ADB_SERIAL", "emulator-5580")
+if not re.fullmatch(r"emulator-[0-9]{4,5}", SERIAL):
+    raise RuntimeError("Only a dedicated Android emulator is allowed for synthetic QA")
+ADB = [str(Path.home() / "android-sdk/platform-tools/adb"), "-s", SERIAL]
 PACKAGE = "de.dorfspy.schulpilot"
 BASE = "https://schulpilot.dorfspy.de/api"
 ARTIFACTS = Path(__file__).resolve().parents[1] / "artifacts"
@@ -74,6 +78,16 @@ def tap_node(node):
 
 def press(name, scroll=False):
     found = matching(name)
+    # The shared mobile workspace now puts the account in the header menu.
+    # Older APKs still expose the direct bottom-navigation destination.
+    if name == "Konto" and not found:
+        if matching("Konto öffnen"):
+            press("Konto öffnen")
+            press("Einstellungen")
+            return
+        if matching("Mehr"):
+            press("Mehr")
+            found = matching("Konto")
     if not found and scroll:
         for _ in range(3):
             adb("shell", "input", "swipe", "900", "650", "900", "1950", "250")

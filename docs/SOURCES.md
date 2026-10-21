@@ -463,3 +463,31 @@ Reparaturbericht über die bestehende gültige Elternsitzung:1Aufruf/1Jobversuch
 0,001337USD, Bericht ready und aktuelle Eltern-/Lernplanansicht bestätigt.
 Alte Antworten, Fehlerbericht und0,001201USD-Verbrauch unverändert; keine neuen
 Kinderantworten. Private Operatorhilfen und Diagnosekopien anschließend entfernt.
+## Familienanrufe und Android-Push ·21.10.2026 ·1.19.0+79
+
+- Eigenes bestehendes FastAPI-/Flutter-/FCM-/Sitzungsmodell; keine Video-SaaS-
+  Konten, Modellaufrufe oder Firebase-Authentication. Neue additive Migration0026.
+- [Flutter-WebRTC1.6.2+hotfix.4](https://pub.dev/packages/flutter_webrtc/versions/1.6.2%2Bhotfix.4)
+  und dessen installierter Android-/Dart-Quellcode geprüft; exakt gepinnt,
+  webrtc_interface1.5.1 im Lockfile. Keine freien UI-Bibliotheken hinzugefügt.
+- [WebRTC: TURN](https://webrtc.org/getting-started/turn-server) und
+  [Peer-Verbindungen](https://webrtc.org/getting-started/peer-connections):
+  gezielter eigener Relay für NAT/Mobilfunk, Signalisierung über vorhandene API.
+- [MDN: getDisplayMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia):
+  erneute ausdrückliche Auswahl und unmittelbare Benutzeraktion, keine gespeicherte
+  Erlaubnis oder behauptete vollständige Browserunterstützung.
+- Offizielles Ubuntu24.04-Paket coturn4.6.1-1build4 installiert. Primärquellen:
+  [Konfiguration](https://github.com/coturn/coturn/blob/4.6.1/examples/etc/turnserver.conf),
+  [Adressprüfung](https://github.com/coturn/coturn/blob/4.6.1/src/client/ns_turn_ioaddr.c#L416),
+  [Peer-Schutz](https://github.com/coturn/coturn/blob/4.6.1/src/server/ns_turn_server.c#L248).
+  Daraus belegte Korrektur des irrtümlich unbeschränkten IPv6-Null-Denybereichs;
+  private Netze und eingebaute Zero-/Loopbacksperren bleiben geschützt.
+- [Hetzner-Firewalls](https://docs.hetzner.com/cloud/firewalls/faq/), vorhandene
+  Firewall und Serveradresse geprüft; nach konkreter Betreiberbestätigung vier
+  getrennte Regeln nur am Schulpilot-Host ergänzt, bestehende Regeln erhalten.
+- Isolierter Medienprüfpartner aiortc1.15.0/aioice0.10.2 aus offiziellem PyPI,
+  ausschließlich im ignorierten QA-Ordner, keine Produktabhängigkeit. Drei echte
+  erzwungene Relayverbindungen UDP/TCP/TLS mit zwei künstlichen Kameras, eigener
+  Bildschirmquelle, stillem Audio und Daten-Echo erfolgreich. Keine echten Fotos
+  oder unbemerkte Geräteaufnahme. Details und Android-Nachweis in FAMILY_CALLS.md
+  beziehungsweise STATUS.md; bloße FCM-Annahme bleibt von Anzeige getrennt.

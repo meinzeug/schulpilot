@@ -14,6 +14,8 @@ class FakePush extends PushTransport {
   final opened = StreamController<String?>.broadcast(sync: true);
   final calls = <String>[];
   bool allowed = true, channelAllowed = true;
+  bool callChannelAllowed = true;
+  String? binding;
   Completer<String?>? pendingToken;
   @override
   bool get supportedPlatform => true;
@@ -59,9 +61,21 @@ class FakePush extends PushTransport {
   }
 
   @override
+  Future<void> bindIncomingCalls(String? value) async {
+    binding = value;
+    calls.add(value == null ? 'calls:off' : 'calls:on');
+  }
+
+  @override
+  Future<Map<String, dynamic>> callStatus() async => {
+    'channel': callChannelAllowed,
+  };
+
+  @override
   Future<void> forget() async {
     onNativeOpen = null;
     calls.add('forget');
+    binding = null;
   }
 }
 
@@ -125,7 +139,7 @@ void main() {
     expect(transport.calls, isEmpty);
     available = false;
     await expectLater(push.enable({}), throwsA(isA<ApiError>()));
-    expect(transport.calls, isEmpty);
+    expect(transport.calls, ['calls:off']);
     expect(registrations, isEmpty);
     expect(push.lastError, contains('Eltern'));
   });
@@ -184,6 +198,36 @@ void main() {
       expect(open, 1);
     },
   );
+  test('ordinary push opt-in never grants incoming family calls', () async {
+    await push.enable({'help_requests': true});
+    expect(transport.binding, isNull);
+    expect(registrations.single.containsKey('call_binding'), isFalse);
+    expect(transport.calls, isNot(contains('calls:on')));
+  });
+  test(
+    'explicit call opt-in binds after registration and clears on logout',
+    () async {
+      await push.enable({'family_calls': true});
+      final binding = registrations.single['call_binding'];
+      expect(binding, matches(RegExp(r'^[a-f0-9]{64}$')));
+      expect(transport.binding, binding);
+      transport.changes.add('synthetic-rotation-for-calls');
+      await Future<void>.delayed(Duration.zero);
+      expect(registrations.last['call_binding'], binding);
+      await push.forget();
+      expect(transport.binding, isNull);
+    },
+  );
+  test('blocked call channel cannot register a ringing device', () async {
+    transport.callChannelAllowed = false;
+    await expectLater(
+      push.enable({'family_calls': true}),
+      throwsA(isA<ApiError>()),
+    );
+    expect(push.lastError, contains('Familienanrufe'));
+    expect(registrations, isEmpty);
+    expect(transport.binding, isNull);
+  });
   test(
     'logout during token retrieval cannot restore a stale registration',
     () async {

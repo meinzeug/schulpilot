@@ -11,6 +11,7 @@ from sqlalchemy.orm import load_only
 
 from . import schemas as s
 from .db import (
+    FamilyCall,
     Job,
     LanguageProject,
     Material,
@@ -74,6 +75,18 @@ def recent_events(db, user, current=None, *, direct_messages=False):
         "plan_change": "Ein Wunsch zum Lernplan",
     }
     seen_preparations = set()
+    if user.role == "parent":
+        from .family_calls import effective, eligible_parents
+
+        for call in db.scalars(select(FamilyCall).where(FamilyCall.child_id.in_(ids),
+            FamilyCall.created > cutoff, FamilyCall.created <= current).order_by(FamilyCall.created.desc()).limit(LIMIT)):
+            if user.id not in eligible_parents(db, call.family_id):
+                continue
+            status, _ = effective(db, call, current)
+            title = {"ringing": "Dein Kind möchte live Hilfe", "accepted": "Familienanruf verbunden",
+                "missed": "Ein Familienanruf wurde verpasst", "declined": "Familienanruf abgelehnt",
+                "ended": "Familienanruf beendet"}[status]
+            add("family_call:" + call.id, call.child_id, call.created, title, "/family-call/" + call.id, "family_call")
     messages = list(db.scalars(
         select(Message)
         .options(load_only(Message.id, Message.child_id, Message.created, Message.kind, Message.sender_id, Message.context))

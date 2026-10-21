@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'family_call_native.dart';
+
 import 'firebase_bootstrap.dart'
     if (dart.library.js_interop) 'firebase_bootstrap_web.dart';
 
@@ -114,8 +116,23 @@ class PushTransport {
     }
   }
 
+  Future<void> bindIncomingCalls(String? binding) async {
+    if (canOpenSettings) await FamilyCallNative.instance.bind(binding);
+  }
+
+  Future<Map<String, dynamic>> callStatus() =>
+      FamilyCallNative.instance.status();
+  Future<void> openCallSettings() => FamilyCallNative.instance.openSettings();
+
   Future<void> forget() async {
     onNativeOpen = null;
+    if (canOpenSettings && FamilyCallNative.instance.initialized) {
+      try {
+        await FamilyCallNative.instance.clear();
+      } catch (_) {
+        /* Revoked server sessions still prevent calls; continue FCM cleanup. */
+      }
+    }
     if (!initialized) return;
     if (canOpenSettings) {
       try {

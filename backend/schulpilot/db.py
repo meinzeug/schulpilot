@@ -260,6 +260,8 @@ class PushDevice(Base):
     reminders = Column(Boolean, default=True, nullable=False)
     help_requests = Column(Boolean, default=True, nullable=False)
     summaries = Column(Boolean, default=False, nullable=False)
+    family_calls = Column(Boolean, default=False, server_default=false(), nullable=False)
+    call_binding = Column(String(64))
     updated = Column(Integer, default=lambda: int(now()), nullable=False)
 
 
@@ -282,6 +284,33 @@ class NotificationRead(Base):
     event_key = Column(String(80), primary_key=True)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
+
+
+class FamilyCall(Base):
+    """Minimal family-call history. SDP, ICE candidates and media never persist."""
+    __tablename__ = "family_calls"
+    id = Column(String(32), primary_key=True, default=uid)
+    family_id = Column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    caller_session_id = Column(ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
+    parent_session_id = Column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    parent_user_id = Column(ForeignKey("users.id", ondelete="SET NULL"))
+    active_slot = Column(String(32), unique=True)
+    parent_active_slot = Column(String(32), unique=True)
+    idempotency = Column(String(64), unique=True, nullable=False)
+    instance = Column(String(32), nullable=False)
+    context_kind = Column(String(16), nullable=False)
+    context_id = Column(String(32))
+    status = Column(String(16), nullable=False, default="ringing")
+    reason = Column(String(32))
+    declined_users = Column(JSON, nullable=False, default=list)
+    created = Column(Integer, nullable=False, default=lambda: int(now()))
+    ring_expires = Column(Integer, nullable=False)
+    expires = Column(Integer, nullable=False)
+    caller_seen = Column(Integer, nullable=False)
+    parent_seen = Column(Integer)
+    accepted_at = Column(Integer)
+    ended_at = Column(Integer)
 
 
 class SchoolDay(Base):

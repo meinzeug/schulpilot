@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -16,12 +17,15 @@ class PushClient extends ChangeNotifier {
   StreamSubscription<String?>? _opened, _messages;
   int _generation = 0;
   Json? _preferences;
+  String? _callBinding;
   String? lastError;
   VoidCallback? onOpen, onActivity, onForeground;
   bool openPending = false;
   bool get canOpenSettings => transport.canOpenSettings;
   Future<Json> deviceStatus() => transport.deviceStatus();
   Future<void> openSettings() => transport.openSettings();
+  Future<Json> callStatus() => transport.callStatus();
+  Future<void> openCallSettings() => transport.openCallSettings();
 
   Future<void> enable(Json preferences, {bool requestPermission = true}) async {
     final generation = ++_generation;
@@ -66,6 +70,15 @@ class PushClient extends ChangeNotifier {
           'Die Kategorie „Lernen & Familie“ ist in Android ausgeschaltet. Bitte schalte sie in den Geräteeinstellungen ein.',
         );
       }
+      if (!kIsWeb && preferences['family_calls'] == true) {
+        final calls = await transport.callStatus();
+        active();
+        if (calls['channel'] == false) {
+          throw ApiError(
+            'Die Kategorie „Familienanrufe“ ist in Android ausgeschaltet. Bitte erlaube sie in den Anrufeinstellungen.',
+          );
+        }
+      }
       // The manifest and logout disable auto-init. Re-enable only after the
       // explicit, server-authorized opt-in so future token rotations work too.
       await transport.autoInit(true);
@@ -78,6 +91,12 @@ class PushClient extends ChangeNotifier {
         );
       }
       _preferences = Map.of(preferences);
+      _callBinding = !kIsWeb && preferences['family_calls'] == true
+          ? List.generate(
+              32,
+              (_) => Random.secure().nextInt(256),
+            ).map((n) => n.toRadixString(16).padLeft(2, '0')).join()
+          : null;
       await _save(token, generation);
       active();
       await _refresh?.cancel();
@@ -137,7 +156,9 @@ class PushClient extends ChangeNotifier {
         _ => 'Benachrichtigungen konnten nicht eingerichtet werden. Prüfe deine Internetverbindung und unter Android die Google Play-Dienste. Versuche es danach erneut.',
       };
       _preferences = null;
+      _callBinding = null;
       try {
+        await transport.bindIncomingCalls(null);
         if (transport.initialized) await transport.autoInit(false);
       } catch (_) {
         /* Backend blocks unregistered devices. */
@@ -153,7 +174,11 @@ class PushClient extends ChangeNotifier {
       ..._preferences!,
       'token': token,
       'platform': kIsWeb ? 'web' : 'android',
+      if (_callBinding != null) 'call_binding': _callBinding,
     });
+    if (generation == _generation) {
+      await transport.bindIncomingCalls(_callBinding);
+    }
   }
 
   void _open(String? route) {
@@ -176,6 +201,7 @@ class PushClient extends ChangeNotifier {
               'reminders',
               'help_requests',
               'summaries',
+              'family_calls',
             ])
               k: device[k],
           }, requestPermission: false);
@@ -190,6 +216,7 @@ class PushClient extends ChangeNotifier {
   Future<void> forget() async {
     _generation++;
     _preferences = null;
+    _callBinding = null;
     lastError = null;
     openPending = false;
     await _refresh?.cancel();

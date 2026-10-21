@@ -34,6 +34,9 @@ class Settings:
     google_oauth_client_file: str = os.getenv("GOOGLE_OAUTH_CLIENT_FILE", "")
     google_oauth_client_json: str = ""
     google_login_enabled: bool = os.getenv("GOOGLE_LOGIN_ENABLED", "false") == "true"
+    turn_urls: str = os.getenv("SCHULPILOT_TURN_URLS", "")
+    turn_secret: str = os.getenv("SCHULPILOT_TURN_SECRET", "")
+    family_calls_enabled: bool = os.getenv("SCHULPILOT_CALLS_ENABLED", "false") == "true"
     operator_name: str = os.getenv("OPERATOR_NAME", "")
     operator_address: str = os.getenv("OPERATOR_ADDRESS", "")
     operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")

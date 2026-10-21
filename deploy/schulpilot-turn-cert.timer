@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh SCHULPILOT relay certificate after Caddy renewal
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+RandomizedDelaySec=2min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -37,6 +38,7 @@ from .security import admin, audit, authenticated, decrypt, digest, encrypt, ins
 
 router = APIRouter(prefix="/notifications", tags=["Benachrichtigungen"])
 log = logging.getLogger("schulpilot.push")
+_call_dispatch_slots = threading.BoundedSemaphore(4)
 
 
 def public_config(*, testing=False):
@@ -136,6 +138,8 @@ class DeviceRequest(s.Strict):
     reminders: bool = True
     help_requests: bool = True
     summaries: bool = False
+    family_calls: bool = False
+    call_binding: str | None = Field(default=None, min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
     def valid_zone(self):
@@ -143,6 +147,8 @@ class DeviceRequest(s.Strict):
             ZoneInfo(self.timezone)
         except ZoneInfoNotFoundError:
             raise ValueError("Unbekannte Zeitzone.") from None
+        if self.family_calls and not self.call_binding:
+            raise ValueError("Anrufe benötigen eine aktuelle Gerätefreigabe.")
         return self
 
 
@@ -159,6 +165,7 @@ def device_data(device, current=None):
                 "reminders",
                 "help_requests",
                 "summaries",
+                "family_calls",
                 "updated",
             )
         },
@@ -182,6 +189,8 @@ def devices(p=Depends(authenticated), db=Depends(get_db)):
 def register(data: DeviceRequest, p=Depends(authenticated), db=Depends(get_db)):
     if p.user.role not in ("child", "parent"):
         raise HTTPException(403, "Familienbenachrichtigungen sind für Eltern und Kinder verfügbar.")
+    if data.family_calls and p.user.role != "parent":
+        raise HTTPException(403, "Eingehende Familienanrufe sind für Eltern verfügbar.")
     if p.user.role == "child":
         child = db.scalar(select(Child).where(Child.user_id == p.user.id))
         if not child or not s.Preferences(**child.preferences).push_consent:
@@ -208,11 +217,13 @@ def register(data: DeviceRequest, p=Depends(authenticated), db=Depends(get_db)):
     device = existing or PushDevice(user_id=p.user.id, session_id=p.session.id, token_hash=token_hash)
     for name, value in data.model_dump(exclude={"token"}).items():
         setattr(device, name, value)
+    if not data.family_calls:
+        device.call_binding = None
     device.encrypted_token = encrypt(data.token)
     device.updated = int(now())
     db.add(device)
     db.commit()
-    return device_data(device, p.session.id)
+    return {**device_data(device, p.session.id), "call_capable": p.user.role == "parent" and device.family_calls}
 
 
 @router.delete("/devices/{device_id}")
@@ -529,7 +540,7 @@ class FcmError(Exception):
         self.code, self.unregistered = code, unregistered
 
 
-def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False):
+def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False, call_data=None):
     site = runtime_settings()
     config = public_config(testing=testing)
     if not config["available"]:
@@ -579,6 +590,12 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False):
                 "fcm_options": {"link": site.public_url + "/app"},
             },
         }
+        if call_data is not None:
+            # Data-only: Android's own call notification owns the ringtone and
+            # call-style actions. Never include a private name, subject or text.
+            message = {"token": token, "data": call_data,
+                "android": {"priority": "high", "ttl": str(min(45, ttl)) + "s",
+                    "collapse_key": "family_call_" + call_data["call_id"]}}
         with httpx.Client(timeout=20, follow_redirects=False) as client:
             response = client.post(
                 "https://fcm.googleapis.com/v1/projects/" + project + "/messages:send",
@@ -599,11 +616,12 @@ def send_fcm(token, kind, ttl=60, *, testing=False, validate_only=False):
         raise FcmError("TRANSPORT_OR_AUTH_ERROR") from None
 
 
-def deliver_one(DB):
+def deliver_one(DB, *, call_id=None):
     with DB() as db:
-        delivery = db.scalar(
-            select(PushDelivery).where(PushDelivery.status == "queued").order_by(PushDelivery.created).limit(1)
-        )
+        query = select(PushDelivery).where(PushDelivery.status == "queued")
+        if call_id is not None:
+            query = query.where(PushDelivery.dedup_key.like("family_call:" + call_id + ":%"))
+        delivery = db.scalar(query.order_by(PushDelivery.created).limit(1))
         if not delivery:
             return False
         if not db.execute(
@@ -617,15 +635,32 @@ def deliver_one(DB):
         db.commit()
         device = db.get(PushDevice, device_id)
         testing = kind in ("test_validate", "test_send")
-        allowed = device and (
-            test_device_allowed(db, device, int(now())) if testing else kind in due_kinds(db, device, int(now()))
-        )
+        call_data = None
+        if kind in ("family_call_incoming", "family_call_ended"):
+            from .db import FamilyCall
+
+            pieces = delivery.dedup_key.split(":")
+            call = db.get(FamilyCall, pieces[1]) if len(pieces) == 4 else None
+            event = kind.removeprefix("family_call_")
+            allowed = call_delivery_allowed(db, device, call, event, int(now()))
+            if allowed:
+                expiry = call.ring_expires if event == "incoming" else int(now()) + 45
+                call_data = {"type": "family_call", "event": event, "call_id": call.id,
+                    "call_binding": device.call_binding, "device_id": device.id,
+                    "expires_at": str(expiry * 1000), "route": "/family-call/" + call.id}
+                testing = not public_config()["available"] and test_allowed(db, device.user_id)
+        else:
+            allowed = device and (
+                test_device_allowed(db, device, int(now())) if testing else kind in due_kinds(db, device, int(now()))
+            )
         if not allowed:
             delivery.status = "suppressed"
             db.commit()
             return True
         token = decrypt(device.encrypted_token)
         ttl = min(60, seconds_before_quiet(int(now()), device.timezone, device.quiet_start, device.quiet_end))
+        if call_data is not None:
+            ttl = min(ttl, 45, int(call_data["expires_at"]) // 1000 - int(now()))
         for child in children_for(db, db.get(User, device.user_id)):
             preferences = s.Preferences(**child.preferences)
             ttl = min(
@@ -639,7 +674,9 @@ def deliver_one(DB):
         db.rollback()
     code, unregistered = None, False
     try:
-        if testing:
+        if call_data is not None:
+            send_fcm(token, kind, ttl, testing=testing, call_data=call_data)
+        elif testing:
             send_fcm(token, kind, ttl, testing=True, validate_only=kind == "test_validate")
         else:
             send_fcm(token, kind, ttl)
@@ -654,3 +691,71 @@ def deliver_one(DB):
             db.execute(delete(PushDevice).where(PushDevice.id == device_id))
     # A timeout is not replayed: it may already have been accepted by FCM.
     return True
+
+
+def call_delivery_allowed(db, device, call, event, current):
+    """Explicit parent call opt-in, live memberships and both device sessions."""
+    from .family_calls import effective, eligible_parents, live_session
+
+    if not device or not call or not device.family_calls or not device.call_binding or device.platform != "android":
+        return False
+    user = db.get(User, device.user_id)
+    if not user or user.role != "parent" or user.id not in eligible_parents(db, call.family_id):
+        return False
+    if not live_session(db, device.session_id, user.id):
+        return False
+    if not public_config(testing=test_allowed(db, user.id))["available"]:
+        return False
+    if quiet(datetime.fromtimestamp(current, ZoneInfo(device.timezone)), device.quiet_start, device.quiet_end):
+        return False
+    child = db.get(Child, call.child_id)
+    if not child:
+        return False
+    prefs = s.Preferences(**child.preferences)
+    if quiet(datetime.fromtimestamp(current, ZoneInfo(prefs.timezone)), prefs.quiet_start, prefs.quiet_end):
+        return False
+    status, _ = effective(db, call, current, instance=False)
+    if event == "incoming":
+        return status == "ringing" and user.id not in call.declined_users
+    return event == "ended" and (status != "ringing" or user.id in call.declined_users)
+
+
+def queue_call(db, call, event, *, user_id=None):
+    """Opaque, short lived call notices use the existing session-bound queue."""
+    from .family_calls import eligible_parents
+
+    current = int(now())
+    parents = eligible_parents(db, call.family_id)
+    if user_id is not None:
+        parents = [pid for pid in parents if pid == user_id]
+    for device in db.scalars(select(PushDevice).where(PushDevice.user_id.in_(parents), PushDevice.family_calls.is_(True)).limit(100)):
+        if not call_delivery_allowed(db, device, call, event, current):
+            continue
+        insert_ignore(db, PushDelivery, {"id": uid(), "device_id": device.id,
+            "dedup_key": f"family_call:{call.id}:{event}:{device.id}", "kind": "family_call_" + event,
+            "status": "queued", "created": current}, key="dedup_key")
+
+
+def dispatch_call(call_id):
+    """An incoming call must not wait behind a 145s learning-provider job.
+
+    Four bounded background senders claim the normal durable queue. Expiry is
+    checked before every send; failed or ambiguous sends are never retried.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from .db import DB
+
+    if not _call_dispatch_slots.acquire(blocking=False):
+        # The durable worker remains the bounded fallback; do not create an
+        # unbounded thread/HTTP pool under many simultaneous help requests.
+        return
+    try:
+        def run():
+            for _ in range(25):
+                if not deliver_one(DB, call_id=call_id):
+                    break
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="family-call-push") as pool:
+            list(pool.map(lambda _: run(), range(4)))
+    finally:
+        _call_dispatch_slots.release()

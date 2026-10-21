@@ -33,6 +33,7 @@ android {
         applicationId = "de.dorfspy.schulpilot"
         minSdk = 24
         targetSdk = 36
+        testInstrumentationRunner = "de.dorfspy.schulpilot.qa.FamilyCallInstrumentation"
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
         // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
@@ -76,4 +77,5 @@ flutter {
 
 dependencies {
     "playImplementation"("com.google.android.play:app-update:2.1.0")
+    testImplementation("junit:junit:4.13.2")
 }

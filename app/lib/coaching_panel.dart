@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -7,6 +9,7 @@ import 'practice_evidence.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'math_content.dart';
+import 'family_call_screen.dart';
 
 class LearningProgressPanel extends StatelessWidget {
   final Json progress;
@@ -269,7 +272,7 @@ class CoachingPanel extends StatelessWidget {
                 if (coach['decision'] == 'parent_help')
                   Notice(
                     state.isChild
-                        ? 'Hier wäre Hilfe gut. Schicke deinen Eltern unten einen Hilfewunsch.'
+                        ? 'Hier wäre Hilfe gut. Hole deine Eltern live dazu oder sende eine Nachricht.'
                         : 'Hier wäre gemeinsame Hilfe bei den schwierigen Schritten sinnvoll.',
                     icon: Icons.people_outline,
                   ),
@@ -530,21 +533,32 @@ class _ChildCoachingPanel extends StatelessWidget {
                   Text('Schau mit deinen Eltern auf den schwierigen Schritt.'),
                   SizedBox(height: 18),
                   ActionButton(
-                    label: 'Eltern um Hilfe bitten',
-                    icon: Icons.volunteer_activism_outlined,
+                    label: 'Eltern live dazuholen',
+                    icon: Icons.video_call_rounded,
                     onPressed: () async {
                       final current = _currentAction(context);
                       if (!current()) return;
-                      await state.api.post('/children/$childId/messages', {
-                        'kind': 'help',
-                        'body':
-                            'Ich brauche Hilfe bei ${unit['subject']}: ${unit['topic']}.',
-                        if (unit['supports_recheck'] == true)
-                          'unit_id': unit['id'],
-                      });
-                      if (context.mounted && current()) {
-                        toast(context, 'Hilfewunsch gesendet.');
-                      }
+                      unawaited(
+                        showFamilyHelp(
+                          context,
+                          state,
+                          contextKind: 'learning',
+                          contextId: unit['id'],
+                          sendMessage: () async {
+                            if (!current()) return;
+                            await state.api.post('/children/$childId/messages', {
+                              'kind': 'help',
+                              'body':
+                                  'Ich brauche Hilfe bei ${unit['subject']}: ${unit['topic']}.',
+                              if (unit['supports_recheck'] == true)
+                                'unit_id': unit['id'],
+                            });
+                            if (context.mounted && current()) {
+                              toast(context, 'Hilfewunsch gesendet.');
+                            }
+                          },
+                        ),
+                      );
                     },
                   ),
                 ] else if (hasPractice)

@@ -1504,11 +1504,14 @@ class _AccountMenuState extends State<AccountMenu> {
       builder: (context, menu, _) {
         void toggle() => menu.isOpen ? menu.close() : menu.open();
         return widget.compact
-            ? IconButton(
-                key: ValueKey('account-menu'),
-                tooltip: 'Konto öffnen',
-                onPressed: _signingOut ? null : toggle,
-                icon: avatar,
+            ? Semantics(
+                label: 'Konto öffnen',
+                child: IconButton(
+                  key: ValueKey('account-menu'),
+                  tooltip: 'Konto öffnen',
+                  onPressed: _signingOut ? null : toggle,
+                  icon: ExcludeSemantics(child: avatar),
+                ),
               )
             : Tooltip(
                 message: 'Konto öffnen',

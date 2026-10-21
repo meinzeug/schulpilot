@@ -16,6 +16,7 @@ from . import (
     commerce,
     controller_jobs,
     families,
+    family_calls,
     google_login,
     grade_imports,
     grades,
@@ -222,7 +223,7 @@ def legal():
         "support_email": site.operator_support_email,
         "complete": bool(site.operator_name and site.operator_address and site.operator_support_email),
         "operator_data_approval": bool(site.real_data_approved and site.privacy_evidence),
-        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24, "push_devices_inactive": 60, "push_delivery_status": 14, "notification_reads": 30},
+        "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24, "push_devices_inactive": 60, "push_delivery_status": 14, "notification_reads": 30, "family_calls": 30},
         "accounting_retention": "Zahlungsbelege acht Jahre nach Ende des Buchungsjahres; bei Kontolöschung ohne Kontozuordnung.",
     }
 
@@ -233,6 +234,7 @@ for router in (
     google_login.router,
     installation.router,
     families.router,
+    family_calls.router,
     learning.router,
     learning_progress.router,
     grades.router,

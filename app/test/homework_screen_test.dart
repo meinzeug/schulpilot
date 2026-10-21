@@ -190,6 +190,39 @@ void main() {
   }
 
   testWidgets(
+    'Homework live help is explicit and retains a source-linked message fallback',
+    (tester) async {
+      final writes = <http.Request>[];
+      final state = account(
+        MockClient((request) async {
+          if (request.method != 'GET') {
+            writes.add(request);
+            return reply({'id': 'synthetic-message'});
+          }
+          if (request.url.path == '/api/app-release') {
+            return reply({'available': false});
+          }
+          return reply(fixture(draft: 'Mein eigener gespeicherter Versuch.'));
+        }),
+      );
+      await open(tester, state, width: 320, scale: 2);
+      await tap(tester, 'Eltern live dazuholen');
+      expect(writes, isEmpty);
+      expect(find.text('Gemeinsam geht’s weiter.'), findsOneWidget);
+      await tap(tester, 'Lieber eine Nachricht senden');
+      expect(writes, hasLength(1));
+      expect(writes.single.url.path, '/api/children/child/messages');
+      expect(jsonDecode(writes.single.body), {
+        'kind': 'help',
+        'body': 'Ich brauche Hilfe bei meinen Hausaufgaben.',
+        'material_id': 'photo',
+      });
+      expect(find.text('Mein eigener gespeicherter Versuch.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Saved attempt resumes and explanation is one explicit idempotent POST',
     (tester) async {
       final posts = <http.Request>[];
@@ -299,26 +332,26 @@ void main() {
         }),
       );
       final semantics = tester.ensureSemantics();
-    try {
-      await open(tester, state, overview: true, width: 320, scale: 2);
-      final card = find.byType(ChildActionTile);
-      expect(card, findsOneWidget);
-      expect(find.text('Mathematik · 1 selbst abgehakt'), findsOneWidget);
-      await tester.ensureVisible(card);
-      await tester.pumpAndSettle();
-      expect(
-        tester.getSemantics(card).getSemanticsData().flagsCollection.isButton,
-        isTrue,
-      );
-      await tester.tap(card);
-      await tester.pumpAndSettle();
-      expect(find.text('Alle Hausaufgabenfotos'), findsOneWidget);
-      expect(find.text('Erkläre es mir'), findsOneWidget);
-      expect(methods.every((m) => m == 'GET'), isTrue);
-      expect(tester.takeException(), isNull);
-    } finally {
-      semantics.dispose();
-    }
+      try {
+        await open(tester, state, overview: true, width: 320, scale: 2);
+        final card = find.byType(ChildActionTile);
+        expect(card, findsOneWidget);
+        expect(find.text('Mathematik · 1 selbst abgehakt'), findsOneWidget);
+        await tester.ensureVisible(card);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSemantics(card).getSemanticsData().flagsCollection.isButton,
+          isTrue,
+        );
+        await tester.tap(card);
+        await tester.pumpAndSettle();
+        expect(find.text('Alle Hausaufgabenfotos'), findsOneWidget);
+        expect(find.text('Erkläre es mir'), findsOneWidget);
+        expect(methods.every((m) => m == 'GET'), isTrue);
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
     },
   );
 

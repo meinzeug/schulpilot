@@ -66,7 +66,7 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
         ChildSectionHero(
           eyebrow: 'Familie',
           title: 'Deine Familie erreichen.',
-          description: 'Eine Frage oder eine Idee? Schreibe deinen Eltern. Du kannst danach weiterlernen und später nach einer Antwort schauen.',
+          description: 'Eine Frage beim Lernen? Hole deine Eltern live dazu. Für später kannst du auch eine Nachricht oder Idee hinterlassen.',
           icon: Icons.forum_rounded,
           facts: [
             if (openHelp > 0)
@@ -88,8 +88,8 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                 minimumSize: const Size(0, 52),
               ),
               onPressed: () => widget.onCompose('help', 'Ich brauche Hilfe'),
-              icon: const Icon(Icons.volunteer_activism_outlined),
-              label: const Text('Eltern fragen'),
+              icon: const Icon(Icons.video_call_rounded),
+              label: const Text('Eltern live dazuholen'),
             ),
           ),
         ),

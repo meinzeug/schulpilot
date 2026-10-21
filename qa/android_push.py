@@ -20,7 +20,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import httpx
-from android_smoke import BASE, HEADERS, PACKAGE, adb, nodes, press, tap_node, wait
+from android_smoke import ADB, BASE, HEADERS, PACKAGE, adb, nodes, press, tap_node, wait
 
 ROOT = Path(__file__).resolve().parents[1]
 PRIVATE = Path.home() / ".local/share/schulpilot-firebase/test-login-private.json"
@@ -97,7 +97,7 @@ def native_login(credentials):
         adb("shell", "input", "keyevent", "123")
         adb("shell", "input", "keyevent", *(["67"] * (length + 4)))
         result = subprocess.run(
-            [str(Path.home() / "android-sdk/platform-tools/adb"), "-s", "emulator-5580", "shell"],
+            [*ADB, "shell"],
             input=("input text " + shlex.quote(value) + "\n").encode(),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
         )

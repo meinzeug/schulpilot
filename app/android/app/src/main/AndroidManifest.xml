@@ -3,6 +3,15 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="SCHULPILOT"
@@ -15,6 +24,18 @@
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="schulpilot_updates_v1" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />
+        <!-- Exactly one signature-protected FCM receiver. Non-call messages
+             retain the pinned FlutterFire receiver implementation. -->
+        <receiver android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingReceiver" tools:node="remove" />
+        <receiver android:name=".FamilyCallMessagingReceiver" android:exported="true"
+            android:permission="com.google.android.c2dm.permission.SEND">
+            <intent-filter><action android:name="com.google.android.c2dm.intent.RECEIVE" /></intent-filter>
+        </receiver>
+        <receiver android:name=".FamilyCallExpiryReceiver" android:exported="false" />
+        <service android:name=".FamilyCallCaptureService" android:exported="false"
+            android:foregroundServiceType="camera|microphone|mediaProjection" />
+        <service android:name=".FamilyCallRingingService" android:exported="false"
+            android:foregroundServiceType="shortService" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

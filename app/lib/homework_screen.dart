@@ -10,6 +10,7 @@ import 'api.dart';
 import 'camera_recovery.dart';
 import 'child_section_ui.dart';
 import 'learning_content.dart';
+import 'family_call_screen.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
@@ -695,6 +696,29 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     }
   }
 
+  Future<void> askFamily() async {
+    if (!canWrite) return;
+    final expectedAccount = widget.state.user;
+    await showFamilyHelp(
+      context,
+      widget.state,
+      contextKind: 'homework',
+      contextId: widget.materialId,
+      sendMessage: () async {
+        if (!canWrite || !identical(widget.state.user, expectedAccount)) return;
+        await widget.state.api.post('/children/${widget.childId}/messages', {
+          'kind': 'help',
+          'body': 'Ich brauche Hilfe bei meinen Hausaufgaben.',
+          'material_id': widget.materialId,
+        });
+        if (mounted && identical(widget.state.user, expectedAccount)) {
+          widget.state.refreshState();
+          toast(context, 'Hilfewunsch gesendet.');
+        }
+      },
+    );
+  }
+
   Future<void> chooseTask(String taskId) async {
     if (busy || saving || taskId == selectedId) return;
     await persist();
@@ -930,6 +954,17 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
             ),
           ],
           if (photo != null) ...[
+            if (canWrite) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: askFamily,
+                  icon: const Icon(Icons.video_call_rounded),
+                  label: const Text('Eltern live dazuholen'),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (photo!['has_image'] == true)
               Align(
                 alignment: Alignment.centerLeft,

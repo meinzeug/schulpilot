@@ -18,7 +18,8 @@ PARAGRAPHS = (
         "Hilfewünsche und die näherungsweise aktive Lernzeit. Eltern können freiwillig Schulnoten mit Fach, Datum und optionaler "
         "Notiz verwalten und deren Gewichtung im Lernplan ausschalten. Die gespeicherten Noten und Notennotizen werden "
         "nicht automatisch an die Lern-KI übermittelt; nur eine abgeleitete Unterstützungsstrategie wird ergänzt. "
-        "Andere Apps, fremde Webseiten und das übrige Gerät werden nicht überwacht. "
+        "Andere Apps, fremde Webseiten und das übrige Gerät werden nicht automatisch überwacht. "
+        "Bei einer bewusst gestarteten Bildschirmfreigabe ist der selbst gewählte Bereich für den angenommenen Elternkontakt sichtbar. "
         "Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Materialien.",
     ),
     (
@@ -86,6 +87,23 @@ PARAGRAPHS = (
         "Gerätetokens liegen verschlüsselt in der Datenbank, werden bei Abmeldung oder Entzug entfernt und nach 60 Tagen "
         "ohne Aktualisierung bereinigt; Versandstatus nach 14 Tagen. Das Löschen eines Tokens ist keine Zusage sofortiger "
         "Löschung sämtlicher Firebase-Installationsdaten oder Google-Backups.",
+    ),
+    (
+        "Freiwillige Familienanrufe und Bildschirmfreigabe",
+        "Das Kind kann berechtigte Eltern der eigenen Familie ausdrücklich zu einem Anruf einladen. "
+        "Ein Elternteil nimmt mit seinem eigenen angemeldeten Zugang an; Administratoren und fremde Familien haben keinen Zugriff. "
+        "Kamera und Mikrofon benötigen eine bewusste Freigabe. Die zusätzliche Bildschirmfreigabe startet separat mit dem "
+        "Auswahldialog des Geräts oder Browsers; der gewählte Bereich kann auch eigene noch nicht abgeschickte Eingaben enthalten. "
+        "Nur passende App-Fenster oder Tabs auswählen. Freigabe, Kamera und Anruf können jederzeit beendet werden. "
+        "Ton, Video und Bildschirm werden über verschlüsseltes WebRTC direkt oder über den eigenen authentifizierten "
+        "SCHULPILOT-Relay bei Hetzner übertragen. SCHULPILOT zeichnet diese Inhalte nicht auf und übermittelt sie weder "
+        "an die Lern-KI noch als Medieninhalt an Firebase. Kurzlebige Verbindungsbeschreibungen liegen nur begrenzt im "
+        "Arbeitsspeicher und werden nach Gesprächsende beziehungsweise Ablauf entfernt. Anrufstatus, beteiligte Zugänge, "
+        "Zeitpunkte und ein optionaler Lernbezug bleiben höchstens30Tage gespeichert und gehören zu Export und Kontolöschung. "
+        "Ein angenommenes Hilfegespräch zählt bei neu bearbeiteten Aufgaben als Unterstützung; frühere Antworten werden nicht verändert. "
+        "Klingeln auf Android erfordert die ausdrückliche Anruf-Freigabe auf diesem Gerät und einen erlaubten Systemkanal. "
+        "Firebase erhält dazu ausschließlich neutrale technische Anrufsignale mit kurzer Gültigkeit. Lautlosmodus, Ruhezeiten "
+        "und Systembeschränkungen können eine hörbare oder sofortige Zustellung verhindern. Bei fehlender Verbindung bleiben Nachrichten verfügbar.",
     ),
     (
         "Speicherung, Sicherheit und Aufbewahrung",

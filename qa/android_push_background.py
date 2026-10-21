@@ -233,6 +233,8 @@ def main():
         native_login(credentials)
         logged_in = True
         press("Benachrichtigungen")
+        if "Alle anzeigen" in labels(nodes()):
+            press("Alle anzeigen")
         wait("Deine Neuigkeiten")
         report["bell_visible"] = True
         press("Konto")

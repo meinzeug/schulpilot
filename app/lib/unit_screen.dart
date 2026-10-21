@@ -17,6 +17,7 @@ import 'ui.dart';
 import 'parent_child_navigation.dart';
 import 'math_content.dart';
 import 'subject_graphic.dart';
+import 'family_call_screen.dart';
 import 'practice_evidence.dart';
 import 'adaptive_learning_step.dart';
 
@@ -2610,11 +2611,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     'Vorbereitung ansehen',
                     Icons.hourglass_top_rounded,
                   ),
-                (
-                  'parents',
-                  'Meine Eltern fragen',
-                  Icons.volunteer_activism_outlined,
-                ),
+                ('parents', 'Eltern live dazuholen', Icons.video_call_rounded),
                 ('difficulty', 'Die Aufgabe passt nicht', Icons.tune_rounded),
                 if (u['status'] == 'active' && currentQuestion != null)
                   (
@@ -2869,6 +2866,22 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> requestParentHelp(BuildContext context, Json u) async {
+    final requestedOwner = ownerId;
+    if (!requestIsCurrent(u['id'], requestedOwner)) return;
+    await showFamilyHelp(
+      context,
+      state,
+      contextKind: 'learning',
+      contextId: u['id'],
+      sendMessage: () async {
+        if (requestIsCurrent(u['id'], requestedOwner)) {
+          await requestParentMessage(context, u);
+        }
+      },
+    );
+  }
+
+  Future<void> requestParentMessage(BuildContext context, Json u) async {
     final requestedOwner = ownerId;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final note = TextEditingController();

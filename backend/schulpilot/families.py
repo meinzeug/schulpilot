@@ -462,9 +462,14 @@ def export_child(db, child):
     for model in (LearningTipContext, LearningTipInteraction, CatalogRefresh):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
             for row in db.scalars(select(model).where(model.child_id == child.id))]
-    from .db import ParentLearningReview
+    from .db import FamilyCall, ParentLearningReview
 
     result["parent_review_settings"] = child.parent_review_settings
+    # No signalling, IP addresses, media or device credentials are recorded.
+    result["family_calls"] = [
+        {key: getattr(row, key) for key in ("id", "context_kind", "context_id", "status", "reason", "created", "accepted_at", "ended_at")}
+        for row in db.scalars(select(FamilyCall).where(FamilyCall.child_id == child.id))
+    ]
     for model in (Material, Assignment, LearningUnit, Activity, Mastery, Message, SchoolDay, TutorTurn, ParentLearningReview):
         rows = list(db.scalars(select(model).where(model.child_id == child.id)))
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns} for row in rows]

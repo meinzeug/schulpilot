@@ -454,7 +454,9 @@ void main() {
     final fixture = _Fixture(_unit(decision: 'parent_help', next: false));
     await _open(tester, fixture);
     expect(fixture.requests, isEmpty);
-    await _tap(tester, 'Eltern um Hilfe bitten');
+    await _tap(tester, 'Eltern live dazuholen');
+    expect(fixture.requests, isEmpty);
+    await _tap(tester, 'Lieber eine Nachricht senden');
     expect(fixture.requests, hasLength(1));
     expect(fixture.requests.single.url.path, '/api/children/child/messages');
     expect(jsonDecode(fixture.requests.single.body)['kind'], 'help');
@@ -475,7 +477,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Selbst ausprobieren'), findsNothing);
-      expect(find.text('Eltern um Hilfe bitten'), findsNothing);
+      expect(find.text('Eltern live dazuholen'), findsNothing);
       expect(find.byType(ActionButton), findsNothing);
       expect(fixture.requests, isEmpty);
       await tester.pumpWidget(const SizedBox());

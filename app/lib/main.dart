@@ -30,6 +30,7 @@ import 'grades_screen.dart';
 import 'vocabulary_screen.dart';
 import 'language_workshop.dart';
 import 'camera_recovery.dart';
+import 'family_call_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,6 +77,13 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(_syncInbox);
+    widget.state.familyCalls.onNativeIntent = (id, action) {
+      if (!mounted || !(widget.state.isChild || widget.state.isParent)) return;
+      final requestedAction = ['answer', 'decline'].contains(action)
+          ? '?action=$action'
+          : '';
+      router.go('/family-call/$id$requestedAction');
+    };
     _syncInbox();
     widget.state.push.onOpen = () {
       widget.state.push.openPending = false;
@@ -101,15 +109,19 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     });
   }
 
-  void _syncInbox() => widget.state.inbox.activate(
-    (widget.state.isChild || widget.state.isParent)
-        ? (widget.state.user?['id'])
-        : null,
-  );
+  void _syncInbox() {
+    widget.state.inbox.activate(
+      (widget.state.isChild || widget.state.isParent)
+          ? (widget.state.user?['id'])
+          : null,
+    );
+    widget.state.familyCalls.activate(widget.state.user);
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     widget.state.inbox.foreground(state == AppLifecycleState.resumed);
+    widget.state.familyCalls.lifecycle(state);
   }
 
   late final GoRouter router = GoRouter(
@@ -136,6 +148,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path.startsWith('/admin') ||
           path.startsWith('/child/') ||
           path.startsWith('/messages/') ||
+          path.startsWith('/family-call/') ||
           path.startsWith('/after-school/') ||
           path.startsWith('/material/') ||
           path.startsWith('/library/') ||
@@ -161,6 +174,9 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
       if (path == '/notifications' && widget.state.isAdmin) {
         return '/admin/push';
+      }
+      if (path.startsWith('/family-call/') && widget.state.isAdmin) {
+        return '/admin';
       }
       if (path.startsWith('/grades/') && !widget.state.isParent) return '/app';
       if ((path.startsWith('/parent-plan/') ||
@@ -409,6 +425,17 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         builder: (context, s) => SettingsScreen(widget.state),
       ),
       GoRoute(
+        path: '/family-call/:id',
+        builder: (context, s) => FamilyCallScreen(
+          widget.state,
+          key: ValueKey(
+            'call:${s.pathParameters['id']}:${widget.state.user?['id']}',
+          ),
+          callId: s.pathParameters['id']!,
+          action: s.uri.queryParameters['action'],
+        ),
+      ),
+      GoRoute(
         path: '/notifications',
         builder: (context, s) => NotificationsScreen(widget.state),
       ),
@@ -443,6 +470,8 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     WidgetsBinding.instance.removeObserver(this);
     widget.state.removeListener(_syncInbox);
     widget.state.inbox.clear();
+    widget.state.familyCalls.onNativeIntent = null;
+    widget.state.familyCalls.dispose();
     widget.state.push.onOpen = null;
     widget.state.push.onForeground = null;
     router.dispose();
@@ -460,6 +489,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       darkTheme: appTheme(brightness: Brightness.dark),
       themeMode: widget.state.darkAppearance ? ThemeMode.dark : ThemeMode.light,
       routerConfig: router,
+      builder: (context, child) => FamilyCallHost(
+        widget.state,
+        openCall: (id) => router.push('/family-call/$id'),
+        child: child ?? const SizedBox.shrink(),
+      ),
     ),
   );
 }

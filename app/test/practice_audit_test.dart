@@ -192,7 +192,10 @@ void main() {
           ),
         );
         expect(find.text('1 · Zwei gleich große Ganze'), findsOneWidget);
-        expect(find.textContaining('noch unterschiedlich groß'), findsOneWidget);
+        expect(
+          find.textContaining('noch unterschiedlich groß'),
+          findsOneWidget,
+        );
         expect(
           find.bySemanticsLabel(RegExp('1 von 3 gleich großen Teilen')),
           findsOneWidget,
