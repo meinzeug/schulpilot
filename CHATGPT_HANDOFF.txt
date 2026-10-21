@@ -46,10 +46,12 @@ API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema0025.
 Rückweg:76 (`20261021T142904Z-d8e78c4`), gleiches Schema; keine DB-Rücksetzung.
 Kein Play-Upload. Kein physischer Androidkamera-/vollständiger WCAG-/Langzeitnachweis.
 
-Bereinigung offen: Alle künstlichen Browser-/API-Sitzungen abgemeldet. Die
-Dauerlöschung des vier Stunden begrenzten Testhaushalts wurde vom automatischen
-Freigabereview wegen fehlender ausdrücklicher Löschfreigabe abgelehnt; beim Betreiber
-gezielt angefragt. Kein Umgehungsversuch. Testzugangsdaten nur lokal ignoriert0600.
+Bereinigung abgeschlossen nach ausdrücklicher Betreiberfreigabe: genau der
+künstliche Testhaushalt über DELETE /account gelöscht. Familie, Kind, beide
+Testbenutzer, Foto, drei Lernrunden, Elternberichte und private Usage jeweils0;
+globale Aufruf-/Kostenstände erhalten. Zwei signierte Löschjournalbelege für
+Familie/Kind unabhängig geprüft. Lokale Testzugangsdaten entfernt. Keine neue
+Codeänderung/Bereitstellung; Produktionsversion77 bleibt unverändert.
 
 ---
 

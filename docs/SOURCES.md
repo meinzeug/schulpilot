@@ -1,3 +1,9 @@
+Nachmittagsbereinigung21.10.2026: nach ausdrücklicher Betreiberfreigabe genau
+den künstlichen Testhaushalt mit dem vorhandenen authentifizierten DELETE /account
+entfernt. Umfang vorab begrenzt, globale Kostenstände erhalten, zwei signierte
+Löschjournalbelege geprüft, lokale Testzugangsdaten entfernt. Keine neuen Pakete,
+Anbieteraufrufe oder Codebereitstellung; Details im Nachmittagsbericht.
+
 Live-Abschlussprüfung21.10.2026, Version1.18.3+77: gespeicherte, quellengebundene
 Zurückstellung nach einer ausdrücklich gezeigten Lösung und Wechsel auf eine
 andere Prüfaufgabe. Originalantworten bleiben unverändert als Übungsbedarf.

@@ -304,10 +304,19 @@ Androidkamera. Die App darf nach wiederholtem Unterstützungsbedarf Elternhilfe
 empfehlen; dieser künstliche Durchlauf beweist keine vollständige menschliche
 Aufsicht oder alleinige Betreuung jeder denkbaren Schwierigkeit.
 
-Alle Testsitzungen sind regulär abgemeldet. Die dauerhafte Löschung des eigenen
-künstlichen Produktionshaushalts wurde von der automatischen Freigabeprüfung
-wegen fehlender ausdrücklicher Löschfreigabe abgelehnt. Es wurde keine Umgehung
-versucht. Die gezielte Freigabe ist beim Betreiber angefragt; bis dahin bleibt
-der zeitlich begrenzte Haushalt erhalten. Die Test-Zugangsdaten liegen nur in
-einer lokalen ignorierten Datei mit0600, niemals im Repository oder Bericht.
-Die Bereinigung bleibt offen, bis die Freigabe tatsächlich vorliegt.
+Nach der ausdrücklichen Betreiberantwort „Ja, den künstlichen Testhaushalt
+löschen“ wurde die Bereinigung über den regulären authentifizierten Endpunkt
+`DELETE /account` durchgeführt. Zuvor wurden die gepinnte künstliche Kind-ID,
+Familien-/Benutzerzuordnung und der genaue Umfang geprüft: ein Elterninhaber mit
+exakt einer Familie und einem Kind. Die frühere automatische Ablehnung wegen
+fehlender ausdrücklicher Löschfreigabe wurde nicht umgangen.
+
+Nachweis nach der Löschung: Familie, Kind, beide Testbenutzer, Aufgabenfoto,
+alle drei Lernrunden, Elternberichte und private Usage-Zeilen jeweils nicht mehr
+vorhanden. Die globalen Aufruf-/Kostenstände blieben erhalten; private Usage
+entfällt gemäß der bestehenden FK-Löschregel und wird nicht als weiter bestehend
+ausgegeben. Der veröffentlichte Löschauftrag sowie zwei signierte Journalbelege
+für Familie und Kind wurden geprüft; ihre HMAC-Signaturen sind gültig. Die lokale
+Datei mit den Testzugangsdaten wurde ebenfalls entfernt. Ergebnis:
+`artifacts/afternoon-live/cleanup.json`. Die abschließende Bereinigung benötigt
+keine Änderung oder erneute Bereitstellung des produktiven Anwendungscodes.
