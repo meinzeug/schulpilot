@@ -1,3 +1,56 @@
+# Produktionsstand1.17.3+73 ·21.10.2026
+
+Live: Release `20261021T120244Z-1b014ea`, Produktcommit
+`1b014ea7cf47fb3346ae9a4997d941555d34a150`, main gepusht. Erneute Eltern-/
+Kinderprüfung mit drei Agenten und tatsächlicher Browserbedienung abgeschlossen.
+Details und Fallmatrix: [APP_REVIEW_2026_10_21.md](APP_REVIEW_2026_10_21.md).
+
+- Hausaufgaben behalten Auswahl, Entwurf und Checkliste bei Unterbrechung und
+  parallelem Speichern. Übersicht und Hinweis-Cache funktionieren auch bei über
+  hundert Gesprächsschritten. Alte Hilfen/Häkchen nach Quellenkorrektur bleiben
+  getrennt. Neu: echter Checklistenstand und „Nächste offene Aufgabe“.
+- Eltern können Themen ausdrücklich erledigen. Ältere offene Runden und
+  gespeicherte KI-Kurzpläne werden vor der begrenzten Vorschau gesucht. Kein
+  vorheriger Kindername während Nachladen; Kompass setzt GET-Polling nach Rückkehr fort.
+- Alte Übung ohne gespeicherte Quellenrevision zählt weiterhin als Übung, jedoch
+  nicht als aktueller Kompetenznachweis für inzwischen korrigierten Stoff.
+- Android-Kinderkamera erhält eine kontogebundene Hausaufgaben-/Heft-Rückkehrhilfe.
+  Bewusster Zuschnitt vor Abgabe. RAM-Fotos/Marker auch bei direktem Kontowechsel
+  entfernen; asynchronen Heftimport an stabilen Eigentümer binden.
+- SQLite-Migration0025 mit Inline-Referenz repariert; gefüllte Auftrags-/Runden-/
+  Antwortketten beim Hin- und Rückweg erhalten. PostgreSQL-Pfad unverändert.
+
+133 gemeinsame Backendfälle auf isoliertem PostgreSQL16,70 abschließende Widget-
+fälle sowie Ruff/Flutteranalyse und Diffprüfung bestanden. 1035Fluttertests bei
+Integration vollständig grün; späterer erneuter Gesamtlauf nach1014 bestandenen
+Fällen durch SIGTERM beendet, ausdrücklich kein zweiter behaupteter Gesamterfolg.
+Zusätzlicher ursprünglicher SQLite-0001→head-Replay bestanden. Überlappende Läufe
+nicht addieren. Keine neuen OpenRouter-Aufrufe oder Testantworten im echten Profil.
+
+Browser: bestehender produktiver Kinderzugang nur lesend (Heute/Kurzplan, Lernen,
+Wörter, Hefte, Hausaufgaben). Schreibende Eltern-/Kinderprobe ausschließlich lokal
+mit künstlichen Daten,390px/1280px und hell/dunkel. Auswahl/Entwurf/Häkchen nach
+Reload, Kontowechsel, Themenabschluss und erneutes Anzeigen tatsächlich bedient.
+Eltern sehen den ungesendeten Entwurf nicht. Screenshots unter artifacts/review73/.
+Kein Providerzugang/Worker in der lokalen Vorschau. Keine neue physische Android-
+Kamera-, vollständige WCAG- oder Lernwirkungsabnahme. Grenzen in HOMEWORK.md.
+
+Web und signierte Direct-APK/Play-AAB73 erfolgreich gebaut; Signierer/Paket/
+Version/Bundletool und Play ohne APK-Installerberechtigung separat geprüft.
+Geheimnisprüfung643 Quelldateien/Assets und344 Archiveinträge,14 bekannte Secret-
+Quellen,0 Treffer; zusätzlicher Provider-Key-/Base64-Abgleich ebenfalls0.
+Öffentlicher APK-Voll-Download stimmt mit dem lokalen Artefakt überein.
+APK75171226Bytes, SHA256
+`41504ac7bbaf8904edd640942ee93675f8af0e15ead00a18e73524110db72195`;
+AAB70562027Bytes, SHA256
+`be08066956b0736295e2146fc77a3546563cf5c442e80705fc1aa86341c1ffe6`.
+Kein Play-Upload. API/Worker/Caddy aktiv, reguläre Sicherung erfolgreich,
+Schema0025; OpenRouter-Providerrevision29, Paid/ZDR/Freigaben erhalten.
+Rückweg: vorherige72 (`20261021T094655Z-019d20e`), gleiches Schema0025,
+keine Datenbankrücksetzung für diesen Coderückweg. Andere Dienste nicht geändert.
+
+---
+
 # Produktionsstand1.17.2+72 ·21.10.2026
 
 Live: Release `20261021T094655Z-019d20e`, Produktcommit
