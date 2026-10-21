@@ -168,11 +168,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   childName: data?['child_name'],
                 ),
               if (!widget.state.isChild) ...[
-                ParentInsightsPanel(
-                  widget.state,
-                  childId: widget.childId,
-                  revision: generation,
-                ),
+                if (subject == null)
+                  ParentInsightsPanel(
+                    widget.state,
+                    childId: widget.childId,
+                    compact: true,
+                    revision: generation,
+                  ),
                 const ParentWorkspaceHero(
                   eyebrow: 'FORTSCHRITT VERSTEHEN',
                   title: 'Der Lernstand im Detail',

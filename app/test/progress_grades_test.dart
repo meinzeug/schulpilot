@@ -213,10 +213,12 @@ void main() {
       await tester.tap(find.text('Mathematik'));
       await tester.pumpAndSettle();
       expect(reads.last.url.queryParameters['subject'], 'Mathematik');
+      expect(find.text('KI-Lernkompass'), findsNothing);
       await tester.ensureVisible(find.text('Brüche'));
       await tester.tap(find.text('Brüche'));
       await tester.pumpAndSettle();
       expect(reads.last.url.queryParameters['topic'], 'Brüche');
+      expect(find.text('KI-Lernkompass'), findsNothing);
       await tester.ensureVisible(find.textContaining('Runde vom'));
       await tester.tap(find.textContaining('Runde vom'));
       await tester.pumpAndSettle();
