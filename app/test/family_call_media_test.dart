@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:schulpilot/family_call_media.dart';
@@ -26,6 +28,7 @@ class TestTrack extends MediaStreamTrack {
 
 class TestStream extends MediaStream {
   final List<MediaStreamTrack> tracks;
+  bool disposed = false;
   TestStream(super.id, super.ownerTag, this.tracks);
   @override
   bool get active => true;
@@ -56,7 +59,9 @@ class TestStream extends MediaStream {
   }
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    disposed = true;
+  }
 }
 
 /// Models the documented platform difference: native renderer.muted changes a
@@ -102,11 +107,23 @@ class TestRenderer extends RTCVideoRenderer {
 class TestSender extends Fake implements RTCRtpSender {}
 
 class TestPeer extends RTCPeerConnection {
+  bool failNextAdd = false;
+  Completer<RTCRtpSender>? pendingAdd;
   @override
   Future<RTCRtpSender> addTrack(
     MediaStreamTrack track, [
     MediaStream? stream,
-  ]) async => TestSender();
+  ]) async {
+    if (failNextAdd) {
+      failNextAdd = false;
+      throw StateError('Artificial addTrack failure');
+    }
+    if (pendingAdd != null) return pendingAdd!.future;
+    return TestSender();
+  }
+
+  @override
+  Future<bool> removeTrack(RTCRtpSender sender) async => true;
   @override
   Future<void> setRemoteDescription(RTCSessionDescription description) async {}
   @override
@@ -122,6 +139,103 @@ class TestPeer extends RTCPeerConnection {
 }
 
 void main() {
+  testWidgets('Failed screen addTrack rolls back only screen capture', (
+    tester,
+  ) async {
+    final mic = TestTrack('local-mic', 'audio');
+    final camera = TestTrack('local-camera', 'video');
+    final screen = TestTrack('screen-capture', 'video');
+    final local = TestStream('local-stream', 'local', [mic, camera]);
+    final capture = TestStream('screen-stream', 'local', [screen]);
+    final peer = TestPeer();
+    final media = WebRtcFamilyCallMedia(
+      webPlatform: false,
+      rendererFactory: () => TestRenderer(native: true),
+      captureUserMedia: (_) async => local,
+      captureDisplayMedia: (_) async => capture,
+      peerFactory: (_) async => peer,
+    );
+    await media.prepare(camera: true);
+    await media.connect([]);
+    peer.failNextAdd = true;
+    await expectLater(media.startScreen(), throwsStateError);
+    expect(media.sharingScreen, isFalse);
+    expect(screen.stopped, isTrue);
+    expect(capture.disposed, isTrue);
+    expect(camera.stopped, isFalse);
+    expect(mic.stopped, isFalse);
+    expect(media.cameraEnabled, isTrue);
+    expect(media.microphoneEnabled, isTrue);
+    await media.close();
+  });
+
+  testWidgets('Screen capture becomes active only after addTrack succeeds', (
+    tester,
+  ) async {
+    final mic = TestTrack('local-mic', 'audio');
+    final camera = TestTrack('local-camera', 'video');
+    final screen = TestTrack('screen-capture', 'video');
+    final local = TestStream('local-stream', 'local', [mic, camera]);
+    final capture = TestStream('screen-stream', 'local', [screen]);
+    final peer = TestPeer();
+    final media = WebRtcFamilyCallMedia(
+      webPlatform: false,
+      rendererFactory: () => TestRenderer(native: true),
+      captureUserMedia: (_) async => local,
+      captureDisplayMedia: (_) async => capture,
+      peerFactory: (_) async => peer,
+    );
+    await media.prepare(camera: true);
+    await media.connect([]);
+    peer.pendingAdd = Completer<RTCRtpSender>();
+    final starting = media.startScreen();
+    await tester.pump();
+    expect(media.sharingScreen, isFalse);
+    peer.pendingAdd!.complete(TestSender());
+    await starting;
+    expect(media.sharingScreen, isTrue);
+    await media.stopScreen();
+    expect(media.sharingScreen, isFalse);
+    expect(screen.stopped, isTrue);
+    expect(capture.disposed, isTrue);
+    expect(camera.stopped, isFalse);
+    expect(mic.stopped, isFalse);
+    await media.close();
+  });
+
+  testWidgets(
+    'Call cleanup stops screen capture even while addTrack is pending',
+    (tester) async {
+      final mic = TestTrack('local-mic', 'audio');
+      final screen = TestTrack('screen-capture', 'video');
+      final local = TestStream('local-stream', 'local', [
+        mic,
+        TestTrack('local-camera', 'video'),
+      ]);
+      final capture = TestStream('screen-stream', 'local', [screen]);
+      final peer = TestPeer();
+      final media = WebRtcFamilyCallMedia(
+        webPlatform: false,
+        rendererFactory: () => TestRenderer(native: true),
+        captureUserMedia: (_) async => local,
+        captureDisplayMedia: (_) async => capture,
+        peerFactory: (_) async => peer,
+      );
+      await media.prepare(camera: true);
+      await media.connect([]);
+      peer.pendingAdd = Completer<RTCRtpSender>();
+      final starting = media.startScreen();
+      await tester.pump();
+      expect(media.sharingScreen, isFalse);
+      await media.close();
+      expect(screen.stopped, isTrue);
+      expect(capture.disposed, isTrue);
+      peer.pendingAdd!.complete(TestSender());
+      await starting;
+      expect(media.sharingScreen, isFalse);
+    },
+  );
+
   for (final web in [false, true]) {
     testWidgets(
       '${web ? 'Web' : 'Native'} preview keeps capture audio enabled',

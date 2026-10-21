@@ -19,6 +19,7 @@ class FamilyCallCaptureService : Service() {
         private const val NOTIFICATION = 7056
         private var pending: MethodChannel.Result? = null
         private var pendingCallId: String? = null
+        private var running: FamilyCallCaptureService? = null
         var activeCallId: String? = null
             private set
 
@@ -51,9 +52,32 @@ class FamilyCallCaptureService : Service() {
             activeCallId = null
             context.stopService(Intent(context, FamilyCallCaptureService::class.java))
         }
+
+        /** Called only after the app has stopped its screen-capture track. */
+        fun stopProjection(callId: String) {
+            if (!FamilyCallPolicy.validId(callId) ||
+                !FamilyCallPolicy.mayStop(callId, activeCallId, pendingCallId)) return
+            running?.removeProjectionType()
+        }
     }
 
     private var types = 0
+    private var foregroundNotification: Notification? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        running = this
+    }
+
+    private fun removeProjectionType() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val notification = foregroundNotification ?: return
+        val remaining = types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION.inv()
+        if (remaining == types) return
+        startForeground(NOTIFICATION, notification, remaining)
+        types = remaining
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -95,6 +119,7 @@ class FamilyCallCaptureService : Service() {
                 // avoids falling back to the manifest's projection type.
                 startForeground(NOTIFICATION, notification, types)
             } else startForeground(NOTIFICATION, notification)
+            foregroundNotification = notification
             activeCallId = callId
             pending?.success(null)
             pending = null
@@ -110,6 +135,8 @@ class FamilyCallCaptureService : Service() {
 
     override fun onDestroy() {
         types = 0
+        foregroundNotification = null
+        if (running === this) running = null
         activeCallId = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()

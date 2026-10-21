@@ -24,6 +24,7 @@ class FamilyCallService extends ChangeNotifier {
   final FamilyCallMedia Function() mediaFactory;
   final Duration pollInterval;
   final bool nativeEnabled;
+  final Future<bool> Function() requestScreenPermission;
   final bool webPlatform;
   final Duration Function()? authorityClock;
   final Stopwatch _uptime = Stopwatch()..start();
@@ -36,7 +37,10 @@ class FamilyCallService extends ChangeNotifier {
     this.webPlatform = kIsWeb,
     this.authorityClock,
     this.authorityLease = const Duration(seconds: 90),
-  }) : mediaFactory = mediaFactory ?? WebRtcFamilyCallMedia.new;
+    Future<bool> Function()? requestScreenPermission,
+  }) : mediaFactory = mediaFactory ?? WebRtcFamilyCallMedia.new,
+       requestScreenPermission =
+           requestScreenPermission ?? (() => Helper.requestCapturePermission());
 
   Json? _owner;
   Json? call;
@@ -49,6 +53,7 @@ class FamilyCallService extends ChangeNotifier {
   bool _ending = false;
   bool _connected = false;
   bool _offerPending = false;
+  bool _screenPreparing = false;
   bool _renegotiatePending = false;
   int _generation = 0;
   int _cursor = 0;
@@ -423,43 +428,72 @@ class FamilyCallService extends ChangeNotifier {
       };
       currentMedia.onScreenStopped = () {
         if (_current(owner, generation) && callId == id) {
-          unawaited(_renegotiate());
+          unawaited(_restoreCaptureForeground(id).then((_) => _renegotiate()));
         }
       };
       await currentMedia.connect(response['ice_servers'] as List? ?? []);
       if (!_current(owner, generation) || media != currentMedia) return;
       _connected = true;
-      if (isChild) {
-        _offerPending = true;
-        await _sendSignal(
-          'offer',
-          await currentMedia.offer(),
-          owner,
-          generation,
-        );
-      }
+      if (isChild) await _publishOffer(currentMedia, owner, generation);
     } finally {
       if (_current(owner, generation)) _connecting = false;
     }
   }
 
-  Future<void> _sendSignal(
+  Future<bool> _sendSignal(
     String kind,
     Json payload,
     Json? owner,
     int generation,
   ) async {
-    if (!_current(owner, generation) || !accepted) return;
+    if (!_current(owner, generation) || !accepted) return false;
     try {
       await state.api.post('/family-calls/$callId/signals', {
         'idempotency_key': familyCallKey(),
         'kind': kind,
         'payload': payload,
       });
+      return _current(owner, generation) && accepted;
     } catch (_) {
       if (_current(owner, generation)) {
         error = 'Die Verbindung ist instabil. Falls Bild oder Ton fehlen, beende den Anruf und starte ihn erneut.';
         notifyListeners();
+      }
+      return false;
+    }
+  }
+
+  Future<bool> _publishOffer(
+    FamilyCallMedia currentMedia,
+    Json? owner,
+    int generation,
+  ) async {
+    var delivered = false;
+    _offerPending = true;
+    try {
+      final offer = await currentMedia.offer();
+      if (!_current(owner, generation) || media != currentMedia) return false;
+      delivered = await _sendSignal('offer', offer, owner, generation);
+      return delivered;
+    } catch (_) {
+      if (_current(owner, generation) && media == currentMedia) {
+        error = 'Die Verbindung konnte nicht vorbereitet werden. Beende den Anruf und starte ihn bewusst erneut.';
+        notifyListeners();
+      }
+      return false;
+    } finally {
+      if (!delivered && _current(owner, generation) && media == currentMedia) {
+        _offerPending = false;
+        _renegotiatePending = false;
+        if (currentMedia.sharingScreen) {
+          await currentMedia.stopScreen();
+          final id = callId;
+          if (id != null) await _restoreCaptureForeground(id);
+          if (_current(owner, generation) && media == currentMedia) {
+            error = 'Die Bildschirmfreigabe konnte nicht verbunden werden und ist gestoppt. Kamera und Gespräch bleiben verfügbar.';
+            notifyListeners();
+          }
+        }
       }
     }
   }
@@ -548,50 +582,71 @@ class FamilyCallService extends ChangeNotifier {
     }
   }
 
+  Future<void> _restoreCaptureForeground(String id) async {
+    if (_nativeAndroid) {
+      try {
+        await FamilyCallNative.instance.stopProjection(id);
+      } catch (_) {}
+    }
+  }
+
   Future<void> shareScreen() async {
     if (!isChild ||
         media == null ||
         !accepted ||
         !_connected ||
-        media!.sharingScreen) {
+        media!.sharingScreen ||
+        _screenPreparing) {
       return;
     }
     final owner = _owner, generation = _generation;
     final currentMedia = media!;
+    final id = callId!;
+    _screenPreparing = true;
     error = null;
     try {
       if (_nativeAndroid) {
-        if (!await Helper.requestCapturePermission()) return;
+        if (!await requestScreenPermission()) return;
         if (!_current(owner, generation) || media != currentMedia) return;
-        await FamilyCallNative.instance.startProjection(callId!);
+        await FamilyCallNative.instance.startProjection(id);
       }
-      // Web: no await precedes this call, preserving the share button gesture.
       await currentMedia.startScreen();
-      if (_current(owner, generation) && media == currentMedia) {
-        await _renegotiate();
+      if (!_current(owner, generation) || media != currentMedia) return;
+      if (!currentMedia.sharingScreen || !await _renegotiate()) {
+        throw StateError('Screen sender was not published.');
       }
     } catch (_) {
-      if (_current(owner, generation)) {
-        error = 'Der Bildschirm wurde nicht geteilt. Wähle im Browser einen Tab oder nutze bei fehlender Freigabe die Android-App. Kamera und Gespräch bleiben verfügbar.';
+      // Only screen capture is rolled back. Existing camera and microphone
+      // tracks remain available; no automatic capture or signaling retry.
+      await currentMedia.stopScreen();
+      await _restoreCaptureForeground(id);
+      if (_current(owner, generation) && media == currentMedia) {
+        error = 'Der Bildschirm wurde nicht geteilt. Die Freigabe ist gestoppt. Kamera und Gespräch bleiben verfügbar. Du kannst es bewusst erneut versuchen.';
         notifyListeners();
+      }
+    } finally {
+      if (_current(owner, generation) && media == currentMedia) {
+        _screenPreparing = false;
       }
     }
   }
 
-  Future<void> _renegotiate() async {
+  Future<bool> _renegotiate() async {
     final owner = _owner, generation = _generation;
-    if (!isChild || media == null || !accepted || !_connected) return;
+    if (!isChild || media == null || !accepted || !_connected) return false;
     if (_offerPending) {
       _renegotiatePending = true;
-      return;
+      return true;
     }
     _renegotiatePending = false;
-    _offerPending = true;
-    await _sendSignal('offer', await media!.offer(), owner, generation);
+    return _publishOffer(media!, owner, generation);
   }
 
   Future<void> stopScreen() async {
-    await media?.stopScreen();
+    final currentMedia = media;
+    final id = callId;
+    await currentMedia?.stopScreen();
+    if (id != null) await _restoreCaptureForeground(id);
     await _renegotiate();
   }
 
@@ -644,6 +699,7 @@ class FamilyCallService extends ChangeNotifier {
     _cursor = 0;
     _offerPending = false;
     _renegotiatePending = false;
+    _screenPreparing = false;
     if (previous != null) previous.removeListener(_mediaChanged);
     final closing = previous?.close();
     try {

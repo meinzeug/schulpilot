@@ -503,3 +503,13 @@ in FAMILY_CALL_EVALUATION_2026_10_21.md. Normale FCM-Hintergrundanzeige und echt
 Anrufkarte mit Annahme wurden am künstlichen Android-36-Gerät getrennt belegt.
 Die QA-Uhr wurde nur dort korrigiert; Produktions-UTC wurde gegen Hetzner-NTP und
 ungecachte Google-/GitHub-HTTPS-Zeit geprüft, nicht gegen das lokale Clocktool.
+
+Nachkorrektur 1.19.2+81: Eigene Signalisierung und der reale späte Android-
+Freigabeversuch zeigten, dass abgelaufene90-Sekunden-Umschläge auch den Sequenzzähler
+entfernten. Zähler und begrenzter Hashindex haben nun die feste Anruflebensdauer;
+private Inhalte behalten ihre 90-Sekunden-Frist mit API-Lifespan-Cleanup. Regressionen
+prüfen späte Angebote, Wiederholungen, Kapazitätsgrenzen und Shutdown.
+Der vorhandene Android-Service reduziert nach echtem Trackstopp ausschließlich
+den MediaProjection-Typ; dafür wurde der bereits genutzte lokale Android-SDK-
+Quell-/APIstand geprüft. Keine neue Bibliothek, Hintergrundaufnahme oder
+Provideranfrage. Tatsächliche Abnahmen stehen im versionierten Evaluationsbericht.

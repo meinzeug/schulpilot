@@ -110,6 +110,11 @@ class FamilyCallNative {
   /// The service itself does not request consent or capture any display.
   Future<void> startProjection(String callId) =>
       _invoke('startProjection', {'call_id': callId});
+
+  /// Stop the actual screen track first; keep the active camera/microphone
+  /// container and remove only this call's projection foreground-service type.
+  Future<void> stopProjection(String callId) =>
+      _invoke('stopProjection', {'call_id': callId});
   Future<void> stopMedia({String? callId}) =>
       _invoke('stopMedia', {'call_id': ?callId});
 }

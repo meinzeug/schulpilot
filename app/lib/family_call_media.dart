@@ -39,12 +39,14 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
   final bool webPlatform;
   final Future<void> Function(MediaStreamTrack track) unmuteMicrophone;
   final Future<MediaStream> Function(Map<String, dynamic>) captureUserMedia;
+  final Future<MediaStream> Function(Map<String, dynamic>) captureDisplayMedia;
   final Future<RTCPeerConnection> Function(Map<String, dynamic>) peerFactory;
   WebRtcFamilyCallMedia({
     this.webPlatform = kIsWeb,
     RTCVideoRenderer Function()? rendererFactory,
     Future<void> Function(MediaStreamTrack track)? unmuteMicrophone,
     Future<MediaStream> Function(Map<String, dynamic>)? captureUserMedia,
+    Future<MediaStream> Function(Map<String, dynamic>)? captureDisplayMedia,
     Future<RTCPeerConnection> Function(Map<String, dynamic>)? peerFactory,
   }) : _localRenderer = (rendererFactory ?? RTCVideoRenderer.new)(),
        _remoteRenderer = (rendererFactory ?? RTCVideoRenderer.new)(),
@@ -55,11 +57,16 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
        captureUserMedia =
            captureUserMedia ??
            ((constraints) => navigator.mediaDevices.getUserMedia(constraints)),
+       captureDisplayMedia =
+           captureDisplayMedia ??
+           ((constraints) =>
+               navigator.mediaDevices.getDisplayMedia(constraints)),
        peerFactory =
            peerFactory ??
            ((configuration) => createPeerConnection(configuration));
   MediaStream? _local;
   MediaStream? _screen;
+  MediaStream? _pendingScreen;
   final _extraCaptures = <MediaStream>[];
   RTCPeerConnection? _peer;
   RTCRtpSender? _screenSender;
@@ -75,6 +82,7 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
   bool _remoteDescription = false;
   bool _closed = false;
   bool _initialized = false;
+  bool _screenStarting = false;
   bool _microphone = true;
   bool _camera = true;
   String _connection = 'new';
@@ -358,49 +366,77 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     return false;
   }
 
+  Future<void> _disposeScreenCapture(MediaStream stream) async {
+    final stops = <Future<void>>[];
+    for (final track in stream.getTracks()) {
+      track.onEnded = null;
+      stops.add(track.stop());
+    }
+    await Future.wait(stops.map((stop) => stop.catchError((Object _) {})));
+    try {
+      await stream.dispose();
+    } catch (_) {}
+  }
+
   @override
   Future<void> startScreen() async {
-    // This must be the first asynchronous operation on the explicit share tap:
-    // browsers require transient user activation for getDisplayMedia.
-    final capture = navigator.mediaDevices.getDisplayMedia({
-      'video': true,
-      'audio': false,
-    });
-    final stream = await capture;
-    if (_closed || _peer == null) {
-      for (final track in stream.getTracks()) {
-        await track.stop();
+    if (_closed || _screen != null || _screenStarting) return;
+    _screenStarting = true;
+    MediaStream? captured;
+    try {
+      // No asynchronous work precedes this explicit capture request: web
+      // browsers require the share button's transient user activation.
+      captured = await captureDisplayMedia({'video': true, 'audio': false});
+      _pendingScreen = captured;
+      final peer = _peer;
+      if (_closed || peer == null) return;
+      final tracks = captured.getVideoTracks();
+      if (tracks.isEmpty) {
+        throw StateError('Screen capture has no video track.');
       }
-      await stream.dispose();
-      return;
-    }
-    _screen = stream;
-    final tracks = stream.getVideoTracks();
-    if (tracks.isNotEmpty) {
+      final sender = await peer.addTrack(tracks.first, captured);
+      if (_closed || _peer != peer || _pendingScreen != captured) {
+        try {
+          await peer.removeTrack(sender);
+        } catch (_) {}
+        return;
+      }
+      // Capturing alone is not an active screen sender. Adopt it only after
+      // addTrack succeeds; every earlier failure is rolled back below.
+      _screen = captured;
+      _pendingScreen = null;
+      _screenSender = sender;
+      final adopted = captured;
       tracks.first.onEnded = () {
-        if (_screen == stream && !_closed) {
+        if (_screen == adopted && !_closed) {
           unawaited(stopScreen().then((_) => onScreenStopped?.call()));
         }
       };
-      _screenSender = await _peer!.addTrack(tracks.first, stream);
+      notifyListeners();
+    } finally {
+      _screenStarting = false;
+      if (captured != null && _pendingScreen == captured) {
+        _pendingScreen = null;
+        await _disposeScreenCapture(captured);
+      }
     }
-    notifyListeners();
   }
 
   @override
   Future<void> stopScreen() async {
     final stream = _screen;
+    final pending = _pendingScreen;
+    final sender = _screenSender;
     _screen = null;
-    if (_screenSender != null) {
-      await _peer?.removeTrack(_screenSender!);
-      _screenSender = null;
-    }
-    if (stream != null) {
-      for (final track in stream.getTracks()) {
-        track.onEnded = null;
-        await track.stop();
-      }
-      await stream.dispose();
+    _pendingScreen = null;
+    _screenSender = null;
+    // Stop actual capture before changing the sender or its foreground type.
+    if (stream != null) await _disposeScreenCapture(stream);
+    if (pending != null) await _disposeScreenCapture(pending);
+    if (sender != null) {
+      try {
+        await _peer?.removeTrack(sender);
+      } catch (_) {}
     }
     if (!_closed) notifyListeners();
   }
@@ -425,15 +461,17 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     onScreenStopped = null;
     final local = _local;
     final screen = _screen;
+    final pendingScreen = _pendingScreen;
     final peer = _peer;
     _local = null;
     _screen = null;
+    _pendingScreen = null;
     _peer = null;
     // Stop every capture immediately, without waiting for signaling or another
     // track's platform callback. The independent authority watchdog uses this.
     final stopping = <Future<void>>[];
     final stoppingTracks = <String?>{};
-    for (final stream in [local, screen, ..._extraCaptures]) {
+    for (final stream in [local, screen, pendingScreen, ..._extraCaptures]) {
       for (final track in stream?.getTracks() ?? <MediaStreamTrack>[]) {
         if (stoppingTracks.add(track.id)) {
           track.onEnded = null;
@@ -445,7 +483,7 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     await Future.wait(
       stopping.map((future) => future.catchError((Object _) {})),
     );
-    for (final stream in [local, screen, ..._extraCaptures]) {
+    for (final stream in [local, screen, pendingScreen, ..._extraCaptures]) {
       await stream?.dispose();
     }
     _extraCaptures.clear();

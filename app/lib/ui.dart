@@ -1748,12 +1748,22 @@ class _NotificationBellState extends State<NotificationBell> {
                 ),
               ),
           onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-          icon: Badge(
-            isLabelVisible: !state.isAdmin && state.inbox.unread > 0,
-            label: Text(
-              '${state.inbox.unread > 99 ? '99+' : state.inbox.unread}',
+          icon: Semantics(
+            label: state.isAdmin
+                ? 'Push-Status'
+                : state.inbox.unread > 0
+                ? 'Benachrichtigungen, ${state.inbox.unread} ungelesen'
+                : 'Benachrichtigungen',
+            excludeSemantics: true,
+            child: Badge(
+              isLabelVisible: !state.isAdmin && state.inbox.unread > 0,
+              label: ExcludeSemantics(
+                child: Text(
+                  '${state.inbox.unread > 99 ? '99+' : state.inbox.unread}',
+                ),
+              ),
+              child: Icon(Icons.notifications_none_rounded),
             ),
-            child: Icon(Icons.notifications_none_rounded),
           ),
         ),
       );

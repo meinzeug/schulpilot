@@ -30,6 +30,7 @@ class FamilyCallChannel(private val activity: MainActivity) {
                     call.argument<Boolean>("microphone") == true,
                     call.method == "startProjection", result)
                 "stopMedia" -> { FamilyCallCaptureService.stop(activity, call.argument<String>("call_id")); result.success(null) }
+                "stopProjection" -> { FamilyCallCaptureService.stopProjection(call.argument<String>("call_id") ?: ""); result.success(null) }
                 else -> result.notImplemented()
             }
         } catch (_: Exception) {

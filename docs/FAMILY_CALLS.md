@@ -1,6 +1,6 @@
 # Familienanrufe
 
-Implementierung 1.19.1+80. Aktueller Produktionsstand in STATUS.md, ausführliche
+Implementierung 1.19.2+81. Aktueller Produktionsstand in STATUS.md, ausführliche
 Nachweise in [FAMILY_CALL_EVALUATION_2026_10_21.md](FAMILY_CALL_EVALUATION_2026_10_21.md).
 Web und Android verwenden dieselbe Flutter-Oberfläche und den eigenen FastAPI-
 Server. Kein Videoanbieter-Konto, keine KI-Aufrufe und keine Aufzeichnung durch
@@ -45,8 +45,14 @@ bewusster Start-/Annehmenaktion, Bildschirmfreigabe separat.
 Signalisierung. Kind- und annehmende Elternsitzung sind gebunden, Schlüssel
 idempotent, aktive Slots eindeutig. Sperren: Elternsitzung vor Unit→Child→Call
 bei Annahme; bestehende Lernpfade behalten Unit vor Child. Signale liegen begrenzt
-im API-Arbeitsspeicher (128 Gespräche, insgesamt 4 MB, 90 Sekunden), niemals in Logs,
-SQL oder Backups. Die aktuelle API verwendet einen Prozess. Mehrere API-Prozesse
+im API-Arbeitsspeicher (128 Gespräche, insgesamt 4 MB), niemals in Logs,
+SQL oder Backups. SDP-/ICE-Inhalte gelten90 Sekunden und werden zusätzlich durch
+einen API-eigenen1-Sekunden-Cleanup ohne Seitenaufruf entfernt. Sequenzzähler und ein
+begrenzter Hashindex für Wiederholungen bleiben bis zum festen Gesprächsende
+plus90 Sekunden erhalten. Eine spät gestartete Bildschirmfreigabe liegt dadurch
+weiter oberhalb des gespeicherten Empfangscursors. Reads und Heartbeats verlängern
+diese Grenze nicht; volle Kapazität verdrängt keine aktiven Gesprächszähler.
+Die aktuelle API verwendet einen Prozess. Mehrere API-Prozesse
 erfordern zuerst eine gemeinsame private Signalisierung; nicht einfach skalieren.
 
 Klingeln 45 Sekunden, Berechtigungsfrist 90 Sekunden, höchstens 60 Minuten pro Gespräch.
@@ -107,3 +113,13 @@ Geräteanmeldung, keinen bewiesenen Google-Ausfall. Produktionsfreigabe, Projekt
 APIs, Schlüsselrestriktionen und Sender wurden separat geprüft; FCM validate_only
 mit synthetischem Ziel war HTTP 200. Tatsächliche Android-Zustellung und deren
 Grenzen werden in STATUS.md getrennt davon dokumentiert.
+
+## Fehler beim Start einer Bildschirmfreigabe
+
+Der Client übernimmt den Screenstatus erst, nachdem der Videotrack erfolgreich
+angebunden ist. Fehlende Freigabe, Trackfehler oder fehlgeschlagener Angebotsversand
+stoppen die Bildschirmaufnahme und geben den Android-Projection-Diensttyp frei.
+Kamera- und Mikrofontracks bleiben erhalten. Ein ausstehendes Angebot blockiert
+nach einem Fehler keine bewusste neue Aktion; es gibt keinen automatischen
+Aufnahme- oder Versandretry. Beim regulären Bildschirmstopp endet zunächst die
+Aufnahme, danach entfällt ausschließlich der Projection-Diensttyp.

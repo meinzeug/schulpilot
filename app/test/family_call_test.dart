@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/family_call_media.dart';
+import 'package:schulpilot/family_call_native.dart';
 import 'package:schulpilot/family_call_screen.dart';
 import 'package:schulpilot/family_call_service.dart';
 import 'package:schulpilot/ui.dart';
@@ -131,6 +132,27 @@ class FakeMedia extends FamilyCallMedia {
   Future<void> close() async {
     closed = true;
     sharing = false;
+  }
+}
+
+class ScriptedOfferMedia extends FakeMedia {
+  int offerAttempts = 0;
+  bool failNextOffer = false;
+  VoidCallback? onScreenStoppedForTest;
+  @override
+  Future<void> stopScreen() async {
+    await super.stopScreen();
+    onScreenStoppedForTest?.call();
+  }
+
+  @override
+  Future<Json> offer() async {
+    offerAttempts++;
+    if (failNextOffer) {
+      failNextOffer = false;
+      throw StateError('Artificial offer generation failure');
+    }
+    return super.offer();
   }
 }
 
@@ -795,6 +817,93 @@ void main() {
     );
   }
 
+  for (final failure in ['generation', 'sending', 'deferred_generation']) {
+    testWidgets(
+      'Screen offer $failure failure stops capture and permits one explicit new attempt',
+      (tester) async {
+        final fake = ScriptedOfferMedia();
+        var postedOffers = 0;
+        var answerAllowed = failure != 'deferred_generation';
+        var rejectNextOffer = false;
+        final state = makeState((request) async {
+          if (request.url.path.endsWith('/active')) {
+            return response({'calls': []});
+          }
+          if (request.url.path.endsWith('/config')) {
+            return response({'available': true});
+          }
+          if (request.url.path.endsWith('/ice')) {
+            return response({'ice_servers': []});
+          }
+          if (request.url.path.endsWith('/signals')) {
+            if (request.method == 'POST') {
+              postedOffers++;
+              if (rejectNextOffer) {
+                rejectNextOffer = false;
+                return response({
+                  'detail': 'Artificial signaling outage.',
+                }, 503);
+              }
+              return response({'sequence': postedOffers});
+            }
+            final after =
+                int.tryParse(request.url.queryParameters['after'] ?? '0') ?? 0;
+            return response({
+              'signals': answerAllowed && after == 0
+                  ? [
+                      {
+                        'sequence': 1,
+                        'kind': 'answer',
+                        'payload': {'sdp': 'synthetic-answer'},
+                      },
+                    ]
+                  : [],
+              'cursor': answerAllowed ? 1 : 0,
+            });
+          }
+          return response(metadata('accepted'));
+        });
+        final calls = FamilyCallService(
+          state,
+          nativeEnabled: false,
+          mediaFactory: () => fake,
+        );
+        calls.activate(state.user);
+        await tester.pump();
+        await calls.start();
+        await calls.refresh();
+        if (failure == 'sending') {
+          rejectNextOffer = true;
+        } else {
+          fake.failNextOffer = true;
+        }
+        await calls.shareScreen();
+        if (failure == 'deferred_generation') {
+          expect(fake.sharingScreen, isTrue);
+          answerAllowed = true;
+          await calls.refresh();
+        }
+        expect(fake.sharingScreen, isFalse);
+        expect(fake.closed, isFalse);
+        expect(fake.cameraEnabled, isTrue);
+        expect(fake.microphoneEnabled, isTrue);
+        expect(calls.error, isNotNull);
+        final attemptsAfterFailure = fake.offerAttempts;
+        await calls.refresh();
+        expect(
+          fake.offerAttempts,
+          attemptsAfterFailure,
+          reason: 'Polling must never retry a failed paid or media action.',
+        );
+        await calls.shareScreen();
+        expect(fake.sharingScreen, isTrue);
+        expect(fake.offerAttempts, attemptsAfterFailure + 1);
+        await calls.clear();
+        calls.dispose();
+      },
+    );
+  }
+
   for (final brightness in Brightness.values) {
     testWidgets(
       'Incoming live bar remains readable at 320px and 2x text in $brightness',
@@ -878,6 +987,78 @@ void main() {
       await tester.pumpAndSettle();
       expect(messages, 1);
       expect(requests, isEmpty);
+    },
+  );
+  test(
+    'Native screen rollback removes projection only after capture stops',
+    () async {
+      final phases = <String>[];
+      final channel =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      channel.setMockMethodCallHandler(FamilyCallNative.channel, (call) async {
+        phases.add(call.method);
+        if (call.method == 'stopProjection') {
+          expect((call.arguments as Map)['call_id'], callId);
+        }
+        return null;
+      });
+      final fake = ScriptedOfferMedia()
+        ..onScreenStoppedForTest = () => phases.add('capture_stopped');
+      final state = makeState((request) async {
+        if (request.url.path.endsWith('/active')) {
+          return response({'calls': []});
+        }
+        if (request.url.path.endsWith('/config')) {
+          return response({'available': true});
+        }
+        if (request.url.path.endsWith('/ice')) {
+          return response({'ice_servers': []});
+        }
+        if (request.url.path.endsWith('/signals')) {
+          if (request.method == 'POST') return response({'sequence': 1});
+          return response({
+            'signals': request.url.queryParameters['after'] == '0'
+                ? [
+                    {
+                      'sequence': 1,
+                      'kind': 'answer',
+                      'payload': {'sdp': 'synthetic-answer'},
+                    },
+                  ]
+                : [],
+            'cursor': 1,
+          });
+        }
+        return response(metadata('accepted'));
+      });
+      final calls = FamilyCallService(
+        state,
+        mediaFactory: () => fake,
+        requestScreenPermission: () async => true,
+      );
+      calls.activate(state.user);
+      await Future<void>.delayed(Duration.zero);
+      await calls.start();
+      await calls.refresh();
+      fake.failNextOffer = true;
+      await calls.shareScreen();
+      expect(phases, contains('startProjection'));
+      expect(phases, contains('stopProjection'));
+      expect(
+        phases.indexOf('capture_stopped'),
+        lessThan(phases.indexOf('stopProjection')),
+      );
+      expect(fake.sharingScreen, isFalse);
+      expect(fake.cameraEnabled, isTrue);
+      expect(fake.microphoneEnabled, isTrue);
+      expect(
+        phases.where((phase) => phase == 'stopMedia'),
+        isEmpty,
+        reason: 'Rollback must preserve the ongoing call foreground service.',
+      );
+      await calls.clear();
+      calls.dispose();
+      channel.setMockMethodCallHandler(FamilyCallNative.channel, null);
     },
   );
 }

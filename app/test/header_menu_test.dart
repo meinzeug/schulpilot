@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show SemanticsAction;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -92,6 +93,44 @@ Future<GoRouter> _open(
 
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  for (final role in ['child', 'parent', 'admin']) {
+    testWidgets('$role bell names its action instead of only the badge', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final state = AppState(
+        api: Api(
+          base: 'https://example.invalid/api',
+          client: MockClient((_) async => _response(_inbox())),
+        ),
+      )..user = _user(role);
+      await _open(tester, state);
+      final bell = find.byKey(ValueKey('notification-bell'));
+      if (role != 'admin') {
+        expect(
+          tester.getSemantics(bell).getSemanticsData().label,
+          'Benachrichtigungen',
+        );
+        state.inbox.activate(state.user!['id'] as String);
+        await tester.pumpAndSettle();
+      }
+      final data = tester.getSemantics(bell).getSemanticsData();
+      expect(
+        data.label,
+        role == 'admin' ? 'Push-Status' : 'Benachrichtigungen, 5 ungelesen',
+      );
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+      expect(find.bySemanticsLabel(RegExp(r'^5$')), findsNothing);
+      await tester.tap(bell);
+      await tester.pumpAndSettle();
+      expect(find.text('Alle anzeigen'), findsOneWidget);
+      state.inbox.clear();
+      await tester.pumpWidget(SizedBox());
+      semantics.dispose();
+    });
+  }
 
   for (final role in ['child', 'parent', 'admin']) {
     for (final width in [320.0, 1440.0]) {

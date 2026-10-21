@@ -67,16 +67,19 @@ void main() {
     () async {
       await native.startMedia(callId, camera: true, microphone: true);
       await native.startProjection(callId);
+      await native.stopProjection(callId);
       await native.stopMedia();
       expect(calls.map((call) => call.method), [
         'startMedia',
         'startProjection',
+        'stopProjection',
         'stopMedia',
       ]);
       expect(calls.first.arguments['camera'], isTrue);
       expect(calls.first.arguments['microphone'], isTrue);
-    await native.stopMedia(callId: callId);
-    expect(calls.last.arguments['call_id'], callId);
+      expect(calls[2].arguments, {'call_id': callId});
+      await native.stopMedia(callId: callId);
+      expect(calls.last.arguments['call_id'], callId);
     },
   );
   test('ringing uses supplied expiration and genuine channel status', () async {

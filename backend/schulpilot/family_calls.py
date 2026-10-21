@@ -5,6 +5,7 @@ rows contain call lifecycle metadata; neither media nor call contents are stored
 An API restart invalidates the old signalling instance instead of reconnecting a
 camera silently. GET endpoints derive expiry without changing state.
 """
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -12,6 +13,7 @@ import json
 import re
 import threading
 from collections import OrderedDict
+from contextlib import asynccontextmanager, suppress
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -41,6 +43,7 @@ router = APIRouter(prefix="/family-calls", tags=["Familienanrufe"])
 INSTANCE = uid()
 RING_SECONDS = 45
 LEASE_SECONDS = 90
+SIGNAL_CLEANUP_SECONDS = 1
 MAX_SECONDS = 3600
 TURN_SECONDS = MAX_SECONDS + 300
 ACTIVE = ("ringing", "accepted")
@@ -91,42 +94,67 @@ class Signal(s.Strict):
 
 
 class SignalMemory:
-    """Single API process, strict byte/message limits, 90-second envelopes."""
+    """Bounded call cursors/deduplication; private envelopes expire after 90s.
+
+    A quiet accepted call can remain live through heartbeats alone. Its cursor
+    must not restart when the last SDP/ICE envelope expires. Keep only hashes
+    and sequence numbers until the fixed call deadline (plus one lease), never
+    extend that deadline on reads/writes, and reject new slots under pressure.
+    """
+    MAX_CALLS = 128
+    MAX_BYTES = 4_000_000
+    MAX_ITEMS = 256
+    MAX_LOCAL_BYTES = 256_000
+    MAX_KEYS = 1024
+    # Reserve budget for the fixed metadata alongside UTF-8 envelope bytes.
+    # Neither the index nor the cursor tombstone contains SDP/ICE content.
+    BOX_BYTES = 64
+    KEY_BYTES = 192
+    ITEM_BYTES = 128
+
     def __init__(self):
         self.lock = threading.Lock()
         self.calls = OrderedDict()
 
     def prune(self, current):
         for cid, box in list(self.calls.items()):
-            box["items"] = [x for x in box["items"] if x["at"] > current - LEASE_SECONDS]
-            if not box["items"] and box["updated"] < current - LEASE_SECONDS:
+            if current >= box["expires"]:
                 del self.calls[cid]
+                continue
+            box["items"] = [x for x in box["items"] if x["at"] > current - LEASE_SECONDS]
+            box["bytes"] = self.BOX_BYTES + len(box["keys"]) * self.KEY_BYTES + sum(x["size"] for x in box["items"])
 
-    def put(self, cid, sender, recipient, data, current):
+    def put(self, cid, sender, recipient, data, current, *, expires=None):
         with self.lock:
             self.prune(current)
             box = self.calls.get(cid)
             if box is None:
-                if len(self.calls) >= 128:
+                if len(self.calls) >= self.MAX_CALLS:
                     raise HTTPException(503, "Der Anrufdienst ist gerade ausgelastet.")
-                box = self.calls[cid] = {"items": [], "seq": 0, "updated": current}
+                box = {"items": [], "keys": {}, "seq": 0, "bytes": self.BOX_BYTES,
+                    "expires": min(expires if expires is not None else current + MAX_SECONDS,
+                        current + MAX_SECONDS) + LEASE_SECONDS}
             key = digest(sender + ":" + data.idempotency_key)
             canonical = json.dumps({"kind": data.kind, "payload": data.payload}, sort_keys=True, separators=(",", ":"))
             fingerprint = digest(canonical)
-            for old in box["items"]:
-                if old["key"] == key:
-                    if old["fingerprint"] != fingerprint:
-                        raise HTTPException(409, "Diese Verbindungskennung wurde bereits anders verwendet.")
-                    return old["sequence"]
-            size = len(canonical.encode())
+            previous = box["keys"].get(key)
+            if previous is not None:
+                if previous["fingerprint"] != fingerprint:
+                    raise HTTPException(409, "Diese Verbindungskennung wurde bereits anders verwendet.")
+                return previous["sequence"]
+            size = len(canonical.encode()) + self.ITEM_BYTES
             local = sum(x["size"] for x in box["items"])
-            total = sum(x["size"] for b in self.calls.values() for x in b["items"])
-            if len(box["items"]) >= 256 or local + size > 256_000 or total + size > 4_000_000:
+            total = sum(b["bytes"] for b in self.calls.values())
+            added = size + self.KEY_BYTES + (self.BOX_BYTES if cid not in self.calls else 0)
+            if (len(box["items"]) >= self.MAX_ITEMS or len(box["keys"]) >= self.MAX_KEYS
+                    or local + size > self.MAX_LOCAL_BYTES or total + added > self.MAX_BYTES):
                 raise HTTPException(429, "Zu viele Verbindungsdaten. Bitte den Anruf neu starten.")
             box["seq"] += 1
-            box["updated"] = current
+            box["bytes"] += size + self.KEY_BYTES
+            box["keys"][key] = {"sequence": box["seq"], "fingerprint": fingerprint}
             box["items"].append({"sequence": box["seq"], "kind": data.kind, "payload": data.payload,
-                "recipient": recipient, "key": key, "fingerprint": fingerprint, "at": current, "size": size})
+                "recipient": recipient, "at": current, "size": size})
+            self.calls[cid] = box
             return box["seq"]
 
     def read(self, cid, recipient, after, current):
@@ -143,8 +171,29 @@ class SignalMemory:
         with self.lock:
             self.calls.pop(cid, None)
 
+    def expire(self, current):
+        with self.lock:
+            self.prune(current)
+
 
 signals = SignalMemory()
+
+
+@asynccontextmanager
+async def signal_memory_lifespan():
+    """API-local expiry even with no requests; never touches DB/providers."""
+    async def cleanup():
+        while True:
+            await asyncio.sleep(SIGNAL_CLEANUP_SECONDS)
+            signals.expire(int(now()))
+
+    task = asyncio.create_task(cleanup(), name="family-call-signal-expiry")
+    try:
+        yield task
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 def turn_urls():
@@ -487,7 +536,7 @@ def send_signal(cid: str, body: Signal, p=Depends(authenticated), db=Depends(get
     if effective(db, call)[0] != "accepted":
         raise HTTPException(409, "Dieser Anruf ist bereits beendet.")
     recipient = call.parent_session_id if p.user.role == "child" else call.caller_session_id
-    sequence = signals.put(call.id, p.session.id, recipient, body, int(now()))
+    sequence = signals.put(call.id, p.session.id, recipient, body, int(now()), expires=call.expires)
     return {"sequence": sequence, "status": "accepted"}
 
 

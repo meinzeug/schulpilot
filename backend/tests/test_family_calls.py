@@ -1,4 +1,5 @@
 """Entirely synthetic family-call contracts; no cameras or provider requests."""
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -7,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from conftest import HEADERS, register
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from schulpilot import family_calls as calls
 from schulpilot import notifications as notifications
@@ -24,7 +26,8 @@ def turn(monkeypatch):
     object.__setattr__(settings, "turn_urls", '["turn:school.invalid:3478?transport=udp","turns:school.invalid:5349?transport=tcp"]')
     object.__setattr__(settings, "turn_secret", "synthetic-operator-secret-" + "x" * 32)
     monkeypatch.setattr(notifications, "dispatch_call", lambda _: None)
-    calls.signals.calls.clear()
+    with calls.signals.lock:
+        calls.signals.calls.clear()
 
 
 @pytest.fixture
@@ -377,12 +380,191 @@ def test_signal_memory_bounds_and_expiry():
         payload.idempotency_key = f"memory-offer-{index:02}"
         memory.put("synthetic-call", "child", "parent", payload, 100)
     payload.idempotency_key = "memory-overflow"
-    from fastapi import HTTPException
     with pytest.raises(HTTPException) as error:
         memory.put("synthetic-call", "child", "parent", payload, 100)
     assert error.value.status_code == 429
-    assert memory.read("synthetic-call", "parent", 0, 191) == ([], 0)
+    # Content expires after 90s, but a still-valid call retains its cursor.
+    assert memory.read("synthetic-call", "parent", 0, 191) == ([], 5)
+    assert memory.calls["synthetic-call"]["items"] == []
+    assert len(memory.calls["synthetic-call"]["keys"]) == 5
+    assert "v=0" not in json.dumps(memory.calls)
+    assert memory.read("synthetic-call", "parent", 5, 100 + calls.MAX_SECONDS + calls.LEASE_SECONDS) == ([], 5)
     assert memory.calls == {}
+
+
+def test_late_screen_offer_after_heartbeat_only_quiet_period_keeps_both_cursors(api, child_api, turn, monkeypatch):
+    clock = [int(now())]
+    monkeypatch.setattr(calls, "now", lambda: clock[0])
+    call = accepted(api, child_api)
+    path = "/api/family-calls/" + call["id"]
+    offer = {"idempotency_key": "initial-camera-offer", "kind": "offer",
+        "payload": {"sdp": "v=0\r\nSYNTHETIC-INITIAL-CAMERA", "camera_stream_id": "camera"}}
+    answer = {"idempotency_key": "initial-camera-answer", "kind": "answer",
+        "payload": {"sdp": "v=0\r\nSYNTHETIC-INITIAL-ANSWER"}}
+    assert child_api.post(path + "/signals", json=offer).json()["sequence"] == 1
+    assert api.post(path + "/signals", json=answer).json()["sequence"] == 2
+    parent_cursor = api.get(path + "/signals").json()["cursor"]
+    child_cursor = child_api.get(path + "/signals").json()["cursor"]
+    assert parent_cursor == child_cursor == 2
+    # Neither peer reads/writes signalling for more than one envelope lease.
+    for _ in range(4):
+        clock[0] += 30
+        assert child_api.post(path + "/heartbeat").json()["status"] == "accepted"
+        assert api.post(path + "/heartbeat").json()["status"] == "accepted"
+    screen = {"idempotency_key": "late-screen-offer", "kind": "offer",
+        "payload": {"sdp": "v=0\r\nSYNTHETIC-LATE-SCREEN", "camera_stream_id": "camera", "screen_stream_id": "screen"}}
+    first = child_api.post(path + "/signals", json=screen)
+    assert first.status_code == 200 and first.json()["sequence"] == 3
+    assert child_api.post(path + "/signals", json=screen).json() == first.json()
+    incoming = api.get(path + "/signals", params={"after": parent_cursor}).json()
+    assert incoming["cursor"] == 3 and len(incoming["signals"]) == 1
+    assert incoming["signals"][0]["payload"] == screen["payload"]
+    answer["idempotency_key"] = "late-screen-answer"
+    assert api.post(path + "/signals", json=answer).json()["sequence"] == 4
+    returned = child_api.get(path + "/signals", params={"after": child_cursor}).json()
+    assert returned["cursor"] == 4 and [row["sequence"] for row in returned["signals"]] == [4]
+    box = calls.signals.calls[call["id"]]
+    assert box["expires"] == call["expires"] + calls.LEASE_SECONDS
+    assert "SYNTHETIC-INITIAL-CAMERA" not in json.dumps(box)
+    assert child_api.post(path + "/end").status_code == 200
+    assert call["id"] not in calls.signals.calls
+
+
+def test_expired_signal_retry_is_idempotent_without_retaining_private_payload():
+    memory = calls.SignalMemory()
+    initial = calls.Signal(idempotency_key="initial-private-offer", kind="offer", payload={"sdp": "v=0\r\nSYNTHETIC-OLD-CONTENT"})
+    assert memory.put("call", "child", "parent", initial, 100) == 1
+    assert memory.read("call", "parent", 1, 191) == ([], 1)
+    # No GET/heartbeat/write can revive an expired envelope on HTTP retry.
+    assert memory.put("call", "child", "parent", initial, 191) == 1
+    assert memory.read("call", "parent", 0, 191) == ([], 1)
+    assert "SYNTHETIC-OLD-CONTENT" not in json.dumps(memory.calls)
+    changed = initial.model_copy(update={"payload": {"sdp": "v=0\r\nDIFFERENT"}})
+    with pytest.raises(HTTPException) as error:
+        memory.put("call", "child", "parent", changed, 191)
+    assert error.value.status_code == 409
+    later = calls.Signal(idempotency_key="new-screen-offer", kind="offer", payload={"sdp": "v=0\r\nSCREEN"})
+    assert memory.put("call", "child", "parent", later, 191) == 2
+    assert memory.read("call", "parent", 1, 191)[0][0]["sequence"] == 2
+
+
+def test_signal_cursor_tombstones_have_fixed_deadlines_and_bounded_capacity():
+    memory = calls.SignalMemory()
+    payload = calls.Signal(idempotency_key="initial-offer-key", kind="offer", payload={"sdp": "v=0"})
+    for index in range(memory.MAX_CALLS):
+        assert memory.put(f"call-{index}", "child", "parent", payload, 100) == 1
+    # Payload expiry must not evict an active call merely to admit a new one.
+    assert memory.read("call-0", "parent", 1, 191) == ([], 1)
+    assert len(memory.calls) == memory.MAX_CALLS and all(not row["items"] for row in memory.calls.values())
+    with pytest.raises(HTTPException) as error:
+        memory.put("new-call", "child", "parent", payload, 191)
+    assert error.value.status_code == 503
+    later = payload.model_copy(update={"idempotency_key": "late-offer-key"})
+    assert memory.put("call-0", "child", "parent", later, 191) == 2
+    assert memory.calls["call-0"]["expires"] == 100 + calls.MAX_SECONDS + calls.LEASE_SECONDS
+    memory.clear("call-1")
+    assert memory.put("new-call", "child", "parent", payload, 191) == 1
+    end = 100 + calls.MAX_SECONDS + calls.LEASE_SECONDS
+    assert memory.read("call-0", "parent", 2, end - 1) == ([], 2)
+    assert memory.read("call-0", "parent", 2, end) == ([], 2)
+    assert list(memory.calls) == ["new-call"]
+    memory.clear("new-call")
+    assert not memory.calls
+
+
+def test_signal_dedupe_index_is_bounded_without_resetting_old_sequences():
+    memory = calls.SignalMemory()
+    payload = calls.Signal(idempotency_key="initial-offer-key", kind="offer", payload={"sdp": "v=0"})
+    for index in range(memory.MAX_KEYS):
+        # Renew the payload window in bounded batches, within the call lifetime.
+        current = 100 + (index // memory.MAX_ITEMS) * (calls.LEASE_SECONDS + 1)
+        event = payload.model_copy(update={"idempotency_key": f"offer-key-{index:04}"})
+        assert memory.put("call", "child", "parent", event, current) == index + 1
+    later = current + calls.LEASE_SECONDS + 1
+    with pytest.raises(HTTPException) as error:
+        memory.put("call", "child", "parent", payload, later)
+    assert error.value.status_code == 429
+    original = payload.model_copy(update={"idempotency_key": "offer-key-0000"})
+    assert memory.put("call", "child", "parent", original, later) == 1
+    assert memory.read("call", "parent", memory.MAX_KEYS, later) == ([], memory.MAX_KEYS)
+    assert len(memory.calls["call"]["keys"]) == memory.MAX_KEYS
+
+
+def test_signal_global_byte_budget_includes_metadata_and_releases_only_expired_content():
+    memory = calls.SignalMemory()
+    payload = calls.Signal(idempotency_key="large-offer-key", kind="offer", payload={"sdp": "v=0\r\n" + "x" * 47_000})
+    rejected = False
+    for index in range(128):
+        event = payload.model_copy(update={"idempotency_key": f"large-offer-{index:04}"})
+        try:
+            memory.put(f"call-{index // 5}", "child", "parent", event, 100)
+        except HTTPException as error:
+            assert error.status_code == 429
+            rejected = True
+            break
+    assert rejected and sum(box["bytes"] for box in memory.calls.values()) <= memory.MAX_BYTES
+    for box in memory.calls.values():
+        assert box["bytes"] == memory.BOX_BYTES + len(box["keys"]) * memory.KEY_BYTES + sum(item["size"] for item in box["items"])
+    memory.read("call-0", "parent", 0, 191)
+    before = sum(box["bytes"] for box in memory.calls.values())
+    assert before == sum(memory.BOX_BYTES + len(box["keys"]) * memory.KEY_BYTES for box in memory.calls.values())
+    assert memory.put("call-0", "child", "parent", payload, 191) == 6
+    assert before < sum(box["bytes"] for box in memory.calls.values()) <= memory.MAX_BYTES
+    # A budget failure cannot leave an empty reserved slot behind.
+    tiny = calls.SignalMemory()
+    tiny.MAX_BYTES = memory.BOX_BYTES
+    with pytest.raises(HTTPException) as error:
+        tiny.put("failed-call", "child", "parent", payload, 100)
+    assert error.value.status_code == 429 and not tiny.calls
+
+
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_signal_cleanup_lifespan_expires_without_requests_and_stops(monkeypatch, interrupted):
+    memory = calls.SignalMemory()
+    clock = [100]
+    monkeypatch.setattr(calls, "signals", memory)
+    monkeypatch.setattr(calls, "now", lambda: clock[0])
+    assert 0 < calls.SIGNAL_CLEANUP_SECONDS <= 1
+    monkeypatch.setattr(calls, "SIGNAL_CLEANUP_SECONDS", 0.01)
+    payload = calls.Signal(idempotency_key="idle-private-offer", kind="offer", payload={"sdp": "v=0\r\nPRIVATE-IDLE-CONTENT"})
+    memory.put("idle-call", "child", "parent", payload, clock[0])
+
+    class StopLifecycle(Exception):
+        pass
+
+    async def scenario():
+        tick = asyncio.Event()
+        observations = []
+        original = memory.expire
+
+        def expire(current):
+            original(current)
+            observations.append(current)
+            tick.set()
+
+        monkeypatch.setattr(memory, "expire", expire)
+        try:
+            async with calls.signal_memory_lifespan() as task:
+                # No read, write or heartbeat triggers these expiry operations.
+                clock[0] = 100 + calls.LEASE_SECONDS
+                await asyncio.wait_for(tick.wait(), 1)
+                assert memory.calls["idle-call"]["items"] == []
+                assert memory.calls["idle-call"]["seq"] == 1
+                assert "PRIVATE-IDLE-CONTENT" not in json.dumps(memory.calls)
+                tick.clear()
+                clock[0] = 100 + calls.MAX_SECONDS + calls.LEASE_SECONDS
+                await asyncio.wait_for(tick.wait(), 1)
+                assert not memory.calls
+                if interrupted:
+                    raise StopLifecycle
+        except StopLifecycle:
+            assert interrupted
+        assert task.done() and task.cancelled()
+        stopped_count = len(observations)
+        await asyncio.sleep(0.03)
+        assert len(observations) == stopped_count
+
+    asyncio.run(scenario())
 
 
 def test_parent_camera_renegotiation_is_explicit_and_bounded(api, child_api, turn):

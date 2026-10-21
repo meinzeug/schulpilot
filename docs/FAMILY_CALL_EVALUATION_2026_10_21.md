@@ -113,20 +113,69 @@ Anrufe im geprüften künstlichen Haushalt und null außerhalb davon. Die neue
 Anruffunktion wurde bis zur Korrektur serverseitig deaktiviert und der Wechsel
 auditiert. Es wurde kein echtes Gerät automatisch entstummt.
 
-Die vorbereitete Nachkorrektur **1.19.1+80** trennt Browser-Preview und native
+Die anschließend ausgelieferte Nachkorrektur **1.19.1+80**, Produktcommit
+`fe3810fc139e61d3afdc5c66389510ee1420be90`, trennt Browser-Preview und native
 Mikrofonsteuerung, bindet Kamera und Bildschirm ausdrücklich an Video-Tracks und
 unterscheidet Track-Ankunft vom ersten gerenderten Bild. Mikrofon aus verändert nur
 die eigenen Tracks; ausschließlich die bewusste Aktion Mikrofon an darf eine
 API-Stummschaltung aufheben. Das doppelte große Banner entfällt auf der eigenen
 autorisierten Anrufseite; Beenden steht dort zusätzlich oben. 75 gemeinsame
 Flutter-Fälle und die vollständige Flutter-Analyse sind für diesen Fix bestanden.
-Tatsächliche Medienabnahme und Auslieferung von 80 werden separat ergänzt.
+Die echte Android-Gegenprobe mit 80 zeigt nun gleichzeitig grünes Bildschirmbild,
+rotes Kinderkamerabild und die eigene Emulator-Kamera. Der native Elterneingang
+kam nach nachgewiesenem Hintergrundzustand tatsächlich über FCM an; CallStyle,
+Annehmen und die zusätzliche ausdrückliche In-App-Annahme wurden beobachtet.
+Der künstliche Gegenpeer empfing 845 Elternvideoframes und 4511 Audioframes über
+den erzwungenen Relay. Beide bereits erteilten OS-Rechte waren weiterhin gültig;
+API- und Systemstummschaltung waren während und nach dem Gespräch ausgeschaltet.
+Nach regulärem Logout waren Gerätebindung, Klingelstatus, CaptureService und
+Projection entfernt. Die CallStyle-Aufnahme 80 traf eine Launcher-Animation; sie
+ist ausdrücklich kein Bildnachweis der Anrufkarte. Für diese bleibt das echte79-
+Bild erhalten. Belege: `artifacts/family-call80/parent-fcm-media-acceptance.json`,
+`live-child-result.json`, `android-parent-two-video-sources.png`.
 
 Die zusätzliche Android-Capture-Gegenprobe scheiterte zunächst vor der
 Bildschirmfreigabe an einem Guard des lokalen Python-Prüfpartners. Dessen
 MAX_BUNDLE-Konfiguration verlor bei abweichender Track-Reihenfolge den
 Haupttransport. Nur der Harness wurde auf sichere BUNDLE-Aushandlung und
 vollständiges Gathering korrigiert; der strikte Relay-Guard bleibt erhalten.
+
+## Späte Bildschirmfreigabe und Fehlerbereinigung81
+
+Zwei weitere echte80-Gegenproben empfingen die Androidkamera und Audio. Die
+Elternkamera wurde auf Android sichtbar; MediaProjection und CaptureService
+liefen nach dem bewussten Systemdialog. Dennoch fehlte das spätere Bildschirmbild.
+Die zweite Gegenprobe mit 240 Sekunden Beobachtung erhielt nur das Erstangebot.
+Die Diagnose fand den konkreten Backendfehler: Nach 90 Sekunden ohne neue
+Signalisierung wurden zusammen mit den privaten Umschlägen auch Sequenzzähler
+entfernt. Ein späteres Bildschirmangebot begann wieder unter dem Clientcursor.
+
+81 trennt diese Lebensdauern: SDP/ICE verfallen weiter nach 90 Sekunden und werden
+auch ohne GET/POST durch einen eigenen API-Timer entfernt. Zähler und begrenzter
+Hash-Idempotenzindex bleiben bis zum festen Gesprächsende plus 90 Sekunden. Eine
+verspätete HTTP-Wiederholung erzeugt dadurch kein neues Angebot; neue Angebote
+liegen weiter oberhalb des alten Cursors. Speicher, Nachrichten, Indexeinträge
+und Gesprächsslots bleiben begrenzt. Volle Kapazität verdrängt keine aktiven
+Gesprächszähler.
+
+Zusätzlich deckte ein injizierter SDP-Fehler einen Clientfehler auf: Ein gesetzter
+Screenstatus und ein ausstehendes Angebot konnten nach einem Fehler bestehen
+bleiben. 81 übernimmt Capture erst nach erfolgreichem Trackanbinden und räumt
+fehlgeschlagene Angebote kontrolliert auf. Bildschirmtracks stoppen zuerst;
+anschließend entfernt Android nur den Projection-Diensttyp. Kamera und Mikrofon
+bleiben erhalten. Es gibt keinen automatischen Aufnahme-/Versandretry. Die
+Glocke hat auch mit Badge einen verständlichen Accessibility-Namen.
+
+Der endgültige 81-Backendstand besteht 109 gemeinsame isolierte PostgreSQL-
+Fälle (eine bestehende Starlette-Warnung), einschließlich des 120s-Cursorfalls,
+der rein zeitgetriebenen Bereinigung und des regulären/fehlerbedingten Shutdowns.
+83 gemeinsame Flutterfälle der sechs betroffenen Dateien sowie sechs Kotlin-
+Regelfälle und die native Kompilierung sind bestanden. Die vier Bridgefälle sind
+in der Flutter-Suite enthalten und werden nicht zusätzlich als neue Fälle gezählt.
+Es ist keine Datenbankmigration erforderlich. Protokolle:
+`artifacts/family-call81/backend-regression.log`, `kotlin-tests.log` und die
+Flutter-Prüfprotokolle für 81. Diese automatischen Fälle sind von den tatsächlichen
+Android-Medien-/FCM-Gegenproben getrennt.
 
 ## Auslieferung und Rückweg
 

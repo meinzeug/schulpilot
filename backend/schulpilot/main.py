@@ -56,7 +56,8 @@ log = logging.getLogger("schulpilot.api")
 @asynccontextmanager
 async def lifespan(app):
     init_db()
-    yield
+    async with family_calls.signal_memory_lifespan():
+        yield
 
 
 app = FastAPI(
