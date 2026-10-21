@@ -12,7 +12,7 @@ from math import gcd
 
 from .checks import expanded_fraction, fraction_instruction, fraction_parts, fraction_result
 
-VERSION = "subject_rules_v4"
+VERSION = "subject_rules_v5"
 
 
 def fraction_addition_hint(question, answer):
@@ -88,6 +88,54 @@ def arithmetic(question, answer):
     return result("correct", (f"Das stimmt: {answer.strip()} ist genauso viel wie {question['answer']}."
                               if equivalent else "Wert und verlangte Darstellung stimmen."),
                   form="correct" if instruction or denominator or re.search(r"vollständig", prompt, re.I) else "not_requested")
+
+
+def elementary_arithmetic(question, answer):
+    """A complete two-number question, exact rationals, no general text eval.
+
+    Both operands, operation and the entire question must be recognised. Never
+    extract a convenient subexpression from a word problem, rounded result,
+    numerator question or equation. Check the stored key before accepting it.
+    """
+    if question["type"] not in ("short", "gap", "choice"):
+        return None
+    prompt = " ".join(question["prompt"].casefold().split())
+    match = re.fullmatch(
+        r"(?:(?:selbst erstellte übung|übung|aufgabe|neue aufgabe):\s*)?"
+        r"(?:wie viel ist|berechne|rechne)\s+(.+?)\s*[?.!]"
+        r"(?:\s*gib nur (?:das ergebnis|die zahl) ein[.!]?)?", prompt)
+    if not match:
+        return None
+    term = match[1]
+    for left, right in ((r"\(", r"\)"), (r"\[", r"\]"), ("$", "$")):
+        if term.startswith(left) and term.endswith(right):
+            term = term[len(left):-len(right)].strip()
+            break
+    number = r"[+−-]?\d{1,9}(?:[.,]\d{1,6})?"
+    expression = re.fullmatch(rf"({number})\s*(\+|−|-|×|·|\*|:|/|\\cdot|\\times|\\div)\s*({number})", term)
+    if not expression:
+        return None
+    a, operator, b = expression.groups()
+    first, second = (Fraction(s.replace(",", ".").replace("−", "-")) for s in (a, b))
+    if operator in (":", "/", r"\div") and second == 0:
+        return result("uncertain", "Durch null darfst du nicht teilen. Die Aufgabe muss geklärt werden.")
+    expected = (first + second if operator == "+" else first - second if operator in ("-", "−")
+                else first * second if operator in ("×", "·", "*", r"\cdot", r"\times") else first / second)
+
+    def numeric(text):
+        clean = text.strip().replace(",", ".").replace("−", "-")
+        if not re.fullmatch(rf"{number}(?:\s*/\s*[1-9]\d{{0,8}})?", clean):
+            return None
+        parts = clean.replace(" ", "").split("/")
+        return Fraction(parts[0]) / Fraction(parts[1]) if len(parts) == 2 else Fraction(parts[0])
+
+    key, supplied = numeric(question["answer"]), numeric(answer)
+    if key is None or key != expected:
+        return result("uncertain", "Die gespeicherte Musterlösung passt nicht zum Rechenterm. Die Aufgabe muss geklärt werden.")
+    if supplied is None:
+        return None
+    return result("correct" if supplied == expected else "incorrect",
+        "Dein Ergebnis passt zum Rechenterm." if supplied == expected else "Prüfe die Rechenzeichen und rechne die beiden Zahlen noch einmal nach.")
 
 
 def rectangle_area(question, answer):
@@ -213,6 +261,8 @@ def evaluate(question, answer):
                       "Die verlangte Erweiterung stimmt." if supplied == form else "Multipliziere beide Zahlen mit dem verlangten Faktor.",
                       content="correct" if value_ok else "incorrect", form="correct" if supplied == form else "incorrect")
     if checked := arithmetic(question, answer):
+        return checked
+    if checked := elementary_arithmetic(question, answer):
         return checked
     if normalized(answer) in {normalized(v) for v in [question["answer"], *question.get("accepted", [])]}:
         return result("correct", "Deine Antwort entspricht einer geprüften Lösung.")
