@@ -185,7 +185,8 @@ def view(child_id: str, review_id: str | None = None, p=Depends(parent), db=Depe
         "eligible": eligible, "plan_applies": bool(latest and latest.id == current_id and latest.finished > now() - 7 * 86400
             and latest.observations.get("basis") == payload["_basis"]
             and latest.observations.get("provenance", {}).get("strategy_version") == VERSION),
-        "history": [{"id": r.id, "created": r.created, "finished": r.finished} for r in history],
+        "history": [{"id": r.id, "created": r.created, "finished": r.finished}
+            for r in [*history, *([latest] if latest and all(r.id != latest.id for r in history) else [])]],
         "notice": "Gespeicherte Übungsbelege und vorsichtige KI-Einschätzung bleiben getrennt. Unklare Bewertungen sind keine Fehler des Kindes."}
 
 

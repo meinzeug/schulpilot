@@ -1,6 +1,6 @@
 # Eltern-Lernkompass, Lernplan und Hausaufgaben
 
-Implementierungsstand21.10.2026, Zielversion1.17.1+71. Tatsächlicher Freigabe-,
+Implementierungsstand21.10.2026, Zielversion1.17.2+72. Tatsächlicher Freigabe-,
 Test- und Produktionsstand stehen in STATUS.md. Keine neuen Laufzeitpakete oder
 Dienste; bestehender FastAPI-Worker, PostgreSQL, OpenRouter-Routing und Flutter.
 

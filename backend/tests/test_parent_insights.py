@@ -387,3 +387,22 @@ def test_actual_openrouter_parent_prompt_has_no_task_generation_instructions(api
     assert "GENAU 2 Aufgaben" not in instructions and "AUSGABEFORMAT FÜR AUSWAHLAUFGABEN" not in instructions
     schema = requests[0]["response_format"]["json_schema"]["schema"]
     assert schema["$defs"]["Finding"]["properties"]["topic_ref"]["enum"] == [ref]
+
+
+def test_selected_historical_report_stays_in_picker_beyond_the_latest_twelve(api, book):
+    seed(book)
+    with DB.begin() as db:
+        signature = parent_insights.facts(db, db.get(Child, book["child"]["id"]))[0]
+        old_id = uuid.uuid4().hex
+        for n in range(14):
+            db.add(ParentLearningReview(id=old_id if n == 0 else uuid.uuid4().hex, child_id=book["child"]["id"],
+                family_id=book["family_id"], signature=signature, status="ready", observations={},
+                report={"summary": "Künstliche historische Einschätzung", "findings": [], "plan": []}, created=n+1, finished=n+1))
+    ordinary = api.get(endpoint(book)).json()
+    assert len(ordinary["history"]) == 12 and old_id not in {r["id"] for r in ordinary["history"]}
+    historical = api.get(endpoint(book), params={"review_id": old_id}).json()
+    assert historical["latest"]["id"] == old_id
+    assert old_id in {r["id"] for r in historical["history"]} and len(historical["history"]) == 13
+    assert not historical["plan_applies"]
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
