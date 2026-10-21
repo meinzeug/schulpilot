@@ -1,3 +1,14 @@
+Hausaufgabenwerkstatt21.10.2026, Version1.16.0+67: eigener Fotobereich,
+quellengeprüfte Aufgabenübersicht, gestufte Lernhilfen und lokale Rechenprüfung.
+Bestehender Foto-/Tutor-/Reservierungsweg, keine zusätzlichen Laufzeitpakete oder
+Dienste. Pädagogische Ableitung und Grenzen in [HOMEWORK.md](HOMEWORK.md).
+Primärquellen am21.10.2026 gelesen:
+[EEF Metacognition and Self-Regulated Learning](https://educationendowmentfoundation.org.uk/education-evidence/guidance-reports/metacognition),
+[IES/WWC Organizing Instruction and Study to Improve Student Learning](https://ies.ed.gov/ncee/wwc/PracticeGuide/1).
+Fünf eigene mit image_gen erzeugte künstliche Fotos, visuell geprüft, Hashes in
+`testdata/homework_images_v1.json`, Originale und exakte Prompts unter
+`artifacts/homework-20261021/`. Keine echten Schulbuchseiten oder Kinderfotos.
+
 Flächenbewertung21.10.2026, Version1.15.1+66: eigene konservative, exakt mit
 `Fraction` geprüfte Rechteckregel und einheitliche Behandlung bereits vorgegebener
 Flächeneinheiten. Künstliche Testwerte; keine neuen Pakete, Provideraufrufe oder

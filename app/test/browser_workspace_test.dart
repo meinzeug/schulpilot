@@ -79,6 +79,7 @@ Future<GoRouter> _open(
         '/bestellungen',
         '/words',
         '/learn/child',
+        '/homework/child',
         '/library/child',
         '/after-school/child',
         '/unit/unit',
@@ -163,7 +164,17 @@ void main() {
           width < 720 ? findsOneWidget : findsNothing,
         );
         final labels = switch (role) {
-          'child' => ['Heute', 'Lernen', 'Wörter', 'Hefte', 'Konto'],
+          'child' =>
+            width < 720
+                ? ['Heute', 'Lernen', 'Hausaufgaben', 'Mehr']
+                : [
+                    'Heute',
+                    'Lernen',
+                    'Hausaufgaben',
+                    'Wörter',
+                    'Hefte',
+                    'Konto',
+                  ],
           'parent' => ['Familie', 'Wörter', 'Tarif', 'Konto'],
           _ => ['Betrieb', 'Einrichtung', 'Verkauf', 'Push', 'Konto'],
         };
@@ -185,7 +196,16 @@ void main() {
             expect(_navText(width, label), findsNothing);
           }
         }
-        await tester.tap(_navText(width, 'Konto'));
+        if (role == 'child' && width < 720) {
+          await tester.tap(_navText(width, 'Mehr'));
+          await tester.pumpAndSettle();
+          for (final label in ['Wörter', 'Hefte', 'Konto']) {
+            expect(find.widgetWithText(ListTile, label), findsOneWidget);
+          }
+          await tester.tap(find.widgetWithText(ListTile, 'Konto'));
+        } else {
+          await tester.tap(_navText(width, 'Konto'));
+        }
         await tester.pumpAndSettle();
         expect(router.routeInformationProvider.value.uri.path, '/settings');
         expect(tester.takeException(), isNull);
@@ -223,9 +243,10 @@ void main() {
 
   for (final entry in [
     ('/unit/unit', 1),
-    ('/vocabulary/child', 2),
-    ('/language-projects/child', 2),
-    ('/material/material', 3),
+    ('/homework/child', 2),
+    ('/vocabulary/child', 3),
+    ('/language-projects/child', 3),
+    ('/material/material', 4),
     ('/after-school/child', 0),
   ]) {
     testWidgets('Child context follows ${entry.$1} in tablet navigation', (

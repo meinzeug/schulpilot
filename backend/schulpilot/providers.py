@@ -874,6 +874,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         "coach": s.CoachingOutput,
         "tutor": TutorOutput,
     }.get(function, s.UnitOutput)
+    if function == "tutor" and payload.get("homework"):
+        from .homework import HomeworkOutput
+
+        model_type = HomeworkOutput
     if function == "decision":
         from .instructional_decisions import DecisionOutput
 
@@ -1018,6 +1022,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         schema["properties"].pop("next_unit")
         schema["required"].remove("next_unit")
     instructions = system_text(function, review_only=review_only)
+    if function == "tutor" and payload.get("homework"):
+        from .homework import HOMEWORK_SYSTEM
+
+        instructions = HOMEWORK_SYSTEM
     if controller_proposal:
         instructions += ("\nErgänze einen begrenzten next_step-Vorschlag am vorhandenen Lernziel mit vorhandenen question_ids als Belegen. "
             "Die kurze Begründung ist eine Entscheidungserklärung, kein interner Gedankengang. "

@@ -537,6 +537,9 @@ def maintenance():
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
         db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))
+        from .homework import clear_drafts
+
+        clear_drafts(db)
         from .catalog_models import CatalogRefresh, LearningTipContext, LearningTipInteraction
 
         db.execute(delete(LearningTipInteraction).where(LearningTipInteraction.created < int(now()) - 365 * 86400))

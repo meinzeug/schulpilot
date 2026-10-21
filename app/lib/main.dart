@@ -12,6 +12,7 @@ import 'dashboard.dart';
 import 'collection_screen.dart';
 import 'notebook_screen.dart';
 import 'material_screen.dart';
+import 'homework_screen.dart';
 import 'material_actions.dart';
 import 'settings_screen.dart';
 import 'installation_screen.dart';
@@ -160,6 +161,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path.startsWith('/material/') ||
           path.startsWith('/library/') ||
           path.startsWith('/learn/') ||
+          path.startsWith('/homework/') ||
           path.startsWith('/learning-preparation/') ||
           path.startsWith('/progress/') ||
           path.startsWith('/grades/') ||
@@ -185,6 +187,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       if ((path == '/words' ||
               path.startsWith('/messages/') ||
               path.startsWith('/vocabulary/') ||
+              path.startsWith('/homework/') ||
               path.startsWith('/language-projects/')) &&
           widget.state.isAdmin) {
         return '/admin';
@@ -301,6 +304,19 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           ),
           childId: s.pathParameters['id']!,
           subjectId: s.pathParameters['subjectId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/homework/:childId',
+        builder: (context, s) =>
+            HomeworkScreen(widget.state, childId: s.pathParameters['childId']!),
+      ),
+      GoRoute(
+        path: '/homework/:childId/:materialId',
+        builder: (context, s) => HomeworkDetailScreen(
+          widget.state,
+          childId: s.pathParameters['childId']!,
+          materialId: s.pathParameters['materialId']!,
         ),
       ),
       GoRoute(

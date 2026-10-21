@@ -53,11 +53,16 @@ def upload(
     child_id: str,
     file: UploadFile = File(...),
     school_day_id: str | None = None,
+    purpose: str = "notebook",
     idempotency_key: str | None = Header(None),
     p=Depends(authenticated),
     db=Depends(get_db),
 ):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
+    if purpose not in ("notebook", "homework") or (purpose == "homework" and school_day_id):
+        raise HTTPException(422, "Bitte einen gültigen Fotobereich wählen.")
+    if purpose == "homework" and not isinstance(idempotency_key, str):
+        raise HTTPException(422, "Für dieses Foto wird ein Upload-Schlüssel benötigt.")
     family = db.get(Family, child.family_id)
     if family.synthetic:
         raise HTTPException(
@@ -107,7 +112,7 @@ def upload(
             select(Material).where(Material.child_id == child.id, Material.upload_key == idempotency_key)
         )
         if existing:
-            if existing.image_digest != digest or existing.school_day_id != school_day_id:
+            if existing.image_digest != digest or existing.school_day_id != school_day_id or existing.purpose != purpose:
                 raise HTTPException(409, "Dieser Upload-Schlüssel gehört bereits zu einem anderen Foto.")
             return material_data(existing)
     rate_limit(db, "upload:" + p.user.id, 30, 3600, commit=False)
@@ -132,6 +137,7 @@ def upload(
     destination.write_bytes(output.getvalue())
     destination.chmod(0o600)
     material = Material(
+        purpose=purpose,
         child_id=child.id,
         school_day_id=school_day_id,
         page_number=page_number,

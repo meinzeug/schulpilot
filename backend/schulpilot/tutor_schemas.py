@@ -50,9 +50,17 @@ class TutorScope(Strict):
         return self
 
 
+class HomeworkRequest(Strict):
+    action: Literal["analyze", "explain", "hint", "plan", "example", "check", "question"]
+    analysis_id: str | None = Field(default=None, min_length=1, max_length=32)
+    task_id: str | None = Field(default=None, min_length=1, max_length=40)
+    draft: str = Field(default="", max_length=1200)
+
+
 class TutorQuestion(TutorScope):
     question: str = Field(min_length=1, max_length=1000)
     reply_to: str | None = Field(default=None, min_length=1, max_length=32)
+    homework: HomeworkRequest | None = None
 
 
 class TutorCitation(Strict):

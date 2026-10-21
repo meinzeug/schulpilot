@@ -348,6 +348,7 @@ def reprocess(
         shutil.copyfile(original, destination)
         destination.chmod(0o600)
         clone = Material(
+            purpose=source.purpose,
             id=uid(),
             child_id=child.id,
             title=source.title,

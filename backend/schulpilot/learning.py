@@ -98,6 +98,7 @@ def material_data(material):
         k: getattr(material, k)
         for k in (
             "id",
+            "purpose",
             "child_id",
             "school_day_id",
             "page_number",

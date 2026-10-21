@@ -212,7 +212,15 @@ def logout(response: Response, p=Depends(authenticated), db=Depends(get_db)):
     from sqlalchemy import delete
 
     db.execute(delete(GoogleFlow).where(GoogleFlow.previous_session_id == p.session.id))
+    if p.user.role == "child":
+        db.execute(update(Child).where(Child.user_id == p.user.id).values(grade=Child.grade))
     db.execute(update(Session).where(Session.id == p.session.id).values(revoked=True))
+    if p.user.role == "child":
+        from .homework import clear_drafts
+
+        child = db.scalar(select(Child).where(Child.user_id == p.user.id))
+        if child:
+            clear_drafts(db, child.id)
     db.commit()
     response.delete_cookie("sp_session", path="/api", secure=settings.environment == "production", samesite="strict")
     response.delete_cookie("sp_google", path="/api/auth/google")

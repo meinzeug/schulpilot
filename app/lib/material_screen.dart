@@ -1049,7 +1049,9 @@ class _MaterialReviewState extends State<MaterialReview> {
           selectedWords.isNotEmpty)
         'vocabulary': wordConfirmation,
     };
-    if (d['supports_task_confirmation'] == true && d['synthetic'] != true) {
+    if (d['supports_task_confirmation'] == true &&
+        d['synthetic'] != true &&
+        d['purpose'] != 'homework') {
       final preview = await widget.state.api.post(
         '/materials/${d['id']}/task-preview',
         body,

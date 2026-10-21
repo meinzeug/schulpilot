@@ -858,6 +858,12 @@ class WorkspaceShell extends StatelessWidget {
         'Lernen',
         '/learn/${state.user!['child_id']}',
       ),
+    if (state.isChild)
+      (
+        Icons.edit_note_rounded,
+        'Hausaufgaben',
+        '/homework/${state.user!['child_id']}',
+      ),
     if (!state.isAdmin)
       (
         Icons.translate_rounded,
@@ -883,6 +889,9 @@ class WorkspaceShell extends StatelessWidget {
   int _selected(List<(IconData, String, String)> entries, String path) {
     final index = entries.indexWhere((entry) => path == entry.$3);
     if (index >= 0) return index;
+    if (state.isChild && path.startsWith('/homework/')) {
+      return entries.indexWhere((entry) => entry.$2 == 'Hausaufgaben');
+    }
     if (!state.isAdmin &&
         (path.startsWith('/vocabulary/') ||
             path.startsWith('/language-projects/'))) {
@@ -911,6 +920,8 @@ class WorkspaceShell extends StatelessWidget {
     final path = GoRouterState.of(context).uri.path;
     final entries = _entries(sidebar: sidebar);
     final selected = _selected(entries, path);
+    final compactChild = !desktop && state.isChild;
+    final mobileEntries = compactChild ? entries.take(3).toList() : entries;
     final maxWidth = state.isChild
         ? 1060.0
         : state.isAdmin
@@ -948,13 +959,43 @@ class WorkspaceShell extends StatelessWidget {
                 ],
               ),
               child: NavigationBar(
-                selectedIndex: selected,
-                onDestinationSelected: (i) => context.go(entries[i].$3),
+                selectedIndex: compactChild && selected >= 3 ? 3 : selected,
+                onDestinationSelected: (i) async {
+                  if (compactChild && i == 3) {
+                    final route = await showModalBottomSheet<String>(
+                      context: context,
+                      showDragHandle: true,
+                      builder: (ctx) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final entry in entries.skip(3))
+                              ListTile(
+                                leading: Icon(entry.$1),
+                                title: Text(entry.$2),
+                                selected: path == entry.$3,
+                                onTap: () => Navigator.pop(ctx, entry.$3),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                    if (route != null && context.mounted) context.go(route);
+                  } else {
+                    context.go(mobileEntries[i].$3);
+                  }
+                },
                 destinations: [
-                  for (final entry in entries)
+                  for (final entry in mobileEntries)
                     NavigationDestination(
                       icon: Icon(entry.$1),
                       label: entry.$2,
+                    ),
+                  if (compactChild)
+                    NavigationDestination(
+                      icon: Icon(Icons.more_horiz_rounded),
+                      label: 'Mehr',
+                      tooltip: 'Weitere Bereiche',
                     ),
                 ],
               ),

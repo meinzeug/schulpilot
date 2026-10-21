@@ -120,13 +120,12 @@ class Api {
     Uint8List bytes, {
     String? schoolDayId,
     String? uploadKey,
+    String? purpose,
   }) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$base/children/$childId/materials').replace(
-        queryParameters: schoolDayId == null
-            ? null
-            : {'school_day_id': schoolDayId},
+        queryParameters: {'school_day_id': ?schoolDayId, 'purpose': ?purpose},
       ),
     );
     request.headers.addAll(headers);

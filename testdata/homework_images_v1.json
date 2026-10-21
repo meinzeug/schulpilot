@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "origin": "built-in image_gen, visually reviewed 2026-10-21",
+  "images": [
+    {
+      "name": "01-mathe-buch",
+      "file": "01-mathe-buch.png",
+      "sha256": "c443c9871a870ce6b7e3d64f699645a6c9bc3503efffbc1c9930bc05135f7f0e",
+      "synthetic": true,
+      "visually_reviewed": true,
+      "tool": "built-in image_gen"
+    },
+    {
+      "name": "02-mathe-hefter",
+      "file": "02-mathe-hefter.png",
+      "sha256": "608559f434e9af344ef55405baea7322feaea5db51c6bea25aab8fcfd85c6c93",
+      "synthetic": true,
+      "visually_reviewed": true,
+      "tool": "built-in image_gen"
+    },
+    {
+      "name": "03-deutsch-arbeitsheft",
+      "file": "03-deutsch-arbeitsheft.png",
+      "sha256": "e3ff431915473db03fe2310397bf6afc4a62827e42eccdab3cc4f968fa5dffd3",
+      "synthetic": true,
+      "visually_reviewed": true,
+      "tool": "built-in image_gen"
+    },
+    {
+      "name": "04-englisch-workbook",
+      "file": "04-englisch-workbook.png",
+      "sha256": "5d24829625681cd907e6623f39a093914f058200b536bffe02c5943fcf76dd4d",
+      "synthetic": true,
+      "visually_reviewed": true,
+      "tool": "built-in image_gen"
+    },
+    {
+      "name": "05-physik-arbeitsblatt",
+      "file": "05-physik-arbeitsblatt.png",
+      "sha256": "46ee77b453ea7f02083ea7a5b21dccfb68ee3c9d279a1ceffbf9e4434dafd017",
+      "synthetic": true,
+      "visually_reviewed": true,
+      "tool": "built-in image_gen"
+    }
+  ]
+}

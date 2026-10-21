@@ -315,6 +315,8 @@ class ServiceState(Base):
 class Material(Base):
     __tablename__ = "materials"
     id = Column(String(32), primary_key=True, default=uid)
+    purpose = Column(String(16), default="notebook", server_default="notebook", nullable=False)
+    homework_state = Column(JSON, default=dict, server_default="{}", nullable=False)
     revision = Column(Integer, default=1, server_default="1", nullable=False)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     school_day_id = Column(ForeignKey("school_days.id", ondelete="SET NULL"), index=True)
@@ -341,7 +343,8 @@ class Material(Base):
     extraction_provider = Column(String(20), default="", server_default="", nullable=False)
     extraction_model = Column(String(160), default="", server_default="", nullable=False)
     created = Column(Integer, default=lambda: int(now()), nullable=False)
-    __table_args__ = (UniqueConstraint("child_id", "upload_key", name="uq_material_upload_key"),)
+    __table_args__ = (UniqueConstraint("child_id", "upload_key", name="uq_material_upload_key"),
+                      Index("ix_materials_child_purpose", "child_id", "purpose", "created", "id"))
 
 
 class Assignment(Base):
@@ -479,6 +482,7 @@ class GradeSourceSlot(Base):
 class TutorTurn(Base):
     __tablename__ = "tutor_turns"
     id = Column(String(32), primary_key=True, default=uid)
+    homework_context = Column(JSON)
     child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     session_id = Column(ForeignKey("sessions.id", ondelete="SET NULL"))

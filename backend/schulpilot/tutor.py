@@ -124,6 +124,9 @@ def history_for(db, turn, source_revisions):
             or previous.child_id != turn.child_id
             or previous.user_id != turn.user_id
             or scope_values(previous) != scope_values(turn)
+            or bool(previous.homework_context) != bool(turn.homework_context)
+            or (turn.homework_context and any((previous.homework_context or {}).get(k) != turn.homework_context.get(k)
+                                               for k in ("analysis_id", "task_id")))
             or previous.status != "ready"
             or not previous.reply
         ):
@@ -135,6 +138,9 @@ def history_for(db, turn, source_revisions):
         history.append({
             "question": previous.question, "answer": previous.reply["answer"], "kind": previous.reply["kind"],
             **({"next_question": previous.reply["next_question"]} if previous.reply.get("next_question") else {}),
+            **({"own_attempt": previous.homework_context.get("draft", ""),
+                "next_step": previous.reply.get("next_step", ""), "steps": previous.reply.get("steps", [])}
+               if previous.homework_context else {}),
         })
         seen.add(previous.id)
         previous_id = previous.reply_to
@@ -157,9 +163,14 @@ def context(db, child, turn):
 
     if foundations := for_question(turn.question + " " + " ".join(h["question"] for h in history), sources):
         payload["foundations"] = foundations
+    if turn.homework_context:
+        from .homework import enrich_context
+
+        payload = enrich_context(db, child, turn, payload)
     signature = digest(
         json.dumps(
-            [payload, revisions, scope_values(turn), scope_revision, child.family_id, child.preferences, turn.reply_to],
+            [payload, revisions, scope_values(turn), scope_revision, child.family_id, child.preferences, turn.reply_to,
+             *([turn.homework_context] if turn.homework_context else [])],
             sort_keys=True,
             ensure_ascii=False,
         )
@@ -220,6 +231,7 @@ def turn_data(db, turn):
         "error": error,
         "created": turn.created,
         "source_changed": changed,
+        "homework": turn.homework_context,
     }
 
 
@@ -236,7 +248,10 @@ def ask(
     # Reuse the common child lock: no second extraction/package/coach/tutor job.
     db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
     key = "tutor:" + digest(p.user.id + ":" + child.id + ":" + idempotency_key)
-    request_hash = digest(json.dumps(data.model_dump(), sort_keys=True, ensure_ascii=False))
+    request_data = data.model_dump()
+    if data.homework is None:
+        request_data.pop("homework")  # preserve legacy request hashes
+    request_hash = digest(json.dumps(request_data, sort_keys=True, ensure_ascii=False))
     existing = db.scalar(select(Job).where(Job.idempotency == key))
     if existing:
         if existing.payload.get("request_hash") != request_hash:
@@ -247,7 +262,34 @@ def ask(
         return turn_data(db, turn)
     if db.scalar(select(Job.id).where(Job.child_id == child.id, Job.status.in_(["queued", "running"]))):
         raise HTTPException(409, "Eine Verarbeitung läuft noch. Bitte warte kurz.")
+    homework = data.homework.model_dump() if data.homework else None
+    if homework:
+        if not data.material_id or data.day_id or data.unit_id:
+            raise HTTPException(422, "Wähle für die Hausaufgaben genau ein eigenes Foto.")
+        candidates = list(db.scalars(select(TutorTurn).where(TutorTurn.child_id == child.id,
+            TutorTurn.material_id == data.material_id, TutorTurn.homework_context.is_not(None))
+            .order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(100)))
+        material = db.get(Material, data.material_id)
+        if not material or material.child_id != child.id or material.purpose != "homework":
+            raise HTTPException(404, "Hausaufgabenfoto nicht gefunden.")
+        current = [t for t in candidates if any(s["id"] == material.id and s["revision"] == material.revision
+                                               for s in t.source_revisions)]
+        homework["sequence"] = max((t.homework_context.get("sequence", 0) for t in candidates), default=0) + 1
+        if homework["action"] == "analyze":
+            analyses = [t for t in current if t.homework_context.get("action") == "analyze"]
+            ready = next((t for t in analyses if t.status == "ready"), None)
+            if ready:
+                return turn_data(db, ready)
+            if len(analyses) >= 2:
+                raise HTTPException(409, "Die Aufgabenübersicht konnte zweimal nicht erstellt werden. Bitte prüfe das Foto oder nimm die Aufgabe näher auf.")
+        if homework["action"] == "hint":
+            hints = [t for t in current if t.status == "ready" and t.homework_context.get("action") == "hint"
+                     and all(t.homework_context.get(k) == homework.get(k) for k in ("analysis_id", "task_id"))]
+            if len(hints) >= 3:
+                return turn_data(db, max(hints, key=lambda t: t.homework_context.get("hint_level", 0)))
+            homework["hint_level"] = len(hints) + 1
     turn = TutorTurn(
+        homework_context=homework,
         id=uid(),
         child_id=child.id,
         user_id=p.user.id,
@@ -261,7 +303,10 @@ def ask(
         source_revisions=[],
     )
     authority(db, turn, child.family_id)
-    signature, _, revisions = context(db, child, turn)
+    signature, payload, revisions = context(db, child, turn)
+    from .homework import deterministic_reply
+
+    local_check = bool(homework and deterministic_reply(payload, revisions))
     turn.source_revisions = revisions
     job = Job(
         id=uid(),
@@ -273,13 +318,15 @@ def ask(
             "request_hash": request_hash,
             "signature": signature,
             "family_id": child.family_id,
+            **({"local_check": "homework_math_v1"} if local_check else {}),
         },
     )
     db.add(job)
     db.flush()
     turn.job_id = job.id
     db.add(turn)
-    reserve(db, db.get(Family, child.family_id), child.id, job.id, "tutor")
+    if not local_check:
+        reserve(db, db.get(Family, child.family_id), child.id, job.id, "tutor")
     record(db, child.id, "tutor_question", {"turn_id": turn.id}, unit_id=data.unit_id)
     db.commit()
     return turn_data(db, turn)
@@ -342,6 +389,10 @@ def normalized_quote(value):
 
 
 def checked_reply(data, payload, revisions):
+    if payload.get("homework"):
+        from .homework import checked_reply as check_homework
+
+        return check_homework(data, payload, revisions)
     try:
         reply = TutorOutput.model_validate(data).model_dump()
     except ValidationError:
@@ -398,23 +449,34 @@ def process(job_id):
             signature, payload, revisions = context(db, child, turn)
             if signature != job.payload["signature"]:
                 raise ProviderError("Die Frage, Heftseiten oder Lernvorgaben wurden geändert. Bitte frage erneut.")
-            config = job_config(db, job, "tutor")
+            local = job.payload.get("local_check")
+            from .homework import deterministic_reply
+
+            local_reply = deterministic_reply(payload, revisions) if local == "homework_math_v1" else None
+            if local and not local_reply:
+                raise ProviderError("Die gespeicherte Rechenprüfung passt nicht mehr zur Aufgabe.")
+            config = job_config(db, job, "tutor") if not local else None
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
-            if not usage or (usage.provider, usage.model, usage.config_revision) != (
+            if not local and (not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
                 config.model,
                 config.revision,
-            ):
+            )):
                 raise ProviderError("Die KI-Einstellung wurde geändert. Kein anderer Anbieter wurde aufgerufen.")
-            external_allowed(config)
+            if not local:
+                external_allowed(config)
             turn.status = "running"
             from .catalog_ai import with_catalog_context
 
-            payload = with_catalog_context(db, child, payload)
-            values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns}
+            if not turn.homework_context:
+                payload = with_catalog_context(db, child, payload)
+            values = {c.name: getattr(config, c.name) for c in ProviderConfig.__table__.columns} if config else None
             db.commit()
-        result = request_provider(ProviderConfig(**values), "tutor", payload)
-        reply = checked_reply(result.data, payload, revisions)
+        if local:
+            result, reply = Result({}, 0, 0, 0), local_reply
+        else:
+            result = request_provider(ProviderConfig(**values), "tutor", payload)
+            reply = checked_reply(result.data, payload, revisions)
         with DB.begin() as db:
             job = db.get(Job, job_id)
             if not job or job.status != "running":
@@ -446,15 +508,16 @@ def process(job_id):
             child, _ = authority(db, turn, job.payload["family_id"])
             if context(db, child, turn)[0] != job.payload["signature"]:
                 raise ProviderError("Die Frage, Heftseiten oder Lernvorgaben wurden geändert. Bitte frage erneut.")
-            config = job_config(db, job, "tutor")
+            config = job_config(db, job, "tutor") if not local else None
             usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
-            if not usage or (usage.provider, usage.model, usage.config_revision) != (
+            if not local and (not usage or (usage.provider, usage.model, usage.config_revision) != (
                 config.provider,
                 config.model,
                 config.revision,
-            ):
+            )):
                 raise ProviderError("Die KI-Einstellung wurde während der Antwort geändert. Bitte frage erneut.")
-            external_allowed(config)
+            if not local:
+                external_allowed(config)
             if reply["kind"] in ("answer", "foundation"):
                 record_tutor_help(db, turn, ongoing_units, revisions)
             turn.status, turn.reply, turn.error = "ready", reply, None
@@ -463,7 +526,8 @@ def process(job_id):
 
                 remember(db, "tutor", turn, result.catalog_assignment)
             job.status, job.finished, job.result = "completed", int(now()), {"question_id": turn.id}
-            settle(db, usage, result)
+            if usage:
+                settle(db, usage, result)
             record(db, child.id, "tutor_answer", {"turn_id": turn.id}, unit_id=turn.unit_id)
     except Exception as error:
         reason = (
