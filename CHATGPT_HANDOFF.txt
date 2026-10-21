@@ -1,3 +1,51 @@
+# Produktionsstand1.15.1+66 ·21.10.2026
+
+Live: Release `20261021T045349Z-394d122`, Produktcommit
+`394d122f273ab5fae6b240bc8c56139cbc9dc0ef`, nach main gepusht.
+Healthcheck status=ok/1.15.1; API, Worker und Caddy aktiv. Vorgeschaltete
+Datenbanksicherung erfolgreich, Schema0023 unverändert.
+
+Eindeutige Zahlenantworten auf die begrenzt erkannten Rechteckflächenaufgaben
+werden rechnerisch gegen Länge × Breite und die Musterlösung geprüft. Eine
+bereits in der Frage vorgegebene Flächeneinheit muss nicht nochmals eingegeben
+werden; eine ausdrücklich verlangte ausgeschriebene Einheit bleibt erforderlich.
+Die Dreiecksprüfung verwendet dieselbe Unterscheidung. Falsche Zahlen/Einheiten
+bleiben falsch, widersprüchliche Musterlösungen unklar. Keine allgemeine
+semantische Textaufgabenprüfung behauptet. Details und künstliche Beispiele:
+[AREA_ASSESSMENT_2026_10_21.md](AREA_ASSESSMENT_2026_10_21.md).
+
+Die ausdrücklich beauftragte konkrete offene Bewertung im freigegebenen Haushalt
+mit Regelversion subject_rules_v4 historisiert korrigiert und anschließend in
+einer neuen Transaktion verifiziert. Originalantwort, Hilfe, Datum, Aufgabe,
+Versuchsanzahl, Rundenstatus und Lernzeit erhalten; Lerncontroller und Lernstand
+neu projiziert. Keine Testantwort und kein zusätzlicher Provideraufruf. Zugriff,
+Korrektur und Abschlussprüfung separat auditiert; private Diagnosekopien entfernt.
+
+223 gezielte Backendtests auf isoliertem PostgreSQL16 bestanden; darunter neue
+Zahlen-/Einheiten-/Musterlösungsfälle, neue geführte Antworten, idempotente
+Nachkorrektur mit und ohne Hilfe, Brüche, Lerncontroller, Feedback und Fortschritt.
+Ruff/Flutteranalyse sauber. Web, signierte Direct-APK und Play-AAB66 gebaut und
+validiert. Keine neue physische Android-/Lehrplan-/WCAG-Abnahme, kein Play-Upload.
+
+APK74499062 Bytes, SHA256
+`530b4911de1b00a77344b7a2cf1e813172d146aef5b4ddcbf90c8ac07748227f`;
+öffentlicher Voll-Download, Manifest und Version identisch.
+AAB70091416 Bytes, SHA256
+`28ab73f7367379121a0692d6fbf5daf47977bdaad8f2686320397ed2ad6cd79a`;
+Bundletool, Paket, Signierer und Version korrekt, keine Play-Installerberechtigung.
+619 Quelldateien,344 Archiveinträge und98 Webdateien gegen bekannte Geheimnisse
+geprüft, keine Treffer. Modellmix, Budgets, Providerrevision und Grenzen unverändert.
+
+Rückweg: `/opt/schulpilot/releases/20261020T184923Z-872d505` (1.15.0+65),
+auch als previous erhalten. Kein Datenrestore über die neue Korrektur oder spätere
+Antworten/Löschungen; vor Code-Rollback neue KI-Aufträge anhalten und aktive
+kontrolliert abarbeiten. Der alte Prüfer besitzt die neue Flächenregel noch nicht.
+
+
+---
+
+Nachfolgend historische Produktionsnachweise.
+
 # Produktionsstand1.15.0+65 ·20.10.2026
 
 Live: Release `20261020T184923Z-872d505`, Produktcommit

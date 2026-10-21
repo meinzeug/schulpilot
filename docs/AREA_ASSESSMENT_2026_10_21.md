@@ -38,3 +38,9 @@ Abnahme vor Release: 223 gezielte Backendfälle auf isoliertem PostgreSQL16
 bestanden (`artifacts/math66-regressions.xml`), Ruff und Flutteranalyse sauber.
 Der tatsächliche gemeldete Fall wurde zusätzlich lokal ohne Provider geprüft;
 private Aufgabeninhalte sind nicht Teil dieser Dokumentation oder der Fixtures.
+
+Bereitgestellt als 1.15.1+66, Release `20261021T045349Z-394d122`,
+Produktcommit `394d122f273ab5fae6b240bc8c56139cbc9dc0ef`. Beauftragte einzelne
+Produktivbewertung historisiert korrigiert und in einer neuen Datenbanktransaktion verifiziert.
+Keine zusätzlichen Antworten oder KI-Aufträge. Release-/Sicherungsnachweise,
+Artefakthashes und Rückweg stehen im Kopf von `STATUS.md`.
