@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
+from starlette.concurrency import run_in_threadpool
 
 from . import (
     __version__,
@@ -111,6 +112,14 @@ class ActualBodyLimit:
 app.add_middleware(ActualBodyLimit)
 
 
+def installation_gate_required():
+    # Session creation, checkout, query and close belong to the same worker.
+    # Waiting for a saturated synchronous pool must never block the API loop,
+    # which also schedules pending responses and dependency-session cleanup.
+    with DB() as db:
+        return installation.required(db)
+
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     if request.method in ("POST", "PUT", "PATCH", "DELETE"):
@@ -123,19 +132,18 @@ async def security_headers(request: Request, call_next):
         length = request.headers.get("content-length", "0")
         if not length.isdigit() or int(length) > maximum:
             return JSONResponse({"detail": "Anfrage ist zu groß."}, status_code=413)
-    if (
-        request.url.path.startswith("/api/")
-        and request.url.path not in ("/api/health", "/api/status", "/api/app-release", "/api/legal")
-        and not request.url.path.startswith("/api/setup/")
-    ):
-        with DB() as db:
-            if installation.required(db):
+    try:
+        if (
+            request.url.path.startswith("/api/")
+            and request.url.path not in ("/api/health", "/api/status", "/api/app-release", "/api/legal")
+            and not request.url.path.startswith("/api/setup/")
+        ):
+            if await run_in_threadpool(installation_gate_required):
                 return JSONResponse(
                     {"detail": "Bitte zuerst die Installation abschließen.", "setup_required": True},
                     status_code=503,
                     headers={"Cache-Control": "no-store"},
                 )
-    try:
         response = await call_next(request)
     except Exception as exc:
         # Catch before ASGI's default error middleware can re-raise and log a

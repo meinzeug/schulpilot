@@ -172,8 +172,15 @@ class SignalMemory:
             self.calls.pop(cid, None)
 
     def expire(self, current):
-        with self.lock:
+        # Called by the API event loop: skip a busy worker's short critical
+        # section instead of synchronously waiting and stalling every request.
+        if not self.lock.acquire(blocking=False):
+            return False
+        try:
             self.prune(current)
+            return True
+        finally:
+            self.lock.release()
 
 
 signals = SignalMemory()

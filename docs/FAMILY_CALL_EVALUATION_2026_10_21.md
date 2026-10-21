@@ -177,6 +177,33 @@ Es ist keine Datenbankmigration erforderlich. Protokolle:
 Flutter-Prüfprotokolle für 81. Diese automatischen Fälle sind von den tatsächlichen
 Android-Medien-/FCM-Gegenproben getrennt.
 
+## Datenbankpool und Eventloop82
+
+Die erste echte 81-Gegenprobe scheiterte nach 13,85 Sekunden beim Übermitteln
+der ersten Verbindungsantwort. Auch öffentliche und lokale Healthchecks liefen
+in Zeitlimits. Die Diagnose erfasste 15 Poolverbindungen im Zustand idle in
+transaction, keine wartenden Datenbanksperren und mehrere Pooltimeouts. Es gab
+sieben Anrufe im künstlichen Haushalt und null außerhalb davon.
+
+Der vorhandene asynchrone Middlewarepfad führte die synchrone Installationsprüfung
+direkt im Eventloop aus. Bei einem belegten Pool konnte dessen Checkout damit
+auch das Freigeben bereits laufender Requests blockieren. Unabhängiger Review
+bestätigte diese Verkettung. Die Anwendung wurde kontrolliert auf den zuvor
+geprüften 80-Stand zurückgesetzt und neue Anrufe mit gesicherter Konfiguration und
+Audit vorübergehend angehalten. Die Datenbank blieb auf 0026 und wurde nicht aus
+einer alten Sicherung ersetzt. Der öffentliche Healthcheck antwortete danach
+wieder in 0,05 Sekunden.
+
+82 lagert den gesamten synchronen Gate-Aufruf einschließlich Sessionopen/-close
+aus, erhält die Prüfung je geschützter Anfrage und nimmt ihre Fehler in die
+redigierte Behandlung auf. Der reine RAM-Cleanup versucht seinen Lock ohne Warten. Ein belegter Lock
+lässt nur den aktuellen Tick aus; die einzige Task prüft nach einer Sekunde
+erneut. Es wird kein zusätzlicher Bestand an Cleanupjobs gestartet.
+DB-Pool und Anfrage-/Providergrenzen bleiben unverändert. Der erste fehlgeschlagene
+Liveversuch und seine neutrale Diagnose bleiben als separate Nachweise erhalten:
+`artifacts/family-call81/live-parent-attempt1.json`, `timeout-diagnostic.json`,
+`rollback.log`, `rollback-health.json` und die native lokale Medienbereinigung.
+
 ## Auslieferung und Rückweg
 
 Web, Direct-APK und Play-AAB wurden mit der fixierten Toolchain aus demselben

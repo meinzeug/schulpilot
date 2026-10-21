@@ -1,6 +1,6 @@
 # Familienanrufe
 
-Implementierung 1.19.2+81. Aktueller Produktionsstand in STATUS.md, ausführliche
+Implementierung 1.19.3+82. Aktueller Produktionsstand in STATUS.md, ausführliche
 Nachweise in [FAMILY_CALL_EVALUATION_2026_10_21.md](FAMILY_CALL_EVALUATION_2026_10_21.md).
 Web und Android verwenden dieselbe Flutter-Oberfläche und den eigenen FastAPI-
 Server. Kein Videoanbieter-Konto, keine KI-Aufrufe und keine Aufzeichnung durch
@@ -123,3 +123,14 @@ Kamera- und Mikrofontracks bleiben erhalten. Ein ausstehendes Angebot blockiert
 nach einem Fehler keine bewusste neue Aktion; es gibt keinen automatischen
 Aufnahme- oder Versandretry. Beim regulären Bildschirmstopp endet zunächst die
 Aufnahme, danach entfällt ausschließlich der Projection-Diensttyp.
+
+## Anfrageverarbeitung unter Datenbanklast
+
+Die Installationsprüfung öffnet und schließt ihre synchrone Datenbanksitzung
+vollständig im Workerthread. Ein wartender Pool-Checkout blockiert dadurch
+nicht den Async-Eventloop und die Freigabe laufender Requests. Die Setup-Sperre
+bleibt bei jeder geschützten Anfrage erhalten. Fehler durchlaufen die bestehende
+redigierte Fehlerbehandlung. Der Signalisierungs-Cleanup versucht seinen kurzen RAM-Lock ohne Warten.
+Ist er belegt, entfällt nur der aktuelle Tick; die einzige Cleanup-Task prüft
+nach einer Sekunde erneut.
+Poolgröße, Berechtigungen und Providergrenzen werden dafür nicht erhöht.

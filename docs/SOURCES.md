@@ -513,3 +513,12 @@ Der vorhandene Android-Service reduziert nach echtem Trackstopp ausschließlich
 den MediaProjection-Typ; dafür wurde der bereits genutzte lokale Android-SDK-
 Quell-/APIstand geprüft. Keine neue Bibliothek, Hintergrundaufnahme oder
 Provideranfrage. Tatsächliche Abnahmen stehen im versionierten Evaluationsbericht.
+
+Nachkorrektur 1.19.3+82: Die reale API-/Pooldiagnose und ein unabhängiger Review
+identifizierten synchronen SQLAlchemy-Checkout in der asynchronen Security-
+Middleware als vorhandene Blockadengefahr. Der installierte FastAPI-/Starlette-
+Threadpool- und Generator-Cleanup-Pfad wurde geprüft; keine Frameworkmigration.
+Gate-Sessions laufen vollständig außerhalb des Eventloops; der RAM-Cleanup
+wartet dort niemals auf einen belegten Lock. Die Setup-/Familienrechte sowie Pool- und Budgetgrößen bleiben erhalten.
+Der Evaluationsbericht trennt fehlgeschlagenen 81-Versuch, Wiederherstellung,
+gezielte Engpassregression und tatsächliche spätere Medienabnahme.
