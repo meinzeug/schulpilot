@@ -92,6 +92,44 @@ def test_repeated_failure_after_help_finishes_without_a_fourth_attempt(profile):
     assert client.post(f"/api/units/{uid}/questions/{fresh}/answer", json={"answer": "3/8"}).status_code == 409
 
 
+def test_legacy_answers_without_source_revision_remain_practice_not_current_mastery(profile):
+    from fractions import Fraction
+
+    from schulpilot.learning_progress import read_ledger, totals
+
+    _, uid, mid, _, _, child = profile
+    with DB.begin() as db:
+        source = db.get(Material, mid)
+        question = copy.deepcopy(db.get(LearningUnit, uid).questions[0])
+        # Three old, successful checks would ordinarily satisfy the product's
+        # recall criterion. Their legacy material_id proves no source revision.
+        for days in (9, 5, 1):
+            prompt = f"Berechne 1/{days + 1} + 1/{days + 1}."
+            answer = str(Fraction(2, days + 1))
+            q = {**question, "prompt": prompt, "answer": answer, "explanation": prompt + " Ergebnis: " + answer}
+            old = LearningUnit(child_id=child["id"], material_id=mid,
+                subject="Mathematik", topic="Brüche", questions=[q],
+                explanation="Künstliche alte Runde.", round_kind="spaced_review",
+                status="completed", completed=int(now()) - days * 86400,
+                provider="openai", model="synthetic-model-fixture", synthetic=False)
+            db.add(old)
+            db.flush()
+            db.add(Attempt(unit_id=old.id, question_id=q["id"], answer=answer,
+                outcome="correct", assisted=False, created=old.completed))
+        source.revision += 1
+    with DB() as db:
+        states = evidence(db, db.get(LearningUnit, uid), [db.get(Material, mid)])
+        addition = next(g for g in states if g["label"] == "Brüche addieren")
+        assert addition["tasks"] == addition["independent"] == 0
+        assert addition["historical_tasks"] == 3
+        assert addition["successful_check_dates"] == []
+        assert addition["confidence"] == "unverified" and addition["review_due"] is None
+        # Original dated answers still count in the ordinary practice overview.
+        practice = totals(read_ledger(db, child["id"]))
+        assert practice["practiced_tasks"] == practice["independent_tasks"] == 3
+        assert len(list(db.scalars(select(Attempt)))) == 3
+
+
 def test_deliberate_skip_is_idempotent_and_never_an_answer(profile):
     client, uid, _, _, _, _ = profile
     state = session(client, uid)

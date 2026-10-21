@@ -52,6 +52,7 @@ def evidence(db, unit, sources):
         "last_observation": None, "last_difficulty": None} for g in goals}
     source_ids = [m.id for m in sources]
     related = select(UnitSource.unit_id).where(UnitSource.material_id.in_(source_ids))
+    source_bound_ids = set(db.scalars(related))
     units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == unit.child_id,
         LearningUnit.subject == unit.subject, or_(LearningUnit.id.in_(related), LearningUnit.material_id.in_(source_ids)))))
     attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id.in_([u.id for u in units])).order_by(Attempt.created, Attempt.id)))
@@ -63,7 +64,10 @@ def evidence(db, unit, sources):
     zone = ZoneInfo(Preferences(**child.preferences).timezone)
     seen_checks = {}
     for old in sorted(units, key=lambda item: (item.created, item.id)):
-        valid = source_state(db, old)[1]
+        # A legacy material_id only identifies a page, not the revision used by
+        # that old exercise. Keep its original practice, but never attribute it
+        # to today's corrected source or invent current recall evidence.
+        valid = old.id in source_bound_ids and source_state(db, old)[1]
         report = reports.get(old.id)
         old_goals = (report.report or {}).get("learning_goals", []) if report else []
         old_labels = {g["id"]: g["label"] for g in old_goals}

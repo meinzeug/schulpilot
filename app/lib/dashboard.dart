@@ -1043,7 +1043,12 @@ class _ChildHomeContent extends StatelessWidget {
         learningJob == null &&
         pendingReview == null &&
         firstPreparation == null;
-    final photosWaiting = pending.isNotEmpty || state.recoveredPhoto != null;
+    final homeworkPhotoWaiting =
+        state.recoveredPhoto != null &&
+        state.recoveredPhotoPurpose == 'homework';
+    final photosWaiting =
+        pending.isNotEmpty ||
+        (state.recoveredPhoto != null && !homeworkPhotoWaiting);
     final goalRequired =
         plan['goal_required'] as bool? ??
         (plan['paused'] != true && plan['free_day'] != true);
@@ -1263,6 +1268,15 @@ class _ChildHomeContent extends StatelessWidget {
           ),
         ),
         hero,
+        if (homeworkPhotoWaiting) ...[
+          SizedBox(height: 14),
+          ChildTodayTile(
+            title: 'Dein Hausaufgabenfoto ist wieder da',
+            subtitle: 'Prüfe es, bevor du es abgibst.',
+            icon: Icons.restore_rounded,
+            onTap: () => openRoute(context, '/homework/${child['id']}'),
+          ),
+        ],
         if (!photoPrimary) ...[
           SizedBox(height: 14),
           ChildTodayTile(

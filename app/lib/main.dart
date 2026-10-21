@@ -3,7 +3,6 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'account_deletion_screen.dart';
@@ -30,6 +29,7 @@ import 'progress_screen.dart';
 import 'grades_screen.dart';
 import 'vocabulary_screen.dart';
 import 'language_workshop.dart';
+import 'camera_recovery.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,30 +46,7 @@ Future<void> main() async {
   final state = AppState();
   await state.restore();
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    try {
-      final lost = await ImagePicker().retrieveLostData();
-      final owner = await state.storage.read(key: 'camera_child');
-      if (state.isChild &&
-          owner == state.user?['child_id'] &&
-          lost.files?.isNotEmpty == true &&
-          await lost.files!.first.length() <= 10 * 1024 * 1024) {
-        var total = 0;
-        for (final file in lost.files!.take(8)) {
-          final length = await file.length();
-          if (length > 10 * 1024 * 1024 || total + length > 20 * 1024 * 1024) {
-            break;
-          }
-          state.recoveredPhotos.add(await file.readAsBytes());
-          total += length;
-        }
-        if (state.recoveredPhotos.isNotEmpty) {
-          state.recoveredPhoto = state.recoveredPhotos.removeAt(0);
-        }
-      }
-      await state.storage.delete(key: 'camera_child');
-    } catch (_) {
-      // A failed camera recovery must not prevent login or opening saved pages.
-    }
+    await recoverCameraPhotos(state);
   }
   runApp(
     SchulpilotApp(

@@ -147,6 +147,35 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     }
   }
 
+  Future<void> complete(Json topic) async {
+    if (!own || busy || data?['can_manage'] != true) return;
+    final child = widget.childId;
+    final confirmed = await confirmDialog(
+      context,
+      'Thema als erledigt markieren?',
+      '„${topic['topic']}“ wird aus den offenen Elternaufträgen genommen. Gespeicherte Übungen und Antworten bleiben erhalten. Das Häkchen ist keine Aussage über sichere Beherrschung.',
+    );
+    if (!confirmed || !own || child != widget.childId || busy) return;
+    setState(() => busy = true);
+    try {
+      await widget.state.api.post(
+        '/children/$child/assignments/${topic['id']}/complete',
+        {if (topic['revision'] != null) 'revision': topic['revision']},
+      );
+      if (own && child == widget.childId) await load();
+    } catch (e) {
+      if (own && child == widget.childId) {
+        setState(
+          () => error = e is ApiError
+              ? e.message
+              : 'Das Thema konnte gerade nicht als erledigt markiert werden.',
+        );
+      }
+    } finally {
+      if (own && child == widget.childId) setState(() => busy = false);
+    }
+  }
+
   Widget topicCard(Json topic) {
     final canManage = data!['can_manage'] == true;
     final existing = topic['available_unit'] as Map?;
@@ -230,6 +259,12 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     onPressed: busy ? null : () => add(existing: topic),
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('Ziel & Termin bearbeiten'),
+                  ),
+                if (canManage && topic['done'] != true)
+                  TextButton.icon(
+                    onPressed: busy ? null : () => complete(topic),
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Als erledigt markieren'),
                   ),
                 if (topic['material_id'] != null)
                   TextButton.icon(
@@ -317,6 +352,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     widget.state,
                     childId: widget.childId,
                     revision: refresh,
+                    showPlanLink: false,
                   ),
                   const Text(
                     'Bereits gespeicherte KI-Schritte in den Lernrunden',

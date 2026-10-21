@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'camera_recovery.dart';
 import 'learning_content.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
@@ -109,11 +110,40 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       ),
     );
     if (source == null || !mounted || !own) return;
-    final bytes = await pickMaterialPhoto(context, source);
+    await rememberCameraSource(
+      widget.state,
+      widget.childId,
+      purpose: 'homework',
+    );
+    Uint8List? bytes;
+    try {
+      if (!mounted || !own) return;
+      bytes = await pickMaterialPhoto(context, source);
+    } finally {
+      await clearCameraSource(widget.state);
+    }
     if (bytes == null || !mounted || !own) return;
     setState(() {
       pending = bytes;
       uploadKey = homeworkKey();
+    });
+    await upload();
+  }
+
+  Future<void> recoverPhoto() async {
+    if (busy || !own || widget.state.recoveredPhotoPurpose != 'homework') {
+      return;
+    }
+    final photo = widget.state.recoveredPhoto;
+    if (photo == null) return;
+    final bytes = await cropMaterialPhoto(context, photo);
+    if (bytes == null || !mounted || !own) return;
+    setState(() {
+      pending = bytes;
+      uploadKey = homeworkKey();
+      widget.state.recoveredPhoto = widget.state.recoveredPhotos.isEmpty
+          ? null
+          : widget.state.recoveredPhotos.removeAt(0);
     });
     await upload();
   }
@@ -194,6 +224,13 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                         : 'Upload wiederholen',
                   ),
                 ),
+                if (widget.state.recoveredPhoto != null &&
+                    widget.state.recoveredPhotoPurpose == 'homework')
+                  TextButton.icon(
+                    onPressed: busy || pending != null ? null : recoverPhoto,
+                    icon: Icon(Icons.restore_rounded),
+                    label: Text('Wiedergefundenes Foto prüfen'),
+                  ),
                 SizedBox(height: 12),
                 Text(
                   'Das Foto wird mit der KI gelesen. Prüfe den erkannten Text, bevor du dir helfen lässt.',
@@ -285,11 +322,12 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   Json? data;
   String? error, sendError, saveError, selectedId, lastSaved, uncertainKey;
   Json? uncertainBody;
+  Json? queuedSave;
+  Future<void>? saveRequest;
   Timer? poll, debounce;
-  int revision = 0, generation = 0;
+  int revision = 0, generation = 0, edits = 0, savedEdits = 0;
   bool conflict = false;
   String? restoredAnalysis;
-  String lastQuestion = '';
   bool loading = true,
       busy = false,
       saving = false,
@@ -301,6 +339,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       own &&
       widget.state.isChild &&
       widget.state.user?['child_id'] == widget.childId;
+  bool get unsaved => edits != savedEdits;
   String get path => '/materials/${widget.materialId}/homework';
   List<Json> get turns =>
       (data?['turns'] as List? ?? []).map((t) => Json.from(t)).toList();
@@ -347,6 +386,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       drafts.clear();
       uncertainBody = null;
       uncertainKey = null;
+      queuedSave = null;
       lastSaved = null;
       if (mounted) setState(() => data = null);
     }
@@ -362,8 +402,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
 
   @override
   void dispose() {
-    if (canWrite &&
-        (draft.text != lastSaved || question.text != lastQuestion)) {
+    if (canWrite && unsaved) {
       unawaited(persist());
     }
     generation++;
@@ -431,11 +470,12 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
           applying = true;
           draft.text = drafts[selectedId] ?? '';
           question.text = same && canWrite ? (saved['question'] ?? '') : '';
-          lastQuestion = question.text;
           lastSaved = draft.text;
           applying = false;
           restored = true;
           restoredAnalysis = analysis!['id'];
+          edits = savedEdits = 0;
+          queuedSave = null;
           data!['source_changed'] = false;
         }
       });
@@ -456,6 +496,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   void edited() {
     if (applying || !canWrite || selectedId == null) return;
     drafts[selectedId!] = draft.text;
+    edits++;
     debounce?.cancel();
     debounce = Timer(Duration(milliseconds: 650), () => unawaited(persist()));
     if (mounted) setState(() {});
@@ -463,6 +504,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
 
   void editedQuestion() {
     if (applying || !canWrite || selectedId == null) return;
+    edits++;
     debounce?.cancel();
     debounce = Timer(Duration(milliseconds: 650), () => unawaited(persist()));
     if (mounted) setState(() {});
@@ -472,16 +514,16 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     if (!canWrite ||
         selectedId == null ||
         analysis == null ||
-        saving ||
         conflict ||
-        data?['source_changed'] == true) {
+        data?['source_changed'] == true ||
+        !unsaved) {
       return;
     }
     final currentId = selectedId!, value = drafts[selectedId!] ?? draft.text;
     final questionSnapshot = question.text;
     final snapshot = Map<String, String>.from(drafts)..[currentId] = value;
     final body = <String, dynamic>{
-      'revision': revision,
+      '_edits': edits,
       'source_revision': photo!['revision'],
       'request_key': homeworkKey(),
       'analysis_id': analysis!['id'],
@@ -491,14 +533,38 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       'drafts': snapshot,
       'done': done.toList(),
     };
+    if (saving) {
+      // Capture now, before a route change can dispose the text controllers.
+      // The active write drains this immutable snapshot with its next revision.
+      queuedSave = body;
+      await saveRequest;
+      return;
+    }
+    saveRequest = writeState(body);
+    await saveRequest;
+  }
+
+  Future<void> writeState(Json initial) async {
     saving = true;
     if (mounted) setState(() => saveError = null);
     try {
-      final saved = await widget.state.api.put(path, body);
-      if (!own) return;
-      revision = (saved['revision'] as num).toInt();
-      if (currentId == selectedId) lastSaved = value;
-      lastQuestion = questionSnapshot;
+      Json? snapshot = initial;
+      while (snapshot != null && own && !conflict) {
+        if (snapshot['source_revision'] != photo?['revision'] ||
+            snapshot['analysis_id'] != analysis?['id']) {
+          return;
+        }
+        final counter = snapshot['_edits'] as int;
+        final body = Map<String, dynamic>.from(snapshot)..remove('_edits');
+        body['revision'] = revision;
+        final saved = await widget.state.api.put(path, body);
+        if (!own) return;
+        revision = (saved['revision'] as num).toInt();
+        savedEdits = counter;
+        if (body['task_id'] == selectedId) lastSaved = body['draft'];
+        snapshot = queuedSave;
+        queuedSave = null;
+      }
     } catch (e) {
       if (mounted && own) {
         setState(() {
@@ -508,10 +574,10 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       }
     } finally {
       saving = false;
+      queuedSave = null;
       if (mounted && own) {
         setState(() {});
-        if (saveError == null &&
-            (draft.text != lastSaved || question.text != lastQuestion)) {
+        if (saveError == null && unsaved) {
           debounce?.cancel();
           debounce = Timer(
             Duration(milliseconds: 650),
@@ -605,6 +671,21 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     } finally {
       if (mounted && own) setState(() => busy = false);
     }
+  }
+
+  Future<void> chooseTask(String taskId) async {
+    if (busy || saving || taskId == selectedId) return;
+    await persist();
+    if (!mounted || !own) return;
+    setState(() {
+      selectedId = taskId;
+      if (canWrite) edits++;
+      applying = true;
+      draft.text = drafts[selectedId] ?? '';
+      lastSaved = draft.text;
+      applying = false;
+    });
+    await persist();
   }
 
   Widget replyCard(Json turn) {
@@ -715,9 +796,15 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
         .where(
           (t) =>
               (t['homework'] as Map?)?['task_id'] == selectedId &&
+              (t['homework'] as Map?)?['analysis_id'] == analysis?['id'] &&
+              t['source_changed'] != true &&
               (t['homework'] as Map?)?['action'] != 'analyze',
         )
         .toList();
+    final completed = tasks.where((task) => done.contains(task['id'])).length;
+    final nextOpen = tasks
+        .where((task) => task['id'] != selectedId && !done.contains(task['id']))
+        .firstOrNull;
     return PageFrame(
       state: widget.state,
       title: 'Hausaufgaben',
@@ -726,12 +813,21 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.state.isParent) ParentChildNavigation(childId: widget.childId,
-            childName: data?['child_name'], selected: 'homework', subtitle: 'Gespeicherte Aufgaben & Lernhilfen'),
+          if (widget.state.isParent)
+            ParentChildNavigation(
+              childId: widget.childId,
+              childName: data?['child_name'],
+              selected: 'homework',
+              subtitle: 'Gespeicherte Aufgaben & Lernhilfen',
+            ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => context.go(widget.state.isParent ? '/parent-homework/${widget.childId}' : '/homework/${widget.childId}'),
+              onPressed: () => context.go(
+                widget.state.isParent
+                    ? '/parent-homework/${widget.childId}'
+                    : '/homework/${widget.childId}',
+              ),
               icon: Icon(Icons.arrow_back),
               label: Text('Alle Hausaufgabenfotos'),
             ),
@@ -833,6 +929,11 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                 '2 · Eine Aufgabe nach der anderen',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              SizedBox(height: 8),
+              Text(
+                '$completed von ${tasks.length} selbst abgehakt',
+                style: TextStyle(color: context.palette.muted),
+              ),
               SizedBox(height: 12),
               Wrap(
                 spacing: 10,
@@ -846,17 +947,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                       selected: task['id'] == selectedId,
                       onSelected: busy || saving
                           ? null
-                          : (_) async {
-                              await persist();
-                              if (!mounted || !own) return;
-                              setState(() {
-                                selectedId = task['id'];
-                                applying = true;
-                                draft.text = drafts[selectedId] ?? '';
-                                lastSaved = draft.text;
-                                applying = false;
-                              });
-                            },
+                          : (_) => chooseTask(task['id']),
                     ),
                 ],
               ),
@@ -1015,6 +1106,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                           ),
                           onChanged: (value) async {
                             setState(() {
+                              edits++;
                               if (value == true) {
                                 done.add(selectedId!);
                               } else {
@@ -1024,6 +1116,14 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                             await persist();
                           },
                         ),
+                        if (done.contains(selectedId) && nextOpen != null)
+                          FilledButton.tonalIcon(
+                            onPressed: active && !saving
+                                ? () => chooseTask(nextOpen['id'])
+                                : null,
+                            icon: Icon(Icons.arrow_forward_rounded),
+                            label: Text('Nächste offene Aufgabe'),
+                          ),
                       ],
                     ],
                   ),
@@ -1040,7 +1140,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                 ),
               if (data?['older_history'] == true)
                 Text(
-                  'Hier siehst du die letzten 40 Gesprächsschritte. Der vollständige Verlauf bleibt im Familienexport erhalten.',
+                  'Hier siehst du die Aufgabenübersicht und die letzten 40 Gesprächsschritte. Der vollständige Verlauf bleibt im Familienexport erhalten.',
                   style: TextStyle(color: context.palette.muted),
                 ),
             ],

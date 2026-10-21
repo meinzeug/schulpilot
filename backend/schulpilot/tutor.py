@@ -273,19 +273,26 @@ def ask(
         material = db.get(Material, data.material_id)
         if not material or material.child_id != child.id or material.purpose != "homework":
             raise HTTPException(404, "Hausaufgabenfoto nicht gefunden.")
-        current = [t for t in candidates if any(s["id"] == material.id and s["revision"] == material.revision
-                                               for s in t.source_revisions)]
         homework["sequence"] = max((t.homework_context.get("sequence", 0) for t in candidates), default=0) + 1
         if homework["action"] == "analyze":
-            analyses = [t for t in current if t.homework_context.get("action") == "analyze"]
+            from .homework import current_turns
+
+            analyses = list(db.scalars(current_turns(material).where(
+                TutorTurn.homework_context["action"].as_string() == "analyze")
+                .order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(2)))
             ready = next((t for t in analyses if t.status == "ready"), None)
             if ready:
                 return turn_data(db, ready)
             if len(analyses) >= 2:
                 raise HTTPException(409, "Die Aufgabenübersicht konnte zweimal nicht erstellt werden. Bitte prüfe das Foto oder nimm die Aufgabe näher auf.")
         if homework["action"] == "hint":
-            hints = [t for t in current if t.status == "ready" and t.homework_context.get("action") == "hint"
-                     and all(t.homework_context.get(k) == homework.get(k) for k in ("analysis_id", "task_id"))]
+            from .homework import current_turns
+
+            hints = list(db.scalars(current_turns(material).where(TutorTurn.status == "ready",
+                TutorTurn.homework_context["action"].as_string() == "hint",
+                TutorTurn.homework_context["analysis_id"].as_string() == homework.get("analysis_id"),
+                TutorTurn.homework_context["task_id"].as_string() == homework.get("task_id"))
+                .order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(3)))
             if len(hints) >= 3:
                 return turn_data(db, max(hints, key=lambda t: t.homework_context.get("hint_level", 0)))
             homework["hint_level"] = len(hints) + 1

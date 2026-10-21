@@ -241,6 +241,7 @@ class AppState extends ChangeNotifier {
   int revision = 0;
   Json? demoCredentials;
   Uint8List? recoveredPhoto;
+  String recoveredPhotoPurpose = 'notebook';
   final List<Uint8List> recoveredPhotos = [];
   // Only view preferences; never persisted, and cleared on account changes.
   final Map<String, Json> collectionViews = {};
@@ -316,6 +317,13 @@ class AppState extends ChangeNotifier {
       await LessonVoiceSession.shared.stop();
       collectionViews.clear();
       inbox.clear();
+      recoveredPhoto = null;
+      recoveredPhotoPurpose = 'notebook';
+      recoveredPhotos.clear();
+      if (!kIsWeb) {
+        await storage.delete(key: 'camera_context');
+        await storage.delete(key: 'camera_child');
+      }
       await push.forget();
       await pendingUploads.clear();
       await learningDrafts.clear();
@@ -369,12 +377,14 @@ class AppState extends ChangeNotifier {
     user = null;
     familyId = null;
     recoveredPhoto = null;
+    recoveredPhotoPurpose = 'notebook';
     recoveredPhotos.clear();
     await pendingUploads.clear();
     await learningDrafts.clear();
     if (!kIsWeb) {
       await storage.delete(key: 'session');
       await storage.delete(key: 'camera_child');
+      await storage.delete(key: 'camera_context');
     }
     notifyListeners();
   }

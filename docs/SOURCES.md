@@ -1,3 +1,16 @@
+Erneute Eltern-/Kinderprüfung21.10.2026, Version1.17.3+73: eigene bestehende
+Quellen-, Lernplan-, Tutor- und Gerätezustände; keine neuen Pakete, Dienste,
+Modellprompts oder erhöhten Kontingente. Revisionsgebundene Hausaufgaben-Caches
+und serialisierte Entwürfe, direkte Themenabschlüsse mit optionaler Revision,
+ungekürzte Suche offener Runden vor begrenzter Vorschau. Historische Übung ohne
+Quellenrevision bleibt sichtbar, ist kein aktueller Kompetenznachweis.
+Android-Fotowiederherstellung verwendet den bestehenden image_picker und einen
+kontogebundenen Zweckmarker; eine bewusste Zuschnittprüfung bleibt erforderlich.
+Tatsächliche Prüfungen und Bereitstellung in STATUS.md.
+Migration0025 verwendet für SQLite eine neue nullbare Spalte mit Inline-Referenz
+nach dem bestehenden Muster aus0007; befüllte Auftrags-/Rundenzuordnungen bleiben
+ohne Tabellenkopie erhalten. Beide Dialekte mit Hin-/Rückweg geprüft.
+
 Eltern-Lernkompass21.10.2026, Version1.17.2+72: eigene bestehende
 Attempt-/Activity-Auswertung, reservierte Jobs und begrenzter OpenRouter-
 Entscheidungsauftrag. Kein zusätzlicher Anbieter, neues Paket oder Microservice.

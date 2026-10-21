@@ -8,6 +8,18 @@ und Statusabfragen erzeugen keine Aufträge. Das Kind prüft den erkannten Text
 mit „Stimmt, weiter“; erst eine weitere ausdrückliche Aktion lässt Aufgaben
 gliedern. Die Bestätigung erzeugt hier keine ungeprüften Pflichtaufträge.
 
+Android-Kamerarückkehr ab73: Vor dem externen Picker wird nur der authentifizierte
+Kontoinhaber, das Kind und der Zweck gespeichert. Nach einem vom Betriebssystem
+ausgelösten Neustart stehen höchstens acht wiedergefundene Fotos mit insgesamt
+20MiB im Arbeitsspeicher bereit. Hausaufgaben erscheinen in ihrem eigenen Bereich
+und mit einem Rückkehrhinweis unter Heute, niemals im Heftimport. Das Kind öffnet
+den Zuschnitt bewusst; Abbrechen erhält das Foto. Kein automatischer Upload oder
+KI-Aufruf. Kontowechsel/Abmelden verwirft Fotos und Marker. Die Plattformrückgabe
+und Oberflächenfreigabe sind automatisiert geprüft; kein neuer physischer
+Android-Kameratest wird daraus abgeleitet.
+Diese Rückkehrhilfe gilt für Kinderzugänge. Der bisherige Eltern-Fotoimport
+erhält dadurch keine Wiederherstellung nach einem Android-Prozessende.
+
 ## Pädagogischer Ablauf
 
 Verstehen → selbst versuchen → gestuft unterstützen → eigenen Weg prüfen.
@@ -47,7 +59,7 @@ Erneutes Einlesen erhält den Bereich; Entwürfe werden nicht in eine neue Quell
 - PUT `/materials/{id}/confirm`: ausdrücklich bestätigter Quelltext.
 - GET `/children/{id}/homework`: begrenzte Metadatenliste mit stabilem Cursor.
 - GET `/materials/{id}/homework`: autorisierte Quelle, aktuelle Arbeitsdaten und
-  die letzten40 Gesprächsschritte; keine Schreibvorgänge oder KI.
+  Aufgabenübersicht plus die letzten40 Gesprächsschritte; keine Schreibvorgänge oder KI.
 - PUT `/materials/{id}/homework`: CAS und Idempotenz für gewählte Aufgabe,
   eigene Entwürfe, Frageentwurf und selbst abgehakte Aufgaben.
 - POST `/children/{id}/tutor/questions`: vorhandener serverseitiger Tutorweg mit
@@ -90,6 +102,19 @@ unabgeschickte Versuche und Fragen bleiben in normalen Ansichten kindprivat.
 Maximal acht offene Entwürfe,24Stunden, serverseitige Löschung nach Ablauf oder
 Abmelden. Bei Mehrgeräte-Konflikt bleiben lokale Eingaben erhalten, bis das Kind
 den gespeicherten Stand ausdrücklich lädt. Kontowechsel leert die Ansicht.
+
+Aufgabenwechsel speichert auch die neue Auswahl. Änderungen an Entwurf,
+Frage und Checkliste werden in einer gemeinsamen Reihenfolge gespeichert;
+eine währenddessen ausdrücklich vorgenommene Änderung wird nach dem laufenden
+Schreibvorgang mit dessen neuer Revision übernommen, auch beim Verlassen der
+Seite. Bei Konflikten oder Verbindungsfehlern wird kein neuer Versuch automatisch
+gestartet. Die aktuelle Aufgabenübersicht bleibt zusätzlich zu den letzten40
+Gesprächsschritten erreichbar. Auch nach langen Verläufen werden eine fertige
+Analyse und die drei Hinweisstufen anhand ihrer Quellenrevision wiederverwendet.
+Der Stand „x von y selbst abgehakt“ bleibt eine reine Checkliste. Nach dem
+Abhaken führt „Nächste offene Aufgabe“ auf ausdrücklichen Klick weiter, ohne
+neuen Modellaufruf. Hilfen einer früheren Aufgabenanalyse erscheinen nicht als
+aktuelle Rückmeldung zur korrigierten Aufgabe.
 
 Modellmix und ZDR-/Data-Collection-Deny-/Cache-/Upstreamregeln bleiben unverändert.
 Kurze Hilfen nutzen die vorhandene sparsame Tutorroute. Keine automatische Suche,

@@ -156,6 +156,19 @@ def analysis_task(db, material, analysis_id, task_id):
     return task
 
 
+def current_turns(material):
+    """A homework turn has exactly one source, the selected private photo.
+
+    Select by that stored revision before bounding history. Otherwise an old
+    task overview or a completed hint ladder can fall out of a history window
+    and be generated (and charged) again.
+    """
+    return select(TutorTurn).where(TutorTurn.child_id == material.child_id,
+        TutorTurn.material_id == material.id, TutorTurn.homework_context.is_not(None),
+        TutorTurn.source_revisions[0]["id"].as_string() == material.id,
+        TutorTurn.source_revisions[0]["revision"].as_integer() == material.revision)
+
+
 def enrich_context(db, child, turn, payload):
     data = turn.homework_context
     if not data:
@@ -329,7 +342,7 @@ def own_material(db, p, material_id, *, write=False):
 def overview(child_id: str, cursor: str | None = Query(None, max_length=32), p=Depends(authenticated), db=Depends(get_db)):
     child = child_access(db, p, child_id)
     query = select(Material).options(load_only(Material.id, Material.child_id, Material.purpose, Material.created,
-        Material.title, Material.subject, Material.topic, Material.status, Material.confirmed, Material.homework_state)
+        Material.title, Material.subject, Material.topic, Material.status, Material.confirmed, Material.homework_state, Material.revision)
         ).where(Material.child_id == child.id, Material.purpose == "homework")
     if cursor:
         previous = db.get(Material, cursor)
@@ -339,7 +352,8 @@ def overview(child_id: str, cursor: str | None = Query(None, max_length=32), p=D
     rows = list(db.scalars(query.order_by(Material.created.desc(), Material.id.desc()).limit(21)))
     return {"photos": [{"id": m.id, "title": m.title, "subject": m.subject, "topic": m.topic,
                         "status": m.status, "confirmed": m.confirmed, "created": m.created,
-                        "marked_done": len((m.homework_state or {}).get("done", []))} for m in rows[:20]],
+                        "marked_done": len(set((m.homework_state or {}).get("done", [])))
+                        if (m.homework_state or {}).get("source_revision") == m.revision else 0} for m in rows[:20]],
             "next_cursor": rows[19].id if len(rows) > 20 else None}
 
 
@@ -351,7 +365,16 @@ def detail(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
     from .tutor import turn_data
 
     turns = list(db.scalars(select(TutorTurn).where(TutorTurn.material_id == material.id,
-        TutorTurn.homework_context.is_not(None)).order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(40)))
+        TutorTurn.homework_context.is_not(None)).order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(41)))
+    older_history = len(turns) > 40
+    turns = turns[:40]
+    # Keep the current task list available even after many conversations. It is
+    # working context, not an invitation to run a second analysis on a GET.
+    analysis = db.scalar(current_turns(material).where(TutorTurn.status == "ready",
+        TutorTurn.homework_context["action"].as_string() == "analyze")
+        .order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(1))
+    if analysis and all(turn.id != analysis.id for turn in turns):
+        turns.append(analysis)
     turns.sort(key=lambda t: (t.homework_context.get("sequence", 0), t.created, t.id))
     state = dict(material.homework_state or {})
     state.pop("requests", None)
@@ -361,7 +384,7 @@ def detail(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
         state.pop("question", None)
     return {"material": material_view(material.id, p, db), "state": state, "child_name": db.get(User, child.user_id).display_name,
             "source_changed": bool(state and state.get("source_revision") != material.revision),
-            "turns": [turn_data(db, turn) for turn in turns], "older_history": len(turns) == 40}
+            "turns": [turn_data(db, turn) for turn in turns], "older_history": older_history}
 
 
 class StateUpdate(Strict):

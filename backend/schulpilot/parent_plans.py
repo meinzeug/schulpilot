@@ -127,7 +127,12 @@ def view(child_id: str, page: int = Query(1, ge=1, le=1000000), include_complete
     for a in assignments:
         units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id,
             LearningUnit.assignment_id == a.id).order_by(LearningUnit.created.desc(), LearningUnit.id).limit(10)))
-        active = next((u for u in units if u.status != "completed" and u.goal_revision == a.revision), None)
+        # The bounded history is a preview, not the source of truth for an open
+        # round. An older interrupted round must remain reachable even after
+        # many newer completed rounds.
+        active = db.scalar(select(LearningUnit).where(LearningUnit.child_id == child.id,
+            LearningUnit.assignment_id == a.id, LearningUnit.goal_revision == a.revision,
+            LearningUnit.status != "completed").order_by(LearningUnit.created, LearningUnit.id).limit(1))
         pending = db.scalar(select(Job).where(Job.child_id == child.id, Job.kind == "unit",
             Job.payload["assignment_id"].as_string() == a.id, Job.status.in_(["queued", "running"]))
             .order_by(Job.created.desc()).limit(1))
@@ -135,8 +140,10 @@ def view(child_id: str, page: int = Query(1, ge=1, le=1000000), include_complete
             "available_unit": {"id": active.id, "status": active.status} if active else None,
             "preparation": {"id": pending.id, "status": pending.status} if pending else None,
             "recent_units": [{"id": u.id, "status": u.status, "topic": u.topic, "revision": u.goal_revision} for u in units]})
-    active_units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id,
-        LearningUnit.status.in_(["active", "paused", "ready"])).order_by(LearningUnit.created.desc()).limit(20)))
+    active_units = list(db.scalars(select(LearningUnit).join(LearningMemory, LearningMemory.unit_id == LearningUnit.id)
+        .where(LearningUnit.child_id == child.id, LearningUnit.status.in_(["active", "paused", "ready"]),
+            LearningMemory.working["instructional_plan"]["cursor"].as_integer().is_not(None))
+        .order_by(LearningUnit.created.desc(), LearningUnit.id.desc()).limit(20)))
     plans = []
     for unit in active_units:
         memory = db.get(LearningMemory, unit.id)

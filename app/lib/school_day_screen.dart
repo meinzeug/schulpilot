@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'camera_recovery.dart';
 import 'material_screen.dart';
 import 'material_actions.dart';
 import 'dashboard.dart';
@@ -399,18 +400,23 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
 
   Future<void> capture(ImageSource source, {bool recovered = false}) async {
     if (!ownerMatches || !allowUploads) return;
+    final owner = actor!;
+    final captureGeneration = generation;
+    bool currentCapture() =>
+        mounted &&
+        ownerMatches &&
+        actor == owner &&
+        generation == captureGeneration;
+    if (recovered && state.recoveredPhotoPurpose != 'notebook') return;
     final status = await state.api.get('/status');
     if (status['real_data_enabled'] != true) {
       throw ApiError(
         'Fotos sind hier noch nicht freigeschaltet. Bitte frage deine Eltern.',
       );
     }
-    if (!mounted || !ownerMatches) return;
+    if (!currentCapture()) return;
     final nativeAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-    if (nativeAndroid && !recovered) {
-      await state.storage.write(key: 'camera_child', value: widget.childId);
-    }
     if (source == ImageSource.gallery) {
       final available =
           (day!['max_pages'] as int) - pages.length - pendingPhotos.length;
@@ -442,20 +448,27 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           ],
         ),
       );
-      if (accepted != true || !mounted || !ownerMatches) return;
-      final files = await ImagePicker().pickMultiImage(
-        maxWidth: 3200,
-        maxHeight: 3200,
-        imageQuality: 90,
-        requestFullMetadata: false,
-        limit: remaining > 1 ? remaining : 2,
-      );
-      if (nativeAndroid) await state.storage.delete(key: 'camera_child');
+      if (accepted != true || !currentCapture()) return;
+      if (nativeAndroid) await rememberCameraSource(state, widget.childId);
+      List<XFile> files;
+      try {
+        files = await ImagePicker().pickMultiImage(
+          maxWidth: 3200,
+          maxHeight: 3200,
+          imageQuality: 90,
+          requestFullMetadata: false,
+          limit: remaining > 1 ? remaining : 2,
+        );
+      } finally {
+        if (nativeAndroid) await clearCameraSource(state);
+      }
+      if (!currentCapture()) return;
       final keys = [
         for (var i = 0; i < files.length; i++)
           'file-${DateTime.now().microsecondsSinceEpoch}-$i-${Random.secure().nextInt(1 << 30)}',
       ];
       for (var i = 0; i < files.length; i++) {
+        if (!currentCapture()) return;
         await receipt(keys[i], {
           'name': files[i].name,
           'stage': i < remaining ? 'selected' : 'not_accepted',
@@ -467,16 +480,16 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       Object? firstError;
       bool canSend = true;
       for (var i = 0; i < files.length && i < remaining; i++) {
-        if (!mounted || !ownerMatches) return;
+        if (!currentCapture()) return;
         try {
           setState(
             () => progress =
                 'Foto ${i + 1} von ${files.length.clamp(0, remaining)} zuschneiden',
           );
           final raw = await files[i].readAsBytes();
-          if (!mounted || !ownerMatches) return;
+          if (!currentCapture()) return;
           final bytes = await cropMaterialPhoto(context, raw);
-          if (!mounted || !ownerMatches) return;
+          if (!currentCapture()) return;
           if (bytes == null) {
             await receipt(keys[i], {
               'stage': 'not_accepted',
@@ -485,15 +498,19 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
             continue;
           }
           await receipt(keys[i], {'stage': 'cropped'});
+          if (!currentCapture()) return;
           await ensureCollecting();
+          if (!currentCapture()) return;
           await state.pendingUploads.add(
-            state.user!['id'],
+            owner,
             widget.childId,
             day!['id'],
             bytes,
             receiptId: keys[i],
           );
+          if (!currentCapture()) return;
           await receipt(keys[i], {'stage': 'queued'});
+          if (!currentCapture()) return;
           if (canSend) {
             try {
               await sendPending();
@@ -514,28 +531,40 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
           });
         }
       }
+      if (!currentCapture()) return;
       await refreshPending();
       if (firstError != null) throw firstError;
       return;
     }
-    if (!mounted || !ownerMatches) return;
-    final bytes = recovered && state.recoveredPhoto != null
-        ? await cropMaterialPhoto(context, state.recoveredPhoto!)
-        : await pickMaterialPhoto(context, source);
-    if (nativeAndroid) await state.storage.delete(key: 'camera_child');
-    if (bytes == null || !mounted || !ownerMatches) return;
+    if (!currentCapture()) return;
+    if (nativeAndroid && !recovered) {
+      await rememberCameraSource(state, widget.childId);
+    }
+    Uint8List? bytes;
+    try {
+      if (!currentCapture()) return;
+      bytes = recovered && state.recoveredPhoto != null
+          ? await cropMaterialPhoto(context, state.recoveredPhoto!)
+          : await pickMaterialPhoto(context, source);
+    } finally {
+      if (nativeAndroid) await clearCameraSource(state);
+    }
+    if (bytes == null || !currentCapture()) return;
     final receiptId =
         'camera-${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 30)}';
     await receipt(receiptId, {'name': 'Neues Heftfoto', 'stage': 'cropped'});
+    if (!currentCapture()) return;
     await ensureCollecting();
+    if (!currentCapture()) return;
     try {
       await state.pendingUploads.add(
-        state.user!['id'],
+        owner,
         widget.childId,
         day!['id'],
         bytes,
         receiptId: receiptId,
       );
+      if (!currentCapture()) return;
       await receipt(receiptId, {'stage': 'queued'});
     } catch (e) {
       await receipt(receiptId, {
@@ -546,7 +575,9 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
       });
       rethrow;
     }
+    if (!currentCapture()) return;
     await refreshPending();
+    if (!currentCapture()) return;
     if (recovered) {
       state.recoveredPhoto = state.recoveredPhotos.isEmpty
           ? null
@@ -1027,7 +1058,9 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                   label: Text('Fotos auswählen'),
                 ),
               ],
-              if (allowUploads && state.recoveredPhoto != null)
+              if (allowUploads &&
+                  state.recoveredPhoto != null &&
+                  state.recoveredPhotoPurpose == 'notebook')
                 TextButton.icon(
                   onPressed: () =>
                       run(() => capture(ImageSource.camera, recovered: true)),
@@ -1732,7 +1765,8 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                         onPressed: () =>
                             run(() => capture(ImageSource.gallery)),
                       ),
-                      if (state.recoveredPhoto != null)
+                      if (state.recoveredPhoto != null &&
+                          state.recoveredPhotoPurpose == 'notebook')
                         ActionButton(
                           label: 'Wiedergefundenes Foto prüfen',
                           icon: Icons.restore,

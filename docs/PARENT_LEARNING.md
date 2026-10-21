@@ -1,8 +1,16 @@
 # Eltern-Lernkompass, Lernplan und Hausaufgaben
 
-Implementierungsstand21.10.2026, Version1.17.2+72. Tatsächlicher Freigabe-,
+Implementierungsstand21.10.2026, Version1.17.3+73. Tatsächlicher Freigabe-,
 Test- und Produktionsstand stehen in STATUS.md. Keine neuen Laufzeitpakete oder
 Dienste; bestehender FastAPI-Worker, PostgreSQL, OpenRouter-Routing und Flutter.
+
+Version73 erhält ältere offene Runden und gespeicherte Kurzpläne unabhängig von
+begrenzten Verlaufsvorschauen. „Als erledigt markieren“ schließt einen Elternauftrag
+nach Rückfrage ab; eine mitgesendete Revision schützt vor überholten Änderungen.
+Wiederholter Legacy-Aufruf erzeugt keinen zweiten Abschlussbeleg. Bestehende
+Runden/Antworten bleiben erhalten; ein erledigter Auftrag beweist keine Beherrschung.
+Der Lernkompass lädt bei Rückkehr aus einer Detailseite den gespeicherten Status
+mit GET nach. Vollständige Fehlerprüfung: [APP_REVIEW_2026_10_21.md](APP_REVIEW_2026_10_21.md).
 
 ## Lernbelege vor Einschätzung
 

@@ -1100,15 +1100,20 @@ def delete_assignment(child_id: str, assignment_id: str, p=Depends(parent), db=D
 
 
 @router.post("/children/{child_id}/assignments/{assignment_id}/complete")
-def complete_assignment(child_id: str, assignment_id: str, p=Depends(parent), db=Depends(get_db)):
-    child_access(db, p, child_id, write=True)
-    db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
+def complete_assignment(child_id: str, assignment_id: str, data: s.AssignmentComplete | None = None,
+                        p=Depends(parent), db=Depends(get_db)):
+    from .parent_insights import lock_parent
+
+    lock_parent(db, p, child_id)
     assignment = db.get(Assignment, assignment_id)
     if not assignment or assignment.child_id != child_id:
         raise HTTPException(404, "Lernauftrag nicht gefunden.")
-    assignment.done = True
-    assignment.revision += 1
-    record(db, child_id, "parent_goal_completed", {"topic": assignment.topic})
+    if data and data.revision is not None and data.revision != assignment.revision:
+        raise HTTPException(409, "Das Lernziel wurde inzwischen geändert. Bitte neu laden.")
+    if not assignment.done:
+        assignment.done = True
+        assignment.revision += 1
+        record(db, child_id, "parent_goal_completed", {"topic": assignment.topic})
     db.commit()
     return {"message": "Elternziel als erledigt markiert. Dies ist keine automatische Aussage über die Beherrschung."}
 

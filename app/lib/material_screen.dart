@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'camera_recovery.dart';
 import 'material_actions.dart';
 import 'learning_tips.dart';
 import 'tutor_sheet.dart';
@@ -73,8 +74,17 @@ Future<void> importMaterial(
     ),
   );
   if (source == null || !context.mounted) return;
-  final cropped = await pickMaterialPhoto(context, source);
+  if (owner != state.user?['id']) return;
+  await rememberCameraSource(state, childId);
+  Uint8List? cropped;
+  try {
+    if (!context.mounted || owner != state.user?['id']) return;
+    cropped = await pickMaterialPhoto(context, source);
+  } finally {
+    await clearCameraSource(state);
+  }
   if (cropped == null) return;
+  if (owner != state.user?['id']) return;
   final material = await state.api.upload(childId, cropped);
   if (context.mounted && owner == state.user?['id']) {
     state.refreshState();

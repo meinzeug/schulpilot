@@ -180,6 +180,50 @@ def test_three_hint_stages_are_cached_after_third_and_old_analysis_is_invalidate
     assert ask(book, "explain", analysis=aid).status_code == 409
 
 
+def test_long_conversation_keeps_task_overview_and_cached_hints_without_new_cost(book, transport):
+    aid = analyze(book, transport)
+    transport["output"] = output()
+    for _ in range(3):
+        assert ask(book, "hint", analysis=aid).status_code == 202
+        finish()
+    with DB.begin() as db:
+        original = db.get(TutorTurn, aid)
+        for index in range(105):
+            db.add(TutorTurn(child_id=original.child_id, user_id=original.user_id,
+                material_id=original.material_id, session_id=original.session_id,
+                created=original.created + index + 10, question="Künstliche gespeicherte Rückfrage",
+                status="ready", source_revisions=original.source_revisions, reply=output(),
+                homework_context={"action": "question", "analysis_id": aid, "task_id": "t1", "sequence": index + 5}))
+        usage = db.scalar(select(func.count()).select_from(Usage))
+        jobs = db.scalar(select(func.count()).select_from(Job))
+    for _ in range(2):
+        body = detail(book)
+        assert body["older_history"] is True
+        assert len(body["turns"]) == 41
+        assert body["turns"][0]["id"] == aid
+        assert body["turns"][0]["reply"]["tasks"][0]["id"] == "t1"
+    assert ask(book, "analyze").json()["id"] == aid
+    hint = ask(book, "hint", analysis=aid)
+    assert hint.status_code == 202 and hint.json()["status"] == "ready"
+    assert hint.json()["homework"]["hint_level"] == 3
+    assert len(transport["calls"]) == 4
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Usage)) == usage
+        assert db.scalar(select(func.count()).select_from(Job)) == jobs
+
+
+def test_child_checklist_preview_does_not_count_a_previous_source_revision(book, transport):
+    aid = analyze(book, transport)
+    with DB.begin() as db:
+        material = db.get(Material, book["material_id"])
+        material.homework_state = {"analysis_id": aid, "source_revision": material.revision, "done": ["t1", "t1"]}
+    route = f"/api/children/{book['child']['id']}/homework"
+    assert book["client"].get(route).json()["photos"][0]["marked_done"] == 1
+    with DB.begin() as db:
+        db.get(Material, book["material_id"]).revision += 1
+    assert book["client"].get(route).json()["photos"][0]["marked_done"] == 0
+
+
 @pytest.mark.parametrize("text, task", [
     ("Das ergibt 1/2.", "Berechne 1/3 + 1/6."),
     (r"Das ergibt \(\frac{1}{2}\).", r"Berechne \(\frac{1}{3}+\frac{1}{6}\)."),

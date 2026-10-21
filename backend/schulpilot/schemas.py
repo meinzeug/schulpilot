@@ -135,6 +135,10 @@ class AssignmentCreate(Strict):
         return self
 
 
+class AssignmentComplete(Strict):
+    revision: int | None = Field(default=None, ge=1)
+
+
 class MaterialVocabularyPreview(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short

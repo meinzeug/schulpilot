@@ -857,4 +857,111 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  for (final recovered in [true, false]) {
+    testWidgets(
+      '${recovered ? 'Recovered camera' : 'Gallery'} photo cannot cross an account change during collection handoff',
+      (tester) async {
+        mobile(tester);
+        final server = PreparationServer(pages: [], stage: 'review')
+          ..realUploads = true;
+        final handoff = Completer<http.Response>();
+        var collectingRequested = false;
+        final state = AppState(
+          api: Api(
+            base: 'https://example.invalid/api',
+            client: MockClient((request) {
+              if (request.method == 'PUT' &&
+                  request.url.path.endsWith('/stage')) {
+                collectingRequested = true;
+                return handoff.future;
+              }
+              return server.handle(request);
+            }),
+          ),
+        )..user = {'id': 'kid', 'role': 'child', 'child_id': 'child'};
+        final bytes = image.encodePng(image.Image(width: 30, height: 40));
+        if (recovered) {
+          state.recoveredPhoto = bytes;
+        } else {
+          final dir = await tester.runAsync(
+            () =>
+                Directory.systemTemp.createTemp('schulpilot-account-gallery-'),
+          );
+          addTearDown(() => dir!.delete(recursive: true));
+          final file = File('${dir!.path}/artificial.png');
+          await tester.runAsync(() => file.writeAsBytes(bytes));
+          const picker = MethodChannel('plugins.flutter.io/image_picker');
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            picker,
+            (_) async => [file.path],
+          );
+          addTearDown(
+            () => tester.binding.defaultBinaryMessenger
+                .setMockMethodCallHandler(picker, null),
+          );
+        }
+        final navigation = GoRouter(
+          initialLocation: '/after-school/child',
+          routes: [
+            GoRoute(
+              path: '/after-school/:id',
+              builder: (_, _) => SchoolDayScreen(
+                state,
+                childId: 'child',
+                startWithPhotos: true,
+              ),
+            ),
+          ],
+        );
+        addTearDown(navigation.dispose);
+        await tester.pumpWidget(
+          MaterialApp.router(theme: appTheme(), routerConfig: navigation),
+        );
+        await settleUi(tester);
+        if (recovered) {
+          await tapText(tester, 'Letztes Foto wiederfinden');
+        } else {
+          await tapText(tester, 'Fotos auswählen');
+          await tester.tap(
+            find.widgetWithText(FilledButton, 'Fotos auswählen'),
+          );
+        }
+        for (
+          var wait = 0;
+          wait < 100 && find.text('Zuschnitt übernehmen').evaluate().isEmpty;
+          wait++
+        ) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 30)),
+          );
+          await settleUi(tester);
+        }
+        expect(find.text('Zuschnitt übernehmen'), findsOneWidget);
+        await tester.tap(find.text('Zuschnitt übernehmen'));
+        for (var wait = 0; wait < 100 && !collectingRequested; wait++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 30)),
+          );
+          await settleUi(tester);
+        }
+        expect(collectingRequested, isTrue);
+
+        // accept() changes the identity before awaiting native session storage
+        // and notifying listeners. The owner check must cover that interval.
+        state.user = {
+          'id': 'other-kid',
+          'role': 'child',
+          'child_id': 'other-child',
+        };
+        handoff.complete(response({...server.day, 'stage': 'collecting'}));
+        await settleUi(tester);
+        expect(await state.pendingUploads.read('other-kid'), isEmpty);
+        expect(server.uploads, 0);
+        expect(server.submissions, 0);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 }

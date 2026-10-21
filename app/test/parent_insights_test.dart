@@ -359,4 +359,61 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('KI-Lernkompass'), findsNothing);
   });
+
+  testWidgets(
+    'Returning from a covered parent view refreshes saved status only',
+    (tester) async {
+      var reads = 0;
+      var pending = false;
+      final state = account(
+        MockClient((r) async {
+          expect(r.method, 'GET');
+          reads++;
+          return response({
+            ...insight(),
+            if (pending) 'pending': {'status': 'running'},
+          });
+        }),
+      );
+      final router = await open(tester, state, 'insights');
+      pending = true;
+      await tester.tap(find.byTooltip('Lernkompass neu laden'));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.textContaining('Die neue Auswertung wird vorbereitet.'),
+        findsOneWidget,
+      );
+
+      router.push('/progress/child?fach=Mathematik&thema=Bruchaddition');
+      await tester.pumpAndSettle();
+      final coveredReads = reads;
+      await tester.pump(const Duration(seconds: 5));
+      expect(reads, coveredReads);
+
+      pending = false;
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(reads, coveredReads + 1);
+      expect(
+        find.textContaining('Die neue Auswertung wird vorbereitet.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('The learning plan does not offer a link to itself', (
+    tester,
+  ) async {
+    final state = account(
+      MockClient((r) async {
+        if (r.url.path.endsWith('/parent-insights')) return response(insight());
+        if (r.url.path.endsWith('/learning-plan')) return response(plan());
+        return response({'available': false});
+      }),
+    );
+    await open(tester, state, 'plan');
+    expect(find.text('KI-Lernkompass'), findsOneWidget);
+    expect(find.text('Lernplan öffnen'), findsNothing);
+  });
 }

@@ -52,6 +52,8 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
       filter = 'all';
       generation++;
       photos.clear();
+      childName = null;
+      total = 0;
       cursor = null;
       load();
     }

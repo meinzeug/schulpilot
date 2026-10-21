@@ -31,12 +31,14 @@ class ParentInsightsPanel extends StatefulWidget {
   final AppState state;
   final String childId;
   final bool compact;
+  final bool showPlanLink;
   final int revision;
   const ParentInsightsPanel(
     this.state, {
     super.key,
     required this.childId,
     this.compact = false,
+    this.showPlanLink = true,
     this.revision = 0,
   });
   @override
@@ -47,11 +49,12 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     with WidgetsBindingObserver {
   Json? data;
   String? error, requestKey, selectedReview;
-  bool loading = false, busy = false, foreground = true;
+  bool loading = false, busy = false, foreground = true, routeVisible = true;
   int generation = 0;
   Timer? poll;
   late String? owner;
   bool get own => mounted && owner != null && widget.state.user?['id'] == owner;
+  bool get active => own && foreground && routeVisible;
   String get route => '/children/${widget.childId}/parent-insights';
 
   @override
@@ -80,6 +83,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.childId != widget.childId) {
       generation++;
+      poll?.cancel();
       data = null;
       requestKey = null;
       selectedReview = null;
@@ -90,10 +94,26 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final wasVisible = routeVisible;
+    routeVisible = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!routeVisible) {
+      poll?.cancel();
+    } else if (!wasVisible && active) {
+      // Native navigation retains this panel below the pushed detail page.
+      // Restore the saved status after returning, without another POST.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (active) unawaited(load());
+      });
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState value) {
     foreground = value == AppLifecycleState.resumed;
     poll?.cancel();
-    if (foreground && own && (ModalRoute.of(context)?.isCurrent ?? true)) {
+    if (active) {
       load();
     }
   }
@@ -107,7 +127,8 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   }
 
   Future<void> load() async {
-    if (!own || !foreground) return;
+    if (!active) return;
+    poll?.cancel();
     final stamp = ++generation;
     final child = widget.childId;
     setState(() => loading = true);
@@ -132,11 +153,10 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
         loading = false;
       });
       poll?.cancel();
-      if (['queued', 'running'].contains(data?['pending']?['status'])) {
+      if (active &&
+          ['queued', 'running'].contains(data?['pending']?['status'])) {
         poll = Timer(const Duration(seconds: 4), () {
-          if (own &&
-              foreground &&
-              (ModalRoute.of(context)?.isCurrent ?? true)) {
+          if (active) {
             load();
           }
         });
@@ -409,12 +429,13 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                             : 'Jetzt mit KI auswerten',
                       ),
                     ),
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/parent-plan/${widget.childId}'),
-                    icon: const Icon(Icons.route_outlined),
-                    label: const Text('Lernplan öffnen'),
-                  ),
+                  if (widget.showPlanLink)
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          openRoute(context, '/parent-plan/${widget.childId}'),
+                      icon: const Icon(Icons.route_outlined),
+                      label: const Text('Lernplan öffnen'),
+                    ),
                 ],
               ),
               if (!widget.compact &&

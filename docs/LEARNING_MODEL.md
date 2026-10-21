@@ -78,6 +78,15 @@ Die führende Anzeige zählt **alle tatsächlich beantworteten Aufgaben**, auch 
 - Kind und Eltern können Fach → Thema → einzelne Runden mit serverseitiger Seitenteilung öffnen. Diese Lesezugriffe erzeugen keine Aufgaben und verändern keine Ergebnisse.
 - Zusätzlich zeigt ein aufklappbarer Abschnitt, was an späteren Tagen selbstständig erneut abgerufen wurde. Drei erfolgreiche Prüftage über mindestens sieben Tage bleiben eine transparente **Produktregel**, keine wissenschaftliche Universalgrenze. Gewöhnliche Übungen zählen oben mit, ohne einen nicht durchgeführten späteren Abruf vorzutäuschen. Neue Hilfen können die strenge Beobachtungsfolge zurücksetzen, niemals die geleisteten Übungen löschen.
 
+Für die quellengebundene langfristige Kompetenzableitung braucht eine alte Runde
+einen passenden gespeicherten `UnitSource`-Revisionsbeleg. Ein bloßer historischer
+`material_id` beweist nicht, welche Fassung der Seite damals verwendet wurde.
+Solche Antworten bleiben unverändert in der allgemeinen Übungszählung und werden
+im Lernzielgedächtnis als `historical_tasks` ausgewiesen; sie erzeugen keine
+aktuellen sicheren Abrufbelege oder Wiedervorlage für inzwischen korrigierten
+Stoff. Die Runde bleibt lesbar, ohne einen fehlenden Quellenstand nachträglich
+aus der heutigen Seite zu erfinden.
+
 ## Noten und verständliche Planung
 
 Nur berechtigte Eltern verwalten Noten. Familienmitglieder mit Leserecht sehen die Einträge; Kinder und Betriebsadministratoren erhalten keinen Notenzugriff. Erfasst werden Fach, optional Thema, Art, Datum, Wert, System 1–6 oder 0–15 Punkte, Gewicht 1–5 und optionale Notiz. Bearbeitung ist revisionsgebunden, wiederholtes Anlegen mit demselben Anfrageschlüssel erzeugt unter Parallelität keinen Doppeleintrag.

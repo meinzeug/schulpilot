@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -293,6 +294,162 @@ void main() {
       expect(find.text('Gespeicherten Entwurf laden'), findsOneWidget);
       await tester.pump(Duration(seconds: 4));
       expect(puts, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Selected homework task survives leaving and reopening', (
+    tester,
+  ) async {
+    Json? saved;
+    final writes = <Json>[];
+    final state = account(
+      MockClient((r) async {
+        if (r.method == 'PUT') {
+          final body = Json.from(jsonDecode(r.body));
+          writes.add(body);
+          saved = {...body, 'revision': writes.length + 3};
+          return reply(saved!);
+        }
+        if (r.url.path == '/api/app-release') {
+          return reply({'available': false});
+        }
+        if (r.url.path.endsWith('/children/child/homework')) {
+          return reply({'photos': [], 'next_cursor': null});
+        }
+        final page = fixture();
+        (page['turns'][0]['reply']['tasks'] as List).add({
+          'id': 't2',
+          'title': 'Umfang',
+          'source_quote': 'Wie groß ist der Umfang des Rechtecks?',
+        });
+        if (saved != null) page['state'] = saved;
+        return reply(page);
+      }),
+    );
+    final router = await open(tester, state);
+    expect(writes, isEmpty);
+    await tap(tester, 'Umfang');
+    expect(writes, hasLength(1));
+    expect(writes.single['task_id'], 't2');
+    router.go('/homework/child');
+    await tester.pumpAndSettle();
+    router.go('/homework/child/photo');
+    await tester.pumpAndSettle();
+    final selected = tester
+        .widgetList<ChoiceChip>(find.byType(ChoiceChip))
+        .singleWhere((chip) => chip.selected);
+    expect((selected.label as Text).data, 'Umfang');
+    expect(writes, hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Checklist changes drain after an in-flight draft even when leaving',
+    (tester) async {
+      final first = Completer<http.Response>();
+      final writes = <Json>[];
+      final state = account(
+        MockClient((r) async {
+          if (r.method == 'PUT') {
+            writes.add(Json.from(jsonDecode(r.body)));
+            if (writes.length == 1) return first.future;
+            return reply({'revision': 5});
+          }
+          if (r.url.path == '/api/app-release') {
+            return reply({'available': false});
+          }
+          if (r.url.path.endsWith('/children/child/homework')) {
+            return reply({'photos': [], 'next_cursor': null});
+          }
+          return reply(fixture());
+        }),
+      );
+      final router = await open(tester, state);
+      await tester.enterText(find.byType(TextField).first, 'Mein erster Weg');
+      await tester.pump(Duration(milliseconds: 700));
+      expect(writes, hasLength(1));
+      final checkbox = find.byType(CheckboxListTile);
+      await tester.ensureVisible(checkbox);
+      await tester.pump();
+      await tester.tap(checkbox);
+      await tester.pump();
+      expect(writes, hasLength(1));
+      router.go('/homework/child');
+      await tester.pump();
+      first.complete(reply({'revision': 4}));
+      await tester.pumpAndSettle();
+      expect(writes, hasLength(2));
+      expect(writes[0]['revision'], 3);
+      expect(writes[0]['done'], isEmpty);
+      expect(writes[1]['revision'], 4);
+      expect(writes[1]['done'], ['t1']);
+      expect(writes[1]['draft'], 'Mein erster Weg');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Checklist offers the next open task without generating help', (
+    tester,
+  ) async {
+    final methods = <String>[];
+    var revision = 3;
+    final state = account(
+      MockClient((r) async {
+        methods.add(r.method);
+        if (r.method == 'PUT') return reply({'revision': ++revision});
+        if (r.url.path == '/api/app-release') {
+          return reply({'available': false});
+        }
+        final page = fixture();
+        (page['turns'][0]['reply']['tasks'] as List).add({
+          'id': 't2',
+          'title': 'Umfang',
+          'source_quote': 'Wie groß ist der Umfang des Rechtecks?',
+        });
+        return reply(page);
+      }),
+    );
+    await open(tester, state);
+    expect(find.text('0 von 2 selbst abgehakt'), findsOneWidget);
+    expect(find.text('Nächste offene Aufgabe'), findsNothing);
+    final checkbox = find.byType(CheckboxListTile);
+    await tester.ensureVisible(checkbox);
+    await tester.pumpAndSettle();
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+    expect(find.text('1 von 2 selbst abgehakt'), findsOneWidget);
+    await tap(tester, 'Nächste offene Aufgabe');
+    final selected = tester
+        .widgetList<ChoiceChip>(find.byType(ChoiceChip))
+        .singleWhere((chip) => chip.selected);
+    expect((selected.label as Text).data, 'Umfang');
+    expect(methods.where((method) => method == 'PUT'), hasLength(2));
+    expect(methods, isNot(contains('POST')));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Earlier analysis help does not become the current task feedback',
+    (tester) async {
+      final oldHelp = modelTurn();
+      oldHelp['homework']['analysis_id'] = 'earlier-analysis';
+      oldHelp['source_changed'] = true;
+      final state = account(
+        MockClient(
+          (r) async => reply(
+            r.url.path == '/api/app-release'
+                ? {'available': false}
+                : fixture(turns: [oldHelp, analysisTurn()]),
+          ),
+        ),
+      );
+      await open(tester, state);
+      expect(find.text('Erkläre es mir'), findsOneWidget);
+      expect(
+        find.text('Die Fläche ist der Platz innerhalb des Rechtecks.'),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     },
   );
