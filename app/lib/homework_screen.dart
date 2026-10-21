@@ -328,6 +328,9 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   int revision = 0, generation = 0, edits = 0, savedEdits = 0;
   bool conflict = false;
   String? restoredAnalysis;
+  String? practiceKey;
+  int? practiceRevision;
+  String? practiceError;
   bool loading = true,
       busy = false,
       saving = false,
@@ -386,6 +389,9 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       drafts.clear();
       uncertainBody = null;
       uncertainKey = null;
+      practiceKey = null;
+      practiceRevision = null;
+      practiceError = null;
       queuedSave = null;
       lastSaved = null;
       if (mounted) setState(() => data = null);
@@ -448,6 +454,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
             analysis != null) {
           revision = remoteRevision;
           conflict = false;
+          saveError = null;
           final same =
               saved['analysis_id'] == analysis!['id'] &&
               result['source_changed'] != true;
@@ -686,6 +693,61 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       applying = false;
     });
     await persist();
+  }
+
+  Future<void> continuePractice() async {
+    if (!canWrite || busy || saving || pending || extracting) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    debounce?.cancel();
+    await persist();
+    if (!mounted || !canWrite || saveError != null || conflict) return;
+    final currentRevision = photo?['revision'] as int?;
+    if (currentRevision == null || photo?['confirmed'] != true) return;
+    final existing = data?['practice'] as Map?;
+    if (existing != null && practiceKey == null) {
+      context.go(
+        existing['kind'] == 'unit'
+            ? '/unit/${existing['id']}'
+            : '/learning-preparation/${widget.childId}/${existing['id']}',
+      );
+      return;
+    }
+    if (practiceRevision != currentRevision) {
+      practiceKey = null;
+      practiceRevision = currentRevision;
+    }
+    practiceKey ??= homeworkKey();
+    setState(() {
+      busy = true;
+      practiceError = null;
+    });
+    try {
+      final result = await widget.state.api.post(
+        '$path/practice',
+        {'source_revision': currentRevision},
+        {'Idempotency-Key': practiceKey!},
+      );
+      if (!mounted || !canWrite || photo?['revision'] != currentRevision) {
+        return;
+      }
+      practiceKey = null;
+      context.go(
+        result['kind'] == 'unit'
+            ? '/unit/${result['id']}'
+            : '/learning-preparation/${widget.childId}/${result['id']}',
+      );
+    } catch (e) {
+      if (mounted && own) {
+        setState(() {
+          practiceError = e.toString();
+          if (e is ApiError && e.status >= 400 && e.status < 500) {
+            practiceKey = null;
+          }
+        });
+      }
+    } finally {
+      if (mounted && own) setState(() => busy = false);
+    }
   }
 
   Widget replyCard(Json turn) {
@@ -955,6 +1017,47 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                 Notice(
                   'Auf dem Foto sind noch weitere Aufgaben. Fotografiere den übrigen Teil näher, wenn du damit weitermachen möchtest.',
                 ),
+              if (canWrite &&
+                  ((tasks.isNotEmpty && completed == tasks.length) ||
+                      data?['practice'] != null ||
+                      practiceKey != null)) ...[
+                SizedBox(height: 16),
+                Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '3 · Selbst prüfen',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        data?['practice'] != null
+                            ? 'Deine gespeicherte Lernrunde zu diesem Foto bleibt erreichbar. Deine Häkchen sind weiterhin nur eine Checkliste.'
+                            : 'Prüfe mit neuen Aufgaben zu diesem Foto, was du verstanden hast. Deine Häkchen sind weiterhin nur eine Checkliste.',
+                      ),
+                      SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: !busy && !saving && !pending && !extracting
+                            ? continuePractice
+                            : null,
+                        icon: Icon(Icons.psychology_alt_outlined),
+                        label: Text(
+                          practiceKey != null
+                              ? 'Vorbereitung abgleichen'
+                              : data?['practice']?['kind'] == 'unit'
+                              ? 'Lernrunde fortsetzen'
+                              : data?['practice']?['kind'] == 'job'
+                              ? 'Zur Vorbereitung'
+                              : 'Mit neuen Aufgaben prüfen',
+                        ),
+                      ),
+                      if (practiceError != null)
+                        Notice(practiceError!, warning: true),
+                    ],
+                  ),
+                ),
+              ],
               SizedBox(height: 16),
               if (selected != null)
                 Panel(

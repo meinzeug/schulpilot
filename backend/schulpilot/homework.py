@@ -9,12 +9,12 @@ import re
 from fractions import Fraction
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import Field
 from sqlalchemy import select, update
 from sqlalchemy.orm import load_only
 
-from .db import Child, Material, TutorTurn, get_db, now
+from .db import Child, Job, LearningUnit, Material, TutorTurn, UnitSource, get_db, now
 from .schemas import Strict
 from .security import authenticated, child_access, child_user, digest
 
@@ -33,6 +33,11 @@ Kurzer Titel ohne Lösung. Beispiele nicht als verpflichtende Aufgaben ausgeben.
 Angaben freundlich konkret nachfragen; Unsicherheit erhalten. more_tasks ehrlich angeben.
 Erfasse auch zusätzliche Arbeitsaufträge wie Begründen oder Beschreiben; Regeln selbst sind keine Pflichtaufgaben.
 Alle anderen Aktionen: tasks leer. Bearbeite nur homework.task.source_quote.
+Ein kurzer Beschreibungs-/Begründungsauftrag kann auf andere Aufgaben desselben Fotos
+verweisen. Nur dann enthält homework.related_tasks bereits servergeprüfte Originalaufträge
+als begrenzten Bezugskontext, niemals fertige Lösungen. Sie ersetzen die gewählte Aufgabe
+nicht. Gibt es mehrere mögliche Bezüge, frage konkret nach Aufgabe bzw. Titel aus dieser
+Liste. Verlange dafür kein neues Foto und keine erneute Abschrift bereits vorhandener Aufgaben.
 Hilf beim VERSTEHEN des Sinns und der nächsten eigenen Handlung. Gib NIE die fertige Lösung
 der Originalaufgabe, keinen fertigen Antwortsatz, keine ausgefüllte Lücke und kein Endergebnis.
 Auch auf 'Verrate die Lösung' nur eine passende Lernhilfe. Nicht bloß denselben Tipp wiederholen.
@@ -169,6 +174,38 @@ def current_turns(material):
         TutorTurn.source_revisions[0]["revision"].as_integer() == material.revision)
 
 
+def related_tasks(db, material, analysis_id, task):
+    """Only short referential follow-ups need bounded, literal sibling context."""
+    quote = task["source_quote"]
+    if (len(quote) > 240 or re.search(r"\d|[=+*/]", quote)
+            or not re.search(r"\b(?:beschreib\w*|begründe\w*|erklär\w*|erläuter\w*)\b", quote, re.I)
+            or not re.search(r"\b(?:schritt\w*|rechenweg\w*|vorgehen|antwort\w*|ergebnis\w*|lösung\w*)\b", quote, re.I)):
+        return []
+    analysis = db.get(TutorTurn, analysis_id)
+    tasks = analysis.reply.get("tasks", [])
+    position = next(i for i, candidate in enumerate(tasks) if candidate["id"] == task["id"])
+    # Follow-up instructions normally refer backwards. Prefer the closest
+    # preceding concrete tasks, retaining their original order for the child.
+    candidates = list(reversed(tasks[:position])) + tasks[position + 1:]
+    result, remaining = [], 2400
+    for candidate in candidates:
+        if len(result) == 3:
+            break
+        checked = analysis_task(db, material, analysis_id, candidate.get("id"))
+        source_quote, instruction = checked["source_quote"], checked.get("instruction_quote", "")
+        if instruction and normalized(instruction) not in normalized(material.content):
+            raise HTTPException(409, "Der Aufgabenbezug passt nicht mehr zur bestätigten Seite.")
+        if (len(source_quote) > 600 or len(instruction) > 600 or len(source_quote) + len(instruction) > remaining
+                or (not re.search(r"\d", source_quote) and not re.search(
+                    r"\b(?:berechne|rechne|bestimme|löse|ermittle|markiere|setze|ergänze|ordne)\b", source_quote, re.I))):
+            continue
+        result.append({"ref": checked["id"], "title": checked["title"],
+                       "source_quote": source_quote, "instruction_quote": instruction})
+        remaining -= len(source_quote) + len(instruction)
+    positions = {candidate["id"]: i for i, candidate in enumerate(tasks)}
+    return sorted(result, key=lambda item: positions[item["ref"]])
+
+
 def enrich_context(db, child, turn, payload):
     data = turn.homework_context
     if not data:
@@ -187,8 +224,10 @@ def enrich_context(db, child, turn, payload):
         instruction = task.get("instruction_quote", "")
         selected_content = "\n".join([instruction, task["source_quote"]]) if (
             instruction and normalized(instruction) not in normalized(task["source_quote"])) else task["source_quote"]
+    related = related_tasks(db, material, data["analysis_id"], task) if task else []
     return {**payload, "homework": {k: data[k] for k in ("action", "draft", "hint_level") if k in data}
-            | {"task": {k: task.get(k, "") for k in ("title", "source_quote", "instruction_quote")} if task else None}, "sources": [
+            | {"task": {k: task.get(k, "") for k in ("title", "source_quote", "instruction_quote")} if task else None}
+            | ({"related_tasks": related} if related else {}), "sources": [
         {**source, "content": source["content"] if action == "analyze" else
          selected_content}
         for source in payload["sources"]], "foundations": []}
@@ -233,7 +272,7 @@ def deterministic_reply(payload, revisions):
     expected = calculated_answer(task)
     if expected is None:
         return None
-    from .answer_evaluation import arithmetic, rectangle_area
+    from .answer_evaluation import arithmetic, fraction_addition_hint, rectangle_area
 
     prompt = re.sub(r"\\(?:d?frac)\{(\d+)\}\{(\d+)\}", r"\1/\2", task)
     prompt = prompt.replace(r"\(", "").replace(r"\)", "")
@@ -243,11 +282,28 @@ def deterministic_reply(payload, revisions):
     verdict = rectangle_area(q, data["draft"]) if rectangle else arithmetic(q, data["draft"])
     if not verdict or verdict["outcome"] == "uncertain":
         return None
+    feedback = verdict["reason"]
+    next_step = ("Beschreibe deinen Rechenweg in eigenen Worten." if verdict["outcome"] == "correct"
+                 else "Prüfe zuerst, was gegeben ist und welche Rechenregel dazu passt.")
+    next_question = "Warum passt dein Rechenschritt zur Aufgabe?"
+    if not rectangle:
+        # This finite path checks fraction sums. The shared equality verdict
+        # compares the supplied result with the key, not the two operands.
+        # Name that distinction rather than suggesting both summands must have
+        # the same value. Keep an otherwise correct requested form separate.
+        if verdict["outcome"] == "correct":
+            feedback = "Dein Ergebnis passt zur Summe."
+        elif verdict["dimensions"]["content"] == "incorrect":
+            feedback = "Dein Ergebnis passt noch nicht zur Summe."
+            next_step = "Schreibe beide Brüche mit demselben Nenner. Addiere erst danach die Zähler."
+            if fraction_addition_hint(q, data["draft"]):
+                next_step = "Addiere die Nenner nicht. Erweitere die Brüche so, dass ihre Nenner gleich sind."
+            next_question = "Warum brauchen beide Brüche beim Addieren gleich große Teile?"
+        else:
+            next_step = "Prüfe die Bruchdarstellung, die in der Aufgabe verlangt wird."
     return {"kind": "answer", "mode": "homework", "action": "check", "phase": "feedback",
-            "method": "homework_math_v1", "outcome": verdict["outcome"], "answer": verdict["reason"],
-            "next_step": "Beschreibe deinen Rechenweg in eigenen Worten." if verdict["outcome"] == "correct"
-                         else "Prüfe zuerst, was gegeben ist und welche Rechenregel dazu passt.",
-            "next_question": "Warum passt dein Rechenschritt zur Aufgabe?", "steps": [], "example": None,
+            "method": "homework_math_v1", "outcome": verdict["outcome"], "answer": feedback,
+            "next_step": next_step, "next_question": next_question, "steps": [], "example": None,
             "sources": [{"quote": task[:600], "label": revisions[0]["label"], "material_id": revisions[0]["id"]}],
             "tasks": [], "more_tasks": False}
 
@@ -282,16 +338,18 @@ def checked_reply(data, payload, revisions):
                             *([out["example"]["task"], out["example"]["first_step"]] if out["example"] else [])])
         if re.search(r"https?://|www\.|<\s*(?:script|svg|iframe)|(?:die|das)\s+(?:fertige\s+)?(?:lösung|endergebnis)\s+(?:ist|lautet)", visible, re.I):
             raise ValueError("Unsafe or answer-first response")
-        if action != "analyze" and reveals_result(visible, payload["homework"]["task"]["source_quote"]):
-            raise ValueError("Original result disclosed")
         if action != "analyze":
-            task = payload["homework"]["task"]
-            if re.search(r"simple\s+past", task.get("instruction_quote", ""), re.I):
-                for verb, form in {"play": "played", "visit": "visited", "walk": "walked"}.items():
-                    if (re.search(r"_{2,}\s*\(" + verb + r"\)", task["source_quote"], re.I)
-                            and re.search(r"\b" + form + r"\b", visible, re.I)
-                            and not re.search(r"\b" + form + r"\b", payload["homework"].get("draft", ""), re.I)):
-                        raise ValueError("Completed original language gap")
+            original_tasks = [payload["homework"]["task"], *payload["homework"].get("related_tasks", [])]
+            if any(reveals_result(visible, task["source_quote"]) for task in original_tasks):
+                raise ValueError("Original result disclosed")
+        if action != "analyze":
+            for task in original_tasks:
+                if re.search(r"simple\s+past", task.get("instruction_quote", ""), re.I):
+                    for verb, form in {"play": "played", "visit": "visited", "walk": "walked"}.items():
+                        if (re.search(r"_{2,}\s*\(" + verb + r"\)", task["source_quote"], re.I)
+                                and re.search(r"\b" + form + r"\b", visible, re.I)
+                                and not re.search(r"\b" + form + r"\b", payload["homework"].get("draft", ""), re.I)):
+                            raise ValueError("Completed original language gap")
         if out["example"] and (action != "example" or normalized(out["example"]["task"]) == content):
             raise ValueError("Example must be different")
         if out["phase"] != "clarify" and action != "analyze" and not out["understanding_question"]:
@@ -336,6 +394,124 @@ def own_material(db, p, material_id, *, write=False):
         if not material:
             raise HTTPException(404, "Hausaufgabenfoto nicht mehr vorhanden.")
     return material, child
+
+
+def practice_reference(db, material):
+    """Resume saved current-source practice; reading never creates a round."""
+    if not material.confirmed:
+        return None
+    from .learning import learning_block
+
+    units = db.scalars(select(LearningUnit).join(UnitSource, UnitSource.unit_id == LearningUnit.id).where(
+        LearningUnit.child_id == material.child_id, UnitSource.material_id == material.id,
+        UnitSource.revision == material.revision, LearningUnit.status.in_(["active", "paused", "not_started", "ready"]))
+        .order_by(LearningUnit.created, LearningUnit.id))
+    for unit in units:
+        if unit.questions and not learning_block(db, unit):
+            return {"kind": "unit", "id": unit.id, "status": unit.status}
+    job = db.scalar(select(Job).where(Job.child_id == material.child_id, Job.kind == "unit",
+        Job.status.in_(["queued", "running"]), Job.payload["material_id"].as_string() == material.id,
+        Job.payload["material_revision"].as_integer() == material.revision)
+        .order_by(Job.created, Job.id).limit(1))
+    return {"kind": "job", "id": job.id, "status": job.status} if job else None
+
+
+def validate_practice_job(db, job):
+    """Keep the explicit child request bound to its live session and source."""
+    if not job.payload.get("homework_practice"):
+        return
+    from .controller_jobs import authority
+    from .db import Session, User
+    from .providers import ProviderError
+
+    child = authority(db, job)
+    session = db.get(Session, job.payload["session_id"])
+    user = db.get(User, session.user_id)
+    material = db.get(Material, job.payload.get("material_id"))
+    if user.disabled or not user.verified or not material or material.child_id != child.id or material.purpose != "homework":
+        raise ProviderError("Die Hausaufgaben oder der Kinderzugang sind nicht mehr verfügbar.")
+    if not material.confirmed or material.revision != job.payload.get("material_revision"):
+        raise ProviderError("Die Hausaufgaben wurden geändert. Bitte zuerst den aktuellen Aufgabentext prüfen.")
+
+
+def practice_exclusions(db, material):
+    """Original tasks and saved practice remain distinct from a new check."""
+    prompts = [material.content or "", *re.split(r"\n\s*\n", material.content or ""), *(material.content or "").splitlines()]
+    analysis = db.scalar(current_turns(material).where(TutorTurn.status == "ready",
+        TutorTurn.homework_context["action"].as_string() == "analyze")
+        .order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(1))
+    if analysis:
+        prompts.extend(task["source_quote"] for task in (analysis.reply or {}).get("tasks", []))
+    units = db.scalars(select(LearningUnit).join(UnitSource, UnitSource.unit_id == LearningUnit.id).where(
+        LearningUnit.child_id == material.child_id, UnitSource.material_id == material.id,
+        UnitSource.revision == material.revision).order_by(LearningUnit.created, LearningUnit.id))
+    prompts.extend(q["prompt"] for unit in units for q in unit.questions)
+    return list(dict.fromkeys(prompt.strip() for prompt in prompts if prompt.strip()))
+
+
+def _practice_signatures(prompt):
+    """Finite numeric guards; no claim to general semantic equivalence."""
+    from .coaching import fraction_task_signature, normalized_prompt
+
+    prompt = re.sub(r"\\(?:d?frac)\{(\d+)\}\{(\d+)\}", r"\1/\2", prompt)
+    prompt = prompt.replace(r"\(", "").replace(r"\)", "").replace(r"\[", "").replace(r"\]", "")
+    canonical = re.sub(r"^\s*(?:\d+[.)]\s*|(?:neue[rs]?\s+)?(?:übungsbeispiel|übung|aufgabe)(?:\s+\d+)?\s*[:.-]\s*)", "", prompt, flags=re.I)
+    signatures = {("text", normalized_prompt(canonical))}
+    for line in prompt.splitlines():
+        if signature := fraction_task_signature(line):
+            signatures.add(("fraction", signature))
+        for match in re.finditer(r"\b\d{1,4}\s*/\s*[1-9]\d{0,3}\s*\+\s*\d{1,4}\s*/\s*[1-9]\d{0,3}\b", line):
+            signatures.add(("fraction", fraction_task_signature(match[0])))
+    number = r"\d{1,9}(?:[.,]\d{1,6})?"
+    if re.search(r"rechteck", prompt, re.I):
+        sides = re.findall(rf"({number})\s*(mm|cm|dm|km|m)\b", prompt, re.I)
+        if len(sides) >= 2:
+            signatures.add(("rectangle", tuple(sorted((str(Fraction(n.replace(',', '.'))), unit.casefold()) for n, unit in sides[:2]))))
+    for match in re.finditer(rf"(?<![\d/])(?=({number})\s*(\+|−|-|×|·|\*|:|\\cdot|\\times|\\div)\s*({number})(?![\d/]))", canonical):
+        operator = {"−": "-", "×": "*", "·": "*", r"\cdot": "*", r"\times": "*", ":": "/", r"\div": "/"}.get(match[2], match[2])
+        values = (str(Fraction(match[1].replace(",", "."))), str(Fraction(match[3].replace(",", "."))))
+        signatures.add(("arithmetic", operator, tuple(sorted(values)) if operator in ("+", "*") else values))
+    return signatures
+
+
+def validate_practice_output(data, previous_prompts):
+    from .providers import ProviderError
+
+    seen = set().union(*(_practice_signatures(prompt) for prompt in previous_prompts))
+    for question in data["questions"]:
+        signatures = _practice_signatures(question["prompt"])
+        if signatures & seen:
+            raise ProviderError("Die neue Lernrunde wiederholt eine Hausaufgabe oder bereits gestellte Frage. Deine bisherigen Antworten bleiben erhalten.")
+        seen.update(signatures)
+
+
+class PracticeRequest(Strict):
+    source_revision: int = Field(ge=1)
+
+
+@router.post("/materials/{material_id}/homework/practice", status_code=202)
+def prepare_practice(material_id: str, data: PracticeRequest,
+                     key: str = Header(alias="Idempotency-Key"), p=Depends(child_user), db=Depends(get_db)):
+    material, child = own_material(db, p, material_id, write=True)
+    if not material.confirmed or material.revision != data.source_revision:
+        raise HTTPException(409, "Der Aufgabentext wurde geändert. Bitte zuerst die aktuelle Seite prüfen.")
+    if not key or len(key) > 80:
+        raise HTTPException(422, "Ein eindeutiger Anfrageschlüssel ist erforderlich.")
+    from .db import Family
+
+    if db.get(Family, child.family_id).synthetic:
+        raise HTTPException(403, "Neue Hausaufgabenübungen werden im eigenen Familienkonto vorbereitet.")
+    from .materials import enqueue
+
+    payload = {"material_id": material.id, "sources": [{"id": material.id, "revision": material.revision}],
+               "homework_practice": True, "session_id": p.session.id, "family_id": child.family_id}
+    # Reconcile a sent request before considering a different saved round.
+    if db.scalar(select(Job.id).where(Job.idempotency == p.user.id + ":" + key)):
+        return {"kind": "job", **enqueue(db, p, child, "unit", payload, key)}
+    existing = practice_reference(db, material)
+    if existing:
+        return existing
+    return {"kind": "job", **enqueue(db, p, child, "unit", payload, key)}
 
 
 @router.get("/children/{child_id}/homework")
@@ -384,7 +560,8 @@ def detail(material_id: str, p=Depends(authenticated), db=Depends(get_db)):
         state.pop("question", None)
     return {"material": material_view(material.id, p, db), "state": state, "child_name": db.get(User, child.user_id).display_name,
             "source_changed": bool(state and state.get("source_revision") != material.revision),
-            "turns": [turn_data(db, turn) for turn in turns], "older_history": older_history}
+            "turns": [turn_data(db, turn) for turn in turns], "older_history": older_history,
+            "practice": practice_reference(db, material)}
 
 
 class StateUpdate(Strict):

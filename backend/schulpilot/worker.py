@@ -123,6 +123,9 @@ def process(job_id):
             from .material_actions import validate_reprocess_job
 
             validate_reprocess_job(db, job)
+            from .homework import validate_practice_job
+
+            validate_practice_job(db, job)
             child = db.get(Child, job.child_id)
             family = db.get(Family, child.family_id)
             if family.expires and family.expires < now():
@@ -252,6 +255,11 @@ def process(job_id):
                     f"Heftseite {m.page_number or i + 1}:\n{m.content}" for i, m in enumerate(source_pages)
                 )
                 payload["material"]["uncertainties"] = [warning for m in source_pages for warning in m.uncertainties]
+            if job.kind == "unit" and job.payload.get("homework_practice"):
+                from .homework import practice_exclusions
+
+                payload.update(homework_practice=True, required_subject=material.subject, required_topic=material.topic,
+                               previous_prompts=[prompt[:1600] for prompt in practice_exclusions(db, material)[-24:]])
             if job.kind == "unit" and job.payload.get("review_of"):
                 from .coaching import focus_ids, goals_for, root_and_units
 
@@ -311,6 +319,9 @@ def process(job_id):
             from .material_actions import validate_reprocess_job
 
             validate_reprocess_job(db, job)
+            from .homework import validate_practice_job
+
+            validate_practice_job(db, job)
             material = db.get(Material, job.payload["material_id"]) if job.payload.get("material_id") else None
             assignment = db.get(Assignment, job.payload["assignment_id"]) if job.payload.get("assignment_id") else None
             if job.payload.get("material_id") and (
@@ -364,6 +375,12 @@ def process(job_id):
                     from .coaching import validate_new_round
 
                     validate_new_round(db, db.get(LearningUnit, job.payload["review_of"]), data)
+                if job.payload.get("homework_practice"):
+                    from .homework import practice_exclusions, validate_practice_output
+
+                    if data["subject"].casefold() != material.subject.casefold() or data["topic"].casefold() != material.topic.casefold():
+                        raise ProviderError("Die neue Lernrunde weicht vom bestätigten Hausaufgabenstoff ab.")
+                    validate_practice_output(data, practice_exclusions(db, material))
                 goal = (
                     db.get(Assignment, job.payload.get("assignment_id")) if job.payload.get("assignment_id") else None
                 )

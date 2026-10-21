@@ -101,6 +101,16 @@ Future<GoRouter> open(
         builder: (_, s) =>
             HomeworkDetailScreen(state, childId: 'child', materialId: 'photo'),
       ),
+      GoRoute(
+        path: '/learning-preparation/child/:jobId',
+        builder: (_, s) =>
+            Text('Gespeicherte Vorbereitung ${s.pathParameters['jobId']}'),
+      ),
+      GoRoute(
+        path: '/unit/:unitId',
+        builder: (_, s) =>
+            Text('Gespeicherte Lernrunde ${s.pathParameters['unitId']}'),
+      ),
     ],
   );
   await tester.pumpWidget(
@@ -294,6 +304,16 @@ void main() {
       expect(find.text('Gespeicherten Entwurf laden'), findsOneWidget);
       await tester.pump(Duration(seconds: 4));
       expect(puts, 1);
+      final restore = find.text('Gespeicherten Entwurf laden');
+      await tester.ensureVisible(restore);
+      await tester.tap(restore);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bestätigen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gespeicherten Entwurf laden'), findsNothing);
+      expect(find.textContaining('noch nicht sicher gespeichert'), findsNothing);
+      expect(find.text('Mein eigener noch nicht gesendeter Weg'), findsNothing);
+      expect(puts, 1);
       expect(tester.takeException(), isNull);
     },
   );
@@ -450,6 +470,108 @@ void main() {
         find.text('Die Fläche ist der Platz innerhalb des Rechtecks.'),
         findsNothing,
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Finished homework offers one explicit preparation and resumes it without a second POST',
+    (tester) async {
+      final sent = <http.Request>[];
+      final page = fixture();
+      page['state']['done'] = ['t1'];
+      final state = account(
+        MockClient((r) async {
+          if (r.method == 'POST') {
+            sent.add(r);
+            expect(r.url.path, '/api/materials/photo/homework/practice');
+            expect(jsonDecode(r.body), {'source_revision': 2});
+            page['practice'] = {'kind': 'job', 'id': 'job', 'status': 'queued'};
+            return reply(page['practice'], 202);
+          }
+          return reply(
+            r.url.path == '/api/app-release' ? {'available': false} : page,
+          );
+        }),
+      );
+      final router = await open(tester, state, width: 320, scale: 1.3);
+      expect(find.text('1 von 1 selbst abgehakt'), findsOneWidget);
+      expect(find.text('Mit neuen Aufgaben prüfen'), findsOneWidget);
+      expect(sent, isEmpty);
+      await tap(tester, 'Mit neuen Aufgaben prüfen');
+      expect(find.text('Gespeicherte Vorbereitung job'), findsOneWidget);
+      expect(sent, hasLength(1));
+      expect(sent.single.headers['Idempotency-Key'], isNotEmpty);
+      router.go('/homework/child/photo');
+      await tester.pumpAndSettle();
+      await tap(tester, 'Zur Vorbereitung');
+      expect(find.text('Gespeicherte Vorbereitung job'), findsOneWidget);
+      expect(sent, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'A saved open round stays reachable without claiming a new check or starting AI',
+    (tester) async {
+      final page = fixture();
+      page['practice'] = {
+        'kind': 'unit',
+        'id': 'practice-unit',
+        'status': 'paused',
+      };
+      final state = account(
+        MockClient((r) async {
+          expect(r.method, 'GET');
+          return reply(
+            r.url.path == '/api/app-release' ? {'available': false} : page,
+          );
+        }),
+      );
+      await open(tester, state);
+      expect(find.text('Mit neuen Aufgaben prüfen'), findsNothing);
+      expect(
+        find.textContaining('Deine gespeicherte Lernrunde'),
+        findsOneWidget,
+      );
+      await tap(tester, 'Lernrunde fortsetzen');
+      expect(find.text('Gespeicherte Lernrunde practice-unit'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Uncertain preparation transport only retries with the same key after another click',
+    (tester) async {
+      final sent = <http.Request>[];
+      final page = fixture();
+      page['state']['done'] = ['t1'];
+      final state = account(
+        MockClient((r) async {
+          if (r.method == 'POST') {
+            sent.add(r);
+            if (sent.length == 1) {
+              return reply({'detail': 'Verbindung unterbrochen'}, 500);
+            }
+            return reply({'kind': 'job', 'id': 'job', 'status': 'queued'}, 202);
+          }
+          return reply(
+            r.url.path == '/api/app-release' ? {'available': false} : page,
+          );
+        }),
+      );
+      await open(tester, state);
+      await tap(tester, 'Mit neuen Aufgaben prüfen');
+      expect(find.text('Vorbereitung abgleichen'), findsOneWidget);
+      await tester.pump(Duration(seconds: 6));
+      expect(sent, hasLength(1));
+      await tap(tester, 'Vorbereitung abgleichen');
+      expect(sent, hasLength(2));
+      expect(
+        sent[1].headers['Idempotency-Key'],
+        sent[0].headers['Idempotency-Key'],
+      );
+      expect(find.text('Gespeicherte Vorbereitung job'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

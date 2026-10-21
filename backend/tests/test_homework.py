@@ -6,7 +6,8 @@ import uuid
 
 import pytest
 from schulpilot import homework
-from schulpilot.db import DB, Activity, Attempt, Job, Material, TutorTurn, Usage
+from schulpilot.db import DB, Activity, Attempt, Job, LearningUnit, Material, Session, TutorTurn, UnitSource, Usage
+from schulpilot.providers import Result
 from schulpilot.worker import claim, process
 from sqlalchemy import func, select
 from test_tutor import notebook as _notebook
@@ -113,6 +114,181 @@ def test_complete_source_scaffold_draft_resume_and_explicit_check_without_master
     with DB() as db:
         assert not db.get(Material, book["material_id"]).homework_state["drafts"]
         assert not db.get(Material, book["material_id"]).homework_state["question"]
+
+
+def practice(book, *, key=None, source_revision=None, client=None):
+    if source_revision is None:
+        with DB() as db:
+            source_revision = db.get(Material, book["material_id"]).revision
+    return (client or book["client"]).post(f"/api/materials/{book['material_id']}/homework/practice",
+        json={"source_revision": source_revision}, headers={"Idempotency-Key": key or uuid.uuid4().hex})
+
+
+def practice_unit():
+    return {"subject": "Mathematik", "topic": "Flächen", "explanation": "Die Fläche beschreibt die Größe der Innenfläche.",
+        "questions": [{"id": f"q{i}", "type": "short", "prompt": f"Ein Rechteck ist {a} cm lang und {b} cm breit. Wie groß ist seine Fläche in cm²?",
+            "options": [], "answer": str(a * b), "accepted": [], "hints": ["Multipliziere die Seitenlängen."],
+            "explanation": f"Die Fläche beträgt {a * b} cm²."} for i, (a, b) in enumerate(((6, 3), (8, 5)), 1)]}
+
+
+def test_homework_practice_is_explicit_idempotent_single_source_and_resumable(book, monkeypatch):
+    from schulpilot import worker
+
+    prepare(book)
+    with DB.begin() as db:
+        original = db.get(Material, book["material_id"])
+        db.add(Material(child_id=original.child_id, school_day_id=original.school_day_id, page_number=2, title="Künstliche zweite Seite",
+            subject=original.subject, topic="Andere Hausaufgaben", content="Anderes bestätigtes Material.",
+            confirmed=True, status="confirmed"))
+    assert detail(book)["practice"] is None
+    assert detail(book)["practice"] is None
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+    key = uuid.uuid4().hex
+    first = practice(book, key=key)
+    assert first.status_code == 202, first.text
+    assert first.json()["kind"] == "job"
+    assert practice(book, key=key).json() == first.json()
+    assert detail(book)["practice"] == first.json()
+    assert practice(book).json() == first.json()
+    calls = []
+
+    def generate(config, function, payload, *args, **kwargs):
+        calls.append(payload)
+        assert function == "unit" and payload["homework_practice"] is True
+        assert "Anderes bestätigtes Material" not in payload["material"]["content"]
+        assert payload["required_subject"] == "Mathematik" and payload["required_topic"] == "Flächen"
+        assert "session_id" not in json.dumps(payload) and book["child"]["id"] not in json.dumps(payload)
+        return Result(practice_unit(), 50, 80, 12)
+
+    monkeypatch.setattr(worker, "request_provider", generate)
+    finish()
+    saved = detail(book)["practice"]
+    assert saved["kind"] == "unit" and saved["status"] == "not_started"
+    assert practice(book).json() == saved
+    assert practice(book, key=key).json()["id"] == first.json()["id"]
+    with DB() as db:
+        unit = db.get(LearningUnit, saved["id"])
+        assert unit.introduction_seen is False and unit.active_seconds == 0
+        refs = list(db.scalars(select(UnitSource).where(UnitSource.unit_id == unit.id)))
+        assert [(ref.material_id, ref.revision) for ref in refs] == [(book["material_id"], 1)]
+        assert db.scalar(select(func.count()).select_from(Usage)) == 1
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("damage", ["original", "revision", "revoked", "subject"])
+def test_homework_practice_rejects_repetition_stale_sources_or_revocation(book, monkeypatch, damage):
+    from schulpilot import worker
+
+    prepare(book)
+    response = practice(book)
+    assert response.status_code == 202, response.text
+
+    def generate(*args, **kwargs):
+        data = practice_unit()
+        if damage == "original":
+            data["questions"][0]["prompt"] = "Neue Übung: Ein Rechteck ist 4 cm lang und 7 cm breit. Berechne seine Fläche."
+        if damage == "subject":
+            data["subject"] = "Physik"
+        with DB.begin() as db:
+            if damage == "revision":
+                db.get(Material, book["material_id"]).revision += 1
+            if damage == "revoked":
+                job = db.get(Job, response.json()["id"])
+                db.get(Session, job.payload["session_id"]).revoked = True
+        return Result(data, 50, 80, 12)
+
+    monkeypatch.setattr(worker, "request_provider", generate)
+    finish()
+    with DB() as db:
+        job = db.get(Job, response.json()["id"])
+        assert job.status == "failed" and job.result is None
+        assert db.scalar(select(func.count()).select_from(LearningUnit)) == 1
+        usage = db.scalar(select(Usage).where(Usage.job_id == job.id))
+        assert usage.cost_micros == 12
+        assert db.scalar(select(func.count()).select_from(Attempt)) == 0
+
+
+def test_homework_practice_rechecks_authority_and_revision_before_any_reservation(api, book):
+    prepare(book)
+    assert practice(book, client=api).status_code == 403
+    assert practice(book, source_revision=999).status_code == 409
+    with DB.begin() as db:
+        db.get(Material, book["material_id"]).confirmed = False
+    assert practice(book).status_code == 409
+    assert detail(book)["practice"] is None
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+def test_homework_practice_only_reuses_an_open_round_from_the_current_source_revision(book):
+    prepare(book)
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, book["unit_id"])
+        unit.subject, unit.topic, unit.questions = "Mathematik", "Flächen", practice_unit()["questions"]
+        unit.status = "paused"
+    saved = detail(book)["practice"]
+    assert saved == {"kind": "unit", "id": book["unit_id"], "status": "paused"}
+    assert practice(book).json() == saved
+    with DB.begin() as db:
+        db.get(Material, book["material_id"]).revision += 1
+    assert detail(book)["practice"] is None
+    assert practice(book, source_revision=1).status_code == 409
+    response = practice(book)
+    assert response.status_code == 202 and response.json()["kind"] == "job"
+    with DB() as db:
+        assert db.get(LearningUnit, book["unit_id"]).status == "paused"
+        assert db.scalar(select(func.count()).select_from(Usage)) == 1
+
+
+@pytest.mark.parametrize("original,new", [
+    ("Berechne 1/3 + 1/6.", r"Neue Übung: Berechne \(\frac{1}{6}+\frac{1}{3}\)."),
+    ("Aufgabe 1: 47 + 26", "Berechne 26 + 47."),
+    ("Was ist ein Stern?", "Neue Aufgabe: Was ist ein Stern?"),
+    (TEXT, "Ein Rechteck ist 4 cm lang und 7 cm breit. Berechne seine Fläche."),
+])
+def test_homework_new_practice_rejects_original_signatures(original, new):
+    from schulpilot.providers import ProviderError
+
+    with pytest.raises(ProviderError, match="wiederholt"):
+        homework.validate_practice_output({"questions": [{"prompt": new}]}, [original])
+    homework.validate_practice_output({"questions": [{"prompt": "Berechne 1/4 + 1/8."}]}, [original])
+
+
+def test_homework_practice_prompt_is_scoped_and_normal_unit_requests_stay_unchanged(book, monkeypatch):
+    import httpx
+    from schulpilot import providers
+    from schulpilot.db import ProviderConfig
+
+    calls = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, url, headers, json):
+            calls.append(json)
+            return httpx.Response(200, json={"status": "completed", "output": [{"type": "message",
+                "content": [{"type": "output_text", "text": __import__("json").dumps(practice_unit())}]}],
+                "usage": {"input_tokens": 50, "output_tokens": 80}})
+
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+    payload = {"material": {"subject": "Mathematik", "topic": "Flächen", "content": TEXT}}
+    providers.request_provider(config, "unit", payload)
+    providers.request_provider(config, "unit", {**payload, "homework_practice": True,
+        "required_subject": "Mathematik", "required_topic": "Flächen", "previous_prompts": [TEXT]})
+    assert "Neue Anwendung nach bearbeiteten Hausaufgaben" not in calls[0]["instructions"]
+    assert "Neue Anwendung nach bearbeiteten Hausaufgaben" in calls[1]["instructions"]
+    assert "andere Zahlen" in calls[1]["instructions"]
 
 
 @pytest.mark.parametrize("action", ["explain", "hint", "plan", "example", "check", "question"])

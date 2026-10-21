@@ -1,3 +1,11 @@
+Künstlicher Nachmittag21.10.2026, Version1.18.0+74: eigene Hausaufgaben-/
+Lernrunden-/Jobwege. Ein bewusster Anschluss aus genau einer bestätigten Fotoquelle
+verwendet normale Reservierung und gespeicherte Vorbereitung. Endliche Prüfungen
+bekannter Originalfragen/Zahlenterme vor Speicherung; keine allgemeine semantische
+Äquivalenzgarantie. Regelbasierter Bruchcheck erklärt Ergebnisabweichung ohne
+Originalergebnis. Keine neuen Pakete, Dienste oder Providerfreigaben; Liveprobe
+und tatsächliche Kosten in STATUS.md.
+
 Erneute Eltern-/Kinderprüfung21.10.2026, Version1.17.3+73: eigene bestehende
 Quellen-, Lernplan-, Tutor- und Gerätezustände; keine neuen Pakete, Dienste,
 Modellprompts oder erhöhten Kontingente. Revisionsgebundene Hausaufgaben-Caches

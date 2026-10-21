@@ -1161,6 +1161,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         instructions += "\nSpätere Abrufprobe: Verwende neue Aufgaben, keine Frage aus previous_prompts. Übernimm required_subject und required_topic exakt."
         if payload.get("learning_goals"):
             instructions += " Bediene focus_goal_ids aus den gespeicherten learning_goals. Ordne jede Aufgabe dem passenden learning_goal_id zu; Lernziele unverändert erhalten."
+    if function == "unit" and payload.get("homework_practice"):
+        instructions += (
+            "\nNeue Anwendung nach bearbeiteten Hausaufgaben: Übernimm required_subject und required_topic exakt. "
+            "Die Aufgaben im material und previous_prompts wurden bereits bearbeitet oder erklärt und sind KEINE neuen Prüfaufgaben. "
+            "Erzeuge ausschließlich neue, ausdrücklich selbst erzeugte Übungen zur selben bestätigten Grundidee. "
+            "In Mathematik müssen andere Zahlen bzw. Größen verwendet werden; bloßes Umformulieren genügt nicht. "
+            "Auch ein gelöstes Erklärungsbeispiel verwendet andere Daten als die Originalhausaufgabe und als die neuen Prüfaufgaben. "
+            "Verlange nur im Material belegte Verfahren und Voraussetzungen. Keine höhere Schwierigkeit oder neuen Themen. "
+            "Die ursprünglichen Aufgaben und ihre Ergebnisse gehören nicht in diese Lernrunde."
+        )
     if function in ("unit", "package") and not payload.get("review"):
         instructions += (
             "\nPädagogischer Ablauf: Erkläre genau den bestätigten Stoff in kleinen, altersgerechten Schritten. "

@@ -116,6 +116,46 @@ Abhaken führt „Nächste offene Aufgabe“ auf ausdrücklichen Klick weiter, o
 neuen Modellaufruf. Hilfen einer früheren Aufgabenanalyse erscheinen nicht als
 aktuelle Rückmeldung zur korrigierten Aufgabe.
 
+Kurze Bezugssätze wie „Beschreibe deinen ersten Schritt“ erhalten höchstens drei
+servergeprüfte Originalaufträge derselben aktuellen Analyse als Kontext (je
+Zitat/Regel höchstens600 Zeichen, insgesamt2400). Bei mehreren möglichen Bezügen
+soll die Hilfe nach der vorhandenen Aufgabennummer fragen. Prüfungen gegen
+bekannte Originalergebnisse und ausgefüllte Sprachlücken umfassen auch diesen
+Kontext; er enthält keine fertigen Lösungen oder zusätzliche Fotos.
+
+## Nach den Hausaufgaben selbst prüfen
+
+Sind die Aufgaben der aktuellen Übersicht selbst abgehakt, bietet die Arbeitsseite
+„Mit neuen Aufgaben prüfen“ an. Ein vorhandener offener Lernversuch oder laufender
+Vorbereitungsauftrag derselben aktuellen Quelle bleibt auch davor erreichbar und
+wird ausdrücklich als gespeicherte Runde beziehungsweise Vorbereitung beschriftet.
+Das Anzeigen oder Wiederöffnen erzeugt keine neue Runde.
+
+`POST /materials/{id}/homework/practice` ist eine eigene bewusste Kinderaktion mit
+`source_revision` und Idempotenzschlüssel. Der Adapter übernimmt eine vorhandene
+passende offene Runde oder Vorbereitung; sonst reserviert er über das bestehende
+`materials.enqueue` genau einen normalen `unit`-Auftrag. Gebunden wird ausschließlich
+dieses bestätigte Foto, keine anderen gleichfachlichen Tagesseiten. Danach verwendet
+der Client die bestehende reine GET-Statusseite und den regulären Aufgabenraum.
+Bei unbekanntem Transportergebnis ist ein ausdrücklicher Abgleich mit demselben
+Schlüssel möglich. Weder Seitenaufruf noch Polling wiederholt eine Generierung.
+
+Der optionale `homework_practice`-Auftrag verlangt neue Aufgaben zu derselben
+Grundidee und andere Zahlen beziehungsweise Größen. Originalaufgaben und bereits
+erzeugte Fragen dienen nur als Wiederholungsverbote. Die lokale Ausgabeprüfung
+verwirft identische normalisierte Fragen und bekannte numerische Wiederholungen:
+Bruchaddition, belegte Bruchoperationen, Zweizahlterme und gleiche Rechteckmaße.
+Dies ist eine endliche Sicherung, kein allgemeiner semantischer Nachweis neuer
+Fragen in allen Fächern. Unklare oder abgelehnte Ergebnisse werden nicht durch
+Ersatzfragen oder automatische Modellreparaturen verdeckt.
+
+Der Worker prüft Kinderanmeldung, Familie, Tarif, bestätigte Quellenrevision und
+Providerrevision vor und nach dem Modellaufruf. Abmeldung oder Quellenänderung
+verhindert die Übernahme; bereits angefallener Verbrauch bleibt erhalten.
+Neue Antworten durchlaufen unverändert die reguläre Aufgabenbewertung mit
+selbstständigen, unterstützten und offenen Nachweisen. Ein Hausaufgaben-Häkchen,
+ein Gespräch oder die bloße Vorbereitung wird dabei weiterhin kein Lernbeleg.
+
 Modellmix und ZDR-/Data-Collection-Deny-/Cache-/Upstreamregeln bleiben unverändert.
 Kurze Hilfen nutzen die vorhandene sparsame Tutorroute. Keine automatische Suche,
 keine zusätzlichen Sprach-/Bildanbieter im Produkt. Fotos werden ausschließlich
