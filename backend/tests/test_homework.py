@@ -233,3 +233,78 @@ def test_analysis_instruction_and_language_gap_disclosure_are_validated():
     data["tasks"][0]["instruction_quote"] = "Diese erfundene Anleitung ist nicht im Foto."
     with pytest.raises(ProviderError):
         homework.checked_reply(data, {"homework": {"action": "analyze"}, "sources": [{"content": TEXT}]}, revisions)
+
+
+def test_literal_formula_evidence_survives_index_transport_without_retyping():
+    from schulpilot.providers import strict_schema
+
+    text = "Erweitere beide Brüche.\n\n1) Berechne \\(\\frac{1}{3}+\\frac{1}{6}\\)."
+    schema = strict_schema(homework.HomeworkOutput, preserve_limits=True)
+    payload, candidates = homework.bind_sources(schema, {"sources": [{"content": text}]})
+    assert candidates == payload["homework_source_candidates"]
+    assert all(candidate in text for candidate in candidates)
+    assert "source_quote" not in schema["properties"]
+    assert "source_quote_index" in schema["$defs"]["Task"]["required"]
+    original = output(analyze=True)
+    original["tasks"] = [{"title": "Brüche addieren", "source_quote_index": 1, "instruction_quote_index": 0}]
+    del original["source_quote"]
+    original["source_quote_index"] = None
+    restored = homework.decode_sources(original, candidates)
+    result = homework.checked_reply(restored, {"homework": {"action": "analyze"}, "sources": [{"content": text}]},
+                                    [{"id": "fake", "revision": 1, "label": "Künstlich"}])
+    assert result["tasks"][0]["source_quote"] == candidates[1]
+    for index in [True, -1, len(candidates), "1", None]:
+        bad = {"source_quote_index": None, "tasks": [{"source_quote_index": index, "instruction_quote_index": None}]}
+        with pytest.raises((ValueError, TypeError)):
+            homework.decode_sources(bad, candidates)
+
+
+def test_provider_adapter_decodes_bound_homework_evidence(book, monkeypatch):
+    import httpx
+    from schulpilot import providers
+    from schulpilot.db import ProviderConfig
+
+    calls = []
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def post(self, url, headers, json):
+            calls.append(json)
+            result = output(analyze=True)
+            result["tasks"] = [{"title": "Rechteckfläche", "source_quote_index": 0, "instruction_quote_index": None}]
+            del result["source_quote"]
+            result["source_quote_index"] = 0
+            return httpx.Response(200, json={"status": "completed", "output": [{"type": "message", "content": [
+                {"type": "output_text", "text": __import__("json").dumps(result)}]}],
+                "usage": {"input_tokens": 100, "output_tokens": 100}})
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    with DB() as db:
+        config = db.get(ProviderConfig, 1)
+    result = providers.request_provider(config, "tutor", {"homework": {"action": "analyze"}, "sources": [{"content": TEXT}]})
+    assert result.data["tasks"][0]["source_quote"] == TEXT
+    assert result.data["source_quote"] == TEXT
+    assert "source_quote_index" in calls[0]["text"]["format"]["schema"]["required"]
+
+
+def test_validation_audit_is_static_and_does_not_store_model_text(book, transport):
+    aid = analyze(book, transport)
+    transport["output"] = output(source_quote="Private invented reference must not appear in audit")
+    r = ask(book, "explain", analysis=aid)
+    finish()
+    with DB() as db:
+        turn = db.get(TutorTurn, r.json()["id"])
+        job = db.get(Job, turn.job_id)
+        assert job.error_code == "invalid_output"
+        assert job.result == {"validation_reason": "Unverified quotation"}
+        assert "Private" not in job.error
+
+
+@pytest.mark.parametrize("prefix", ["1\n", "1) ", "1. ", ""])
+def test_standalone_photo_task_number_is_not_a_third_measurement(prefix):
+    reply = homework.deterministic_reply({"homework": {"action": "check", "draft": "28",
+        "task": {"source_quote": prefix + TEXT}}}, [{"id": "fake", "label": "Künstlich"}])
+    assert reply and reply["outcome"] == "correct"

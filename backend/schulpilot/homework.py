@@ -79,6 +79,56 @@ def normalized(value):
     return " ".join(value.split())
 
 
+def bind_sources(schema, payload):
+    """Transport literal evidence by bounded indices, never regenerated LaTeX.
+
+    Candidates are exact slices of the confirmed source. Selecting one is not
+    an instruction that it is homework; that remains the analysis decision.
+    """
+    content = payload["sources"][0]["content"]
+    candidates = []
+    for chunk in [*re.split(r"\n\s*\n", content), *content.splitlines()]:
+        chunk = chunk.strip()
+        for part in [chunk[i:i + 1600] for i in range(0, len(chunk), 1600)]:
+            if len(part) >= 5 and part not in candidates and len(candidates) < 64:
+                candidates.append(part)
+                if len(part) > 600 and len(candidates) < 64:
+                    candidates.append(part[:600])
+    if not candidates:
+        raise ValueError("No source candidates")
+    indices = list(range(len(candidates)))
+
+    def replace(properties, required, field, *, optional):
+        properties.pop(field)
+        allowed = [i for i in indices if len(candidates[i]) <= 600] if optional else indices
+        properties[field + "_index"] = ({"anyOf": [{"type": "integer", "enum": allowed}, {"type": "null"}]}
+                                        if optional else {"type": "integer", "enum": allowed})
+        required[:] = [field + "_index" if key == field else key for key in required]
+
+    replace(schema["properties"], schema["required"], "source_quote", optional=True)
+    task = schema["$defs"]["Task"]
+    replace(task["properties"], task["required"], "source_quote", optional=False)
+    replace(task["properties"], task["required"], "instruction_quote", optional=True)
+    return {**payload, "homework_source_candidates": candidates}, candidates
+
+
+def decode_sources(data, candidates):
+    """Reject foreign IDs, bools and alternative text before canonical validation."""
+    def restore(value, field, *, optional):
+        index = value.pop(field + "_index")
+        if field in value or (index is None and not optional):
+            raise ValueError("Invalid evidence index")
+        if index is not None and (type(index) is not int or not 0 <= index < len(candidates)):
+            raise ValueError("Invalid evidence index")
+        value[field] = "" if index is None else candidates[index]
+
+    restore(data, "source_quote", optional=True)
+    for task in data["tasks"]:
+        restore(task, "source_quote", optional=False)
+        restore(task, "instruction_quote", optional=True)
+    return data
+
+
 def analysis_task(db, material, analysis_id, task_id):
     turn = db.get(TutorTurn, analysis_id) if analysis_id else None
     if (not turn or turn.child_id != material.child_id or turn.material_id != material.id
@@ -155,7 +205,7 @@ def deterministic_reply(payload, revisions):
 
     prompt = re.sub(r"\\(?:d?frac)\{(\d+)\}\{(\d+)\}", r"\1/\2", task)
     prompt = prompt.replace(r"\(", "").replace(r"\)", "")
-    prompt = re.sub(r"^\s*\d+[.)]\s*", "", prompt)
+    prompt = re.sub(r"^\s*\d+(?:[.)]\s*|\s*\n\s*)", "", prompt)
     rectangle = bool(re.search(r"rechteck", prompt, re.I))
     q = {"type": "short", "prompt": prompt, "answer": str(expected) + (" cm²" if rectangle else ""), "accepted": []}
     verdict = rectangle_area(q, data["draft"]) if rectangle else arithmetic(q, data["draft"])
@@ -216,8 +266,15 @@ def checked_reply(data, payload, revisions):
             raise ValueError("Missing understanding check")
         if any(not 1 <= len(s) <= 240 for s in out["steps"]):
             raise ValueError("Oversized plan")
-    except (ValueError, TypeError, KeyError, ZeroDivisionError):
-        raise ProviderError("Diese Hilfe konnte nicht sicher geprüft werden. Dein eigener Versuch bleibt erhalten. Du kannst bewusst eine andere Hilfe wählen.") from None
+    except (ValueError, TypeError, KeyError, ZeroDivisionError) as error:
+        failure = ProviderError("Diese Hilfe konnte nicht sicher geprüft werden. Dein eigener Versuch bleibt erhalten. Du kannst bewusst eine andere Hilfe wählen.", code="invalid_output")
+        # Only fixed rule names, never model output or user content, for audit.
+        known = {"No verified tasks", "Invented or repeated task", "Invented task instruction",
+                 "Solution in task overview", "Unexpected task replacement", "Missing task reference or unexpected feedback",
+                 "Unverified quotation", "Unsafe or answer-first response", "Original result disclosed",
+                 "Completed original language gap", "Example must be different", "Missing understanding check", "Oversized plan"}
+        failure.validation_reason = str(error) if type(error) is ValueError and str(error) in known else "schema"
+        raise failure from None
     source = revisions[0]
     return {"kind": "homework_analysis" if action == "analyze" else "answer", "mode": "homework", "action": action,
             "phase": out["phase"], "answer": out["explanation"], "next_question": out["understanding_question"],

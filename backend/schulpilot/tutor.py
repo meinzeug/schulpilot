@@ -139,7 +139,8 @@ def history_for(db, turn, source_revisions):
             "question": previous.question, "answer": previous.reply["answer"], "kind": previous.reply["kind"],
             **({"next_question": previous.reply["next_question"]} if previous.reply.get("next_question") else {}),
             **({"own_attempt": previous.homework_context.get("draft", ""),
-                "next_step": previous.reply.get("next_step", ""), "steps": previous.reply.get("steps", [])}
+                "next_step": previous.reply.get("next_step", ""), "steps": previous.reply.get("steps", []),
+                **({"example": previous.reply["example"]} if previous.reply.get("example") else {})}
                if previous.homework_context else {}),
         })
         seen.add(previous.id)
@@ -542,6 +543,11 @@ def process(job_id):
             if not job or job.status != "running":
                 return
             job.status, job.finished, job.error = "failed", int(now()), reason[:500]
+            from .job_failures import failure_code
+
+            job.error_code = failure_code(error)
+            if getattr(error, "validation_reason", None):
+                job.result = {"validation_reason": error.validation_reason}
             turn = db.get(TutorTurn, job.payload.get("turn_id"))
             if turn and turn.job_id == job.id:
                 turn.status, turn.error, turn.reply = "failed", reason[:500], None
