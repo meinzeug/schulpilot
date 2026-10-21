@@ -109,3 +109,69 @@ diese fünf Bilder im eigenen zeitlich begrenzten regulären Testhaushalt, mit
 normaler Reservierung und höchstens0,25USD. Nach OCR stoppt der Ablauf für eine
 tatsächliche Textprüfung. Keine künstlichen Antworten im echten Kinderprofil.
 Abschließende Ergebnisse, Kosten, Release und Rückweg im Kopf von `STATUS.md`.
+
+
+## Verifizierte Liveprüfung · 21.10.2026
+
+Produktstand1.16.2+69, Release `20261021T073101Z-56b8849`, Produktcommit
+`56b884926d848908f43cf1176b68a4476ec1f475` (main gepusht).
+Eigener künstlicher regulärer Haushalt, keine Testantwort in einem echten Kinderprofil.
+Alle fünf generierten Fotos wurden über die normale Produktions-API hochgeladen,
+mit OpenRouter tatsächlich erkannt, visuell gegen die vollständigen Transkripte
+geprüft und ausdrücklich bestätigt. Keine OCR-Korrektur erforderlich.
+
+| Foto | Tatsächlich geprüfte Hilfe |
+| --- | --- |
+| Mathematikbuch, Rechteck7cm×4cm | Innenfläche als Einheitsquadrate, Länge×Breite; kein vorgegebenes28 |
+| Handschriftlicher Mathehefter, Bruchaddition | Gleich große Stücke/gemeinsamer Nenner; kein vorgegebenes1/2 |
+| Deutscharbeitsheft, Subjekt/Prädikat | Fragen nach Handelndem und Verb; keine fertig markierten Satzglieder |
+| Englischworkbook, simple past | Zeitbezug und nächste eigene Handlung; keine ausgefüllten Lücken |
+| Physikarbeitsblatt, Dichte | Bedeutung von Masse/Volumen und Formel; kein vorgegebenes3g/cm³ |
+
+Zusätzlich echte Anbieterantworten für drei Hinweisstufen, vierteiligen Arbeitsplan,
+anderes Beispiel5cm×3cm mit bloßem Ansatz, freie Rückfrage, Lösungsverrat-Anweisung
+und Gesprächsfortsetzungen geprüft. Die Umfang-Rückfrage klärt ausdrücklich alle
+vier Seiten und den Unterschied zwischen cm und cm². Ein vierter Hinweis verwendet
+den dritten gespeicherten Schritt ohne weiteren Anbieteraufruf. Eigene Antworten28
+und11 werden lokal korrekt unterschieden, ohne neue Usage oder Lernnachweise.
+
+Zwei reale Ablehnungen wurden erhalten und abgerechnet. Die erste Aufgabenübersicht
+zur Bruchseite wurde unter67 verworfen; der damalige allgemeine Fehler enthielt
+keinen genaueren Prüfgrund. Wörtliche Belege werden seit68 als servergebundene
+Indizes übertragen, damit Formeln nicht erneut geschrieben werden müssen. Bei einer
+Rückfrage unter68 war Aufgabenreferenz oder Antwortphase unzulässig. Seit69 sind
+Phase, konkrete Aufgabenreferenz, leere Ersatzaufgaben und Verständnisfrage schon
+im privaten Ausgabeschema an die Aktion gebunden. Statische technische Prüfgründe
+enthalten keine Modellantworten oder privaten Eingaben. Je ein ausdrücklicher neuer
+Auftrag nach verifiziertem Codefix; keine automatische Reparatur oder Zählerrücksetzung.
+
+26 echte OpenRouter-Aufrufe, ausschließlich `openai/gpt-6-luna`, inklusive beider
+Fehlversuche:10856µUSD=0,010856USD, keine unbekannte Abrechnung. Vorgegebenes
+Testbudget0,25USD und30Aufrufe sowie die ProviderkonfigurationRevision29 erhalten.
+21 erfolgreiche Tutorantworten, zwei Fehlversuche; keine LearningUnit/Attempt und
+keine daraus vorgetäuschte Beherrschung. Diese Kosten betreffen OpenRouter,
+nicht die separate Bildgenerierung. Ergebnisse sind eine begrenzte Fallprüfung,
+kein Nachweis über beliebige Schulbücher, vollständige Aufgabenerkennung oder Lernwirkung.
+Die KI kann Arbeitsaufträge gruppieren; Originalfoto bleibt erreichbar. Der Prompt
+fordert zusätzliche Beschreibungs-/Begründungsaufträge ausdrücklich mit an.
+
+83 abschließende Backendtests auf isoliertem PostgreSQL16 und zehn abschließende
+Hausaufgaben-Widgettests bestanden, Ruff/Flutteranalyse sauber. Bei Featureintegration
+998Fluttertests bestanden; überlappende Testzahlen werden nicht addiert.
+Web sowie signierte Direct-APK/Play-AAB69 gebaut und validiert, kein Play-Upload.
+Keine neue physische Android-/Kamera-/vollständige WCAG-Abnahme behauptet.
+
+Browserprüfung im isolierten lokalen Haushalt mit den tatsächlichen künstlichen
+Produktionsantworten als ausdrücklich lokale Bedienprobe: Dateiauswahl, Blobimport,
+realer Zuschnitt1024×1536→982×1536, Upload, Quellenbestätigung, Aufgabenwechsel,
+Entwurf und Frage nach Reload, Originalfotozoom200%,390px-Mobile sowie Desktop,
+hell/dunkel. Dies ist keine zusätzliche lokale KI-Generierung und kein behaupteter
+Produktions-Browserupload. Die fünf Produktionsuploads liefen über die normale API.
+
+Öffentlicher Voll-APK-Download, Hash/Größe/Version und Health geprüft. Produktion
+Schema0024; vorherige68 bleibt als Coderückweg ohne Schemarückbau verfügbar.
+Vor Deployment Datenbank-/Konfigurationssicherung durch regulären Aktivator.
+Der künstliche Produktionshaushalt wurde über die berechtigte Kontolöschung entfernt
+und gesondert nachgeprüft; authentifiziertes Löschjournal gilt auch für Backups.
+Testnachweise und exakte Bildprompts unter `artifacts/homework-20261021/`;
+keine Zugangsdaten in diesem Prüfmaterial.

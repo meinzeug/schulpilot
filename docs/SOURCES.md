@@ -1,4 +1,4 @@
-Hausaufgabenwerkstatt21.10.2026, Version1.16.0+67: eigener Fotobereich,
+Hausaufgabenwerkstatt21.10.2026, Version1.16.2+69: eigener Fotobereich,
 quellengeprüfte Aufgabenübersicht, gestufte Lernhilfen und lokale Rechenprüfung.
 Bestehender Foto-/Tutor-/Reservierungsweg, keine zusätzlichen Laufzeitpakete oder
 Dienste. Pädagogische Ableitung und Grenzen in [HOMEWORK.md](HOMEWORK.md).

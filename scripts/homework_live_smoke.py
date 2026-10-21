@@ -76,11 +76,13 @@ def wait_turn(api, mid, tid):
     raise RuntimeError("Turn timeout; no new POST was sent")
 
 
-def submit(api, data, row, name, action, *, analysis=None, question="Hilf mir, die Aufgabe selbst zu verstehen.", draft=""):
+def submit(api, data, row, name, action, *, analysis=None, question="Hilf mir, die Aufgabe selbst zu verstehen.", draft="", reply_to=None):
     request = row.setdefault("requests", {}).setdefault(name, {"key": "hwqa-" + secrets.token_hex(16)})
     body = {"material_id": row["material_id"], "question": question, "homework": {"action": action, "draft": draft}}
     if analysis:
         body["homework"].update(analysis_id=analysis["id"], task_id=analysis["reply"]["tasks"][0]["id"])
+    if reply_to:
+        body["reply_to"] = reply_to
     previous_body = request.setdefault("body", body)
     assert previous_body == body, "Never reuse a key with different content"
     save(data)
@@ -100,7 +102,7 @@ def submit(api, data, row, name, action, *, analysis=None, question="Hilf mir, d
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("phase", choices=("upload", "exercise", "extras", "status"))
+    parser.add_argument("phase", choices=("upload", "exercise", "extras", "conversation", "status"))
     args = parser.parse_args()
     assert PRIVATE.is_file() and not PRIVATE.is_symlink() and PRIVATE.stat().st_mode & 0o777 == 0o600
     data = json.loads(PRIVATE.read_text())
@@ -167,6 +169,18 @@ def main():
                         if name.startswith("own-"):
                             assert turn["reply"]["method"] == "homework_math_v1"
                             assert before["calls"] == after["calls"]
+                    third = submit(child, data, row, "hint3", "hint", analysis=analysis, question="Gib mir den Anfang, ohne fertig zu rechnen.")
+                    before = usage(parent, data)
+                    cached = submit(child, data, row, "hint4cached", "hint", analysis=analysis, question="Zeige meinen letzten Hinweis noch einmal.")
+                    assert cached["id"] == third["id"] and before["calls"] == usage(parent, data)["calls"]
+                elif args.phase == "conversation" and spec["name"] == "01-mathe-buch":
+                    analysis = wait_turn(child, row["material_id"], row["requests"]["analysis"]["turn_id"])
+                    submit(child, data, row, "conversation", "question", analysis=analysis,
+                           reply_to=row["requests"]["example"]["turn_id"],
+                           question="Warum hilft mir bei dem anderen Rechteck das Zählen in Reihen? Wie übertrage ich das auf mein Foto, ohne fertig auszurechnen?")
+                    submit(child, data, row, "perimeter-clarification", "question", analysis=analysis,
+                           reply_to=row["requests"]["ask"]["turn_id"],
+                           question="Meinst du beim Umfang nur Länge plus Breite oder alle vier Seiten? Erkläre mir den Unterschied zur Fläche ohne etwas auszurechnen.")
                 report["cases"].append({"image": spec["name"], "saved": bool(row.get("material_id")),
                     "ready_steps": [name for name, request in row.get("requests", {}).items() if request.get("ready")]})
                 report["usage"] = usage(parent, data)

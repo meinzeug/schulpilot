@@ -1,3 +1,44 @@
+# Produktionsstand1.16.2+69 ·21.10.2026
+
+Live: Release `20261021T073101Z-56b8849`, Produktcommit
+`56b884926d848908f43cf1176b68a4476ec1f475`, main gepusht. Neuer Kinderbereich
+Hausaufgaben mit geschütztem Fotoimport, geprüfter Aufgabenübersicht, gestuften
+Hilfen, eigenen Fragen und lokalem Rechencheck. Entwürfe/Phasen bleiben gespeichert;
+Selbstcheck ist kein Kompetenznachweis. Details: [HOMEWORK.md](HOMEWORK.md).
+
+Fünf tatsächlich generierte und visuell geprüfte Fotos im eigenen künstlichen
+regulären Produktionshaushalt mit realem OpenRouter getestet. OCR, Aufgabenübersicht,
+Erklärungen sowie sämtliche Hilfearten und Rückfragen fachlich geprüft. Zwei dabei
+aufgedeckte Ablehnungen behoben, Fehlversuche/Kosten erhalten.26 Aufrufe über Luna,
+10856µUSD=0,010856USD, keine unbekannten Kosten, keine Kontingentlockerung.
+Testhaushalt einschließlich Quellen/Gesprächen/Sitzungen normal gelöscht und verifiziert.
+Keine Testantworten im echten Kinderprofil. Bildprompts/Transkripte/Prüfungen liegen
+lokal unter `artifacts/homework-20261021/`; keine Zugangsdaten im Prüfmaterial.
+
+Abschließend83Backendtests auf PostgreSQL16, zehn Hausaufgaben-Widgettests,
+Ruff/Flutteranalyse und Diff-/Geheimnisprüfung sauber. Bei Integration998Fluttertests
+bestanden; keine Addition überlappender Testläufe. Browserimport mit echtem Zuschnitt,
+Quellenbestätigung, Entwurf nach Reload, Aufgabenwechsel, Fotozoom und hell/dunkel
+auf390px sowie Desktop geprüft (isolierte lokale Bedienprobe mit echten künstlichen
+Produktionsantworten). Fünf Produktionsuploads über die normale API. Keine neue
+physische Android-/vollständige WCAG-/Lernwirkungsabnahme oder Play-Veröffentlichung.
+
+Schema0024, API/Worker/Caddy gesund, reguläre Datensicherung vor Aktivierung.
+Rückweg: vorherige68 (`20261021T071825Z-86561e6`), gleiches Schema; keine
+Datenbankrücksetzung für diesen Coderückweg. Andere Dienste unverändert.
+APK74712362Bytes, SHA256
+`9d7074735f241c0cb48abb6f372246b9f7135cdde95c81ba68982ded120045f5`;
+AAB70286004Bytes, SHA256
+`359c152040551e054e79f1846dd708a88a56a9ba3dce1c47f31bf912bb8e0d0f`.
+Signierer/Paket/Version/Bundletool geprüft, Play ohne APK-Installerberechtigung.
+Öffentlicher APK-Voll-Download entspricht dem lokalen Release.
+
+Aktueller zusätzlicher Auftrag: Eltern-Lernstand mit regelmäßiger kostenbegrenzter
+KI-Auswertung, Hausaufgabenübersicht je Kind und ausgebauter Lernplan mit eigenen
+Themen. Noch nicht als fertig oder ausgeliefert behaupten.
+
+---
+
 # Produktionsstand1.15.1+66 ·21.10.2026
 
 Live: Release `20261021T045349Z-394d122`, Produktcommit
