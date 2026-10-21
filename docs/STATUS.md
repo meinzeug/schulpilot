@@ -1,3 +1,51 @@
+# Produktionsstand1.18.4+78 ·21.10.2026
+
+Live: `20261021T164256Z-7367ee4`, Produktcommit
+`7367ee4d95e6af398195962496a16968c2faddcf`, main gepusht.
+Details: [UI_AND_PARENT_REVIEW_2026_10_21.md](UI_AND_PARENT_REVIEW_2026_10_21.md).
+
+- Kinder-Hausaufgaben und Hefte samt Details verwenden gemeinsame Seitenköpfe,
+  Reiter, Fotoaktionen und beschriftete Suche/Filter. Meine Fächer behält den
+  Seitenfilter; unzugeordnete Seiten bleiben erreichbar. Kartenüberlauf mit
+  großer Schrift auf320px korrigiert; Elternabläufe erhalten.
+- Headerglocke: maximal vier Meldungen, Alle anzeigen; Lesen erst bei Eintragsklick.
+  Kontoname/Avatar: Einstellungen und reguläres Abmelden. Kontowechsel und verspätete
+  Abmeldeantworten einschließlich401 dürfen keine neue Sitzung löschen. Admin bleibt
+  auf Betriebsinformationen beschränkt.
+- Elternbericht: Ausgabeschema und Validator teilen dieselben Belegkategorien und
+  erlaubten Klärungsaktionen. Strenge Inhaltsprüfung bleibt; sieben feste private
+  Ablehnungskategorien statt unbekanntem Fehler. Keine privaten Fehlerwerte loggen.
+  Historisch war der Anbieteraufruf erfolgreich, lokale Prüfung gescheitert; genaue
+  damalige Regel mangels gespeichertem Antwortinhalt nicht rekonstruierbar.
+- Konkret beauftragte Reparatur nach Codefix einmal über bestehende berechtigte
+  Elternsitzung normal reserviert und auditiert:1Aufruf/1Jobversuch,0,001337USD.
+  Bericht ready, fachlich validiert, Elternansicht aktuell, Lernplan anwendbar.
+  Alte Antworten/Fehlerberichte/Verbrauch hashgeprüft unverändert; keine neuen
+  Kinderantworten eingetragen. Frühere0,001201USD erhalten. Keine Retrykette,
+  Kontingenterhöhung oder Sitzungsreaktivierung. Privater Helper/Checkpoint entfernt.
+
+130 gemeinsame Fluttertests,33PostgreSQL- und14SQLitefälle in separaten Läufen
+bestanden; Ruff/Flutteranalyse/Diffprüfung sauber. Tatsächlicher Browserdurchlauf
+mit lokalem ausschließlich künstlichem Kind und Elternkonto, Provider abgeschaltet;
+hell/dunkel, Köpfe/Details/Filter/Meldungsziel/Lesemarkierung/Settings/Logout geprüft.
+Browser tatsächlich1101×884; mobile Großschriftprüfung als Widgetnachweis.
+Lokale Zugangsdaten, Testdatenbank und private Anbieterdiagnosekopien entfernt.
+
+Web und signierte APK/AAB78 gebaut; Bundle/Paket/Version/Signierer geprüft,
+Play ohne APK-Installerberechtigung. Geheimnisprüfung652 Quellen/Assets und344
+Archiveinträge/14 bestehende Secretquellen ohne Treffer; Provider-Key/Base640.
+Vor Entfernung lokaler Testzugänge zusätzlicher Quellencheck mit deren Passwörtern
+sauber. Öffentlicher APK-Voll-Download stimmt überein. APK75400770Bytes, SHA256
+`fbc6f8eb5c8a298cd7a5ee357ce7c7f44db1b7620d8a47587dfe281e46eff7f6`;
+AAB70817705Bytes, SHA256
+`15494379e49c3290cf84a49b02bf6172f8277a1706bece59825ea595017142ab`.
+API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema0025, Providerrevision29,
+Paid/Economy/ZDR unverändert. Rückweg:77 (`20261021T150342Z-14fe339`), gleiches
+Schema; keine DB-Rücksetzung. Kein Play-Upload, keine neue physische Android-
+oder vollständige WCAG-/Lernwirkungsabnahme.
+
+---
+
 # Produktionsstand1.18.3+77 ·21.10.2026
 
 Live: `20261021T150342Z-14fe339`, Produktcommit

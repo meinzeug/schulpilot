@@ -458,3 +458,8 @@ war auditiert; OpenRouter-Generationmetadaten bestätigten erfolgreichen Transpo
 aber enthielten keinen Antwortinhalt. Historische Einzelursache bleibt unbekannt.
 Ausgabeschema-/Validatorlücke ist durch synthetische Fälle unabhängig belegt.
 Providerrevision, Modellmix, Budget und Datenschutzeinstellungen unverändert.
+Nach dem geprüften Deployment ein ausdrücklich beauftragter, normal reservierter
+Reparaturbericht über die bestehende gültige Elternsitzung:1Aufruf/1Jobversuch,
+0,001337USD, Bericht ready und aktuelle Eltern-/Lernplanansicht bestätigt.
+Alte Antworten, Fehlerbericht und0,001201USD-Verbrauch unverändert; keine neuen
+Kinderantworten. Private Operatorhilfen und Diagnosekopien anschließend entfernt.
