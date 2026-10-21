@@ -170,3 +170,11 @@ gelesen; gespeicherte Pläne und Antworten bleiben unverändert. Ein anderes
 noch nicht begonnenes Fach darf eine aktive/pausierte Runde nicht verdecken.
 Tagesplan, Sammlung und Lernzeitanzeige verwenden denselben Zielstatus, auch
 bei freiwilliger Aktivität über dem Richtwert an einem freien oder pausierten Tag.
+
+### Bewusster neuer Antwortversuch
+
+Nach erfolgreich quittierter Rückmeldung beginnt eine erneute bewusste Abgabe
+einen neuen Versuch, auch bei unverändertem Antworttext. Die lokale
+Sendeidentität endet erst dort. Unbekanntes Transportergebnis oder fehlgeschlagene
+Quittierung behalten dieselbe Kennung; Doppeltaps erzeugen keine zweite Antwort.
+Der gespeicherte Feedbackpfad und der lokale Legacyablauf folgen derselben Regel.

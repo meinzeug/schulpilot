@@ -1091,6 +1091,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           });
     if (!requestIsCurrent(id, requestedOwner)) return;
     setState(() {
+      // Acknowledged feedback ends this deliberate attempt. The child may
+      // submit the same text again; that is a new attempt, whereas an unknown
+      // answer/acknowledgement response must keep its existing retry key.
+      answerRequestKey = answerRequestBody = null;
       awaitingContinue = false;
       answeredQuestion = null;
       answeredText = feedbackAttemptId = explanation = null;

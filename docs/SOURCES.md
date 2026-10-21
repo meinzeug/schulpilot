@@ -1,3 +1,9 @@
+Live-Nachprüfung21.10.2026, Version1.18.2+76: bewusst erneut abgegebene gleiche
+falsche Antwort nach quittiertem Feedback muss einen eigenen Versuch erhalten.
+Transportwiederholungen behalten ihre Idempotenz; weder Antworten noch Hilfen
+werden umgewertet. Regression und echter Browserreplay im künstlichen Haushalt
+in AFTERNOON_EVALUATION_2026_10_21.md. Keine Provider-/Kostenänderung.
+
 Live-Nachprüfung21.10.2026, Version1.18.1+75: konkreter künstlicher OpenRouter-
 Durchlauf deckte ein zu weit gehendes Additionsbeispiel in einer Erweiterungsprobe
 auf. Geplanter separater Erweiterungsbeleg und fokusgebundene endliche Introprüfung
