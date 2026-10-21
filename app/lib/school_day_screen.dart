@@ -487,7 +487,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
                 'Foto ${i + 1} von ${files.length.clamp(0, remaining)} zuschneiden',
           );
           final raw = await files[i].readAsBytes();
-          if (!currentCapture()) return;
+          if (!mounted || !currentCapture()) return;
           final bytes = await cropMaterialPhoto(context, raw);
           if (!currentCapture()) return;
           if (bytes == null) {
@@ -542,7 +542,7 @@ class _SchoolDayScreenState extends State<SchoolDayScreen>
     }
     Uint8List? bytes;
     try {
-      if (!currentCapture()) return;
+      if (!mounted || !currentCapture()) return;
       bytes = recovered && state.recoveredPhoto != null
           ? await cropMaterialPhoto(context, state.recoveredPhoto!)
           : await pickMaterialPhoto(context, source);

@@ -52,8 +52,10 @@ den Zweckmarker allein nicht rekonstruiert.
 133 gemeinsame Backendfälle auf isoliertem PostgreSQL16 bestanden, einschließlich
 beider befüllter Migrationswege. Der zusätzliche ursprüngliche SQLite-Replay
 0001→head bestand im separaten Migrationslauf. 1035Fluttertests bei Integration
-bestanden; danach ergänzte Kamera-/Kontowechsel- und Import-Race-Fälle werden in
-gezielten Abschlussläufen geprüft. Keine Addition überlappender Läufe.
+bestanden; anschließend70 gemeinsame Widgettests einschließlich der ergänzten
+Kamera-/Kontowechsel- und Import-Race-Fälle bestanden. Ein erneuter großer Lauf
+wurde nach1014 erfolgreichen Fällen durch SIGTERM beendet und wird ausdrücklich
+nicht als vollständiger zweiter Erfolg ausgegeben. Keine Addition überlappender Läufe.
 Konkrete abschließende Zahlen, signierte Builds und Produktionsstand in STATUS.md.
 
 Keine neuen OpenRouter-Aufrufe für diese Reparaturen. Echte frühere KI-Prüfungen
