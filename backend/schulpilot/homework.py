@@ -496,6 +496,28 @@ def validate_practice_output(data, previous_prompts):
             raise ProviderError("Das Erklärbeispiel nimmt eine Hausaufgabe oder neue Prüfaufgabe vorweg. Die Runde wurde nicht übernommen.")
 
 
+def validate_practice_focus(data, focus):
+    """Finite numeric scope checks, never a general semantic teaching proof."""
+    if focus != ["Brüche erweitern"]:
+        return
+    from .providers import ProviderError
+
+    explanation = data.get("explanation", "")
+    signatures = set().union(*(_practice_signatures(part) for part in [explanation, *explanation.splitlines()]))
+    outside = any((signature[0] == "fraction" and signature[1][0] in ("add", "reduce"))
+                  or (signature[0] == "arithmetic" and signature[1] in ("+", "-", "/"))
+                  for signature in signatures)
+    text = re.sub(r"\\(?:d?frac)\{(\d+)\}\{(\d+)\}", r"\1/\2", explanation)
+    text = text.replace(r"\(", "").replace(r"\)", "").replace(r"\[", "").replace(r"\]", "").replace("\\", "")
+    # An equality shrinking both parts is a reduction example even if the
+    # model calls it expansion. Fraction comparisons themselves remain allowed.
+    for a, b, c, d in re.findall(r"\b(\d{1,4})\s*/\s*([1-9]\d{0,3})\s*=\s*(\d{1,4})\s*/\s*([1-9]\d{0,3})\b", text):
+        if Fraction(int(a), int(b)) == Fraction(int(c), int(d)) and int(d) < int(b):
+            outside = True
+    if outside:
+        raise ProviderError("Das Erklärbeispiel verlässt die bestätigte Voraussetzung Erweitern. Die Runde wurde nicht übernommen.")
+
+
 def practice_math_history(materials, previous_prompts):
     """Expose every original fraction term to the existing finite planner.
 

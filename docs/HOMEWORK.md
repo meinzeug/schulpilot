@@ -159,6 +159,16 @@ Die geprüfte Lernziel-ID wird erst serverseitig an die validierte Aufgabe gebun
 Der erklärte Fokus lautet in diesem Fall: „Für das Addieren prüfen wir zuerst das
 Erweitern.“ Bekannte Bruch-/Rechensignaturen aus Original- oder Prüfaufgaben dürfen
 auch nicht als ausgearbeitetes Einführungsbeispiel vorweggenommen werden.
+Bei ausschließlichem Fokus Erweitern wird zusätzlich ein anderes gelöstes
+Erweiterungsbeispiel aus demselben begrenzten Planer vorgegeben. Es verwendet
+weder gedruckte Originalbrüche noch die Eingangsbrüche der neuen Prüfaufgaben.
+Die Einführung bleibt bei diesem Verfahren. Eine endliche zusätzliche Prüfung
+verwirft erkannte Bruchadditionen, andere einfache Rechenverfahren und erkennbare
+Kürzgleichungen in einer solchen Einführung. Der Themenname Addieren ist hier
+nur der Zweck der Voraussetzung, keine Freigabe für ein zusätzliches Verfahren.
+Diese Sicherung entstand aus einer tatsächlichen künstlichen Liveantwort und
+ist kein allgemeiner semantischer Fachlichkeitsnachweis. Gespeicherte ältere
+Einheiten und Antworten werden dadurch nicht umgeschrieben.
 Gedruckte Originalbrüche sind zusätzlich für alle drei erlaubten Erweiterungsfaktoren
 gesperrt. Eine schon erklärte Original-Teilrechnung zählt dadurch nicht als neue
 Voraussetzungsprüfung. Solche Ausschlüsse sind kein Übungsverlauf und verändern

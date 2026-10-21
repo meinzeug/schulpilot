@@ -948,6 +948,17 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     # must never be replaced by a fresh source-catalog index.
                     focus = [task["label"] for task in tasks or []]
                 payload = {**payload, "homework_practice_focus": list(dict.fromkeys(focus))}
+                if payload["homework_practice_focus"] == ["Brüche erweitern"]:
+                    # Model a different example of the same verified procedure;
+                    # it is not another exercise or a competence observation.
+                    worked = fraction_tasks(material_items, payload["required_subject"], payload["required_topic"],
+                        [*previous, *(example["prompt"] for example in math_examples)], "understand", 1,
+                        json.dumps(["homework-worked-example", previous, math_examples], ensure_ascii=False),
+                        required_labels=["Brüche erweitern"], excluded_prompts=[*excluded,
+                            *practice_math_exclusions([{"content": "\n".join(example["prompt"] for example in math_examples)}])])
+                    if len(worked) != 1:
+                        raise ProviderError("Für das bestätigte Verfahren fehlt ein anderes geprüftes Erklärbeispiel.")
+                    payload = {**payload, "homework_worked_example": {key: worked[0][key] for key in ("prompt", "answer", "source_excerpt")}}
     from . import subject_content
 
     review_only = function == "coach" and bool(payload.get("defer_practice"))
@@ -1363,6 +1374,15 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Verfahren und die angegebene richtige Lösung. Keine anderen Zahlen oder Ersatzfragen. "
             "Bei Anschlussübungen bleibt auch die in practice_tasks festgelegte learning_goal_id erhalten."
         )
+        if payload.get("homework_worked_example"):
+            instructions += (
+                "\nVERBINDLICHER ERKLÄRUNGSFOKUS: Diese Runde prüft ausschließlich Erweitern. "
+                "Erkläre nur das Multiplizieren von Zähler und Nenner mit demselben Faktor. "
+                "Verwende als vollständig gelöstes Beispiel ausschließlich homework_worked_example mit genau dessen Zahlen, Faktor und Ergebnis. "
+                "Keine Addition oder Subtraktion von Brüchen, keine Summen, kein gemeinsamer-Nenner-Rechenweg, kein Kürzen. "
+                "Der Themenname Addieren erklärt nur den Zweck der Voraussetzung; er erlaubt kein zusätzliches Additionsverfahren. "
+                "Beginne mit 'Für das Addieren prüfen wir zuerst das Erweitern.' Danach kommt nur Erweitern, dann die vorbereiteten neuen Prüfaufgaben."
+            )
     prune_schema(schema)
     outgoing_payload = transport_payload(function, payload)
     if outgoing_payload is not payload:
@@ -1686,10 +1706,11 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 for question in data["questions"]:
                     question["learning_goal_id"] = homework_math_goals[question["id"]]
         if function == "unit" and payload.get("homework_practice"):
-            from .homework import validate_practice_output
+            from .homework import validate_practice_focus, validate_practice_output
 
             originals = payload.get("homework_original_prompts") or [material.get("content", "") for material in material_items]
             validate_practice_output(data, [*originals, *(payload.get("previous_prompts") or [])])
+            validate_practice_focus(data, payload.get("homework_practice_focus"))
         if excerpt_candidates is not None and any(
             goal["source_excerpt"] not in excerpt_candidates for goal in data["learning_goals"]
         ):

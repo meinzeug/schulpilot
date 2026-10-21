@@ -1,3 +1,10 @@
+Live-Nachprüfung21.10.2026, Version1.18.1+75: konkreter künstlicher OpenRouter-
+Durchlauf deckte ein zu weit gehendes Additionsbeispiel in einer Erweiterungsprobe
+auf. Geplanter separater Erweiterungsbeleg und fokusgebundene endliche Introprüfung
+begrenzen die nächste Erzeugung; bestehende Runden/Antworten bleiben erhalten.
+Keine neuen Pakete, Dienste, Modellrouten oder Kontingente. Tatsächliche Ergebnisse
+in AFTERNOON_EVALUATION_2026_10_21.md und STATUS.md.
+
 Künstlicher Nachmittag21.10.2026, Version1.18.0+74: eigene Hausaufgaben-/
 Lernrunden-/Jobwege. Ein bewusster Anschluss aus genau einer bestätigten Fotoquelle
 verwendet normale Reservierung und gespeicherte Vorbereitung. Endliche Prüfungen

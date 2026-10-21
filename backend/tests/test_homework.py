@@ -299,7 +299,7 @@ FRACTION_HOMEWORK = ("Mathematik • Brüche addieren\n\n"
     r"2) Berechne \(\frac{2}{5} + \frac{1}{10}\).")
 
 
-@pytest.mark.parametrize("damage", [None, "key", "missing", "goal"])
+@pytest.mark.parametrize("damage", [None, "key", "missing", "goal", "scope"])
 def test_homework_fraction_practice_is_preplanned_and_goal_bound_before_transport(book, monkeypatch, damage):
     import httpx
     from schulpilot import providers
@@ -323,6 +323,14 @@ def test_homework_fraction_practice_is_preplanned_and_goal_bound_before_transpor
             outgoing = __import__("json").loads(json["input"][0]["content"][0]["text"])
             planned = outgoing["math_tasks"]
             assert len(planned) == 2 and outgoing["homework_practice_focus"] == ["Brüche erweitern"]
+            worked = outgoing["homework_worked_example"]
+            worked_signature = fraction_task_signature(worked["prompt"])
+            assert worked_signature[0] == "expand"
+            assert worked_signature[1] not in {fraction_task_signature(task["prompt"])[1] for task in planned}
+            assert worked_signature[1] not in {("1", "3"), ("1", "6"), ("2", "5"), ("1", "10")}
+            a, b = map(int, worked_signature[1])
+            factor = int(worked_signature[2])
+            assert worked["answer"] == f"{a * factor}/{b * factor}"
             schema = json["text"]["format"]["schema"]
             assert schema["properties"]["questions"]["minItems"] == schema["properties"]["questions"]["maxItems"] == 2
             branches = schema["$defs"]["Question"]["anyOf"]
@@ -347,6 +355,8 @@ def test_homework_fraction_practice_is_preplanned_and_goal_bound_before_transpor
                 unit["questions"] = unit["questions"][:1]
             elif damage == "goal":
                 unit["questions"][0]["learning_goal_id"] = "g1"
+            elif damage == "scope":
+                unit["explanation"] = r"Für das Addieren prüfen wir zuerst das Erweitern. Beispiel: \(\frac{1}{4}+\frac{1}{8}\) wird zu \(\frac{2}{8}+\frac{1}{8}=\frac{3}{8}\)."
             return httpx.Response(200, json={"status": "completed", "output": [{"type": "message",
                 "content": [{"type": "output_text", "text": __import__("json").dumps(unit)}]}],
                 "usage": {"input_tokens": 50, "output_tokens": 80}})
@@ -368,6 +378,29 @@ def test_homework_fraction_practice_is_preplanned_and_goal_bound_before_transpor
         assert all(q["learning_goal_id"] == expansion == fraction_task_goal(q["prompt"], goals) for q in result.data["questions"])
         homework.validate_practice_output(result.data, [FRACTION_HOMEWORK])
     assert len(calls) == 1  # Rejected transport output never causes a fallback.
+
+
+@pytest.mark.parametrize("explanation", [
+    r"Für das Addieren prüfen wir zuerst das Erweitern. Beispiel: \(\frac{1}{4}+\frac{1}{8}\) wird zu \(\frac{2}{8}+\frac{1}{8}=\frac{3}{8}\).",
+    "Ein neues Beispiel: 3 + 4 = 7.",
+    "Kürze 4/8 vollständig zu 1/2.",
+    r"Ein neues Beispiel: \(\frac{4}{8}=\frac{1}{2}\).",
+    "Teile Zähler und Nenner: 4 : 2 = 2.",
+])
+def test_expansion_only_homework_focus_rejects_unconfirmed_intro_procedures(explanation):
+    from schulpilot.providers import ProviderError
+
+    with pytest.raises(ProviderError, match="verlässt"):
+        homework.validate_practice_focus({"explanation": explanation}, ["Brüche erweitern"])
+    # Other verified focuses retain their existing validation path.
+    homework.validate_practice_focus({"explanation": explanation}, ["Brüche addieren", "Brüche erweitern"])
+    homework.validate_practice_focus({"explanation": explanation}, None)
+
+
+def test_expansion_only_homework_focus_allows_only_the_known_procedure_example():
+    homework.validate_practice_focus({"explanation":
+        "Für das Addieren prüfen wir zuerst das Erweitern. Neues Beispiel: Erweitere 2/9 mit dem Faktor 3. "
+        "Zähler: 2 · 3 = 6. Nenner: 9 · 3 = 27. Daher gilt 2/9 = 6/27. Die Menge bleibt gleich."}, ["Brüche erweitern"])
 
 
 def test_homework_fraction_planning_excludes_all_original_latex_terms():
