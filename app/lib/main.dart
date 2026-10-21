@@ -489,10 +489,14 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       darkTheme: appTheme(brightness: Brightness.dark),
       themeMode: widget.state.darkAppearance ? ThemeMode.dark : ThemeMode.light,
       routerConfig: router,
-      builder: (context, child) => FamilyCallHost(
-        widget.state,
-        openCall: (id) => router.push('/family-call/$id'),
-        child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => ListenableBuilder(
+        listenable: router.routeInformationProvider,
+        builder: (context, _) => FamilyCallHost(
+          widget.state,
+          currentPath: router.routeInformationProvider.value.uri.path,
+          openCall: (id) => router.push('/family-call/$id'),
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     ),
   );

@@ -192,17 +192,29 @@ class FamilyCallHost extends StatelessWidget {
   final AppState state;
   final Widget child;
   final void Function(String callId) openCall;
+  final String? currentPath;
   const FamilyCallHost(
     this.state, {
     super.key,
     required this.child,
     required this.openCall,
+    this.currentPath,
   });
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state.familyCalls,
     builder: (context, _) {
       final calls = state.familyCalls;
+      if (!identical(calls.accountIdentity, state.user)) return child;
+      final ownCallPage =
+          calls.callId != null &&
+          currentPath == '/family-call/${calls.callId}' &&
+          identical(calls.accountIdentity, state.user) &&
+          calls.call?['role'] == state.user?['role'] &&
+          (state.isParent ||
+              (state.isChild &&
+                  calls.call?['child_id'] == state.user?['child_id']));
+      if (ownCallPage) return child;
       if (!calls.live) {
         if (!calls.busy) return child;
         return Column(
@@ -400,14 +412,29 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () =>
-                    context.canPop() ? context.pop() : context.go('/app'),
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Zurück zum Lernen'),
-              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () =>
+                      context.canPop() ? context.pop() : context.go('/app'),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text('Zurück zum Lernen'),
+                ),
+                if (live)
+                  OutlinedButton.icon(
+                    key: const ValueKey('call-end-top'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: () => calls.end(decline: calls.incoming),
+                    icon: const Icon(Icons.call_end_rounded),
+                    label: Text(calls.incoming ? 'Ablehnen' : 'Beenden'),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             if (loading)
@@ -544,7 +571,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                   runSpacing: 10,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => media?.toggleMicrophone(),
+                      onPressed: calls.toggleMicrophone,
                       icon: Icon(
                         media?.microphoneEnabled == true
                             ? Icons.mic_rounded

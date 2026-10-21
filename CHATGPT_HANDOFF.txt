@@ -1,3 +1,66 @@
+# Produktionsstand 1.19.0+79 · 21.10.2026
+
+Live: `20261021T180510Z-f24e19c`, Produktcommit
+`f24e19c5438956a38ddf9c87224e6d42403a3382`, main gepusht.
+
+Abnahmehinweis: Neue Anrufe sind vorübergehend serverseitig angehalten. Der echte
+Android-Medientest deckte einen nativen Renderer-/Mikrofonfehler auf. Korrektur80
+ist mit75 Flutterfällen und vollständiger Analyse vorbereitet; bisher ausschließlich
+drei künstliche Testanrufe, keine Anrufe anderer Haushalte.
+Details: [FAMILY_CALL_EVALUATION_2026_10_21.md](docs/FAMILY_CALL_EVALUATION_2026_10_21.md),
+[FAMILY_CALLS.md](docs/FAMILY_CALLS.md), [FAMILY_CALL_ANDROID.md](docs/FAMILY_CALL_ANDROID.md).
+
+- Gemeinsame Livehilfe bei Heute, Aufgaben, Rückblick, Nachrichten und Hausaufgaben:
+  ausdrücklicher Video-/Audioanruf an berechtigte Eltern, Bildschirmfreigabe separat.
+  Kamera, Ton, Bildschirm und Auflegen bleiben steuerbar; keine Aufzeichnung,
+  Fernsteuerung oder KI-Verarbeitung von Gesprächsmedien.
+- Backend bindet Kind und annehmende Elternsitzung, prüft aktuelle Familienrechte,
+  hält Signale begrenzt im Arbeitsspeicher und speichert nur 30 Tage Metadaten.
+  Widerruf, Neustart und abgelaufene Berechtigung beenden das Gespräch. Angenommene
+  Hilfe zählt bei neuen passenden Antworten als Unterstützung; alte Antworten bleiben.
+- Android: eigener freiwilliger Anrufschalter, neutraler hoch priorisierter Push,
+  zeitlich begrenzter Klingeldienst und Annehmen/Ablehnen. Android-36-CallStyle-Fehler
+  durch echten Systemtest gefunden und behoben. Keine Vollbild- oder Lautlosumgehung.
+- Firebase-Diagnose: anfangs null Pushgeräte und null Versandversuche in sieben
+  Tagen. Projekt/APIs/Schlüssel/Sender geprüft. Mit signierter APK 79 anschließend
+  genau eine neutrale Hintergrundmeldung auf künstlichem Elterngerät tatsächlich
+  angezeigt und durch Antippen geöffnet; FCM-Annahme separat nachgewiesen.
+- Eigener authentifizierter coturn-Relay installiert. Konkrete Portfreigabe vom
+  Betreiber bestätigt, nur am Schulpilot-Server ergänzt. Verschlüsselte künstliche
+  Kamera-/Bildschirm-/Audiomedien über UDP, TCP und TLS tatsächlich übertragen.
+  Gefundene Nullbereich-Sperre korrigiert, private Zielnetze weiter gesperrt.
+
+98 gemeinsame PostgreSQLfälle einschließlich gefüllter Migrationen für SQLite
+und PostgreSQL, 154 gemeinsame Flutterfälle, sechs native Kotlin-Regelfälle und
+fünf TURN-Konfigurationsfälle bestanden. Native Android-36-Instrumentierung und
+realer Browserdurchlauf mit künstlichem Kind durchgeführt. Vollständige Flutter-
+Analyse, Ruff und Diffprüfung sauber. Kein hörbarer oder physischer Telefonbeleg.
+
+Web und signierte APK/AAB 79 gebaut; Paket, Version, Signierer und Play-Bundle
+geprüft. Play ohne APK-Installerberechtigung. Geheimnisprüfung des Releasecodes,
+Webs und 350 Archiveinträge ohne Treffer; neuer TURN-Schlüssel zusätzlich nur im
+Speicher geprüft. Öffentlicher APK-Voll-Download stimmt überein. APK 111449251 Bytes,
+SHA256 `9de9d7baf1ba1aab0467d5a8129fdef5cff8dd93ea65928e86573887a797a52e`;
+AAB 88862355 Bytes, SHA256
+`f44b43db8dc656f37121c2a1f9bd55cdd61652b46769122d41fecb9b20f5e337`.
+API/Worker/Caddy und eigener TURN-/Zertifikattimer aktiv, Sicherung erfolgreich,
+Schema 0026, Providerrevision 29 Paid/Economy/ZDR unverändert. Anrufe erst nach
+Relayprüfung explizit über geschützte Umgebung aktiviert und auditiert.
+
+Bei Anrufproblemen zunächst Anruffunktion abschalten und aktuelle Dienste neu
+starten; Vorwärtsfix bevorzugen. Release 78 ist nur ein begrenzter Notfallrückweg
+mit `--rollback-compatible`. Seine alte Restoreprüfung kennt 0026 nicht, Call-
+Export/Aufbewahrung fehlen. Keine Datenbankrücksetzung und keine vollständig
+geprüfte langfristige Rückbetriebsbehauptung. Kein Play-Upload.
+
+Zusätzliche Smartphone-Suche: BeagleOS-Pfad gefunden, USB/IP-Controller vorhanden,
+kein physisches Telefon importiert. Thinclient-SSH-Schlüssel weicht ab, beide
+konkreten USB/IP-Pfade nicht erreichbar, Mikrofontunnel ebenfalls gestört. Keine
+Schutzprüfung umgangen oder allgemeiner USB-Listener gestartet. BeagleOS-
+Verwaltungsanmeldung zur sicheren Fortsetzung angefordert.
+
+---
+
 # Produktionsstand1.18.4+78 ·21.10.2026
 
 Live: `20261021T164256Z-7367ee4`, Produktcommit

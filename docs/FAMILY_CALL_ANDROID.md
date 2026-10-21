@@ -129,6 +129,28 @@ Eine Prüfung im Emulator ohne Audioausgabe ist kein Beleg für hörbares Klinge
 auf einem physischen Smartphone. Konkrete Zustell-/Gerätenachweise des Releases
 stehen in STATUS und CHATGPT_HANDOFF.
 
+Mit der signierten Version 1.19.0+79 wurde anschließend das bestehende künstliche
+Elternprofil regulär angemeldet und Push einschließlich Familienanrufen ausdrücklich
+auf dem eigenen Android-36-Emulator freigegeben. Eine einzelne normale
+FCM-Hintergrundmeldung wurde nach belegtem Hintergrundwechsel tatsächlich in der
+Android-Benachrichtigungsleiste angezeigt und öffnete die App. Das ist ein
+Zustellnachweis dieses künstlichen Geräts, keine Aussage über andere Telefone.
+
+Der erste echte künstliche Testanruf deckte eine Besonderheit der QA-Umgebung auf:
+Host-VM und Emulator lagen rund 7.122 Sekunden vor der durch Produktions-NTP sowie
+unabhängige HTTPS-Zeitquellen bestätigten UTC. Der native Ablauf verwarf deshalb
+die bereits abgelaufenen absoluten Anrufzeitstempel korrekt. Gerätebindung und
+Serverbindung stimmten überein. Ausschließlich der kurzlebige Emulator wurde für
+die Gegenprobe auf die bestätigte UTC gesetzt und seine automatische Zeitquelle
+vorübergehend abgeschaltet; Produktions-, Host- und echte Telefonuhren sowie
+die Produkt-Ablaufprüfung blieben unverändert. Beim zweiten Versuch erschienen
+die echte CallStyle-Karte und ihre Annahmeaktion. Der normale App-Dialog führte
+zu einer verbundenen verschlüsselten Sitzung. Der Gegenpart empfing 962
+Eltern-Videoframes und 4.497 Audioframes. Diese Framezahlen beweisen allein weder
+hörbaren Ton noch die korrekte Anzeige der Kinder-Videospuren; die zunächst
+dunklen Remote-Kacheln wurden als eigener Fehler zur Prüfung weitergegeben.
+Der reguläre Elternlogout entfernte die native Gerätebindung und den Klingelstatus.
+
 ## Primärquellen
 
 - [Android: CallStyle](https://developer.android.com/develop/ui/compose/notifications/call-style)

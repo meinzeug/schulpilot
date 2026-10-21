@@ -491,3 +491,15 @@ Kinderantworten. Private Operatorhilfen und Diagnosekopien anschließend entfern
   Bildschirmquelle, stillem Audio und Daten-Echo erfolgreich. Keine echten Fotos
   oder unbemerkte Geräteaufnahme. Details und Android-Nachweis in FAMILY_CALLS.md
   beziehungsweise STATUS.md; bloße FCM-Annahme bleibt von Anzeige getrennt.
+
+Nachkorrektur 1.19.1+80: Im selben fixierten Plugin wurden
+`rtc_video_renderer_impl.dart`, `audio_management.dart` und die Android-
+`AudioSwitchManager`-Implementierung gezielt geprüft. Der native Renderer-Mute-
+Setter verändert tatsächlich den AudioManager und den Audiotrack; für Remote-
+Streams wirft er. Deshalb plattformgetrennte Previewsteuerung, explizite Video-
+Trackbindung und bewusstes Mikrofon an. Keine automatische globale Entstummung.
+Die lokale Rendererregression und vollständige Flutter-Analyse sind dokumentiert
+in FAMILY_CALL_EVALUATION_2026_10_21.md. Normale FCM-Hintergrundanzeige und echte
+Anrufkarte mit Annahme wurden am künstlichen Android-36-Gerät getrennt belegt.
+Die QA-Uhr wurde nur dort korrigiert; Produktions-UTC wurde gegen Hetzner-NTP und
+ungecachte Google-/GitHub-HTTPS-Zeit geprüft, nicht gegen das lokale Clocktool.

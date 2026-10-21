@@ -499,6 +499,24 @@ class FamilyCallService extends ChangeNotifier {
 
   void _mediaChanged() => notifyListeners();
 
+  Future<void> toggleMicrophone() async {
+    final owner = _owner, generation = _generation;
+    final currentMedia = media;
+    if (currentMedia == null || !accepted) return;
+    try {
+      await currentMedia.toggleMicrophone();
+      if (_current(owner, generation) && media == currentMedia) {
+        error = null;
+        notifyListeners();
+      }
+    } catch (_) {
+      if (_current(owner, generation) && media == currentMedia) {
+        error = 'Das Mikrofon konnte nicht eingeschaltet werden. Prüfe die Mikrofonfreigabe am Gerät.';
+        notifyListeners();
+      }
+    }
+  }
+
   Future<void> toggleCamera() async {
     final owner = _owner, generation = _generation;
     final currentMedia = media;

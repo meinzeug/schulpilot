@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import 'api.dart';
@@ -13,6 +14,8 @@ abstract class FamilyCallMedia extends ChangeNotifier {
   bool get hasRemoteCamera;
   bool get hasRemoteScreen;
   String get connectionState;
+  bool get remoteCameraFrameSeen => false;
+  bool get remoteScreenFrameSeen => false;
   void Function(Json candidate)? onIce;
   void Function()? onScreenStopped;
   Future<void> prepare({required bool camera});
@@ -30,18 +33,43 @@ abstract class FamilyCallMedia extends ChangeNotifier {
 }
 
 class WebRtcFamilyCallMedia extends FamilyCallMedia {
-  final _localRenderer = RTCVideoRenderer();
-  final _remoteRenderer = RTCVideoRenderer();
-  final _screenRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _localRenderer;
+  final RTCVideoRenderer _remoteRenderer;
+  final RTCVideoRenderer _screenRenderer;
+  final bool webPlatform;
+  final Future<void> Function(MediaStreamTrack track) unmuteMicrophone;
+  final Future<MediaStream> Function(Map<String, dynamic>) captureUserMedia;
+  final Future<RTCPeerConnection> Function(Map<String, dynamic>) peerFactory;
+  WebRtcFamilyCallMedia({
+    this.webPlatform = kIsWeb,
+    RTCVideoRenderer Function()? rendererFactory,
+    Future<void> Function(MediaStreamTrack track)? unmuteMicrophone,
+    Future<MediaStream> Function(Map<String, dynamic>)? captureUserMedia,
+    Future<RTCPeerConnection> Function(Map<String, dynamic>)? peerFactory,
+  }) : _localRenderer = (rendererFactory ?? RTCVideoRenderer.new)(),
+       _remoteRenderer = (rendererFactory ?? RTCVideoRenderer.new)(),
+       _screenRenderer = (rendererFactory ?? RTCVideoRenderer.new)(),
+       unmuteMicrophone =
+           unmuteMicrophone ??
+           ((track) => Helper.setMicrophoneMute(false, track)),
+       captureUserMedia =
+           captureUserMedia ??
+           ((constraints) => navigator.mediaDevices.getUserMedia(constraints)),
+       peerFactory =
+           peerFactory ??
+           ((configuration) => createPeerConnection(configuration));
   MediaStream? _local;
   MediaStream? _screen;
   final _extraCaptures = <MediaStream>[];
-  MediaStream? _remoteCamera;
-  MediaStream? _remoteScreen;
   RTCPeerConnection? _peer;
   RTCRtpSender? _screenSender;
   String? _remoteCameraId;
   String? _remoteScreenId;
+  String? _remoteCameraTrackId;
+  String? _remoteScreenTrackId;
+  bool _cameraFrameSeen = false;
+  bool _screenFrameSeen = false;
+  Future<void> _remoteBindings = Future.value();
   final _earlyTracks = <RTCTrackEvent>[];
   final _earlyIce = <Json>[];
   bool _remoteDescription = false;
@@ -59,9 +87,13 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
   @override
   bool get sharingScreen => _screen != null;
   @override
-  bool get hasRemoteCamera => _remoteCamera != null;
+  bool get hasRemoteCamera => _remoteCameraTrackId != null;
   @override
-  bool get hasRemoteScreen => _remoteScreen != null;
+  bool get hasRemoteScreen => _remoteScreenTrackId != null;
+  @override
+  bool get remoteCameraFrameSeen => _cameraFrameSeen;
+  @override
+  bool get remoteScreenFrameSeen => _screenFrameSeen;
   @override
   String get connectionState => _connection;
 
@@ -74,6 +106,18 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
       _screenRenderer.initialize(),
     ]);
     _initialized = true;
+    _remoteRenderer.onFirstFrameRendered = () {
+      if (!_closed) {
+        _cameraFrameSeen = true;
+        notifyListeners();
+      }
+    };
+    _screenRenderer.onFirstFrameRendered = () {
+      if (!_closed) {
+        _screenFrameSeen = true;
+        notifyListeners();
+      }
+    };
     if (_closed) {
       await Future.wait([
         _localRenderer.dispose(),
@@ -82,7 +126,7 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
       ]);
       return;
     }
-    final stream = await navigator.mediaDevices.getUserMedia({
+    final stream = await captureUserMedia({
       'audio': {'echoCancellation': true, 'noiseSuppression': true},
       'video': camera
           ? {'facingMode': 'user', 'width': 640, 'height': 480, 'frameRate': 20}
@@ -98,14 +142,16 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     _local = stream;
     _camera = camera;
     _localRenderer.srcObject = stream;
-    _localRenderer.muted = true;
+    // On native, renderer.muted changes the actual microphone track. Only the
+    // browser preview has an audio element that needs local echo suppression.
+    if (webPlatform) _localRenderer.muted = true;
     notifyListeners();
   }
 
   @override
   Future<void> connect(List<dynamic> iceServers) async {
     if (_closed || _peer != null) return;
-    final peer = await createPeerConnection({
+    final peer = await peerFactory({
       'iceServers': iceServers,
       'sdpSemantics': 'unified-plan',
     });
@@ -131,14 +177,8 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     };
     peer.onTrack = (event) {
       if (_closed) return;
-      if (event.track.kind == 'audio') {
-        // The camera renderer carries the remote audio stream too.
-        _earlyTracks.add(event);
-        _attachRemoteTracks();
-      } else {
-        _earlyTracks.add(event);
-        _attachRemoteTracks();
-      }
+      _earlyTracks.add(event);
+      _queueRemoteTracks();
     };
     final local = _local;
     if (local != null) {
@@ -154,23 +194,45 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     }
   }
 
-  void _attachRemoteTracks() {
+  void _queueRemoteTracks() {
+    _remoteBindings = _remoteBindings.then((_) => _attachRemoteTracks());
+    // The peer can close while a native texture call is completing. Never log
+    // stream IDs, SDP or a platform exception containing private transport data.
+    _remoteBindings = _remoteBindings.catchError((Object _) {});
+  }
+
+  Future<void> _attachRemoteTracks() async {
     for (final event in _earlyTracks.toList()) {
-      if (event.streams.isEmpty) continue;
+      if (_closed || event.streams.isEmpty) continue;
       final stream = event.streams.first;
-      if (stream.id == _remoteScreenId) {
-        _remoteScreen = stream;
-        _screenRenderer.srcObject = stream;
-        _screenRenderer.muted = true;
+      if (stream.id == _remoteScreenId && event.track.kind == 'video') {
         _earlyTracks.remove(event);
+        if (_remoteScreenTrackId != event.track.id) _screenFrameSeen = false;
+        _remoteScreenTrackId = event.track.id;
+        await _screenRenderer.setSrcObject(
+          stream: stream,
+          trackId: event.track.id,
+        );
       } else if (stream.id == _remoteCameraId ||
           (event.track.kind == 'audio' && _remoteCameraId == null)) {
-        _remoteCamera = stream;
-        _remoteRenderer.srcObject = stream;
         _earlyTracks.remove(event);
+        if (event.track.kind == 'video') {
+          if (_remoteCameraTrackId != event.track.id) _cameraFrameSeen = false;
+          _remoteCameraTrackId = event.track.id;
+        }
+        // Explicit track binding avoids selecting a stale Unified Plan stream
+        // wrapper. An audio event must never replace the selected camera track.
+        if (_remoteCameraTrackId != null) {
+          await _remoteRenderer.setSrcObject(
+            stream: stream,
+            trackId: _remoteCameraTrackId,
+          );
+        } else {
+          _remoteRenderer.srcObject = stream;
+        }
       }
     }
-    notifyListeners();
+    if (!_closed) notifyListeners();
   }
 
   Json _description(String? sdp) => {
@@ -183,10 +245,11 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
     _remoteCameraId = description['camera_stream_id'] as String?;
     _remoteScreenId = description['screen_stream_id'] as String?;
     if (_remoteScreenId == null) {
-      _remoteScreen = null;
+      _remoteScreenTrackId = null;
+      _screenFrameSeen = false;
       _screenRenderer.srcObject = null;
     }
-    _attachRemoteTracks();
+    _queueRemoteTracks();
   }
 
   @override
@@ -244,10 +307,16 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
 
   @override
   Future<void> toggleMicrophone() async {
-    _microphone = !_microphone;
+    if (_closed) return;
+    final enable = !_microphone;
     for (final track in _local?.getAudioTracks() ?? <MediaStreamTrack>[]) {
-      track.enabled = _microphone;
+      // Only this explicit microphone-on action may clear an API mute left by
+      // an earlier call. Microphone-off never sets a global device mute.
+      if (enable && !webPlatform) await unmuteMicrophone(track);
+      if (_closed) return;
+      track.enabled = enable;
     }
+    _microphone = enable;
     notifyListeners();
   }
 
@@ -255,7 +324,7 @@ class WebRtcFamilyCallMedia extends FamilyCallMedia {
   Future<bool> toggleCamera() async {
     if (_closed || _local == null) return false;
     if (_local!.getVideoTracks().isEmpty) {
-      final captured = await navigator.mediaDevices.getUserMedia({
+      final captured = await captureUserMedia({
         'audio': false,
         'video': {
           'facingMode': 'user',

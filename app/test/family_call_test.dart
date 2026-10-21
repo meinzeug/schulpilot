@@ -646,6 +646,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('call-end-top')), findsOneWidget);
         await tester.ensureVisible(find.text('Kamera an'));
         await tester.tap(find.text('Kamera an'));
         await tester.pumpAndSettle();
@@ -656,6 +657,13 @@ void main() {
         await tester.tap(find.text('Kamera aus'));
         await tester.pumpAndSettle();
         expect(fake.cameraEnabled, isFalse);
+        await tester.ensureVisible(find.text('Mikrofon aus'));
+        await tester.tap(find.text('Mikrofon aus'));
+        await tester.pumpAndSettle();
+        expect(fake.microphoneEnabled, isFalse);
+        await tester.tap(find.text('Mikrofon an'));
+        await tester.pumpAndSettle();
+        expect(fake.microphoneEnabled, isTrue);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
         await calls.clear();
@@ -738,6 +746,54 @@ void main() {
       calls.dispose();
     },
   );
+
+  for (final role in ['parent', 'child']) {
+    testWidgets(
+      '$role hides the live bar only on its authorized current call page',
+      (tester) async {
+        final state = makeState(
+          (request) async => response({'calls': []}),
+          role: role,
+        );
+        final calls = state.familyCalls;
+        calls.activate(state.user);
+        await tester.pump();
+        calls.call = metadata('accepted', role: role);
+        Future<void> show(String path) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: appTheme(),
+              home: Scaffold(
+                body: FamilyCallHost(
+                  state,
+                  currentPath: path,
+                  openCall: (_) {},
+                  child: const Center(child: Text('Aktueller Inhalt')),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+        }
+
+        await show('/family-call/$callId');
+        expect(find.text('Zum Gespräch'), findsNothing);
+        expect(find.text('Aktueller Inhalt'), findsOneWidget);
+        await show('/family-call/another-call');
+        expect(find.text('Zum Gespräch'), findsOneWidget);
+        await show('/app');
+        expect(find.text('Zum Gespräch'), findsOneWidget);
+        // A new session map must not expose the former account's call preview.
+        state.user = {...state.user!};
+        await show('/family-call/$callId');
+        expect(find.text('Zum Gespräch'), findsNothing);
+        expect(find.textContaining('Gespräch geöffnet'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+        await calls.clear();
+        calls.dispose();
+      },
+    );
+  }
 
   for (final brightness in Brightness.values) {
     testWidgets(

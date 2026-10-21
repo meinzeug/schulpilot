@@ -41,7 +41,10 @@ def nodes():
         try:
             adb("shell", "uiautomator", "dump", "/sdcard/schulpilot-window.xml")
             return list(ET.fromstring(adb("exec-out", "cat", "/sdcard/schulpilot-window.xml")).iter("node"))
-        except ET.ParseError:
+        except (ET.ParseError, RuntimeError):
+            # A live video surface may briefly prevent UIAutomator from
+            # obtaining an idle window. Retry only this read-only snapshot;
+            # never repeat taps, login submissions or server actions here.
             time.sleep(.3)
     raise RuntimeError("Native window snapshot stayed incomplete")
 
