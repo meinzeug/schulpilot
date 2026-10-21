@@ -1181,7 +1181,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             instructions += " Beachte instructional_support je selected_groups-Eintrag: guided_example braucht besonders kleine erklärte Zwischenschritte."
     compact_openrouter = (
         config.provider == "openrouter"
-        and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project")
+        and function not in ("extract", "tutor", "vocabulary_import", "language_unit", "language_project", "decision")
         and not review_only
     )
     block_count = payload.get("study_block", {}).get("question_count") if function == "unit" else None
@@ -1293,7 +1293,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
     indexed_choices = (
-        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "vocabulary_import") and not review_only
+        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "vocabulary_import", "decision") and not review_only
     )
     if indexed_choices:
         indexed_choice_schema(schema)

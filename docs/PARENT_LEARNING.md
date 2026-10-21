@@ -22,6 +22,14 @@ für diese Anfrage. Nicht alle Gründe eines Fehlers sind aus Summen erkennbar:
 Die KI darf nur vorsichtig einordnen und eine nächste Überprüfung vorschlagen.
 Keine Diagnose, freien Kompetenzprozente oder behauptete dauerhafte Beherrschung.
 
+Liveprüfung unter70: Die konservative Rechenprüfung kannte einen einfachen
+zweistelligen Subtraktionsterm noch nicht; eine falsche Zahl blieb deshalb unklar.
+Version71 ergänzt `subject_rules_v5` für vollständige Zweizahlterme, auch mit
+TeX-Klammern. Sie verifiziert zuerst die Musterlösung und verwendet exakte rationale
+Werte. Unbekannte Sach-, Rundungs- oder Teilfragen werden dadurch nicht geraten.
+Bestehende Urteile ändern sich nur bei ausdrücklich angeforderter auditierter
+Nachprüfung, ohne neue Antwort, Hilfenlöschung oder zusätzlichen Prüftag.
+
 `ReviewOutput` begrenzt die Ausgabe auf sechs belegte Einschätzungen und sechs
 Planschritte. Das private Schema bindet Themenreferenzen an die ausgewählten
 Belege; `validate` prüft Bedarf gegen die tatsächlichen Kategorien. Beobachtung
@@ -29,6 +37,12 @@ und Interpretation erscheinen getrennt. `ParentLearningReview` speichert den
 damaligen Belegstand, Bericht, Signatur, Strategie-/Provider-/Modellrevision und
 Status. Historische Berichte bleiben lesbar, neue Belege markieren sie als älter.
 Ein späterer Fehler verdrängt keinen früheren fertigen Bericht.
+Strategie `parent-review-2` trennt Planungsaufträge ausdrücklich von kompakten
+Aufgabengenerierungs- und Auswahlformatanweisungen. Die erste echte künstliche
+Auswertung unter70 hatte durch diese Überschneidung Aufgaben im Zusammenfassungstext
+enthalten. Version71 verhindert die Überschneidung im tatsächlichen Adapter und
+verwirft erkannte Aufgaben-/Lösungsblöcke in Berichten. Frühere Berichte bleiben als
+historisch erhalten und werden nicht als aktuelle Planungsstrategie verwendet.
 
 ## Regelmäßige Auswertung und Kosten
 

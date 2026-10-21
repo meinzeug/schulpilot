@@ -15,7 +15,7 @@ from .schemas import Strict
 from .security import audit, child_access, digest, parent
 
 router = APIRouter(tags=["Eltern-Lernkompass"])
-VERSION = "parent-review-1"
+VERSION = "parent-review-2"
 INTERVAL = 86400
 KINDS = Literal["explain", "practice", "recall", "check_understanding", "clarify_assessment"]
 RULES = """Erstelle eine knappe pädagogische Auswertung und einen kurzen Lernplan für Eltern.
@@ -133,6 +133,8 @@ def validate(value, payload):
         if step["action"] == "clarify_assessment" and not t["uncertain_tasks"]:
             raise ValueError("No open assessment")
     visible = json.dumps(out, ensure_ascii=False)
+    if re.search(r"\b(?:Aufgabe\s+\d+|Optionen\s*:|(?:Antwort|Lösung)\s*:)", visible, re.I):
+        raise ValueError("Unexpected generated exercises in parent review")
     if re.search(r"https?://|www\.|<\s*(?:script|iframe|svg)|\b(?:ADHS|Dyskalkulie|Legasthenie|Intelligenzquotient)\b|\d\s*%", visible, re.I):
         raise ValueError("Unsupported diagnosis or active content")
     return out
@@ -181,7 +183,8 @@ def view(child_id: str, review_id: str | None = None, p=Depends(parent), db=Depe
         "topics": topics[:24], "topic_count": len(topics), "totals": summary, "latest": public(latest), "pending": pending_data,
         "latest_attempt": public(rows[0]) if rows else None, "stale": bool(latest and latest.signature != signature),
         "eligible": eligible, "plan_applies": bool(latest and latest.id == current_id and latest.finished > now() - 7 * 86400
-            and latest.observations.get("basis") == payload["_basis"]),
+            and latest.observations.get("basis") == payload["_basis"]
+            and latest.observations.get("provenance", {}).get("strategy_version") == VERSION),
         "history": [{"id": r.id, "created": r.created, "finished": r.finished} for r in history],
         "notice": "Gespeicherte Übungsbelege und vorsichtige KI-Einschätzung bleiben getrennt. Unklare Bewertungen sind keine Fehler des Kindes."}
 
@@ -407,7 +410,8 @@ def apply_guidance(db, child, candidates):
     row = db.scalar(select(ParentLearningReview).where(ParentLearningReview.child_id == child.id,
         ParentLearningReview.family_id == child.family_id, ParentLearningReview.status == "ready",
         ParentLearningReview.finished > now() - 7 * 86400).order_by(ParentLearningReview.finished.desc(), ParentLearningReview.id.desc()).limit(1))
-    if not row or row.observations.get("basis") != facts(db, child)[1]["_basis"]:
+    if (not row or row.observations.get("provenance", {}).get("strategy_version") != VERSION
+            or row.observations.get("basis") != facts(db, child)[1]["_basis"]):
         return None
     from .grades import subject_key
 

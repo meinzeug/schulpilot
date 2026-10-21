@@ -108,7 +108,7 @@ def test_child_cannot_read_or_configure_private_parent_analysis(api, book):
     assert book["client"].get(f"/api/children/{book['child']['id']}/learning-plan").status_code == 403
 
 
-@pytest.mark.parametrize("damage", ["foreign_ref", "unsupported_error", "changed_source", "revoked", "quota"])
+@pytest.mark.parametrize("damage", ["foreign_ref", "unsupported_error", "changed_source", "revoked", "quota", "unwanted_exercises"])
 def test_rejects_unproved_or_stale_analysis_without_retries(api, book, transport, damage):
     seed(book)
     if damage == "quota":
@@ -120,6 +120,8 @@ def test_rejects_unproved_or_stale_analysis_without_retries(api, book, transport
         return
     if damage == "foreign_ref":
         transport["invalid"] = lambda out: out["findings"][0].update(topic_ref="foreign-topic")
+    if damage == "unwanted_exercises":
+        transport["invalid"] = lambda out: out.update(summary="Aufgabe 1: Rechne 4 + 3. Antwort: 7.")
     if damage == "unsupported_error":
         with DB.begin() as db:
             for a in db.scalars(select(Attempt)):
@@ -350,3 +352,38 @@ def test_view_permission_and_admin_cannot_manage_or_access_private_reports(api, 
     for route in (endpoint(book), uri + "/learning-plan", uri + "/homework-review"):
         assert api.get(route).status_code == 403
     assert not transport["calls"]
+
+
+def test_actual_openrouter_parent_prompt_has_no_task_generation_instructions(api, book, monkeypatch):
+    import json
+
+    import httpx
+    from schulpilot.db import ProviderConfig
+    from test_free_standard import free_config
+
+    seed(book)
+    free_config(book["parent"])
+    with DB() as db:
+        payload = parent_insights.facts(db, db.get(Child, book["child"]["id"]))[1]
+        config = db.get(ProviderConfig, 1)
+    payload.pop("_basis")
+    ref = payload["topics"][0]["ref"]
+    output = {"summary": "Die bisherigen Übungsbelege sprechen für eine gezielte nächste Überprüfung.",
+        "findings": [{"topic_ref": ref, "need": "support", "interpretation": "Unterstützung wurde genutzt.", "next_check": "Eine neue eigene Anwendung prüfen."}],
+        "plan": [{"topic_ref": ref, "action": "practice", "purpose": "Selbst anwenden lassen.", "expected_result": "Eine neue eigene Antwort."}]}
+    requests = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def post(self, url, headers, json):
+            requests.append(json)
+            return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": __import__("json").dumps(output)}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 100, "cost": 0}})
+    monkeypatch.setattr(providers, "verify_free_endpoint", lambda *a: None)
+    monkeypatch.setattr(providers.httpx, "Client", Client)
+    assert providers.request_provider(config, "decision", payload).data == output
+    instructions = json.dumps(requests[0]["messages"][0], ensure_ascii=False)
+    assert "GENAU 2 Aufgaben" not in instructions and "AUSGABEFORMAT FÜR AUSWAHLAUFGABEN" not in instructions
+    schema = requests[0]["response_format"]["json_schema"]["schema"]
+    assert schema["$defs"]["Finding"]["properties"]["topic_ref"]["enum"] == [ref]
