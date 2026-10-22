@@ -1,4 +1,32 @@
-# Produktionsstand 1.22.1+91 · 22.10.2026
+# Produktionsstand 1.22.2+92 · 22.10.2026
+
+Live: `20261022T212319Z-12d4389`, Produktcommit
+`12d43896ce4c2fb55839eba218beb8ffce374252`, main gepusht, Schema0029.
+Gebundener Build und öffentliche APK-/JavaScript-Byteprüfung bestanden.
+Die tatsächlich noch zu hohen Eltern- und Admin-Mobilköpfe sind nachgebessert
+und im Produktionsbrowser bei320px/390px bedient.86 native UI-Fälle,91
+Backend-/Migrationsfälle,7 Offline-Agentfälle,13 Operator-Widgetfälle sowie
+Betriebsregressionen bestehen; diese gezielten Läufe werden nicht zu einer
+erfundenen Vollsuite addiert. Alle5Produktionsdienste sind aktiv.
+
+Die normale künstliche Buddy-Familie und die ursprüngliche Browser-Demo sind
+bereinigt. Der ausdrücklich genehmigte Testadmin ist gesperrt und seine
+Sitzungen sind widerrufen; private QA-Zugangsdaten wurden nach401Nachweisen
+entfernt. Die erfolgreiche einzelne Luna/high-UI-Frage und die fehlgeschlagene
+zweite Sol/max-Reparaturprobe bleiben getrennt dokumentiert. Kein dritter
+Reparaturaufruf, kein Patch angewendet, keine Quotenänderung. Einzelbelege,
+Artefakthashes und Rückweg: [RELEASE_92_2026_10_22.md](RELEASE_92_2026_10_22.md).
+
+Neuer Folgeauftrag: marktreifer Webverkauf mit Überweisung, PayPal und noch
+zu konkretisierender Google-Zahlungsart. Der öffentliche Katalog meldet derzeit
+Verkauf/Testphase aus; echte Betreiber-/Bank-/Steuerangaben und Händlerfreigaben
+fehlen. Ein persönlicher PayPal-Login ist im geöffneten Browser angefragt.
+Die Implementierung entsteht getrennt im verwalteten Commerce-Worktree; keine
+erfundene Händlerfreigabe oder Aussage bereits möglicher Zahlung.
+
+---
+
+# Historischer Produktionsstand 1.22.1+91 · 22.10.2026
 
 Live: `20261022T204523Z-b42447c`, Produktcommit
 `b42447cb61a53d2249a0eddd09cd31f51e67b50a`, main gepusht, Schema 0029.
