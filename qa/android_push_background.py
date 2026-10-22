@@ -9,9 +9,9 @@ product/server configuration change, arbitrary recipient, retry, or fallback.
 
 import argparse
 import json
+import os
 import re
 import shlex
-import stat
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -20,19 +20,19 @@ from zoneinfo import ZoneInfo
 import httpx
 from android_push import (
     BACKGROUND_BODY,
-    PRIVATE,
     ROOT,
     PushQaError,
     api_json,
     choose_hour,
     labels,
+    load_credentials,
     native_login,
     own_notifications,
     quiet,
     safe_write,
     seek_label,
 )
-from android_smoke import BASE, HEADERS, PACKAGE, adb, nodes, press, tap_node, wait
+from android_smoke import ADB, BASE, HEADERS, PACKAGE, adb, nodes, press, tap_node, wait
 
 # This fixed program is the only remote command; no user input enters its shell.
 # It leaves neither a credential file nor a remotely callable API endpoint.
@@ -150,12 +150,36 @@ def reserve_one(version):
     old = json.loads(path.read_text()) if path.exists() else {}
     if old.get("date") == today and old.get("reserved"):
         raise PushQaError("one_background_send_already_reserved_no_replay")
+    claim = path.with_name(f".android-push-background-{version}-{today}-reserved.json")
+    try:
+        descriptor = os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise PushQaError("background_send_already_reserved_no_replay") from None
+    with os.fdopen(descriptor, "w") as target:
+        json.dump({"date": today, "installed_code": version, "reserved": True}, target)
     safe_write(path, {"date": today, "installed_code": version, "reserved": True})
+
+
+def stop_cached_process():
+    """am kill preserves FCM eligibility; force-stop would invalidate this test."""
+    adb("shell", "am", "kill", PACKAGE)
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        result = subprocess.run(
+            [*ADB, "shell", "pidof", PACKAGE], capture_output=True, timeout=8,
+        )
+        if result.returncode not in (0, 1):
+            raise PushQaError("emulator_process_state_unreadable_no_message_sent")
+        if not result.stdout.strip():
+            return
+        time.sleep(.25)
+    raise PushQaError("cached_process_not_stopped_no_message_sent")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--expected-code", type=int, default=15)
+    parser.add_argument("--expected-code", type=int, required=True)
+    parser.add_argument("--cold-process", action="store_true", help="After observed STOPPED, kill only the cached process and require no PID before send.")
     parser.add_argument("--foreground", action="store_true", help="One additional explicit foreground test on this own device.")
     args = parser.parse_args()
     report_file = ROOT / "artifacts/android-push-background-result.json"
@@ -164,6 +188,8 @@ def main():
         "synthetic_child_verified": False,
         "native_registration": False,
         "activity_stopped_before_queue": False,
+        "cold_process_requested": args.cold_process,
+        "process_absent_before_queue": False,
         "requested_messages": 0,
         "fcm_accepted": False,
         "android_notification_visible": False,
@@ -177,9 +203,7 @@ def main():
     device_id = None
     baseline_devices = set()
     try:
-        if stat.S_IMODE(PRIVATE.stat().st_mode) != 0o600:
-            raise PushQaError("fixture_credentials_mode_not_600")
-        credentials = json.loads(PRIVATE.read_text())
+        credentials = load_credentials()
         package = adb("shell", "dumpsys", "package", PACKAGE).decode(errors="replace")
         match = re.search(r"\bversionCode=(\d+)", package)
         if not match or int(match[1]) != args.expected_code:
@@ -277,6 +301,9 @@ def main():
             time.sleep(0.5)
         if not report["activity_stopped_before_queue"]:
             raise PushQaError("activity_stopped_not_proven_no_message_sent")
+        if args.cold_process:
+            stop_cached_process()
+            report["process_absent_before_queue"] = True
         report["phase"] = "single_stopped_background_message"
         safe_write(report_file, report)
         reserve_one(report["installed_code"])

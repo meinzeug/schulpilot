@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -157,6 +159,9 @@ class _SchulpilotAppState extends State<SchulpilotApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     widget.state.inbox.foreground(state == AppLifecycleState.resumed);
     widget.state.familyCalls.lifecycle(state);
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.state.push.refreshRegistration());
+    }
   }
 
   late final GoRouter router = GoRouter(

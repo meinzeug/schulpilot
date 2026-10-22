@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'admin_workspace_ui.dart';
+import 'push_client.dart' show PushPermissionCancelled;
 import 'ui.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -412,35 +413,106 @@ class _NotificationPanelState extends State<NotificationPanel>
   }
 
   Future<void> enable() async {
+    final account = widget.state.user;
     try {
-      await widget.state.push.enable({
-        'timezone': timezone,
-        'quiet_start': start,
-        'quiet_end': end,
-        'reminders': reminders,
-        'help_requests': help,
-        'summaries': summaries,
-        'family_calls':
-            widget.state.isParent &&
-            widget.state.push.canOpenSettings &&
-            familyCalls,
-      });
+      await widget.state.push.enable(
+        {
+          'timezone': timezone,
+          'quiet_start': start,
+          'quiet_end': end,
+          'reminders': reminders,
+          'help_requests': help,
+          'summaries': summaries,
+          'family_calls':
+              widget.state.isParent &&
+              widget.state.push.canOpenSettings &&
+              familyCalls,
+        },
+        confirmPermission: widget.state.push.webPlatform
+            ? _confirmBrowserPermission
+            : null,
+      );
+    } on PushPermissionCancelled {
+      if (mounted && identical(widget.state.user, account)) {
+        setState(() => version++);
+      }
+      return;
     } on ApiError {
-      if (mounted) setState(() => version++);
+      if (mounted && identical(widget.state.user, account)) {
+        setState(() => version++);
+      }
       rethrow;
     }
-    if (mounted) {
+    if (mounted && identical(widget.state.user, account)) {
       setState(() => version++);
       toast(context, 'Deine Benachrichtigungen sind gespeichert.');
     }
   }
 
+  Future<bool?> _confirmBrowserPermission(
+    Future<bool> Function() request,
+  ) async {
+    if (!mounted) return null;
+    Object? failure;
+    var asking = false;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => StatefulBuilder(
+        builder: (dialog, update) => AlertDialog(
+          title: const Text('Im Browser erlauben'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'Bestätige jetzt die Browserfreigabe. Wähle im nächsten Browserfenster „Zulassen“, wenn du auf diesem Gerät Benachrichtigungen bekommen möchtest.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: asking ? null : () => Navigator.pop(dialog),
+              child: const Text('Später'),
+            ),
+            FilledButton.icon(
+              key: const ValueKey('push-browser-permission'),
+              onPressed: asking
+                  ? null
+                  : () async {
+                      try {
+                        // Keep the native browser prompt in this click's activation.
+                        // Configuration and Firebase imports already finished.
+                        final permission = request();
+                        update(() => asking = true);
+                        final allowed = await permission;
+                        if (dialog.mounted) Navigator.pop(dialog, allowed);
+                      } catch (error) {
+                        failure = error;
+                        if (dialog.mounted) Navigator.pop(dialog, false);
+                      }
+                    },
+              icon: const Icon(Icons.notifications_active_outlined),
+              label: Text(
+                asking
+                    ? 'Bitte im Browser bestätigen …'
+                    : 'Browserfreigabe bestätigen',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (failure != null) throw failure!;
+    return result;
+  }
+
   Future<void> disable(dynamic device) async {
+    final account = widget.state.user;
+    final revision = widget.state.push.registrationRevision;
     await widget.state.api.delete('/notifications/devices/${device['id']}');
+    if (!identical(widget.state.user, account)) return;
     if (device['current'] == true) {
-      await widget.state.push.forget();
+      await widget.state.push.forget(expectedRevision: revision);
     }
-    if (mounted) setState(() => version++);
+    if (mounted && identical(widget.state.user, account)) {
+      setState(() => version++);
+    }
   }
 
   String hour(dynamic value) => '${value.toString().padLeft(2, '0')}:00';

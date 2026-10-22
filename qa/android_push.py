@@ -23,7 +23,10 @@ import httpx
 from android_smoke import ADB, BASE, HEADERS, PACKAGE, adb, nodes, press, tap_node, wait
 
 ROOT = Path(__file__).resolve().parents[1]
-PRIVATE = Path.home() / ".local/share/schulpilot-firebase/test-login-private.json"
+PRIVATE = Path(os.environ.get(
+    "SCHULPILOT_QA_PUSH_CREDENTIALS",
+    str(Path.home() / ".local/share/schulpilot-firebase/test-login-private.json"),
+)).expanduser()
 REPORT = ROOT / "artifacts/android-push-result.json"
 CHECKPOINT = ROOT / "artifacts/.android-push-send-checkpoint.json"
 NEUTRAL = "Es gibt Neuigkeiten in SCHULPILOT."
@@ -33,6 +36,25 @@ ACCEPTED = "Testnachricht: Von FCM angenommen"
 
 class PushQaError(Exception):
     pass
+
+
+def load_credentials(path=PRIVATE):
+    """Accept the old flat fixture or a new private synthetic-fixture wrapper."""
+    if stat.S_IMODE(path.stat().st_mode) != 0o600:
+        raise PushQaError("fixture_credentials_must_have_mode_600")
+    fixture = json.loads(path.read_text())
+    if "credentials" in fixture:
+        if fixture.get("synthetic_only") is not True:
+            raise PushQaError("wrapped_fixture_must_be_explicitly_synthetic")
+        fixture = fixture["credentials"]
+    if not isinstance(fixture, dict) or not all(
+        isinstance(fixture.get(key), str) and fixture[key]
+        for key in ("child_username", "child_password")
+    ):
+        raise PushQaError("fixture_credentials_schema_invalid")
+    # Authentication, synthetic family, test grant and parental consent are
+    # independently checked below. A local label alone never authorizes send.
+    return fixture
 
 
 def safe_write(path, data):
@@ -178,13 +200,22 @@ def mark_send(version):
     if previous["intents"] >= 2:
         raise PushQaError("two_send_intents_already_reserved_no_resend")
     previous["intents"] += 1
+    # Claim before any tap. A competing/interrupted invocation cannot reuse
+    # this send even if the older summary checkpoint has not yet been written.
+    claim = CHECKPOINT.with_name(f".android-push-{version}-{today}-send-{previous['intents']}.json")
+    try:
+        descriptor = os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise PushQaError("send_already_reserved_no_resend") from None
+    with os.fdopen(descriptor, "w") as target:
+        json.dump({"reserved": True, **previous}, target)
     safe_write(CHECKPOINT, previous)
     return previous["intents"]
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--expected-code", type=int, default=14)
+    parser.add_argument("--expected-code", type=int, required=True)
     args = parser.parse_args()
     report = {
         "installed_code": None,
@@ -204,9 +235,7 @@ def main():
     fixture_device_id = None
     before_devices = set()
     try:
-        if stat.S_IMODE(PRIVATE.stat().st_mode) != 0o600:
-            raise PushQaError("fixture_credentials_must_have_mode_600")
-        credentials = json.loads(PRIVATE.read_text())
+        credentials = load_credentials()
         package = adb("shell", "dumpsys", "package", PACKAGE).decode(errors="replace")
         version = re.search(r"\bversionCode=(\d+)", package)
         if not version or int(version[1]) != args.expected_code:

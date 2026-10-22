@@ -10,12 +10,19 @@ import de.dorfspy.schulpilot.FamilyCallNotifications
 
 /** Operator-owned emulator only; absent from every distributed APK/AAB. */
 class FamilyCallInstrumentation : Instrumentation() {
+    private var pushReceiverOnly = false
+
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        pushReceiverOnly = arguments?.getString("mode") == "push_receiver"
         start()
     }
 
     override fun onStart() {
+        if (pushReceiverOnly) {
+            PushReceiverRegression(this).run()
+            return
+        }
         val result = Bundle()
         val presenter = FamilyCallNotifications(targetContext)
         val manager = targetContext.getSystemService(NotificationManager::class.java)

@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingReceiver
 
 /** All displayed strings are fixed. No family, subject or task content in push. */
 class FamilyCallNotifications(private val context: Context) {
@@ -208,10 +209,12 @@ class FamilyCallNotifications(private val context: Context) {
 }
 
 /** Signature-protected FCM receiver; other messages retain FlutterFire behavior. */
-class FamilyCallMessagingReceiver : BroadcastReceiver() {
+class FamilyCallMessagingReceiver : FlutterFirebaseMessagingReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.getStringExtra("type") != "family_call") {
-            io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingReceiver().onReceive(context, intent)
+            // FlutterFire uses goAsync(). Keep Android's PendingResult on the
+            // framework-created receiver instead of delegating to a new instance.
+            super.onReceive(context, intent)
             return
         }
         val data = listOf("type", "event", "call_id", "call_binding", "expires_at")

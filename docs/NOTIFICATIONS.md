@@ -1,9 +1,14 @@
 # Benachrichtigungen
 
-Die Glocke im mobilen App-Kopf und im Browser-Kontokopf öffnet `/notifications`.
+Die Glocke im mobilen App-Kopf und im Browser-Kontokopf öffnet eine kleine
+Vorschau; „Alle anzeigen“ führt zu `/notifications`.
 Kinder und berechtigte Eltern sehen bis zu 50 gespeicherte Neuigkeiten aus den
 letzten 30 Tagen. Beim Betriebsadmin öffnet sie ausschließlich `/admin/push`.
 Die Übersicht funktioniert ohne Geräte-Push und ohne Firebase-Initialisierung.
+
+Die Prüfung vom 22.10.2026 trennt Googlekonfiguration, serverseitige Anmeldung
+und tatsächliche Geräteanzeige. Befunde, Korrekturen und Abnahme stehen in
+[FIREBASE_EVALUATION_2026_10_22.md](FIREBASE_EVALUATION_2026_10_22.md).
 
 ## Direkter Nachrichtenweg ab 1.13.0
 
@@ -119,14 +124,34 @@ cd app
 flutter test test/push_client_test.dart test/notification_inbox_test.dart test/browser_workspace_test.dart
 ```
 
-Eigene künstliche Geräteprüfungen nach regulärem Build und Deployment:
-`qa/push_register.mjs --send` sowie
-`qa/android_push_background.py --expected-code 31 --foreground`. Die Android-
-Prüfung beobachtet STOPPED vor genau einem Hintergrundversand, native Anzeige,
-Klickziel und eine gesonderte Vordergrundnachricht. Zugangsdaten nur aus der
-bestehenden geschützten lokalen künstlichen Kontodatei; Tastatureingaben über
-ADB-stdin. Kein öffentlicher Versand an frei wählbare Tokens. Ergebnisse und
-konkrete Endgerätelücken stehen in STATUS und CHATGPT_HANDOFF.
+Eigene künstliche Android-Geräteprüfung nach regulärem Build und Deployment:
+
+```sh
+SCHULPILOT_QA_ADB_SERIAL=emulator-5560 \
+SCHULPILOT_QA_PUSH_CREDENTIALS="$PWD/artifacts/firebase84/.qa-private.json" \
+  .venv/bin/python qa/android_push_background.py \
+  --expected-code 84 --cold-process --foreground
+```
+
+Versionscode und privater Fixturepfad müssen zur ausdrücklich freigegebenen
+Prüfung passen. Der alte lokale Standardpfad bleibt kompatibel; neue künstliche
+Fixturedateien dürfen die Zugangsdaten unter `credentials` kapseln und müssen
+dann `synthetic_only=true` ausweisen. Dateien benötigen Modus 0600. Zusätzlich
+prüft der Server weiterhin Sitzung, künstlichen Haushalt, zeitbegrenzte
+Testfreigabe, Elternzustimmung und Ruhezeiten; die lokale Markierung ersetzt
+diese Prüfungen nicht. Tastatureingaben gehen ausschließlich über ADB-stdin.
+
+Die Prüfung beobachtet STOPPED vor genau einem Hintergrundversand. Mit
+`--cold-process` beendet sie anschließend nur den zwischengespeicherten Prozess
+(`am kill`, kein `force-stop`) und verlangt eine leere PID-Abfrage vor der
+Sendreservierung. Danach werden sichtbare Android-Anzeige, Klickziel und mit
+`--foreground` genau eine gesonderte Vordergrundnachricht geprüft. Atomare
+lokale Reservierungen verhindern versehentliche Wiederholungen nach Abbruch
+oder bei gleichzeitigem Start. Keine Reservierungsdatei löschen, um einen
+fehlgeschlagenen Lauf automatisch zu wiederholen. Kein öffentlicher Versand an
+frei wählbare Tokens. Webprüfungen benötigen entsprechend beobachtete
+Browser-/Systemzustellung. Ergebnisse und konkrete Endgerätelücken stehen in
+STATUS und CHATGPT_HANDOFF.
 
 Rückweg: Vor Deployment eigene verschlüsselte Sicherung prüfen. Alter Release
 `20261017T140346Z-58f2c8c` kann mit unveränderter additiver Tabelle 0016 betrieben

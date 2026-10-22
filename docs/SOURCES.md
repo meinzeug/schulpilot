@@ -1,3 +1,16 @@
+Firebaseprüfung22.10.2026: bestehende Firebase-Konsole unter dem beauftragten
+Google-Konto, feste Projekt-/App-IDs über Firebase Management und Service Usage,
+minimale Senderrolle über IAM und redigierte Serverbetriebsmetadaten unabhängig
+abgeglichen. [API-Key-Einschränkungen](https://firebase.google.com/docs/projects/api-keys)
+und [Tokenverwaltung](https://firebase.google.com/docs/cloud-messaging/manage-tokens).
+Tatsächlich fixierte Quellen: `firebase_messaging 16.7.0`,
+`FlutterFirebaseMessagingReceiver.java` (`goAsync`/`PendingResult.finish`) sowie
+`firebase_messaging_web 4.2.5`, `firebase_messaging_web.dart` (leerer
+`onTokenRefresh`-Stream). [Android-Broadcast-Lebensdauer](https://developer.android.com/reference/android/content/BroadcastReceiver#goAsync())
+und [Webpermission](https://developer.mozilla.org/en-US/docs/Web/API/Notification/requestPermission_static).
+Keine SDK-Aktualisierung, neue Cloudressource oder neue Anmeldedaten.
+Nachweisgrenzen und Ablauf in [FIREBASE_EVALUATION_2026_10_22.md](FIREBASE_EVALUATION_2026_10_22.md).
+
 Livehilfe22.10.2026, Version1.19.4+83: eigene gemeinsame Flutter-Oberfläche,
 vorhandener kontogebundener WebRTC-Service und feste Gestaltungspalette.
 Aufgabenbegleitende Liveleiste ersetzt den automatischen Wechsel auf eine
