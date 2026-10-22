@@ -1,4 +1,64 @@
-# Produktionsstand 1.19.5+84 · 22.10.2026
+# Produktionsstand 1.19.6+85 · 22.10.2026
+
+Live: `20261022T075254Z-a8201fc`, Produktcommit
+`a8201fcc3c596f6a1f0243b5e7443d482256a9ca`, main gepusht.
+
+Drei parallele Fachagenten prüften Kinderbereich, Elternbereich und Anmeldung;
+die gegenseitige Gegenprüfung ergänzte konkrete Kontowechsel-/Dialogfehler.
+Die Elternübersicht beginnt mit gespeicherten Übungsbelegen. Lernplan und
+Hausaufgabenlisten unterscheiden Laden, Fehler, leere Filter und Fortsetzung;
+keine alten Themen unter neuer Seitenwahl. Pagination auch bei 320px und
+200% Schrift ohne Überlauf. „Frage schreiben“ ist im Kinderpostfach direkt
+erreichbar; Kontextlinks und Empfänger sind konkret beschriftet. Geräteaktionen
+haben gezielte Bestätigung, Rückmeldung und einen verständlichen Leerzustand.
+
+Anmeldung: Weiter-/Fertig-Tastaturwege, Autofillgruppe, lokale Feldhinweise ohne
+leere Loginanfrage, erhaltene Eingaben und Mailfragmente. Google-/Passwortstarts
+gegenseitig gesperrt, optionaler Google-Status kontogebunden zwischengespeichert.
+Kein Wechsel an OIDC, Authregeln, Rollen, Anbietern oder Kontingenten.
+
+Exakte Sitzungsbindung und Kind-/Generationsstempel verhindern die Übernahme
+verspäteter Inhalte. Alte Geräte-, Nachrichten- und Eltern-Themendialoge werden
+gezielt geschlossen; verspätetes Speichern darf keinen neuen Dialog schließen.
+Unbekannte Ladefehler geben keine internen Exceptiontexte mehr aus.
+
+Alle 1.203 Fluttertests im abschließenden Gesamtlauf bestanden; vollständige
+Analyse ohne Befund. Im ersten Lauf wurden ausschließlich zwei historische
+Beschriftungsassertionen an die konkreteren Texte angepasst; Navigations-,
+Hilfe- und GET-only-Prüfungen blieben erhalten. Gehosteter GitHub-Lauf 39730113540
+startete wegen der bestehenden Abrechnungssperre keine Prüfschritte. Lokale
+Prüfungen bleiben davon getrennt.
+
+Web, signierte Direct-APK und korrektes Play-AAB gebaut und unabhängig geprüft.
+APK 111875235 Bytes, SHA256
+`ddb025e2c09e658f6413800a6a90fc0876e75312d938ec3639993d3c17341993`;
+AAB 89135569 Bytes, SHA256
+`490eb414fcc39944e99de7d82821c0f26b57d319f0d5a6a123fc883b872dd815`.
+Öffentlicher vollständiger APK-Download identisch. Signierer und Version stimmen;
+Play-Bundle gültig und ohne APK-Installerberechtigung, kein Storeupload.
+Geheimnisprüfung von Quellen/Web/Archiven sowie Relaysecretprüfung ohne Treffer.
+
+API, Worker, Caddy und bestehender TURN-Dienst aktiv; Sicherung erfolgreich,
+Schema 0026 und OpenRouter-Providerrevision 29 mit Economy/ZDR unverändert.
+Rückweg für Web/API: `20261022T065736Z-1647c03`, keine Datenbankrücksetzung.
+Native Folgekorrekturen benötigen einen höheren Versionscode.
+Details, Recherche und Grenzen in [UX_REVIEW_2026_10_22.md](UX_REVIEW_2026_10_22.md).
+
+
+Produktionsbrowser mit eigener künstlicher Familie geprüft: Elternübersicht
+hell/dunkel, mobiler Lernplan/Navigation, Hausaufgabenfilter-Rückweg,
+Pflichtfeldfokus und Enter-Anmeldung, direkte Frage mit Abbrechen und echtes
+Abmelden der aktuellen Kindersitzung. Viewport zurückgesetzt und Testtab
+entfernt. Normaler Account-Löschpfad bestätigte die eigene Testfamilienlöschung;
+alte Sitzung und beide Logins anschließend 401. Lokale Zugangsdaten entfernt,
+null KI-/Push-Aufträge. Keine neue physische Android- oder echte Google-
+Anmeldung und keine vollständige Screenreader-/WCAG-Abnahme behauptet.
+Nachfolgende Dokumentationskorrektur verändert den bereitgestellten Produktcode
+nicht.
+
+---
+
+# Historischer Produktionsstand 1.19.5+84 · 22.10.2026
 
 Live: `20261022T065736Z-1647c03`, Produktcommit
 `1647c03533a0f493edab66b941499a1a34aa5b11`, main gepusht.
