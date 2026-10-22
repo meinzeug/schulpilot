@@ -21,16 +21,18 @@ class ParentPlanScreen extends StatefulWidget {
 class _ParentPlanScreenState extends State<ParentPlanScreen> {
   Json? data;
   String? error;
-  late String? owner;
+  late Json? owner;
   int generation = 0, section = 0, page = 1, refresh = 0;
   bool loading = false, includeCompleted = false, busy = false;
+  bool loadFailed = false;
   final Map<String, String> preparationKeys = {};
-  bool get own => mounted && widget.state.user?['id'] == owner;
+  bool get own =>
+      mounted && owner != null && identical(widget.state.user, owner);
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     widget.state.addListener(identityChanged);
     load();
   }
@@ -70,6 +72,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     setState(() {
       loading = true;
       error = null;
+      loadFailed = false;
     });
     try {
       final value = await widget.state.api.get(
@@ -90,13 +93,14 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
               : 'Der Lernplan konnte gerade nicht geladen werden.';
           if (e is ApiError && [401, 403, 404].contains(e.status)) data = null;
           loading = false;
+          loadFailed = true;
         });
       }
     }
   }
 
   Future<void> add({Json? source, Json? sourceUnit, Json? existing}) async {
-    if (!own || data == null || busy) return;
+    if (!own || data == null || busy || loading) return;
     final child = widget.childId;
     await assignmentDialog(
       context,
@@ -114,7 +118,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   }
 
   Future<void> prepare(Json topic) async {
-    if (!own || busy) return;
+    if (!own || busy || loading) return;
     final child = widget.childId, id = topic['id'] as String;
     final key = preparationKeys.putIfAbsent(id, homeworkKey);
     setState(() => busy = true);
@@ -148,14 +152,57 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   }
 
   Future<void> complete(Json topic) async {
-    if (!own || busy || data?['can_manage'] != true) return;
-    final child = widget.childId;
-    final confirmed = await confirmDialog(
-      context,
-      'Thema als erledigt markieren?',
-      '„${topic['topic']}“ wird aus den offenen Elternaufträgen genommen. Gespeicherte Übungen und Antworten bleiben erhalten. Das Häkchen ist keine Aussage über sichere Beherrschung.',
-    );
-    if (!confirmed || !own || child != widget.childId || busy) return;
+    if (!own || busy || loading || data?['can_manage'] != true) return;
+    final child = widget.childId, state = widget.state;
+    final account = state.user;
+    bool current() =>
+        own && identical(state.user, account) && child == widget.childId;
+    ModalRoute<bool>? confirmationRoute;
+    void identityChanged() {
+      if (current()) return;
+      final route = confirmationRoute;
+      if (route == null) return;
+      Future<void>.microtask(() {
+        if (!current() && route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
+
+    state.addListener(identityChanged);
+    bool confirmed;
+    try {
+      confirmed =
+          await showDialog<bool>(
+            context: context,
+            builder: (dialog) {
+              confirmationRoute ??= ModalRoute.of<bool>(dialog);
+              identityChanged();
+              return AlertDialog(
+                scrollable: true,
+                title: const Text('Thema als erledigt markieren?'),
+                content: Text(
+                  '„${topic['topic']}“ wird aus den offenen Elternaufträgen genommen. Gespeicherte Übungen und Antworten bleiben erhalten. Das Häkchen ist keine Aussage über sichere Beherrschung.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialog, false),
+                    child: const Text('Abbrechen'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      if (current()) Navigator.pop(dialog, true);
+                    },
+                    child: const Text('Bestätigen'),
+                  ),
+                ],
+              );
+            },
+          ) ??
+          false;
+    } finally {
+      state.removeListener(identityChanged);
+      if (confirmationRoute != null) await confirmationRoute!.completed;
+    }
+    if (!confirmed || !current() || busy || data?['can_manage'] != true) return;
     setState(() => busy = true);
     try {
       await widget.state.api.post(
@@ -340,8 +387,12 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
               ),
               const SizedBox(height: 20),
               if (loading) const LinearProgressIndicator(),
-              if (error != null) Notice(error!, warning: true),
-              if (data == null && !loading)
+              if (error != null)
+                Semantics(
+                  liveRegion: true,
+                  child: Notice(error!, warning: true),
+                ),
+              if ((data == null || loadFailed) && !loading)
                 TextButton(
                   onPressed: load,
                   child: const Text('Lernplan erneut laden'),
@@ -411,12 +462,12 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                       runSpacing: 10,
                       children: [
                         FilledButton.icon(
-                          onPressed: busy ? null : () => add(),
+                          onPressed: busy || loading ? null : () => add(),
                           icon: const Icon(Icons.add_rounded),
                           label: const Text('Eigenes Thema setzen'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: busy
+                          onPressed: busy || loading
                               ? null
                               : () async {
                                   final child = widget.childId;
@@ -453,7 +504,9 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                                 '${unit['subject']} · ${unit['topic']}',
                               ),
                               trailing: const Icon(Icons.add_circle_outline),
-                              onTap: () => add(sourceUnit: Json.from(unit)),
+                              onTap: busy || loading
+                                  ? null
+                                  : () => add(sourceUnit: Json.from(unit)),
                             ),
                         ],
                       ),
@@ -470,38 +523,72 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                             load();
                           },
                   ),
-                  if ((data!['topics'] as List).isEmpty)
-                    const Notice(
-                      'Hier kannst du ein Thema aus dem Heft übernehmen oder selbst einen Lernauftrag formulieren.',
+                  if (loading)
+                    Semantics(
+                      liveRegion: true,
+                      child: const Text('Themen werden geladen …'),
                     ),
-                  for (final topic in data!['topics'])
-                    topicCard(Json.from(topic)),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: loading || page <= 1
-                            ? null
-                            : () {
-                                page--;
-                                load();
-                              },
-                        child: const Text('Zurück'),
+                  if (loadFailed)
+                    const Text(
+                      'Für diese Ansicht ist die Themenliste noch nicht geladen.',
+                    ),
+                  if (!loading && !loadFailed) ...[
+                    if ((data!['topics'] as List).isEmpty)
+                      Notice(
+                        data!['can_manage'] == true
+                            ? includeCompleted
+                                  ? 'Noch keine Themen. Übernimm eine Heftseite oder setze ein eigenes Thema.'
+                                  : 'Keine offenen Themen. Du kannst abgeschlossene Themen einblenden oder ein neues Thema setzen.'
+                            : includeCompleted
+                            ? 'Für dieses Kind sind noch keine Elternaufträge gespeichert.'
+                            : 'Für dieses Kind sind keine offenen Elternaufträge gespeichert.',
                       ),
-                      Expanded(
+                    for (final topic in data!['topics'])
+                      topicCard(Json.from(topic)),
+                  ],
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Semantics(
+                        liveRegion: true,
                         child: Text(
-                          'Seite $page von ${data!['pagination']['pages']}',
+                          loading
+                              ? 'Seite $page wird geladen …'
+                              : loadFailed
+                              ? 'Seite $page noch nicht geladen'
+                              : 'Seite $page von ${data!['pagination']['pages']}',
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      TextButton(
-                        onPressed:
-                            loading || page >= data!['pagination']['pages']
-                            ? null
-                            : () {
-                                page++;
-                                load();
-                              },
-                        child: const Text('Weiter'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: loading || page <= 1
+                                  ? null
+                                  : () {
+                                      page--;
+                                      load();
+                                    },
+                              child: const Text('Zurück'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextButton(
+                              onPressed:
+                                  loading ||
+                                      loadFailed ||
+                                      page >= data!['pagination']['pages']
+                                  ? null
+                                  : () {
+                                      page++;
+                                      load();
+                                    },
+                              child: const Text('Weiter'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

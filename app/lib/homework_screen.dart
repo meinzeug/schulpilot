@@ -30,12 +30,15 @@ class HomeworkScreen extends StatefulWidget {
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
   final List<Json> photos = [];
-  late final actor = widget.state.user?['id'];
+  late final actor = widget.state.user;
   bool loading = true, busy = false;
+  bool _requestActive = false;
+  int generation = 0;
+  bool? retryMore;
   String? error, cursor;
   Uint8List? pending;
   String? uploadKey;
-  bool get own => actor != null && actor == widget.state.user?['id'];
+  bool get own => actor != null && identical(actor, widget.state.user);
 
   @override
   void initState() {
@@ -46,10 +49,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
 
   void identity() {
     if (!own && mounted) {
+      generation++;
       setState(() {
         photos.clear();
         pending = null;
       });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeworkScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId) {
+      generation++;
+      _requestActive = false;
+      photos.clear();
+      pending = null;
+      uploadKey = null;
+      cursor = null;
+      unawaited(load());
     }
   }
 
@@ -61,25 +79,40 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   }
 
   Future<void> load({bool more = false}) async {
-    if (!own) return;
+    if (!own || _requestActive) return;
+    final stamp = ++generation, child = widget.childId;
+    _requestActive = true;
     setState(() {
       loading = true;
       error = null;
+      retryMore = null;
     });
     try {
       final result = await widget.state.api.get(
-        '/children/${widget.childId}/homework${more && cursor != null ? '?cursor=$cursor' : ''}',
+        '/children/$child/homework${more && cursor != null ? '?cursor=$cursor' : ''}',
       );
-      if (!mounted || !own) return;
+      if (!mounted || !own || child != widget.childId || stamp != generation) {
+        return;
+      }
       setState(() {
         if (!more) photos.clear();
         photos.addAll((result['photos'] as List).map((p) => Json.from(p)));
         cursor = result['next_cursor'];
       });
     } catch (e) {
-      if (mounted && own) setState(() => error = e.toString());
+      if (mounted && own && child == widget.childId && stamp == generation) {
+        setState(() {
+          retryMore = more;
+          error = e is ApiError
+              ? e.message
+              : 'Deine Aufgabenfotos konnten gerade nicht geladen werden.';
+        });
+      }
     } finally {
-      if (mounted && own) setState(() => loading = false);
+      if (mounted && own && child == widget.childId && stamp == generation) {
+        _requestActive = false;
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -155,6 +188,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     setState(() {
       busy = true;
       error = null;
+      retryMore = null;
     });
     try {
       final photo = await widget.state.api.upload(
@@ -244,7 +278,22 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         if (error != null)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
-            child: Notice(error!, warning: true),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Notice(error!, warning: true),
+                if (retryMore != null)
+                  OutlinedButton.icon(
+                    onPressed: loading ? null : () => load(more: retryMore!),
+                    icon: Icon(Icons.refresh_rounded),
+                    label: Text(
+                      retryMore!
+                          ? 'Weitere Fotos erneut laden'
+                          : 'Erneut laden',
+                    ),
+                  ),
+              ],
+            ),
           ),
         SizedBox(height: 22),
         heading('Deine Aufgabenfotos'),
@@ -300,10 +349,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     ),
                   ),
           ),
-        if (cursor != null)
+        if (cursor != null && retryMore != true)
           TextButton(
             onPressed: loading ? null : () => load(more: true),
-            child: Text('Weitere Fotos'),
+            child: Text(loading ? 'Fotos werden geladen …' : 'Weitere Fotos'),
           ),
         if (!widget.state.isChild)
           TextButton.icon(
@@ -334,7 +383,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   final draft = TextEditingController(), question = TextEditingController();
   final Map<String, String> drafts = {};
   final Set<String> done = {};
-  late final actor = widget.state.user?['id'];
+  late final actor = widget.state.user;
   Json? data;
   String? error, sendError, saveError, selectedId, lastSaved, uncertainKey;
   Json? uncertainBody;
@@ -353,7 +402,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       restored = false,
       foreground = true,
       applying = false;
-  bool get own => actor != null && actor == widget.state.user?['id'];
+  bool get own => actor != null && identical(actor, widget.state.user);
   bool get canWrite =>
       own &&
       widget.state.isChild &&

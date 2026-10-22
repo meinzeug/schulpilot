@@ -105,12 +105,71 @@ Future<void> _startBrowser(AppState state, String request) async {
   }
 }
 
-class GoogleLoginButton extends StatelessWidget {
+class GoogleLoginButton extends StatefulWidget {
   final AppState state;
-  const GoogleLoginButton(this.state, {super.key});
+  final bool enabled;
+  final ValueChanged<bool>? onBusyChanged;
+  const GoogleLoginButton(
+    this.state, {
+    super.key,
+    this.enabled = true,
+    this.onBusyChanged,
+  });
+  @override
+  State<GoogleLoginButton> createState() => _GoogleLoginButtonState();
+}
+
+class _GoogleLoginButtonState extends State<GoogleLoginButton> {
+  late Future<Json> status;
+  Object? owner;
+
+  Future<Json> loadStatus() async {
+    try {
+      return await widget.state.api.get('/auth/google/status');
+    } catch (_) {
+      // A fast failed refresh may finish before the next build subscribes.
+      // Keep an unavailable optional sign-in method from failing the form.
+      return {'available': false};
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    owner = widget.state.user;
+    status = loadStatus();
+    widget.state.addListener(accountChanged);
+  }
+
+  void accountChanged() {
+    if (identical(owner, widget.state.user)) return;
+    setState(() {
+      owner = widget.state.user;
+      status = loadStatus();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant GoogleLoginButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.state, widget.state) ||
+        !identical(oldWidget.state.api, widget.state.api)) {
+      oldWidget.state.removeListener(accountChanged);
+      widget.state.addListener(accountChanged);
+      owner = widget.state.user;
+      status = loadStatus();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(accountChanged);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<Json>(
-    future: state.api.get('/auth/google/status'),
+    future: status,
     builder: (context, value) {
       if (value.data?['available'] != true) return SizedBox.shrink();
       return Padding(
@@ -122,7 +181,11 @@ class GoogleLoginButton extends StatelessWidget {
               style: TextStyle(color: context.palette.muted, fontSize: 12),
             ),
             SizedBox(height: 8),
-            _GoogleAction(state),
+            _GoogleAction(
+              widget.state,
+              enabled: widget.enabled,
+              onBusyChanged: widget.onBusyChanged,
+            ),
           ],
         ),
       );
@@ -132,7 +195,9 @@ class GoogleLoginButton extends StatelessWidget {
 
 class _GoogleAction extends StatefulWidget {
   final AppState state;
-  const _GoogleAction(this.state);
+  final bool enabled;
+  final ValueChanged<bool>? onBusyChanged;
+  const _GoogleAction(this.state, {required this.enabled, this.onBusyChanged});
   @override
   State<_GoogleAction> createState() => _GoogleActionState();
 }
@@ -158,22 +223,31 @@ class _GoogleActionState extends State<_GoogleAction> {
           height: 30,
         ),
         label: Text(busy ? 'Wird geöffnet …' : 'Mit Google anmelden'),
-        onPressed: busy
+        onPressed: busy || !widget.enabled
             ? null
             : () async {
+                if (busy || !widget.enabled) return;
                 setState(() {
                   busy = true;
                   error = null;
                 });
+                widget.onBusyChanged?.call(true);
                 try {
                   final flow = await beginGoogleLogin(widget.state);
                   if (context.mounted && flow != null) {
                     context.go('/auth/google/complete#flow=$flow');
                   }
                 } catch (e) {
-                  if (mounted) setState(() => error = e.toString());
+                  if (mounted) {
+                    setState(
+                      () => error = e is ApiError ? e.message : 'Google konnte gerade nicht geöffnet werden. Versuche es bitte erneut.',
+                    );
+                  }
                 } finally {
-                  if (mounted) setState(() => busy = false);
+                  if (mounted) {
+                    setState(() => busy = false);
+                    widget.onBusyChanged?.call(false);
+                  }
                 }
               },
       ),

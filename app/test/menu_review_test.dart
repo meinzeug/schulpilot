@@ -363,7 +363,10 @@ void main() {
         await tester.tap(find.text('Deine Eltern haben geantwortet'));
         await tester.pumpAndSettle();
         expect(find.text('Wir schauen uns das gemeinsam an.'), findsOneWidget);
-        expect(find.text('Dazu ansehen'), findsOneWidget);
+        expect(
+          find.text(role == 'child' ? 'Lernrunde öffnen' : 'Dazu ansehen'),
+          findsOneWidget,
+        );
         if (role == 'parent') {
           expect(find.text('Kurze Nachricht senden'), findsNothing);
         }

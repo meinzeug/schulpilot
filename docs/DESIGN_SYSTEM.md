@@ -1,5 +1,13 @@
 # Zwei Erscheinungsbilder: Cyber-Lerncockpit
 
+Bedienprüfung1.19.6: gespeicherte Übungsbelege stehen in der Elternübersicht vor
+der optionalen KI-Verwaltung. Listen kennzeichnen Laden, Fehler und leere
+Filterergebnisse getrennt; alte interaktive Karten bleiben bei einem
+Kontextwechsel nicht stehen. Die Anmeldung bietet Feldhinweise und
+Weiter-/Fertig-Tastaturwege. Im Kinderpostfach sind Livehilfe und Nachricht für
+später direkt erreichbar, Kontextlinks benennen ihr Ziel. Recherche und
+Prüfgrenzen in [UX_REVIEW_2026_10_22.md](UX_REVIEW_2026_10_22.md).
+
 Vereinheitlichung1.18.4: Kinder-Hausaufgaben und Hefte nutzen dieselben
 `ChildSectionHero`-/`ChildSectionTabs`-/Aktionsbausteine wie Lernen, Wörter und
 Konto. Ein sichtbarer Fotoeinstieg, beschriftete Suche/Filter und klare Rückwege

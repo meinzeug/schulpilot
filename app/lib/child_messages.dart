@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'child_section_ui.dart';
@@ -10,11 +11,13 @@ class ChildMessagesHub extends StatefulWidget {
   final AppState state;
   final Json data;
   final Future<void> Function(String kind, String title) onCompose;
+  final Future<void> Function() onWriteMessage;
   const ChildMessagesHub(
     this.state, {
     super.key,
     required this.data,
     required this.onCompose,
+    required this.onWriteMessage,
   });
   @override
   State<ChildMessagesHub> createState() => _ChildMessagesHubState();
@@ -22,25 +25,59 @@ class ChildMessagesHub extends StatefulWidget {
 
 class _ChildMessagesHubState extends State<ChildMessagesHub> {
   String section = 'inbox';
+  bool composing = false;
   bool get isWish => section == 'wishes';
   bool wish(Json row) => ['interest', 'plan_change'].contains(row['kind']);
 
-  String? route(Json message) {
+  Future<void> compose(Future<void> Function() action) async {
+    if (composing) return;
+    final account = widget.state.user;
+    setState(() => composing = true);
+    try {
+      await action();
+    } catch (error) {
+      if (mounted && identical(widget.state.user, account)) {
+        showError(context, error);
+      }
+    } finally {
+      if (mounted) setState(() => composing = false);
+    }
+  }
+
+  ({String path, String label})? destination(Json message) {
     if (message['context_unavailable'] == true || message['context'] is! Map) {
       return null;
     }
     final scope = message['context'] as Map;
     for (final target in [
-      ('unit_id', '/unit/'),
-      ('material_id', '/material/'),
+      ('unit_id', '/unit/', 'Lernrunde öffnen'),
+      ('material_id', '/material/', 'Heftseite öffnen'),
     ]) {
       final id = scope[target.$1];
-      if (id is String && id.isNotEmpty) return '${target.$2}$id';
+      if (id is String && id.isNotEmpty) {
+        return (path: '${target.$2}$id', label: target.$3);
+      }
     }
     final day = scope['day_id'];
     return day is String && day.isNotEmpty
-        ? '/after-school/${widget.data['child']['id']}?day=$day'
+        ? (
+            path: '/after-school/${widget.data['child']['id']}?day=$day',
+            label: 'Schultag öffnen',
+          )
         : null;
+  }
+
+  String? sentAt(Json message) {
+    final created = message['created'];
+    if (created is! num ||
+        !created.isFinite ||
+        created < 946684800 ||
+        created > 4133980800) {
+      return null;
+    }
+    return DateFormat('dd.MM.yyyy · HH:mm').format(
+      DateTime.fromMillisecondsSinceEpoch((created * 1000).toInt()).toLocal(),
+    );
   }
 
   @override
@@ -79,18 +116,30 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                 ),
               ),
           ],
-          action: Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: context.palette.actionPurple,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 52),
+          action: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: composing
+                    ? null
+                    : () => compose(
+                        () => widget.onCompose('help', 'Ich brauche Hilfe'),
+                      ),
+                icon: const Icon(Icons.video_call_rounded),
+                label: const Text('Eltern live dazuholen'),
               ),
-              onPressed: () => widget.onCompose('help', 'Ich brauche Hilfe'),
-              icon: const Icon(Icons.video_call_rounded),
-              label: const Text('Eltern live dazuholen'),
-            ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(48, 52),
+                ),
+                onPressed: composing
+                    ? null
+                    : () => compose(widget.onWriteMessage),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Frage schreiben'),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
@@ -149,7 +198,7 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                 Text(switch (section) {
                   'wishes' => 'Hier sammeln sich deine Lernideen und Planwünsche. Du kannst oben einen neuen Wunsch mitteilen.',
                   'done' => 'Wenn ein Hilfewunsch besprochen wurde, findest du ihn hier wieder.',
-                  _ => 'Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.',
+                  _ => 'Noch keine Nachrichten. Du kannst deinen Eltern oben eine Frage schreiben oder sie live dazuholen.',
                 }, textAlign: TextAlign.center),
               ],
             ),
@@ -182,6 +231,14 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                             color: context.palette.teal,
                             size: 20,
                           ),
+                          if (sentAt(message) case final date?)
+                            Text(
+                              date,
+                              style: TextStyle(
+                                color: context.palette.muted,
+                                fontSize: 13,
+                              ),
+                            ),
                           Text(
                             message['kind'] == 'preparation'
                                 ? 'Deine Heftseiten'
@@ -218,15 +275,14 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                           ),
                         ),
                       ],
-                      if (route(message) != null) ...[
+                      if (destination(message) case final target?) ...[
                         const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: OutlinedButton.icon(
-                            onPressed: () =>
-                                openRoute(context, route(message)!),
+                            onPressed: () => openRoute(context, target.path),
                             icon: const Icon(Icons.arrow_forward_rounded),
-                            label: const Text('Dazu ansehen'),
+                            label: Text(target.label),
                           ),
                         ),
                       ],

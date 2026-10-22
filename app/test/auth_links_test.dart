@@ -43,11 +43,7 @@ void main() {
       }
       if (mode != 'verify') {
         await tester.enterText(
-          field(
-            mode == 'invite'
-                ? 'Bestehendes oder neues Elternpasswort'
-                : 'Passwort (mindestens 12 Zeichen)',
-          ),
+          field(mode == 'invite' ? 'Elternpasswort' : 'Neues Passwort'),
           'Synthetic-new-password-1234',
         );
       }

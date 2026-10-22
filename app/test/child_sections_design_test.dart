@@ -88,6 +88,7 @@ void main() {
                         ],
                       },
                       onCompose: (kind, _) async => composed.add(kind),
+                      onWriteMessage: () async => composed.add('message'),
                     ),
                   ),
                 ),

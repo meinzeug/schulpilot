@@ -152,6 +152,162 @@ Future<void> tap(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets('changing child rejects the previous in-flight photo list', (
+    tester,
+  ) async {
+    final oldResponse = Completer<http.Response>();
+    final state = account(
+      MockClient((r) async {
+        expect(r.method, 'GET');
+        if (r.url.path.contains('/children/first/')) return oldResponse.future;
+        return reply({
+          'photos': [
+            {'id': 'new', 'topic': 'Neues Kind Foto', 'confirmed': false},
+          ],
+          'next_cursor': null,
+        });
+      }),
+      role: 'parent',
+    );
+    final router = GoRouter(
+      initialLocation: '/homework/first',
+      routes: [
+        GoRoute(
+          path: '/homework/:childId',
+          builder: (_, route) =>
+              HomeworkScreen(state, childId: route.pathParameters['childId']!),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: appTheme(), routerConfig: router),
+    );
+    await tester.pump();
+    router.go('/homework/second');
+    await tester.pumpAndSettle();
+    expect(find.text('Neues Kind Foto'), findsOneWidget);
+    oldResponse.complete(
+      reply({
+        'photos': [
+          {'id': 'old', 'topic': 'Altes Kind Foto', 'confirmed': false},
+        ],
+        'next_cursor': null,
+      }),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Neues Kind Foto'), findsOneWidget);
+    expect(find.text('Altes Kind Foto'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final overview in [true, false]) {
+    testWidgets(
+      'a new same-user session rejects old homework ${overview ? 'photos' : 'details'}',
+      (tester) async {
+        final response = Completer<http.Response>();
+        final state = account(
+          MockClient((r) async {
+            expect(r.method, 'GET');
+            return response.future;
+          }),
+        );
+        await tester.pumpWidget(const SizedBox());
+        // The helper settles spinners, so release this initial GET immediately.
+        response.complete(
+          reply(
+            overview
+                ? {
+                    'photos': [
+                      {
+                        'id': 'old',
+                        'topic': 'Altes privates Foto',
+                        'confirmed': false,
+                      },
+                    ],
+                    'next_cursor': null,
+                  }
+                : fixture(),
+          ),
+        );
+        await open(tester, state, overview: overview);
+        expect(
+          find.text(overview ? 'Altes privates Foto' : taskText),
+          findsWidgets,
+        );
+        state.user = Json.from(state.user!);
+        state.refreshState();
+        await tester.pumpAndSettle();
+        expect(
+          find.text(overview ? 'Altes privates Foto' : taskText),
+          findsNothing,
+        );
+        expect(find.text('Erkläre es mir'), findsNothing);
+      },
+    );
+  }
+
+  testWidgets('photo loading retries explicitly and preserves pagination', (
+    tester,
+  ) async {
+    final paths = <String>[];
+    var initialLoads = 0, moreLoads = 0;
+    final state = account(
+      MockClient((r) async {
+        expect(r.method, 'GET');
+        paths.add(r.url.toString());
+        if (r.url.path == '/api/app-release') {
+          return reply({'available': false});
+        }
+        if (!r.url.queryParameters.containsKey('cursor')) {
+          initialLoads++;
+          if (initialLoads == 1) {
+            return reply({'detail': 'Verbindung unterbrochen.'}, 503);
+          }
+          return reply({
+            'photos': [
+              {
+                'id': 'first',
+                'topic': 'Erstes Aufgabenfoto',
+                'confirmed': false,
+              },
+            ],
+            'next_cursor': 'next',
+          });
+        }
+        expect(r.url.queryParameters['cursor'], 'next');
+        moreLoads++;
+        if (moreLoads == 1) {
+          return reply({'detail': 'Bitte erneut versuchen.'}, 503);
+        }
+        return reply({
+          'photos': [
+            {
+              'id': 'second',
+              'topic': 'Zweites Aufgabenfoto',
+              'confirmed': false,
+            },
+          ],
+          'next_cursor': null,
+        });
+      }),
+    );
+    await open(tester, state, overview: true);
+    expect(find.text('Erneut laden'), findsOneWidget);
+    expect(initialLoads, 1);
+    await tap(tester, 'Erneut laden');
+    expect(find.text('Erstes Aufgabenfoto'), findsOneWidget);
+    await tap(tester, 'Weitere Fotos');
+    expect(find.text('Erstes Aufgabenfoto'), findsOneWidget);
+    expect(find.text('Weitere Fotos erneut laden'), findsOneWidget);
+    await tap(tester, 'Weitere Fotos erneut laden');
+    expect(initialLoads, 2);
+    expect(moreLoads, 2);
+    expect(find.text('Erstes Aufgabenfoto'), findsOneWidget);
+    expect(find.text('Zweites Aufgabenfoto'), findsOneWidget);
+    expect(paths.where((p) => p.contains('cursor=next')).length, 2);
+  });
+
   for (final brightness in Brightness.values) {
     for (final width in [320.0, 390.0, 1440.0]) {
       testWidgets(

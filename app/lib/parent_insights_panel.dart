@@ -52,15 +52,16 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   bool loading = false, busy = false, foreground = true, routeVisible = true;
   int generation = 0;
   Timer? poll;
-  late String? owner;
-  bool get own => mounted && owner != null && widget.state.user?['id'] == owner;
+  late Json? owner;
+  bool get own =>
+      mounted && owner != null && identical(widget.state.user, owner);
   bool get active => own && foreground && routeVisible;
   String get route => '/children/${widget.childId}/parent-insights';
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     widget.state.addListener(identityChanged);
     WidgetsBinding.instance.addObserver(this);
     load();

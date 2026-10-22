@@ -1,3 +1,11 @@
+Bedienprüfung22.10.2026, Version1.19.6+85: bestehende gemeinsame Flutter-
+Arbeitsräume und Rollenrechte. Recherche zu
+[klaren Controls](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o1-understandable/),
+[Statusmeldungen](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
+und [verständlichen Feldfehlern](https://design-system.service.gov.uk/components/error-message/).
+Keine neuen Pakete, Dienste oder KI-Aufträge. Entscheidungen, konkrete
+Codepfade und Nachweisgrenzen in [UX_REVIEW_2026_10_22.md](UX_REVIEW_2026_10_22.md).
+
 Firebaseprüfung 22.10.2026, Version 1.19.5+84: bestehende Firebase-Konsole unter dem beauftragten
 Google-Konto, feste Projekt-/App-IDs über Firebase Management und Service Usage,
 minimale Senderrolle über IAM und redigierte Serverbetriebsmetadaten unabhängig

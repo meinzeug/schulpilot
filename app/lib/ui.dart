@@ -761,18 +761,51 @@ class _LoadViewState<T> extends State<LoadView<T>> {
   Widget build(BuildContext context) => FutureBuilder<T>(
     future: future,
     builder: (context, snapshot) {
+      // A changed future retains the previous snapshot until it completes.
+      // Never offer an old child's/filter's actions under the new context.
+      if (snapshot.connectionState != ConnectionState.done) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+          child: Center(
+            child: Semantics(
+              liveRegion: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Wird geladen …'),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
       if (snapshot.hasError) {
         return Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(snapshot.error.toString()),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: refresh,
-                child: const Text('Erneut laden'),
-              ),
-            ],
+          child: Semantics(
+            liveRegion: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Das Laden hat nicht geklappt',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  snapshot.error is ApiError
+                      ? (snapshot.error as ApiError).message
+                      : 'Bitte versuche es noch einmal. Deine gespeicherten Daten bleiben erhalten.',
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Erneut laden'),
+                ),
+              ],
+            ),
           ),
         );
       }

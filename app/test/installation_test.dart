@@ -23,6 +23,9 @@ void main() {
         api: Api(
           base: 'https://example.invalid/api',
           client: MockClient((request) async {
+            if (request.url.path == '/api/auth/google/status') {
+              return http.Response(jsonEncode({'available': false}), 200);
+            }
             expect(request.url.path, '/api/auth/login');
             final body = jsonDecode(request.body) as Json;
             requests.add(body);

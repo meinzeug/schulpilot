@@ -73,13 +73,6 @@ class ParentOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (state != null)
-          ParentInsightsPanel(
-            state!,
-            childId: childId,
-            compact: true,
-            revision: revision,
-          ),
         ParentWorkspaceHero(
           eyebrow: 'EUER LERNKOMPASS',
           title: 'Lernstand auf einen Blick',
@@ -105,6 +98,15 @@ class ParentOverview extends StatelessWidget {
           ],
         ),
         ParentPracticeSummary(evidence),
+        if (state != null) ...[
+          const SizedBox(height: 24),
+          ParentInsightsPanel(
+            state!,
+            childId: childId,
+            compact: true,
+            revision: revision,
+          ),
+        ],
         const SizedBox(height: 32),
         LayoutBuilder(
           builder: (context, size) {

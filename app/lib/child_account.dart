@@ -18,13 +18,96 @@ class ChildAccount extends StatefulWidget {
 class _ChildAccountState extends State<ChildAccount> {
   String section = 'devices';
   int version = 0;
-  late final String? owner = widget.state.user?['id'];
+  String? pendingSession;
+  bool deletingSession = false;
+  late final Json? ownerAccount = widget.state.user;
+  String? get owner => ownerAccount?['id'];
   AppState get state => widget.state;
+
+  Future<void> revokeSession(Json session) async {
+    final account = state.user;
+    if (!identical(account, ownerAccount) ||
+        account == null ||
+        pendingSession != null) {
+      return;
+    }
+    final current = session['current'] == true;
+    setState(() => pendingSession = session['id']);
+    try {
+      if (!current) {
+        ModalRoute<dynamic>? confirmationRoute;
+        void accountChanged() {
+          if (identical(state.user, account)) return;
+          final route = confirmationRoute;
+          if (route == null) return;
+          Future<void>.microtask(() {
+            if (!identical(state.user, account) && route.isActive) {
+              route.navigator?.removeRoute(route);
+            }
+          });
+        }
+
+        bool? confirmed;
+        state.addListener(accountChanged);
+        try {
+          confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) {
+              confirmationRoute ??= ModalRoute.of(dialogContext);
+              accountChanged();
+              return AlertDialog(
+                scrollable: true,
+                title: const Text('Dieses Gerät abmelden?'),
+                content: Text(
+                  '„${session['device']}“ wird abgemeldet. Auf diesem Gerät bleibst du angemeldet.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('Abbrechen'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('Gerät abmelden'),
+                  ),
+                ],
+              );
+            },
+          );
+        } finally {
+          state.removeListener(accountChanged);
+        }
+        if (confirmed != true || !mounted || !identical(state.user, account)) {
+          return;
+        }
+      }
+      setState(() => deletingSession = true);
+      await state.api.delete('/auth/sessions/${session['id']}');
+      if (!identical(state.user, account)) return;
+      if (current) {
+        await state.clear(expectedUser: account);
+        if (mounted && state.user == null) context.go('/login');
+      } else if (mounted) {
+        setState(() => version++);
+        toast(context, 'Gerät abgemeldet. Hier bleibst du angemeldet.');
+      }
+    } catch (error) {
+      if (mounted && identical(state.user, account)) showError(context, error);
+    } finally {
+      if (mounted) {
+        setState(() {
+          pendingSession = null;
+          deletingSession = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state,
-    builder: (context, _) => !state.isChild || state.user?['id'] != owner
+    builder: (context, _) =>
+        !state.isChild || !identical(state.user, ownerAccount)
         ? const SizedBox.shrink()
         : PageFrame(
             state: state,
@@ -86,6 +169,28 @@ class _ChildAccountState extends State<ChildAccount> {
                     builder: (sessions, _) => Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (sessions.isEmpty)
+                          Panel(
+                            tone: PanelTone.subtle,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Gerade werden keine Geräte angezeigt.',
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Lade die Liste erneut, um deine angemeldeten Geräte zu sehen.',
+                                ),
+                                const SizedBox(height: 12),
+                                OutlinedButton.icon(
+                                  onPressed: () => setState(() => version++),
+                                  icon: const Icon(Icons.refresh_rounded),
+                                  label: const Text('Geräte neu laden'),
+                                ),
+                              ],
+                            ),
+                          ),
                         for (final session in sessions)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -132,30 +237,38 @@ class _ChildAccountState extends State<ChildAccount> {
                                       ),
                                     ],
                                   ),
+                                  if (session['current'] == true) ...[
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Nach dem Abmelden brauchst du deine Zugangsdaten, um hier weiterzulernen.',
+                                      style: TextStyle(
+                                        color: context.palette.muted,
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 16),
                                   Align(
                                     alignment: Alignment.centerRight,
-                                    child: ActionButton(
-                                      label: session['current'] == true
-                                          ? 'Hier abmelden'
-                                          : 'Gerät abmelden',
-                                      secondary: true,
-                                      icon: Icons.logout_rounded,
-                                      onPressed: () async {
-                                        await state.api.delete(
-                                          '/auth/sessions/${session['id']}',
-                                        );
-                                        if (state.user?['id'] != owner) return;
-                                        if (session['current'] == true) {
-                                          await state.clear();
-                                          if (context.mounted) {
-                                            context.go('/login');
-                                          }
-                                        } else if (mounted &&
-                                            state.user?['id'] == owner) {
-                                          setState(() => version++);
-                                        }
-                                      },
+                                    child: OutlinedButton.icon(
+                                      onPressed: pendingSession != null
+                                          ? null
+                                          : () => revokeSession(
+                                              Json.from(session),
+                                            ),
+                                      icon: Icon(
+                                        deletingSession &&
+                                                pendingSession == session['id']
+                                            ? Icons.hourglass_top_rounded
+                                            : Icons.logout_rounded,
+                                      ),
+                                      label: Text(
+                                        deletingSession &&
+                                                pendingSession == session['id']
+                                            ? 'Wird abgemeldet …'
+                                            : session['current'] == true
+                                            ? 'Hier abmelden'
+                                            : 'Gerät abmelden',
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -223,8 +336,10 @@ class _ChildAccountState extends State<ChildAccount> {
                     secondary: true,
                     icon: Icons.logout_rounded,
                     onPressed: () async {
-                      await state.logout();
-                      if (context.mounted) context.go('/login');
+                      await state.logout(expectedAccountId: owner);
+                      if (context.mounted && state.user == null) {
+                        context.go('/login');
+                      }
                     },
                   ),
                 ),

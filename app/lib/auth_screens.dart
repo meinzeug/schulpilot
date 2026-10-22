@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show TextInput;
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
@@ -322,6 +323,16 @@ class _AuthScreenState extends State<AuthScreen> {
   final name = TextEditingController();
   final family = TextEditingController();
   final token = TextEditingController();
+  final usernameFocus = FocusNode();
+  final passwordFocus = FocusNode();
+  final nameFocus = FocusNode();
+  final familyFocus = FocusNode();
+  final tokenFocus = FocusNode();
+  final consentFocus = FocusNode();
+  final feedbackKey = GlobalKey();
+  final Map<String, String> fieldErrors = {};
+  bool submitting = false, googleBusy = false;
+  int formRevision = 0;
   bool consent = false, passwordVisible = false;
   String? result;
   String? error;
@@ -335,9 +346,11 @@ class _AuthScreenState extends State<AuthScreen> {
   void didUpdateWidget(covariant AuthScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.linkUri != widget.linkUri || oldWidget.mode != widget.mode) {
+      formRevision++;
       _readLink();
       result = null;
       error = null;
+      fieldErrors.clear();
     }
   }
 
@@ -360,7 +373,146 @@ class _AuthScreenState extends State<AuthScreen> {
     for (final c in [username, password, name, family, token]) {
       c.dispose();
     }
+    for (final focus in [
+      usernameFocus,
+      passwordFocus,
+      nameFocus,
+      familyFocus,
+      tokenFocus,
+      consentFocus,
+    ]) {
+      focus.dispose();
+    }
     super.dispose();
+  }
+
+  void showFeedback() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    final target = feedbackKey.currentContext;
+    if (mounted && target != null) {
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 200),
+        alignment: .1,
+      );
+    }
+  });
+
+  void goToAuth(String location) {
+    if (!submitting && !googleBusy) context.go(location);
+  }
+
+  bool validateFields() {
+    final mode = widget.mode;
+    final invalid = <String, String>{};
+    if (['login', 'register', 'recovery'].contains(mode) &&
+        username.text.trim().isEmpty) {
+      invalid['username'] = mode == 'login'
+          ? 'Gib deine E-Mail oder deinen Benutzernamen ein.'
+          : 'Gib deine E-Mail-Adresse ein.';
+    }
+    if (mode == 'register' && name.text.trim().isEmpty) {
+      invalid['name'] = 'Gib deinen Anzeigenamen ein.';
+    }
+    if (mode == 'register' && family.text.trim().isEmpty) {
+      invalid['family'] = 'Gib einen Namen für deine Familie ein.';
+    }
+    if (['login', 'register', 'reset'].contains(mode) &&
+        password.text.isEmpty) {
+      invalid['password'] = 'Gib dein Passwort ein.';
+    } else if (['register', 'reset'].contains(mode) &&
+        password.text.runes.length < 12) {
+      invalid['password'] =
+          'Dein neues Passwort braucht mindestens 12 Zeichen.';
+    }
+    if (['reset', 'verify', 'invite'].contains(mode) &&
+        token.text.trim().isEmpty) {
+      invalid['token'] =
+          'Öffne den vollständigen E-Mail-Link oder füge seinen Code ein.';
+    }
+    if (mode == 'register' && !consent) {
+      invalid['consent'] = 'Bestätige deine Volljährigkeit und Berechtigung.';
+    }
+    setState(() {
+      fieldErrors
+        ..clear()
+        ..addAll(invalid);
+      error = null;
+      result = null;
+    });
+    if (invalid.isEmpty) return true;
+    final focus = {
+      'username': usernameFocus,
+      'name': nameFocus,
+      'family': familyFocus,
+      'password': passwordFocus,
+      'token': tokenFocus,
+      'consent': consentFocus,
+    }[invalid.keys.first]!;
+    focus.requestFocus();
+    return false;
+  }
+
+  Future<void> submit() async {
+    if (submitting || googleBusy || !validateFields()) return;
+    final mode = widget.mode, uri = widget.linkUri;
+    final revision = formRevision;
+    setState(() => submitting = true);
+    FocusScope.of(context).unfocus();
+    try {
+      if (mode == 'login') {
+        await widget.state.login(username.text.trim(), password.text);
+        if (!mounted || revision != formRevision) return;
+        TextInput.finishAutofillContext(shouldSave: true);
+        final next = uri.queryParameters['next'] ?? '';
+        context.go(
+          widget.state.isParent &&
+                  RegExp(r'^/bestellen/[a-z][a-z0-9-]{1,29}$').hasMatch(next)
+              ? next
+              : '/app',
+        );
+        return;
+      }
+      final data = await widget.state.api.post(
+        switch (mode) {
+          'register' => '/auth/register',
+          'recovery' => '/auth/recovery',
+          'reset' => '/auth/reset',
+          'verify' => '/auth/verify',
+          _ => '/invitations/accept',
+        },
+        switch (mode) {
+          'register' => {
+            'email': username.text.trim(),
+            'password': password.text,
+            'display_name': name.text.trim(),
+            'family_name': family.text.trim(),
+            'adult_consent': consent,
+          },
+          'recovery' => {'email': username.text.trim()},
+          'reset' => {'token': token.text, 'password': password.text},
+          'verify' => {'token': token.text},
+          _ => {
+            'token': token.text,
+            'password': password.text,
+            'display_name': name.text.trim(),
+          },
+        },
+      );
+      if (!mounted || revision != formRevision) return;
+      if (['register', 'reset'].contains(mode)) {
+        TextInput.finishAutofillContext(shouldSave: true);
+      }
+      setState(() => result = data['message']);
+      showFeedback();
+    } catch (failure) {
+      if (!mounted || revision != formRevision) return;
+      setState(
+        () => error = failure is ApiError ? failure.message : 'Die Anfrage konnte nicht abgeschlossen werden. Versuche es bitte erneut.',
+      );
+      showFeedback();
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override
@@ -377,7 +529,11 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: context.palette.cream,
-        title: InkWell(onTap: () => context.go('/'), child: brand()),
+        automaticallyImplyLeading: !submitting && !googleBusy,
+        title: InkWell(
+          onTap: submitting || googleBusy ? null : () => goToAuth('/'),
+          child: brand(),
+        ),
         actions: [AppearanceToggle(widget.state), const SizedBox(width: 16)],
       ),
       body: Center(
@@ -385,229 +541,275 @@ class _AuthScreenState extends State<AuthScreen> {
           padding: EdgeInsets.all(22),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: 490),
-            child: Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    mode == 'login'
-                        ? 'Mit deinem Benutzernamen und Passwort.'
-                        : mode == 'register'
-                        ? 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.'
-                        : 'Übernimm den Code aus deiner E-Mail.',
-                    style: TextStyle(color: context.palette.muted),
-                  ),
-                  SizedBox(height: 24),
-                  if (result != null)
-                    Notice(result!, icon: Icons.check_circle_outline),
-                  if (error != null) Notice(error!, warning: true),
-                  if (['login', 'register', 'recovery'].contains(mode)) ...[
-                    TextField(
-                      controller: username,
-                      autofillHints: mode == 'login'
-                          ? [AutofillHints.username]
-                          : [AutofillHints.email],
-                      keyboardType: mode == 'login'
-                          ? TextInputType.text
-                          : TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: mode == 'login'
-                            ? 'E-Mail oder Benutzername'
-                            : 'E-Mail-Adresse',
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                  if (['register', 'invite'].contains(mode)) ...[
-                    TextField(
-                      controller: name,
-                      decoration: InputDecoration(
-                        labelText: 'Dein Anzeigename',
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                  if (mode == 'register') ...[
-                    TextField(
-                      controller: family,
-                      decoration: InputDecoration(
-                        labelText: 'Name deiner Familie',
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                  if ([
-                    'login',
-                    'register',
-                    'reset',
-                    'invite',
-                  ].contains(mode)) ...[
-                    TextField(
-                      controller: password,
-                      obscureText: !passwordVisible,
-                      enableSuggestions: false,
-                      autocorrect: false,
-                      autofillHints: mode == 'login'
-                          ? [AutofillHints.password]
-                          : [AutofillHints.newPassword],
-                      decoration: InputDecoration(
-                        suffixIcon: IconButton(
-                          tooltip: passwordVisible
-                              ? 'Passwort verbergen'
-                              : 'Passwort anzeigen',
-                          icon: Icon(
-                            passwordVisible
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () => setState(
-                            () => passwordVisible = !passwordVisible,
-                          ),
-                        ),
-                        labelText: mode == 'invite'
-                            ? 'Bestehendes oder neues Elternpasswort'
-                            : mode == 'login'
-                            ? 'Passwort'
-                            : 'Passwort (mindestens 12 Zeichen)',
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                  if (['reset', 'verify', 'invite'].contains(mode)) ...[
-                    TextField(
-                      controller: token,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Sicherer Link-Code',
-                        helperText: 'Wird aus dem E-Mail-Link übernommen.',
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                  if (mode == 'register') ...[
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: consent,
-                      onChanged: (v) => setState(() => consent = v ?? false),
-                      title: Text(
-                        'Ich bin volljährig und für die Einrichtung dieser Familie berechtigt.',
-                        style: TextStyle(fontSize: 13),
-                      ),
+            child: AutofillGroup(
+              onDisposeAction: AutofillContextAction.cancel,
+              child: Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     SizedBox(height: 12),
-                  ],
-                  ActionButton(
-                    label: switch (mode) {
-                      'register' => 'Elternkonto anlegen',
-                      'recovery' => 'Wiederherstellungslink anfordern',
-                      'verify' => 'E-Mail bestätigen',
-                      'reset' => 'Passwort erneuern',
-                      'invite' => 'Einladung annehmen',
-                      _ => 'Anmelden',
-                    },
-                    onPressed: () async {
-                      setState(() {
-                        error = null;
-                        result = null;
-                      });
-                      try {
-                        if (mode == 'login') {
-                          await widget.state.login(
-                            username.text.trim(),
-                            password.text,
-                          );
-                          if (context.mounted) {
-                            final next =
-                                widget.linkUri.queryParameters['next'] ?? '';
-                            context.go(
-                              widget.state.isParent &&
-                                      RegExp(
-                                        r'^/bestellen/[a-z][a-z0-9-]{1,29}$',
-                                      ).hasMatch(next)
-                                  ? next
-                                  : '/app',
-                            );
-                          }
-                          return;
-                        }
-                        if (mode == 'register' && !consent) {
-                          throw ApiError(
-                            'Bitte die Volljährigkeit und Berechtigung bestätigen.',
-                          );
-                        }
-                        final data = await widget.state.api.post(
-                          switch (mode) {
-                            'register' => '/auth/register',
-                            'recovery' => '/auth/recovery',
-                            'reset' => '/auth/reset',
-                            'verify' => '/auth/verify',
-                            _ => '/invitations/accept',
-                          },
-                          switch (mode) {
-                            'register' => {
-                              'email': username.text.trim(),
-                              'password': password.text,
-                              'display_name': name.text.trim(),
-                              'family_name': family.text.trim(),
-                              'adult_consent': consent,
-                            },
-                            'recovery' => {'email': username.text.trim()},
-                            'reset' => {
-                              'token': token.text,
-                              'password': password.text,
-                            },
-                            'verify' => {'token': token.text},
-                            _ => {
-                              'token': token.text,
-                              'password': password.text,
-                              'display_name': name.text.trim(),
-                            },
-                          },
-                        );
-                        if (mounted) setState(() => result = data['message']);
-                      } catch (e) {
-                        if (mounted) setState(() => error = e.toString());
-                      }
-                    },
-                  ),
-                  SizedBox(height: 18),
-                  if (mode == 'login' || mode == 'register')
-                    GoogleLoginButton(widget.state),
-                  if (mode == 'login')
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: () => context.go('/recovery'),
-                          child: Text('Passwort vergessen'),
+                    Text(switch (mode) {
+                      'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
+                      'register' => 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.',
+                      'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
+                      'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
+                      'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
+                      _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
+                    }, style: TextStyle(color: context.palette.muted)),
+                    SizedBox(height: 24),
+                    SizedBox(
+                      key: feedbackKey,
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          children: [
+                            if (result != null)
+                              Notice(result!, icon: Icons.check_circle_outline),
+                            if (error != null) Notice(error!, warning: true),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: () => context.go(
-                            Uri(
-                              path: '/register',
-                              queryParameters: widget.linkUri.queryParameters,
-                            ).toString(),
-                          ),
-                          child: Text('Elternkonto erstellen'),
-                        ),
-                      ],
-                    )
-                  else
-                    TextButton(
-                      onPressed: () => context.go(
-                        Uri(
-                          path: '/login',
-                          queryParameters: widget.linkUri.queryParameters,
-                        ).toString(),
                       ),
-                      child: Text('Zur Anmeldung'),
                     ),
-                ],
+                    if (['login', 'register', 'recovery'].contains(mode)) ...[
+                      TextField(
+                        controller: username,
+                        focusNode: usernameFocus,
+                        enabled: !submitting,
+                        autocorrect: false,
+                        textInputAction: mode == 'recovery'
+                            ? TextInputAction.done
+                            : TextInputAction.next,
+                        onSubmitted: (_) async {
+                          if (mode == 'recovery') {
+                            await submit();
+                          } else {
+                            (mode == 'register' ? nameFocus : passwordFocus)
+                                .requestFocus();
+                          }
+                        },
+                        autofillHints: mode == 'login'
+                            ? [AutofillHints.username]
+                            : [AutofillHints.email],
+                        keyboardType: mode == 'login'
+                            ? TextInputType.text
+                            : TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: mode == 'login'
+                              ? 'E-Mail oder Benutzername'
+                              : 'E-Mail-Adresse',
+                          helperText: mode == 'login'
+                              ? 'Eltern: E-Mail oder Benutzername. Kinder: eigener Benutzername.'
+                              : null,
+                          helperMaxLines: 3,
+                          errorText: fieldErrors['username'],
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    if (['register', 'invite'].contains(mode)) ...[
+                      TextField(
+                        controller: name,
+                        focusNode: nameFocus,
+                        enabled: !submitting,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            (mode == 'register' ? familyFocus : passwordFocus)
+                                .requestFocus(),
+                        decoration: InputDecoration(
+                          labelText: 'Dein Anzeigename',
+                          errorText: fieldErrors['name'],
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    if (mode == 'register') ...[
+                      TextField(
+                        controller: family,
+                        focusNode: familyFocus,
+                        enabled: !submitting,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => passwordFocus.requestFocus(),
+                        decoration: InputDecoration(
+                          labelText: 'Name deiner Familie',
+                          errorText: fieldErrors['family'],
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    if ([
+                      'login',
+                      'register',
+                      'reset',
+                      'invite',
+                    ].contains(mode)) ...[
+                      TextField(
+                        controller: password,
+                        focusNode: passwordFocus,
+                        enabled: !submitting,
+                        textInputAction:
+                            ['login', 'register'].contains(mode) ||
+                                token.text.isNotEmpty
+                            ? TextInputAction.done
+                            : TextInputAction.next,
+                        onSubmitted: (_) async {
+                          if (['login', 'register'].contains(mode) ||
+                              token.text.isNotEmpty) {
+                            await submit();
+                          } else {
+                            tokenFocus.requestFocus();
+                          }
+                        },
+                        obscureText: !passwordVisible,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        autofillHints: mode == 'login'
+                            ? [AutofillHints.password]
+                            : [AutofillHints.newPassword],
+                        decoration: InputDecoration(
+                          suffixIcon: IconButton(
+                            tooltip: passwordVisible
+                                ? 'Passwort verbergen'
+                                : 'Passwort anzeigen',
+                            icon: Icon(
+                              passwordVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () => setState(
+                              () => passwordVisible = !passwordVisible,
+                            ),
+                          ),
+                          labelText: mode == 'invite'
+                              ? 'Elternpasswort'
+                              : mode == 'login'
+                              ? 'Passwort'
+                              : 'Neues Passwort',
+                          helperText: mode == 'invite'
+                              ? 'Bestehendes Passwort oder für ein neues Konto mindestens 12 Zeichen. Bereits angemeldet? Dann darf dieses Feld leer bleiben.'
+                              : mode == 'login'
+                              ? null
+                              : 'Mindestens 12 Zeichen.',
+                          helperMaxLines: 5,
+                          errorText: fieldErrors['password'],
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    if (['reset', 'verify', 'invite'].contains(mode)) ...[
+                      TextField(
+                        controller: token,
+                        focusNode: tokenFocus,
+                        enabled: !submitting,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => submit(),
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Sicherer Link-Code',
+                          helperText: 'Wird aus dem E-Mail-Link übernommen.',
+                          helperMaxLines: 3,
+                          errorText: fieldErrors['token'],
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    if (mode == 'register') ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: consent,
+                        focusNode: consentFocus,
+                        onChanged: submitting
+                            ? null
+                            : (v) => setState(() => consent = v ?? false),
+                        title: Text(
+                          'Ich bin volljährig und für die Einrichtung dieser Familie berechtigt.',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      if (fieldErrors['consent'] != null)
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            fieldErrors['consent']!,
+                            style: TextStyle(color: context.palette.warningInk),
+                          ),
+                        ),
+                      SizedBox(height: 12),
+                    ],
+                    ActionButton(
+                      label: submitting
+                          ? 'Bitte warten …'
+                          : switch (mode) {
+                              'register' => 'Elternkonto anlegen',
+                              'recovery' => 'Wiederherstellungslink anfordern',
+                              'verify' => 'E-Mail bestätigen',
+                              'reset' => 'Passwort erneuern',
+                              'invite' => 'Einladung annehmen',
+                              _ => 'Anmelden',
+                            },
+                      onPressed: submit,
+                      enabled: !submitting && !googleBusy,
+                    ),
+                    SizedBox(height: 18),
+                    if (mode == 'login' || mode == 'register')
+                      GoogleLoginButton(
+                        widget.state,
+                        enabled: !submitting,
+                        onBusyChanged: (busy) {
+                          if (mounted) setState(() => googleBusy = busy);
+                        },
+                      ),
+                    if (mode == 'login')
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: submitting || googleBusy
+                                ? null
+                                : () => goToAuth('/recovery'),
+                            child: Text('Passwort vergessen'),
+                          ),
+                          TextButton(
+                            onPressed: submitting || googleBusy
+                                ? null
+                                : () => goToAuth(
+                                    Uri(
+                                      path: '/register',
+                                      queryParameters:
+                                          widget.linkUri.queryParameters,
+                                    ).toString(),
+                                  ),
+                            child: Text('Elternkonto erstellen'),
+                          ),
+                        ],
+                      )
+                    else
+                      TextButton(
+                        onPressed: submitting || googleBusy
+                            ? null
+                            : () => goToAuth(
+                                Uri(
+                                  path: '/login',
+                                  queryParameters:
+                                      widget.linkUri.queryParameters,
+                                ).toString(),
+                              ),
+                        child: Text('Zur Anmeldung'),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -1797,15 +1797,15 @@ Widget planTile(
 class MessagesScreen extends StatelessWidget {
   final AppState state;
   final String childId;
-  final String? accountId;
+  final Json? account;
   MessagesScreen(this.state, {super.key, required this.childId})
-    : accountId = state.user?['id'];
+    : account = state.user;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state,
     builder: (context, _) =>
-        state.user == null || state.user?['id'] != accountId || state.isAdmin
+        state.user == null || !identical(state.user, account) || state.isAdmin
         ? SizedBox.shrink()
         : PageFrame(
             state: state,
@@ -1864,6 +1864,15 @@ Widget messages(
         kind: kind,
         title: title,
         refresh: refresh,
+      ),
+      onWriteMessage: () => showLearningMessage(
+        context,
+        state,
+        childId: data['child']['id'],
+        kind: 'help',
+        title: 'Frage an deine Eltern',
+        refresh: refresh,
+        offerLiveCall: false,
       ),
     );
   }
@@ -2094,19 +2103,28 @@ Future<void> showLearningMessage(
   required VoidCallback refresh,
   bool offerLiveCall = true,
 }) async {
+  final account = state.user;
+  bool currentAccount() =>
+      account != null &&
+      identical(state.user, account) &&
+      (!state.isChild || account['child_id'] == childId);
+  if (!currentAccount()) return;
   if (kind == 'help' && offerLiveCall && state.isChild) {
     await showFamilyHelp(
       context,
       state,
-      sendMessage: () => showLearningMessage(
-        context,
-        state,
-        childId: childId,
-        kind: kind,
-        title: title,
-        refresh: refresh,
-        offerLiveCall: false,
-      ),
+      sendMessage: () async {
+        if (!currentAccount()) return;
+        await showLearningMessage(
+          context,
+          state,
+          childId: childId,
+          kind: kind,
+          title: title,
+          refresh: refresh,
+          offerLiveCall: false,
+        );
+      },
     );
     return;
   }
@@ -2114,60 +2132,91 @@ Future<void> showLearningMessage(
   final controller = TextEditingController(
     text: help ? 'Ich brauche Unterstützung beim Lernen.' : '',
   );
-  await showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(help ? 'Hilfe von deinen Eltern' : title),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('An: Deine berechtigten Eltern'),
-            SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              maxLines: 3,
-              maxLength: 1000,
-              decoration: InputDecoration(labelText: 'Deine Nachricht'),
+  ModalRoute<dynamic>? draftRoute;
+  void accountChanged() {
+    if (currentAccount()) return;
+    final route = draftRoute;
+    if (route == null) return;
+    // Remove only this old draft, even if a newer route has already opened.
+    Future<void>.microtask(() {
+      if (!currentAccount() && route.isActive) {
+        route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
+  state.addListener(accountChanged);
+  try {
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        draftRoute ??= ModalRoute.of(ctx);
+        accountChanged();
+        return AlertDialog(
+          scrollable: true,
+          title: Text(help ? 'Hilfe von deinen Eltern' : title),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(state.isChild ? 'An: Deine Eltern' : 'An: Dein Kind'),
+                SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  maxLines: 3,
+                  maxLength: 1000,
+                  decoration: InputDecoration(labelText: 'Deine Nachricht'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Abbrechen'),
+            ),
+            ActionButton(
+              label: help ? 'Um Hilfe bitten' : 'Senden',
+              icon: help
+                  ? Icons.volunteer_activism_outlined
+                  : Icons.send_rounded,
+              onPressed: () async {
+                if (!currentAccount()) return;
+                final body = controller.text.trim();
+                await state.api.post('/children/$childId/messages', {
+                  'kind': kind,
+                  'body': help && body.isEmpty
+                      ? 'Ich brauche Unterstützung beim Lernen.'
+                      : body,
+                });
+                if (!currentAccount()) return;
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (!context.mounted) return;
+                refresh();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        help ? 'Hilfewunsch gesendet.' : 'Nachricht gesendet.',
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
           ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: Text('Abbrechen'),
-        ),
-        ActionButton(
-          label: help ? 'Um Hilfe bitten' : 'Senden',
-          icon: help ? Icons.volunteer_activism_outlined : Icons.send_rounded,
-          onPressed: () async {
-            final body = controller.text.trim();
-            await state.api.post('/children/$childId/messages', {
-              'kind': kind,
-              'body': help && body.isEmpty
-                  ? 'Ich brauche Unterstützung beim Lernen.'
-                  : body,
-            });
-            if (ctx.mounted) Navigator.pop(ctx);
-            refresh();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    help ? 'Hilfewunsch gesendet.' : 'Nachricht gesendet.',
-                  ),
-                ),
-              );
-            }
-          },
-        ),
-      ],
-    ),
-  );
-  controller.dispose();
+        );
+      },
+    );
+  } finally {
+    state.removeListener(accountChanged);
+    // The pop result arrives before the closing transition removes TextField.
+    // Its controller must remain alive until that route's widgets are gone.
+    if (draftRoute != null) await draftRoute!.completed;
+    controller.dispose();
+  }
 }
 
 DateTime? planningDate(String text) {
@@ -2192,6 +2241,16 @@ Future<void> assignmentDialog(
   Json? sourceUnit,
   String? plannedFor,
 }) async {
+  final account = state.user;
+  final childId = child['id'];
+  bool currentAccount() =>
+      account != null &&
+      identical(state.user, account) &&
+      state.isParent &&
+      childId is String &&
+      childId.isNotEmpty &&
+      child['id'] == childId;
+  if (!context.mounted || !currentAccount()) return;
   final subject = TextEditingController(
         text:
             existing?['subject'] ??
@@ -2227,205 +2286,244 @@ Future<void> assignmentDialog(
           .where((m) => m['id'] == materialId)
           .map((m) => m['title'] as String)
           .firstOrNull;
-  await showDialog(
-    context: context,
-    builder: (ctx) => DialogControllerScope(
-      controllers: [subject, topic, note, due, scheduled],
-      child: StatefulBuilder(
-        builder: (ctx, set) => AlertDialog(
-          title: Text(
-            existing == null
-                ? 'Ein Lernziel vorgeben'
-                : 'Lernauftrag neu planen',
-          ),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Form(
-                key: form,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: kind,
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: 'Art'),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'parent',
-                          child: Text('Lernauftrag'),
+  ModalRoute<dynamic>? draftRoute;
+  void accountChanged() {
+    if (currentAccount()) return;
+    final route = draftRoute;
+    if (route == null) return;
+    Future<void>.microtask(() {
+      if (!currentAccount() && route.isActive) {
+        route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
+  state.addListener(accountChanged);
+  try {
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        draftRoute ??= ModalRoute.of(ctx);
+        accountChanged();
+        return DialogControllerScope(
+          controllers: [subject, topic, note, due, scheduled],
+          child: StatefulBuilder(
+            builder: (ctx, set) => AlertDialog(
+              title: Text(
+                existing == null
+                    ? 'Ein Lernziel vorgeben'
+                    : 'Lernauftrag neu planen',
+              ),
+              content: SizedBox(
+                width: 480,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: form,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          initialValue: kind,
+                          isExpanded: true,
+                          decoration: InputDecoration(labelText: 'Art'),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'parent',
+                              child: Text('Lernauftrag'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'exam',
+                              child: Text('Klassenarbeit / Test'),
+                            ),
+                          ],
+                          onChanged: (v) => set(() => kind = v!),
                         ),
-                        DropdownMenuItem(
-                          value: 'exam',
-                          child: Text('Klassenarbeit / Test'),
-                        ),
-                      ],
-                      onChanged: (v) => set(() => kind = v!),
-                    ),
-                    SizedBox(height: 14),
-                    for (final item in [
-                      (subject, 'Fach'),
-                      (topic, 'Thema / Lernziel'),
-                      (note, 'Was soll geübt werden?'),
-                    ])
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 14),
-                        child: TextFormField(
-                          controller: item.$1,
-                          maxLength: item.$1 == subject
-                              ? 80
-                              : item.$1 == topic
-                              ? 160
-                              : 2000,
-                          maxLines: item.$1 == note ? 3 : 1,
-                          validator: (v) =>
-                              item.$1 == note || (v?.trim().isNotEmpty ?? false)
-                              ? null
-                              : 'Bitte ${item.$2.toLowerCase()} eintragen.',
-                          decoration: InputDecoration(labelText: item.$2),
-                        ),
-                      ),
-                    for (final item in [
-                      (due, 'Termin'),
-                      (scheduled, 'Frühester Lernbeginn'),
-                    ])
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 14),
-                        child: TextFormField(
-                          controller: item.$1,
-                          keyboardType: TextInputType.datetime,
-                          validator: (v) =>
-                              v == null ||
-                                  v.trim().isEmpty ||
-                                  planningDate(v) != null
-                              ? null
-                              : 'Bitte ein gültiges Datum wie 24.10.2026 auswählen.',
-                          decoration: InputDecoration(
-                            labelText: '${item.$2} (optional)',
-                            hintText: 'TT.MM.JJJJ',
-                            suffixIcon: IconButton(
-                              tooltip: '${item.$2} im Kalender auswählen',
-                              icon: Icon(Icons.calendar_month_outlined),
-                              onPressed: () async {
-                                final picked = await showDatePicker(
-                                  context: ctx,
-                                  initialDate:
-                                      planningDate(item.$1.text) ??
-                                      DateTime.now(),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null && ctx.mounted) {
-                                  set(
-                                    () =>
-                                        item.$1.text = DateFormat('dd.MM.yyyy')
-                                            .format(picked),
-                                  );
-                                }
-                              },
+                        SizedBox(height: 14),
+                        for (final item in [
+                          (subject, 'Fach'),
+                          (topic, 'Thema / Lernziel'),
+                          (note, 'Was soll geübt werden?'),
+                        ])
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 14),
+                            child: TextFormField(
+                              controller: item.$1,
+                              maxLength: item.$1 == subject
+                                  ? 80
+                                  : item.$1 == topic
+                                  ? 160
+                                  : 2000,
+                              maxLines: item.$1 == note ? 3 : 1,
+                              validator: (v) =>
+                                  item.$1 == note ||
+                                      (v?.trim().isNotEmpty ?? false)
+                                  ? null
+                                  : 'Bitte ${item.$2.toLowerCase()} eintragen.',
+                              decoration: InputDecoration(labelText: item.$2),
                             ),
                           ),
+                        for (final item in [
+                          (due, 'Termin'),
+                          (scheduled, 'Frühester Lernbeginn'),
+                        ])
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 14),
+                            child: TextFormField(
+                              controller: item.$1,
+                              keyboardType: TextInputType.datetime,
+                              validator: (v) =>
+                                  v == null ||
+                                      v.trim().isEmpty ||
+                                      planningDate(v) != null
+                                  ? null
+                                  : 'Bitte ein gültiges Datum wie 24.10.2026 auswählen.',
+                              decoration: InputDecoration(
+                                labelText: '${item.$2} (optional)',
+                                hintText: 'TT.MM.JJJJ',
+                                suffixIcon: IconButton(
+                                  tooltip: '${item.$2} im Kalender auswählen',
+                                  icon: Icon(Icons.calendar_month_outlined),
+                                  onPressed: () async {
+                                    if (!currentAccount()) return;
+                                    final picked = await showDatePicker(
+                                      context: ctx,
+                                      initialDate:
+                                          planningDate(item.$1.text) ??
+                                          DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null &&
+                                        ctx.mounted &&
+                                        currentAccount()) {
+                                      set(
+                                        () => item.$1.text = DateFormat(
+                                          'dd.MM.yyyy',
+                                        ).format(picked),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            if (!currentAccount()) return;
+                            final selected = await pickLibraryMaterial(
+                              ctx,
+                              state,
+                              childId,
+                            );
+                            if (selected != null &&
+                                ctx.mounted &&
+                                currentAccount()) {
+                              set(() {
+                                materialId = selected['id'];
+                                sourceUnitId = null;
+                                selectedMaterialTitle =
+                                    selected['topic']?.toString().isNotEmpty ==
+                                        true
+                                    ? selected['topic']
+                                    : selected['title'];
+                              });
+                            }
+                          },
+                          icon: Icon(Icons.folder_open_rounded),
+                          label: Text(
+                            materialId == null
+                                ? 'Heftseite auswählen (optional)'
+                                : selectedMaterialTitle ??
+                                      'Verknüpfte Heftseite ändern',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final selected = await pickLibraryMaterial(
-                          ctx,
-                          state,
-                          child['id'],
-                        );
-                        if (selected != null && ctx.mounted) {
-                          set(() {
-                            materialId = selected['id'];
-                            sourceUnitId = null;
-                            selectedMaterialTitle =
-                                selected['topic']?.toString().isNotEmpty == true
-                                ? selected['topic']
-                                : selected['title'];
-                          });
-                        }
-                      },
-                      icon: Icon(Icons.folder_open_rounded),
-                      label: Text(
-                        materialId == null
-                            ? 'Heftseite auswählen (optional)'
-                            : selectedMaterialTitle ??
-                                  'Verknüpfte Heftseite ändern',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        if (materialId != null)
+                          TextButton(
+                            onPressed: () => set(() {
+                              materialId = null;
+                              sourceUnitId = null;
+                              selectedMaterialTitle = null;
+                            }),
+                            child: Text('Ohne Heftseite fortfahren'),
+                          ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('Verbindlich einplanen'),
+                          value: mandatory,
+                          onChanged: (v) => set(() => mandatory = v),
+                        ),
+                        Notice(
+                          'Du gibst Ziel und Stoff vor. Die passenden Übungen entstehen daraus; ein Termin erzeugt keinen unbegrenzten Tagesplan.',
+                        ),
+                      ],
                     ),
-                    if (materialId != null)
-                      TextButton(
-                        onPressed: () => set(() {
-                          materialId = null;
-                          sourceUnitId = null;
-                          selectedMaterialTitle = null;
-                        }),
-                        child: Text('Ohne Heftseite fortfahren'),
-                      ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Verbindlich einplanen'),
-                      value: mandatory,
-                      onChanged: (v) => set(() => mandatory = v),
-                    ),
-                    Notice(
-                      'Du gibst Ziel und Stoff vor. Die passenden Übungen entstehen daraus; ein Termin erzeugt keinen unbegrenzten Tagesplan.',
-                    ),
-                  ],
+                  ),
                 ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Abbrechen'),
+                ),
+                ActionButton(
+                  label: 'Speichern',
+                  onPressed: () async {
+                    if (!currentAccount() || !ctx.mounted) return;
+                    if (!(form.currentState?.validate() ?? false)) return;
+                    final body = {
+                      'kind': kind,
+                      'subject': subject.text,
+                      'topic': topic.text,
+                      'note': note.text,
+                      'due': due.text.trim().isEmpty
+                          ? null
+                          : DateFormat('yyyy-MM-dd')
+                                .format(planningDate(due.text)!),
+                      'scheduled_for': scheduled.text.trim().isEmpty
+                          ? null
+                          : DateFormat('yyyy-MM-dd')
+                                .format(planningDate(scheduled.text)!),
+                      'material_id': materialId,
+                      'source_unit_id': sourceUnitId,
+                      if (existing != null && existing['revision'] != null)
+                        'revision': existing['revision'],
+                      'mandatory': mandatory,
+                    };
+                    if (existing == null) {
+                      await state.api.post(
+                        '/children/$childId/assignments',
+                        body,
+                        {'Idempotency-Key': requestKey},
+                      );
+                    } else {
+                      await state.api.put(
+                        '/children/$childId/assignments/${existing['id']}',
+                        body,
+                      );
+                    }
+                    if (!currentAccount()) return;
+                    final route = draftRoute;
+                    if (route != null && route.isActive) {
+                      if (route.isCurrent) {
+                        route.navigator?.pop();
+                      } else {
+                        route.navigator?.removeRoute(route);
+                      }
+                    }
+                  },
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Abbrechen'),
-            ),
-            ActionButton(
-              label: 'Speichern',
-              onPressed: () async {
-                if (!(form.currentState?.validate() ?? false)) return;
-                final body = {
-                  'kind': kind,
-                  'subject': subject.text,
-                  'topic': topic.text,
-                  'note': note.text,
-                  'due': due.text.trim().isEmpty
-                      ? null
-                      : DateFormat('yyyy-MM-dd')
-                            .format(planningDate(due.text)!),
-                  'scheduled_for': scheduled.text.trim().isEmpty
-                      ? null
-                      : DateFormat('yyyy-MM-dd')
-                            .format(planningDate(scheduled.text)!),
-                  'material_id': materialId,
-                  'source_unit_id': sourceUnitId,
-                  if (existing != null && existing['revision'] != null)
-                    'revision': existing['revision'],
-                  'mandatory': mandatory,
-                };
-                if (existing == null) {
-                  await state.api.post(
-                    '/children/${child['id']}/assignments',
-                    body,
-                    {'Idempotency-Key': requestKey},
-                  );
-                } else {
-                  await state.api.put(
-                    '/children/${child['id']}/assignments/${existing['id']}',
-                    body,
-                  );
-                }
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+        );
+      },
+    );
+  } finally {
+    state.removeListener(accountChanged);
+    if (draftRoute != null) await draftRoute!.completed;
+  }
 }
 
 Future<void> preferencesDialog(

@@ -363,13 +363,17 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/homework/:childId',
-        builder: (context, s) =>
-            HomeworkScreen(widget.state, childId: s.pathParameters['childId']!),
+        builder: (context, s) => HomeworkScreen(
+          widget.state,
+          key: ValueKey(s.uri.path),
+          childId: s.pathParameters['childId']!,
+        ),
       ),
       GoRoute(
         path: '/homework/:childId/:materialId',
         builder: (context, s) => HomeworkDetailScreen(
           widget.state,
+          key: ValueKey(s.uri.path),
           childId: s.pathParameters['childId']!,
           materialId: s.pathParameters['materialId']!,
         ),

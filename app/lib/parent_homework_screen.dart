@@ -20,13 +20,15 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   String? cursor, error, childName;
   int generation = 0, total = 0;
   bool loading = false;
-  late String? owner;
-  bool get own => mounted && widget.state.user?['id'] == owner;
+  bool retryMore = false;
+  late Json? owner;
+  bool get own =>
+      mounted && owner != null && identical(widget.state.user, owner);
   String get cacheKey => 'parent-homework:${widget.childId}';
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     filter = widget.state.collectionViews[cacheKey]?['filter'] ?? 'all';
     if (!['all', 'worked', 'open', 'review'].contains(filter)) filter = 'all';
     widget.state.addListener(identityChanged);
@@ -73,9 +75,11 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
     setState(() {
       loading = true;
       error = null;
+      retryMore = false;
       if (!more) {
         photos.clear();
         cursor = null;
+        total = 0;
       }
     });
     widget.state.collectionViews[cacheKey] = {'filter': filter};
@@ -106,6 +110,9 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
             photos.clear();
             cursor = null;
             childName = null;
+            total = 0;
+          } else {
+            retryMore = more;
           }
           error = e is ApiError
               ? e.message
@@ -166,20 +173,66 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (loading) const LinearProgressIndicator(),
+              if (loading)
+                Semantics(
+                  liveRegion: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        photos.isEmpty
+                            ? 'Hausaufgabenfotos werden geladen …'
+                            : 'Weitere Fotos werden geladen …',
+                      ),
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(),
+                    ],
+                  ),
+                ),
+              if (photos.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text('${photos.length} von $total Fotos'),
+                  ),
+                ),
               if (error != null) ...[
-                Notice(error!, warning: true),
+                Semantics(
+                  liveRegion: true,
+                  child: Notice(error!, warning: true),
+                ),
                 TextButton(
-                  onPressed: load,
-                  child: const Text('Noch einmal laden'),
+                  onPressed: loading ? null : () => load(more: retryMore),
+                  child: Text(
+                    retryMore
+                        ? 'Weitere Fotos erneut laden'
+                        : 'Noch einmal laden',
+                  ),
                 ),
               ],
-              if (!loading && error == null && photos.isEmpty)
-                Notice(
-                  filter == 'all'
-                      ? 'Noch keine Hausaufgabenfotos. Dein Kind kann sie im eigenen Bereich „Hausaufgaben“ fotografieren.'
-                      : 'Für diesen Filter sind noch keine Fotos vorhanden.',
+              if (!loading && error == null && photos.isEmpty) ...[
+                Semantics(
+                  liveRegion: true,
+                  child: Notice(
+                    filter == 'all'
+                        ? 'Noch keine Hausaufgabenfotos. Dein Kind kann sie im eigenen Bereich „Hausaufgaben“ fotografieren.'
+                        : 'Für diesen Filter sind noch keine Fotos vorhanden.',
+                  ),
                 ),
+                if (filter != 'all')
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() => filter = 'all');
+                        load();
+                      },
+                      icon: const Icon(Icons.filter_alt_off_outlined),
+                      label: const Text('Alle Fotos anzeigen'),
+                    ),
+                  ),
+              ],
               for (final photo in photos)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
@@ -251,8 +304,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                     ),
                   ),
                 ),
-              if (photos.isNotEmpty) Text('${photos.length} von $total Fotos'),
-              if (cursor != null)
+              if (cursor != null && !(error != null && retryMore))
                 TextButton(
                   onPressed: loading ? null : () => load(more: true),
                   child: const Text('Weitere Fotos laden'),
