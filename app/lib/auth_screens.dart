@@ -350,6 +350,7 @@ class _AuthScreenState extends State<AuthScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.linkUri != widget.linkUri || oldWidget.mode != widget.mode) {
       formRevision++;
+      submitting = googleBusy = false;
       if (oldWidget.mode != widget.mode) {
         _restoreIdentifier();
         name.clear();
@@ -567,13 +568,16 @@ class _AuthScreenState extends State<AuthScreen> {
       );
       showFeedback();
     } finally {
-      if (mounted) setState(() => submitting = false);
+      if (mounted && revision == formRevision) {
+        setState(() => submitting = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final mode = widget.mode;
+    final revision = formRevision;
     final title = switch (mode) {
       'register' => 'Euer Start mit Schulpilot',
       'recovery' => 'Passwort vergessen?',
@@ -819,6 +823,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       SizedBox(height: 12),
                     ],
                     ActionButton(
+                      key: ValueKey(('auth-submit', revision)),
                       label: submitting
                           ? 'Bitte warten …'
                           : switch (mode) {
@@ -836,9 +841,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (mode == 'login' || mode == 'register')
                       GoogleLoginButton(
                         widget.state,
+                        key: ValueKey(('google-auth', revision)),
                         enabled: !submitting && !googleBusy,
                         onBusyChanged: (busy) {
-                          if (mounted) setState(() => googleBusy = busy);
+                          if (mounted && revision == formRevision) {
+                            setState(() => googleBusy = busy);
+                          }
                         },
                       ),
                     if (mode == 'login')

@@ -584,3 +584,13 @@ bleibt erhalten. Revisionsgebundene Betreiberentwürfe und reine Prüfauftrag-
 Metadaten erhalten Kosten-, Freigabe- und Rollenprüfungen. Kein Provideraufruf
 wurde durch diese synthetischen Bedienprüfungen ausgelöst. Auslieferungsstand
 und Gesamtnachweis werden erst nach der gemeinsamen Abnahme ergänzt.
+
+
+Sofatutor-Weböffnung in UX87: fixierter Lockstand `url_launcher_web2.4.3`,
+lokaler Pluginquellpfad und die [offizielle Dokumentation](https://pub.dev/documentation/url_launcher_web/latest/)
+bestätigen zwei Grenzen: Nach einem asynchronen Vorbereitungsschritt kann die
+Browseraktivierung ablaufen; der Rückgabewert bei erlaubtem HTTPS-Schema beweist
+kein geöffnetes Fenster. Deshalb Vorbereitung und erneuter bewusster Öffnen-Klick
+trennen, ohne automatische Wiederholungen oder Als-gesehen-Behauptung. Die
+Abhängigkeit bleibt unverändert. Zusätzliche Eltern-Webprüfungen verwenden reine
+künstliche Daten im Flutter-Chromeharness, ohne Anmeldung, KI oder echten Versand.

@@ -20,10 +20,16 @@ class SettingsPush extends PushClient {
   SettingsPush(super.api);
   final saves = <Json>[];
   Completer<void>? pending;
+  bool nativeSettings = false, failStatus = false;
+  Json status = {};
   @override
-  bool get canOpenSettings => false;
+  bool get canOpenSettings => nativeSettings;
   @override
-  Future<Json> deviceStatus() async => {};
+  Future<Json> deviceStatus() async {
+    if (failStatus) throw StateError('synthetic device failure');
+    return status;
+  }
+
   @override
   Future<Json> callStatus() async => {};
   @override
@@ -273,6 +279,49 @@ void main() {
       expect(f.testGets, before);
       expect(f.testPosts, 1);
       await f.close(tester);
+    },
+  );
+  for (final failed in [false, true]) {
+    testWidgets(
+      'unknown native permission is not a delivery claim, thrown: $failed',
+      (tester) async {
+        final f = PreferencesFixture();
+        f.state.settingsPush.nativeSettings = true;
+        f.state.settingsPush.failStatus = failed;
+        await f.show(tester);
+        expect(find.text('Für dieses Gerät eingeschaltet.'), findsNothing);
+        expect(
+          find.textContaining('Berechtigung konnte gerade nicht geprüft'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('synthetic device failure'), findsNothing);
+        f.state.settingsPush.failStatus = false;
+        f.state.settingsPush.status = {'permission': true, 'channel': true};
+        final before = f.configGets;
+        await tester.tap(find.text('Gerätestatus erneut prüfen'));
+        await tester.pumpAndSettle();
+        expect(f.configGets, before + 1);
+        expect(f.state.settingsPush.saves, isEmpty);
+        expect(find.text('Für dieses Gerät eingeschaltet.'), findsOneWidget);
+        await f.close(tester);
+      },
+    );
+  }
+  testWidgets(
+    'browser permission does not require an Android channel but Android does',
+    (tester) async {
+      final f = PreferencesFixture();
+      f.state.settingsPush.status = {'permission': true};
+      await f.show(tester);
+      expect(find.text('Für dieses Gerät eingeschaltet.'), findsOneWidget);
+      await f.close(tester);
+      final g = PreferencesFixture();
+      g.state.settingsPush.nativeSettings = true;
+      g.state.settingsPush.status = {'permission': true};
+      await g.show(tester);
+      expect(find.text('Für dieses Gerät eingeschaltet.'), findsNothing);
+      expect(find.text('Gerätestatus erneut prüfen'), findsOneWidget);
+      await g.close(tester);
     },
   );
 }

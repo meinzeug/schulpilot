@@ -506,4 +506,46 @@ void main() {
       await tester.runAsync(f.close);
     },
   );
+  testWidgets(
+    'a completed browser permission removes its own covered sheet only',
+    (tester) async {
+      final f = _Fixture();
+      f.transport.allowed = false;
+      f.transport.pendingPermission = Completer<bool>();
+      final state = _State(f.api, f.push)..user = f.owner;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: Scaffold(
+            body: SingleChildScrollView(child: NotificationPanel(state)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final enable = find.text('Auf diesem Gerät einschalten');
+      await tester.ensureVisible(enable);
+      await tester.tap(enable);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const ValueKey('push-browser-permission')));
+      await tester.pump();
+      final context = tester.element(find.text('Im Browser erlauben'));
+      final next = showDialog<void>(
+        context: context,
+        builder: (_) => const AlertDialog(title: Text('Neuere Ansicht')),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      f.transport.allowed = true;
+      f.transport.pendingPermission!.complete(true);
+      await tester.pumpAndSettle();
+      expect(find.text('Neuere Ansicht'), findsOneWidget);
+      expect(find.text('Im Browser erlauben'), findsNothing);
+      expect(f.registrations.length, 1);
+      Navigator.of(tester.element(find.text('Neuere Ansicht'))).pop();
+      await tester.pumpAndSettle();
+      await next;
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(f.close);
+    },
+  );
 }

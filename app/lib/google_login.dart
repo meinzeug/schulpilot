@@ -53,7 +53,16 @@ Future<String?> beginGoogleLogin(
   AppState state, {
   String intent = 'login',
   String password = '',
+  bool Function()? isCurrent,
 }) async {
+  final account = state.user;
+  void check() {
+    if (!identical(state.user, account) || isCurrent?.call() == false) {
+      throw ApiError('Dieser Anmeldeschritt wurde inzwischen verlassen.');
+    }
+  }
+
+  check();
   String? verifier;
   if (!kIsWeb) {
     final random = Random.secure();
@@ -69,6 +78,7 @@ Future<String?> beginGoogleLogin(
         sha256.convert(ascii.encode(verifier)).bytes,
       ).replaceAll('=', ''),
   });
+  check();
   if (!kIsWeb) {
     await state.storage.write(
       key: _proofKey,
@@ -78,6 +88,7 @@ Future<String?> beginGoogleLogin(
         'expires': DateTime.now().millisecondsSinceEpoch + 600000,
       }),
     );
+    check();
     final url = Uri.parse(state.api.base).replace(
       path: '/auth/google/start',
       fragment: Uri(queryParameters: {'request': prepared['request']}).query,
@@ -233,7 +244,15 @@ class _GoogleActionState extends State<_GoogleAction> {
                 });
                 widget.onBusyChanged?.call(true);
                 try {
-                  final flow = await beginGoogleLogin(widget.state);
+                  final state = widget.state;
+                  final account = state.user;
+                  final flow = await beginGoogleLogin(
+                    state,
+                    isCurrent: () =>
+                        mounted &&
+                        identical(widget.state, state) &&
+                        identical(state.user, account),
+                  );
                   if (context.mounted && flow != null) {
                     context.go('/auth/google/complete#flow=$flow');
                   }

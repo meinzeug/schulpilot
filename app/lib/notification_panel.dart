@@ -553,6 +553,17 @@ class _NotificationPanelState extends State<NotificationPanel>
             isCurrentAccount(account) &&
             dialog.mounted &&
             route?.isCurrent == true;
+        void finish(bool result) {
+          if (!isCurrentAccount(account) || route?.isActive != true) return;
+          if (route!.isCurrent) {
+            Navigator.pop(dialog, result);
+          } else {
+            // A permission response belongs to this sheet even when a newer
+            // modal covers it. Complete only our route, never the newer one.
+            route.navigator?.removeRoute(route, result);
+          }
+        }
+
         return StatefulBuilder(
           builder: (dialog, update) => AlertDialog(
             title: const Text('Im Browser erlauben'),
@@ -582,14 +593,10 @@ class _NotificationPanelState extends State<NotificationPanel>
                           final permission = request();
                           update(() => asking = true);
                           final allowed = await permission;
-                          if (dialog.mounted && allowedAction()) {
-                            Navigator.pop(dialog, allowed);
-                          }
+                          finish(allowed);
                         } catch (error) {
                           failure = error;
-                          if (dialog.mounted && allowedAction()) {
-                            Navigator.pop(dialog, false);
-                          }
+                          finish(false);
                         }
                       },
                 icon: const Icon(Icons.notifications_active_outlined),
@@ -654,6 +661,15 @@ class _NotificationPanelState extends State<NotificationPanel>
       final blocked =
           data['native']['permission'] == false ||
           data['native']['channel'] == false;
+      final verified =
+          data['native']['permission'] == true &&
+          (!widget.state.push.canOpenSettings ||
+              data['native']['channel'] == true);
+      final ready =
+          enabled &&
+          verified &&
+          !blocked &&
+          widget.state.push.lastError == null;
       return Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -667,7 +683,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
-                    enabled && !blocked && widget.state.push.lastError == null
+                    ready
                         ? Icons.notifications_active_outlined
                         : Icons.notifications_none_rounded,
                     color: context.palette.teal,
@@ -696,8 +712,10 @@ class _NotificationPanelState extends State<NotificationPanel>
               )
             else ...[
               Text(
-                enabled && !blocked && widget.state.push.lastError == null
+                ready
                     ? 'Für dieses Gerät eingeschaltet.'
+                    : enabled && !verified && !blocked
+                    ? 'Auf diesem Gerät registriert. Die Berechtigung konnte gerade nicht geprüft werden.'
                     : enabled
                     ? 'Bitte prüfe die Benachrichtigungen für dieses Gerät.'
                     : widget.state.isChild
@@ -706,6 +724,17 @@ class _NotificationPanelState extends State<NotificationPanel>
                 style: TextStyle(fontSize: 16),
               ),
               SizedBox(height: 8),
+              if (enabled && !verified && !blocked)
+                ActionButton(
+                  label: 'Gerätestatus erneut prüfen',
+                  secondary: true,
+                  enabled: !busy,
+                  onPressed: () async {
+                    if (!busy && isCurrentAccount(owner)) {
+                      setState(() => version++);
+                    }
+                  },
+                ),
               if (enabled && blocked)
                 Notice(
                   'Android oder dein Browser blockiert die Benachrichtigungen. Bitte erlaube sie in den Einstellungen.',

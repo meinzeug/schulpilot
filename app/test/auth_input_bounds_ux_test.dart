@@ -1,9 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schulpilot/auth_screens.dart';
+import 'package:schulpilot/ui.dart';
 
 import 'auth_form_usability_test.dart' as auth;
 
@@ -244,6 +248,150 @@ void main() {
             .text,
         'synthetic-child',
       );
+    },
+  );
+  testWidgets(
+    'a new mail link releases an abandoned Google start without launching its late response',
+    (tester) async {
+      final pending = Completer<http.Response>();
+      var launches = 0;
+      const channel = MethodChannel('plugins.flutter.io/url_launcher');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (_) async {
+        launches++;
+        return true;
+      });
+      final state = auth.fakeState((request) async {
+        if (request.method == 'GET') {
+          return auth.jsonResponse({'available': true});
+        }
+        return pending.future;
+      });
+      final location = ValueNotifier((mode: 'login', uri: Uri(path: '/login')));
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => ValueListenableBuilder(
+              valueListenable: location,
+              builder: (_, value, _) =>
+                  AuthScreen(state, mode: value.mode, linkUri: value.uri),
+            ),
+          ),
+        ],
+      );
+      try {
+        await tester.pumpWidget(
+          MaterialApp.router(routerConfig: router, theme: appTheme()),
+        );
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Mit Google anmelden'));
+        await tester.tap(find.text('Mit Google anmelden'));
+        await tester.pump();
+        expect(
+          tester.widget<TextField>(auth.field('Passwort')).enabled,
+          isFalse,
+        );
+        location.value = (
+          mode: 'reset',
+          uri: Uri(path: '/reset', fragment: 'token=$code'),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<TextField>(auth.field('Neues Passwort')).enabled,
+          isTrue,
+        );
+        await tester.enterText(
+          auth.field('Neues Passwort'),
+          'new synthetic password 123',
+        );
+        pending.complete(
+          auth.jsonResponse({'flow_id': 'a' * 32, 'request': 'b' * 32}),
+        );
+        await tester.pumpAndSettle();
+        expect(launches, 0);
+        expect(router.routeInformationProvider.value.uri.path, '/');
+        expect(
+          tester
+              .widget<TextField>(auth.field('Neues Passwort'))
+              .controller!
+              .text,
+          'new synthetic password 123',
+        );
+        expect(
+          tester.widget<TextField>(auth.field('Neues Passwort')).enabled,
+          isTrue,
+        );
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        router.dispose();
+        location.dispose();
+        messenger.setMockMethodCallHandler(channel, null);
+      }
+    },
+  );
+  testWidgets(
+    'an old reset completion cannot unlock a newer pending reset form',
+    (tester) async {
+      final first = Completer<http.Response>(),
+          second = Completer<http.Response>();
+      var posts = 0;
+      final state = auth.fakeState(
+        (request) async => ++posts == 1 ? first.future : second.future,
+      );
+      final link = ValueNotifier(Uri(path: '/reset', fragment: 'token=$code'));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: ValueListenableBuilder(
+            valueListenable: link,
+            builder: (_, uri, _) =>
+                AuthScreen(state, mode: 'reset', linkUri: uri),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        auth.field('Neues Passwort'),
+        'first synthetic password 123',
+      );
+      var button = find.widgetWithText(FilledButton, 'Passwort erneuern');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+      link.value = Uri(path: '/reset', fragment: 'token=${'b' * 40}');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(auth.field('Neues Passwort')).enabled,
+        isTrue,
+      );
+      await tester.enterText(
+        auth.field('Neues Passwort'),
+        'second synthetic password 123',
+      );
+      button = find.widgetWithText(FilledButton, 'Passwort erneuern');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+      expect(posts, 2);
+      first.complete(
+        auth.jsonResponse({'message': 'Alte künstliche Rückmeldung'}),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Alte künstliche Rückmeldung'), findsNothing);
+      expect(
+        tester.widget<TextField>(auth.field('Neues Passwort')).enabled,
+        isFalse,
+      );
+      second.complete(
+        auth.jsonResponse({'message': 'Aktuelle künstliche Rückmeldung'}),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Aktuelle künstliche Rückmeldung'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      link.dispose();
     },
   );
 }
