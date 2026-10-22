@@ -471,7 +471,11 @@ class LearningGoalPanel extends StatelessWidget {
           SizedBox(height: 9),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(value: ratio, minHeight: 5),
+            // The exact measured time and goal are already exposed above.
+            // A progress role would override a containing action card's role.
+            child: ExcludeSemantics(
+              child: LinearProgressIndicator(value: ratio, minHeight: 5),
+            ),
           ),
         ],
       ],

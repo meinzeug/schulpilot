@@ -9,7 +9,7 @@
     "admin": 89,
     "child": 88
   },
-  "integration_status": "Vollständiges PostgreSQL-Backend1593/1593 und native Flutterintegration2008 bestanden, fünf separate Webfälle übersprungen; Analyse sauber. Signierte Builds, Produktions- und Browsernachweis noch ausstehend.",
+  "integration_status": "PostgreSQL-Backend1593/1593, native Integration88:2008 und nach Browserkorrektur89:2009 bestanden; fünf separate Webfälle übersprungen. Folgekorrektur39 native/10 Chrome grün; aktuelle Test-APIs nativ/Chrome10/10 und vollständige Analyse sauber. Version88 ausgeliefert; signierte Builds und abschließender Produktions-/Browsernachweis für89 noch ausstehend.",
   "items": [
     {
       "id": "RR001",

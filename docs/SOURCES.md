@@ -621,3 +621,11 @@ an den tatsächlich kompilierten Play-Ausgang und prüft die Gültigkeitsdaten d
 festgelegten Upload-Zertifikats; die selbstsignierte Zertifikatskette wird
 ausdrücklich vom Fehler einer fehlenden Signatur unterschieden. Ein eigenes
 künstliches unsigniertes Archiv wurde als Negativprobe verworfen.
+
+Browsernachkorrektur89 (22.10.2026): Der fixierte Flutterquellstand setzt in
+`material/progress_indicator.dart` ausdrücklich `progressBar`/`loadingSpinner`.
+Die [Rollenübersetzung](https://api.flutter.dev/flutter/dart-ui/SemanticsRole.html)
+und [ExcludeSemantics](https://api.flutter.dev/flutter/widgets/ExcludeSemantics-class.html)
+erklären den im echten Browser reproduzierten Konflikt. Ausschließlich doppelte
+dekorative Anzeigen ausblenden; genaue Zeiten, Status und Kartenaktion erhalten.
+Keine neue Flutterversion, Bibliothek oder fachliche Bewertung eingeführt.

@@ -77,7 +77,9 @@ class PreparationCard extends StatelessWidget {
               ? SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: ExcludeSemantics(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 )
               : Icon(Icons.fact_check_outlined, color: context.palette.teal),
           title: Text(title, style: TextStyle(fontWeight: FontWeight.w700)),

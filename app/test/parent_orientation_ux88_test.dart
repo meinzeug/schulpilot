@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:schulpilot/ui.dart';
 
 import 'parent_cards_ux88_test.dart' as fixture;
 import 'parent_messages_ux88_test.dart' show tap, settle;
@@ -33,24 +35,39 @@ void main() {
   testWidgets('PP079 learning-time card opens the saved weekly framework', (
     tester,
   ) async {
-    final f = fixture.Fixture();
-    f.overview['plan'] = {
-      'daily_active_seconds': 600,
-      'weekly_active_seconds': 600,
-      'daily_goal_minutes': 20,
-      'weekly_goal_minutes': 100,
-    };
-    await f.mount(tester, '/overview');
-    await tap(tester, find.text('Zeitrahmen und Wochenvorschlag ansehen'));
-    expect(
-      tester
-          .widget<ChoiceChip>(
-            find.widgetWithText(ChoiceChip, 'Woche & Vorgaben'),
-          )
-          .selected,
-      isTrue,
-    );
-    expect(f.requests.every((r) => r.method == 'GET'), isTrue);
+    final semantics = tester.ensureSemantics();
+    try {
+      final f = fixture.Fixture();
+      f.overview['plan'] = {
+        'daily_active_seconds': 600,
+        'weekly_active_seconds': 600,
+        'daily_goal_minutes': 20,
+        'weekly_goal_minutes': 100,
+      };
+      await f.mount(tester, '/overview');
+      final card = find.ancestor(
+        of: find.text('Zeitrahmen und Wochenvorschlag ansehen'),
+        matching: find.byType(ActionPanel),
+      );
+      await tester.ensureVisible(card);
+      final data = tester.getSemantics(card).getSemanticsData();
+      expect(data.role, isNot(ui.SemanticsRole.progressBar));
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.label, contains('10:00 / 20 Min.'));
+      expect(data.label, contains('10:00 / 100 Min.'));
+      await tap(tester, find.text('Zeitrahmen und Wochenvorschlag ansehen'));
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.widgetWithText(ChoiceChip, 'Woche & Vorgaben'),
+            )
+            .selected,
+        isTrue,
+      );
+      expect(f.requests.every((r) => r.method == 'GET'), isTrue);
+    } finally {
+      semantics.dispose();
+    }
   });
   testWidgets(
     'PP080 parent-goal card lands on actual topics rather than AI administration',
