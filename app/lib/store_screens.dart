@@ -13,6 +13,9 @@ import 'store_plan_editor.dart';
 import 'store_order_filters.dart';
 import 'ui.dart';
 import 'public_trial.dart';
+import 'order_payment_access.dart';
+import 'paypal_settings.dart';
+import 'payment_navigation.dart';
 
 String euro(dynamic cents) =>
     '${((cents as num) / 100).toStringAsFixed(2).replaceAll('.', ',')} €';
@@ -96,7 +99,7 @@ class StoreSection extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           enabled
-              ? 'Feste Laufzeit. Einmal per Überweisung bezahlen. Keine automatische Verlängerung.'
+              ? 'Feste Laufzeit. Einmal bezahlen. Keine automatische Verlängerung.'
               : 'Diese Preise und Leistungen sind eine Vorschau. Der Verkauf ist noch nicht freigegeben; hier kann nichts bestellt werden.',
         ),
         if (!enabled) ...[
@@ -212,7 +215,7 @@ class StoreSection extends StatelessWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
               child: Text(
-                'Nach deiner Bestellung erhältst du die Bankverbindung und einen eindeutigen Verwendungszweck. Wir prüfen den Zahlungseingang und schalten manuell frei. Auf ausdrücklichen Wunsch startet ihr schon vor Ablauf der 14-tägigen Widerrufsfrist. Sonst beginnt die Laufzeit frühestens danach. Eine vorhandene Testphase wird dadurch nicht verlängert oder neu gestartet.',
+                'Bei Überweisung erhältst du die Bankverbindung und einen eindeutigen Verwendungszweck. Der Eingang wird manuell geprüft. Bei einer angebotenen Onlinezahlung zählt der bestätigte Anbieterstatus. Auf ausdrücklichen Wunsch startet ihr nach bestätigter Zahlung schon vor Ablauf der 14-tägigen Widerrufsfrist. Sonst beginnt die Laufzeit frühestens danach. Eine vorhandene Testphase wird dadurch nicht verlängert oder neu gestartet.',
               ),
             ),
           ],
@@ -316,6 +319,8 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool terms = false, early = false, busy = false;
+  String paymentMethod = 'bank_transfer';
+  Json? submittedIntent;
   String? error;
   int catalogVersion = 0, intentVersion = 0;
   bool checkingPending = false;
@@ -382,6 +387,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (mounted && !own) {
       setState(() {
         terms = early = false;
+        paymentMethod = 'bank_transfer';
+        submittedIntent = null;
         error = null;
         pendingOrders = null;
         pendingCheckNote = null;
@@ -403,6 +410,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       intentVersion++;
       catalogVersion++;
       terms = early = busy = false;
+      paymentMethod = 'bank_transfer';
+      submittedIntent = null;
       checkingPending = false;
       pendingOrders = null;
       pendingCheckNote = null;
@@ -465,6 +474,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   );
                 }
                 final plan = matches.first;
+                final methods = catalog['payment_methods'] as Map?;
+                final methodTerms = catalog['terms_by_payment_method'] as Map?;
+                bool methodAvailable(String method) => methods == null
+                    ? method == 'bank_transfer'
+                    : methods[method] is Map &&
+                          methods[method]['available'] == true &&
+                          (method == 'bank_transfer' ||
+                              methodTerms?[method] is String &&
+                                  (methodTerms![method] as String)
+                                      .trim()
+                                      .isNotEmpty);
+                final selectedTerms = methodTerms?[paymentMethod] is String
+                    ? methodTerms![paymentMethod] as String
+                    : paymentMethod == 'bank_transfer'
+                    ? catalog['terms'] as String
+                    : 'Für diese Zahlungsart liegen noch keine Vertragsbedingungen vor.';
+                final methodAllowed =
+                    methodAvailable(paymentMethod) &&
+                    (paymentMethod == 'bank_transfer' || kIsWeb);
+                final renderedCatalog = catalogVersion;
+                final renderedRoute = ModalRoute.of(context);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -504,14 +534,68 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             '30 Tage ab Laufzeitbeginn · keine automatische Verlängerung',
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Zahlung per Überweisung. Wir schalten nach manueller Prüfung des Zahlungseingangs frei.',
+                          Text(
+                            paymentMethod == 'bank_transfer'
+                                ? 'Zahlung per Überweisung. Wir schalten nach manueller Prüfung des Zahlungseingangs frei.'
+                                : 'Die Bestellung wird zuerst gespeichert. Danach öffnest du die gesonderte sichere Zahlungsseite. Erst der bestätigte Zahlungsstatus zählt.',
                           ),
                           Text(catalog['tax_notice']),
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
+                    if (kIsWeb && methods != null) ...[
+                      const Text(
+                        'Zahlungsart wählen',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      RadioGroup<String>(
+                        groupValue: paymentMethod,
+                        onChanged: (value) {
+                          if (own &&
+                              !busy &&
+                              submittedIntent == null &&
+                              renderedCatalog == catalogVersion &&
+                              (renderedRoute?.isCurrent ?? true) &&
+                              value != null &&
+                              methodAvailable(value)) {
+                            setState(() {
+                              paymentMethod = value;
+                              terms = false;
+                            });
+                          }
+                        },
+                        child: Column(
+                          children: [
+                            for (final method in [
+                              'bank_transfer',
+                              'paypal',
+                              'google_pay',
+                            ])
+                              RadioListTile<String>(
+                                value: method,
+                                enabled:
+                                    !busy &&
+                                    submittedIntent == null &&
+                                    methodAvailable(method),
+                                title: Text(paymentMethodLabel(method)),
+                                subtitle:
+                                    methods[method] is Map &&
+                                        methods[method]['notice'] is String
+                                    ? Text(methods[method]['notice'])
+                                    : null,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (!methodAllowed)
+                        const Notice(
+                          'Diese Zahlungsart ist nicht verfügbar. Wähle eine freigegebene Zahlungsart.',
+                          warning: true,
+                        ),
+                      const SizedBox(height: 12),
+                    ],
                     OutlinedButton.icon(
                       onPressed: busy || checkingPending
                           ? null
@@ -563,7 +647,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   Text(
                                     'Vertragsfassung ${catalog['terms_version']}',
                                   ),
-                                Text(catalog['terms']),
+                                Text(selectedTerms),
                               ],
                             ),
                           ),
@@ -652,7 +736,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               busy ||
                               checkingPending ||
                               pendingOrders?.isNotEmpty == true ||
-                              catalog['enabled'] != true
+                              catalog['enabled'] != true ||
+                              !methodAllowed
                           ? null
                           : () async {
                               if (!own ||
@@ -660,6 +745,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   checkingPending ||
                                   pendingOrders?.isNotEmpty == true ||
                                   !terms ||
+                                  !methodAllowed ||
                                   widget.state.isDemo) {
                                 return;
                               }
@@ -671,15 +757,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 error = null;
                               });
                               try {
+                                submittedIntent ??= {
+                                  'plan_id': submittedPlan,
+                                  'catalog_revision': catalog['revision'],
+                                  'request_key': keyId,
+                                  'accept_terms': true,
+                                  'early_start': early,
+                                  if (paymentMethod != 'bank_transfer')
+                                    'payment_method': paymentMethod,
+                                };
                                 await widget.state.api.post(
                                   '/families/$family/orders',
-                                  {
-                                    'plan_id': submittedPlan,
-                                    'catalog_revision': catalog['revision'],
-                                    'request_key': keyId,
-                                    'accept_terms': true,
-                                    'early_start': early,
-                                  },
+                                  submittedIntent!,
                                 );
                                 if (context.mounted &&
                                     own &&
@@ -689,6 +778,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 }
                               } catch (e) {
                                 if (own && submittedVersion == intentVersion) {
+                                  if (e is ApiError && e.status == 409) {
+                                    // A deliberate catalog reread may update a rejected
+                                    // intent; its request key still prevents a second order.
+                                    submittedIntent = null;
+                                  }
                                   setState(
                                     () => error = e is ApiError ? e.message : 'Die Bestellung konnte noch nicht bestätigt werden. Prüfe zuerst den Bestellstatus.',
                                   );
@@ -856,13 +950,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ('Laufzeitende', calendar(order['ends'])),
       ('Status', orderStatus(order['status'])),
       (
+        'Zahlungsart bei Bestellung',
+        paymentMethodLabel(orderPaymentMethod(Json.from(order))),
+      ),
+      (
         'Anbieter bei Bestellung',
         '${order['seller']?['name'] ?? 'nicht gemeldet'}\n${order['seller']?['address'] ?? 'nicht gemeldet'}\n${order['seller']?['email'] ?? 'nicht gemeldet'}',
       ),
-      (
-        'Gespeicherte Bankverbindung',
-        '${order['bank']?['recipient'] ?? 'nicht gemeldet'}\n${order['bank']?['iban'] ?? 'nicht gemeldet'}\n${order['bank']?['name'] ?? ''}',
-      ),
+      if (orderPaymentMethod(Json.from(order)) == 'bank_transfer')
+        (
+          'Gespeicherte Bankverbindung',
+          '${order['bank']?['recipient'] ?? 'nicht gemeldet'}\n${order['bank']?['iban'] ?? 'nicht gemeldet'}\n${order['bank']?['name'] ?? ''}',
+        ),
       (
         'Vertragsfassung bei Bestellung',
         '${order['terms_version'] ?? 'nicht gemeldet'}',
@@ -1064,7 +1163,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         const SizedBox(height: 12),
                                       ],
                                       const Text(
-                                        'Dies ist der aktuell gespeicherte Stand. Eine neue Bestellung oder Überweisung verlängert den Zugang erst nach dokumentierter Bankprüfung.',
+                                        'Dies ist der aktuell gespeicherte Stand. Eine neue Bestellung verlängert den Zugang erst nach bestätigtem Zahlungseingang und dem vereinbarten Laufzeitbeginn.',
                                       ),
                                     ],
                                   ),
@@ -1236,7 +1335,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             SelectableText(
                               'Verwendungszweck: ${order['payment_reference']}',
                             ),
-                            if (order['status'] == 'awaiting_payment') ...[
+                            if (orderPaymentMethod(Json.from(order)) !=
+                                'bank_transfer') ...[
+                              const SizedBox(height: 12),
+                              OrderPaymentAccess(
+                                widget.state,
+                                order: Json.from(order),
+                              ),
+                            ],
+                            if (order['status'] == 'awaiting_payment' &&
+                                orderPaymentMethod(Json.from(order)) ==
+                                    'bank_transfer') ...[
                               const SizedBox(height: 12),
                               SelectableText(
                                 'Empfänger: ${order['bank']['recipient']}\nIBAN: ${order['bank']['iban']}\n${order['bank']['name']}',
@@ -1292,6 +1401,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               spacing: 12,
                               runSpacing: 12,
                               children: [
+                                OrderWithdrawalAccess(
+                                  widget.state,
+                                  order: Json.from(order),
+                                ),
                                 ActionButton(
                                   label: 'Bestätigung herunterladen',
                                   secondary: true,
@@ -1356,7 +1469,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         widget.state,
                                         title: 'Offene Bestellung stornieren?',
                                         content: Text(
-                                          'Bestellung: ${order['payment_reference']}\nTarif: ${order['offer']['name']}\nGesamtbetrag: ${euro(order['amount_cents'])}\nFalls du bereits überwiesen hast, melde dich bitte zusätzlich beim Anbieter.',
+                                          'Bestellung: ${order['payment_reference']}\nTarif: ${order['offer']['name']}\nGesamtbetrag: ${euro(order['amount_cents'])}\nFalls du bereits bezahlt hast, melde dich bitte zusätzlich beim Anbieter.',
                                         ),
                                         confirmLabel: 'Stornierung bestätigen',
                                       );
@@ -1543,6 +1656,30 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                 currentPath: '/admin/verkauf',
                 icon: Icons.account_balance_outlined,
               ),
+              if (kIsWeb)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      if (!own || !widget.state.isAdmin) return;
+                      final currentRoute = ModalRoute.of(context);
+                      final opened = await openWithdrawalDashboard();
+                      if (own &&
+                          context.mounted &&
+                          (currentRoute?.isCurrent ?? true) &&
+                          !opened) {
+                        showError(
+                          context,
+                          ApiError(
+                            'Die Widerrufsübersicht konnte nicht geöffnet werden.',
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.assignment_return_outlined),
+                    label: const Text('Widerrufe prüfen'),
+                  ),
+                ),
               const SizedBox(height: 24),
               AdminContextTabs(
                 selected: section,
@@ -1570,6 +1707,13 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                       onSaved: storeSaved,
                     ),
                   ),
+                ),
+              ),
+              Offstage(
+                offstage: section != 1,
+                child: ExcludeFocus(
+                  excluding: section != 1,
+                  child: PayPalSettings(widget.state),
                 ),
               ),
               Offstage(
@@ -1872,7 +2016,11 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                                               ),
                                             ),
                                             if (order['status'] ==
-                                                'awaiting_payment')
+                                                    'awaiting_payment' &&
+                                                orderPaymentMethod(
+                                                      Json.from(order),
+                                                    ) ==
+                                                    'bank_transfer')
                                               PaymentCheckForm(
                                                 widget.state,
                                                 order,
@@ -1888,7 +2036,11 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                                                     ),
                                                 onSaved: orderSaved,
                                               ),
-                                            if (order['status'] == 'paid')
+                                            if (order['status'] == 'paid' &&
+                                                orderPaymentMethod(
+                                                      Json.from(order),
+                                                    ) ==
+                                                    'bank_transfer')
                                               PaymentCheckForm(
                                                 widget.state,
                                                 order,

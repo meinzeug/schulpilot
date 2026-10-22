@@ -137,11 +137,19 @@ PARAGRAPHS = (
         "und kein selbstständiger Rechtschreibnachweis.",
     ),
     (
-        "Bestellungen und Überweisungen",
+        "Bestellungen, Zahlungen und Widerruf",
         "Bei einer Bestellung werden Tarif, Gesamtpreis, Vertragsfassung und Zahlungszuordnung gespeichert. "
-        "Eine Freischaltung erfolgt nach manueller Prüfung einer tatsächlich eingegangenen Überweisung. Die App liest "
-        "keine Bankkonten aus. Zahlungsbelege bleiben acht Jahre nach Ende des Buchungsjahres erhalten; bei Kontolöschung "
-        "wird die Kontozuordnung entfernt. Sie enthalten keine Kinderantworten oder Lernmaterialien.",
+        "Überweisungen werden manuell geprüft; die App liest keine Bankkonten aus. Bei ausdrücklich gewähltem PayPal "
+        "oder Google Pay über PayPal werden Anbieterbausteine erst nach dem bewussten Vorbereiten der Zahlung geladen. "
+        "Dabei verarbeiten die Zahlungsanbieter technische Verbindungsdaten und Zahlungsdaten nach ihren eigenen "
+        "Datenschutzhinweisen. Unsere Anbieteranfrage enthält Betrag, Währung und eine interne Bestellreferenz, keine "
+        "Kinderantworten oder Lernmaterialien. Die Freischaltung folgt erst einem serverseitig geprüften Zahlungsbeleg. "
+        "Zahlungsbelege bleiben acht Jahre nach Ende des Buchungsjahres erhalten; bei Kontolöschung wird die "
+        "Kontozuordnung entfernt. Ungeklärte mögliche Abbuchungen müssen zunächst geklärt werden. "
+        "Bei einem Widerruf speichern wir die erwachsene Vertragserklärung mit Name, Kontakt, Bestellbezug und "
+        "Eingangszeitpunkt verschlüsselt. Nur berechtigte Betreiber bearbeiten diese Angaben. Nicht zugeordnete "
+        "öffentliche Erklärungen verfallen nach 365 Tagen; zu Finanzbelegen gehörige Erklärungen folgen deren "
+        "Aufbewahrung. Der Eingangsbeleg und die Übergabe einer Bestätigung an den Maildienst beweisen keine Rückzahlung.",
     ),
     (
         "Auskunft, Export, Berichtigung und Löschung",
@@ -158,8 +166,8 @@ PARAGRAPHS = (
 @router.get("/legal/privacy", response_class=HTMLResponse)
 def privacy():
     site = runtime_settings()
-    contact = "\n".join(x for x in (site.operator_name, site.operator_address, site.operator_support_email) if x)
-    if not (site.operator_name and site.operator_address and site.operator_support_email):
+    contact = "\n".join(x for x in (site.operator_name, site.operator_address, site.operator_support_email, site.operator_phone) if x)
+    if not (site.operator_name and site.operator_address and site.operator_support_email and site.operator_phone):
         contact = (
             contact
             + "\nBetreiber- und Kontaktangaben sind noch unvollständig und müssen vor dem öffentlichen Verkauf ergänzt werden."
@@ -172,9 +180,26 @@ def privacy():
         """<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SCHULPILOT – Datenschutz</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:820px;margin:auto;padding:32px 22px}a{color:#5732bd}header{display:flex;align-items:center;gap:16px}header img{width:64px;height:64px}h1{font-size:32px}h2{font-size:22px;margin-top:32px}p{white-space:pre-line}nav{display:flex;gap:20px;flex-wrap:wrap}section{border-bottom:1px solid #dce1ec;padding-bottom:12px}</style>
 <main><header><img src="/icons/icon-192.png" alt=""><strong>SCHULPILOT</strong></header><h1>Datenschutz</h1>
-<p>Stand: 17. Oktober 2026. Für die Web-App und die Android-App.</p><nav><a href="/">Startseite</a><a href="/settings">Einstellungen</a><a href="/account-deletion">Konto löschen</a></nav>"""
+<p>Stand: 22. Oktober 2026. Für die Web-App und die Android-App.</p><nav><a href="/">Startseite</a><a href="/settings">Einstellungen</a><a href="/account-deletion">Konto löschen</a><a href="/impressum">Impressum</a><a href="/widerrufen">Vertrag widerrufen</a></nav>"""
         + sections
         + """
 <p>Weitere Informationen der eingesetzten Dienste: <a href="https://policies.google.com/privacy">Google-Datenschutz</a>,
-<a href="https://firebase.google.com/support/privacy">Firebase-Datenschutz</a>, <a href="https://openrouter.ai/privacy">OpenRouter-Datenschutz</a>.</p></main></html>"""
+<a href="https://firebase.google.com/support/privacy">Firebase-Datenschutz</a>, <a href="https://openrouter.ai/privacy">OpenRouter-Datenschutz</a>, <a href="https://www.paypal.com/de/legalhub/paypal/privacy-full">PayPal-Datenschutz</a>.</p></main></html>"""
     )
+
+
+@router.get("/legal/imprint", response_class=HTMLResponse)
+def imprint():
+    site = runtime_settings()
+    complete = all((site.operator_name, site.operator_address, site.operator_support_email, site.operator_phone))
+    rows = [("Anbieter", site.operator_name), ("Anschrift", site.operator_address),
+            ("E-Mail", site.operator_support_email), ("Telefon", site.operator_phone)]
+    if site.operator_complaints_address:
+        rows.append(("Abweichende Beschwerdeanschrift", site.operator_complaints_address))
+    if site.operator_legal_info:
+        rows.append(("Weitere Anbieterangaben", site.operator_legal_info))
+    details = "".join(f"<dt>{escape(title)}</dt><dd>{escape(value) if value else 'Noch nicht hinterlegt'}</dd>" for title, value in rows)
+    notice = "" if complete else "<p role=\"status\">Die Anbieterangaben sind noch unvollständig. Der Verkauf ist bis zur vollständigen Konfiguration gesperrt.</p>"
+    return HTMLResponse("""<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impressum · SCHULPILOT</title><style>body{margin:0;background:#f5f7fc;color:#17243c;font:17px/1.7 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:28px 20px}a{color:#5732bd}nav{display:flex;flex-wrap:wrap;gap:18px}dt{font-weight:700;margin-top:20px}dd{margin:0;white-space:pre-line;overflow-wrap:anywhere}</style>
+<main><strong>SCHULPILOT</strong><h1>Impressum</h1>""" + notice + "<dl>" + details + "</dl>" + """<nav><a href="/">Startseite</a><a href="/privacy">Datenschutz</a><a href="/bedingungen">Vertragsbedingungen</a><a href="/widerrufen">Vertrag widerrufen</a></nav></main></html>""")

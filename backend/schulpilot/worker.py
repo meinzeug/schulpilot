@@ -474,7 +474,9 @@ def maintenance():
     with DB.begin() as db:
         from .commerce import maintenance as commerce_maintenance
         from .operator_incidents import maintenance as incident_maintenance
+        from .order_withdrawals import maintenance as withdrawal_maintenance
 
+        withdrawal_maintenance(db)
         commerce_maintenance(db)
         repair_paths = incident_maintenance(db)
         stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240)))

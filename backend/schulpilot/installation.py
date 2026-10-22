@@ -33,6 +33,9 @@ class SiteUpdate(s.Strict):
     operator_name: str = Field(default="", max_length=160)
     operator_address: str = Field(default="", max_length=1000)
     operator_support_email: str = Field(default="", max_length=254)
+    operator_phone: str = Field(default="", max_length=80, pattern=r"^[0-9+() /.-]*$")
+    operator_complaints_address: str = Field(default="", max_length=1000)
+    operator_legal_info: str = Field(default="", max_length=2000)
     real_data_approved: bool = False
     privacy_evidence: str = Field(default="", max_length=500)
     synthetic_demo: bool = True
@@ -209,7 +212,7 @@ def configuration(db):
         "database": True,
         "https": settings.environment != "production" or settings.public_url.startswith("https://"),
         "mail_configured": site.mail_ready,
-        "operator_complete": bool(site.operator_name and site.operator_address and site.operator_support_email),
+        "operator_complete": bool(site.operator_name and site.operator_address and site.operator_support_email and site.operator_phone),
         "data_approved": bool(site.real_data_approved and site.privacy_evidence),
         "push_available": public_config()["available"],
         "worker_available": bool(worker and now() - worker.updated < 600),

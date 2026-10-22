@@ -34,8 +34,11 @@ from . import (
     notification_inbox,
     notifications,
     operator_incidents,
+    order_withdrawals,
     parent_insights,
     parent_plans,
+    payment_documents,
+    payments_paypal,
     public_privacy,
     releases,
     routing_admin,
@@ -126,9 +129,10 @@ def installation_gate_required():
 async def security_headers(request: Request, call_next):
     if request.method in ("POST", "PUT", "PATCH", "DELETE"):
         origin = request.headers.get("origin")
-        if origin and origin != settings.public_url:
+        provider_webhook = request.url.path == "/api/payments/paypal/webhook"
+        if not provider_webhook and origin and origin != settings.public_url:
             return JSONResponse({"detail": "Fremder Ursprung ist nicht erlaubt."}, status_code=403)
-        if request.headers.get("x-schulpilot-request") != "1":
+        if not provider_webhook and request.headers.get("x-schulpilot-request") != "1":
             return JSONResponse({"detail": "Sicherheitsheader fehlt."}, status_code=403)
         maximum = request_body_limit(request.url.path)
         length = request.headers.get("content-length", "0")
@@ -234,7 +238,11 @@ def legal():
         "operator": site.operator_name,
         "address": site.operator_address,
         "support_email": site.operator_support_email,
-        "complete": bool(site.operator_name and site.operator_address and site.operator_support_email),
+        "phone": site.operator_phone,
+        "complaints_address": site.operator_complaints_address,
+        "legal_info": site.operator_legal_info,
+        "imprint_complete": bool(site.operator_name and site.operator_address and site.operator_support_email and site.operator_phone),
+        "complete": bool(site.operator_name and site.operator_address and site.operator_support_email and site.operator_phone),
         "operator_data_approval": bool(site.real_data_approved and site.privacy_evidence),
         "retention_days": {"learning": 365, "jobs": 30, "backups": 14, "local_pending_photos_hours": 24, "push_devices_inactive": 60, "push_delivery_status": 14, "notification_reads": 30, "family_calls": 30},
         "accounting_retention": "Zahlungsbelege acht Jahre nach Ende des Buchungsjahres; bei Kontolöschung ohne Kontozuordnung.",
@@ -277,6 +285,9 @@ for router in (
     instructional_decisions.router,
     parent_insights.router,
     parent_plans.router,
+    payment_documents.router,
+    order_withdrawals.router,
+    payments_paypal.router,
     routing_admin.router,
     unit_actions.router,
 ):

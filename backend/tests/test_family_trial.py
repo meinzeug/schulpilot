@@ -51,7 +51,7 @@ def google(monkeypatch):
 def trial_store(operator, monkeypatch):
     for key, value in {
         'operator_name': 'Künstlicher Anbieter', 'operator_address': 'Künstliche Straße 1, 12345 Beispielort',
-        'operator_support_email': 'synthetic@example.org', 'smtp_host': 'smtp.invalid',
+        'operator_support_email': 'synthetic@example.org', 'operator_phone': '+49 30 000000', 'smtp_host': 'smtp.invalid',
         'smtp_from': 'synthetic@example.org',
     }.items():
         object.__setattr__(settings, key, value)
@@ -105,7 +105,7 @@ def test_real_admin_trial_contract_reports_readiness_separately_from_paid_sale(a
     assert api.get('/api/admin/store').status_code == 401
     for key, value in {
         'operator_name': 'Künstlicher Anbieter', 'operator_address': 'Künstliche Straße 1, 12345 Beispielort',
-        'operator_support_email': 'synthetic@example.org', 'smtp_host': 'smtp.invalid',
+        'operator_support_email': 'synthetic@example.org', 'operator_phone': '+49 30 000000', 'smtp_host': 'smtp.invalid',
         'smtp_from': 'synthetic@example.org',
     }.items():
         object.__setattr__(settings, key, value)
