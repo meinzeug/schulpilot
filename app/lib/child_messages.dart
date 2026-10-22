@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'child_section_ui.dart';
 import 'ui.dart';
+import 'lesson_voice.dart';
 
 /// A small mailbox, separate from the child's learning start page.
 /// Filtering and switching views never mark, resolve, or send a message.
@@ -51,7 +52,7 @@ class _ChildMessagesBody extends StatefulWidget {
 }
 
 class _ChildMessagesHubState extends State<_ChildMessagesBody> {
-  String section = 'inbox', sender = 'all', order = 'newest';
+  String section = 'inbox', sender = 'all', order = 'newest', wishKind = 'all';
   final search = TextEditingController();
   final privateRoutes = <Route<dynamic>>{};
   late final account = widget.state.user;
@@ -72,6 +73,9 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
         ? memory!['sender']
         : 'all';
     order = memory?['order'] == 'oldest' ? 'oldest' : 'newest';
+    wishKind = ['interest', 'plan_change'].contains(memory?['wish_kind'])
+        ? memory!['wish_kind']
+        : 'all';
     search.text = memory?['q'] as String? ?? '';
     final saved = memory?['section'];
     if (['inbox', 'wishes', 'done'].contains(saved)) section = saved;
@@ -101,6 +105,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
         'section': section,
         'sender': sender,
         'order': order,
+        'wish_kind': wishKind,
         'q': search.text,
       };
     }
@@ -140,6 +145,11 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
               SizedBox(height: 14),
             ],
             SelectableText(message['body'] ?? ''),
+            SizedBox(height: 12),
+            ReadAloudButton(
+              text: message['body'] ?? '',
+              enabled: current && route.isCurrent,
+            ),
           ],
         ),
         actions: [
@@ -231,6 +241,9 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
               },
             )
             .where((row) => sender == 'all' || row['sender_role'] == sender)
+            .where(
+              (row) => !isWish || wishKind == 'all' || row['kind'] == wishKind,
+            )
             .where(
               (row) =>
                   search.text.trim().isEmpty ||
@@ -422,6 +435,30 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
             ),
           ],
         ),
+        if (isWish) ...[
+          SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final item in [
+                ('all', 'Alle Wünsche'),
+                ('interest', 'Lernideen'),
+                ('plan_change', 'Planwünsche'),
+              ])
+                ChoiceChip(
+                  label: Text(item.$2),
+                  selected: wishKind == item.$1,
+                  onSelected: (_) {
+                    if (!current) return;
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => wishKind = item.$1);
+                    remember();
+                  },
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 12),
         Semantics(
           liveRegion: true,
@@ -439,15 +476,21 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
               style: TextStyle(color: context.palette.muted),
             ),
           ),
-        if (rows.isEmpty && (search.text.isNotEmpty || sender != 'all'))
+        if (rows.isEmpty &&
+            (search.text.isNotEmpty ||
+                sender != 'all' ||
+                isWish && wishKind != 'all'))
           ActionPanel(
-            actionLabel: 'Suche und Absender zurücksetzen',
+            actionLabel: isWish && wishKind != 'all'
+                ? 'Alle Wünsche in dieser Ansicht zeigen'
+                : 'Suche und Absender zurücksetzen',
             onPressed: () {
               if (!current) return;
               FocusManager.instance.primaryFocus?.unfocus();
               setState(() {
                 search.clear();
                 sender = 'all';
+                wishKind = 'all';
               });
               remember();
             },

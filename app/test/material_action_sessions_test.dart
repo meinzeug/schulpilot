@@ -128,7 +128,11 @@ void main() {
             expect(find.byType(AlertDialog), findsOneWidget);
           }
           if (phase == 'mutation') {
-            await _tap(tester, 'Bestätigen');
+            await _tap(tester, switch (kind) {
+              'pages' => 'Heftseite löschen',
+              'round' => 'Lernrunde löschen',
+              _ => 'Mit KI neu einlesen',
+            });
             expect(
               f.requests.where((r) => !r.url.path.endsWith('/delete-preview')),
               hasLength(1),
@@ -169,7 +173,9 @@ void main() {
       await f.open(tester);
       await _tap(tester, 'Künstliche Aktion öffnen');
       final oldConfirm = tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Bestätigen'))
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Heftseite löschen'),
+          )
           .onPressed!;
       unawaited(
         showDialog<void>(

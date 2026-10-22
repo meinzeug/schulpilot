@@ -1,0 +1,724 @@
+{
+  "baseline": "a431fb447af584f017cbd2bd019514bb584f2132",
+  "previous_count_excluded": 638,
+  "scope": "Auth/Google, öffentliche Information, Installation, Verkauf sowie ausschließlich PushAdminScreen; settings_screen.dart unverändert durch diesen Agenten",
+  "tested_count": 70,
+  "implemented_unverified_count": 0,
+  "items": [
+    {
+      "id": "AK001",
+      "problem_and_change": "Nach erfolgreichem Reset, E-Mail-Bestätigung oder Einladung bleibt derselbe verbrauchte Code absendbar. Terminaler Erfolg mit bewusstem nächsten Schritt; kein zweiter POST.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK001",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK002",
+      "problem_and_change": "Feldfehler besitzen keinen zusammenhängenden anklickbaren Korrekturüberblick. Sichtbare Fehlerliste führt zu den tatsächlichen Feldern und erhält Eingaben.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK002",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK003",
+      "problem_and_change": "Der bestehende sichere Checkout-next wird beim Wechsel zu Wiederherstellung/erneutem Bestätigungslink nicht überall mitgenommen. Nur erlaubtes internes Ziel durch den Zugangsumweg erhalten; keine Bestellung aus Navigation.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK003",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK004",
+      "problem_and_change": "Die Appbar blockiert Navigation bei POST, System-Zurück ist jedoch nicht gebunden. Während aktiver Bestätigung keine unbemerkte Aufgabe der Rückmeldung.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK004",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK005",
+      "problem_and_change": "Ein vollständiger neuer Registrierungsentwurf wird bei einem normalen Formularwechsel ohne bewusste Verwerfentscheidung geleert. Rückweg mit Abbrechen erhält Entwurf; keine Geheimnispersistenz.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK005",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK006",
+      "problem_and_change": "Manuelle Eingabe akzeptiert nur den nackten Code; ein vollständig kopierter eigener E-Mail-Link bleibt ungültig. Bewusste lokale Übernahme ausschließlich aus passendem eigenen Fragmentlink, keine Linknavigation/Netzanfrage.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK006",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK007",
+      "problem_and_change": "Sichtbare Geheimnisfelder bleiben beim Hintergrundwechsel sichtbar. Sichtbarkeit beenden, eingegebenen exakten Inhalt erhalten; ein gemeinsamer Befund über Aufrufer.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK007",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK008",
+      "problem_and_change": "Ein bereits angemeldeter regulärer Zugang kann ohne Rückfrage durch den Testraum ersetzt werden. Bewussten Wechsel erklären und bestätigen, Abbrechen ohne Demo-POST.",
+      "code": "app/lib/auth_screens.dart: AuthScreen",
+      "test": "app/test/access_auth_ux90_test.dart: AK008",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK009",
+      "problem_and_change": "Native Statusabfrage berücksichtigt die überdeckte Route nicht. Unter fremder Route keine weiteren Ergebnisabfragen; Rückkehr nur lesend prüfen.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK009",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK010",
+      "problem_and_change": "Ein Kontowechsel invalidiert die laufende Google-Oberfläche und entfernt alte E-Mail, private Formularfelder und Polling. Der gemeinsame Schutz gegen verspätete AppState-Übernahme gehört Root und wird hier nicht erneut gezählt; Browser-Set-Cookie bleibt eine ausdrücklich getrennte Grenze.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK010",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK011",
+      "problem_and_change": "Jeder unbekannte Ergebnisstatus landet im normalen Wartezustand. Unbekannten Stand konkret stoppen und bewussten sicheren Neustart/Retry anbieten.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK011",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK012",
+      "problem_and_change": "Proof-Ablaufzeit wird nur beim Initialisieren geprüft, nicht während des offenen Wartevorgangs. Lokal gespeicherte Frist beim Warten beachten, keinen Erfolg oder unbegrenztes Warten vortäuschen.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK012",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK013",
+      "problem_and_change": "Ein fehlgeschlagener optionaler Status-GET wird wie bewusst deaktiviertes Google ausgeblendet. Netzwerkfehler gesondert mit reinem GET-Retry behandeln; Kennwortformular erhalten.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK013",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK014",
+      "problem_and_change": "AutofillGroup wird beim Dispose abgebrochen; nach erfolgreicher ausdrücklicher Google-Neuregistrierung fehlt die erfolgreiche Passwortmanager-Quittierung. Nur tatsächlich angelegtes Elternpasswort speichern lassen.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK014",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK015",
+      "problem_and_change": "App-Weitergabe wird auch bei fehlendem sicherem Callbackticket angeboten. Unvollständige Übergabe klar abweisen, niemals Proof-Polling als Ersatz erlauben.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK015",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK016",
+      "problem_and_change": "Ungültiges erstes Feld wird gescrollt, erhält aber keinen Fokus. Tatsächlichen ersten Fehler fokussieren, nicht durch Tastaturabschluss erneut senden.",
+      "code": "app/lib/google_login.dart: GoogleCompletionScreen",
+      "test": "app/test/access_google_ux90_test.dart: AK016",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK017",
+      "problem_and_change": "Leerer Installationscode erzeugt POST, kein feldbezogener Fehler. Lokal korrigieren, keine unnötige Entsperranfrage.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK017",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-five-web-recheck.log",
+      "verification_platform": "Chrome MockClient"
+    },
+    {
+      "id": "AK018",
+      "problem_and_change": "Codefeld bleibt während Entsperren editierbar und Enter besitzt keinen klaren Abschluss. Einen unveränderlichen bewussten Entsperrvorgang mit erkennbarem Zustand führen.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK018",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-five-web-recheck.log",
+      "verification_platform": "Chrome MockClient"
+    },
+    {
+      "id": "AK019",
+      "problem_and_change": "Bereits entsperrte Oberfläche behält unlocked/config bei abgelaufenem Setupcookie. Erneute lokale Berechtigung verlangen; keine scheinbar weiter schreibbare Sitzung.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK019",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-five-web-recheck.log",
+      "verification_platform": "Chrome MockClient"
+    },
+    {
+      "id": "AK020",
+      "problem_and_change": "Korrigierte Eingaben behalten alte Feldfehler bis erneutem Speichern. Nur relevante lokale Fehler beim Editieren neu prüfen; Serverfehler nicht als behoben vortäuschen.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK020",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK021",
+      "problem_and_change": "Kombinierte Meldung nennt weder falschen Benutzernamen noch Passwortwiederholung konkret. Bestehende Regeln feldgenau prüfen und ersten Fehler sichtbar fokussieren.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK021",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-five-web-recheck.log",
+      "verification_platform": "Chrome MockClient"
+    },
+    {
+      "id": "AK022",
+      "problem_and_change": "Nur leerer Testempfänger wird lokal geprüft; fehlerhafte E-Mail löst zuvor Site-Speichern aus. E-Mail gemäß bestehender Backendgrenze vor jeder Mutation prüfen.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK022",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK023",
+      "problem_and_change": "Siteentwurf und gespeicherte Checks stehen ohne aktuellen Änderungsstatus nebeneinander. Eigenen ungespeicherten Siteentwurf getrennt von gespeicherten Prüfständen anzeigen.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK023",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK024",
+      "problem_and_change": "Es fehlt ein ausdrücklicher lokaler Rückweg zum gespeicherten Siteentwurf. Verwerfen nach Rückfrage, Providerentwurf unabhängig erhalten, keine PUTs.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK024",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK025",
+      "problem_and_change": "Nach gespeichertem Secret verbleibt dessen Klartext im Eingabefeld und wird mit Folgespeicherungen erneut gesendet. Nur bestätigten unveränderten Geheimnisentwurf leeren; gespeicherten Vorhandenstatus erhalten.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK025",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK026",
+      "problem_and_change": "Firebase-App-JSON wird neben Syntax und Objektform auch auf die bereits erlaubten Feldnamen, Texttypen und Projektkennung geprüft; fehlende optionale Konfiguration wird nicht als vorhanden behauptet.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK026",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK027",
+      "problem_and_change": "Syntaktisch korrektes Dienstkonto ohne benötigte Dienstkontofelder wird erst serverseitig erkannt. Vorhandenes Schema lokal prüfen, keine privaten Schlüssel ausgeben.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK027",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK028",
+      "problem_and_change": "Syntaktisch korrekter falscher Google-Clienttyp wird erst nach PUT erkannt. Bestehenden Webclientaufbau vor Mutation prüfen, keine neue OIDC-/Providerfreigabe.",
+      "code": "app/lib/installation_screen.dart: InstallationScreen",
+      "test": "app/test/access_installation_ux90_test.dart: AK028",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK029",
+      "problem_and_change": "Nach erfolgreicher Übergabe der Bestätigung gibt es keine dauerhafte Rückmeldung; erneuter Download wirkt nötig. Exakten aktuellen Auftrag benennen, nur Übergabe behaupten, keinen beobachteten Dateierfolg erfinden.",
+      "code": "app/lib/store_screens.dart: OrdersScreen",
+      "test": "app/test/access_store_ux90_test.dart: AK029",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK030",
+      "problem_and_change": "IBAN, Betrag und Zweck sind nur auswählbarer Fließtext. Bewusstes strukturiertes Kopieren der vorhandenen Überweisungsdaten; kein Bankzugriff und keine Zahlungsbestätigung.",
+      "code": "app/lib/store_screens.dart: OrdersScreen",
+      "test": "app/test/access_store_ux90_test.dart: AK030",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK031",
+      "problem_and_change": "Bestätigungsdialog benennt nicht die konkret gewählte Bestellung, den Zweck und Betrag. Eindeutige Auftragsprüfung vor bestehendem Storno-POST.",
+      "code": "app/lib/store_screens.dart: OrdersScreen",
+      "test": "app/test/access_store_ux90_test.dart: AK031",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK032",
+      "problem_and_change": "Zugangskarte öffnet ausschließlich Tarife; geladene Beginn-/End-/Statusfakten lassen sich nicht vollständig lesen. Eigene reine Detailprüfung vorhandener Zugangsmetadaten.",
+      "code": "app/lib/store_screens.dart: OrdersScreen",
+      "test": "app/test/access_store_ux90_test.dart: AK032",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK033",
+      "problem_and_change": "go ersetzt die gefilterte Bestellansicht. Bewusster Tarifausflug mit Rückkehr zur unveränderten Ansicht derselben Sitzung, kein kontenübergreifender Cache.",
+      "code": "app/lib/store_screens.dart: OrdersScreen",
+      "test": "app/test/access_store_ux90_test.dart: AK033",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK034",
+      "problem_and_change": "Vorhandene Tarife besitzen keinen ausdrücklichen Vergleich nach Kinderbedarf. Lokale Vergleichsansicht der tatsächlich gelieferten Angebote, keine erfundenen Tarife/Preise.",
+      "code": "app/lib/store_plan_editor.dart",
+      "test": "app/test/access_store_ux90_test.dart: AK034",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK035",
+      "problem_and_change": "Ein neuer Tarif kann ausschließlich als Roh-JSON angelegt werden. Begrenzter strukturierter lokaler Anlageentwurf nach bestehendem Schema, Veröffentlichung weiterhin ausdrücklich über PUT.",
+      "code": "app/lib/store_plan_editor.dart",
+      "test": "app/test/access_store_ux90_test.dart: AK035",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK036",
+      "problem_and_change": "Bestehender Tarif kann ausschließlich über Roh-JSON geändert werden. Gezielter Editor der konkreten vorhandenen Kennung mit vollem Entwurfserhalt.",
+      "code": "app/lib/store_plan_editor.dart",
+      "test": "app/test/access_store_ux90_test.dart: AK036",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK037",
+      "problem_and_change": "Entfernen eines Tarifs erfordert manuelles JSON-Löschen ohne konkrete Folgenprüfung. Bewusste lokale Entfernung eines ausgewählten Angebots; gespeicherte Bestellungen bleiben unverändert.",
+      "code": "app/lib/store_plan_editor.dart",
+      "test": "app/test/access_store_ux90_test.dart: AK037",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK038",
+      "problem_and_change": "Reihenfolge veröffentlichter Angebote lässt sich nur im JSON bewegen. Konkrete lokale Hoch/Runter-Aktionen, Grenzen erhalten, kein automatischer PUT.",
+      "code": "app/lib/store_plan_editor.dart",
+      "test": "app/test/access_store_ux90_test.dart: AK038",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK039",
+      "problem_and_change": "Variante eines bestehenden Angebots muss manuell vollständig übertragen werden. Bewusste lokale Kopie mit neuer notwendiger Kennung; keine automatische Veröffentlichung oder Preiserfindung.",
+      "code": "app/lib/store_plan_editor.dart",
+      "test": "app/test/access_store_ux90_test.dart: AK039",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK040",
+      "problem_and_change": "Kontoinhaber/Bankname/IBAN werden vor PUT nicht feldbezogen mit bestehenden Backendregeln geprüft. Bestehende Struktur-/Größen-/Prüfzifferregeln vor Mutation, Rohentwurf erhalten.",
+      "code": "app/lib/store_screens.dart: StoreAdminForm",
+      "test": "app/test/access_store_ux90_test.dart: AK040",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK041",
+      "problem_and_change": "GET-Neuladen der Bestellliste erhält andere ungespeicherte Bankprüfeingaben nur im angemeldeten Speicher; erneute Bankbestätigung bleibt erforderlich. Bereits vorhandener Offstage-Filtererhalt wird nicht erneut gezählt.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK041",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK042",
+      "problem_and_change": "Ein ausgewählter Bankprüfentwurf kann nach konkreter Rückfrage lokal geleert werden, ohne Buchung, Storno oder Änderung anderer Bestellungen.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK042",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK043",
+      "problem_and_change": "Eltern und Betreiber filtern den geladenen Bestellausschnitt bewusst nach inklusivem Bestelldatumsbereich in Geräte-Ortszeit; ein Befund über beide Aufrufer.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK043",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK044",
+      "problem_and_change": "Gespeicherte Bestellungen lassen sich anhand des tatsächlichen Centbetrags auf- oder absteigend ordnen; gleiche Integration über beide Rollen nur einmal gezählt.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK044",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK045",
+      "problem_and_change": "Die Summe tatsächlich geladener offener Bestellwerte wird mit begrenztem Umfang angezeigt und öffnet den passenden offenen Ausschnitt; keine Bankumsätze oder vollständigen Forderungen behauptet.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK045",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK046",
+      "problem_and_change": "Ein laufender Checkout bindet Flutter-System-Zurück an seinen unveränderten expliziten Bestellauftrag; kein Schutz gegen Schließen des Browsers behauptet.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK046",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK047",
+      "problem_and_change": "Ein bewusster Tarifvergleich erhält beim Rückweg denselben noch nicht abgesendeten Checkout einschließlich seiner bestehenden Auswahl; anderer Tarif bleibt neue Absicht.",
+      "code": "app/lib/store_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK047",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK048",
+      "problem_and_change": "Ungültige lokal gespeicherte native Google-Gerätesicherungen werden vor Ergebnis-POSTs abgewiesen; nach fehlerhafter Initialisierung bleibt kein unsicherer Retry aktiv.",
+      "code": "app/lib/google_login.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK048",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK049",
+      "problem_and_change": "Ein Google-Neuregistrierungskonflikt bietet den ausdrücklichen Weg zum bestehenden Elternpasswort mit der bestätigten E-Mail; keine automatische Kontoverknüpfung.",
+      "code": "app/lib/google_login.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK049",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK050",
+      "problem_and_change": "Lange Datenschutzinformationen besitzen einen echten Inhaltsindex mit fokussierbaren Abschnitten und bekannten öffentlichen Abschnittszielen; unbekannte Ziele erhalten alle Informationen.",
+      "code": "app/lib/auth_information.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK050",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK051",
+      "problem_and_change": "Eine rein lokale Suche findet passende öffentliche Datenschutzabschnitte und stellt nach Leeren alle Abschnitte wieder her, ohne Suchübermittlung.",
+      "code": "app/lib/auth_information.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK051",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK052",
+      "problem_and_change": "Die tatsächliche vollständige Betreiber-Supportadresse kann bewusst an das E-Mail-Programm übergeben werden; ein fehlender Handler erhält einen dauerhaften manuellen Rückweg und behauptet keinen Versand.",
+      "code": "app/lib/auth_information.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK052",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK053",
+      "problem_and_change": "Der gewählte öffentliche Datenschutzabschnitt lässt sich als genauer öffentlicher Link ohne Konto- oder Geheimnisdaten bewusst kopieren.",
+      "code": "app/lib/auth_information.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK053",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK054",
+      "problem_and_change": "Aktive physische Feststelltaste wird am fokussierten Passwortfeld angekündigt, ohne die exakte Eingabe zu verändern.",
+      "code": "app/lib/auth_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK054",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK055",
+      "problem_and_change": "Push-Refreshfehler erhalten den letzten tatsächlich geladenen Betriebsstand mit Geräte-Abrufzeit und ausdrücklicher Stalekennzeichnung; kein Versand oder neue Freigabe.",
+      "code": "app/lib/notification_panel.dart: PushAdminScreen",
+      "test": "app/test/access_workflows_ux90_test.dart: AK055",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK056",
+      "problem_and_change": "Die vorhandene technische Pushverteilung zeigt auch sending, validated und suppressed; Validierung und bewusst unterdrückter Versand werden nicht als sichtbare Zustellung ausgegeben.",
+      "code": "app/lib/notification_panel.dart: PushAdminScreen",
+      "test": "app/test/access_workflows_ux90_test.dart: AK056",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK057",
+      "problem_and_change": "Ein bewusst kopierter Push-Diagnosestand enthält ausschließlich erlaubte neutrale aggregierte Felder und keine Sender-E-Mail, Gerätekennungen, Tokens oder unbekannten Zusatzfelder.",
+      "code": "app/lib/notification_panel.dart: PushAdminScreen",
+      "test": "app/test/access_workflows_ux90_test.dart: AK057",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK058",
+      "problem_and_change": "Zwei für sich strukturell passende neue Firebase-Konfigurationsentwürfe werden vor PUT auf widersprechende Projektkennungen geprüft.",
+      "code": "app/lib/installation_screen.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK058",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK059",
+      "problem_and_change": "Nach erfolgreicher Wiederherstellungs-/Bestätigungslinkanforderung kann derselbe alte Submit nicht unbemerkt erneut senden; weiterer Link oder andere Adresse sind ausdrückliche getrennte Aktionen.",
+      "code": "app/lib/auth_screens.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK059",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK060",
+      "problem_and_change": "Der native Zustand awaiting_return führt in konkrete sichere Browser-Rückkehrschritte, ohne erneut eine bereits erfolgte Google-Bestätigung zu verlangen oder Proof allein als Anmeldung anzunehmen.",
+      "code": "app/lib/google_login.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK060",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK061",
+      "problem_and_change": "Ein unklarer Erstadmin-Abschluss wird zuerst über den vorhandenen öffentlichen Einrichtungsstatus abgeglichen; kein blindes zweites complete-POST.",
+      "code": "app/lib/installation_screen.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK061",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-five-web-recheck.log",
+      "verification_platform": "Chrome MockClient"
+    },
+    {
+      "id": "AK062",
+      "problem_and_change": "Betriebsspeichern sendet nur wirklich bearbeitete Felder und notwendige gekoppelte Freigabenachweise; unveränderte parallele Serveränderungen bleiben erhalten und werden kanonisch übernommen.",
+      "code": "app/lib/installation_screen.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK062",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK063",
+      "problem_and_change": "Der vollständige lokale Betriebsentwurf kann vor dem Speichern gegen den geladenen Stand gelesen werden; bekannte Geheimnis-/JSON-Felder werden nur als geändert bezeichnet und keine Aktion gesendet.",
+      "code": "app/lib/installation_screen.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK063",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK064",
+      "problem_and_change": "Offensichtlich unvollständige Betreiber-/Absender-E-Mail-Adressen werden feldbezogen vor einem Site-PUT korrigierbar abgewiesen; kein vollständiger Ersatz der Backendvalidierung behauptet.",
+      "code": "app/lib/installation_screen.dart",
+      "test": "app/test/access_workflows_ux90_test.dart: AK064",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK065",
+      "problem_and_change": "Ein paralleler Verkaufsstand lässt sich bewusst lesen und vor dem nächsten PUT mit dem lokalen Entwurf abgleichen: bearbeitete Felder bleiben erhalten, unveränderte übernehmen den Serverstand, und nur die nächste ausdrückliche Veröffentlichung verwendet die bestätigte Revision.",
+      "code": "app/lib/store_screens.dart: StoreAdminForm.reconcileStoreDraft",
+      "test": "app/test/access_recovery_ux90_test.dart: AK065",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK066",
+      "problem_and_change": "Der aktuell gefilterte geladene Bestellausschnitt kann bewusst als begrenzter JSON-Metadatenbericht übergeben werden; feste Felder statt vollständiger Bank-, Vertrags- oder privater Inhaltsobjekte. Eltern-/Adminaufrufer zählen zusammen einmal.",
+      "code": "app/lib/store_order_filters.dart: storeOrderReportBytes, StoreOrderExportButton",
+      "test": "app/test/access_recovery_ux90_test.dart: AK066",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK067",
+      "problem_and_change": "Ein tatsächlich gespeicherter geheimer Konfigurationseintrag kann nach konkreter Rückfrage einzeln entfernt werden; nur der passende vorhandene clear-Schalter wird gesendet, lokale Ersatz- und andere Entwürfe bleiben erhalten. Drei Secretarten sind ein gemeinsamer Ablauf.",
+      "code": "app/lib/installation_screen.dart: removeStoredSecret",
+      "test": "app/test/access_recovery_ux90_test.dart: AK067",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK068",
+      "problem_and_change": "Die vollständigen öffentlichen Datenschutztexte lassen sich einschließlich explizit geladener tatsächlicher Betreiberkontakte als lesbare Textdatei übergeben, unabhängig vom lokalen Suchfilter. Keine Speicherung oder Zustellung auf dem Gerät behauptet.",
+      "code": "app/lib/auth_information.dart: PrivacyReadingPanel.exportPrivacy",
+      "test": "app/test/access_recovery_ux90_test.dart: AK068",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK069",
+      "problem_and_change": "Bereits freigeschaltete Bestellungen lassen sich nach ihren gespeicherten Beginn-/Endterminen in künftig, laufend, beendet und unbekannt trennen. Gerätezeit und beschränkter geladener Ausschnitt werden erklärt; keine Rechteänderung.",
+      "code": "app/lib/store_order_filters.dart: storedOrderPeriod, StoreOrderPeriodFilter",
+      "test": "app/test/access_recovery_ux90_test.dart: AK069",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    },
+    {
+      "id": "AK070",
+      "problem_and_change": "Vor einem neuen Checkout kann der Elternzugang vorhandene offene Bestellungen ausdrücklich per GET prüfen. Ein geladener offener Auftrag führt zur bestehenden Bestellung und sperrt auch einen alten Submitcallback, bis ein neuer ausdrücklicher Abgleich keinen offenen Auftrag meldet.",
+      "code": "app/lib/store_screens.dart: CheckoutScreen.checkPendingOrders",
+      "test": "app/test/access_recovery_ux90_test.dart: AK070",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux90/access-native-serial-final.log",
+      "verification_platform": "native MockClient/platform stubs"
+    }
+  ],
+  "validation_limits": [
+    "Ausschließlich künstliche MockClient-/Plattformantworten; keine echte Anmeldung, Google-/Provider-/Mail-/Push-/Bankaktion.",
+    "Gemeinsame AppState-Intent- und Dialogroutekorrektur gehört Root und zählt nicht erneut. Keine rückwirkende Garantie gegen browserseitig verarbeitete Set-Cookie-Antworten.",
+    "Keine Live-Browseranmeldung, echten Provider-/Mail-/Push-/Bankaktionen, Builds, Commits, Pushes oder Deployments durch diesen Agenten. Chrome ausschließlich als isolierter Flutter-Mocktestrunner.",
+    "Finaler serieller Nativlauf aller sechs eigenen UX90-Testdateien: 71 grün, fünf bewusst übersprungene Webfälle; artifacts/ux90/access-native-serial-final.log. Die fünf initialen Setup-/Abschlussfälle AK017, AK018, AK019, AK021 und AK061 danach im echten Chrome-Widgetrunner: 5/5 grün; artifacts/ux90/access-five-web-recheck.log. Das belegt 70 eigenständige Maßnahmen; überlappende Tests/Varianten werden nicht addiert.",
+    "Der erste Chromeversuch bestand zwei Fälle und scheiterte bei drei Fällen an nicht übereinstimmenden TestView-/Renderroot-Größen. Ausschließlich Fixture korrigiert: konsistente setSurfaceSize/TestView390×844, TearDown-Reset und expliziter hitTestable-Nachweis vor dem Tap. Wiederholung ohne Tapwarnung grün; keine zusätzliche UX-Maßnahme und keine Warnungsunterdrückung.",
+    "Chromium benötigte nach allen bestandenen Tests den vom Flutterrunner selbst ausgeführten SIGKILL-Rückweg; der abschließende Testprozess endete mit Exit0. Keine Behauptung einer vollständigen Live-Browser-/WCAG-/OIDC-Abnahme."
+  ],
+  "sources": [
+    "https://design-system.service.gov.uk/components/error-summary/",
+    "https://www.w3.org/WAI/tutorials/forms/notifications/",
+    "https://api.flutter.dev/flutter/widgets/PopScope-class.html",
+    "https://developers.google.com/identity/protocols/oauth2/native-app",
+    "https://owasp.org/www-community/attacks/CSV_Injection"
+  ]
+}

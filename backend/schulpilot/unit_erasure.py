@@ -131,6 +131,9 @@ def remove(db, child, ids, *, journal=True):
     ids = set(ids)
     if not ids:
         return 0
+    from .schulbuddy import purge_units as purge_buddy_units
+
+    purge_buddy_units(db, child.id, ids)
     from .parent_insights import invalidate
 
     invalidate(db, child.id)

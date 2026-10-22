@@ -855,6 +855,29 @@ class LearningEvent(Base):
     __table_args__ = (UniqueConstraint("unit_id", "event_key", name="uq_controller_event"),)
 
 
+class SchulbuddyTurn(Base):
+    """Private, user-owned advisory chat. Never authoritative learning evidence."""
+
+    __tablename__ = "schulbuddy_turns"
+    id = Column(String(32), primary_key=True, default=uid)
+    child_id = Column(ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(String(32), nullable=False, unique=True)
+    request_key = Column(String(80), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    context_key = Column(String(64), nullable=False, index=True)
+    scope = Column(JSON, nullable=False)
+    source_revisions = Column(JSON, nullable=False)
+    reply_to = Column(String(32))
+    question = Column(String(1200), nullable=False)
+    reply = Column(JSON)
+    error = Column(String(500))
+    status = Column(String(20), default="queued", nullable=False)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    __table_args__ = (UniqueConstraint("user_id", "request_key", name="uq_schulbuddy_request"),)
+
+
 class Job(Base):
     __tablename__ = "jobs"
     id = Column(String(32), primary_key=True, default=uid)

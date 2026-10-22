@@ -739,6 +739,7 @@ void main() {
       final router = await mountInstallation(t, s);
       await press(t, find.widgetWithText(ChoiceChip, 'E-Mail'));
       await t.enterText(field('Testnachricht an'), 'synthetic@example.invalid');
+      await t.enterText(field('Benutzername'), 'changed-synthetic-smtp-user');
       final action = t
           .widget<ActionButton>(
             find.widgetWithText(ActionButton, 'Einstellungen speichern'),

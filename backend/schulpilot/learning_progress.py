@@ -10,7 +10,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, case, func, select
 
-from .db import Activity, Attempt, LearningUnit, User, get_db
+from .db import Activity, Attempt, LearningUnit, User, get_db, now
 from .grades import subject_key
 from .security import authenticated, child_access
 
@@ -58,7 +58,7 @@ def read_task_ledger(db, child_id, unit_ids=None):
     return [dict(row) for row in db.execute(select(latest).where(latest.c.position == 1)).mappings()]
 
 
-def read_ledger(db, child_id, unit_ids=None, *, category: EvidenceCategory | None = None):
+def read_ledger(db, child_id, unit_ids=None, *, category: EvidenceCategory | None = None, since: float | None = None):
     latest = _latest_attempts(child_id, unit_ids)
     if latest is None:
         return []
@@ -75,6 +75,8 @@ def read_ledger(db, child_id, unit_ids=None, *, category: EvidenceCategory | Non
     conditions = [latest.c.position == 1]
     if category is not None:
         conditions.append(categories[category])
+    if since is not None:
+        conditions.append(latest.c.created >= since)
     fields = [LearningUnit.id, LearningUnit.subject, LearningUnit.topic, LearningUnit.status,
               LearningUnit.completed, LearningUnit.active_seconds, LearningUnit.round_kind]
     rows = db.execute(
@@ -137,6 +139,11 @@ def learning_progress(
     subject: str | None = Query(None, max_length=80),
     topic: str | None = Query(None, max_length=160),
     category: EvidenceCategory | None = Query(None),
+    period: Literal["all", "7", "30", "90"] = "all",
+    sort: Literal["default", "name", "recent", "practice"] = "default",
+    search: str = Query("", max_length=100),
+    status: Literal["all", "active", "paused", "completed", "not_started"] = "all",
+    round_kind: Literal["all", "learning", "vocabulary", "spaced_review", "study_recall", "study_block", "check"] = "all",
     page: int = Query(1, ge=1, le=1000000),
     page_size: int = Query(20, ge=1, le=50),
     p=Depends(authenticated),
@@ -146,9 +153,13 @@ def learning_progress(
     if topic is not None and subject is None:
         raise HTTPException(422, "Bitte zuerst das Fach auswählen.")
     ledger = read_ledger(db, child.id)
-    filtered = ledger if category is None else read_ledger(db, child.id, category=category)
+    since = None if period == "all" else now() - int(period) * 86400
+    filtered = ledger if category is None and since is None else read_ledger(db, child.id, category=category, since=since)
     selected = [r for r in filtered if (subject is None or subject_key(r["subject"]) == subject_key(subject))
-                and (topic is None or r["topic"].strip().casefold() == topic.strip().casefold())]
+                and (topic is None or r["topic"].strip().casefold() == topic.strip().casefold())
+                and (status == "all" or r["status"] == status)
+                and (round_kind == "all" or r["round_kind"] == round_kind)
+                and (not search.strip() or search.strip().casefold() in (r["subject"] + " " + r["topic"]).casefold())]
     if topic is not None:
         items = [{**r, "active_seconds_approx": r["active_seconds"]} for r in selected]
         level = "rounds"
@@ -159,6 +170,13 @@ def learning_progress(
         items = [{"subject": rows[0]["subject"], "topic": rows[0]["topic"] if subject is not None else None,
                   **totals(rows), "topic_count": len({r["topic"] for r in rows})}
                  for _, rows in sorted(groups.items(), key=lambda pair: pair[0].casefold())]
+    if sort == "name":
+        items.sort(key=lambda row: ((row.get("topic") or row["subject"]).casefold(), row.get("id", "")))
+    elif sort == "recent":
+        items.sort(key=lambda row: (-(row.get("last_activity") or 0), row.get("id") or row.get("topic") or row["subject"]))
+    elif sort == "practice":
+        items.sort(key=lambda row: (-(row.get("needs_practice_tasks") or 0), -(row.get("uncertain_tasks") or 0),
+                                   row.get("id") or row.get("topic") or row["subject"]))
     count = len(items)
     pages = max(1, (count + page_size - 1) // page_size)
     actual = min(page, pages)
@@ -166,6 +184,7 @@ def learning_progress(
         "child_id": child.id, "child_name": db.get(User, child.user_id).display_name,
         "level": level, "subject": subject, "topic": topic,
         "category": category,
+        "view_filters": {"period": period, "sort": sort, "search": search, "status": status, "round_kind": round_kind},
         "totals": totals(ledger), "selected_totals": totals(selected),
         "items": items[(actual - 1) * page_size:actual * page_size],
         "pagination": {"page": actual, "pages": pages, "page_size": page_size, "total": count},

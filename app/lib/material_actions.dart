@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'dashboard.dart' show showLearningMessage;
+
+import 'package:intl/intl.dart';
 
 bool materialCanDelete(AppState state, Json item, {bool? canManage}) {
   if (item['can_delete'] == false ||
@@ -28,8 +31,10 @@ Future<bool> _confirmAccountAction(
   Json owner,
   String? family,
   String title,
-  String text,
-) async {
+  String text, {
+  String confirmLabel = 'Bestätigen',
+  bool destructive = false,
+}) async {
   bool current() =>
       context.mounted &&
       identical(state.user, owner) &&
@@ -73,8 +78,18 @@ Future<bool> _confirmAccountAction(
                   child: const Text('Abbrechen'),
                 ),
                 FilledButton(
+                  style: destructive
+                      ? FilledButton.styleFrom(
+                          backgroundColor: Theme.of(dialogContext)
+                              .colorScheme
+                              .error,
+                          foregroundColor: Theme.of(dialogContext)
+                              .colorScheme
+                              .onError,
+                        )
+                      : null,
                   onPressed: () => finish(true),
-                  child: const Text('Bestätigen'),
+                  child: Text(confirmLabel),
                 ),
               ],
             );
@@ -128,6 +143,10 @@ Future<bool> deleteNotebookPages(
     'Foto und erkannter Text werden entfernt. '
     '${units > 0 ? '${counted(units, 'verknüpfte Lernrunde', 'verknüpfte Lernrunden')} mit ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} werden ebenfalls gelöscht, auch Runden mit mehreren Heftseiten. ' : ''}'
     'Das kannst du nicht rückgängig machen.',
+    confirmLabel: count == 1
+        ? 'Heftseite löschen'
+        : '$count Heftseiten löschen',
+    destructive: true,
   );
   if (!context.mounted || !accepted || !current()) {
     return false;
@@ -174,8 +193,10 @@ Future<bool> deleteLearningRound(
     owner,
     family,
     'Lernrunde löschen?',
-    'Diese Runde mit ihren Aufgaben, Rückmeldungen und ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} wird gelöscht. '
+    '„${[item['subject'], item['topic']].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ')}“ mit Aufgaben, Rückmeldungen und ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} wird gelöscht. '
         'Die Heftseiten und andere Runden bleiben erhalten. Das kannst du nicht rückgängig machen.',
+    confirmLabel: 'Lernrunde löschen',
+    destructive: true,
   );
   if (!context.mounted || !accepted || !current()) {
     return false;
@@ -213,6 +234,7 @@ Future<bool> reprocessNotebookPage(
     'Seite neu einlesen?',
     'Die KI liest dieses Foto noch einmal. Danach prüfst du den Text und kannst neue Aufgaben vorbereiten. '
         'Deine bisherige Seite und deine Antworten bleiben erhalten. Das verbraucht einen KI-Aufruf.',
+    confirmLabel: 'Mit KI neu einlesen',
   )) {
     return false;
   }
@@ -354,7 +376,7 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
     if (!current || reading) return;
     final request = ++generation;
     bool active() => current && request == generation;
-    reading = true;
+    setState(() => reading = true);
     try {
       final page =
           material ??
@@ -385,7 +407,7 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
     } catch (e) {
       if (active()) setState(() => error = e);
     } finally {
-      if (active()) reading = false;
+      if (active()) setState(() => reading = false);
     }
   }
 
@@ -425,10 +447,36 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
                   ? 'Das Einlesen hat nicht geklappt.'
                   : error != null
                   ? 'Die Vorbereitung ist gerade nicht erreichbar.'
+                  : job?['status'] == 'queued'
+                  ? 'Deine Seite wartet auf das Einlesen.'
                   : 'Die KI liest dein Foto …',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
             SizedBox(height: 16),
+            if (material != null) ...[
+              Text(
+                'Deine Seite: ${material!['topic'] ?? material!['title'] ?? material!['subject'] ?? 'Heftfoto'}',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  if (current) {
+                    openRoute(context, '/material/${widget.materialId}');
+                  }
+                },
+                icon: Icon(Icons.description_outlined),
+                label: Text('Gespeicherte Seite ansehen'),
+              ),
+            ],
+            if (material?['created'] is num &&
+                (material!['created'] as num).isFinite &&
+                (material!['created'] as num) > 946684800 &&
+                (material!['created'] as num) < 4133980800)
+              Text(
+                'Foto gespeichert: ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch(((material!['created'] as num) * 1000).toInt()).toLocal())}',
+              ),
+            if (failed && (job?['error'] ?? '').toString().isNotEmpty)
+              Notice(job!['error'], warning: true),
             if (waiting && error == null) ...[
               LinearProgressIndicator(),
               SizedBox(height: 16),
@@ -451,9 +499,36 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
               ),
             if (error != null)
               OutlinedButton.icon(
-                onPressed: load,
-                icon: Icon(Icons.refresh_rounded),
-                label: Text('Status neu laden'),
+                onPressed: reading ? null : load,
+                icon: reading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.refresh_rounded),
+                label: Text(
+                  reading ? 'Status wird geladen …' : 'Status neu laden',
+                ),
+              ),
+            if (failed &&
+                widget.state.isChild &&
+                material?['child_id'] == widget.state.user?['child_id'])
+              TextButton.icon(
+                onPressed: () async {
+                  if (!current) return;
+                  await showLearningMessage(
+                    context,
+                    widget.state,
+                    childId: material!['child_id'],
+                    kind: 'help',
+                    title: 'Hilfe bei meiner Heftseite',
+                    refresh: load,
+                    messageContext: {'material_id': widget.materialId},
+                  );
+                },
+                icon: Icon(Icons.family_restroom_outlined),
+                label: Text('Meine Eltern fragen'),
               ),
             TextButton.icon(
               onPressed: () => openRoute(

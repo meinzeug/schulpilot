@@ -572,7 +572,18 @@ void main() {
       await tester.ensureVisible(restore);
       await tester.tap(restore);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Bestätigen'));
+      expect(find.text('Entwürfe vergleichen'), findsOneWidget);
+      expect(puts, 1);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Mein eigener noch nicht gesendeter Weg'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Gespeicherten Stand übernehmen'),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Gespeicherten Entwurf laden'), findsNothing);
       expect(

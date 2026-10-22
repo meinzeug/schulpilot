@@ -1,0 +1,27 @@
+[Unit]
+Description=SCHULPILOT separate bounded repair credential broker
+After=network-online.target systemd-tmpfiles-setup.service
+Wants=network-online.target
+
+[Service]
+User=schulpilot-repair
+Group=schulpilot-repair
+WorkingDirectory=/var/lib/schulpilot-repair
+Environment=HOME=/var/lib/schulpilot-repair
+Environment=XDG_RUNTIME_DIR=/run/schulpilot-repair-runtime
+RuntimeDirectory=schulpilot-repair-runtime
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+ExecStart=/opt/schulpilot-repair/venv/bin/python /opt/schulpilot-repair/broker.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillMode=control-group
+UMask=0077
+Delegate=yes
+MemoryMax=1600M
+CPUQuota=100%
+TasksMax=220
+
+[Install]
+WantedBy=multi-user.target

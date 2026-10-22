@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'camera_recovery.dart';
+import 'child_photo_preview.dart';
 import 'child_section_ui.dart';
 import 'learning_content.dart';
 import 'family_call_screen.dart';
@@ -34,26 +36,65 @@ class HomeworkScreen extends StatefulWidget {
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
   final List<Json> photos = [];
+  String uploadPhase = '';
   final photoSearch = TextEditingController();
-  String photoFilter = 'all';
+  String photoFilter = 'all', photoOrder = 'newest';
+  DateTimeRange? photoDates;
+  String? startCursor;
+  final photoCursors = <String, String?>{};
   bool showPhotoSearch = false;
   String get listMemory => 'homework_list:${widget.childId}';
+  String get photoMemory => 'homework_photo:${widget.childId}';
   bool get listFiltered =>
-      photoFilter != 'all' || photoSearch.text.trim().isNotEmpty;
-  List<Json> get visiblePhotos => photos.where((photo) {
-    if (photoFilter == 'review' && photo['confirmed'] == true) return false;
-    if (photoFilter == 'ready' && photo['confirmed'] != true) return false;
-    if (photoFilter == 'marked' && (photo['marked_done'] as num? ?? 0) == 0) {
-      return false;
+      photoFilter != 'all' ||
+      photoSearch.text.trim().isNotEmpty ||
+      photoDates != null;
+  DateTime? photoDate(Json photo) {
+    final stamp = photo['created'];
+    if (stamp is num &&
+        stamp.isFinite &&
+        stamp >= 946684800 &&
+        stamp <= 4133980800) {
+      return DateTime.fromMillisecondsSinceEpoch((stamp * 1000).toInt())
+          .toLocal();
     }
-    final query = photoSearch.text.trim().toLowerCase();
-    return query.isEmpty ||
-        [
-          photo['subject'],
-          photo['topic'],
-          photo['title'],
-        ].whereType<String>().join(' ').toLowerCase().contains(query);
-  }).toList();
+    final parsed = stamp is String ? DateTime.tryParse(stamp)?.toLocal() : null;
+    return parsed != null && parsed.year >= 2000 && parsed.year <= 2100
+        ? parsed
+        : null;
+  }
+
+  String photoDateLabel(Json photo) => photoDate(photo) == null
+      ? 'Fotodatum fehlt'
+      : DateFormat('dd.MM.yyyy').format(photoDate(photo)!);
+  List<Json> get visiblePhotos =>
+      (photos.where((photo) {
+        if (photoDates != null) {
+          final date = photoDate(photo);
+          if (date == null ||
+              date.isBefore(photoDates!.start) ||
+              !date.isBefore(photoDates!.end.add(Duration(days: 1)))) {
+            return false;
+          }
+        }
+        if (photoFilter == 'review' && photo['confirmed'] == true) return false;
+        if (photoFilter == 'ready' && photo['confirmed'] != true) return false;
+        if (photoFilter == 'marked' &&
+            (photo['marked_done'] as num? ?? 0) == 0) {
+          return false;
+        }
+        final query = photoSearch.text.trim().toLowerCase();
+        return query.isEmpty ||
+            [
+              photo['subject'],
+              photo['topic'],
+              photo['title'],
+            ].whereType<String>().join(' ').toLowerCase().contains(query);
+      }).toList()..sort((a, b) {
+        final comparison = (photoDate(a)?.millisecondsSinceEpoch ?? 0)
+            .compareTo(photoDate(b)?.millisecondsSinceEpoch ?? 0);
+        return photoOrder == 'oldest' ? comparison : -comparison;
+      }));
 
   void rememberList() {
     if (own) {
@@ -61,6 +102,10 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         'account': actor,
         'q': photoSearch.text,
         'filter': photoFilter,
+        'order': photoOrder,
+        'from': photoDates?.start.toIso8601String(),
+        'to': photoDates?.end.toIso8601String(),
+        'anchor': startCursor,
       };
     }
   }
@@ -87,6 +132,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   bool? retryMore;
   String? error, cursor;
   Uint8List? pending;
+  MemoryImage? localPreview;
+  MemoryImage previewImage() {
+    if (!identical(localPreview?.bytes, pending)) {
+      localPreview?.evict();
+      localPreview = MemoryImage(pending!);
+    }
+    return localPreview!;
+  }
+
   String? uploadKey;
   bool get own =>
       actor != null &&
@@ -104,6 +158,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
           !photos.any((item) => item['id'] == id)) {
         return;
       }
+      startCursor = photoCursors[id];
+      rememberList();
       context.go('/homework/$child/$id');
     };
   }
@@ -117,6 +173,16 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     super.initState();
     widget.state.addListener(identity);
     restoreList();
+    final local = widget.state.collectionViews[photoMemory];
+    if (identical(local?['account'], actor) &&
+        local?['family'] == actorFamily &&
+        (local?['updated'] as num? ?? 0) >
+            DateTime.now().millisecondsSinceEpoch - 86400000) {
+      pending = local?['bytes'] as Uint8List?;
+      uploadKey = local?['key'];
+    } else {
+      widget.state.collectionViews.remove(photoMemory);
+    }
     unawaited(load());
   }
 
@@ -129,6 +195,13 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         ? memory!['filter']
         : 'all';
     showPhotoSearch = photoSearch.text.isNotEmpty;
+    photoOrder = memory?['order'] == 'oldest' ? 'oldest' : 'newest';
+    final from = DateTime.tryParse(memory?['from'] ?? ''),
+        to = DateTime.tryParse(memory?['to'] ?? '');
+    photoDates = from != null && to != null && !to.isBefore(from)
+        ? DateTimeRange(start: from, end: to)
+        : null;
+    startCursor = memory?['anchor'] as String?;
   }
 
   void identity() {
@@ -136,6 +209,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       generation++;
       photoOperation++;
       closePhotoChoice();
+      localPreview?.evict();
+      localPreview = null;
       setState(() {
         photos.clear();
         photoSearch.clear();
@@ -166,6 +241,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   @override
   void dispose() {
     closePhotoChoice();
+    localPreview?.evict();
     pending = null;
     photoSearch.dispose();
     widget.state.removeListener(identity);
@@ -182,16 +258,21 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       retryMore = null;
     });
     try {
+      final pageCursor = more ? cursor : startCursor;
       final result = await widget.state.api.get(
-        '/children/$child/homework${more && cursor != null ? '?cursor=$cursor' : ''}',
+        '/children/$child/homework${pageCursor != null ? '?cursor=${Uri.encodeQueryComponent(pageCursor)}' : ''}',
       );
       if (!mounted || !own || child != widget.childId || stamp != generation) {
         return;
       }
       setState(() {
-        if (!more) photos.clear();
+        if (!more) {
+          photos.clear();
+          photoCursors.clear();
+        }
         for (final value in result['photos'] as List) {
           final photo = Json.from(value);
+          photoCursors[photo['id']] = pageCursor;
           final index = photos.indexWhere((item) => item['id'] == photo['id']);
           if (index < 0) {
             photos.add(photo);
@@ -216,6 +297,29 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         setState(() => loading = false);
       }
     }
+  }
+
+  Future<void> choosePhotoDates() async {
+    if (!own || photoBusy || loading) return;
+    final child = widget.childId;
+    final selected = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDateRange: photoDates,
+      helpText: 'Fotodatum eingrenzen',
+      cancelText: 'Abbrechen',
+      saveText: 'Fotos anzeigen',
+      builder: (ctx, content) {
+        photoChoice = ModalRoute.of(ctx);
+        return content!;
+      },
+    );
+    photoChoice = null;
+    if (!mounted || !own || child != widget.childId || selected == null) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => photoDates = selected);
+    rememberList();
   }
 
   Future<void> capture() async {
@@ -256,6 +360,17 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                   title: Text('Foto auswählen'),
                   onTap: () => choose(ImageSource.gallery),
                 ),
+                ListTile(
+                  leading: Icon(Icons.close_rounded),
+                  title: Text('Abbrechen'),
+                  onTap: () {
+                    if (ctx.mounted &&
+                        photoCurrent(operation, child) &&
+                        ModalRoute.of(ctx)?.isCurrent == true) {
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
               ],
             ),
           );
@@ -276,6 +391,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       setState(() {
         pending = bytes;
         uploadKey = homeworkKey();
+        rememberPhoto();
       });
       await upload();
     } catch (e) {
@@ -306,6 +422,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       setState(() {
         pending = bytes;
         uploadKey = homeworkKey();
+        rememberPhoto();
         widget.state.recoveredPhoto = widget.state.recoveredPhotos.isEmpty
             ? null
             : widget.state.recoveredPhotos.removeAt(0);
@@ -325,12 +442,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     }
   }
 
+  void rememberPhoto() {
+    if (!own || pending == null || pending!.length > 3 * 1024 * 1024) return;
+    // One local preview per child; cleared by the normal session lifecycle.
+    widget.state.collectionViews[photoMemory] = {
+      'account': actor,
+      'family': actorFamily,
+      'updated': DateTime.now().millisecondsSinceEpoch,
+      'bytes': pending,
+      'key': uploadKey,
+    };
+  }
+
   Future<void> upload() async {
     if (busy || pending == null || !own) return;
     final operation = photoOperation, child = widget.childId;
     final bytes = pending!, key = uploadKey;
     setState(() {
       busy = true;
+      uploadPhase = 'Foto wird gespeichert …';
       error = null;
       retryMore = null;
     });
@@ -342,7 +472,13 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         purpose: 'homework',
       );
       if (!photoCurrent(operation, child)) return;
-      pending = null;
+      setState(() {
+        pending = null;
+        localPreview?.evict();
+        localPreview = null;
+        widget.state.collectionViews.remove(photoMemory);
+        uploadPhase = 'Foto gespeichert · Lesen wird angemeldet …';
+      });
       // This POST belongs to the explicit photo submission. Reloads only GET.
       try {
         await widget.state.api.post('/materials/${photo['id']}/extract', null, {
@@ -396,7 +532,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                   choosing
                       ? 'Foto wird ausgewählt …'
                       : busy
-                      ? 'Foto wird abgegeben …'
+                      ? uploadPhase
                       : pending == null
                       ? 'Hausaufgaben fotografieren'
                       : 'Foto erneut senden',
@@ -438,8 +574,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
               children: [
                 Text('Dieses Foto ist noch nicht abgegeben.'),
                 const SizedBox(height: 8),
-                Image.memory(
-                  pending!,
+                Image(
+                  image: previewImage(),
                   height: 160,
                   fit: BoxFit.contain,
                   semanticLabel: 'Noch nicht abgegebenes Hausaufgabenfoto',
@@ -449,13 +585,23 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                 TextButton.icon(
                   onPressed: photoBusy
                       ? null
-                      : () => setState(() {
-                          photoOperation++;
-                          pending = null;
-                          uploadKey = null;
-                          error = null;
-                        }),
-                  icon: const Icon(Icons.close_rounded),
+                      : () {
+                          final bytes = pending;
+                          if (own && bytes != null) {
+                            showChildPhotoPreview(
+                              context,
+                              widget.state,
+                              photos: [bytes],
+                              title: 'Dein Aufgabenfoto',
+                            );
+                          }
+                        },
+                  icon: Icon(Icons.zoom_in_rounded),
+                  label: Text('Foto in Ruhe ansehen'),
+                ),
+                TextButton.icon(
+                  onPressed: photoBusy ? null : capture,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: const Text('Anderes Foto nehmen'),
                 ),
               ],
@@ -549,6 +695,70 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
               onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             ),
           ],
+          ExpansionTile(
+            title: Text('Fotos zeitlich finden'),
+            children: [
+              DropdownButtonFormField<String>(
+                key: ValueKey(('photo-order', photoOrder)),
+                initialValue: photoOrder,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Geladene Fotos sortieren',
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'newest',
+                    child: Text('Neueste zuerst'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'oldest',
+                    child: Text('Älteste zuerst'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (own && value != null) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => photoOrder = value);
+                    rememberList();
+                  }
+                },
+              ),
+              TextButton.icon(
+                onPressed: loading ? null : choosePhotoDates,
+                icon: Icon(Icons.date_range_rounded),
+                label: Text('Fotodatum eingrenzen'),
+              ),
+              if (photoDates != null)
+                InputChip(
+                  label: Text(
+                    '${DateFormat('dd.MM.yyyy').format(photoDates!.start)} bis ${DateFormat('dd.MM.yyyy').format(photoDates!.end)}',
+                  ),
+                  onDeleted: () {
+                    if (own) {
+                      setState(() => photoDates = null);
+                      rememberList();
+                    }
+                  },
+                  deleteButtonTooltipMessage: 'Fotodatum aufheben',
+                ),
+              Text(
+                'Die Datumsansicht verwendet nur geladene Fotos und die Datumsanzeige dieses Geräts.',
+              ),
+            ],
+          ),
+          if (startCursor != null)
+            TextButton.icon(
+              onPressed: loading
+                  ? null
+                  : () {
+                      if (!own) return;
+                      startCursor = null;
+                      rememberList();
+                      load();
+                    },
+              icon: Icon(Icons.first_page_rounded),
+              label: Text('Neueste Aufgabenfotos laden'),
+            ),
           SizedBox(height: 10),
           Semantics(
             liveRegion: true,
@@ -571,6 +781,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                 FocusManager.instance.primaryFocus?.unfocus();
                 setState(() {
                   photoFilter = 'all';
+                  photoDates = null;
                   photoSearch.clear();
                 });
                 rememberList();
@@ -625,8 +836,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                         ? photo['topic']
                         : 'Neues Hausaufgabenfoto',
                     subtitle: photo['confirmed'] == true
-                        ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}'
-                        : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}',
+                        ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt${photo['created'] == null ? '' : ' · ${photoDateLabel(photo)}'}'
+                        : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${photoDateLabel(photo)}'}',
                     icon: photo['confirmed'] == true
                         ? Icons.assignment_outlined
                         : Icons.document_scanner_outlined,
@@ -647,8 +858,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                       ),
                       subtitle: Text(
                         photo['confirmed'] == true
-                            ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}'
-                            : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}',
+                            ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt${photo['created'] == null ? '' : ' · ${photoDateLabel(photo)}'}'
+                            : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${photoDateLabel(photo)}'}',
                       ),
                       trailing: Icon(Icons.arrow_forward_rounded),
                       onTap: openPhotoAction(photo),
@@ -705,6 +916,7 @@ class _HomeworkDetailBody extends StatefulWidget {
 class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     with WidgetsBindingObserver {
   final draft = TextEditingController(), question = TextEditingController();
+  final draftFocus = FocusNode();
   final Map<String, String> drafts = {}, taskQuestions = {};
   final taskSearch = TextEditingController();
   String taskFilter = 'all';
@@ -720,6 +932,9 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   Timer? poll, debounce;
   int revision = 0, generation = 0, edits = 0, savedEdits = 0;
   bool conflict = false, closing = false, routeVisible = true;
+  final Set<DialogRoute<dynamic>> privateDialogs = {};
+  String get memoryKey =>
+      'homework_edit:${widget.childId}:${widget.materialId}';
   final helpStatus = GlobalKey();
   final helpReply = GlobalKey();
   String? restoredAnalysis;
@@ -779,6 +994,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   void identity() {
     if (!own) {
       generation++;
+      closePrivateDialogs();
       poll?.cancel();
       debounce?.cancel();
       applying = true;
@@ -823,6 +1039,8 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   @override
   void dispose() {
     closing = true;
+    rememberEdit();
+    closePrivateDialogs();
     if (canWrite && unsaved) {
       unawaited(persist());
     }
@@ -834,6 +1052,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     draft.removeListener(edited);
     question.removeListener(editedQuestion);
     draft.dispose();
+    draftFocus.dispose();
     question.dispose();
     taskSearch.dispose();
     super.dispose();
@@ -858,7 +1077,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     }
   }
 
-  Future<void> load() async {
+  Future<void> load({int? replaceRevision}) async {
     if (!own) return;
     final ticket = ++generation;
     try {
@@ -878,8 +1097,15 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
           conflict = true;
           saveError = 'Ein anderer gespeicherter Stand liegt vor. Lade ihn, bevor du weiter speicherst.';
         }
-        if ((!restored || restoredAnalysis != analysis?['id']) &&
-            analysis != null) {
+        final replacing =
+            replaceRevision != null && replaceRevision == remoteRevision;
+        if (replaceRevision != null && !replacing) {
+          conflict = true;
+          saveError = 'Der gespeicherte Stand hat sich inzwischen geändert. Vergleiche ihn noch einmal.';
+        }
+        if ((!restored || restoredAnalysis != analysis?['id'] || replacing) &&
+            analysis != null &&
+            (replaceRevision == null || replacing)) {
           revision = remoteRevision;
           conflict = false;
           saveError = null;
@@ -914,7 +1140,13 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
           edits = savedEdits = 0;
           queuedSave = null;
           data!['source_changed'] = false;
+          if (replacing) {
+            widget.state.collectionViews.remove(memoryKey);
+          } else {
+            restoreEdit();
+          }
         }
+        reconcileQuestion();
       });
       if (analysis != null && restoredAnalysis == analysis!['id']) {
         data!['source_changed'] = false;
@@ -933,10 +1165,586 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     }
   }
 
+  void closePrivateDialogs() {
+    for (final route in privateDialogs.toList()) {
+      final navigator = route.navigator;
+      if (navigator != null && route.isActive) navigator.removeRoute(route);
+    }
+    privateDialogs.clear();
+  }
+
+  void rememberEdit() {
+    if (!canWrite || photo == null || analysis == null || selectedId == null) {
+      return;
+    }
+    final views = widget.state.collectionViews;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final old = views[memoryKey];
+    final known = old?['question_key'] == uncertainKey
+        ? (old?['known_turns'])
+        : turns.map((t) => t['id']).toList();
+    for (final key
+        in views.keys.where((k) => k.startsWith('homework_edit:')).toList()) {
+      final item = views[key]!;
+      if ((item['updated'] as num? ?? 0) < now - 86400000) views.remove(key);
+    }
+    if (!unsaved && uncertainBody == null) {
+      views.remove(memoryKey);
+      return;
+    }
+    final keys = views.keys
+        .where((k) => k.startsWith('homework_edit:'))
+        .toList();
+    if (!views.containsKey(memoryKey) && keys.length >= 8) {
+      keys.sort(
+        (a, b) => (views[a]!['updated'] as num).compareTo(
+          views[b]!['updated'] as num,
+        ),
+      );
+      views.remove(keys.first);
+    }
+    views[memoryKey] = {
+      'account': actor,
+      'family': actorFamily,
+      'updated': now,
+      'source': photo!['revision'],
+      'analysis': analysis!['id'],
+      'revision': revision,
+      'edits': edits,
+      'task': selectedId,
+      'drafts': Map<String, String>.from(drafts),
+      'questions': Map<String, String>.from(taskQuestions),
+      'done': done.toList(),
+      if (uncertainBody != null) ...{
+        'question_body': uncertainBody,
+        'question_key': uncertainKey,
+        'known_turns': known,
+      },
+    };
+  }
+
+  void restoreEdit() {
+    final memory = widget.state.collectionViews[memoryKey];
+    if (!canWrite || memory == null) return;
+    if (!identical(memory['account'], actor) ||
+        memory['family'] != actorFamily ||
+        memory['source'] != photo?['revision'] ||
+        memory['analysis'] != analysis?['id'] ||
+        (memory['updated'] as num? ?? 0) <
+            DateTime.now().millisecondsSinceEpoch - 86400000) {
+      widget.state.collectionViews.remove(memoryKey);
+      return;
+    }
+    final valid = tasks.map((t) => t['id']).toSet();
+    drafts.clear();
+    drafts.addAll(
+      Map<String, String>.from(memory['drafts'] as Map)
+        ..removeWhere((k, _) => !valid.contains(k)),
+    );
+    taskQuestions.clear();
+    taskQuestions.addAll(
+      Map<String, String>.from(memory['questions'] as Map)
+        ..removeWhere((k, _) => !valid.contains(k)),
+    );
+    if (valid.contains(memory['task'])) selectedId = memory['task'];
+    done.clear();
+    done.addAll(
+      (memory['done'] as List).map((v) => v.toString()).where(valid.contains),
+    );
+    applying = true;
+    draft.text = drafts[selectedId] ?? '';
+    question.text = taskQuestions[selectedId] ?? '';
+    applying = false;
+    edits++;
+    uncertainBody = memory['question_body'] is Map
+        ? Json.from(memory['question_body'])
+        : null;
+    uncertainKey = memory['question_key'];
+    if (revision != memory['revision']) {
+      conflict = true;
+      saveError = 'Dein lokaler Entwurf und der gespeicherte Stand sind verschieden. Vergleiche beide, bevor du speicherst.';
+    } else {
+      saveError = 'Dein lokaler Entwurf ist wieder da. Speichere ihn, wenn du bereit bist.';
+    }
+  }
+
+  void reconcileQuestion() {
+    if (uncertainBody == null) return;
+    final memory = widget.state.collectionViews[memoryKey];
+    final known = (memory?['known_turns'] as List? ?? []).toSet();
+    final request = uncertainBody!;
+    final target = request['homework'] as Map;
+    final received = turns.any((turn) {
+      final scope = turn['homework'] as Map? ?? {};
+      return !known.contains(turn['id']) &&
+          turn['question'] == request['question'] &&
+          turn['source_changed'] != true &&
+          scope['action'] == target['action'] &&
+          scope['analysis_id'] == target['analysis_id'] &&
+          scope['task_id'] == target['task_id'] &&
+          (scope['draft'] ?? '') == (target['draft'] ?? '');
+    });
+    if (!received) return;
+    if (target['action'] == 'question' &&
+        question.text.trim() == request['question']) {
+      question.clear();
+    }
+    uncertainBody = null;
+    uncertainKey = null;
+    sendError = null;
+    rememberEdit();
+  }
+
+  Future<T?> privateDialog<T>(
+    Widget Function(BuildContext, DialogRoute<T>) builder,
+  ) async {
+    if (!mounted || !canWrite || ModalRoute.of(context)?.isCurrent == false) {
+      return null;
+    }
+    late final DialogRoute<T> route;
+    route = DialogRoute<T>(
+      context: context,
+      builder: (ctx) => builder(ctx, route),
+    );
+    privateDialogs.add(route);
+    try {
+      return await Navigator.of(context).push(route);
+    } finally {
+      privateDialogs.remove(route);
+      await route.completed;
+    }
+  }
+
+  Future<void> clearDraft() async {
+    if (!canWrite || saving || busy || conflict || draft.text.isEmpty) return;
+    final source = photo?['revision'],
+        analysisId = analysis?['id'],
+        task = selectedId;
+    final old = draft.text, count = edits;
+    final clear = await privateDialog<bool>(
+      (ctx, route) => AlertDialog(
+        title: Text('Eigenen Versuch leeren?'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Nur dein eigener Text für diese Aufgabe wird geleert. Die Aufgabe und deine Lernhilfen bleiben erhalten.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted && canWrite && route.isCurrent) {
+                Navigator.of(ctx).pop(false);
+              }
+            },
+            child: Text('Behalten'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (ctx.mounted && canWrite && route.isCurrent) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
+            child: Text('Versuch leeren'),
+          ),
+        ],
+      ),
+    );
+    if (clear != true ||
+        !mounted ||
+        !canWrite ||
+        edits != count ||
+        source != photo?['revision'] ||
+        analysisId != analysis?['id'] ||
+        task != selectedId) {
+      return;
+    }
+    draft.clear();
+    final clearedAt = edits;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Dein Versuch wurde geleert.'),
+        action: SnackBarAction(
+          label: 'Rückgängig',
+          onPressed: () {
+            if (!mounted ||
+                !canWrite ||
+                edits != clearedAt ||
+                draft.text.isNotEmpty ||
+                source != photo?['revision'] ||
+                analysisId != analysis?['id'] ||
+                task != selectedId ||
+                ModalRoute.of(context)?.isCurrent == false) {
+              return;
+            }
+            draft.text = old;
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> helpHistory() async {
+    if (!canWrite || analysis == null) return;
+    final source = photo?['revision'], analysisId = analysis?['id'];
+    final history = turns
+        .where((turn) => (turn['homework'] as Map?)?['action'] != 'analyze')
+        .toList();
+    final search = TextEditingController();
+    String? chosen;
+    try {
+      chosen = await privateDialog<String>(
+        (ctx, route) => StatefulBuilder(
+          builder: (ctx, change) {
+            final query = search.text.trim().toLowerCase();
+            final visible = history
+                .where(
+                  (turn) =>
+                      query.isEmpty ||
+                      '${turn['question']} ${(turn['reply'] as Map?)?['answer'] ?? ''}'
+                          .toLowerCase()
+                          .contains(query),
+                )
+                .toList();
+            return AlertDialog(
+              title: Text('Lernhilfen zu diesem Foto'),
+              content: SizedBox(
+                width: 520,
+                height: MediaQuery.sizeOf(ctx).height * .55,
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: search,
+                      maxLength: 120,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        labelText: 'Geladene Lernhilfen durchsuchen',
+                        prefixIcon: Icon(Icons.search_rounded),
+                      ),
+                      onChanged: (_) => change(() {}),
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                    ),
+                    Text(
+                      '${visible.length} von ${history.length} geladenen Lernhilfen',
+                    ),
+                    if (data?['older_history'] == true)
+                      Text(
+                        'Nur die letzten geladenen Gesprächsschritte. Der vollständige Verlauf bleibt im Familienexport.',
+                      ),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          if (visible.isEmpty)
+                            Text(
+                              'Hier passt keine geladene Lernhilfe zu deiner Suche.',
+                            ),
+                          for (final turn in visible)
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    turn['question'] ?? '',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(statusLabel(turn['status'])),
+                                  if ((turn['reply'] as Map?)?['answer']
+                                      is String)
+                                    LearningContent(turn['reply']['answer']),
+                                  if (turn['source_changed'] == true)
+                                    Text('Zu einer früheren Quellenfassung'),
+                                  if (turn['source_changed'] != true &&
+                                      (turn['homework']
+                                              as Map?)?['analysis_id'] ==
+                                          analysisId &&
+                                      tasks.any(
+                                        (task) =>
+                                            task['id'] ==
+                                            (turn['homework']
+                                                as Map?)?['task_id'],
+                                      ))
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        if (ctx.mounted &&
+                                            canWrite &&
+                                            route.isCurrent &&
+                                            source == photo?['revision'] &&
+                                            analysisId == analysis?['id']) {
+                                          Navigator.pop(
+                                            ctx,
+                                            (turn['homework']
+                                                as Map)['task_id'],
+                                          );
+                                        }
+                                      },
+                                      icon: Icon(Icons.arrow_forward_rounded),
+                                      label: Text('Zur zugehörigen Aufgabe'),
+                                    ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    if (ctx.mounted && canWrite && route.isCurrent) {
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: Text('Zurück zu meinen Hausaufgaben'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      search.dispose();
+    }
+    if (chosen != null &&
+        mounted &&
+        canWrite &&
+        source == photo?['revision'] &&
+        analysisId == analysis?['id']) {
+      await chooseTask(chosen);
+    }
+  }
+
+  Future<void> checklist(bool mark) async {
+    if (!canWrite || busy || saving || conflict || tasks.isEmpty) return;
+    final source = photo?['revision'], analysisId = analysis?['id'];
+    final count = edits;
+    final ids = tasks.map((task) => task['id'].toString()).toSet();
+    final accepted = await privateDialog<bool>(
+      (ctx, route) => AlertDialog(
+        title: Text(
+          mark ? 'Alle Aufgaben selbst abgehakt?' : 'Häkchen zurücksetzen?',
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            mark
+                ? 'Du bestätigst nur deine eigene Checkliste für ${ids.length} Aufgaben. Das ist keine geprüfte richtige Lösung und kein Lernnachweis.'
+                : 'Nur deine Häkchen werden entfernt. Deine eigenen Texte, Aufgaben und Lernhilfen bleiben erhalten.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted && canWrite && route.isCurrent) {
+                Navigator.pop(ctx, false);
+              }
+            },
+            child: Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (ctx.mounted && canWrite && route.isCurrent) {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: Text(mark ? 'Checkliste abhaken' : 'Häkchen entfernen'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true ||
+        !mounted ||
+        !canWrite ||
+        source != photo?['revision'] ||
+        analysisId != analysis?['id'] ||
+        edits != count) {
+      return;
+    }
+    setState(() {
+      if (mark) {
+        done.addAll(ids);
+      } else {
+        done.removeAll(ids);
+      }
+      edits++;
+    });
+    rememberEdit();
+    await persist();
+  }
+
+  Future<void> ownWorkOverview() async {
+    if (!canWrite || analysis == null) return;
+    final source = photo?['revision'], analysisId = analysis?['id'];
+    final entries = [
+      for (final task in tasks)
+        if ((drafts[task['id']] ?? '').trim().isNotEmpty)
+          '${task['title']}\n${drafts[task['id']]}',
+    ];
+    if (entries.isEmpty) return;
+    final text = entries.join('\n\n');
+    await privateDialog<void>(
+      (ctx, route) => AlertDialog(
+        title: Text('Meine eigenen Versuche'),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Nur deine Texte – keine Lösungen oder Bewertung der KI.'),
+                SizedBox(height: 12),
+                SelectableText(text),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted && canWrite && route.isCurrent) {
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: Text('Schließen'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              if (!ctx.mounted ||
+                  !canWrite ||
+                  !route.isCurrent ||
+                  source != photo?['revision'] ||
+                  analysisId != analysis?['id']) {
+                return;
+              }
+              await Clipboard.setData(ClipboardData(text: text));
+              if (ctx.mounted && canWrite && route.isCurrent) {
+                toast(ctx, 'Deine eigenen Versuche sind kopiert.');
+              }
+            },
+            icon: Icon(Icons.copy_outlined),
+            label: Text('Eigene Texte kopieren'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> compareSaved() async {
+    if (!canWrite || saving || busy || !conflict) return;
+    final source = photo?['revision'], analysisId = analysis?['id'];
+    final edit = edits;
+    try {
+      final result = await widget.state.api.get(path);
+      if (!mounted ||
+          !canWrite ||
+          source != photo?['revision'] ||
+          analysisId != analysis?['id']) {
+        return;
+      }
+      final material = result['material'] as Map;
+      final saved = result['state'] as Map? ?? {};
+      if (material['child_id'] != widget.childId ||
+          material['revision'] != source ||
+          saved['analysis_id'] != analysisId) {
+        await load();
+        return;
+      }
+      late final DialogRoute<bool> route;
+      route = DialogRoute<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('Entwürfe vergleichen'),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Auf diesem Gerät',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SelectableText(
+                    draft.text.isEmpty
+                        ? 'Noch kein eigener Versuch.'
+                        : draft.text,
+                  ),
+                  if (question.text.isNotEmpty)
+                    Text('Meine Frage: ${question.text}'),
+                  SizedBox(height: 20),
+                  Text(
+                    'Gespeicherter Stand',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SelectableText(
+                    ((saved['drafts'] as Map?)?[selectedId] ?? '')
+                            .toString()
+                            .isEmpty
+                        ? 'Noch kein eigener Versuch.'
+                        : ((saved['drafts'] as Map?)?[selectedId] ?? '')
+                              .toString(),
+                  ),
+                  if ((saved['question'] ?? '').toString().isNotEmpty)
+                    Text('Meine Frage: ${saved['question']}'),
+                  SizedBox(height: 12),
+                  Text(
+                    'Übernehmen ersetzt deinen lokalen Entwurf. Deine anderen Aufgaben bleiben beim gespeicherten Stand.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (dialogContext.mounted && canWrite && route.isCurrent) {
+                  Navigator.of(dialogContext).pop(false);
+                }
+              },
+              child: Text('Lokalen Text behalten'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (dialogContext.mounted && canWrite && route.isCurrent) {
+                  Navigator.of(dialogContext).pop(true);
+                }
+              },
+              child: Text('Gespeicherten Stand übernehmen'),
+            ),
+          ],
+        ),
+      );
+      privateDialogs.add(route);
+      final replace = await Navigator.of(context).push(route);
+      privateDialogs.remove(route);
+      if (replace == true &&
+          mounted &&
+          canWrite &&
+          edits == edit &&
+          photo?['revision'] == source &&
+          analysis?['id'] == analysisId) {
+        await load(replaceRevision: (saved['revision'] as num? ?? 0).toInt());
+      }
+    } catch (e) {
+      if (mounted && own) {
+        setState(
+          () => saveError = _homeworkError(
+            e,
+            'Der Vergleich konnte nicht geladen werden. Dein lokaler Text bleibt erhalten.',
+          ),
+        );
+      }
+    }
+  }
+
   void edited() {
     if (applying || !canWrite || selectedId == null) return;
     drafts[selectedId!] = draft.text;
     edits++;
+    rememberEdit();
     debounce?.cancel();
     debounce = Timer(Duration(milliseconds: 650), () => unawaited(persist()));
     if (mounted) setState(() {});
@@ -946,6 +1754,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     if (applying || !canWrite || selectedId == null) return;
     taskQuestions[selectedId!] = question.text;
     edits++;
+    rememberEdit();
     debounce?.cancel();
     debounce = Timer(Duration(milliseconds: 650), () => unawaited(persist()));
     if (mounted) setState(() {});
@@ -999,15 +1808,38 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
         final body = Map<String, dynamic>.from(snapshot)..remove('_edits');
         body['revision'] = revision;
         final saved = await widget.state.api.put(path, body);
-        if (!own) return;
+        if (!own ||
+            body['source_revision'] != photo?['revision'] ||
+            body['analysis_id'] != analysis?['id']) {
+          return;
+        }
         revision = (saved['revision'] as num).toInt();
         savedEdits = counter;
         if (body['task_id'] == selectedId) lastSaved = body['draft'];
+        if (!closing) {
+          rememberEdit();
+        } else {
+          final memory = widget.state.collectionViews[memoryKey];
+          if (memory != null &&
+              identical(memory['account'], actor) &&
+              memory['source'] == body['source_revision'] &&
+              memory['analysis'] == body['analysis_id']) {
+            if (memory['edits'] == counter && memory['question_body'] == null) {
+              widget.state.collectionViews.remove(memoryKey);
+            } else {
+              memory['revision'] = revision;
+            }
+          }
+        }
         snapshot = queuedSave;
         queuedSave = null;
       }
     } catch (e) {
-      if (mounted && !closing && own) {
+      if (mounted &&
+          !closing &&
+          own &&
+          initial['source_revision'] == photo?['revision'] &&
+          initial['analysis_id'] == analysis?['id']) {
         setState(() {
           saveError = _homeworkError(
             e,
@@ -1100,6 +1932,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
       setState(() {
         uncertainBody = body;
         uncertainKey = key;
+        rememberEdit();
       });
       await widget.state.api.post(
         '/children/${widget.childId}/tutor/questions',
@@ -1114,6 +1947,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
         if (action == 'question' && question.text.trim() == body['question']) {
           question.clear();
         }
+        rememberEdit();
       });
       await load();
     } catch (e) {
@@ -1127,6 +1961,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
             uncertainBody = null;
             uncertainKey = null;
           }
+          rememberEdit();
         });
       }
     } finally {
@@ -1460,8 +2295,26 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
               ),
               SizedBox(height: 8),
               LearningContent(reply['next_step'] ?? ''),
-              if ((reply['next_question'] ?? '').toString().isNotEmpty)
+              if ((reply['next_question'] ?? '').toString().isNotEmpty) ...[
                 SurfaceInset(child: LearningContent(reply['next_question'])),
+                if (canWrite &&
+                    !busy &&
+                    (turn['homework'] as Map?)?['task_id'] == selectedId &&
+                    turn['source_changed'] != true)
+                  TextButton.icon(
+                    onPressed: () {
+                      if (canWrite &&
+                          mounted &&
+                          (turn['homework'] as Map?)?['task_id'] ==
+                              selectedId &&
+                          ModalRoute.of(context)?.isCurrent != false) {
+                        draftFocus.requestFocus();
+                      }
+                    },
+                    icon: Icon(Icons.edit_outlined),
+                    label: Text('Nächsten Schritt selbst versuchen'),
+                  ),
+              ],
               if ((reply['sources'] as List? ?? []).isNotEmpty)
                 ExpansionTile(
                   title: Text('Bezug zur Aufgabe'),
@@ -1469,7 +2322,29 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                     for (final quote in reply['sources'])
                       Padding(
                         padding: EdgeInsets.all(12),
-                        child: LearningContent(quote['quote']),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            LearningContent(quote['quote']),
+                            if (quote['material_id'] == widget.materialId &&
+                                turn['source_changed'] != true)
+                              TextButton.icon(
+                                onPressed: () {
+                                  if (own &&
+                                      mounted &&
+                                      ModalRoute.of(context)?.isCurrent !=
+                                          false) {
+                                    openRoute(
+                                      context,
+                                      '/material/${widget.materialId}',
+                                    );
+                                  }
+                                },
+                                icon: Icon(Icons.description_outlined),
+                                label: Text('Aufgabenquelle ansehen'),
+                              ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -1834,6 +2709,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                         SizedBox(height: 18),
                         TextField(
                           controller: draft,
+                          focusNode: draftFocus,
                           minLines: 3,
                           maxLines: 8,
                           maxLength: 1200,
@@ -1861,6 +2737,17 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                               icon: Icon(Icons.copy_outlined),
                               label: Text('Meinen Versuch kopieren'),
                             ),
+                            TextButton.icon(
+                              onPressed:
+                                  !busy &&
+                                      !saving &&
+                                      !conflict &&
+                                      draft.text.isNotEmpty
+                                  ? clearDraft
+                                  : null,
+                              icon: Icon(Icons.backspace_outlined),
+                              label: Text('Eigenen Versuch leeren'),
+                            ),
                             TextButton(
                               onPressed: saving || !unsaved || conflict
                                   ? null
@@ -1885,19 +2772,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                           ),
                           if (conflict)
                             TextButton(
-                              onPressed: () async {
-                                if (!await confirmDialog(
-                                  context,
-                                  'Gespeicherten Entwurf laden?',
-                                  'Dein noch nicht gespeicherter Text auf diesem Gerät wird durch den gespeicherten Stand ersetzt.',
-                                )) {
-                                  return;
-                                }
-                                if (!mounted || !own) return;
-                                restored = false;
-                                restoredAnalysis = null;
-                                await load();
-                              },
+                              onPressed: compareSaved,
                               child: Text('Gespeicherten Entwurf laden'),
                             ),
                         ] else if (!unsaved &&
@@ -1942,6 +2817,15 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                           decoration: InputDecoration(
                             labelText: 'Meine Frage',
                             hintText: 'Was genau ist noch unklar?',
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: VoiceInputButton(
+                            controller: question,
+                            locale: 'de-DE',
+                            maxLength: 1000,
+                            enabled: active,
                           ),
                         ),
                         Align(
@@ -2027,6 +2911,38 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                 child: Wrap(
                   spacing: 12,
                   children: [
+                    TextButton.icon(
+                      onPressed:
+                          turns.any(
+                            (turn) =>
+                                (turn['homework'] as Map?)?['action'] !=
+                                'analyze',
+                          )
+                          ? helpHistory
+                          : null,
+                      icon: Icon(Icons.history_rounded),
+                      label: Text('Lernhilfen zu diesem Foto'),
+                    ),
+                    TextButton.icon(
+                      onPressed:
+                          !busy && !saving && !conflict && tasks.isNotEmpty
+                          ? () => checklist(done.length < tasks.length)
+                          : null,
+                      icon: Icon(Icons.checklist_rounded),
+                      label: Text(
+                        done.length < tasks.length
+                            ? 'Meine Checkliste abhaken'
+                            : 'Alle Häkchen zurücksetzen',
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed:
+                          drafts.values.any((value) => value.trim().isNotEmpty)
+                          ? ownWorkOverview
+                          : null,
+                      icon: Icon(Icons.notes_rounded),
+                      label: Text('Meine eigenen Versuche'),
+                    ),
                     TextButton.icon(
                       onPressed: load,
                       icon: Icon(Icons.refresh),

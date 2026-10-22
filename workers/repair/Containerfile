@@ -1,0 +1,12 @@
+FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+COPY codex /usr/local/bin/codex
+COPY backend/requirements.lock /tmp/requirements.lock
+RUN pip install --no-cache-dir -r /tmp/requirements.lock pytest==9.1.1
+COPY workers/repair/agent.py /app/agent.py
+COPY workers/repair/candidate_rpc.py /app/candidate_rpc.py
+COPY backend/schulpilot/repair_source.py /app/source_policy.py
+# No auth files, network tools, host CLI, database client or mounted Git metadata.
+RUN useradd -u 10001 -m worker
+USER 10001:10001
+WORKDIR /workspace
+ENTRYPOINT ["python", "/app/agent.py"]

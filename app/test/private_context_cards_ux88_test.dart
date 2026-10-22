@@ -148,7 +148,9 @@ void main() {
       h.state.familyId = 'first';
       await actions.tap(tester, 'Aktion öffnen');
       final saved = tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Bestätigen'))
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Heftseite löschen'),
+          )
           .onPressed!;
       h.state.familyId = 'second';
       h.state.refreshState();

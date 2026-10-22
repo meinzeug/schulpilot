@@ -77,6 +77,7 @@ class VocabularyOutput(Strict):
 
 
 class ImportRequest(Strict):
+    collection_id: str | None = Field(default=None, min_length=32, max_length=32, pattern=r'^[a-f0-9]+$')
     target_locale: TargetLocale
     title: str = Field(min_length=1, max_length=160)
     material_id: str | None = Field(default=None, max_length=32)

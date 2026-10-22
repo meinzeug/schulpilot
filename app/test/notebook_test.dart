@@ -432,7 +432,7 @@ void main() {
         find.textContaining('Das kannst du nicht rückgängig machen'),
         findsOneWidget,
       );
-      await tap(tester, find.text('Bestätigen'), settle: false);
+      await tap(tester, find.text('Heftseite löschen'), settle: false);
       await tester.pumpAndSettle();
       expect(deleted, {'page0'});
       expect(find.text('1–20 von 46'), findsWidgets);
@@ -485,7 +485,7 @@ void main() {
       await tap(tester, find.byTooltip('Mit KI neu lesen'), settle: false);
       expect(find.text('Seite neu einlesen?'), findsOneWidget);
       expect(writes, isEmpty);
-      await tap(tester, find.text('Bestätigen'), settle: false);
+      await tap(tester, find.text('Mit KI neu einlesen'), settle: false);
       await tester.pumpAndSettle();
       expect(writes, hasLength(1));
       expect(find.text('Neue Erkennung: new-page / new-job'), findsOneWidget);
@@ -546,7 +546,7 @@ void main() {
       await tap(tester, find.text('Auswahl löschen (47)'), settle: false);
       expect(find.text('47 Heftseiten löschen?'), findsOneWidget);
       expect(writes, hasLength(1)); // confirmation is still pending
-      await tap(tester, find.text('Bestätigen'), settle: false);
+      await tap(tester, find.text('47 Heftseiten löschen'), settle: false);
       await tester.pumpAndSettle();
       expect(writes, hasLength(2));
       expect(

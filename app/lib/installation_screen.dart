@@ -24,7 +24,8 @@ class InstallationScreen extends StatefulWidget {
   State<InstallationScreen> createState() => _InstallationScreenState();
 }
 
-class _InstallationScreenState extends State<InstallationScreen> {
+class _InstallationScreenState extends State<InstallationScreen>
+    with WidgetsBindingObserver {
   static const sections = {
     'operation': 0,
     'email': 1,
@@ -52,6 +53,154 @@ class _InstallationScreenState extends State<InstallationScreen> {
   bool get own => mounted && identical(widget.state.user, owner);
   int loadGeneration = 0;
   String? mailResult;
+  String? unlockError;
+  final savedFields = <String, String>{};
+  final savedFlags = <String, bool>{};
+  final dirtyFields = <String>{}, dirtyFlags = <String>{};
+  bool get siteDirty => dirtyFields.isNotEmpty || dirtyFlags.isNotEmpty;
+  bool completionUncertain = false;
+  String? secretResult;
+  bool hasStoredSecret(String key) =>
+      config?['site'][switch (key) {
+        'smtp_password' => 'has_smtp_password',
+        'fcm_service_account_json' => 'has_fcm_service_account',
+        'google_oauth_client_json' => 'has_google_oauth_client',
+        _ => '',
+      }] ==
+      true;
+
+  Future<void> removeStoredSecret(
+    String key,
+    String label,
+  ) => runAction(() async {
+    if (!hasStoredSecret(key)) return;
+    final confirmed = await confirmDialog(
+      context,
+      'Gespeicherten Konfigurationseintrag entfernen?',
+      '$label wird gezielt aus den gespeicherten Betriebseinstellungen entfernt. Ein lokaler Ersatzentwurf und andere Änderungen werden nicht mitgespeichert. Außerhalb der App hinterlegte Dateien werden nicht gelöscht; prüfe die tatsächliche Verfügbarkeit danach gesondert.',
+      confirmLabel: 'Gespeicherten Eintrag entfernen',
+      destructive: true,
+    );
+    if (!confirmed || !own) return;
+    final saved = await widget.state.api.put('$base/site', {
+      'clear_$key': true,
+    });
+    if (!own) return;
+    setState(() {
+      config = saved;
+      visibleSecrets.remove(key);
+      secretResult =
+          '$label: gespeicherten Eintrag entfernt. Andere Entwürfe wurden nicht übertragen. Eine externe Konfiguration kann weiter gelten; Verfügbarkeit separat prüfen.';
+    });
+    await load();
+  });
+
+  void edited(String key) => setState(() {
+    if (fields.containsKey(key)) {
+      if (fields[key]!.text == savedFields[key]) {
+        dirtyFields.remove(key);
+      } else {
+        dirtyFields.add(key);
+      }
+    }
+    fieldErrors.remove(key);
+    secretResult = null;
+    error = null;
+  });
+
+  void relock() {
+    unlocked = false;
+    config = null;
+    step = 0;
+    code.clear();
+    password.clear();
+    confirm.clear();
+    adminPasswordVisible = false;
+    visibleSecrets.clear();
+    for (final entry in fields.entries) {
+      if (secretInput(entry.key)) entry.value.clear();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed &&
+        (adminPasswordVisible || visibleSecrets.isNotEmpty)) {
+      setState(() {
+        adminPasswordVisible = false;
+        visibleSecrets.clear();
+      });
+    }
+  }
+
+  Future<void> unlock() => runAction(() async {
+    final value = code.text.trim();
+    if (value.length < 32 || value.length > 128) {
+      setState(
+        () => unlockError = 'Den vollständigen Installationscode mit 32 bis 128 Zeichen eingeben.',
+      );
+      inputFocus('unlock_code').requestFocus();
+      return;
+    }
+    await widget.state.api.post('/setup/unlock', {'code': value});
+    if (!own) return;
+    code.clear();
+    await load();
+  });
+
+  Future<void> resetSiteDraft() async {
+    if (busy || !own || !siteDirty) return;
+    final discard = await confirmDialog(
+      context,
+      'Betriebsentwurf verwerfen?',
+      'Die noch nicht gespeicherten Betriebs-, E-Mail-, Tarif- und Push-Eingaben werden auf den zuletzt geladenen Stand zurückgesetzt. Ein KI-Anbieterentwurf bleibt erhalten.',
+      confirmLabel: 'Betriebsentwurf verwerfen',
+      destructive: true,
+    );
+    if (!discard || !own || busy) return;
+    setState(() {
+      for (final entry in fields.entries) {
+        entry.value.text = savedFields[entry.key] ?? '';
+      }
+      flags.addAll(savedFlags);
+      dirtyFields.clear();
+      dirtyFlags.clear();
+      fieldErrors.clear();
+      error = null;
+      visibleSecrets.clear();
+      mailResult = null;
+    });
+  }
+
+  Future<void> reviewSiteDraft() async {
+    if (!own || busy || !siteDirty) return;
+    final labels = {
+      for (final field in groups.expand((g) => g)) field.$1: field.$2,
+      'privacy_evidence': 'Datenschutzfreigabe',
+      'synthetic_ai_daily_limit': 'Künstliche KI-Tests pro Tag',
+      'smtp_mode': 'SMTP-Verschlüsselung',
+      'real_data_approved': 'Verarbeitung echter Lerninhalte',
+      'synthetic_demo': 'Beispiel-Lernraum',
+      'synthetic_ai_enabled': 'Künstliche KI-Tests',
+      'push_approved': 'Push-Freigabe',
+      'google_login_enabled': 'Google-Anmeldung',
+    };
+    final rows = <String>[
+      for (final key in dirtyFields)
+        secretInput(key) || key == 'fcm_public_config'
+            ? '${labels[key] ?? key}: neuer Konfigurations-/Geheimnisentwurf; Inhalt wird hier nicht angezeigt.'
+            : '${labels[key] ?? key}\nGespeichert: ${savedFields[key] ?? ''}\nEntwurf: ${fields[key]!.text}',
+      for (final key in dirtyFlags)
+        '${labels[key] ?? key}: ${savedFlags[key] == true ? 'an' : 'aus'} → ${flags[key] == true ? 'an' : 'aus'}',
+    ];
+    await confirmDialog(
+      context,
+      'Betriebsänderungen vor dem Speichern prüfen',
+      '${rows.join('\n\n')}\n\nDies prüft nur deinen lokalen Entwurf. Es wird nichts gespeichert und kein Anbieter-, Mail- oder Pushauftrag ausgelöst.',
+      confirmLabel: 'Zum Entwurf zurück',
+    );
+  }
+
   FocusNode inputFocus(String key) =>
       focuses.putIfAbsent(key, () => FocusNode());
   List<String> get inputOrder {
@@ -113,13 +262,16 @@ class _InstallationScreenState extends State<InstallationScreen> {
       await action();
     } catch (failure) {
       if (mounted && identical(widget.state.user, owner)) {
-        setState(
-          () => error = failure is ApiError
+        setState(() {
+          if (widget.initial && failure is ApiError && failure.status == 401) {
+            relock();
+          }
+          error = failure is ApiError
               ? failure
               : ApiError(
                   'Die Änderung konnte nicht abgeschlossen werden. Dein Entwurf bleibt erhalten.',
-                ),
-        );
+                );
+        });
       }
     } finally {
       if (mounted && identical(widget.state.user, owner)) {
@@ -171,6 +323,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(accountChanged);
     if (!widget.initial) {
       step = sections[widget.initialSection] ?? 0;
@@ -221,6 +374,9 @@ class _InstallationScreenState extends State<InstallationScreen> {
           key,
           () => TextEditingController(text: '${site[key] ?? ''}'),
         );
+        savedFields[key] = '${site[key] ?? ''}';
+        if (!dirtyFields.contains(key)) fields[key]!.text = savedFields[key]!;
+        if (fields[key]!.text == savedFields[key]) dirtyFields.remove(key);
       }
       for (final key in [
         'real_data_approved',
@@ -230,6 +386,9 @@ class _InstallationScreenState extends State<InstallationScreen> {
         'google_login_enabled',
       ]) {
         flags.putIfAbsent(key, () => site[key] == true);
+        savedFlags[key] = site[key] == true;
+        if (!dirtyFlags.contains(key)) flags[key] = savedFlags[key]!;
+        if (flags[key] == savedFlags[key]) dirtyFlags.remove(key);
       }
       setState(() {
         config = value;
@@ -239,6 +398,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
     } catch (e) {
       if (own && generation == loadGeneration) {
         setState(() {
+          if (e is ApiError && e.status == 401 && widget.initial) relock();
           error = e is ApiError && e.status == 401 && widget.initial ? null : e;
         });
       }
@@ -247,7 +407,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
     }
   }
 
-  Future<void> save() async {
+  Future<bool> save() async {
     if (!own) {
       throw ApiError(
         'Die Sitzung hat sich geändert. Öffne die Einstellungen neu.',
@@ -277,6 +437,13 @@ class _InstallationScreenState extends State<InstallationScreen> {
         .hasMatch(fields['smtp_host']?.text.trim() ?? '')) {
       fieldErrors['smtp_host'] = 'Nur den SMTP-Hostnamen eingeben, ohne https://, Leerzeichen oder Port.';
     }
+    for (final key in ['operator_support_email', 'smtp_from']) {
+      final value = fields[key]?.text.trim() ?? '';
+      if (value.isNotEmpty &&
+          !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value)) {
+        fieldErrors[key] = 'Eine vollständige E-Mail-Adresse mit @ und gültiger Domain eingeben.';
+      }
+    }
     for (final key in [
       'fcm_public_config',
       'fcm_service_account_json',
@@ -285,12 +452,73 @@ class _InstallationScreenState extends State<InstallationScreen> {
       final text = fields[key]?.text ?? '';
       if (text.trim().isEmpty) continue;
       try {
-        if (jsonDecode(text) is! Map) {
+        final raw = jsonDecode(text);
+        if (raw is! Map) {
           fieldErrors[key] =
               'Eine JSON-Objektstruktur mit geschweiften Klammern eingeben.';
+        } else if (key == 'fcm_public_config') {
+          const allowed = {
+            'apiKey',
+            'appId',
+            'messagingSenderId',
+            'projectId',
+            'authDomain',
+            'vapidKey',
+            'androidAppId',
+            'androidApiKey',
+          };
+          if (raw.keys.any((k) => !allowed.contains(k)) ||
+              raw.values.any((v) => v is! String) ||
+              (raw['projectId'] != null &&
+                  raw['projectId'] != '' &&
+                  !RegExp(r'^[a-z][a-z0-9-]{4,62}$')
+                      .hasMatch(raw['projectId']))) {
+            fieldErrors[key] = 'Die öffentliche Firebase-Konfiguration benötigt bekannte Textfelder und eine gültige Projektkennung. Keine Dienstkontodaten hier eintragen.';
+          }
+        } else if (key == 'fcm_service_account_json') {
+          if (raw['type'] != 'service_account' ||
+              raw['token_uri'] != 'https://oauth2.googleapis.com/token' ||
+              [
+                'project_id',
+                'client_email',
+                'private_key',
+              ].any((k) => raw[k] is! String || (raw[k] as String).isEmpty)) {
+            fieldErrors[key] = 'Ein vollständiges Firebase-Dienstkonto mit Projekt, Konto-E-Mail, privatem Schlüssel und Google-Tokenadresse verwenden.';
+          }
+        } else if (key == 'google_oauth_client_json') {
+          final web = raw['web'];
+          final callback =
+              '${widget.state.api.base.replaceFirst(RegExp(r'/$'), '')}/auth/google/callback';
+          if (web is! Map ||
+              web['client_id'] is! String ||
+              !RegExp(r'^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$')
+                  .hasMatch(web['client_id']) ||
+              web['client_secret'] is! String ||
+              (web['client_secret'] as String).length < 12 ||
+              (web['client_secret'] as String).length > 1024 ||
+              web['auth_uri'] != 'https://accounts.google.com/o/oauth2/auth' ||
+              web['token_uri'] != 'https://oauth2.googleapis.com/token' ||
+              web['redirect_uris'] is! List ||
+              !(web['redirect_uris'] as List).contains(callback)) {
+            fieldErrors[key] = 'Den Google-Webclient für diese Installation verwenden. Client-ID, Geheimnis, Google-Adressen und die genaue API-Rücksprungadresse müssen enthalten sein.';
+          }
         }
       } catch (_) {
         fieldErrors[key] = 'Ungültiges JSON. Die Eingabe bleibt erhalten; zuerst die Klammern und Anführungszeichen prüfen.';
+      }
+    }
+    final publicRaw = fields['fcm_public_config']?.text ?? '';
+    final accountRaw = fields['fcm_service_account_json']?.text ?? '';
+    if (publicRaw.trim().isNotEmpty &&
+        accountRaw.trim().isNotEmpty &&
+        !fieldErrors.containsKey('fcm_public_config') &&
+        !fieldErrors.containsKey('fcm_service_account_json')) {
+      final public = jsonDecode(publicRaw) as Map,
+          account = jsonDecode(accountRaw) as Map;
+      if (public['projectId'] != account['project_id']) {
+        fieldErrors['fcm_public_config'] = 'App-Konfiguration und Dienstkonto gehören zu unterschiedlichen Firebase-Projekten. Vor dem Speichern das bestehende richtige Projekt abgleichen.';
+        fieldErrors['fcm_service_account_json'] =
+            'Das Projekt des Dienstkontos muss zur App-Konfiguration passen.';
       }
     }
     if (flags['real_data_approved'] == true &&
@@ -315,21 +543,100 @@ class _InstallationScreenState extends State<InstallationScreen> {
       ].firstWhere((e) => e.$1 == key).$2;
       throw ApiError('$label: ${fieldErrors[key]}');
     }
-    final data = <String, dynamic>{...flags};
+    final data = <String, dynamic>{
+      for (final key in dirtyFlags) key: flags[key],
+    };
     for (final entry in fields.entries) {
+      if (!dirtyFields.contains(entry.key)) continue;
+      if (secretInput(entry.key) && entry.value.text.isEmpty) continue;
       data[entry.key] = numbers.contains(entry.key)
           ? int.tryParse(entry.value.text)
           : entry.value.text;
     }
+    if (data['real_data_approved'] == true) {
+      data['privacy_evidence'] = fields['privacy_evidence']!.text;
+    }
+    if (data['push_approved'] == true) {
+      data['push_privacy_evidence'] = fields['push_privacy_evidence']!.text;
+      data['fcm_config_verification'] = fields['fcm_config_verification']!.text;
+    }
+    if (data.isEmpty) return false;
     final saved = await widget.state.api.put('$base/site', data);
     if (!own) throw ApiError('Die Sitzung hat sich geändert.');
     loadGeneration++;
     config = saved;
+    final savedSite = saved['site'] as Map;
+    for (final entry in fields.entries) {
+      if (secretInput(entry.key)) {
+        entry.value.clear();
+      } else {
+        entry.value.text = '${savedSite[entry.key] ?? ''}';
+      }
+      savedFields[entry.key] = entry.value.text;
+    }
+    for (final key in flags.keys.toList()) {
+      flags[key] = savedSite[key] == true;
+    }
+    savedFlags.addAll(flags);
+    visibleSecrets.clear();
+    secretResult = null;
+    dirtyFields.clear();
+    dirtyFlags.clear();
     setState(() {});
+    return true;
   }
+
+  Future<void> reconcileCompletion() async {
+    await widget.state.checkInstallation();
+    if (!mounted || !own) return;
+    if (!widget.state.needsSetup) {
+      password.clear();
+      confirm.clear();
+      code.clear();
+      context.go('/login');
+    } else {
+      setState(() {
+        completionUncertain = false;
+        error = ApiError(
+          'Der Server benötigt die Einrichtung weiterhin. Prüfe die Eingaben und schließe erst danach bewusst ab.',
+        );
+      });
+    }
+  }
+
+  Future<void> completeInstallation() => runAction(() async {
+    if (completionUncertain) return;
+    if (password.text != confirm.text) {
+      throw ApiError('Die Passwörter stimmen nicht überein.');
+    }
+    await save();
+    if (!own) return;
+    setState(() => completionUncertain = true);
+    try {
+      await widget.state.api.post('/setup/complete', {
+        'username': username.text.trim(),
+        'password': password.text,
+      });
+      if (!own) return;
+      password.clear();
+      confirm.clear();
+    } on ApiError catch (failure) {
+      if (failure.status >= 400 &&
+          failure.status < 500 &&
+          failure.status != 409) {
+        if (own) setState(() => completionUncertain = false);
+        rethrow;
+      }
+      throw ApiError(
+        'Der Abschluss konnte noch nicht bestätigt werden. Prüfe zuerst den Einrichtungsstatus; es wird kein zweites Administratorkonto angefordert.',
+      );
+    }
+    await reconcileCompletion();
+  });
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.state.removeListener(accountChanged);
     for (final focus in focuses.values) {
       focus.dispose();
@@ -354,79 +661,94 @@ class _InstallationScreenState extends State<InstallationScreen> {
   }.contains(key);
   Widget input(String key, String label) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
-    child: TextField(
-      focusNode: inputFocus(key),
-      textInputAction: inputOrder.isNotEmpty && key == inputOrder.last
-          ? TextInputAction.done
-          : TextInputAction.next,
-      onSubmitted: (_) => nextInput(key),
-      controller: fields[key],
-      enabled: !busy,
-      autocorrect: false,
-      enableSuggestions: false,
-      smartDashesType: secretInput(key) ? SmartDashesType.disabled : null,
-      smartQuotesType: secretInput(key) ? SmartQuotesType.disabled : null,
-      enableIMEPersonalizedLearning: !secretInput(key),
-      obscureText:
-          [
-            'smtp_password',
-            'fcm_service_account_json',
-            'google_oauth_client_json',
-          ].contains(key) &&
-          !visibleSecrets.contains(key),
-      maxLines:
-          [
-            'operator_address',
-            'fcm_public_config',
-            'privacy_evidence',
-            'push_privacy_evidence',
-            'fcm_config_verification',
-          ].contains(key)
-          ? 3
-          : 1,
-      keyboardType: numbers.contains(key)
-          ? TextInputType.number
-          : ['operator_support_email', 'smtp_from'].contains(key)
-          ? TextInputType.emailAddress
-          : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        errorText: fieldErrors[key],
-        errorMaxLines: 3,
-        suffixIcon:
-            [
-              'smtp_password',
-              'fcm_service_account_json',
-              'google_oauth_client_json',
-            ].contains(key)
-            ? IconButton(
-                tooltip: visibleSecrets.contains(key)
-                    ? 'Eingabe verbergen'
-                    : 'Eingabe anzeigen',
-                onPressed: busy
-                    ? null
-                    : () => setState(() {
-                        if (!visibleSecrets.add(key)) {
-                          visibleSecrets.remove(key);
-                        }
-                      }),
-                icon: Icon(
-                  visibleSecrets.contains(key)
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                ),
-              )
-            : null,
-        hintText:
-            (key == 'smtp_password' &&
-                    config?['site']['has_smtp_password'] == true) ||
-                (key == 'fcm_service_account_json' &&
-                    config?['site']['has_fcm_service_account'] == true) ||
-                (key == 'google_oauth_client_json' &&
-                    config?['site']['has_google_oauth_client'] == true)
-            ? 'Gespeichert · leer lassen zum Beibehalten'
-            : null,
-      ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          focusNode: inputFocus(key),
+          textInputAction: inputOrder.isNotEmpty && key == inputOrder.last
+              ? TextInputAction.done
+              : TextInputAction.next,
+          onSubmitted: (_) => nextInput(key),
+          controller: fields[key],
+          onChanged: (_) => edited(key),
+          enabled: !busy,
+          autocorrect: false,
+          enableSuggestions: false,
+          smartDashesType: secretInput(key) ? SmartDashesType.disabled : null,
+          smartQuotesType: secretInput(key) ? SmartQuotesType.disabled : null,
+          enableIMEPersonalizedLearning: !secretInput(key),
+          obscureText:
+              [
+                'smtp_password',
+                'fcm_service_account_json',
+                'google_oauth_client_json',
+              ].contains(key) &&
+              !visibleSecrets.contains(key),
+          maxLines:
+              [
+                'operator_address',
+                'fcm_public_config',
+                'privacy_evidence',
+                'push_privacy_evidence',
+                'fcm_config_verification',
+              ].contains(key)
+              ? 3
+              : 1,
+          keyboardType: numbers.contains(key)
+              ? TextInputType.number
+              : ['operator_support_email', 'smtp_from'].contains(key)
+              ? TextInputType.emailAddress
+              : TextInputType.text,
+          decoration: InputDecoration(
+            labelText: label,
+            errorText: fieldErrors[key],
+            errorMaxLines: 3,
+            suffixIcon:
+                [
+                  'smtp_password',
+                  'fcm_service_account_json',
+                  'google_oauth_client_json',
+                ].contains(key)
+                ? IconButton(
+                    tooltip: visibleSecrets.contains(key)
+                        ? 'Eingabe verbergen'
+                        : 'Eingabe anzeigen',
+                    onPressed: busy
+                        ? null
+                        : () => setState(() {
+                            if (!visibleSecrets.add(key)) {
+                              visibleSecrets.remove(key);
+                            }
+                          }),
+                    icon: Icon(
+                      visibleSecrets.contains(key)
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                  )
+                : null,
+            hintText:
+                (key == 'smtp_password' &&
+                        config?['site']['has_smtp_password'] == true) ||
+                    (key == 'fcm_service_account_json' &&
+                        config?['site']['has_fcm_service_account'] == true) ||
+                    (key == 'google_oauth_client_json' &&
+                        config?['site']['has_google_oauth_client'] == true)
+                ? 'Gespeichert · leer lassen zum Beibehalten'
+                : null,
+          ),
+        ),
+        if (secretInput(key) && hasStoredSecret(key))
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: busy ? null : () => removeStoredSecret(key, label),
+              icon: const Icon(Icons.delete_outline),
+              label: Text('Gespeicherten Eintrag entfernen: $label'),
+            ),
+          ),
+      ],
     ),
   );
 
@@ -434,7 +756,17 @@ class _InstallationScreenState extends State<InstallationScreen> {
     contentPadding: EdgeInsets.zero,
     title: Text(label),
     value: flags[key] ?? false,
-    onChanged: busy ? null : (v) => setState(() => flags[key] = v),
+    onChanged: busy
+        ? null
+        : (v) => setState(() {
+            flags[key] = v;
+            if (v == savedFlags[key]) {
+              dirtyFlags.remove(key);
+            } else {
+              dirtyFlags.add(key);
+            }
+            error = null;
+          }),
   );
 
   Widget group(int index) => Column(
@@ -553,25 +885,29 @@ class _InstallationScreenState extends State<InstallationScreen> {
             const SizedBox(height: 24),
             TextField(
               controller: code,
+              focusNode: inputFocus('unlock_code'),
+              enabled: !busy,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => unlock(),
+              onChanged: (_) => setState(() => unlockError = null),
               obscureText: true,
               autocorrect: false,
               enableSuggestions: false,
               smartDashesType: SmartDashesType.disabled,
               smartQuotesType: SmartQuotesType.disabled,
               enableIMEPersonalizedLearning: false,
-              decoration: const InputDecoration(labelText: 'Installationscode'),
+              decoration: InputDecoration(
+                labelText: 'Installationscode',
+                errorText: unlockError,
+                errorMaxLines: 3,
+              ),
             ),
             const SizedBox(height: 20),
             ActionButton(
               label: 'Einrichtung öffnen',
               icon: Icons.lock_open_rounded,
-              onPressed: () async {
-                await widget.state.api.post('/setup/unlock', {
-                  'code': code.text.trim(),
-                });
-                code.clear();
-                await load();
-              },
+              enabled: !busy,
+              onPressed: unlock,
             ),
           ],
         ),
@@ -595,14 +931,21 @@ class _InstallationScreenState extends State<InstallationScreen> {
           heading('Dein Administratorkonto'),
           TextField(
             controller: username,
+            enabled: !busy,
+            onChanged: (_) => edited('username'),
             focusNode: inputFocus('username'),
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => nextInput('username'),
-            decoration: const InputDecoration(labelText: 'Admin-Benutzername'),
+            decoration: InputDecoration(
+              labelText: 'Admin-Benutzername',
+              errorText: fieldErrors['username'],
+              errorMaxLines: 3,
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: password,
+            onChanged: (_) => edited('password'),
             focusNode: inputFocus('password'),
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => nextInput('password'),
@@ -630,12 +973,15 @@ class _InstallationScreenState extends State<InstallationScreen> {
                 ),
               ),
               labelText: 'Admin-Passwort',
+              errorText: fieldErrors['password'],
+              errorMaxLines: 3,
               helperText: 'Mindestens 12 Zeichen.',
             ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: confirm,
+            onChanged: (_) => edited('confirm'),
             focusNode: inputFocus('confirm'),
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => nextInput('confirm'),
@@ -646,8 +992,10 @@ class _InstallationScreenState extends State<InstallationScreen> {
             smartDashesType: SmartDashesType.disabled,
             smartQuotesType: SmartQuotesType.disabled,
             enableIMEPersonalizedLearning: false,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Admin-Passwort wiederholen',
+              errorText: fieldErrors['confirm'],
+              errorMaxLines: 3,
             ),
           ),
         ],
@@ -694,7 +1042,14 @@ class _InstallationScreenState extends State<InstallationScreen> {
             ],
             onChanged: busy
                 ? null
-                : (v) => fields['smtp_mode']!.text = v ?? 'starttls',
+                : (v) => setState(() {
+                    fields['smtp_mode']!.text = v ?? 'starttls';
+                    if (fields['smtp_mode']!.text == savedFields['smtp_mode']) {
+                      dirtyFields.remove('smtp_mode');
+                    } else {
+                      dirtyFields.add('smtp_mode');
+                    }
+                  }),
           ),
           const SizedBox(height: 24),
           TextField(
@@ -720,8 +1075,17 @@ class _InstallationScreenState extends State<InstallationScreen> {
             onPressed: () => runAction(() async {
               setState(() => mailResult = null);
               if (recipient.text.trim().isEmpty) {
+                inputFocus('test_recipient').requestFocus();
                 throw ApiError(
                   'Gib zuerst eine E-Mail-Adresse für die Testnachricht ein.',
+                );
+              }
+              if (recipient.text.trim().length > 254 ||
+                  !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+                      .hasMatch(recipient.text.trim())) {
+                inputFocus('test_recipient').requestFocus();
+                throw ApiError(
+                  'Gib zuerst eine gültige E-Mail-Adresse mit höchstens 254 Zeichen für die Testnachricht ein.',
                 );
               }
               await save();
@@ -850,24 +1214,22 @@ class _InstallationScreenState extends State<InstallationScreen> {
           ),
           if (widget.initial) ...[
             const SizedBox(height: 24),
+            if (completionUncertain) ...[
+              const Notice(
+                'Der Abschluss ist noch nicht sicher abgeglichen. Zuerst den gespeicherten Einrichtungsstatus lesen; kein erneuter Abschluss durch Neuladen.',
+              ),
+              ActionButton(
+                label: 'Einrichtungsstatus zuerst prüfen',
+                enabled: !busy,
+                secondary: true,
+                onPressed: () => runAction(reconcileCompletion),
+              ),
+            ],
             ActionButton(
               label: 'Einrichtung abschließen',
               icon: Icons.check_rounded,
-              enabled: !busy,
-              onPressed: () => runAction(() async {
-                if (password.text != confirm.text) {
-                  throw ApiError('Die Passwörter stimmen nicht überein.');
-                }
-                await save();
-                await widget.state.api.post('/setup/complete', {
-                  'username': username.text.trim(),
-                  'password': password.text,
-                });
-                password.clear();
-                confirm.clear();
-                await widget.state.checkInstallation();
-                if (mounted) context.go('/login');
-              }),
+              enabled: !busy && !completionUncertain,
+              onPressed: completeInstallation,
             ),
           ],
         ],
@@ -969,14 +1331,28 @@ class _InstallationScreenState extends State<InstallationScreen> {
                   final startedStep = step;
                   await runAction(() async {
                     if (widget.initial && startedStep == 0) {
+                      fieldErrors.removeWhere(
+                        (key, _) =>
+                            ['username', 'password', 'confirm'].contains(key),
+                      );
                       if (!RegExp(r'^[A-Za-z0-9._-]{3,50}$')
-                              .hasMatch(username.text.trim()) ||
-                          password.text.runes.length < 12 ||
-                          password.text.runes.length > 128 ||
-                          password.text != confirm.text) {
-                        throw ApiError(
-                          'Bitte Benutzername und beide Passwörter prüfen.',
-                        );
+                          .hasMatch(username.text.trim())) {
+                        fieldErrors['username'] = '3 bis 50 Zeichen: Buchstaben, Ziffern, Punkt, Unterstrich oder Bindestrich.';
+                      }
+                      if (password.text.runes.length < 12 ||
+                          password.text.runes.length > 128) {
+                        fieldErrors['password'] =
+                            'Ein Passwort mit 12 bis 128 Zeichen eingeben.';
+                      }
+                      if (password.text != confirm.text ||
+                          confirm.text.isEmpty) {
+                        fieldErrors['confirm'] =
+                            'Das gleiche Passwort erneut eingeben.';
+                      }
+                      if (fieldErrors.isNotEmpty) {
+                        setState(() {});
+                        inputFocus(fieldErrors.keys.first).requestFocus();
+                        throw ApiError('Die markierten Zugangsfelder prüfen.');
                       }
                     } else {
                       await save();
@@ -992,8 +1368,13 @@ class _InstallationScreenState extends State<InstallationScreen> {
                 label: 'Einstellungen speichern',
                 enabled: !busy,
                 onPressed: () => runAction(() async {
-                  await save();
-                  if (mounted) toast(context, 'Gespeichert.');
+                  final changed = await save();
+                  if (mounted) {
+                    toast(
+                      context,
+                      changed ? 'Gespeichert.' : 'Keine lokalen Änderungen.',
+                    );
+                  }
                 }),
               ),
           ],
@@ -1029,12 +1410,21 @@ class _InstallationScreenState extends State<InstallationScreen> {
       children: [
         if (error != null)
           Semantics(liveRegion: true, child: Notice('$error', warning: true)),
+        if (secretResult != null)
+          Semantics(liveRegion: true, child: Notice(secretResult!)),
         if (fieldErrors.isNotEmpty)
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final section in fieldErrors.keys.map(_fieldSection).toSet())
+              for (final section
+                  in fieldErrors.keys
+                      .where(
+                        (key) =>
+                            !['username', 'password', 'confirm'].contains(key),
+                      )
+                      .map(_fieldSection)
+                      .toSet())
                 if (!widget.initial || section + 1 <= step)
                   TextButton.icon(
                     onPressed: busy ? null : () => showFieldError(section),
@@ -1045,6 +1435,22 @@ class _InstallationScreenState extends State<InstallationScreen> {
                   ),
             ],
           ),
+        if (unlocked && siteDirty) ...[
+          const Notice(
+            'Ungespeicherter Betriebsentwurf. Prüfstände beziehen sich auf die zuletzt gespeicherten Einstellungen; Änderungen erst bewusst speichern.',
+          ),
+          TextButton.icon(
+            onPressed: busy ? null : resetSiteDraft,
+            icon: const Icon(Icons.undo),
+            label: const Text('Betriebsentwurf zurücksetzen'),
+          ),
+          TextButton.icon(
+            onPressed: busy ? null : reviewSiteDraft,
+            icon: const Icon(Icons.compare_arrows),
+            label: const Text('Betriebsänderungen prüfen'),
+          ),
+          const SizedBox(height: 16),
+        ],
         content(),
       ],
     );

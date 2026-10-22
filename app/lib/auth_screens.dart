@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart' show TextInput;
+import 'package:flutter/services.dart'
+    show TextInput, HardwareKeyboard, KeyboardLockMode;
 import 'package:go_router/go_router.dart';
 
 import 'api.dart';
+import 'auth_information.dart';
 import 'app_version.dart';
 import 'download_panel.dart';
 import 'ui.dart';
@@ -56,14 +58,7 @@ class LandingScreen extends StatelessWidget {
                       kIsWeb ? 'Tarife ansehen' : 'Elternkonto erstellen',
                     ),
                   ),
-                  ActionButton(
-                    label: 'Demo ausprobieren',
-                    secondary: true,
-                    onPressed: () async {
-                      await state.accept(await state.api.post('/demo'));
-                      if (context.mounted) context.go('/app');
-                    },
-                  ),
+                  _DemoEntryButton(state),
                 ],
               ),
             ],
@@ -306,6 +301,56 @@ class LandingScreen extends StatelessWidget {
   );
 }
 
+class _DemoEntryButton extends StatefulWidget {
+  final AppState state;
+  const _DemoEntryButton(this.state);
+  @override
+  State<_DemoEntryButton> createState() => _DemoEntryButtonState();
+}
+
+class _DemoEntryButtonState extends State<_DemoEntryButton> {
+  int? authenticationRevision;
+  AppState? authenticationState;
+  @override
+  void dispose() {
+    final revision = authenticationRevision;
+    if (revision != null) authenticationState?.cancelAuthentication(revision);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext _) => ActionButton(
+    label: 'Demo ausprobieren',
+    secondary: true,
+    onPressed: () async {
+      final state = widget.state, account = widget.state.user;
+      if (account != null && !state.isDemo) {
+        final confirmed = await confirmDialog(
+          context,
+          'Zum künstlichen Testraum wechseln?',
+          'Du verlässt diesen angemeldeten Zugang. Für die Rückkehr brauchst du deine bisherigen Zugangsdaten. Im Testraum nur künstliche Angaben verwenden.',
+          confirmLabel: 'Testraum öffnen',
+        );
+        if (!confirmed) return;
+      }
+      if (!mounted ||
+          !identical(state.user, account) ||
+          ModalRoute.of(context)?.isCurrent == false) {
+        return;
+      }
+      final revision = state.beginAuthentication();
+      authenticationState = state;
+      authenticationRevision = revision;
+      final response = await state.api.post('/demo');
+      if (!mounted) return;
+      await state.accept(response, authenticationRevision: revision);
+      if (mounted && ModalRoute.of(context)?.isCurrent != false) {
+        context.go('/app');
+      }
+    },
+  );
+}
+
 class AuthScreen extends StatefulWidget {
   final AppState state;
   final String mode;
@@ -320,7 +365,7 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   final username = TextEditingController();
   final password = TextEditingController();
   final name = TextEditingController();
@@ -337,23 +382,57 @@ class _AuthScreenState extends State<AuthScreen> {
   bool submitting = false, googleBusy = false;
   int formRevision = 0;
   bool consent = false, passwordVisible = false, tokenVisible = false;
+  bool completed = false, leaveAllowed = false, leavePromptOpen = false;
+  bool get editable => !submitting && !googleBusy && !completed;
+  bool get hasRegistrationDraft =>
+      widget.mode == 'register' &&
+      !completed &&
+      (name.text.isNotEmpty ||
+          family.text.isNotEmpty ||
+          password.text.isNotEmpty ||
+          consent ||
+          (_identifierEdited && username.text.isNotEmpty));
   String? _identifierFromPreviousForm;
   bool _identifierEdited = false;
   String? result;
   String? error;
+  int? authenticationRevision;
+  AppState? authenticationState;
+
+  void cancelOwnAuthentication() {
+    final revision = authenticationRevision;
+    if (revision != null) authenticationState?.cancelAuthentication(revision);
+    authenticationRevision = null;
+    authenticationState = null;
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    HardwareKeyboard.instance.addHandler(keyboardChanged);
+    passwordFocus.addListener(passwordFocusChanged);
     _restoreIdentifier();
     _readLink();
+  }
+
+  bool keyboardChanged(KeyEvent event) {
+    if (mounted && passwordFocus.hasFocus) setState(() {});
+    return false;
+  }
+
+  void passwordFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void didUpdateWidget(covariant AuthScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.linkUri != widget.linkUri || oldWidget.mode != widget.mode) {
+      cancelOwnAuthentication();
       formRevision++;
       submitting = googleBusy = false;
+      completed = leaveAllowed = false;
       if (oldWidget.mode != widget.mode) {
         _restoreIdentifier();
         name.clear();
@@ -401,6 +480,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
+    cancelOwnAuthentication();
+    HardwareKeyboard.instance.removeHandler(keyboardChanged);
+    passwordFocus.removeListener(passwordFocusChanged);
+    WidgetsBinding.instance.removeObserver(this);
     for (final c in [username, password, name, family, token]) {
       c.dispose();
     }
@@ -428,9 +511,39 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   });
 
-  void goToAuth(String location) {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed &&
+        (passwordVisible || tokenVisible)) {
+      setState(() => passwordVisible = tokenVisible = false);
+    }
+  }
+
+  Future<bool> confirmLeaving() async {
+    if (!hasRegistrationDraft) return true;
+    if (leavePromptOpen || submitting || googleBusy) return false;
+    leavePromptOpen = true;
+    final revision = formRevision;
+    try {
+      final confirmed = await confirmDialog(
+        context,
+        'Registrierungsentwurf verwerfen?',
+        'Deine Angaben sind noch nicht gesendet. Bei Abbrechen kannst du sie hier weiterbearbeiten.',
+        confirmLabel: 'Entwurf verwerfen',
+        destructive: true,
+      );
+      return mounted && revision == formRevision && confirmed;
+    } finally {
+      leavePromptOpen = false;
+    }
+  }
+
+  Future<void> goToAuth(String location) async {
     if (submitting || googleBusy) return;
-    final target = Uri.parse(location).path;
+    final targetUri = Uri.parse(location), revision = formRevision;
+    final target = targetUri.path;
+    if (target != '/register' && !await confirmLeaving()) return;
+    if (!mounted || revision != formRevision) return;
     final identifier = username.text.isNotEmpty || _identifierEdited
         ? username.text.trim()
         : _identifierFromPreviousForm ?? '';
@@ -439,18 +552,73 @@ class _AuthScreenState extends State<AuthScreen> {
           ? identifier
           : '',
     );
-    context.go(location);
+    final next =
+        targetUri.queryParameters['next'] ??
+        widget.linkUri.queryParameters['next'];
+    context.go(
+      [
+                '/login',
+                '/register',
+                '/recovery',
+                '/resend',
+                '/reset',
+                '/verify',
+              ].contains(target) &&
+              next != null &&
+              RegExp(r'^/bestellen/[a-z][a-z0-9-]{1,29}$').hasMatch(next)
+          ? targetUri.replace(queryParameters: {'next': next}).toString()
+          : Uri(
+              path: targetUri.path,
+              fragment: targetUri.hasFragment ? targetUri.fragment : null,
+            ).toString(),
+    );
   }
 
   void fieldEdited(String name) {
     if (name == 'username') _identifierEdited = true;
-    if (fieldErrors.containsKey(name) || error != null || result != null) {
-      setState(() {
-        fieldErrors.remove(name);
-        error = null;
-        result = null;
-      });
+    setState(() {
+      fieldErrors.remove(name);
+      error = null;
+      result = null;
+    });
+  }
+
+  String? get pastedLinkCode {
+    if (!['reset', 'verify', 'invite'].contains(widget.mode)) return null;
+    try {
+      final uri = Uri.tryParse(token.text.trim());
+      if (uri == null ||
+          uri.path != '/${widget.mode}' ||
+          uri.userInfo.isNotEmpty) {
+        return null;
+      }
+      final base = Uri.parse(widget.state.api.base);
+      if (uri.hasScheme
+          ? uri.scheme != 'https' || uri.origin != base.origin
+          : uri.hasAuthority) {
+        return null;
+      }
+      final code = Uri.splitQueryString(uri.fragment)['token'];
+      return code != null && RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(code)
+          ? code
+          : null;
+    } on FormatException {
+      return null;
     }
+  }
+
+  void focusError(String key) {
+    final node = {
+      'username': usernameFocus,
+      'name': nameFocus,
+      'family': familyFocus,
+      'password': passwordFocus,
+      'token': tokenFocus,
+      'consent': consentFocus,
+    }[key];
+    node?.requestFocus();
+    final target = node?.context;
+    if (target != null) Scrollable.ensureVisible(target, alignment: .2);
   }
 
   bool validateFields() {
@@ -520,14 +688,21 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> submit() async {
-    if (submitting || googleBusy || !validateFields()) return;
+    if (submitting || googleBusy || completed || !validateFields()) return;
     final mode = widget.mode, uri = widget.linkUri;
     final revision = formRevision;
     setState(() => submitting = true);
     FocusScope.of(context).unfocus();
     try {
+      cancelOwnAuthentication();
+      authenticationState = widget.state;
+      authenticationRevision = widget.state.beginAuthentication();
       if (mode == 'login') {
-        await widget.state.login(username.text.trim(), password.text);
+        await widget.state.login(
+          username.text.trim(),
+          password.text,
+          authenticationRevision: authenticationRevision,
+        );
         if (!mounted || revision != formRevision) return;
         TextInput.finishAutofillContext(shouldSave: true);
         final next = uri.queryParameters['next'] ?? '';
@@ -571,7 +746,23 @@ class _AuthScreenState extends State<AuthScreen> {
       if (['register', 'reset'].contains(mode)) {
         TextInput.finishAutofillContext(shouldSave: true);
       }
-      setState(() => result = data['message']);
+      setState(() {
+        result = data['message'] is String
+            ? data['message']
+            : 'Die Änderung wurde bestätigt.';
+        completed = [
+          'reset',
+          'verify',
+          'invite',
+          'recovery',
+          'resend',
+        ].contains(mode);
+        if (['reset', 'verify', 'invite'].contains(mode)) {
+          token.clear();
+          password.clear();
+          passwordVisible = tokenVisible = false;
+        }
+      });
       showFeedback();
     } catch (failure) {
       if (!mounted || revision != formRevision) return;
@@ -599,388 +790,479 @@ class _AuthScreenState extends State<AuthScreen> {
       'invite' => 'Zur Familie dazukommen',
       _ => 'Willkommen zurück',
     };
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: context.palette.cream,
-        automaticallyImplyLeading: !submitting && !googleBusy,
-        title: InkWell(
-          onTap: submitting || googleBusy ? null : () => goToAuth('/'),
-          child: brand(),
+    return PopScope<Object?>(
+      canPop:
+          !submitting && !googleBusy && (!hasRegistrationDraft || leaveAllowed),
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || submitting || googleBusy || leavePromptOpen) return;
+        if (await confirmLeaving() && mounted) {
+          setState(() => leaveAllowed = true);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && context.canPop()) context.pop();
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: context.palette.cream,
+          automaticallyImplyLeading: !submitting && !googleBusy,
+          title: InkWell(
+            onTap: submitting || googleBusy ? null : () => goToAuth('/'),
+            child: brand(),
+          ),
+          actions: [AppearanceToggle(widget.state), const SizedBox(width: 16)],
         ),
-        actions: [AppearanceToggle(widget.state), const SizedBox(width: 16)],
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(22),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 490),
-            child: AutofillGroup(
-              onDisposeAction: AutofillContextAction.cancel,
-              child: Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    SizedBox(height: 12),
-                    Text(switch (mode) {
-                      'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
-                      'register' => 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.',
-                      'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
-                      'resend' => 'Für ein noch unbestätigtes Elternkonto: Fordere bewusst einen neuen E-Mail-Link an. Prüfe auch deinen Spamordner. Die Rückmeldung verrät nicht, ob ein Konto existiert.',
-                      'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
-                      'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
-                      _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
-                    }, style: TextStyle(color: context.palette.muted)),
-                    SizedBox(height: 24),
-                    SizedBox(
-                      key: feedbackKey,
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Column(
-                          children: [
-                            if (result != null)
-                              Notice(result!, icon: Icons.check_circle_outline),
-                            if (error != null) Notice(error!, warning: true),
-                          ],
-                        ),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(22),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 490),
+              child: AutofillGroup(
+                onDisposeAction: AutofillContextAction.cancel,
+                child: Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
-                    ),
-                    if ([
-                      'login',
-                      'register',
-                      'recovery',
-                      'resend',
-                    ].contains(mode)) ...[
-                      TextField(
-                        controller: username,
-                        onChanged: (_) => fieldEdited('username'),
-                        focusNode: usernameFocus,
-                        enabled: !submitting && !googleBusy,
-                        autocorrect: false,
-                        textInputAction: ['recovery', 'resend'].contains(mode)
-                            ? TextInputAction.done
-                            : TextInputAction.next,
-                        onSubmitted: (_) async {
-                          if (['recovery', 'resend'].contains(mode)) {
-                            await submit();
-                          } else {
-                            (mode == 'register' ? nameFocus : passwordFocus)
-                                .requestFocus();
-                          }
-                        },
-                        autofillHints: mode == 'login'
-                            ? [AutofillHints.username]
-                            : [AutofillHints.email],
-                        keyboardType: mode == 'login'
-                            ? TextInputType.text
-                            : TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: mode == 'login'
-                              ? 'E-Mail oder Benutzername'
-                              : 'E-Mail-Adresse',
-                          helperText: mode == 'login'
-                              ? 'Eltern: E-Mail oder Benutzername. Kinder: eigener Benutzername.'
-                              : null,
-                          helperMaxLines: 3,
-                          errorText: fieldErrors['username'],
-                          errorMaxLines: 3,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                    if (['register', 'invite'].contains(mode)) ...[
-                      TextField(
-                        controller: name,
-                        onChanged: (_) => fieldEdited('name'),
-                        focusNode: nameFocus,
-                        enabled: !submitting && !googleBusy,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) =>
-                            (mode == 'register' ? familyFocus : passwordFocus)
-                                .requestFocus(),
-                        decoration: InputDecoration(
-                          labelText: 'Dein Anzeigename',
-                          helperText: mode == 'invite'
-                              ? 'Nur für ein neues Elternkonto erforderlich.'
-                              : null,
-                          helperMaxLines: 3,
-                          errorText: fieldErrors['name'],
-                          errorMaxLines: 3,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                    if (mode == 'register') ...[
-                      TextField(
-                        controller: family,
-                        onChanged: (_) => fieldEdited('family'),
-                        focusNode: familyFocus,
-                        enabled: !submitting && !googleBusy,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => passwordFocus.requestFocus(),
-                        decoration: InputDecoration(
-                          labelText: 'Name deiner Familie',
-                          errorText: fieldErrors['family'],
-                          errorMaxLines: 3,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                    if ([
-                      'login',
-                      'register',
-                      'reset',
-                      'invite',
-                    ].contains(mode)) ...[
-                      TextField(
-                        controller: password,
-                        onChanged: (_) => fieldEdited('password'),
-                        focusNode: passwordFocus,
-                        enabled: !submitting && !googleBusy,
-                        textInputAction:
-                            ['login', 'register'].contains(mode) ||
-                                token.text.isNotEmpty
-                            ? TextInputAction.done
-                            : TextInputAction.next,
-                        onSubmitted: (_) async {
-                          if (['login', 'register'].contains(mode) ||
-                              token.text.isNotEmpty) {
-                            await submit();
-                          } else {
-                            tokenFocus.requestFocus();
-                          }
-                        },
-                        obscureText: !passwordVisible,
-                        enableSuggestions: false,
-                        autocorrect: false,
-                        smartDashesType: SmartDashesType.disabled,
-                        smartQuotesType: SmartQuotesType.disabled,
-                        enableIMEPersonalizedLearning: false,
-                        autofillHints: ['login', 'invite'].contains(mode)
-                            ? [AutofillHints.password]
-                            : [AutofillHints.newPassword],
-                        decoration: InputDecoration(
-                          suffixIcon: IconButton(
-                            tooltip: passwordVisible
-                                ? 'Passwort verbergen'
-                                : 'Passwort anzeigen',
-                            icon: Icon(
-                              passwordVisible
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                            ),
-                            onPressed: submitting || googleBusy
-                                ? null
-                                : () => setState(
-                                    () => passwordVisible = !passwordVisible,
-                                  ),
-                          ),
-                          labelText: mode == 'invite'
-                              ? 'Elternpasswort'
-                              : mode == 'login'
-                              ? 'Passwort'
-                              : 'Neues Passwort',
-                          helperText: mode == 'invite'
-                              ? 'Bestehendes Konto: dein aktuelles Passwort, auch wenn du schon angemeldet bist. Neues Konto: mindestens 12 Zeichen.'
-                              : mode == 'login'
-                              ? null
-                              : 'Mindestens 12 Zeichen.',
-                          helperMaxLines: 5,
-                          errorText: fieldErrors['password'],
-                          errorMaxLines: 3,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                    if (['reset', 'verify', 'invite'].contains(mode)) ...[
-                      TextField(
-                        controller: token,
-                        onChanged: (_) => fieldEdited('token'),
-                        focusNode: tokenFocus,
-                        enabled: !submitting && !googleBusy,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => submit(),
-                        obscureText: !tokenVisible,
-                        smartDashesType: SmartDashesType.disabled,
-                        smartQuotesType: SmartQuotesType.disabled,
-                        enableIMEPersonalizedLearning: false,
-                        decoration: InputDecoration(
-                          suffixIcon: IconButton(
-                            tooltip: tokenVisible
-                                ? 'Code verbergen'
-                                : 'Code anzeigen',
-                            onPressed: submitting || googleBusy
-                                ? null
-                                : () => setState(
-                                    () => tokenVisible = !tokenVisible,
-                                  ),
-                            icon: Icon(
-                              tokenVisible
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                            ),
-                          ),
-                          labelText: 'Sicherer Link-Code',
-                          helperText: 'Wird aus dem E-Mail-Link übernommen.',
-                          helperMaxLines: 3,
-                          errorText: fieldErrors['token'],
-                          errorMaxLines: 3,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                    if (mode == 'register') ...[
-                      TextButton.icon(
-                        onPressed: submitting || googleBusy
-                            ? null
-                            : () => context.push('/privacy'),
-                        icon: const Icon(Icons.privacy_tip_outlined),
-                        label: const Text('Datenschutz vor dem Anlegen lesen'),
-                      ),
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: consent,
-                        focusNode: consentFocus,
-                        onChanged: submitting || googleBusy
-                            ? null
-                            : (v) {
-                                setState(() => consent = v ?? false);
-                                fieldEdited('consent');
-                              },
-                        title: Text(
-                          'Ich bin volljährig und für die Einrichtung dieser Familie berechtigt.',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                      ),
-                      if (fieldErrors['consent'] != null)
+                      SizedBox(height: 12),
+                      if (passwordFocus.hasFocus &&
+                          HardwareKeyboard.instance.lockModesEnabled.contains(
+                            KeyboardLockMode.capsLock,
+                          ))
                         Semantics(
                           liveRegion: true,
-                          child: Text(
-                            fieldErrors['consent']!,
-                            style: TextStyle(color: context.palette.warningInk),
+                          child: const Notice(
+                            'Die Feststelltaste ist aktiv. Prüfe die Groß- und Kleinschreibung deines Passworts.',
                           ),
                         ),
-                      SizedBox(height: 12),
-                    ],
-                    ActionButton(
-                      key: ValueKey(('auth-submit', revision)),
-                      label: submitting
-                          ? 'Bitte warten …'
-                          : switch (mode) {
-                              'register' => 'Elternkonto anlegen',
-                              'recovery' => 'Wiederherstellungslink anfordern',
-                              'resend' => 'Bestätigungslink anfordern',
-                              'verify' => 'E-Mail bestätigen',
-                              'reset' => 'Passwort erneuern',
-                              'invite' => 'Einladung annehmen',
-                              _ => 'Anmelden',
-                            },
-                      onPressed: submit,
-                      enabled: !submitting && !googleBusy,
-                    ),
-                    SizedBox(height: 18),
-                    if (mode == 'login' || mode == 'register')
-                      GoogleLoginButton(
-                        widget.state,
-                        key: ValueKey(('google-auth', revision)),
-                        enabled: !submitting && !googleBusy,
-                        onBusyChanged: (busy) {
-                          if (mounted && revision == formRevision) {
-                            setState(() => googleBusy = busy);
-                          }
-                        },
-                      ),
-                    if (mode == 'login')
-                      TextButton.icon(
-                        onPressed: submitting || googleBusy
-                            ? null
-                            : () => showDialog<void>(
-                                context: context,
-                                builder: (dialog) => AlertDialog(
-                                  scrollable: true,
-                                  title: const Text(
-                                    'Deinen Kinderzugang wiederfinden',
-                                  ),
-                                  content: const Text(
-                                    'Frage deine Eltern nach deinem eigenen Benutzernamen. Sie können in ihrem Elternkonto auch ein neues Passwort für dich setzen. Die E-Mail-Wiederherstellung ist für Elternkonten gedacht.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(dialog),
-                                      child: const Text('Verstanden'),
-                                    ),
-                                  ],
+                      Text(switch (mode) {
+                        'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
+                        'register' => 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.',
+                        'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
+                        'resend' => 'Für ein noch unbestätigtes Elternkonto: Fordere bewusst einen neuen E-Mail-Link an. Prüfe auch deinen Spamordner. Die Rückmeldung verrät nicht, ob ein Konto existiert.',
+                        'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
+                        'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
+                        _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
+                      }, style: TextStyle(color: context.palette.muted)),
+                      SizedBox(height: 24),
+                      SizedBox(
+                        key: feedbackKey,
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Column(
+                            children: [
+                              if (result != null)
+                                Notice(
+                                  result!,
+                                  icon: Icons.check_circle_outline,
                                 ),
-                              ),
-                        icon: const Icon(Icons.child_care_rounded),
-                        label: const Text('Kinderzugang vergessen?'),
-                      ),
-                    if (['login', 'register', 'verify'].contains(mode))
-                      TextButton(
-                        onPressed: submitting || googleBusy
-                            ? null
-                            : () => goToAuth('/resend'),
-                        child: const Text('Bestätigungslink erneut anfordern'),
-                      ),
-                    if (mode == 'recovery')
-                      TextButton(
-                        onPressed: submitting ? null : () => goToAuth('/reset'),
-                        child: const Text('Link-Code aus E-Mail eingeben'),
-                      ),
-                    if (mode == 'reset')
-                      TextButton(
-                        onPressed: submitting
-                            ? null
-                            : () => goToAuth('/recovery'),
-                        child: const Text(
-                          'Neuen Wiederherstellungslink anfordern',
+                              if (error != null) Notice(error!, warning: true),
+                              if (fieldErrors.isNotEmpty) ...[
+                                Text(
+                                  '${fieldErrors.length} ${fieldErrors.length == 1 ? 'Eingabe braucht' : 'Eingaben brauchen'} deine Prüfung.',
+                                ),
+                                for (final key in fieldErrors.keys)
+                                  TextButton(
+                                    onPressed: editable
+                                        ? () => focusError(key)
+                                        : null,
+                                    child: Text(
+                                      '${const {'username': 'E-Mail oder Benutzername', 'name': 'Anzeigename', 'family': 'Familienname', 'password': 'Passwort', 'token': 'Link-Code', 'consent': 'Berechtigungsbestätigung'}[key]} prüfen',
+                                    ),
+                                  ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
-                    if (mode == 'login')
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        children: [
-                          TextButton(
-                            onPressed: submitting || googleBusy
-                                ? null
-                                : () => goToAuth('/recovery'),
-                            child: Text('Passwort vergessen'),
+                      if ([
+                        'login',
+                        'register',
+                        'recovery',
+                        'resend',
+                      ].contains(mode)) ...[
+                        TextField(
+                          controller: username,
+                          onChanged: (_) => fieldEdited('username'),
+                          focusNode: usernameFocus,
+                          enabled: editable,
+                          autocorrect: false,
+                          textInputAction: ['recovery', 'resend'].contains(mode)
+                              ? TextInputAction.done
+                              : TextInputAction.next,
+                          onSubmitted: (_) async {
+                            if (['recovery', 'resend'].contains(mode)) {
+                              await submit();
+                            } else {
+                              (mode == 'register' ? nameFocus : passwordFocus)
+                                  .requestFocus();
+                            }
+                          },
+                          autofillHints: mode == 'login'
+                              ? [AutofillHints.username]
+                              : [AutofillHints.email],
+                          keyboardType: mode == 'login'
+                              ? TextInputType.text
+                              : TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: mode == 'login'
+                                ? 'E-Mail oder Benutzername'
+                                : 'E-Mail-Adresse',
+                            helperText: mode == 'login'
+                                ? 'Eltern: E-Mail oder Benutzername. Kinder: eigener Benutzername.'
+                                : null,
+                            helperMaxLines: 3,
+                            errorText: fieldErrors['username'],
+                            errorMaxLines: 3,
                           ),
-                          TextButton(
-                            onPressed: submitting || googleBusy
-                                ? null
-                                : () => goToAuth(
-                                    Uri(
-                                      path: '/register',
-                                      queryParameters:
-                                          widget.linkUri.queryParameters,
-                                    ).toString(),
-                                  ),
-                            child: Text('Elternkonto erstellen'),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                      if (['register', 'invite'].contains(mode)) ...[
+                        TextField(
+                          controller: name,
+                          onChanged: (_) => fieldEdited('name'),
+                          focusNode: nameFocus,
+                          enabled: editable,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) =>
+                              (mode == 'register' ? familyFocus : passwordFocus)
+                                  .requestFocus(),
+                          decoration: InputDecoration(
+                            labelText: 'Dein Anzeigename',
+                            helperText: mode == 'invite'
+                                ? 'Nur für ein neues Elternkonto erforderlich.'
+                                : null,
+                            helperMaxLines: 3,
+                            errorText: fieldErrors['name'],
+                            errorMaxLines: 3,
                           ),
-                        ],
-                      )
-                    else
-                      TextButton(
-                        onPressed: submitting || googleBusy
-                            ? null
-                            : () => goToAuth(
-                                Uri(
-                                  path: '/login',
-                                  queryParameters:
-                                      widget.linkUri.queryParameters,
-                                ).toString(),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                      if (mode == 'register') ...[
+                        TextField(
+                          controller: family,
+                          onChanged: (_) => fieldEdited('family'),
+                          focusNode: familyFocus,
+                          enabled: editable,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => passwordFocus.requestFocus(),
+                          decoration: InputDecoration(
+                            labelText: 'Name deiner Familie',
+                            errorText: fieldErrors['family'],
+                            errorMaxLines: 3,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                      if ([
+                        'login',
+                        'register',
+                        'reset',
+                        'invite',
+                      ].contains(mode)) ...[
+                        TextField(
+                          controller: password,
+                          onChanged: (_) => fieldEdited('password'),
+                          focusNode: passwordFocus,
+                          enabled: editable,
+                          textInputAction:
+                              ['login', 'register'].contains(mode) ||
+                                  token.text.isNotEmpty
+                              ? TextInputAction.done
+                              : TextInputAction.next,
+                          onSubmitted: (_) async {
+                            if (['login', 'register'].contains(mode) ||
+                                token.text.isNotEmpty) {
+                              await submit();
+                            } else {
+                              tokenFocus.requestFocus();
+                            }
+                          },
+                          obscureText: !passwordVisible,
+                          enableSuggestions: false,
+                          autocorrect: false,
+                          smartDashesType: SmartDashesType.disabled,
+                          smartQuotesType: SmartQuotesType.disabled,
+                          enableIMEPersonalizedLearning: false,
+                          autofillHints: ['login', 'invite'].contains(mode)
+                              ? [AutofillHints.password]
+                              : [AutofillHints.newPassword],
+                          decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              tooltip: passwordVisible
+                                  ? 'Passwort verbergen'
+                                  : 'Passwort anzeigen',
+                              icon: Icon(
+                                passwordVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                               ),
-                        child: Text('Zur Anmeldung'),
-                      ),
-                  ],
+                              onPressed: submitting || googleBusy
+                                  ? null
+                                  : () => setState(
+                                      () => passwordVisible = !passwordVisible,
+                                    ),
+                            ),
+                            labelText: mode == 'invite'
+                                ? 'Elternpasswort'
+                                : mode == 'login'
+                                ? 'Passwort'
+                                : 'Neues Passwort',
+                            helperText: mode == 'invite'
+                                ? 'Bestehendes Konto: dein aktuelles Passwort, auch wenn du schon angemeldet bist. Neues Konto: mindestens 12 Zeichen.'
+                                : mode == 'login'
+                                ? null
+                                : 'Mindestens 12 Zeichen.',
+                            helperMaxLines: 5,
+                            errorText: fieldErrors['password'],
+                            errorMaxLines: 3,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                      ],
+                      if (['reset', 'verify', 'invite'].contains(mode)) ...[
+                        TextField(
+                          controller: token,
+                          onChanged: (_) => fieldEdited('token'),
+                          focusNode: tokenFocus,
+                          enabled: editable,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => submit(),
+                          obscureText: !tokenVisible,
+                          smartDashesType: SmartDashesType.disabled,
+                          smartQuotesType: SmartQuotesType.disabled,
+                          enableIMEPersonalizedLearning: false,
+                          decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              tooltip: tokenVisible
+                                  ? 'Code verbergen'
+                                  : 'Code anzeigen',
+                              onPressed: submitting || googleBusy
+                                  ? null
+                                  : () => setState(
+                                      () => tokenVisible = !tokenVisible,
+                                    ),
+                              icon: Icon(
+                                tokenVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                              ),
+                            ),
+                            labelText: 'Sicherer Link-Code',
+                            helperText: 'Wird aus dem E-Mail-Link übernommen.',
+                            helperMaxLines: 3,
+                            errorText: fieldErrors['token'],
+                            errorMaxLines: 3,
+                          ),
+                        ),
+                        if (pastedLinkCode != null)
+                          TextButton.icon(
+                            onPressed: editable
+                                ? () {
+                                    final code = pastedLinkCode;
+                                    if (code == null) return;
+                                    token.text = code;
+                                    fieldEdited('token');
+                                    tokenFocus.requestFocus();
+                                  }
+                                : null,
+                            icon: const Icon(Icons.link_rounded),
+                            label: const Text(
+                              'Code aus diesem E-Mail-Link übernehmen',
+                            ),
+                          ),
+                        SizedBox(height: 16),
+                      ],
+                      if (mode == 'register') ...[
+                        TextButton.icon(
+                          onPressed: submitting || googleBusy
+                              ? null
+                              : () => context.push('/privacy'),
+                          icon: const Icon(Icons.privacy_tip_outlined),
+                          label: const Text(
+                            'Datenschutz vor dem Anlegen lesen',
+                          ),
+                        ),
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: consent,
+                          focusNode: consentFocus,
+                          onChanged: submitting || googleBusy
+                              ? null
+                              : (v) {
+                                  setState(() => consent = v ?? false);
+                                  fieldEdited('consent');
+                                },
+                          title: Text(
+                            'Ich bin volljährig und für die Einrichtung dieser Familie berechtigt.',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        if (fieldErrors['consent'] != null)
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              fieldErrors['consent']!,
+                              style: TextStyle(
+                                color: context.palette.warningInk,
+                              ),
+                            ),
+                          ),
+                        SizedBox(height: 12),
+                      ],
+                      if (!completed)
+                        ActionButton(
+                          key: ValueKey(('auth-submit', revision)),
+                          label: submitting
+                              ? 'Bitte warten …'
+                              : switch (mode) {
+                                  'register' => 'Elternkonto anlegen',
+                                  'recovery' =>
+                                    'Wiederherstellungslink anfordern',
+                                  'resend' => 'Bestätigungslink anfordern',
+                                  'verify' => 'E-Mail bestätigen',
+                                  'reset' => 'Passwort erneuern',
+                                  'invite' => 'Einladung annehmen',
+                                  _ => 'Anmelden',
+                                },
+                          onPressed: submit,
+                          enabled: editable,
+                        ),
+                      if (completed &&
+                          ['recovery', 'resend'].contains(mode)) ...[
+                        TextButton(
+                          onPressed: submitting
+                              ? null
+                              : () async {
+                                  setState(() => completed = false);
+                                  await submit();
+                                },
+                          child: const Text('Weiteren Link bewusst anfordern'),
+                        ),
+                        TextButton(
+                          onPressed: submitting
+                              ? null
+                              : () {
+                                  setState(() {
+                                    completed = false;
+                                    result = null;
+                                    error = null;
+                                  });
+                                  usernameFocus.requestFocus();
+                                },
+                          child: const Text('Andere E-Mail-Adresse verwenden'),
+                        ),
+                      ],
+                      SizedBox(height: 18),
+                      if (mode == 'login' || mode == 'register')
+                        GoogleLoginButton(
+                          widget.state,
+                          key: ValueKey(('google-auth', revision)),
+                          enabled: !submitting && !googleBusy,
+                          onBusyChanged: (busy) {
+                            if (mounted && revision == formRevision) {
+                              setState(() => googleBusy = busy);
+                            }
+                          },
+                        ),
+                      if (mode == 'login')
+                        TextButton.icon(
+                          onPressed: submitting || googleBusy
+                              ? null
+                              : () => showDialog<void>(
+                                  context: context,
+                                  builder: (dialog) => AlertDialog(
+                                    scrollable: true,
+                                    title: const Text(
+                                      'Deinen Kinderzugang wiederfinden',
+                                    ),
+                                    content: const Text(
+                                      'Frage deine Eltern nach deinem eigenen Benutzernamen. Sie können in ihrem Elternkonto auch ein neues Passwort für dich setzen. Die E-Mail-Wiederherstellung ist für Elternkonten gedacht.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(dialog),
+                                        child: const Text('Verstanden'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                          icon: const Icon(Icons.child_care_rounded),
+                          label: const Text('Kinderzugang vergessen?'),
+                        ),
+                      if (['login', 'register', 'verify'].contains(mode))
+                        TextButton(
+                          onPressed: submitting || googleBusy
+                              ? null
+                              : () => goToAuth('/resend'),
+                          child: const Text(
+                            'Bestätigungslink erneut anfordern',
+                          ),
+                        ),
+                      if (mode == 'recovery')
+                        TextButton(
+                          onPressed: submitting
+                              ? null
+                              : () => goToAuth('/reset'),
+                          child: const Text('Link-Code aus E-Mail eingeben'),
+                        ),
+                      if (mode == 'reset')
+                        TextButton(
+                          onPressed: submitting
+                              ? null
+                              : () => goToAuth('/recovery'),
+                          child: const Text(
+                            'Neuen Wiederherstellungslink anfordern',
+                          ),
+                        ),
+                      if (mode == 'login')
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          children: [
+                            TextButton(
+                              onPressed: submitting || googleBusy
+                                  ? null
+                                  : () => goToAuth('/recovery'),
+                              child: Text('Passwort vergessen'),
+                            ),
+                            TextButton(
+                              onPressed: submitting || googleBusy
+                                  ? null
+                                  : () => goToAuth(
+                                      Uri(
+                                        path: '/register',
+                                        queryParameters:
+                                            widget.linkUri.queryParameters,
+                                      ).toString(),
+                                    ),
+                              child: Text('Elternkonto erstellen'),
+                            ),
+                          ],
+                        )
+                      else
+                        TextButton(
+                          onPressed: submitting || googleBusy
+                              ? null
+                              : () => goToAuth(
+                                  Uri(
+                                    path: '/login',
+                                    queryParameters:
+                                        widget.linkUri.queryParameters,
+                                  ).toString(),
+                                ),
+                          child: Text('Zur Anmeldung'),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1075,6 +1357,9 @@ class InformationScreen extends StatelessWidget {
                                   ? 'Verantwortlicher Betreiber\n${data['operator']}\n${data['address']}\nSupport: ${data['support_email']}'
                                   : 'Betreiber- und Kontaktangaben werden ergänzt.',
                             ),
+                            if (data['complete'] == true &&
+                                data['support_email'] is String)
+                              PublicSupportContact(data['support_email']),
                           ],
                         ),
                       );
@@ -1113,9 +1398,12 @@ class InformationScreen extends StatelessWidget {
                           ),
                       ],
                     ),
-                  Text(
-                    kind == 'privacy'
-                        ? '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SCHULPILOT und das übrige Gerät werden nicht überwacht.
+                  if (kind == 'privacy')
+                    PrivacyReadingPanel(
+                      initialSection: section,
+                      publicOrigin: (api ?? Api()).base,
+                      legalApi: api,
+                      text: '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SCHULPILOT und das übrige Gerät werden nicht überwacht.
 
 Im öffentlichen Testraum werden ausschließlich synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die feste Demo benötigt keine KI. Der ausdrücklich gekennzeichnete KI-Test sendet ausschließlich ein vom Server erzeugtes künstliches Testblatt bzw. festen Beispielstoff an den dafür freigegebenen Lernanbieter. Freie Kontoeingaben werden dabei nicht übertragen.
 
@@ -1139,16 +1427,19 @@ Benachrichtigungen sind freiwillig. Erst beim Einschalten auf einem angemeldeten
 
 Bei einer Bestellung speichern wir Tarif, Gesamtpreis, Vertragsfassung und Zahlungszuordnung. Zahlungsbelege bleiben für die gesetzliche Aufbewahrung acht Jahre nach Ende des Buchungsjahres erhalten; beim Löschen der Familie wird ihre Kontozuordnung entfernt. Diese Belege enthalten keine Kinderantworten oder Lernmaterialien. Die App liest keine Bankkonten aus; ein Administrator prüft Überweisungen im tatsächlichen Bankkonto.
 
-Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Lernmaterialien. Aktive Lernzeit bleibt eine Näherung. Eine einzelne richtige Antwort begründet keine sichere Beherrschung; fehlende Nutzung keine Aussage über Verständnis.'''
-                        : '''Schulpilot begleitet deinen Lernalltag: vom Foto deiner Heftseiten über Erklärungen und Übungen bis zur passenden Wiederholung.
+Es gibt keine Werbung, keinen Verkauf von Kinderprofilen und keine gemeinsame Inhaltsbibliothek aus privaten Lernmaterialien. Aktive Lernzeit bleibt eine Näherung. Eine einzelne richtige Antwort begründet keine sichere Beherrschung; fehlende Nutzung keine Aussage über Verständnis.''',
+                    )
+                  else
+                    Text(
+                      '''Schulpilot begleitet deinen Lernalltag: vom Foto deiner Heftseiten über Erklärungen und Übungen bis zur passenden Wiederholung.
 
 Kinder lernen in ihrem eigenen Lernraum. Eltern sehen, was schon gelingt, und können helfen, wenn es hakt.
 
 Die Demo enthält vorbereitete Beispiele. In deinem eigenen Konto übst du mit deinem Unterrichtsmaterial und KI-Unterstützung.
 
 Version $appVersion''',
-                    style: TextStyle(fontSize: 15, height: 1.8),
-                  ),
+                      style: TextStyle(fontSize: 15, height: 1.8),
+                    ),
                 ],
               ),
             ),

@@ -348,31 +348,87 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> accept(Json response) async {
+  int _authenticationRevision = 0;
+  Future<void> _authenticationStorage = Future<void>.value();
+  int beginAuthentication() => ++_authenticationRevision;
+  void cancelAuthentication(int revision) {
+    if (revision == _authenticationRevision) _authenticationRevision++;
+  }
+
+  void _requireAuthentication(int revision) {
+    if (revision != _authenticationRevision) {
+      throw ApiError(
+        'Diese Anmeldung ist nicht mehr aktuell. Bitte melde dich bewusst erneut an.',
+        409,
+      );
+    }
+  }
+
+  Future<void> _storeAuthentication(int revision, String? token) {
+    final next = _authenticationStorage.catchError((Object _) {}).then((
+      _,
+    ) async {
+      _requireAuthentication(revision);
+      if (token == null) {
+        await storage.delete(key: 'session');
+      } else {
+        await storage.write(key: 'session', value: token);
+      }
+      _requireAuthentication(revision);
+    });
+    _authenticationStorage = next;
+    return next;
+  }
+
+  Future<void> accept(Json response, {int? authenticationRevision}) async {
+    final intent = authenticationRevision ?? beginAuthentication();
+    _requireAuthentication(intent);
+    final candidate = response['user'];
+    if (candidate is! Map ||
+        candidate['id'] is! String ||
+        (candidate['id'] as String).isEmpty ||
+        !['child', 'parent', 'admin'].contains(candidate['role']) ||
+        (response['token'] != null && response['token'] is! String) ||
+        (response['credentials'] != null && response['credentials'] is! Map)) {
+      throw ApiError(
+        'Die Anmeldung wurde nicht vollständig bestätigt. Bitte versuche es erneut.',
+        502,
+      );
+    }
+    final previous = user;
     _authIdentifier = null;
-    // A fresh login has a new session even when the account ID is unchanged.
     inbox.clear();
-    if (user != null) await familyCalls.clear();
-    if (user != null && user!['id'] != response['user']['id']) {
+    if (previous != null) {
+      await familyCalls.clear();
+      _requireAuthentication(intent);
+    }
+    if (previous != null && previous['id'] != response['user']['id']) {
       await LessonVoiceSession.shared.stop();
-      inbox.clear();
+      _requireAuthentication(intent);
       recoveredPhoto = null;
       recoveredPhotoPurpose = 'notebook';
       recoveredPhotos.clear();
       if (!kIsWeb) {
         await storage.delete(key: 'camera_context');
+        _requireAuthentication(intent);
         await storage.delete(key: 'camera_child');
+        _requireAuthentication(intent);
       }
       await push.forget();
+      _requireAuthentication(intent);
       await pendingUploads.clear();
+      _requireAuthentication(intent);
       await learningDrafts.clear();
+      _requireAuthentication(intent);
     }
+    if (!kIsWeb && response['token'] != null) {
+      await _storeAuthentication(intent, response['token']);
+      _requireAuthentication(intent);
+      api.token = response['token'];
+    }
+    _requireAuthentication(intent);
     collectionViews.clear();
     user = Map<String, dynamic>.from(response['user']);
-    if (!kIsWeb && response['token'] != null) {
-      api.token = response['token'];
-      await storage.write(key: 'session', value: api.token);
-    }
     if (response['credentials'] != null) {
       demoCredentials = Map<String, dynamic>.from(response['credentials']);
     } else if (demoCredentials != null &&
@@ -386,15 +442,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String username, String password) async {
-    if (!kIsWeb) await storage.delete(key: 'google_login_proof');
-    await accept(
-      await api.post('/auth/login', {
-        'username': username,
-        'password': password,
-        'device': kIsWeb ? 'Web-Browser' : 'Android',
-      }),
-    );
+  Future<void> login(
+    String username,
+    String password, {
+    int? authenticationRevision,
+  }) async {
+    final intent = authenticationRevision ?? beginAuthentication();
+    _requireAuthentication(intent);
+    if (!kIsWeb) {
+      await storage.delete(key: 'google_login_proof');
+      _requireAuthentication(intent);
+    }
+    final response = await api.post('/auth/login', {
+      'username': username,
+      'password': password,
+      'device': kIsWeb ? 'Web-Browser' : 'Android',
+    });
+    _requireAuthentication(intent);
+    await accept(response, authenticationRevision: intent);
   }
 
   Future<void> logout({String? expectedAccountId}) async {
@@ -403,6 +468,7 @@ class AppState extends ChangeNotifier {
         identical(user, expectedUser) &&
         (expectedAccountId == null || user?['id'] == expectedAccountId);
     if (!currentAccount()) return;
+    beginAuthentication();
     if (familyCalls.live) {
       await familyCalls.end().timeout(
         const Duration(seconds: 4),
@@ -428,6 +494,7 @@ class AppState extends ChangeNotifier {
     bool currentAccount() =>
         expectedUser == null || identical(user, expectedUser);
     if (!currentAccount()) return;
+    final clearIntent = beginAuthentication();
     _authIdentifier = null;
     await familyCalls.clear();
     if (!currentAccount()) return;
@@ -448,7 +515,7 @@ class AppState extends ChangeNotifier {
     await learningDrafts.clear();
     if (expectedUser != null && user != null) return;
     if (!kIsWeb) {
-      await storage.delete(key: 'session');
+      await _storeAuthentication(clearIntent, null);
       if (expectedUser != null && user != null) return;
       await storage.delete(key: 'camera_child');
       if (expectedUser != null && user != null) return;

@@ -140,8 +140,12 @@ Finder _navigation(double width) => width >= 1050
     ? find.byType(NavigationRail)
     : find.byType(NavigationBar);
 
-Finder _navText(double width, String text) =>
-    find.descendant(of: _navigation(width), matching: find.text(text));
+Finder _navText(double width, String text) => find.descendant(
+  of: _navigation(width),
+  matching: width < 720 && text == 'Hausaufgaben'
+      ? find.byTooltip('Hausaufgaben')
+      : find.text(text),
+);
 
 void main() {
   for (final role in ['child', 'parent', 'admin']) {

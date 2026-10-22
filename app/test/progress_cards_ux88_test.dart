@@ -94,6 +94,11 @@ Future<({AppState state, GoRouter router})> display(
           initialSubject: route.uri.queryParameters['fach'],
           initialTopic: route.uri.queryParameters['thema'],
           initialCategory: route.uri.queryParameters['ergebnis'],
+          initialPeriod: route.uri.queryParameters['zeitraum'],
+          initialSort: route.uri.queryParameters['sortierung'],
+          initialSearch: route.uri.queryParameters['suche'],
+          initialStatus: route.uri.queryParameters['status'],
+          initialRoundKind: route.uri.queryParameters['rundenart'],
         ),
       ),
       GoRoute(

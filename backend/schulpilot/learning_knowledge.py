@@ -7,7 +7,7 @@ The original Attempts and their source snapshots remain authoritative.
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from .db import Attempt, Child, LearningUnit, UnitCoaching, UnitSource
 from .schemas import Preferences
@@ -47,15 +47,16 @@ def evidence(db, unit, sources):
     goals = catalogue(db, unit, sources)
     by_label = {g["label"]: g["id"] for g in goals}
     result = {g["id"]: {**g, "tasks": 0, "attempts": 0, "independent": 0, "supported": 0,
-        "needs_practice": 0, "uncertain": 0, "historical_tasks": 0,
+        "needs_practice": 0, "uncertain": 0, "reflection_tasks": 0, "historical_tasks": 0,
         "successful_check_dates": [], "evidence_refs": [], "last_independent_success": None,
-        "last_observation": None, "last_difficulty": None} for g in goals}
+        "last_observation": None, "last_assessment_observation": None, "last_difficulty": None} for g in goals}
     source_ids = [m.id for m in sources]
     related = select(UnitSource.unit_id).where(UnitSource.material_id.in_(source_ids))
     source_bound_ids = set(db.scalars(related))
     units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == unit.child_id,
         LearningUnit.subject == unit.subject, or_(LearningUnit.id.in_(related), LearningUnit.material_id.in_(source_ids)))))
-    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id.in_([u.id for u in units])).order_by(Attempt.created, Attempt.id)))
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id.in_([u.id for u in units])).order_by(
+        Attempt.created, func.coalesce(Attempt.evaluation["attempt_number"].as_integer(), 0), Attempt.id)))
     reports = {r.unit_id: r for r in db.scalars(select(UnitCoaching).where(UnitCoaching.unit_id.in_([u.id for u in units])))}
     grouped = {}
     for attempt in attempts:
@@ -69,7 +70,9 @@ def evidence(db, unit, sources):
         # to today's corrected source or invent current recall evidence.
         valid = old.id in source_bound_ids and source_state(db, old)[1]
         report = reports.get(old.id)
-        old_goals = (report.report or {}).get("learning_goals", []) if report else []
+        # Follow-up units keep the confirmed root goal IDs, even before they
+        # have their own report. A missing new report must not hide evidence.
+        old_goals = catalogue(db, old, sources)
         old_labels = {g["id"]: g["label"] for g in old_goals}
         review_map = {r["question_id"]: r["learning_goal_id"] for r in (report.report or {}).get("question_reviews", [])} if report else {}
         for q in old.questions:
@@ -87,13 +90,16 @@ def evidence(db, unit, sources):
                 state["historical_tasks"] += 1
                 continue
             last = values[-1]
-            independent = len(values) == 1 and last.outcome == "correct" and not last.assisted
+            reflection = (last.evaluation or {}).get("method") == "open_learning_v1"
+            independent = not reflection and len(values) == 1 and last.outcome == "correct" and not last.assisted
             state["tasks"] += 1
             state["attempts"] += len(values)
             state["last_observation"] = max(state["last_observation"] or 0, last.created)
-            bucket = "independent" if independent else "supported" if last.outcome == "correct" else "needs_practice" if last.outcome == "incorrect" else "uncertain"
+            bucket = "reflection_tasks" if reflection else "independent" if independent else "supported" if last.outcome == "correct" else "needs_practice" if last.outcome == "incorrect" else "uncertain"
             state[bucket] += 1
-            if not independent:
+            if not reflection:
+                state["last_assessment_observation"] = max(state["last_assessment_observation"] or 0, last.created)
+            if not reflection and not independent:
                 state["last_difficulty"] = max(state["last_difficulty"] or 0, last.created)
             state["evidence_refs"].extend("attempt:" + a.id for a in values)
             if independent:
@@ -112,9 +118,66 @@ def evidence(db, unit, sources):
         recent_days = [day for day in days if difficulty_day is None or day > difficulty_day]
         secure = len(recent_days) >= 3 and (date.fromisoformat(recent_days[-1]) - date.fromisoformat(recent_days[0])).days >= 7
         state["confidence"] = "repeated_recall" if secure else "initial_evidence" if state["independent"] else "support_needed" if state["needs_practice"] or state["supported"] else "unverified"
-        anchor = datetime.fromtimestamp(state["last_observation"], zone).date() if state["last_observation"] else None
+        stamp = state["last_assessment_observation"]
+        anchor = datetime.fromtimestamp(stamp, zone).date() if stamp else None
         state["review_due"] = planned_review(child, unit.subject, days,
-            difficult=not secure and bool(state["needs_practice"] or state["supported"]), anchor=anchor) if state["tasks"] else None
+            difficult=not secure and bool(state["needs_practice"] or state["supported"]), anchor=anchor) if stamp else None
         state["evidence_total"] = len(state["evidence_refs"])
         state["evidence_refs"] = state["evidence_refs"][-12:]
     return list(result.values())
+
+
+def buddy_context(db, child, *, unit=None, material_ids=(), limit=12):
+    """Compact read-only facts after the caller's authentication checks.
+
+    A source match is exact and revision-bound. Subject summaries are practice
+    observations, never a claim that a whole subject has been mastered. Chat,
+    media opens, grades, draft answers and private answer bodies are excluded.
+    """
+    from .learning_controller import source_state
+    from .learning_progress import read_ledger, subject_evidence
+
+    limit = max(1, min(int(limit), 12))
+    if unit is not None and unit.child_id != child.id:
+        raise ValueError("Knowledge context belongs to another child")
+    requested = set(material_ids)
+    if unit is None and requested:
+        candidates = select(UnitSource.unit_id).where(UnitSource.material_id.in_(requested))
+        # No guessed semantic association: only a stored source reference can
+        # connect a page to an existing exercise and its learning goals.
+        for candidate in db.scalars(select(LearningUnit).where(
+            LearningUnit.child_id == child.id, LearningUnit.id.in_(candidates)
+        ).order_by(LearningUnit.created.desc(), LearningUnit.id.desc())):
+            _, valid, sources = source_state(db, candidate)
+            if valid and all(source.child_id == child.id for source in sources) and requested <= {source.id for source in sources}:
+                unit = candidate
+                break
+    goals, edges, signature = [], [], None
+    valid = False
+    if unit is not None:
+        signature, valid, sources = source_state(db, unit)
+        valid = valid and all(source.child_id == child.id for source in sources)
+        if valid:
+            rows = evidence(db, unit, sources)
+            # Preserve the source catalogue order. Weak and strong evidence
+            # both matter; do not select only errors or only successes.
+            selected = rows[:limit]
+            fields = ("id", "label", "origin", "status", "tasks", "attempts", "independent", "supported",
+                "needs_practice", "uncertain", "reflection_tasks", "historical_tasks", "confidence", "successful_check_dates",
+                "last_independent_success", "last_observation", "last_assessment_observation", "last_difficulty", "review_due",
+                "evidence_total", "evidence_refs")
+            goals = [{key: row.get(key) for key in fields} for row in selected]
+            edges = prerequisites(goals)
+    ledger = read_ledger(db, child.id)
+    subjects = subject_evidence(ledger)[:limit]
+    # No elapsed screen time or round count is transmitted as a competence
+    # score. Only actual answered tasks and the latest observed outcomes.
+    subject_fields = ("subject", "topic_count", "practiced_tasks", "attempts", "independent_tasks",
+        "assisted_tasks", "needs_practice_tasks", "uncertain_tasks", "reflection_tasks", "last_activity")
+    return {"version": 1, "scope": "confirmed_source_goals" if valid else "practice_summary_only",
+        "source_valid": valid, "source_signature": signature, "goals": goals, "prerequisites": edges,
+        "subjects": [{key: row.get(key) for key in subject_fields} for row in subjects],
+        "notice": "Nur gespeicherte Übungsbelege. Ohne passende aktuelle Belege ist Vorwissen unbekannt. "
+            "Unterstützte Lösungen, spätere Abrufprüfungen und unklare Bewertungen getrennt betrachten; "
+            "Eigene Beiträge und Selbstreflexion sind keine geprüften Kompetenznachweise. "
+            "Chat-Aussagen und geöffnete Videos beweisen kein Verständnis."}

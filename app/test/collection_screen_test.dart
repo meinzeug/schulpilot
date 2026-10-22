@@ -180,7 +180,10 @@ void main() {
         await tap(tester, find.text('Abbrechen'));
         expect(posts, hasLength(1));
         await tap(tester, find.byTooltip('Lernrunde löschen'));
-        await tap(tester, find.text('Bestätigen'));
+        await tap(
+          tester,
+          find.widgetWithText(FilledButton, 'Lernrunde löschen'),
+        );
         await tester.pumpAndSettle();
         expect(removed, true);
         expect(find.byTooltip('Lernrunde löschen'), findsNothing);
@@ -258,7 +261,7 @@ void main() {
     expect(find.byTooltip('Heftseite löschen'), findsNWidgets(20));
     await tap(tester, find.byTooltip('Heftseite löschen').first);
     expect(find.text('Heftseite löschen?'), findsOneWidget);
-    await tap(tester, find.text('Bestätigen'));
+    await tap(tester, find.widgetWithText(FilledButton, 'Heftseite löschen'));
     expect(
       requests
           .where((request) => request.url.path.endsWith('/bulk-delete'))
@@ -519,7 +522,10 @@ void main() {
     await tap(tester, find.byType(Checkbox).at(1));
     await tap(tester, find.text('Auswahl löschen (2)'));
     expect(find.text('2 Heftseiten löschen?'), findsOneWidget);
-    await tap(tester, find.text('Bestätigen'));
+    await tap(
+      tester,
+      find.widgetWithText(FilledButton, '2 Heftseiten löschen'),
+    );
     expect(
       requests.where((r) => r.url.path.endsWith('/bulk-delete')),
       hasLength(1),

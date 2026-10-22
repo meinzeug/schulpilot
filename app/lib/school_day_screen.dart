@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'camera_recovery.dart';
+import 'child_photo_preview.dart';
 import 'material_screen.dart';
 import 'material_actions.dart';
 import 'dashboard.dart';
@@ -86,12 +88,16 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   String progress = '';
   bool loading = true, working = false, fetching = false, discarding = false;
   List<Json> pendingPhotos = [], importReceipts = [];
+  final packageSearch = TextEditingController();
+  String packageKind = 'all';
+  bool receiptProblems = false;
   Timer? poll;
   late String? actor = widget.state.user?['id'];
   late Json? actorAccount = widget.state.user;
   late String? family = widget.state.familyId;
   final privateRoutes = <Route<dynamic>>{};
-  int generation = 0;
+  int generation = 0, readVersion = 0;
+  bool queuedRead = false;
   bool foreground = true, routeVisible = true;
   late bool captureRequested = widget.startWithPhotos;
   final preparationKeys = <String, String>{};
@@ -198,6 +204,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     WidgetsBinding.instance.removeObserver(this);
     state.removeListener(identityChanged);
     closePrivateRoutes();
+    packageSearch.dispose();
     super.dispose();
   }
 
@@ -297,21 +304,38 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     }
   }
 
-  Future<void> load() async {
-    if (fetching || !ownerMatches) return;
+  Future<void> load({bool force = false}) async {
+    if (!ownerMatches) return;
+    if (working || fetching) {
+      if (force || working) {
+        readVersion++;
+        queuedRead = true;
+      }
+      return;
+    }
     final requestGeneration = generation;
+    final ticket = ++readVersion;
+    queuedRead = false;
     fetching = true;
     poll?.cancel();
     try {
       if (state.isChild) await refreshPending();
-      if (!mounted || !ownerMatches || requestGeneration != generation) return;
+      if (!mounted ||
+          !ownerMatches ||
+          (requestGeneration != generation || ticket != readVersion)) {
+        return;
+      }
       final result = await state.api.get(
         widget.dayId == null
             ? '/children/${widget.childId}/school-day/today'
             : '/school-days/${widget.dayId}',
       );
       Json? next = widget.dayId == null ? result['day'] as Json? : result;
-      if (!mounted || !ownerMatches || requestGeneration != generation) return;
+      if (!mounted ||
+          !ownerMatches ||
+          (requestGeneration != generation || ticket != readVersion)) {
+        return;
+      }
       if (widget.dayId != null &&
           next != null &&
           next['child_id'] != widget.childId) {
@@ -322,7 +346,11 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           '/children/${widget.childId}/school-day/today',
         );
       }
-      if (!mounted || !ownerMatches || requestGeneration != generation) return;
+      if (!mounted ||
+          !ownerMatches ||
+          (requestGeneration != generation || ticket != readVersion)) {
+        return;
+      }
       setState(() {
         day = next;
         error = null;
@@ -338,14 +366,23 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       if (state.isChild) await refreshPending();
       schedule();
     } catch (e) {
-      if (mounted && ownerMatches && requestGeneration == generation) {
+      if (mounted &&
+          ownerMatches &&
+          requestGeneration == generation &&
+          ticket == readVersion) {
         setState(() {
           error = e is ApiError ? e.message : 'Dein Schultag konnte gerade nicht geladen werden. Bitte versuche es erneut.';
           loading = false;
         });
       }
     } finally {
-      if (requestGeneration == generation) fetching = false;
+      if (requestGeneration == generation) {
+        fetching = false;
+        if (queuedRead && mounted && ownerMatches && !working) {
+          queuedRead = false;
+          unawaited(load());
+        }
+      }
     }
   }
 
@@ -449,6 +486,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   Future<void> run(Future<void> Function() action) async {
     if (locked || !active) return;
     final requestGeneration = generation;
+    readVersion++;
     setState(() {
       working = true;
       error = null;
@@ -464,7 +502,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           working = false;
           progress = '';
         });
-        if (active) await load();
+        if (active) await load(force: true);
         if (mounted &&
             ownerMatches &&
             requestGeneration == generation &&
@@ -502,7 +540,23 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                 : 'Deine Fotoauswahl',
           ),
           children: [
-            for (final row in importReceipts)
+            SwitchListTile(
+              title: Text('Nur Fotos mit Problemen'),
+              value: receiptProblems,
+              onChanged: (value) {
+                if (ownerMatches) setState(() => receiptProblems = value);
+              },
+            ),
+            if (receiptProblems && missing == 0)
+              Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  'In dieser Auswahl gibt es keine nicht übernommenen Fotos.',
+                ),
+              ),
+            for (final row in importReceipts.where(
+              (row) => !receiptProblems || row['stage'] == 'not_accepted',
+            ))
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Column(
@@ -513,6 +567,22 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     Text(receiptStatus(row)),
+                    if (pages.any((page) => page['id'] == row['material_id']))
+                      TextButton.icon(
+                        onPressed: () {
+                          if (active &&
+                              pages.any(
+                                (page) => page['id'] == row['material_id'],
+                              )) {
+                            openRoute(
+                              context,
+                              '/material/${row['material_id']}',
+                            );
+                          }
+                        },
+                        icon: Icon(Icons.description_outlined),
+                        label: Text('Gespeicherte Seite ansehen'),
+                      ),
                     if ((row['reason'] as String? ?? '').isNotEmpty)
                       Text(
                         row['reason'],
@@ -790,12 +860,75 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   }
 
   Future<void> replacePage(Json page) async {
-    if (!allowUploads) return;
-    if (!await deleteDayPage(page)) return;
-    final updated = await state.api.put('/school-days/${day!['id']}/stage', {
-      'stage': 'collecting',
-    });
-    if (mounted) setState(() => day = updated);
+    if (!ownerMatches ||
+        !allowUploads ||
+        page['confirmed'] == true ||
+        !pages.any((p) => p['id'] == page['id'])) {
+      return;
+    }
+    final version = generation, dayId = day?['id'];
+    final route = ModalRoute.of(context);
+    bool currentReplacement() =>
+        sameDay(version, dayId) &&
+        allowUploads &&
+        route?.isCurrent != false &&
+        pages.any(
+          (p) => p['id'] == page['id'] && p['revision'] == page['revision'],
+        );
+    final enabled = await state.api.get('/status');
+    if (!mounted || !currentReplacement()) return;
+    if (enabled['real_data_enabled'] != true) {
+      throw ApiError(
+        'Fotos sind hier noch nicht freigeschaltet. Bitte frage deine Eltern.',
+      );
+    }
+    final source = await showDayDialog<ImageSource>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text('Ersatzfoto auswählen'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => closeDayDialog(ctx, ImageSource.camera),
+            child: Text('Neues Foto machen'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => closeDayDialog(ctx, ImageSource.gallery),
+            child: Text('Ein Foto auswählen'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => closeDayDialog(ctx),
+            child: Text('Altes Foto behalten'),
+          ),
+        ],
+      ),
+    );
+    if (source == null || !currentReplacement()) return;
+    await rememberCameraSource(state, widget.childId);
+    Uint8List? bytes;
+    try {
+      if (!mounted || !currentReplacement()) return;
+      bytes = await pickMaterialPhoto(context, source);
+    } finally {
+      if (ownerMatches) await clearCameraSource(state);
+    }
+    if (bytes == null || !currentReplacement()) return;
+    // Hold the new cropped photo before asking to delete the old one.
+    final pendingKey = await state.pendingUploads.add(
+      actor!,
+      widget.childId,
+      dayId as String,
+      bytes,
+    );
+    if (!currentReplacement()) return;
+    if (!await deleteDayPage(page)) {
+      if (ownerMatches) await state.pendingUploads.remove(actor!, pendingKey);
+      return;
+    }
+    if (!mounted || !ownerMatches) return;
+    await ensureCollecting();
+    if (!mounted || !ownerMatches) return;
+    await refreshPending();
+    await sendPending();
   }
 
   void pageDeleted() {
@@ -1201,40 +1334,66 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   }
 
   Future<void> viewDraft(Json photo) async {
-    final image = MemoryImage(base64Decode(photo['image']));
+    if (!active || !pendingPhotos.any((p) => p['key'] == photo['key'])) return;
+    final local = pendingPhotos.toList();
     try {
-      await showDayDialog<void>(
-        context: context,
-        builder: (ctx) => Dialog.fullscreen(
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text('Dein vorgemerktes Foto'),
-              leading: IconButton(
-                tooltip: 'Zurück zu deinen Fotos',
-                icon: Icon(Icons.close),
-                onPressed: () => closeDayDialog(ctx),
-              ),
-            ),
-            body: ListenableBuilder(
-              listenable: state,
-              builder: (_, _) => !ownerMatches
-                  ? SizedBox.shrink()
-                  : InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 8,
-                      child: Center(
-                        child: Image(
-                          image: image,
-                          semanticLabel: 'Vorgemerktes Heftfoto',
-                        ),
-                      ),
-                    ),
-            ),
+      await showChildPhotoPreview(
+        context,
+        state,
+        photos: [for (final item in local) base64Decode(item['image'])],
+        initialIndex: local.indexWhere((p) => p['key'] == photo['key']),
+      );
+    } catch (_) {
+      if (mounted && active) {
+        toast(
+          context,
+          'Dieses lokale Foto konnte nicht geöffnet werden. Es bleibt vorgemerkt.',
+        );
+      }
+    }
+  }
+
+  Future<void> removeLocalPhoto(Json photo) async {
+    if (!active ||
+        locked ||
+        !pendingPhotos.any((p) => p['key'] == photo['key'])) {
+      return;
+    }
+    final version = generation, dayId = day?['id'];
+    final accepted = await showDayDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Dieses vorgemerkte Foto entfernen?'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Nur dieses noch nicht gesendete Foto wird von diesem Gerät entfernt. Die anderen Fotos bleiben erhalten.',
           ),
         ),
-      );
-    } finally {
-      await image.evict();
+        actions: [
+          TextButton(
+            onPressed: () => closeDayDialog(ctx, false),
+            child: Text('Behalten'),
+          ),
+          FilledButton(
+            onPressed: () => closeDayDialog(ctx, true),
+            child: Text('Dieses Foto entfernen'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true ||
+        !mounted ||
+        !sameDay(version, dayId) ||
+        !foreground ||
+        ModalRoute.of(context)?.isCurrent == false ||
+        locked ||
+        !pendingPhotos.any((p) => p['key'] == photo['key'])) {
+      return;
+    }
+    await state.pendingUploads.remove(actor!, photo['key']);
+    if (sameDay(version, dayId)) {
+      await refreshPending();
+      if (mounted && ownerMatches) setState(() {});
     }
   }
 
@@ -1351,12 +1510,21 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                         ListTile(
                           title: Text('Seite ${page['page_number']}'),
                           subtitle: Text(page['subject'] ?? ''),
-                          trailing: Icon(Icons.zoom_in),
+                          trailing: Icon(
+                            page['has_image'] == true
+                                ? Icons.zoom_in
+                                : Icons.description_outlined,
+                          ),
                           onTap: () {
                             if (ctx.mounted &&
                                 ownerMatches &&
                                 ModalRoute.of(ctx)?.isCurrent == true) {
-                              zoomNotebookPhoto(ctx, state, page);
+                              if (page['has_image'] == true) {
+                                zoomNotebookPhoto(ctx, state, page);
+                              } else {
+                                closeDayDialog(ctx);
+                                openRoute(context, '/material/${page['id']}');
+                              }
                             }
                           },
                         ),
@@ -1403,7 +1571,13 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           SizedBox(height: 10),
           if (freshPages.isNotEmpty)
             SizedBox(
-              height: 156,
+              height:
+                  164 +
+                  (MediaQuery.textScalerOf(context).scale(12) - 12).clamp(
+                        0,
+                        48,
+                      ) *
+                      6,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: freshPages.length,
@@ -1489,12 +1663,19 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                                     value: 'view',
                                     child: Text('Seite ansehen'),
                                   ),
-                                  if (index > 0)
+                                  if (pages.indexWhere(
+                                        (p) => p['id'] == page['id'],
+                                      ) >
+                                      0)
                                     PopupMenuItem(
                                       value: 'up',
                                       child: Text('Nach vorn'),
                                     ),
-                                  if (index + 1 < pages.length)
+                                  if (pages.indexWhere(
+                                            (p) => p['id'] == page['id'],
+                                          ) +
+                                          1 <
+                                      pages.length)
                                     PopupMenuItem(
                                       value: 'down',
                                       child: Text('Nach hinten'),
@@ -1517,14 +1698,31 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
             ),
           if (pendingPhotos.isNotEmpty) ...[
             for (final photo in pendingPhotos)
-              TextButton.icon(
-                onPressed: () => viewDraft(photo),
-                icon: Icon(Icons.zoom_in_rounded),
-                label: Text(
-                  'Vorgemerktes Foto ${pendingPhotos.indexOf(photo) + 1} ansehen',
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => viewDraft(photo),
+                    icon: Icon(Icons.zoom_in_rounded),
+                    label: Text(
+                      'Vorgemerktes Foto ${pendingPhotos.indexOf(photo) + 1} ansehen',
+                    ),
+                  ),
+                  IconButton(
+                    tooltip:
+                        'Vorgemerktes Foto ${pendingPhotos.indexOf(photo) + 1} entfernen',
+                    onPressed: locked ? null : () => removeLocalPhoto(photo),
+                    icon: Icon(Icons.delete_outline_rounded),
+                  ),
+                ],
               ),
             SizedBox(height: 10),
+            if (pendingPhotos.every((photo) => photo['created'] is num))
+              Text(
+                'Nur lokal bis: ${DateFormat('dd.MM.yyyy · HH:mm').format(pendingPhotos.map((photo) => DateTime.fromMillisecondsSinceEpoch((photo['created'] as num).toInt()).add(Duration(hours: 24))).reduce((a, b) => a.isBefore(b) ? a : b).toLocal())} · Gib deine Fotos vorher ab oder wähle sie später erneut aus.',
+                style: TextStyle(color: context.palette.warningInk),
+              ),
             Notice(
               '${pendingPhotos.length} ${pendingPhotos.length == 1 ? 'Foto ist' : 'Fotos sind'} noch auf diesem Gerät. Mit Fotos abgeben werden sie gesendet.',
             ),
@@ -1667,6 +1865,143 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     );
   }
 
+  Widget packageOverview(
+    String title,
+    List<Json> units, {
+    List<Json> groups = const [],
+  }) {
+    final query = packageSearch.text.trim().toLowerCase();
+    bool matches(Json item) =>
+        query.isEmpty ||
+        [
+          item['title'],
+          item['subject'],
+          item['topic'],
+          item['page_number'],
+        ].where((v) => v != null).join(' ').toLowerCase().contains(query);
+    final visiblePages = packageKind == 'units'
+        ? <Json>[]
+        : pages.where(matches).toList();
+    final visibleUnits = packageKind == 'pages'
+        ? <Json>[]
+        : units.where(matches).toList();
+    final version = generation, dayId = day?['id'];
+    return ExpansionTile(
+      title: Text(title),
+      children: [
+        TextField(
+          controller: packageSearch,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            labelText: 'In diesem Tagespaket suchen',
+            prefixIcon: Icon(Icons.search_rounded),
+            suffixIcon: query.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Paketsuche leeren',
+                    onPressed: () {
+                      if (ownerMatches) setState(packageSearch.clear);
+                    },
+                    icon: Icon(Icons.close_rounded),
+                  ),
+          ),
+          onChanged: (_) {
+            if (ownerMatches) setState(() {});
+          },
+          onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        ),
+        SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final item in [
+              ('all', 'Alles'),
+              ('pages', 'Heftseiten'),
+              ('units', 'Lernrunden'),
+            ])
+              ChoiceChip(
+                label: Text(item.$2),
+                selected: packageKind == item.$1,
+                onSelected: (_) {
+                  if (!ownerMatches) return;
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() => packageKind = item.$1);
+                },
+              ),
+          ],
+        ),
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            '${visiblePages.length} Heftseiten · ${visibleUnits.length} Lernrunden in dieser Ansicht',
+          ),
+        ),
+        if (visiblePages.isEmpty && visibleUnits.isEmpty)
+          TextButton(
+            onPressed: () {
+              if (ownerMatches) {
+                FocusManager.instance.primaryFocus?.unfocus();
+                setState(() {
+                  packageSearch.clear();
+                  packageKind = 'all';
+                });
+              }
+            },
+            child: Text('Alle Inhalte dieses Pakets zeigen'),
+          ),
+        if (query.isEmpty && packageKind == 'all')
+          for (final group in groups)
+            ListTile(
+              title: Text('${group['subject']}'),
+              subtitle: Text((group['topics'] as List? ?? []).join(' · ')),
+              onTap:
+                  (group['material_ids'] as List? ?? []).any(
+                    (id) => pages.any((page) => page['id'] == id),
+                  )
+                  ? () {
+                      if (active && sameDay(version, dayId)) {
+                        openSourceGroup(group);
+                      }
+                    }
+                  : null,
+            ),
+        for (final unit in visibleUnits)
+          ListTile(
+            title: Text(
+              '${unit['subject'] ?? ''} · ${unit['topic'] ?? 'Lernrunde'}',
+            ),
+            subtitle: Text(statusLabel(unit['status'])),
+            trailing: Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              if (active &&
+                  sameDay(version, dayId) &&
+                  (day?['units'] as List? ?? []).any(
+                    (u) => u['id'] == unit['id'],
+                  )) {
+                openRoute(context, '/unit/${unit['id']}');
+              }
+            },
+          ),
+        for (final page in visiblePages)
+          ListTile(
+            title: Text(
+              'Heftseite ${page['page_number']} · ${page['subject'] ?? 'Fach noch offen'}',
+            ),
+            subtitle: Text(page['topic'] ?? 'Thema noch offen'),
+            trailing: Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              if (active &&
+                  sameDay(version, dayId) &&
+                  pages.any((p) => p['id'] == page['id'])) {
+                openRoute(context, '/material/${page['id']}');
+              }
+            },
+          ),
+      ],
+    );
+  }
+
   Widget childPackage(BuildContext context) {
     final units = (day!['units'] as List).cast<Json>();
     final remaining = units
@@ -1698,26 +2033,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               dayId: day!['id'],
             ),
           ),
-          ExpansionTile(
-            title: Text('Heftseiten und bisherige Runden'),
-            children: [
-              for (final item in units)
-                ListTile(
-                  title: Text(item['topic']),
-                  subtitle: Text(statusLabel(item['status'])),
-                  trailing: Icon(Icons.chevron_right_rounded),
-                  onTap: () => openRoute(context, '/unit/${item['id']}'),
-                ),
-              for (final page in pages)
-                ListTile(
-                  title: Text(
-                    'Heftseite ${page['page_number']} · ${page['subject'] ?? 'Fach noch offen'}',
-                  ),
-                  subtitle: Text(page['topic'] ?? 'Thema noch offen'),
-                  onTap: () => openRoute(context, '/material/${page['id']}'),
-                ),
-            ],
-          ),
+          packageOverview('Heftseiten und bisherige Runden', units),
           if (allowUploads)
             TextButton.icon(
               onPressed: () => run(() async {
@@ -1810,45 +2126,12 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
             ),
           ),
         SizedBox(height: 18),
-        ExpansionTile(
-          title: Text('Was ist im Paket?'),
-          children: [
-            for (final group in preview?['groups'] as List? ?? [])
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('${group['subject']}'),
-                subtitle: Text((group['topics'] as List).join(' · ')),
-                trailing:
-                    (group['material_ids'] as List? ?? []).any(
-                      (id) => pages.any((page) => page['id'] == id),
-                    )
-                    ? Icon(Icons.chevron_right_rounded)
-                    : null,
-                onTap:
-                    (group['material_ids'] as List? ?? []).any(
-                      (id) => pages.any((page) => page['id'] == id),
-                    )
-                    ? () => openSourceGroup(Json.from(group))
-                    : null,
-              ),
-            for (final unit in units)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('${unit['subject']} · ${unit['topic']}'),
-                subtitle: Text(statusLabel(unit['status'])),
-                trailing: Icon(Icons.chevron_right_rounded),
-                onTap: () => openRoute(context, '/unit/${unit['id']}'),
-              ),
-            for (final page in pages)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'Heftseite ${page['page_number']} · ${page['subject'] ?? 'Fach noch offen'}',
-                ),
-                subtitle: Text(page['topic'] ?? 'Thema noch offen'),
-                onTap: () => openRoute(context, '/material/${page['id']}'),
-              ),
-          ],
+        packageOverview(
+          'Was ist im Paket?',
+          units,
+          groups: (preview?['groups'] as List? ?? [])
+              .map((group) => Json.from(group))
+              .toList(),
         ),
         if (allowUploads &&
             day!['stage'] == 'ready' &&

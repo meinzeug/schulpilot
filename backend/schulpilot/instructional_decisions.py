@@ -5,6 +5,7 @@ Permissions, fixed assessments, source revisions, execution and money stay local
 """
 
 import copy
+import logging
 import re
 from typing import Literal
 
@@ -19,7 +20,16 @@ from .security import child_user
 
 router = APIRouter(tags=["Lernbegleitung"])
 KINDS = Literal["practice", "check_understanding", "explain", "visual_example", "hint", "recommend_resource", "offer_break", "clarify_assessment"]
-VERSION = "instructional-decisions-1"
+VERSION = "instructional-decisions-2"
+log = logging.getLogger("schulpilot.decisions")
+
+
+class DecisionPlanError(ValueError):
+    """A bounded technical category; never retain a model answer or exception body."""
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
 
 
 class Step(Strict):
@@ -30,8 +40,8 @@ class Step(Strict):
     evidence_refs: list[str] = Field(max_length=12)
     reason: str = Field(min_length=1, max_length=240)
     expected_result: str = Field(min_length=1, max_length=180)
-    on_success: int | None = Field(ge=0, le=3)
-    on_error: int | None = Field(ge=0, le=3)
+    on_success: int | None = Field(ge=1, le=3)
+    on_error: int | None = Field(ge=1, le=3)
 
 
 class DecisionOutput(Strict):
@@ -164,7 +174,10 @@ def context(db, unit):
 
 
 def validate(value, payload):
-    plan = DecisionOutput.model_validate(value).model_dump()
+    try:
+        plan = DecisionOutput.model_validate(value).model_dump()
+    except ValueError:
+        raise DecisionPlanError("decision_shape") from None
     questions = {q["id"]: q for q in payload["questions"]}
     goals = {g["id"] for g in payload["learning_goals"]}
     resources = {r["id"] for r in payload["resources"]}
@@ -173,25 +186,25 @@ def validate(value, payload):
     for index, step in enumerate(plan["steps"]):
         q = questions.get(step["question_id"])
         if (step["question_id"] is not None and not q) or not set(step["evidence_refs"]) <= evidence:
-            raise ValueError("Unknown question or evidence")
+            raise DecisionPlanError("decision_refs")
         if step["learning_goal_id"] is not None and step["learning_goal_id"] not in goals:
-            raise ValueError("Unknown learning goal")
+            raise DecisionPlanError("decision_refs")
         if q and q["learning_goal_id"] is not None and step["learning_goal_id"] != q["learning_goal_id"]:
-            raise ValueError("Changed question goal")
+            raise DecisionPlanError("decision_refs")
         if step["resource_id"] is not None and step["resource_id"] not in resources:
-            raise ValueError("Unknown resource")
+            raise DecisionPlanError("decision_refs")
         if step["kind"] == "recommend_resource" and step["resource_id"] is None:
-            raise ValueError("Missing resource")
+            raise DecisionPlanError("decision_refs")
         if step["kind"] in ("practice", "check_understanding", "hint", "explain", "visual_example") and not q:
-            raise ValueError("Missing question")
+            raise DecisionPlanError("decision_refs")
         if step["kind"] in ("practice", "check_understanding", "hint") and q.get("closed"):
-            raise ValueError("A saved answer must not be submitted again")
+            raise DecisionPlanError("decision_closed")
         if step["kind"] == "check_understanding" and (q["attempted"] or q["solution_exposed"] or q["id"] in shown):
-            raise ValueError("A shown or answered question is not a new independent check")
+            raise DecisionPlanError("decision_not_new")
         if step["kind"] in ("explain", "visual_example"):
             shown.add(q["id"])
         if any(target is not None and not index < target < len(plan["steps"]) for target in (step["on_success"], step["on_error"])):
-            raise ValueError("A plan must be finite and refer to later steps")
+            raise DecisionPlanError("decision_flow")
     return plan
 
 
@@ -202,6 +215,29 @@ def schema_refs(schema, payload):
             ("resource_id", [r["id"] for r in payload["resources"]])):
         properties[field] = {"anyOf": [{"type": "string", "enum": ids}, {"type": "null"}]} if ids else {"type": "null"}
     properties["evidence_refs"]["items"] = {"type": "string", "enum": [a["ref"] for a in payload["observations"]]}
+    # Encode actions against the same saved facts as validate(). Previously a
+    # closed answer remained a legal schema choice for practice/hint/check.
+    # No output is repaired, relabelled or retried after validation failure.
+    branches = []
+    for kind in KINDS.__args__:
+        if kind == "recommend_resource" and not payload["resources"]:
+            continue
+        candidates = payload["questions"]
+        if kind in ("practice", "hint", "check_understanding"):
+            candidates = [q for q in candidates if not q.get("closed")]
+        if kind == "check_understanding":
+            candidates = [q for q in candidates if not q["attempted"] and not q["solution_exposed"]]
+        needs_question = kind in ("practice", "check_understanding", "hint", "explain", "visual_example")
+        if needs_question and not candidates:
+            continue
+        branch = copy.deepcopy(schema["$defs"]["Step"])
+        branch["properties"]["kind"] = {"type": "string", "enum": [kind]}
+        ids = [q["id"] for q in candidates]
+        choice = {"type": "string", "enum": ids}
+        branch["properties"]["question_id"] = choice if needs_question else (
+            {"anyOf": [choice, {"type": "null"}]} if ids else {"type": "null"})
+        branches.append(branch)
+    schema["$defs"]["Step"] = {"anyOf": branches}
 
 
 def action(db, unit):
@@ -413,6 +449,9 @@ def process(job_id):
             job = db.get(Job, job_id)
             if not job or job.status != "running":
                 return
-            job.status, job.finished = "failed", int(now())
+            from .job_failures import failure_code
+
+            job.status, job.finished, job.error_code = "failed", int(now()), failure_code(error)
+            log.warning("decision_failed code=%s type=%s", job.error_code, type(error).__name__)
             job.error = str(error)[:450] if isinstance(error, ProviderError) else "Der neue Lernplan konnte nicht sicher übernommen werden. Deine Runde bleibt gespeichert."
             settle(db, db.scalar(select(Usage).where(Usage.job_id == job.id)), result or getattr(error, "billing_result", None), failed=True)

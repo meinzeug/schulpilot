@@ -6,12 +6,14 @@ import 'api.dart';
 import 'math_content.dart';
 import 'science_graphic.dart';
 import 'ui.dart';
+import 'graphic_zoom.dart';
 
 /// Finite versioned vector diagrams. No network images, HTML or model-drawn paths.
 class SubjectPresentation extends StatelessWidget {
   final Json? data;
   final Set<String>? stages;
-  const SubjectPresentation(this.data, {super.key, this.stages});
+  final AppState? state;
+  const SubjectPresentation(this.data, {super.key, this.stages, this.state});
   @override
   Widget build(BuildContext context) {
     if (data?['version'] != 1) return const SizedBox.shrink();
@@ -20,7 +22,17 @@ class SubjectPresentation extends StatelessWidget {
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [for (final b in blocks) SubjectGraphic(Json.from(b))],
+      children: [
+        for (final b in blocks) ...[
+          SubjectGraphic(Json.from(b)),
+          if (state != null)
+            GraphicZoom(
+              state: state!,
+              block: Json.from(b),
+              render: (value) => SubjectGraphic(value),
+            ),
+        ],
+      ],
     );
   }
 }

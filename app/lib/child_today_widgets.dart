@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'child_section_ui.dart';
 import 'ui.dart';
+import 'schulbuddy.dart';
 
 /// The current, real learning station. No decorative levels or game scores.
 class ChildTodayHero extends StatefulWidget {
@@ -25,8 +26,20 @@ class ChildTodayHero extends StatefulWidget {
 
 class _ChildTodayHeroState extends State<ChildTodayHero> {
   bool opening = false;
-  Future<void> openHero() async {
-    final action = widget.action;
+  int actionVersion = 0;
+  @override
+  void didUpdateWidget(covariant ChildTodayHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.action, widget.action)) {
+      actionVersion++;
+      opening = false;
+    }
+  }
+
+  Future<void> openHero(Widget renderedAction) async {
+    final action = renderedAction;
+    if (!identical(widget.action, action)) return;
+    final version = actionVersion;
     if (opening ||
         action is! ActionButton ||
         !action.enabled ||
@@ -37,9 +50,13 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
     try {
       await action.onPressed();
     } catch (error) {
-      if (mounted) showError(context, error);
+      if (mounted &&
+          version == actionVersion &&
+          identical(widget.action, action)) {
+        showError(context, error);
+      }
     } finally {
-      if (mounted) setState(() => opening = false);
+      if (mounted && version == actionVersion) setState(() => opening = false);
     }
   }
 
@@ -114,7 +131,7 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                       child: InkWell(
                         onTap: actionLabel == null || opening
                             ? null
-                            : () => unawaited(openHero()),
+                            : () => unawaited(openHero(action)),
                         borderRadius: BorderRadius.circular(12),
                         child: Semantics(
                           button: actionLabel != null,
@@ -174,9 +191,29 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                                 ),
                                 if (!largeText) ...[
                                   SizedBox(width: wide ? 28 : 10),
-                                  LearningCompanionIllustration(
-                                    size: companionSize,
-                                  ),
+                                  SchulbuddyScope.maybeOf(context) == null
+                                      ? LearningCompanionIllustration(
+                                          size: companionSize,
+                                        )
+                                      : Tooltip(
+                                          message: 'Schulbuddy fragen',
+                                          child: Semantics(
+                                            button: true,
+                                            label: 'Schulbuddy fragen',
+                                            child: InkWell(
+                                              onTap: () =>
+                                                  SchulbuddyScope.maybeOf(
+                                                    context,
+                                                  )?.open(),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              child:
+                                                  LearningCompanionIllustration(
+                                                    size: companionSize,
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
                                 ],
                               ],
                             ),
@@ -227,7 +264,7 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                               icon: action.icon,
                               secondary: action.secondary,
                               enabled: action.enabled && !opening,
-                              onPressed: openHero,
+                              onPressed: () => openHero(action),
                             )
                           : action,
                     ),

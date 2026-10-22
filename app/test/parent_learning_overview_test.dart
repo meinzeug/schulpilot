@@ -291,6 +291,8 @@ void main() {
           'practiced_rounds': 1,
           'independent_tasks': 3,
           'assisted_tasks': 1,
+          'needs_practice_tasks': 0,
+          'uncertain_tasks': 0,
         };
         data['mastery'] = [
           {
@@ -557,6 +559,10 @@ void main() {
         'practiced_rounds': 2,
         'completed_rounds': 1,
         'ongoing_rounds': 1,
+        'independent_tasks': 3,
+        'assisted_tasks': 1,
+        'needs_practice_tasks': 0,
+        'uncertain_tasks': 0,
       };
       await mountParent(tester, data, requests);
       expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
@@ -584,7 +590,16 @@ void main() {
       await tapText(tester, 'Meine Themen');
       expect(find.text('Mathematik · Brüche'), findsWidgets);
       expect(find.text('Englisch · Verben'), findsNothing);
-      await tapText(tester, 'Abgeschlossene Themen mit anzeigen');
+      final status = find.byWidgetPredicate(
+        (w) =>
+            w is DropdownButtonFormField<String> &&
+            w.decoration.labelText == 'Auftragsstatus',
+      );
+      await tester.ensureVisible(status);
+      await tester.tap(status);
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Offene und erledigte Themen');
+      expect(requests.last.url.queryParameters['include_completed'], 'true');
       expect(find.text('Englisch · Verben'), findsOneWidget);
       expect(requests.every((r) => r.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);

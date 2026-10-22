@@ -107,6 +107,10 @@ def is_mathematics(subject):
 
 
 def system_text(function, *, review_only=False):
+    if function == "schulbuddy":
+        from .schulbuddy_schemas import SYSTEM as BUDDY_SYSTEM
+
+        return BUDDY_SYSTEM
     if function == "decision":
         from .instructional_decisions import RULES
 
@@ -698,7 +702,12 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
 
     family_bucket, family_calls, family_budget = usage_terms(db, family, enforce=True)
     base_config = db.get(ProviderConfig, 1)
-    config = select_route(base_config, function, features_for(db, child_id, job_id)) if enabled(base_config) else config_for_function(base_config, function)
+    if function == "schulbuddy":
+        from .schulbuddy_provider import configured
+
+        config = configured(db)
+    else:
+        config = select_route(base_config, function, features_for(db, child_id, job_id)) if enabled(base_config) else config_for_function(base_config, function)
     if probe_tier:
         if not (synthetic_fixture and settings.synthetic_paid_probe and enabled(base_config)):
             raise HTTPException(403, "Explizite Testmodellwahl ist nur im begrenzten künstlichen Prüfpfad erlaubt.")
@@ -767,6 +776,10 @@ def reserve(db, family, child_id, job_id, function, synthetic_fixture=False, *, 
         route_snapshot=selection(config),
         reservation_key=key,
     )
+    if function == "schulbuddy":
+        from .schulbuddy_provider import budget_snapshot
+
+        usage.route_snapshot = budget_snapshot(base_config, config)
     from .ai_accounting import reserve_child
 
     reserve_child(db, usage, usage.route_snapshot)
@@ -856,7 +869,12 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         fixture_id = synthetic_fixture if isinstance(synthetic_fixture, str) else FIXTURE_ID
         if function == "package":
             fixture_id = PACKAGE_FIXTURE_ID
-        payload = trusted_payload(function, fixture_id)
+        if function == "schulbuddy":
+            from .schulbuddy_schemas import synthetic_payload
+
+            payload = synthetic_payload()
+        else:
+            payload = trusted_payload(function, fixture_id)
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture, operator_probe=private_probe)
     if function == "extract":
@@ -874,6 +892,10 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         "coach": s.CoachingOutput,
         "tutor": TutorOutput,
     }.get(function, s.UnitOutput)
+    if function == "schulbuddy":
+        from .schulbuddy_schemas import BuddyOutput
+
+        model_type = BuddyOutput
     if function == "tutor" and payload.get("homework"):
         from .homework import HomeworkOutput
 
@@ -1120,7 +1142,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Weitere bestätigte Beispielsätze aus materials dürfen weiterhin verwendet werden."
         )
     if config.provider == "codex":
-        if settings.codex_web_search and function not in ("extract", "vocabulary_import"):
+        if settings.codex_web_search and function not in ("extract", "vocabulary_import", "schulbuddy"):
             instructions = instructions.replace(
                 "Keine Werkzeuge, keine externen Links,", "Nur die freigegebene Websuche, keine externen Links,"
             )
@@ -1340,7 +1362,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
     indexed_choices = (
-        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "vocabulary_import", "decision") and not review_only
+        config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision") and not review_only
     )
     if indexed_choices:
         indexed_choice_schema(schema)
@@ -1407,7 +1429,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     if config.provider == "codex":
         worker_request = {
             "auth_mode": settings.codex_auth_mode,
-            "web_search": settings.codex_web_search and function not in ("extract", "vocabulary_import"),
+            "web_search": settings.codex_web_search and function not in ("extract", "vocabulary_import", "schulbuddy"),
             "model": config.model,
             "system": instructions,
             "payload": outgoing_payload,

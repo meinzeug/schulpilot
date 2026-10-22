@@ -14,7 +14,14 @@ import 'ui.dart';
 class ProgressScreen extends StatefulWidget {
   final AppState state;
   final String childId;
-  final String? initialSubject, initialTopic, initialCategory;
+  final String? initialSubject,
+      initialTopic,
+      initialCategory,
+      initialPeriod,
+      initialSort,
+      initialSearch,
+      initialStatus,
+      initialRoundKind;
   const ProgressScreen(
     this.state, {
     super.key,
@@ -22,6 +29,11 @@ class ProgressScreen extends StatefulWidget {
     this.initialSubject,
     this.initialTopic,
     this.initialCategory,
+    this.initialPeriod,
+    this.initialSort,
+    this.initialSearch,
+    this.initialStatus,
+    this.initialRoundKind,
   });
 
   @override
@@ -34,6 +46,57 @@ class _ProgressScreenState extends State<ProgressScreen> {
   String? subject, topic, category, childName, ownerFamily;
   int page = 1, generation = 0;
   bool loading = true;
+  final viewSearch = TextEditingController();
+  String period = 'all',
+      sort = 'default',
+      searchTerm = '',
+      roundStatus = 'all',
+      roundKind = 'all';
+  bool get viewFiltered =>
+      period != 'all' ||
+      sort != 'default' ||
+      searchTerm.isNotEmpty ||
+      roundStatus != 'all' ||
+      roundKind != 'all';
+  void readView([Map? saved]) {
+    String valid(String? v, List<String> choices, String fallback) =>
+        choices.contains(v) ? v! : fallback;
+    period = valid(widget.initialPeriod ?? saved?['period'], [
+      'all',
+      '7',
+      '30',
+      '90',
+    ], 'all');
+    sort = valid(widget.initialSort ?? saved?['sort'], [
+      'default',
+      'name',
+      'recent',
+      'practice',
+    ], 'default');
+    roundStatus = valid(widget.initialStatus ?? saved?['status'], [
+      'all',
+      'active',
+      'paused',
+      'completed',
+      'not_started',
+    ], 'all');
+    roundKind = valid(widget.initialRoundKind ?? saved?['round_kind'], [
+      'all',
+      'learning',
+      'vocabulary',
+      'spaced_review',
+      'study_recall',
+      'study_block',
+      'check',
+    ], 'all');
+    searchTerm = (widget.initialSearch ?? saved?['search'] ?? '')
+        .toString()
+        .characters
+        .take(100)
+        .toString();
+    viewSearch.text = searchTerm;
+  }
+
   late Json? owner;
   String get cacheKey => 'progress:${widget.childId}';
   bool get current =>
@@ -58,6 +121,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     owner = widget.state.user;
     ownerFamily = widget.state.familyId;
     final saved = widget.state.collectionViews[cacheKey];
+    readView(saved);
     final explicitFilters =
         widget.initialSubject != null || widget.initialCategory != null;
     subject = explicitFilters ? widget.initialSubject : saved?['subject'];
@@ -83,6 +147,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         topic = widget.initialTopic;
         category = validCategory(widget.initialCategory);
         page = 1;
+        readView();
         loading = owner != null;
       });
       load();
@@ -102,17 +167,31 @@ class _ProgressScreenState extends State<ProgressScreen> {
     if (oldWidget.childId != widget.childId ||
         oldWidget.initialSubject != widget.initialSubject ||
         oldWidget.initialTopic != widget.initialTopic ||
-        oldWidget.initialCategory != widget.initialCategory) {
+        oldWidget.initialCategory != widget.initialCategory ||
+        oldWidget.initialPeriod != widget.initialPeriod ||
+        oldWidget.initialSort != widget.initialSort ||
+        oldWidget.initialSearch != widget.initialSearch ||
+        oldWidget.initialStatus != widget.initialStatus ||
+        oldWidget.initialRoundKind != widget.initialRoundKind) {
       if (oldWidget.childId == widget.childId &&
           subject == widget.initialSubject &&
           topic == widget.initialTopic &&
-          category == validCategory(widget.initialCategory)) {
+          category == validCategory(widget.initialCategory) &&
+          (widget.initialPeriod == null || widget.initialPeriod == period) &&
+          (widget.initialSort == null || widget.initialSort == sort) &&
+          (widget.initialSearch == null ||
+              widget.initialSearch == searchTerm) &&
+          (widget.initialStatus == null ||
+              widget.initialStatus == roundStatus) &&
+          (widget.initialRoundKind == null ||
+              widget.initialRoundKind == roundKind)) {
         return;
       }
       generation++;
       subject = widget.initialSubject;
       topic = widget.initialTopic;
       category = validCategory(widget.initialCategory);
+      readView(widget.state.collectionViews[cacheKey]);
       page = 1;
       data = null;
       if (oldWidget.childId != widget.childId) childName = null;
@@ -123,6 +202,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   void dispose() {
     widget.state.removeListener(identityChanged);
+    viewSearch.dispose();
     super.dispose();
   }
 
@@ -147,6 +227,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
       'topic': topic,
       'page': page,
       'category': category,
+      'period': period,
+      'sort': sort,
+      'search': searchTerm,
+      'status': roundStatus,
+      'round_kind': roundKind,
     };
     setState(() {
       loading = true;
@@ -162,6 +247,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
           'subject': ?subject,
           'topic': ?topic,
           'category': ?category,
+          if (period != 'all') 'period': period,
+          if (sort != 'default') 'sort': sort,
+          if (searchTerm.isNotEmpty) 'search': searchTerm,
+          if (roundStatus != 'all') 'status': roundStatus,
+          if (roundKind != 'all') 'round_kind': roundKind,
         },
       );
       final response = await widget.state.api.get(uri.toString());
@@ -170,6 +260,19 @@ class _ProgressScreenState extends State<ProgressScreen> {
           throw ApiError(
             'Dieser Ergebnisfilter steht gerade nicht zur Verfügung. Wähle „Alle Ergebnisse“, um weiterzusehen.',
           );
+        }
+        if (viewFiltered) {
+          final filters = response['view_filters'];
+          if (filters is! Map ||
+              filters['period'] != period ||
+              filters['sort'] != sort ||
+              filters['search'] != searchTerm ||
+              filters['status'] != roundStatus ||
+              filters['round_kind'] != roundKind) {
+            throw ApiError(
+              'Diese Ansichtsfilter sind auf dem Server noch nicht verfügbar. Setze sie zurück, um den Lernstand anzusehen.',
+            );
+          }
         }
         setState(() {
           data = response;
@@ -181,6 +284,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
             'subject': subject,
             'topic': topic,
             'category': category,
+            'period': period,
+            'sort': sort,
+            'search': searchTerm,
+            'status': roundStatus,
+            'round_kind': roundKind,
             'page': page,
           };
           loading = false;
@@ -204,12 +312,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
     String? nextTopic,
     String? nextCategory,
     bool changeCategory = false,
+    bool force = false,
   }) {
     if (!current) return;
     final desiredCategory = changeCategory
         ? validCategory(nextCategory)
         : category;
-    if (nextSubject == subject &&
+    if (!force &&
+        nextSubject == subject &&
         nextTopic == topic &&
         desiredCategory == category) {
       return;
@@ -224,6 +334,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
       'fach': ?nextSubject,
       'thema': ?nextTopic,
       'ergebnis': ?category,
+      if (period != 'all') 'zeitraum': period,
+      if (sort != 'default') 'sortierung': sort,
+      if (searchTerm.isNotEmpty) 'suche': searchTerm,
+      if (roundStatus != 'all') 'status': roundStatus,
+      if (roundKind != 'all') 'rundenart': roundKind,
     };
     context.go(
       Uri(
@@ -253,6 +368,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             children: [
               if (!widget.state.isChild)
                 ParentChildNavigation(
+                  state: widget.state,
                   childId: widget.childId,
                   selected: 'progress',
                   childName: childName,
@@ -288,6 +404,119 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   ),
                 heading(topic ?? subject!),
               ],
+              ExpansionTile(
+                title: const Text('Zeitraum, Suche & Reihenfolge'),
+                children: [
+                  TextField(
+                    controller: viewSearch,
+                    maxLength: 100,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      labelText: 'Fach oder Thema suchen',
+                      suffixIcon: IconButton(
+                        tooltip: 'Suche anwenden',
+                        icon: const Icon(Icons.search_rounded),
+                        onPressed: loading ? null : applySearch,
+                      ),
+                    ),
+                    onSubmitted: loading ? null : (_) => applySearch(),
+                  ),
+                  for (final field in [
+                    (
+                      'Zeitraum',
+                      period,
+                      {
+                        'all': 'Gesamter Lernverlauf',
+                        '7': 'Letzte 7 Tage',
+                        '30': 'Letzte 30 Tage',
+                        '90': 'Letzte 90 Tage',
+                      },
+                    ),
+                    (
+                      'Reihenfolge',
+                      sort,
+                      {
+                        'default': 'Standard',
+                        'name': 'Name A–Z',
+                        'recent': 'Zuletzt geübt',
+                        'practice': 'Weiter üben zuerst',
+                      },
+                    ),
+                    (
+                      'Rundenstatus',
+                      roundStatus,
+                      {
+                        'all': 'Alle Runden',
+                        'active': 'Begonnen',
+                        'paused': 'Pausiert',
+                        'completed': 'Abgeschlossen',
+                        'not_started': 'Nicht begonnen',
+                      },
+                    ),
+                    (
+                      'Rundenart',
+                      roundKind,
+                      {
+                        'all': 'Alle Lernarten',
+                        'learning': 'Fachübungen',
+                        'vocabulary': 'Wörterrunden',
+                        'spaced_review': 'Spätere Wiederholung',
+                        'study_recall': 'Abrufprobe',
+                        'study_block': 'Verstehensetappe',
+                        'check': 'Verständnisprobe',
+                      },
+                    ),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: DropdownButtonFormField<String>(
+                        key: ValueKey('${field.$1}-${field.$2}'),
+                        initialValue: field.$2,
+                        isExpanded: true,
+                        decoration: InputDecoration(labelText: field.$1),
+                        items: [
+                          for (final e in field.$3.entries)
+                            DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                        ],
+                        onChanged: loading
+                            ? null
+                            : (v) {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                setState(() {
+                                  switch (field.$1) {
+                                    case 'Zeitraum':
+                                      period = v!;
+                                    case 'Reihenfolge':
+                                      sort = v!;
+                                    case 'Rundenstatus':
+                                      roundStatus = v!;
+                                    default:
+                                      roundKind = v!;
+                                  }
+                                });
+                                choose(
+                                  nextSubject: subject,
+                                  nextTopic: topic,
+                                  force: true,
+                                );
+                              },
+                      ),
+                    ),
+                  if (period != 'all')
+                    const Notice(
+                      'Der Zeitraum bezieht sich auf die letzte gespeicherte Antwort einer Aufgabe. Frühere Versuche dieser Aufgaben bleiben mitgezählt; der gesamte Lernverlauf bleibt erhalten.',
+                    ),
+                  if (viewFiltered)
+                    TextButton.icon(
+                      onPressed: loading ? null : resetView,
+                      icon: const Icon(Icons.filter_alt_off_outlined),
+                      label: const Text('Ansichtsfilter zurücksetzen'),
+                    ),
+                ],
+              ),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -440,8 +669,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             : pageAction(data!, -1),
                         icon: Icon(Icons.chevron_left_rounded),
                       ),
-                    Text(
-                      'Seite ${data!['pagination']['page']} von ${data!['pagination']['pages']}',
+                    TextButton(
+                      onPressed: loading || data!['pagination']['pages'] <= 1
+                          ? null
+                          : () => pickPage(data!, generation),
+                      child: Text(
+                        'Seite ${data!['pagination']['page']} von ${data!['pagination']['pages']}',
+                      ),
                     ),
                     if (data!['pagination']['pages'] > 1)
                       IconButton(
@@ -469,6 +703,78 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ],
           ),
   );
+
+  void applySearch() {
+    if (!current || loading) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    searchTerm = viewSearch.text.trim();
+    choose(nextSubject: subject, nextTopic: topic, force: true);
+  }
+
+  void resetView() {
+    if (!current || loading) return;
+    period = 'all';
+    sort = 'default';
+    searchTerm = '';
+    viewSearch.clear();
+    roundStatus = roundKind = 'all';
+    choose(nextSubject: subject, nextTopic: topic, force: true);
+  }
+
+  Future<void> pickPage(Json snapshot, int request) async {
+    final input = TextEditingController();
+    String? issue;
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          title: const Text('Seite auswählen'),
+          content: TextField(
+            controller: input,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: 'Seite 1 bis ${snapshot['pagination']['pages']}',
+              errorText: issue,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final v = int.tryParse(input.text.trim());
+                if (v == null || v < 1 || v > snapshot['pagination']['pages']) {
+                  update(
+                    () =>
+                        issue = 'Bitte eine vorhandene Seitennummer eingeben.',
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, v);
+              },
+              child: const Text('Seite öffnen'),
+            ),
+          ],
+        ),
+      ),
+    );
+    await WidgetsBinding.instance.endOfFrame;
+    input.dispose();
+    if (!mounted) return;
+    if (result == null ||
+        !current ||
+        loading ||
+        request != generation ||
+        !identical(data, snapshot) ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    page = result;
+    load();
+  }
 
   void changePage(Json snapshot, int delta) {
     if (!current || loading || !identical(data, snapshot)) return;
@@ -507,7 +813,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
           return;
         }
         if (level == 'rounds') {
-          openRoute(context, '/unit/${item['id']}');
+          openRoute(
+            context,
+            Uri(
+              path: '/unit/${item['id']}',
+              queryParameters: !widget.state.isChild && category != null
+                  ? {'ergebnis': category!}
+                  : null,
+            ).toString(),
+          );
         } else if (level == 'subjects') {
           choose(nextSubject: item['subject']);
         } else {

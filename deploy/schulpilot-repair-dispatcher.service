@@ -1,0 +1,27 @@
+[Unit]
+Description=SCHULPILOT explicit operator repair dispatcher
+After=schulpilot-api.service schulpilot-worker.service schulpilot-repair.service
+Requires=schulpilot-repair.service
+
+[Service]
+User=schulpilot
+Group=schulpilot
+WorkingDirectory=/opt/schulpilot/current
+EnvironmentFile=/etc/schulpilot/environment
+Environment=OPERATOR_REPAIR_SOCKET=/run/schulpilot-repair/control.sock
+ExecStart=/opt/schulpilot/current/venv/bin/python -m schulpilot.operator_repair
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/schulpilot
+MemoryMax=256M
+CPUQuota=50%
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target

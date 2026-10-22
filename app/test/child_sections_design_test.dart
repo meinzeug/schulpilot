@@ -250,7 +250,7 @@ void main() {
     expect(find.text('Apfel'), findsNothing);
     expect(
       find.text(
-        'Alles geprüft. Deine bestätigten Wörter findest du im Wortschatz.',
+        'In dieser Vorschau ist nichts mehr zu prüfen. Deine bestätigten Wörter findest du im Wortschatz.',
       ),
       findsOneWidget,
     );

@@ -107,8 +107,9 @@ def test_family_pages_have_stable_boundaries_and_only_operational_metadata(opera
     assert not ({row["id"] for row in first["items"]} & {row["id"] for row in second["items"]})
     assert "PRIVATE-SYNTHETIC" not in response.text
     assert all(
-        set(row) == {"id", "plan", "child_limit", "call_limit", "budget_micros", "synthetic"} for row in first["items"]
+        set(row) == {"id", "plan", "child_limit", "call_limit", "budget_micros", "synthetic", "entitlement_revision"} for row in first["items"]
     )
+    assert all(len(row["entitlement_revision"]) == 64 and set(row["entitlement_revision"]) <= set("0123456789abcdef") for row in first["items"])
     last = operator.get("/api/admin/families", params={"paginated": "true", "page_size": 50, "page": 999}).json()
     assert last["pagination"]["page"] == 5 and len(last["items"]) == 1
     with DB() as db:

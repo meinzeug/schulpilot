@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'parent_form_guard.dart';
 import 'collection_screen.dart' show pickLibraryMaterial;
 import 'homework_screen.dart' show homeworkKey;
 import 'ui.dart';
@@ -13,6 +16,7 @@ Future<void> showParentAssignmentDialog(
   List materials, {
   required DateTime? Function(String) parseDate,
   Json? existing,
+  Json? copyFrom,
   Json? source,
   Json? sourceUnit,
   String? plannedFor,
@@ -38,6 +42,7 @@ Future<void> showParentAssignmentDialog(
       materials: materials,
       parseDate: parseDate,
       existing: existing,
+      copyFrom: copyFrom,
       source: source,
       sourceUnit: sourceUnit,
       plannedFor: plannedFor,
@@ -60,7 +65,7 @@ class _AssignmentEditor extends StatefulWidget {
   final AppState state;
   final Json child;
   final List materials;
-  final Json? existing, source, sourceUnit;
+  final Json? existing, source, sourceUnit, copyFrom;
   final String? plannedFor;
   final DateTime? Function(String) parseDate;
   final bool Function() current;
@@ -71,6 +76,7 @@ class _AssignmentEditor extends StatefulWidget {
     required this.parseDate,
     required this.current,
     this.existing,
+    this.copyFrom,
     this.source,
     this.sourceUnit,
     this.plannedFor,
@@ -91,7 +97,40 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
       error;
   bool mandatory = true, saving = false, closing = false, uncertain = false;
   Json? pendingBody;
-  ModalRoute<dynamic>? dateRoute, pickerRoute;
+  ModalRoute<dynamic>? dateRoute, pickerRoute, discardRoute;
+  late String baseline;
+  String fingerprint() => jsonEncode([
+    subject.text,
+    topic.text,
+    note.text,
+    due.text,
+    scheduled.text,
+    kind,
+    mandatory,
+    materialId,
+    sourceUnitId,
+  ]);
+  bool get dirty => baseline != fingerprint();
+  Future<void> requestClose() async {
+    if (!current || saving || !topmost || discardRoute?.isActive == true) {
+      return;
+    }
+    if (!dirty && !uncertain) {
+      close();
+      return;
+    }
+    final accepted = await confirmParentDiscard(
+      context,
+      current: () => current,
+      subject: uncertain
+          ? 'Dieses Lernziel; die letzte Speicherung ist noch nicht bestätigt'
+          : 'Dieses Lernziel',
+      onRoute: (route) => discardRoute = route,
+    );
+    discardRoute = null;
+    if (accepted && current && !saving && topmost) close();
+  }
+
   bool get current => mounted && !closing && widget.current();
   bool get editable => current && !saving && !uncertain;
   List<String> get subjects => (widget.child['subjects'] as List? ?? [])
@@ -102,21 +141,22 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
   void initState() {
     super.initState();
     final known = subjects;
+    final preset = widget.existing ?? widget.copyFrom;
     subject = TextEditingController(
       text:
-          widget.existing?['subject'] ??
+          preset?['subject'] ??
           widget.source?['subject'] ??
           widget.sourceUnit?['subject'] ??
           (known.length == 1 ? known.single : ''),
     );
     topic = TextEditingController(
       text:
-          widget.existing?['topic'] ??
+          preset?['topic'] ??
           widget.source?['topic'] ??
           widget.sourceUnit?['topic'] ??
           '',
     );
-    note = TextEditingController(text: widget.existing?['note'] ?? '');
+    note = TextEditingController(text: preset?['note'] ?? '');
     due = TextEditingController(
       text: widget.existing?['due'] == null
           ? ''
@@ -129,11 +169,10 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
               widget.existing?['scheduled_for'] ?? widget.plannedFor,
             ),
     );
-    kind = widget.existing?['kind'] == 'exam' ? 'exam' : 'parent';
-    mandatory = widget.existing?['mandatory'] ?? true;
-    materialId = widget.existing?['material_id'] ?? widget.source?['id'];
-    sourceUnitId =
-        widget.existing?['source_unit_id'] ?? widget.sourceUnit?['id'];
+    kind = preset?['kind'] == 'exam' ? 'exam' : 'parent';
+    mandatory = preset?['mandatory'] ?? true;
+    materialId = preset?['material_id'] ?? widget.source?['id'];
+    sourceUnitId = preset?['source_unit_id'] ?? widget.sourceUnit?['id'];
     final material =
         widget.source ??
         widget.materials
@@ -144,12 +183,19 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
     sourceSubject = material?['subject'];
     sourceTopic = material?['topic'];
     requestKey = homeworkKey();
+    baseline = fingerprint();
     widget.state.addListener(contextChanged);
   }
 
   @override
   void dispose() {
     widget.state.removeListener(contextChanged);
+    final extra = discardRoute;
+    if (extra?.isActive == true) {
+      Future<void>.microtask(() {
+        if (extra!.isActive) extra.navigator?.removeRoute(extra);
+      });
+    }
     for (final controller in [subject, topic, note, due, scheduled]) {
       controller.dispose();
     }
@@ -161,7 +207,7 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
     closing = true;
     final ownRoute = ModalRoute.of(context);
     Future<void>.microtask(() {
-      for (final route in [dateRoute, pickerRoute, ownRoute]) {
+      for (final route in [dateRoute, pickerRoute, discardRoute, ownRoute]) {
         if (route?.isActive == true) route!.navigator?.removeRoute(route);
       }
     });
@@ -192,7 +238,10 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
     FocusManager.instance.primaryFocus?.unfocus();
     final picked = await showDatePicker(
       context: context,
-      initialDate: widget.parseDate(controller.text) ?? DateTime.now(),
+      initialDate:
+          widget.parseDate(controller.text) ??
+          DateTime.tryParse(widget.child['planning_today'] ?? '') ??
+          DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       builder: (ctx, child) {
@@ -324,7 +373,10 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !saving,
+    canPop: !saving && !dirty && !uncertain,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop && !saving) requestClose();
+    },
     child: AlertDialog(
       scrollable: true,
       title: Text(
@@ -347,6 +399,10 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
                 'Für ${widget.child['display_name']}',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
+              if (widget.copyFrom != null)
+                const Notice(
+                  'Neue Kopie: Antworten und Runden bleiben beim ursprünglichen Auftrag. Start und Termin legst du neu fest.',
+                ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: kind,
@@ -501,7 +557,7 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
       ),
       actions: [
         TextButton(
-          onPressed: saving ? null : close,
+          onPressed: saving ? null : requestClose,
           child: Text(uncertain ? 'Schließen und Plan prüfen' : 'Abbrechen'),
         ),
         FilledButton(

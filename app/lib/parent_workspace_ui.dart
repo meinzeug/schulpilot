@@ -399,3 +399,158 @@ class _WorkspaceEmblem extends CustomPainter {
       accent != oldDelegate.accent ||
       line != oldDelegate.line;
 }
+
+/// A date range is applied explicitly; unsubmitted edits never relabel results.
+class ParentDateRange extends StatefulWidget {
+  final String? start, end;
+  final bool enabled;
+  final void Function(String? start, String? end) onApply;
+  const ParentDateRange({
+    super.key,
+    this.start,
+    this.end,
+    this.enabled = true,
+    required this.onApply,
+  });
+  @override
+  State<ParentDateRange> createState() => _ParentDateRangeState();
+}
+
+class _ParentDateRangeState extends State<ParentDateRange> {
+  final form = GlobalKey<FormState>();
+  late final TextEditingController start, end;
+  String? parse(String input) {
+    final value = input.trim();
+    if (value.isEmpty) return null;
+    final parts = RegExp(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$').firstMatch(value);
+    final iso = parts == null
+        ? value
+        : '${parts[3]}-${parts[2]!.padLeft(2, '0')}-${parts[1]!.padLeft(2, '0')}';
+    final parsed = DateTime.tryParse(iso);
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(iso) ||
+        parsed == null ||
+        parsed.toIso8601String().substring(0, 10) != iso) {
+      return null;
+    }
+    return iso;
+  }
+
+  String display(String? value) => value == null ? '' : friendlyDate(value);
+  @override
+  void initState() {
+    super.initState();
+    start = TextEditingController(text: display(widget.start));
+    end = TextEditingController(text: display(widget.end));
+  }
+
+  @override
+  void didUpdateWidget(covariant ParentDateRange old) {
+    super.didUpdateWidget(old);
+    if (old.start != widget.start) start.text = display(widget.start);
+    if (old.end != widget.end) end.text = display(widget.end);
+  }
+
+  @override
+  void dispose() {
+    start.dispose();
+    end.dispose();
+    super.dispose();
+  }
+
+  void apply() {
+    if (!widget.enabled || form.currentState?.validate() != true) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    widget.onApply(parse(start.text), parse(end.text));
+  }
+
+  @override
+  Widget build(BuildContext context) => Form(
+    key: form,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in [(start, 'Zeitraum von'), (end, 'Zeitraum bis')])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: TextFormField(
+              controller: entry.$1,
+              enabled: widget.enabled,
+              keyboardType: TextInputType.datetime,
+              textInputAction: identical(entry.$1, start)
+                  ? TextInputAction.next
+                  : TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: entry.$2,
+                hintText: 'TT.MM.JJJJ · optional',
+              ),
+              onFieldSubmitted: identical(entry.$1, end)
+                  ? (_) => apply()
+                  : null,
+              validator: (value) {
+                if ((value ?? '').trim().isNotEmpty && parse(value!) == null) {
+                  return 'Nutze ein gültiges Datum: TT.MM.JJJJ.';
+                }
+                final from = parse(start.text), to = parse(end.text);
+                if (identical(entry.$1, end) &&
+                    from != null &&
+                    to != null &&
+                    from.compareTo(to) > 0) {
+                  return 'Das Ende muss am oder nach dem Beginn liegen.';
+                }
+                return null;
+              },
+            ),
+          ),
+        OutlinedButton.icon(
+          onPressed: widget.enabled ? apply : null,
+          icon: const Icon(Icons.date_range_outlined),
+          label: const Text('Zeitraum anwenden'),
+        ),
+        if (widget.start != null || widget.end != null)
+          Text(
+            'Angezeigter Zeitraum: ${widget.start == null ? 'ohne Beginn' : friendlyDate(widget.start)} bis ${widget.end == null ? 'ohne Ende' : friendlyDate(widget.end)} (einschließlich)',
+          ),
+      ],
+    ),
+  );
+}
+
+/// The actual applied selection remains visible when detailed controls close.
+class ParentAppliedFilters extends StatelessWidget {
+  final List<(String label, VoidCallback remove)> filters;
+  final bool enabled;
+  const ParentAppliedFilters({
+    super.key,
+    required this.filters,
+    this.enabled = true,
+  });
+  @override
+  Widget build(BuildContext context) => filters.isEmpty
+      ? const SizedBox.shrink()
+      : Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Angewendete Filter',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final item in filters)
+                    InputChip(
+                      label: Text(item.$1),
+                      onDeleted: enabled ? item.$2 : null,
+                      deleteButtonTooltipMessage:
+                          'Filter „${item.$1}“ entfernen',
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+}

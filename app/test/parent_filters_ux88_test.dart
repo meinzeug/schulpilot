@@ -92,7 +92,7 @@ void main() {
         isFalse,
       );
       expect(f.requests.last.url.queryParameters['state'], 'all');
-      await tap(tester, find.text('Suche und Fach zurücksetzen'));
+      await tap(tester, find.text('Alle Hausaufgabenfilter zurücksetzen'));
       expect(
         f.requests.last.url.queryParameters.containsKey('subject'),
         isFalse,
@@ -101,6 +101,12 @@ void main() {
         f.state.collectionViews['parent-homework:child']?['subject'],
         isNull,
       );
+      expect(f.requests.last.url.queryParameters['state'], 'all');
+      expect(
+        f.requests.last.url.queryParameters.containsKey('cursor'),
+        isFalse,
+      );
+      expect(f.requests.where((r) => r.method != 'GET'), isEmpty);
     },
   );
   testWidgets(
@@ -264,7 +270,7 @@ void main() {
           find.text(
             page == 'plan'
                 ? 'Themenfilter zurücksetzen'
-                : 'Suche und Fach zurücksetzen',
+                : 'Alle Hausaufgabenfilter zurücksetzen',
           ),
         );
         expect(

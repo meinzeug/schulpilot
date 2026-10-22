@@ -123,7 +123,9 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   final List<Json> turns = [];
   bool newQuestionMode = false;
   Json? get answerPrompt {
-    final last = turns.lastOrNull;
+    final last = replyTo == null
+        ? turns.lastOrNull
+        : turns.where((t) => t['id'] == replyTo).firstOrNull;
     if (newQuestionMode ||
         last?['status'] != 'ready' ||
         last?['source_changed'] == true) {
@@ -141,6 +143,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   late final Json? actor = widget.state.user;
   late final family = widget.state.familyId;
   bool loading = true, reading = false, sending = false;
+  bool historyWindow = false;
   bool sourceUnavailable = false;
   ({String text, String? replyTo, bool newQuestion})? replacedDraft;
   late final memory = _tutorDrafts[state] ??= _TutorDraftMemory(state);
@@ -256,25 +259,31 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   }
 
   Future<void> load({bool older = false}) async {
-    if (reading || !ownerMatches) return;
-    reading = true;
+    if (!mounted || reading || !ownerMatches) return;
+    setState(() => reading = true);
     final version = generation;
     try {
       final query = Uri(
         queryParameters: {
           ...widget.scope,
           if (older && cursor != null) 'cursor': cursor!,
+          if (!older && turns.length > 20)
+            'retain': turns.take(80).map((t) => t['id']).join(','),
         },
       ).query;
       final data = await state.api.get('$endpoint?$query');
       if (!mounted || version != generation || !ownerMatches) return;
-      final incoming = (data['questions'] as List? ?? [])
-          .map((turn) => Json.from(turn as Map))
-          .toList();
+      final incoming = [
+        ...(data['questions'] as List? ?? []),
+        ...(data['retained_questions'] as List? ?? []),
+      ].map((turn) => Json.from(turn as Map)).toList();
       setState(() {
         // A new server snapshot also revalidates source access. Do not retain
         // old answers/citations across refreshes without fresh authorization.
-        if (!older) turns.clear();
+        if (!older) {
+          if (turns.length > 80) historyWindow = true;
+          turns.clear();
+        }
         sourceUnavailable = false;
         final combined = <String, Json>{
           for (final turn in turns) turn['id'].toString(): turn,
@@ -289,9 +298,28 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           (a, b) =>
               (a['created'] as num? ?? 0).compareTo(b['created'] as num? ?? 0),
         );
-        cursor = data['next_cursor'] as String?;
+        if (turns.length > 100) {
+          final bounded = [...turns.take(80), ...turns.skip(turns.length - 20)];
+          turns
+            ..clear()
+            ..addAll(bounded);
+          historyWindow = true;
+        }
+        cursor =
+            (!older ? data['retained_cursor'] as String? : null) ??
+            data['next_cursor'] as String?;
         loading = false;
         readError = null;
+        if (replyTo != null) {
+          final related = turns.where((t) => t['id'] == replyTo).firstOrNull;
+          if (related == null ||
+              related['status'] != 'ready' ||
+              related['source_changed'] == true) {
+            replyTo = null;
+            newQuestionMode = true;
+            sendError = 'Die bisher gewählte Erklärung ist nicht mehr aktuell verfügbar. Dein Text bleibt erhalten. Du kannst ihn bewusst als neue Frage zu deinem aktuellen Stoff stellen.';
+          }
+        }
         final pending = unconfirmed;
         if (pending != null &&
             turns.any(
@@ -320,8 +348,12 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         });
       }
     } finally {
-      reading = false;
-      if (mounted && version == generation) schedule();
+      if (mounted && version == generation) {
+        setState(() => reading = false);
+        schedule();
+      } else {
+        reading = false;
+      }
     }
   }
 
@@ -383,16 +415,23 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> retryFailed(Json turn) => send(
-    repeat: _TutorSubmission({
-      ...widget.scope,
-      'question': turn['question'],
-      if (turn['reply_to'] != null) 'reply_to': turn['reply_to'],
-    }, turns),
-  );
+  Future<void> retryFailed(Json turn) async {
+    if (!active ||
+        !turns.any((t) => identical(t, turn) && t['status'] == 'failed')) {
+      return;
+    }
+    await send(
+      repeat: _TutorSubmission({
+        ...widget.scope,
+        'question': turn['question'],
+        if (turn['reply_to'] != null) 'reply_to': turn['reply_to'],
+      }, turns),
+    );
+  }
 
   void useStarter(String text, {Json? related}) {
-    if (hasPending || sending || unconfirmed != null) return;
+    if (!active || hasPending || sending || unconfirmed != null) return;
+    if (related != null && !turns.any((row) => identical(row, related))) return;
     setState(() {
       if (question.text.isNotEmpty && question.text != text) {
         replacedDraft = (
@@ -409,7 +448,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           related?['status'] == 'ready' && related?['source_changed'] != true
           ? related!['id'] as String?
           : null;
-      newQuestionMode = related == null;
+      newQuestionMode = replyTo == null;
     });
   }
 
@@ -486,6 +525,8 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         loading ||
         sourceUnavailable;
     final latest = turns.lastOrNull;
+    final starterTarget =
+        turns.where((turn) => turn['id'] == replyTo).firstOrNull ?? latest;
     final parentTurn = turns
         .where((turn) => turn['id'] == latest?['reply_to'])
         .firstOrNull;
@@ -518,6 +559,11 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Fragen aktualisieren',
+                    onPressed: reading || !ownerMatches ? null : () => load(),
+                    icon: const Icon(Icons.refresh_rounded),
                   ),
                   IconButton(
                     tooltip: 'Schließen',
@@ -602,10 +648,33 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                             turnCard(turn, collapsed: true),
                         ],
                       ),
+                    if (historyWindow)
+                      const Notice(
+                        'Du siehst die neuesten Fragen und einen älteren Ausschnitt. Weitere ältere Fragen kannst du nachladen.',
+                      ),
+                    if (turns.length > 20)
+                      TextButton(
+                        onPressed: reading
+                            ? null
+                            : () {
+                                setState(() {
+                                  turns.clear();
+                                  historyWindow = false;
+                                  loading = true;
+                                  cursor = null;
+                                });
+                                load();
+                              },
+                        child: const Text('Nur neueste Fragen zeigen'),
+                      ),
                     if (cursor != null)
                       TextButton(
                         onPressed: reading ? null : () => load(older: true),
-                        child: Text('Ältere Fragen laden'),
+                        child: Text(
+                          reading
+                              ? 'Fragen werden geladen …'
+                              : 'Ältere Fragen laden',
+                        ),
                       ),
                   ],
                 ],
@@ -642,7 +711,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                       ? null
                                       : () => useStarter(
                                           starter,
-                                          related: latest,
+                                          related: starterTarget,
                                         ),
                                   label: MathText(starter),
                                 ),
@@ -657,8 +726,17 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                     final saved = replacedDraft!;
                                     setState(() {
                                       question.text = saved.text;
-                                      replyTo = saved.replyTo;
-                                      newQuestionMode = saved.newQuestion;
+                                      final related = turns
+                                          .where(
+                                            (t) =>
+                                                t['id'] == saved.replyTo &&
+                                                t['status'] == 'ready' &&
+                                                t['source_changed'] != true,
+                                          )
+                                          .firstOrNull;
+                                      replyTo = related?['id'];
+                                      newQuestionMode =
+                                          related == null || saved.newQuestion;
                                       replacedDraft = null;
                                     });
                                   },
@@ -670,7 +748,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                             children: [
                               Expanded(
                                 child: MathText(
-                                  'Zu deiner letzten Antwort',
+                                  'Zur Frage: ${starterTarget?['question'] ?? 'Deine Erklärung'}',
                                   style: TextStyle(
                                     color: context.palette.muted,
                                     fontSize: 12,
@@ -946,7 +1024,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
               ),
             ),
-          if (state.isChild && !collapsed)
+          if (state.isChild)
             TextButton(
               onPressed: hasPending || sending || unconfirmed != null
                   ? null
@@ -967,6 +1045,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         padding: EdgeInsets.all(16),
         child: collapsed
             ? ExpansionTile(
+                key: PageStorageKey('tutor-turn-${turn['id']}'),
                 title: MathText(turn['question'] ?? ''),
                 children: [content],
               )

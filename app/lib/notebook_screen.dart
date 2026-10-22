@@ -739,6 +739,17 @@ class _NotebookScreenState extends State<_NotebookContext> {
     }
   }
 
+  void zoomCurrent(Json item) {
+    if (!current ||
+        loading ||
+        selected?['id'] != item['id'] ||
+        selected?['revision'] != item['revision'] ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    zoomNotebookPhoto(context, widget.state, item);
+  }
+
   void detail(Json item) {
     if (!current || loading || !items.any((row) => row['id'] == item['id'])) {
       return;
@@ -888,6 +899,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
                   TextField(
                     controller: search,
                     focusNode: searchFocus,
+                    maxLength: 120,
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       labelText: 'In diesem Hefter suchen',
@@ -1153,11 +1165,29 @@ class _NotebookScreenState extends State<_NotebookContext> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: Semantics(liveRegion: true, child: pageControls())),
-            pageActions(item),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final pager = Semantics(liveRegion: true, child: pageControls());
+            if (constraints.maxWidth < 480 ||
+                MediaQuery.textScalerOf(context).scale(1) > 1.3) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  pager,
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: pageActions(item),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: pager),
+                pageActions(item),
+              ],
+            );
+          },
         ),
         SizedBox(height: 8),
         CallbackShortcuts(
@@ -1219,11 +1249,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
                                 button: true,
                                 label: 'Heftfoto vergrößern',
                                 child: InkWell(
-                                  onTap: () => zoomNotebookPhoto(
-                                    context,
-                                    widget.state,
-                                    item,
-                                  ),
+                                  onTap: () => zoomCurrent(item),
                                   child: NotebookPhoto(
                                     widget.state,
                                     materialId: item['id'],
@@ -1286,7 +1312,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: () {
-                if (current) zoomNotebookPhoto(context, widget.state, item);
+                zoomCurrent(item);
               },
               icon: Icon(Icons.zoom_in_rounded),
               label: Text('Vergrößern'),
@@ -1326,8 +1352,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
   Widget overview() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      if (view == 'list' &&
-          canEdit &&
+      if (canEdit &&
           items.any(
             (item) =>
                 materialCanDelete(widget.state, item, canManage: canManage),
@@ -1389,6 +1414,18 @@ class _NotebookScreenState extends State<_NotebookContext> {
       remember();
     }
 
+    void openOrSelect() {
+      if (selecting) {
+        if (current && !loading && canDelete(item)) togglePageSelection(item);
+      } else {
+        select();
+      }
+    }
+
+    final selectable = !selecting || canDelete(item);
+    final tapLabel = selecting
+        ? 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}'
+        : 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen';
     final photo = item['has_image'] == true
         ? NotebookPhoto(
             widget.state,
@@ -1416,17 +1453,17 @@ class _NotebookScreenState extends State<_NotebookContext> {
                 final wide = constraints.maxWidth >= 600;
                 final summary = Semantics(
                   button: true,
-                  enabled: !selecting || canDelete(item),
+                  enabled: selectable,
+                  selected: selecting
+                      ? allMatching || selectedIds.contains(item['id'])
+                      : null,
+                  onTap: selectable ? openOrSelect : null,
                   label: selecting
                       ? 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}'
                       : 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, im Hefter öffnen',
                   child: InkWell(
                     excludeFromSemantics: true,
-                    onTap: selecting
-                        ? (canDelete(item)
-                              ? () => togglePageSelection(item)
-                              : null)
-                        : select,
+                    onTap: selectable ? openOrSelect : null,
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
@@ -1519,10 +1556,15 @@ class _NotebookScreenState extends State<_NotebookContext> {
                   Expanded(
                     child: Semantics(
                       button: true,
-                      label:
-                          'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
+                      enabled: selectable,
+                      selected: selecting
+                          ? allMatching || selectedIds.contains(item['id'])
+                          : null,
+                      onTap: selectable ? openOrSelect : null,
+                      label: tapLabel,
                       child: InkWell(
-                        onTap: select,
+                        excludeFromSemantics: true,
+                        onTap: selectable ? openOrSelect : null,
                         borderRadius: BorderRadius.circular(12),
                         child: photo,
                       ),
@@ -1534,10 +1576,15 @@ class _NotebookScreenState extends State<_NotebookContext> {
                       Expanded(
                         child: Semantics(
                           button: true,
-                          label:
-                              'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
+                          enabled: selectable,
+                          selected: selecting
+                              ? allMatching || selectedIds.contains(item['id'])
+                              : null,
+                          onTap: selectable ? openOrSelect : null,
+                          label: tapLabel,
                           child: InkWell(
-                            onTap: select,
+                            excludeFromSemantics: true,
+                            onTap: selectable ? openOrSelect : null,
                             borderRadius: BorderRadius.circular(8),
                             child: Padding(
                               padding: EdgeInsets.symmetric(vertical: 4),

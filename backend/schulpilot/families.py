@@ -1,9 +1,10 @@
+import hashlib
 import json
 import tempfile
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
@@ -51,7 +52,11 @@ router = APIRouter(tags=["Familien"])
 
 def child_data(db, child):
     user = db.get(User, child.user_id)
+    profile = {"display_name": user.display_name, "grade": child.grade, "subjects": child.subjects,
+               "school_type": child.school_type, "region": child.region}
+    revision = hashlib.sha256(json.dumps(profile, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     return {
+        "profile_revision": revision,
         "id": child.id,
         "display_name": user.display_name,
         "username": user.username,
@@ -143,8 +148,21 @@ def create_child(family_id: str, data: s.ChildCreate, p=Depends(parent), db=Depe
 
 
 @router.put("/children/{child_id}")
-def update_child(child_id: str, data: s.ChildUpdate, p=Depends(parent), db=Depends(get_db)):
-    child = child_access(db, p, child_id, write=True)
+def update_child(child_id: str, data: s.ChildUpdate,
+                 if_match: str | None = Header(None, max_length=66, pattern=r'^"?[a-f0-9]{64}"?$'),
+                 p=Depends(parent), db=Depends(get_db)):
+    from .parent_insights import lock_parent
+
+    child = lock_parent(db, p, child_id)
+    # All explicit profile writes lock Child before its User. No learning unit
+    # is modified or locked by sync_profile; historical subject snapshots stay.
+    db.execute(update(User).where(User.id == child.user_id).values(display_name=User.display_name))
+    db.get(User, child.user_id, populate_existing=True)
+    # The user row can have waited for a concurrent account operation. Recheck
+    # the parent session and family membership after that wait, before writing.
+    child = lock_parent(db, p, child_id)
+    if if_match is not None and if_match.strip('"') != child_data(db, child)["profile_revision"]:
+        raise HTTPException(409, "Diese Kinderangaben wurden inzwischen geändert. Vergleiche zuerst den gespeicherten Stand; dein Entwurf bleibt erhalten.")
     if any(len(x) > 80 for x in data.subjects):
         raise HTTPException(422, "Fachname zu lang.")
     db.get(User, child.user_id).display_name = data.display_name
@@ -153,6 +171,7 @@ def update_child(child_id: str, data: s.ChildUpdate, p=Depends(parent), db=Depen
     from .subject_registry import sync_profile
 
     sync_profile(db, child)
+    audit(db, p.user.id, "child.profile_update", child.id)
     db.commit()
     return child_data(db, child)
 
@@ -476,6 +495,14 @@ def export_child(db, child):
     from .grades import grade_data
 
     result["school_grades"] = [grade_data(row) for row in db.scalars(select(SchoolGrade).where(SchoolGrade.child_id == child.id))]
+    from .db import SchulbuddyTurn
+
+    # Each parent's chat remains private to its author. The child's own chat
+    # belongs to this child export; account export adds the requester's rows.
+    result["schulbuddy_turns"] = [{c.name: getattr(row, c.name) for c in SchulbuddyTurn.__table__.columns
+                                  if c.name != "session_id"}
+        for row in db.scalars(select(SchulbuddyTurn).where(SchulbuddyTurn.child_id == child.id,
+            SchulbuddyTurn.user_id == child.user_id))]
     for model in (GradeImport, GradeSourceSlot):
         result[model.__tablename__] = [{c.name: getattr(row, c.name) for c in model.__table__.columns}
                                      for row in db.scalars(select(model).where(model.child_id == child.id))]
@@ -521,10 +548,34 @@ def export_child(db, child):
     return result
 
 
+@router.get("/children/{child_id}/export")
+def export_one_child(child_id: str, include_photos: bool = True, p=Depends(parent), db=Depends(get_db)):
+    """Explicit private child export; no other child, account, billing or receipts."""
+    child = child_access(db, p, child_id)
+    directory = settings.data_dir / "exports"
+    directory.mkdir(exist_ok=True, mode=0o700)
+    with tempfile.NamedTemporaryFile(prefix="child-", suffix=".zip", dir=directory, delete=False) as temporary:
+        output = Path(temporary.name)
+    try:
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("child.json", json.dumps(export_child(db, child) | {"export_scope": {"include_photos": include_photos}}, ensure_ascii=False, indent=2))
+            for material in db.scalars(select(Material).where(Material.child_id == child.id, Material.path.is_not(None))):
+                path = settings.data_dir / "uploads" / material.path
+                if include_photos and path.is_file():
+                    archive.write(path, "materials/" + material.path)
+        audit(db, p.user.id, "child.export" if include_photos else "child.export_without_photos", child.id)
+        db.commit()
+        return FileResponse(output, media_type="application/zip", filename="schulpilot-kinderexport.zip",
+            background=BackgroundTask(output.unlink, missing_ok=True))
+    except BaseException:
+        output.unlink(missing_ok=True)
+        raise
+
+
 @router.get("/families/{family_id}/export")
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .commerce import orders_export
-    from .db import NotificationRead
+    from .db import NotificationRead, SchulbuddyTurn
 
     family, _ = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
@@ -546,6 +597,10 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                         "role": p.user.role,
                     },
                     "children": [export_child(db, c) for c in children],
+                    "schulbuddy_turns": [{column.name: getattr(row, column.name)
+                        for column in SchulbuddyTurn.__table__.columns if column.name != "session_id"}
+                        for row in db.scalars(select(SchulbuddyTurn).where(SchulbuddyTurn.user_id == p.user.id,
+                            SchulbuddyTurn.child_id.in_([c.id for c in children])))],
                     "orders": orders_export(db, family.id),
                     "notification_reads": [{"event_key": row.event_key, "created": row.created}
                         for row in db.scalars(select(NotificationRead).where(

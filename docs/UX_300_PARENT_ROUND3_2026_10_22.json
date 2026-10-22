@@ -1,0 +1,854 @@
+{
+  "baseline": "a431fb447af584f017cbd2bd019514bb584f2132",
+  "baseline_version": "1.21.1+89",
+  "scope": "Eltern und genehmigte Settings-Adminmetadaten, Runde3 UX90",
+  "independent_count": 59,
+  "earlier_638_recounted": false,
+  "excluded": [
+    {
+      "id": "PK011",
+      "status": "open",
+      "reason": "Kein starker unabhängiger umgesetzter Arbeitsweg; nicht gezählt."
+    },
+    {
+      "id": "PK020",
+      "status": "coupled",
+      "coupled_to": "PK009",
+      "reason": "Dieselbe bewusste Verwerfenprüfung über Elternformulare, nur einmal zählen."
+    }
+  ],
+  "verification": {
+    "new_widget_cases": 75,
+    "older_nearby_widget_cases": 29,
+    "widget_total": 104,
+    "new_backend_cases": 58,
+    "older_nearby_backend_cases": 23,
+    "backend_total": 81,
+    "static_analysis": "No issues found",
+    "whole_application_release": "Root integration pending; no own build/commit/deploy"
+  },
+  "sources": {
+    "S1": "https://www.w3.org/WAI/WCAG22/Understanding/error-prevention-legal-financial-data.html",
+    "S2": "https://www.w3.org/WAI/WCAG22/Understanding/redundant-entry.html",
+    "S3": "https://design-system.service.gov.uk/patterns/check-answers/",
+    "S4": "https://api.flutter.dev/flutter/widgets/PopScope-class.html",
+    "S5": "https://www.rfc-editor.org/rfc/rfc5545"
+  },
+  "measures": [
+    {
+      "id": "PK001",
+      "problem": "ParentPlan.includeCompleted mischt offene und erledigte Themen; gezielt erledigte Ziele nicht abrufbar.",
+      "change": "Serverseitiger Statusfilter offen/erledigt/alle, alter bool kompatibel.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk001_completed_goals_are_a_real_separate_collection",
+        "app/test/parent_workflows_ux90_test.dart: PK001"
+      ]
+    },
+    {
+      "id": "PK002",
+      "problem": "parent_plans.view sortiert nur Pflicht/Anlagedatum; nächste Frist steht ggf. hinten.",
+      "change": "Bewusste Terminsortierung mit stabilen IDs und undatierten Zielen zuletzt.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk002_deadline_sort_keeps_undated_last_and_stable_pages",
+        "app/test/parent_workflows_ux90_test.dart: PK002"
+      ]
+    },
+    {
+      "id": "PK003",
+      "problem": "ParentPlan.showTopic sucht Namen; gleichnamige Ziele aus anderem Fach/Zeitraum können geöffnet werden.",
+      "change": "Exakter eigener Auftragsfilter und auftrag-Deeplink.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk003_exact_old_goal_not_ambiguous_topic_or_wrong_completion",
+        "app/test/parent_workflows_ux90_test.dart: PK003"
+      ]
+    },
+    {
+      "id": "PK004",
+      "problem": "ParentPlan unterscheidet vorbereitete Runden nur pro Karte, keine gezielte Liste.",
+      "change": "Filter nach gespeicherter offener Runde / noch ohne Runde.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk004_006_stored_round_kind_and_start_are_actual_filters",
+        "app/test/parent_workflows_ux90_test.dart: PK004"
+      ]
+    },
+    {
+      "id": "PK005",
+      "problem": "Plan enthält Klassenarbeit/Hausaufgabe/Elternthema, ohne gezielte Auswahl.",
+      "change": "Auftragsartfilter über bestehende kind-Snapshots.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk004_006_stored_round_kind_and_start_are_actual_filters [kind]",
+        "app/test/parent_workflows_ux90_test.dart: PK005"
+      ]
+    },
+    {
+      "id": "PK006",
+      "problem": "Startdatum ist nur Einzelkartentext; noch nicht startbare Ziele nicht gesammelt prüfbar.",
+      "change": "Startfilter heute möglich / später vorgesehen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk004_006_stored_round_kind_and_start_are_actual_filters [start]",
+        "app/test/parent_workflows_ux90_test.dart: PK006"
+      ]
+    },
+    {
+      "id": "PK007",
+      "problem": "ParentPlan-Seitenzahl verrät keine Verteilung offen/erledigt/überfällig.",
+      "change": "Lesende Bestandsübersicht, klar getrennt von Kompetenz.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk007_totals_are_whole_child_not_current_filtered_page",
+        "app/test/parent_workflows_ux90_test.dart: PK007"
+      ]
+    },
+    {
+      "id": "PK008",
+      "problem": "Ein erledigtes Ziel lässt sich nur wiederöffnen und ändert damit dessen alten Auftrag.",
+      "change": "Bewusst neue Kopie ohne alte Antworten/Runden, eigenes Idempotenzziel.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "app/test/parent_actions_ux90_test.dart: PK008"
+      ]
+    },
+    {
+      "id": "PK009",
+      "problem": "AssignmentEditor verwirft geändertes Thema bei normalem Abbrechen/Zurück.",
+      "change": "Eigene verwerfbare Änderungsprüfung, kein Pflichtdialog bei unberührtem Formular.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "app/test/parent_workflows_ux90_test.dart: PK009",
+        "app/test/parent_profile_ux90_test.dart: PK009"
+      ]
+    },
+    {
+      "id": "PK010",
+      "problem": "AssignmentEditor Datum wird an Geräteuhr statt bekanntem Plantag verankert.",
+      "change": "Vom geladenen Kinderplan übergebener Kalendertag.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "app/test/parent_actions_ux90_test.dart: PK010"
+      ]
+    },
+    {
+      "id": "PK012",
+      "problem": "grades.list_grades kennt keine zeitliche Eingrenzung.",
+      "change": "Datierte Noten von/bis, Null-Einzeldaten ehrlich ausgeschlossen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk012_date_range_inclusive_and_unknown_dates_not_invented",
+        "app/test/parent_workflows_ux90_test.dart: PK012"
+      ]
+    },
+    {
+      "id": "PK013",
+      "problem": "Grades hat keine gezielte Schuljahres-/Halbjahresansicht für undatierte PDF-Noten.",
+      "change": "Belegtes Schuljahr/Halbjahr serverseitig filtern, nicht aus Fantasiedatum.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk013_semester_filter_uses_stored_school_evidence",
+        "app/test/parent_workflows_ux90_test.dart: PK013"
+      ]
+    },
+    {
+      "id": "PK014",
+      "problem": "Notenliste nur feste Standardsortierung, älteste Leistung schwer auffindbar.",
+      "change": "Sortierwahl Datum auf/ab sowie Fach; keine gemischte Notenwertsortierung.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk014_date_order_keeps_unknown_dates_after_dated_observations",
+        "app/test/parent_workflows_ux90_test.dart: PK014"
+      ]
+    },
+    {
+      "id": "PK015",
+      "problem": "Eltern können nur ganzen Haushalt exportieren, nicht gezielt private Schulnoten.",
+      "change": "Berechtigter begrenzter Noten-CSV-Export der gewählten Filter, keine KI.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk015_filtered_csv_is_private_literal_and_does_not_create_work"
+      ]
+    },
+    {
+      "id": "PK016",
+      "problem": "GradeEditor erlaubt neue Note nur mit Einzeldatum, Backend erlaubt belegtes Halbjahr.",
+      "change": "Genaues Datum oder bekanntes Schulhalbjahr bewusst wählen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "app/test/parent_workflows_ux90_test.dart: PK016"
+      ]
+    },
+    {
+      "id": "PK017",
+      "problem": "GradeEditor lässt mehr als zwei Dezimalstellen lokal durch, Backend lehnt sie ab.",
+      "change": "Präzisionsprüfung vor Netzaufruf, Komma/Punkt erhalten.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "app/test/parent_workflows_ux90_test.dart: PK017"
+      ]
+    },
+    {
+      "id": "PK018",
+      "problem": "delete_grade löscht blind trotz vorhandener revision.",
+      "change": "Optionaler kompatibler CAS vor Löschen, UI übermittelt bestätigte Revision.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk018_stale_delete_preserves_changed_grade",
+        "app/test/parent_completion_ux90_test.dart: PK018"
+      ]
+    },
+    {
+      "id": "PK019",
+      "problem": "create_goal nutzt geänderte Note auch nach geöffnetem alten Bestätigungsdialog.",
+      "change": "Optionale erwartete Notenrevision im bestehenden GradeGoal-Schema.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk019_changed_grade_does_not_silently_create_goal",
+        "app/test/parent_completion_ux90_test.dart: PK019"
+      ]
+    },
+    {
+      "id": "PK021",
+      "problem": "GradeEditor Tastatur hat keinen zusammenhängenden Next-/Done-Weg.",
+      "change": "Sinnvolle Feldreihenfolge mit expliziter Abschlussaktion, keine automatische Übermittlung.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "app/test/parent_completion_ux90_test.dart: PK021"
+      ]
+    },
+    {
+      "id": "PK022",
+      "problem": "GradeEditor Datumspicker gehört nicht zur verwalteten Dialogroute und kann nach Kontowechsel offen bleiben.",
+      "change": "Kalenderroute exakt an Konto/Kinderkontext binden und nur diese entfernen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "app/test/parent_workflows_ux90_test.dart: PK022"
+      ]
+    },
+    {
+      "id": "PK023",
+      "problem": "homework-review kennt keine Datumsgrenze; alte Fotos nur über fortgesetztes Blättern erreichbar.",
+      "change": "Aufnahmezeitraum von/bis mit Kinderzeitzone, vollständige Sammlung.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk023_photo_date_range_uses_child_timezone_and_inclusive_local_days",
+        "app/test/parent_workflows_ux90_test.dart: PK023"
+      ]
+    },
+    {
+      "id": "PK024",
+      "problem": "Hausaufgabenliste hat nur neueste zuerst.",
+      "change": "Bewusste älteste-zuerst-Ansicht mit passendem Cursor.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk024_oldest_homework_cursor_is_stable_with_same_timestamps",
+        "app/test/parent_workflows_ux90_test.dart: PK024"
+      ]
+    },
+    {
+      "id": "PK025",
+      "problem": "homework marked-Prädikat prüft Revision, aber nicht aktuelle Analyse-ID; Karte prüft beides.",
+      "change": "Filter an dieselbe gültige Analyse wie Karte binden.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk025_old_analysis_marks_do_not_contradict_the_visible_card"
+      ]
+    },
+    {
+      "id": "PK026",
+      "problem": "Homework Worked heißt mindestens ein Häkchen; vollständige vs teilweise Eigenmarkierung nicht unterscheidbar.",
+      "change": "Präzise lesende Fortschrittszustände, niemals Kompetenz behaupten.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk025_026_homework_progress_uses_the_actual_current_task_ids",
+        "app/test/parent_workflows_ux90_test.dart: PK026"
+      ]
+    },
+    {
+      "id": "PK027",
+      "problem": "Hausaufgabenliste zeigt nur Gesamtzahl, Eltern erkennen ungeprüfte Quelle erst pro Karte.",
+      "change": "Gemeinsame Bestandsübersicht mit expliziten Quell-/Eigenmarkierungsgrenzen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "app/test/parent_workflows_ux90_test.dart: PK027"
+      ]
+    },
+    {
+      "id": "PK028",
+      "problem": "ParentInsightsPanel kann nur einen gespeicherten Bericht ansehen; Veränderungen müssen gemerkt werden.",
+      "change": "Zwei gespeicherte Belegstände ausdrücklich vergleichen, kein neuer KI-Auftrag.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_insights_panel.dart"
+      ],
+      "tests": [
+        "app/test/parent_saved_tools_ux90_test.dart: PK028"
+      ]
+    },
+    {
+      "id": "PK029",
+      "problem": "Historischer Bericht zeigt Fachnamen/Interpretation, aber keine aktuelle Gegenüberstellung der Belege.",
+      "change": "Aktueller versus gespeicherter Aufgabenzähler mit ehrlichem Kontext.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_insights_panel.dart"
+      ],
+      "tests": [
+        "app/test/parent_saved_tools_ux90_test.dart: PK029"
+      ]
+    },
+    {
+      "id": "PK030",
+      "problem": "settings Familienentzug nennt nur „dieses Elternkonto“, obwohl mehrere Eltern aufgelistet sind.",
+      "change": "Zielkonto im konkreten Entzugsdialog wiederholen, eigene Rolle erklären.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/settings_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_profile_ux90_test.dart: PK030"
+      ]
+    },
+    {
+      "id": "PK031",
+      "problem": "editChildDialog heißt nur „Notwendige Lernangaben“, Zielkind bleibt im Formular ungenannt.",
+      "change": "Sichtbare feste Identität/Benutzername vor Profiländerung.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_profile_dialog.dart",
+        "backend/schulpilot/families.py"
+      ],
+      "tests": [
+        "app/test/parent_profile_ux90_test.dart: PK031"
+      ]
+    },
+    {
+      "id": "PK032",
+      "problem": "inviteDialog bietet gültige schon vorhandene gleiche Einladung nicht an.",
+      "change": "Vorhandenen Ablauf zeigen statt unbeabsichtigter paralleler Einladung; bewusstes Neusenden bleibt möglich.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/settings_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_profile_ux90_test.dart: PK032"
+      ]
+    },
+    {
+      "id": "PK033",
+      "problem": "Noten-Auswahl zeigt keine gewichtete Übersicht über alle gefilterten Seiten.",
+      "change": "Tatsächliche Gesamtbelege nach Fach und Notensystem zusammenfassen; niemals Mischskala oder Zeugnisprognose.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk033_selection_summary_never_mixes_scales_or_claims_prognosis",
+        "app/test/parent_workflows_ux90_test.dart: PK033"
+      ]
+    },
+    {
+      "id": "PK034",
+      "problem": "Parallel bearbeitete Kinderprofile haben keinen erwarteten gespeicherten Stand.",
+      "change": "Optionales If-Match unter Child/User-Sperren, Sitzungsprüfung nach Wartezeit,409 mit erhaltenem Entwurf und ausdrücklich übernommenem lesendem Vergleich.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_profile_dialog.dart",
+        "backend/schulpilot/families.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk034_child_profile_compare_and_swap_keeps_another_parents_change",
+        "backend/tests/test_parent_workflows_ux90.py::test_pk034_parallel_profile_writes_claim_one_version",
+        "backend/tests/test_parent_workflows_ux90.py::test_pk034_profile_waiting_for_child_user_lock_does_not_write_after_parent_logout",
+        "app/test/parent_profile_ux90_test.dart: PK034"
+      ]
+    },
+    {
+      "id": "PK035",
+      "problem": "Kinderprofil akzeptiert doppelte Fachnamen oder einzelne überlange Fachwerte bis zum Serverfehler.",
+      "change": "Begrenzte einzelne Fachnamen und doppelte normalisierte Eingaben vor PUT verständlich prüfen; bestehende allgemeine20er-Grenze nicht neu zählen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_profile_dialog.dart",
+        "backend/schulpilot/families.py"
+      ],
+      "tests": [
+        "app/test/parent_profile_ux90_test.dart: PK035"
+      ]
+    },
+    {
+      "id": "PK036",
+      "problem": "Überblickaktion für bestätigte Pflichtaufträge führt in eine breitere, anders gefilterte Liste.",
+      "change": "Begrenzte initialFilters initialisieren tatsächlich die gemeinte eigene Auswahl; unbekannte und ungültige Kriterien ignorieren.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/parent_assignment_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk036_overview_selection_filters_only_confirmed_mandatory_goals",
+        "app/test/parent_scope_exports_ux90_test.dart: PK036"
+      ]
+    },
+    {
+      "id": "PK037",
+      "problem": "Eltern können nur den ganzen Familienhaushalt statt genau eines eigenen Kindes exportieren.",
+      "change": "Ausdrücklicher geschützter Kindexport über bestehendes export_child, vor Download Name/Zugang/Umfang prüfen, keine Fremdkinder oder Familienabrechnungen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_export_dialog.dart",
+        "backend/schulpilot/families.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk037_child_export_is_exactly_one_child_and_cleans_temporary_zip",
+        "backend/tests/test_parent_workflows_ux90.py::test_pk037_child_export_remains_parent_only_and_family_scoped",
+        "app/test/parent_saved_tools_ux90_test.dart: PK037"
+      ]
+    },
+    {
+      "id": "PK038",
+      "problem": "Offene gespeicherte Termine müssen zwischen automatischen Wochenvorschlägen einzeln gesucht werden.",
+      "change": "Eigene reine GET-Terminsicht mit tatsächlicher Fälligkeit, Zeitraum/Verbindlichkeit und exaktem Auftragsziel; keine KI-Vorschläge als verbindliche Termine ausgeben.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_deadlines_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk038_deadlines_are_actual_open_targets_not_ai_time_proposals",
+        "app/test/parent_saved_tools_ux90_test.dart: PK038"
+      ]
+    },
+    {
+      "id": "PK039",
+      "problem": "Gespeicherte Lerntermine können nicht als private statische Kalenderkopie übernommen werden.",
+      "change": "Bewusster begrenzter ICS-Export mit ganztägigen echten Terminen, UTF8-Faltung/TEXT-Escaping und ehrlichem Hinweis auf fehlende Synchronisation.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_deadlines_dialog.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk039_calendar_is_all_day_private_escaped_and_statically_bounded",
+        "app/test/parent_scope_exports_ux90_test.dart: PK039"
+      ]
+    },
+    {
+      "id": "PK040",
+      "problem": "Beim Wechsel zu einem Geschwisterkind muss der Elternbereich neu gesucht werden.",
+      "change": "Eigene berechtigte Kinder bewusst auswählen und denselben Bereich beibehalten, nur family-GET; Ursprungskontext, Konto/Familie und Dialogroute erhalten.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_child_navigation.dart",
+        "app/lib/parent_child_picker.dart"
+      ],
+      "tests": [
+        "app/test/parent_saved_tools_ux90_test.dart: PK040"
+      ]
+    },
+    {
+      "id": "PK041",
+      "problem": "Aktive Detailfilter verschwinden beim Einklappen der Filtergruppe aus der Orientierung.",
+      "change": "Angewendete Filter außerhalb der Gruppe beschriften und einzeln entfernen; andere Auswahlkriterien bleiben erhalten.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_workspace_ui.dart",
+        "app/lib/parent_plan_screen.dart",
+        "app/lib/grades_screen.dart",
+        "app/lib/parent_homework_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_completion_ux90_test.dart: PK041"
+      ]
+    },
+    {
+      "id": "PK042",
+      "problem": "PDF-Prüfung kann nach Quellstatus filtern, aber nicht nach den tatsächlich ausgewählten Schreibaktionen.",
+      "change": "Zusätzliche rein lokale Auswahl nach Hinzufügen/Aktualisieren/Beibehalten/Auslassen; Wirkung gilt weiter für die ganze Vorschau.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grade_import_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_pdf_ux90_test.dart: PK042"
+      ]
+    },
+    {
+      "id": "PK043",
+      "problem": "Eine versehentliche lokale PDF-Zuordnung kann nur manuell rekonstruiert werden.",
+      "change": "Letzte20 lokale Zuordnungsstände ausdrücklich zurücknehmen, ohne HTTP-Änderung oder Übernahme alter Vorschauversionen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grade_import_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_pdf_ux90_test.dart: PK043"
+      ]
+    },
+    {
+      "id": "PK044",
+      "problem": "Mehrere sichtbare ungeeignete PDF-Einträge müssen einzeln ausgelassen werden.",
+      "change": "Nur angezeigte zulässige Übernahmen nach konkreter Zusammenfassung lokal auslassen; versteckte/bereits beibehaltene Positionen und vorhandene Noten erhalten.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grade_import_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_pdf_ux90_test.dart: PK044"
+      ]
+    },
+    {
+      "id": "PK045",
+      "problem": "Eine vorhandene Schulnote kann in der PDF-Vorschau mehreren Quellpositionen zugeordnet werden, bis der Server ablehnt.",
+      "change": "Mehrfache Ziel-ID vor Confirm erkennen, betroffene Quellpositionen erklären und lokale Zuordnung korrigierbar lassen; Serverprüfung bleibt maßgeblich.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grade_import_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_pdf_ux90_test.dart: PK045"
+      ]
+    },
+    {
+      "id": "PK046",
+      "problem": "Nach paralleler Notenänderung lässt sich die vorhandene RAM-PDF nur durch erneute Dateiauswahl neu vergleichen.",
+      "change": "Ausdrücklich dieselbe lokale PDF mit neuem Idempotenzschlüssel prüfen; alte Auswahl erst nach erfolgreicher neuer Vorschau ersetzen, kein Confirm oder Provider.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grade_import_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_pdf_ux90_test.dart: PK046"
+      ]
+    },
+    {
+      "id": "PK047",
+      "problem": "Große PDF-Vorschau zeigt keinen Überblick, welche Fächer tatsächlich enthalten sind und noch offene Zuordnungen haben.",
+      "change": "Tatsächliche Quellzählung je Fach als lokale Auswahlhilfe; nicht aus gefiltertem Ausschnitt errechnen und keinen neuen Upload starten.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grade_import_screen.dart"
+      ],
+      "tests": [
+        "app/test/parent_pdf_ux90_test.dart: PK047"
+      ]
+    },
+    {
+      "id": "PK048",
+      "problem": "Admin-Protokoll endet bei den jüngsten200 gespeicherten Metadaten.",
+      "change": "Admin-only begrenztes Keysetblättern mit festen Snapshotgrenzen und stabilen IDs; Fehler erhält geladene Seiten, höchstens1000 Ereignisse im UI.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_operator_can_reach_older_than_200_with_stable_tie_break_and_no_inference",
+        "app/test/parent_operator_ux90_test.dart: PK048",
+        "app/test/parent_saved_tools_ux90_test.dart: PK audit"
+      ]
+    },
+    {
+      "id": "PK049",
+      "problem": "Protokollsuche findet nur den geladenen200er-Ausschnitt.",
+      "change": "Bewusst bestätigte literale serverseitige Suche über erlaubte Aktions-/Akteur-/Zielmetadaten, reine GETs und expliziter Neustart der Auswahl.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_full_history_search_is_literal_and_actor_action_are_exact",
+        "app/test/parent_operator_ux90_test.dart: PK049"
+      ]
+    },
+    {
+      "id": "PK050",
+      "problem": "Akteur-/Aktionsauswahl bezieht sich nur auf den lokalen Protokollausschnitt.",
+      "change": "Exakte kombinierbare serverseitige Akteur-/Aktionsfilter mit begrenzten tatsächlichen Optionen; keine private Tabellenanreicherung.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_full_history_search_is_literal_and_actor_action_are_exact",
+        "app/test/parent_operator_ux90_test.dart: PK050"
+      ]
+    },
+    {
+      "id": "PK051",
+      "problem": "Operator kann keinen beliebigen UTC-Zeitraum in der vollständigen Metadatenhistorie prüfen.",
+      "change": "Inklusive reale UTC-Datumsgrenzen mit lokaler Kalender-/Reihenfolgeprüfung und begrenztem Admin-GET.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_audit_date_interval_is_utc_inclusive_and_snapshot_excludes_new_actions",
+        "app/test/parent_operator_ux90_test.dart: PK051"
+      ]
+    },
+    {
+      "id": "PK052",
+      "problem": "Ein älterer Betriebsablauf lässt sich in der vollständigen Historie nicht chronologisch vorwärts lesen.",
+      "change": "Tatsächliche älteste/neuste Reihenfolge über dieselben stabilen Keysets statt bloß lokaler Umkehr der ersten200.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_operator_can_reach_older_than_200_with_stable_tie_break_and_no_inference [oldest]",
+        "app/test/parent_saved_tools_ux90_test.dart: PK audit"
+      ]
+    },
+    {
+      "id": "PK053",
+      "problem": "Aktionshäufigkeiten außerhalb der geladenen200 bleiben verborgen.",
+      "change": "Gesamte gefilterte erlaubte Metadaten nach Aktion zählen, Top20 ausdrücklich begrenzen und von einer Zahl zur exakten eigenen Filterauswahl führen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_full_history_search_is_literal_and_actor_action_are_exact",
+        "app/test/parent_operator_ux90_test.dart: PK053"
+      ]
+    },
+    {
+      "id": "PK054",
+      "problem": "Ein ausgewählter Protokollausschnitt kann für die lokale Betriebsprüfung nicht als strukturierte Datei gesichert werden.",
+      "change": "Nur tatsächlich geladene neutrale Metadaten bewusst als CSV speichern, Grenzen/private Kennungen nennen, Tabellenformeln maskieren; keine neue Betriebsaktion.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_operator_audit.dart",
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "app/test/parent_actions_ux90_test.dart: PK054"
+      ]
+    },
+    {
+      "id": "PK055",
+      "problem": "Noteneinträge nennen keinen tatsächlich erhaltenen bestätigten PDF-Beleg.",
+      "change": "Erhaltene GradeSourceSlot-Zuordnung rein lesend filtern und mit letzter gelesener PDF-Note/Schuljahr im Detail zeigen; fehlender Beleg beweist keine manuelle Herkunft.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk055_grade_sources_use_retained_confirmed_pdf_slot_without_inventing_manual_origin",
+        "app/test/parent_actions_ux90_test.dart: PK055"
+      ]
+    },
+    {
+      "id": "PK056",
+      "problem": "Noten mit oder ohne bereits zugeordnetes Lernziel müssen einzeln gesucht werden.",
+      "change": "Tatsächliche gespeicherte Zielzuordnung vor Paging/CSV filtern, unabhängig von offener/erledigter Zielfolge; keine neue Aufgabe erzeugen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/grades_screen.dart",
+        "backend/schulpilot/grades.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk056_linked_grade_filter_and_csv_share_the_actual_saved_goal_selection",
+        "app/test/parent_actions_ux90_test.dart: PK056"
+      ]
+    },
+    {
+      "id": "PK057",
+      "problem": "Kindexport lädt persönliche Bilddateien immer mit, auch wenn nur Textbelege benötigt werden.",
+      "change": "Vor dem Download Bilddateien ausdrücklich abwählbar; include_photos defaulttrue erhält alte Verträge, Texte/Belege/Metadaten und Exportumfang bleiben ausgewiesen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_export_dialog.dart",
+        "backend/schulpilot/families.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk057_child_text_export_excludes_only_photos_and_keeps_real_material_evidence",
+        "app/test/parent_actions_ux90_test.dart: PK057"
+      ]
+    },
+    {
+      "id": "PK058",
+      "problem": "Ein veralteter Familientarifdialog kann neuere Grenzen eines anderen Administrators überschreiben.",
+      "change": "Optionales If-Match unter Familienzeilensperre und erneuter Admin-/Sitzungsprüfung;409 erhält Entwurf und bietet nur lesenden Vergleich vor bewusster Übernahme.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/settings_screen.dart",
+        "backend/schulpilot/admin.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_audit_ux90.py::test_operator_tariff_revision_conflict_preserves_current_limits_and_legacy_contract",
+        "backend/tests/test_parent_audit_ux90.py::test_parallel_operator_tariff_writes_claim_exactly_one_current_snapshot",
+        "backend/tests/test_parent_audit_ux90.py::test_operator_tariff_waiting_for_family_rechecks_admin_session_after_lock",
+        "app/test/parent_actions_ux90_test.dart: PK058"
+      ]
+    },
+    {
+      "id": "PK059",
+      "problem": "Hausaufgabenkarte zeigt Gerätezeit, obwohl Aufnahmefilter den gespeicherten Kindertag verwenden.",
+      "change": "Serverseitigen tatsächlich konvertierten lokalen Fototermin samt Kinderzeitzone anzeigen; älteres Backend ausdrücklich als Gerätezeit kennzeichnen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk059_homework_timestamp_matches_child_day_even_when_browser_time_would_be_previous_day",
+        "app/test/parent_actions_ux90_test.dart: PK059"
+      ]
+    },
+    {
+      "id": "PK060",
+      "problem": "Hausaufgabensuche findet nicht die Titel der aktuell erkannten Aufgaben.",
+      "change": "Literal und begrenzt über höchstens8 Titel der aktuellen gültigen Analyse suchen; veraltete Analyse-/Quellenrevisionen bleiben ausgeschlossen.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_homework_screen.dart",
+        "backend/schulpilot/parent_plans.py"
+      ],
+      "tests": [
+        "backend/tests/test_parent_workflows_ux90.py::test_pk060_homework_search_reads_only_current_recognized_task_titles_and_literal_characters"
+      ]
+    },
+    {
+      "id": "PK061",
+      "problem": "Unvollständig gelieferte Übungsbelege erscheinen im Elternüberblick als sichere0.",
+      "change": "Fehlenden/partiellen Stand ausdrücklich unbekannt zeigen, tatsächliche vollständige0 erhalten und keine nicht gemeldeten Fachzahlen erfinden.",
+      "status": "tested",
+      "source_files": [
+        "app/lib/parent_overview.dart"
+      ],
+      "tests": [
+        "app/test/parent_actions_ux90_test.dart: PK061"
+      ]
+    }
+  ]
+}

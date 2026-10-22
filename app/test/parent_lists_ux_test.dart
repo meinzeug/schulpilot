@@ -198,7 +198,17 @@ void main() {
     tester,
   ) async {
     final requests = <http.Request>[];
-    await overview.mountParent(tester, overview.parentOverview(), requests);
+    final data = overview.parentOverview();
+    data['practice_summary'] = {
+      'practiced_tasks': 0,
+      'attempts': 0,
+      'practiced_rounds': 0,
+      'independent_tasks': 0,
+      'assisted_tasks': 0,
+      'needs_practice_tasks': 0,
+      'uncertain_tasks': 0,
+    };
+    await overview.mountParent(tester, data, requests);
     final hero = find.text('Lernstand auf einen Blick');
     final evidence = find.byType(ParentPracticeSummary);
     final insights = find.byType(ParentInsightsPanel);
@@ -271,9 +281,15 @@ void main() {
     );
     await fixture.open(tester, state, 'plan', width: 320, scale: 2);
     await fixture.tap(tester, 'Meine Themen');
-    final toggle = find.text('Abgeschlossene Themen mit anzeigen');
+    final toggle = find.byWidgetPredicate(
+      (w) =>
+          w is DropdownButtonFormField<String> &&
+          w.decoration.labelText == 'Auftragsstatus',
+    );
     await tester.ensureVisible(toggle);
     await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Offene und erledigte Themen').last);
     await tester.pump();
     expect(find.text('Mathematik · Bruchaddition'), findsNothing);
     filtered.complete(

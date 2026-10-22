@@ -9,6 +9,7 @@ class LearningRoom extends StatelessWidget {
   final int phase;
   final String? progress;
   final Widget? clock;
+  final Widget? assistant;
   final Widget child;
   final Widget? primaryAction;
   final Widget? actionMessage;
@@ -26,6 +27,7 @@ class LearningRoom extends StatelessWidget {
     required this.scrollController,
     this.progress,
     this.clock,
+    this.assistant,
     this.primaryAction,
     this.actionMessage,
     this.onPause,
@@ -74,6 +76,7 @@ class LearningRoom extends StatelessWidget {
                     icon: Icon(Icons.pause_rounded, size: 20),
                     label: Text('Pause'),
                   ),
+                if (!enlarged) ?assistant,
               ],
             ),
           ),
@@ -220,6 +223,7 @@ class LearningRoom extends StatelessWidget {
                             onPressed: onPause,
                             icon: Icon(Icons.pause_rounded),
                           ),
+                        ?assistant,
                       ],
                     ),
                   ),

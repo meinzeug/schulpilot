@@ -490,10 +490,8 @@ void main() {
       final f = StoreFixture();
       await f.mount(t, '/bestellungen');
       await tap(t, find.text('Künstlicher Familienzugang'));
-      expect(
-        f.router.routerDelegate.currentConfiguration.uri.path,
-        '/angebote',
-      );
+      expect(find.byType(OffersScreen), findsOneWidget);
+      expect(f.router.canPop(), isTrue);
       expect(f.calls.every((r) => r.method == 'GET'), isTrue);
     },
   );

@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -27,7 +28,7 @@ from .db import (
     now,
 )
 from .families import child_data
-from .security import authenticated, child_access, child_user, own_child, parent, rate_limit
+from .security import authenticated, child_access, child_user, digest, own_child, parent, rate_limit
 
 router = APIRouter(tags=["Lernen und Planung"])
 
@@ -271,7 +272,7 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
     from .learning_controller import projection as session_projection
 
     sources = unit_source_texts(db, unit)
-    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, Attempt.id)))
+    attempts = list(db.scalars(select(Attempt).where(Attempt.unit_id == unit.id).order_by(Attempt.created, func.coalesce(Attempt.evaluation["attempt_number"].as_integer(), 0), Attempt.id)))
     events = list(db.scalars(select(Activity).where(Activity.unit_id == unit.id)))
     history = {}
     for row in db.scalars(select(AttemptAssessment).where(AttemptAssessment.attempt_id.in_([a.id for a in attempts]))
@@ -284,6 +285,8 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
     deferred_questions = adaptive_plan.deferred(db, unit) | instructional_deferred(db, unit)
     for q in unit.questions:
         value = dict(q)
+        if unit.subject.strip().casefold() == "mathematik" and q.get("type") in ("short", "gap") and not q.get("language") and re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", str(q.get("answer", "")).strip()):
+            value["input_kind"] = "number"
         if not include_answers:
             value.pop("answer", None)
             value.pop("accepted", None)
@@ -1718,19 +1721,29 @@ def feedback(unit_id: str, data: s.FeedbackRequest, p=Depends(child_user), db=De
 
 @router.post("/children/{child_id}/messages", status_code=201)
 def send_message(child_id: str, data: s.MessageRequest, p=Depends(authenticated), db=Depends(get_db)):
-    child_access(db, p, child_id, write=p.user.role == "parent")
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
     if (p.user.role == "child" and data.kind == "reply") or (p.user.role == "parent" and data.kind != "reply"):
         raise HTTPException(403, "Nachrichtentyp für diesen Zugang nicht erlaubt.")
-    rate_limit(db, "message:" + p.user.id, 10, 600)
     context = {key: getattr(data, key) for key in ("unit_id", "material_id", "day_id") if getattr(data, key)}
     if len(context) > 1:
         raise HTTPException(422, "Bitte nur eine Aufgabe oder Heftseite für das Anliegen auswählen.")
+    db.execute(update(Child).where(Child.id == child.id).values(grade=Child.grade))
+    # Check permissions again after waiting for another mutation of this child.
+    child_access(db, p, child_id, write=p.user.role == "parent")
+    message_id = digest("family-message-v1:" + p.user.id + ":" + child.id + ":" + data.request_key)[:32] if data.request_key else None
+    if message_id:
+        existing = db.get(Message, message_id)
+        if existing:
+            if existing.child_id != child.id or existing.sender_id != p.user.id or existing.kind != data.kind or existing.body != data.body or (existing.context or {}) != context:
+                raise HTTPException(409, "Dieser Sendeschlüssel gehört zu einer anderen Nachricht. Bitte den ursprünglichen Vorgang zuerst prüfen.")
+            return {"id": existing.id, "message": "Nachricht innerhalb deiner Familie gespeichert."}
+    rate_limit(db, "message:" + p.user.id, 10, 600, commit=False)
     for key, value in context.items():
         model = {"unit_id": LearningUnit, "material_id": Material, "day_id": SchoolDay}[key]
         target = db.get(model, value)
         if not target or target.child_id != child_id:
             raise HTTPException(404, "Der Bezug dieses Anliegens ist nicht verfügbar.")
-    message = Message(child_id=child_id, sender_id=p.user.id, kind=data.kind, body=data.body, context=context or None)
+    message = Message(**({"id": message_id} if message_id else {}), child_id=child_id, sender_id=p.user.id, kind=data.kind, body=data.body, context=context or None)
     db.add(message)
     record(db, child_id, "message", {"kind": data.kind})
     db.commit()

@@ -31,6 +31,28 @@ Future<void> tap(WidgetTester tester, Finder target) async {
   await messages.tap(tester, target);
 }
 
+Future<void> reveal(
+  WidgetTester tester,
+  Finder target, {
+  double delta = 140,
+}) async {
+  if (target.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      target,
+      delta,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+      maxScrolls: 60,
+    );
+  }
+  await tester.ensureVisible(target);
+  await messages.settle(tester);
+}
+
 class Fixture {
   final requests = <http.Request>[];
   final data = jsonDecode(jsonEncode(fixture.preview())) as Json;
@@ -186,21 +208,22 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
-      await tester.enterText(input('PDF-Vorschau durchsuchen'), 'Zellen');
-      expect(
-        find.text(
-          '3 von 3 PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
-        ),
-        findsOneWidget,
+      final all = find.text(
+        '3 von 3 PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
       );
+      final searched = find.text(
+        '1 von 3 PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
+      );
+      final search = input('PDF-Vorschau durchsuchen');
+      await tester.enterText(search, 'Zellen');
+      await reveal(tester, all);
+      expect(all, findsOneWidget);
+      await reveal(tester, search, delta: -140);
+      await tester.tap(search);
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await messages.settle(tester);
-      expect(
-        find.text(
-          '1 von 3 PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
-        ),
-        findsOneWidget,
-      );
+      await reveal(tester, searched);
+      expect(searched, findsOneWidget);
       expect(f.requests, hasLength(1));
     },
   );
@@ -212,8 +235,7 @@ void main() {
       await tap(tester, find.text('PDF-Einträge gezielt prüfen'));
       await choose(tester, 'Fach in der PDF', 'Biologie');
       final choice = find.byKey(const ValueKey('c-null'));
-      await tester.ensureVisible(choice);
-      await messages.settle(tester);
+      await reveal(tester, choice);
       tester.widget<DropdownButtonFormField<String>>(choice).onChanged!('skip');
       await messages.settle(tester);
       await tap(tester, find.text('Auswahl übernehmen'));

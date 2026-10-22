@@ -12,6 +12,9 @@ import 'codex_model_picker.dart';
 import 'dashboard.dart';
 import 'notification_panel.dart';
 import 'parent_workspace_ui.dart';
+import 'parent_profile_dialog.dart';
+import 'parent_export_dialog.dart';
+import 'parent_operator_audit.dart';
 import 'ui.dart';
 import 'google_login.dart';
 
@@ -392,33 +395,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 secondary: true,
                                 onPressed: () async {
                                   if (!scope.current) return;
-                                  if (await confirmDialog(
-                                        context,
-                                        'Familienrechte entziehen?',
-                                        'Dieses Elternkonto verliert den Familienzugriff. Seine Sitzungen werden widerrufen.',
-                                      ) &&
-                                      scope.current) {
-                                    await state.api.delete(
+                                  final changed = await confirmAction(
+                                    scope,
+                                    'Familienrechte entziehen?',
+                                    '${m['display_name']} verliert den Zugriff auf diese Familie. Alle Sitzungen dieses Elternkontos werden widerrufen. Der Kinderzugang und seine Lernbelege bleiben erhalten.',
+                                    'Familienrechte entziehen',
+                                    () => state.api.delete(
                                       '/families/${scope.familyId}/members/${m['id']}',
-                                    );
-                                    if (scope.current) refresh();
-                                  }
+                                    ),
+                                  );
+                                  if (changed && scope.current) refresh();
                                 },
                               )
                             : null,
                       ),
-                    if (state.isOwner) ...[
-                      const SizedBox(height: 16),
-                      ActionButton(
-                        label: 'Weiteres Elternteil einladen',
-                        icon: Icons.mail_outline_rounded,
-                        onPressed: () async {
-                          if (!scope.current) return;
-                          await inviteDialog(context, state);
-                          if (scope.current) refresh();
-                        },
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -434,6 +424,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       heading('Offene Einladungen'),
+                      ActionButton(
+                        label: 'Weiteres Elternteil einladen',
+                        icon: Icons.mail_outline_rounded,
+                        onPressed: () async {
+                          if (!scope.current) return;
+                          await inviteDialog(
+                            context,
+                            state,
+                            knownInvitations: invites
+                                .whereType<Map>()
+                                .map(Json.from)
+                                .toList(),
+                          );
+                          if (scope.current) refresh();
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       if (invites.isEmpty)
                         const Text('Zurzeit ist keine Einladung offen.'),
                       for (final i in invites)
@@ -537,6 +544,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
+                            ActionButton(
+                              label: 'Daten dieses Kindes exportieren',
+                              secondary: true,
+                              icon: Icons.download_outlined,
+                              onPressed: () async {
+                                if (scope.current) {
+                                  await showParentChildExport(
+                                    context,
+                                    state,
+                                    Json.from(child),
+                                  );
+                                }
+                              },
+                            ),
                             if (state.canManage)
                               Wrap(
                                 spacing: 12,
@@ -1181,91 +1202,13 @@ Future<void> editChildDialog(
   BuildContext context,
   AppState state,
   Json child,
-) async {
-  final name = TextEditingController(text: child['display_name']),
-      grade = TextEditingController(text: '${child['grade']}'),
-      subjects = TextEditingController(
-        text: (child['subjects'] as List).join(', '),
-      ),
-      school = TextEditingController(text: child['school_type']),
-      region = TextEditingController(text: child['region']);
-  final scope = _SettingsContext(state);
-  final changed = await _settingsDialog(
-    context,
-    scope,
-    title: 'Notwendige Lernangaben',
-    confirmLabel: 'Speichern',
-    fields: (busy) => Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final item in [
-          (name, 'Anzeigename'),
-          (grade, 'Klassenstufe'),
-          (subjects, 'Fächer (mit Komma trennen)'),
-          (school, 'Schulform (optional)'),
-          (region, 'Bundesland (optional)'),
-        ])
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: TextFormField(
-              controller: item.$1,
-              enabled: !busy,
-              keyboardType: identical(item.$1, grade)
-                  ? TextInputType.number
-                  : null,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(labelText: item.$2),
-              validator: (v) {
-                if (identical(item.$1, name) && (v ?? '').trim().isEmpty) {
-                  return 'Gib einen Anzeigenamen ein.';
-                }
-                if ([name, school, region].contains(item.$1) &&
-                    (v ?? '').trim().runes.length > 80) {
-                  return 'Nutze für ${item.$2} höchstens 80 Zeichen.';
-                }
-                if (identical(item.$1, subjects) &&
-                    (v ?? '')
-                            .split(',')
-                            .where((s) => s.trim().isNotEmpty)
-                            .length >
-                        20) {
-                  return 'Du kannst höchstens 20 Fächer angeben.';
-                }
-                if (identical(item.$1, grade)) {
-                  final value = int.tryParse(v ?? '');
-                  if (value == null || value < 1 || value > 13) {
-                    return 'Nutze eine Klassenstufe von 1 bis 13.';
-                  }
-                }
-                return null;
-              },
-            ),
-          ),
-      ],
-    ),
-    submit: () async {
-      await state.api.put('/children/${child['id']}', {
-        'display_name': name.text.trim(),
-        'grade': int.parse(grade.text),
-        'subjects': subjects.text
-            .split(',')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList(),
-        'school_type': school.text,
-        'region': region.text,
-      });
-    },
-  );
-  if (changed && scope.current && context.mounted) {
-    toast(context, 'Lernangaben gespeichert.');
-  }
-  for (final c in [name, grade, subjects, school, region]) {
-    c.dispose();
-  }
-}
+) => showParentProfileDialog(context, state, child);
 
-Future<void> inviteDialog(BuildContext context, AppState state) async {
+Future<void> inviteDialog(
+  BuildContext context,
+  AppState state, {
+  List<Json> knownInvitations = const [],
+}) async {
   final email = TextEditingController();
   final scope = _SettingsContext(state);
   String permission = 'view';
@@ -1286,12 +1229,29 @@ Future<void> inviteDialog(BuildContext context, AppState state) async {
           decoration: const InputDecoration(
             labelText: 'E-Mail des Elternteils',
           ),
-          validator: (v) => (v ?? '').trim().isEmpty
-              ? 'Gib die E-Mail-Adresse des Elternteils ein.'
-              : !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
-                    .hasMatch((v ?? '').trim())
-              ? 'Prüfe die E-Mail-Adresse, zum Beispiel name@anbieter.de.'
-              : null,
+          validator: (v) {
+            final address = (v ?? '').trim();
+            if (address.isEmpty) {
+              return 'Gib die E-Mail-Adresse des Elternteils ein.';
+            }
+            if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(address)) {
+              return 'Prüfe die E-Mail-Adresse, zum Beispiel name@anbieter.de.';
+            }
+            final old = knownInvitations
+                .where(
+                  (i) =>
+                      i['email']?.toString().toLowerCase() ==
+                          address.toLowerCase() &&
+                      i['expires'] is num &&
+                      (i['expires'] as num) * 1000 >
+                          DateTime.now().millisecondsSinceEpoch,
+                )
+                .firstOrNull;
+            if (old != null) {
+              return 'Für diese Adresse ist bereits eine Einladung offen. Prüfe oder widerrufe sie zuerst unter „Offene Einladungen“.';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 18),
         DropdownButtonFormField<String>(
@@ -1493,6 +1453,10 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: Text('Zahlungen prüfen'),
                 ),
                 PopupMenuItem(value: '/admin/push', child: Text('Push prüfen')),
+                PopupMenuItem(
+                  value: '/operator-incidents',
+                  child: Text('Technische Fehler'),
+                ),
               ],
             ),
             Theme(
@@ -1676,6 +1640,20 @@ class _AdminScreenState extends State<AdminScreen> {
                                 icon: Icons.notifications_outlined,
                                 onPressed: () =>
                                     openRoute(context, '/admin/push'),
+                              ),
+                              Divider(
+                                color: context.palette.surfaceBorder,
+                                height: 1,
+                              ),
+                              AdminActionRow(
+                                title: 'Technische Fehler',
+                                subtitle: 'Neutrale Fehlercodes und kontrollierte Reparaturvorschläge',
+                                icon: Icons.bug_report_outlined,
+                                onPressed: () {
+                                  if (own) {
+                                    openRoute(context, '/operator-incidents');
+                                  }
+                                },
                               ),
                               Divider(
                                 color: context.palette.surfaceBorder,
@@ -2315,6 +2293,16 @@ class _AdminAuditListState extends State<AdminAuditList> {
         const Text(
           'Lokale Suche in höchstens den 200 zuletzt geladenen Ereignissen. Keine vollständige Historie.',
         ),
+        if (widget.state?.isAdmin == true)
+          OutlinedButton.icon(
+            onPressed: () => showAdminAuditExplorer(
+              context,
+              widget.state!,
+              onSelected: details,
+            ),
+            icon: const Icon(Icons.manage_search),
+            label: const Text('Gesamtes Protokoll gezielt durchsuchen'),
+          ),
         const SizedBox(height: 12),
         TextField(
           controller: search,
@@ -3539,7 +3527,10 @@ class _EntitlementEditorState extends State<_EntitlementEditor> {
       key: TextEditingController(text: '${widget.family[key]}'),
   };
   final focuses = List.generate(4, (_) => FocusNode());
-  bool busy = false;
+  bool busy = false, comparing = false, conflict = false;
+  Json? comparison;
+  late Json savedFamily = Json.from(widget.family);
+  late String? expectedRevision = widget.family['entitlement_revision'];
   String? error;
   bool get own =>
       mounted &&
@@ -3552,7 +3543,7 @@ class _EntitlementEditorState extends State<_EntitlementEditor> {
   };
 
   Future<void> save() async {
-    if (!own || busy) return;
+    if (!own || busy || ModalRoute.of(context)?.isCurrent != true) return;
     final invalid = form.currentState!.validateGranularly();
     if (invalid.isNotEmpty) {
       final target = invalid.first;
@@ -3571,22 +3562,89 @@ class _EntitlementEditorState extends State<_EntitlementEditor> {
       error = null;
     });
     try {
-      await widget.state.api.put(
+      await widget.state.api.call(
+        'PUT',
         '/admin/families/${widget.family['id']}/entitlements',
         body,
+        {'If-Match': ?expectedRevision},
       );
-      if (mounted && own && ModalRoute.of(context)?.isCurrent == true) {
-        Navigator.pop(context, true);
+      if (mounted && own) {
+        final route = ModalRoute.of(context);
+        if (route?.isCurrent == true) {
+          Navigator.pop(context, true);
+        } else if (route?.isActive == true) {
+          route!.navigator?.removeRoute(route, true);
+        }
       }
     } catch (failure) {
       if (own) {
-        setState(
-          () => error = failure is ApiError ? failure.message : 'Der Tarif konnte nicht gespeichert werden. Die Eingaben bleiben erhalten.',
-        );
+        setState(() {
+          error = failure is ApiError ? failure.message : 'Der Tarif konnte nicht gespeichert werden. Die Eingaben bleiben erhalten.';
+          conflict = failure is ApiError && failure.status == 409;
+          comparison = null;
+        });
       }
     } finally {
       if (own) setState(() => busy = false);
     }
+  }
+
+  Future<void> compareSaved() async {
+    if (!own || busy || ModalRoute.of(context)?.isCurrent != true) return;
+    setState(() {
+      busy = true;
+      comparing = true;
+      error = null;
+    });
+    try {
+      final value = await widget.state.api.get(
+        Uri(
+          path: '/admin/families',
+          queryParameters: {'paginated': 'true', 'search': widget.family['id']},
+        ).toString(),
+      );
+      if (!own) return;
+      final exact = (value['items'] as List? ?? [])
+          .whereType<Map>()
+          .where((r) => r['id'] == widget.family['id'])
+          .firstOrNull;
+      if (exact == null || exact['entitlement_revision'] is! String) {
+        throw const FormatException('Missing current tariff');
+      }
+      setState(() => comparison = Json.from(exact));
+    } catch (failure) {
+      if (own) {
+        setState(
+          () => error = failure is ApiError ? failure.message : 'Der gespeicherte Familientarif konnte nicht verglichen werden. Dein Entwurf bleibt erhalten.',
+        );
+      }
+    } finally {
+      if (own) {
+        setState(() {
+          busy = false;
+          comparing = false;
+        });
+      }
+    }
+  }
+
+  void adoptSaved() {
+    if (!own ||
+        busy ||
+        comparison == null ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    setState(() {
+      for (final entry in fields.entries) {
+        entry.value.text = '${comparison![entry.key]}';
+      }
+      expectedRevision = comparison!['entitlement_revision'];
+      savedFamily = Json.from(comparison!);
+      comparison = null;
+      conflict = false;
+      error = null;
+    });
   }
 
   @override
@@ -3615,7 +3673,7 @@ class _EntitlementEditorState extends State<_EntitlementEditor> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SelectableText('Familie: ${widget.family['id']}'),
-              Text('Bisheriger Tarif: ${widget.family['plan']}'),
+              Text('Bisheriger Tarif: ${savedFamily['plan']}'),
               const Text(
                 'Diese Änderung betrifft die gespeicherten Berechtigungen dieser Familie.',
               ),
@@ -3680,8 +3738,38 @@ class _EntitlementEditorState extends State<_EntitlementEditor> {
               if (busy)
                 Semantics(
                   liveRegion: true,
-                  child: const Text('Tarif wird gespeichert …'),
+                  child: Text(
+                    comparing
+                        ? 'Gespeicherter Tarif wird gelesen …'
+                        : 'Tarif wird gespeichert …',
+                  ),
                 ),
+              if (conflict) ...[
+                TextButton(
+                  onPressed: busy ? null : compareSaved,
+                  child: const Text('Gespeicherten Tarif vergleichen'),
+                ),
+                if (comparison != null) ...[
+                  const Text(
+                    'Nur ein Vergleich: noch keine weitere Änderung gespeichert.',
+                  ),
+                  for (final entry in const [
+                    ('plan', 'Tarif'),
+                    ('child_limit', 'Kinderanzahl'),
+                    ('call_limit', 'Aufrufe'),
+                    ('budget_micros', 'Mikro-USD / Monat'),
+                  ])
+                    SelectableText(
+                      '${entry.$2} · gespeichert: ${comparison![entry.$1]} · dein Entwurf: ${fields[entry.$1]!.text}',
+                    ),
+                  TextButton(
+                    onPressed: busy ? null : adoptSaved,
+                    child: const Text(
+                      'Gespeicherten Tarif in den Entwurf übernehmen',
+                    ),
+                  ),
+                ],
+              ],
               if (error != null)
                 Semantics(
                   liveRegion: true,
@@ -3693,7 +3781,13 @@ class _EntitlementEditorState extends State<_EntitlementEditor> {
       ),
       actions: [
         TextButton(
-          onPressed: busy ? null : () => Navigator.pop(context, false),
+          onPressed: busy
+              ? null
+              : () {
+                  if (own && ModalRoute.of(context)?.isCurrent == true) {
+                    Navigator.pop(context, false);
+                  }
+                },
           child: const Text('Abbrechen'),
         ),
         ActionButton(label: 'Speichern', enabled: !busy, onPressed: save),

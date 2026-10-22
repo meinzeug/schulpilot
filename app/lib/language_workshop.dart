@@ -2,12 +2,21 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'lesson_voice.dart';
 import 'learning_content.dart';
 import 'ui.dart';
 import 'vocabulary_screen.dart';
+
+const workshopOwnWork = {
+  'writing_feedback',
+  'model_text',
+  'translation',
+  'email',
+};
 
 const workshopModes = {
   'context_gap': 'Wörter im Zusammenhang',
@@ -96,7 +105,11 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
   final draft = TextEditingController();
   final projectSearch = TextEditingController(),
       wordSearch = TextEditingController();
-  String projectFilter = 'all';
+  String projectFilter = 'all', projectSort = 'newest', wordSort = 'saved';
+  int? projectDays;
+  bool sourceProjectsOnly = false, compareDraft = false;
+  Set<String>? undoneWords;
+  String? clearedDraft, selectionNotice;
   String locale = 'en-GB', mode = 'context_gap', grammar = 'simple_present';
   String? material, error;
   final selected = <String>{};
@@ -105,7 +118,11 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
   Timer? poll;
   String? requestBody, requestKey;
   bool busy = false, loading = true;
-  int generation = 0, page = 1, wordPage = 1, sourcePage = 1;
+  int generation = 0,
+      page = 1,
+      wordPage = 1,
+      sourcePage = 1,
+      localePickerRevision = 0;
   int wordTotal = 0, sourceTotal = 0;
   final wordLabels = <String, String>{};
   final wordPages = <String, int>{};
@@ -294,7 +311,14 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
               verified[item['id']] = Json.from(item);
             }
           }
+          final removed = selected
+              .where((id) => !verified.containsKey(id))
+              .length;
           selected.removeWhere((id) => !verified.containsKey(id));
+          if (removed > 0) {
+            selectionNotice =
+                '$removed ausgewählte Wörter sind nicht mehr in dieser Lernsprache verfügbar. Die übrige Auswahl und dein Entwurf bleiben erhalten.';
+          }
           for (final id in selected) {
             wordLabels[id] = verified[id]!['word'];
           }
@@ -359,12 +383,93 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
     }
   }
 
+  String? get formIssue {
+    if (selected.isEmpty) {
+      return 'Wähle zuerst mindestens ein bestätigtes Wort aus.';
+    }
+    if (goal.text.trim().length < 3) {
+      return 'Beschreibe dein Lernziel mit mindestens 3 Zeichen.';
+    }
+    if (mode == 'grammar' && !locale.startsWith('en-')) {
+      return 'Grammatik ist hier für bestätigten Englischstoff verfügbar. Wähle eine andere Übungsart oder Englisch.';
+    }
+    if (mode == 'grammar' && material == null) {
+      return 'Wähle die bestätigte Heftseite zu deinem Grammatikthema.';
+    }
+    if (workshopOwnWork.contains(mode) && draft.text.trim().length < 10) {
+      return 'Schreibe zuerst deinen eigenen Versuch mit mindestens 10 Zeichen. Die KI hilft dir danach beim Verbessern.';
+    }
+    return null;
+  }
+
+  Future<void> changeLocale(String value) async {
+    if (!current || busy || loading || value == locale) return;
+    final oldLocale = locale, oldGeneration = generation;
+    if (selected.isNotEmpty) {
+      final approved = await confirmDialog(
+        context,
+        'Lernsprache wechseln?',
+        'Die ausgewählten Wörter gehören zur bisherigen Sprache. Beim Wechsel wird nur diese Auswahl geleert. Dein eigener Text bleibt erhalten.',
+      );
+      if (!mounted || !current) return;
+      if (approved != true ||
+          oldLocale != locale ||
+          oldGeneration != generation) {
+        setState(() => localePickerRevision++);
+        return;
+      }
+    }
+    setState(() {
+      locale = value;
+      selected.clear();
+      wordLabels.clear();
+      undoneWords = null;
+      wordPage = 1;
+      words = [];
+      selectionNotice = null;
+    });
+    load();
+  }
+
+  void toggleSelection() {
+    if (!current || busy || loading) return;
+    setState(() {
+      if (selected.isNotEmpty) {
+        undoneWords = {...selected};
+        selected.clear();
+      } else if (undoneWords != null) {
+        selected.addAll(undoneWords!.take(10));
+        undoneWords = null;
+      }
+    });
+  }
+
+  Future<void> copySavedDraft(Json row) async {
+    if (!current || project?['id'] != row['id']) return;
+    try {
+      await Clipboard.setData(ClipboardData(text: row['draft']));
+      if (mounted && current && project?['id'] == row['id']) {
+        toast(
+          context,
+          'Dein gespeicherter Versuch wurde in die Zwischenablage kopiert.',
+        );
+      }
+    } catch (_) {
+      if (mounted && current) {
+        toast(
+          context,
+          'Kopieren klappt gerade nicht. Du kannst den Text markieren.',
+        );
+      }
+    }
+  }
+
   Future<void> create({Json? previous}) async {
     if (!current || busy || loading || !widget.state.isChild) return;
-    if (previous == null && (selected.isEmpty || goal.text.trim().length < 3)) {
+    if (previous == null && formIssue != null) {
       return;
     }
-    if (previous != null && draft.text.trim().isEmpty) return;
+    if (previous != null && draft.text.trim().length < 2) return;
     final originRoute = ModalRoute.of(context);
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -452,20 +557,47 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
 
   List<Json> get visibleProjects {
     final query = projectSearch.text.trim().toLowerCase();
-    return projects.where((row) {
+    final shown = projects.where((row) {
       final stateMatches = switch (projectFilter) {
         'ready' => row['status'] == 'ready',
         'pending' => ['queued', 'running'].contains(row['status']),
         'failed' => row['status'] == 'failed',
         _ => true,
       };
+      final made = row['created'] is num
+          ? (row['created'] as num).toInt()
+          : null;
+      final recent =
+          projectDays == null ||
+          (made != null &&
+              made >=
+                  DateTime.now().millisecondsSinceEpoch ~/ 1000 -
+                      projectDays! * 86400);
+      final hasSource =
+          (row['source_revisions'] as List? ?? []).isNotEmpty ||
+          row['material_id'] != null;
       return stateMatches &&
+          recent &&
+          (!sourceProjectsOnly || hasSource) &&
           [
             row['goal'],
             workshopModes[row['mode']],
             learningLocales[row['target_locale']],
           ].any((value) => '$value'.toLowerCase().contains(query));
     }).toList();
+    shown.sort((a, b) {
+      final first = projectSort == 'goal'
+          ? a['goal'].toString().toLowerCase().compareTo(
+              b['goal'].toString().toLowerCase(),
+            )
+          : ((b['created'] as num?)?.toInt() ?? 0).compareTo(
+              (a['created'] as num?)?.toInt() ?? 0,
+            );
+      return first != 0
+          ? first
+          : a['id'].toString().compareTo(b['id'].toString());
+    });
+    return shown;
   }
 
   List<Json> get visibleWords {
@@ -525,6 +657,9 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                         ),
                         SizedBox(height: 20),
                         DropdownButtonFormField<String>(
+                          key: ValueKey(
+                            'workshop-locale-$locale-$localePickerRevision',
+                          ),
                           initialValue: locale,
                           isExpanded: true,
                           decoration: InputDecoration(
@@ -540,14 +675,7 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                           onChanged: busy || loading
                               ? null
                               : (v) {
-                                  setState(() {
-                                    locale = v!;
-                                    selected.clear();
-                                    wordLabels.clear();
-                                    wordPage = 1;
-                                    words = [];
-                                  });
-                                  load();
+                                  changeLocale(v!);
                                 },
                         ),
                         SizedBox(height: 16),
@@ -685,6 +813,26 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                             ),
                             child: Text('Zuerst Schulwörter bestätigen'),
                           ),
+                        if (selectionNotice != null)
+                          Notice(selectionNotice!, warning: true),
+                        if ((selected.isNotEmpty || undoneWords != null) &&
+                            !loading)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: busy ? null : toggleSelection,
+                              icon: Icon(
+                                selected.isNotEmpty
+                                    ? Icons.deselect
+                                    : Icons.undo,
+                              ),
+                              label: Text(
+                                selected.isNotEmpty
+                                    ? 'Wortauswahl leeren'
+                                    : 'Wortauswahl wiederherstellen',
+                              ),
+                            ),
+                          ),
                         if (selected.isNotEmpty && !loading)
                           Wrap(
                             spacing: 8,
@@ -726,11 +874,44 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                               'Kein geladenes Wort passt. Deine bereits gewählten Wörter bleiben erhalten.',
                             ),
                         ],
+                        if (words.length > 1)
+                          DropdownButtonFormField<String>(
+                            initialValue: wordSort,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Geladene Wörter ordnen',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'saved',
+                                child: Text('Wie geladen'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'name',
+                                child: Text('Alphabetisch auf dieser Seite'),
+                              ),
+                            ],
+                            onChanged: busy || loading
+                                ? null
+                                : (v) => setState(() => wordSort = v!),
+                          ),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            for (final word in visibleWords)
+                            for (final word
+                                in (wordSort == 'name'
+                                    ? (visibleWords.toList()..sort(
+                                        (a, b) => a['word']
+                                            .toString()
+                                            .toLowerCase()
+                                            .compareTo(
+                                              b['word']
+                                                  .toString()
+                                                  .toLowerCase(),
+                                            ),
+                                      ))
+                                    : visibleWords))
                               FilterChip(
                                 label: Text(word['word']),
                                 selected: selected.contains(word['id']),
@@ -846,15 +1027,35 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                               locale: locale,
                               maxLength: 4000,
                             ),
+                            if (draft.text.isNotEmpty || clearedDraft != null)
+                              TextButton.icon(
+                                onPressed: busy || loading
+                                    ? null
+                                    : () => setState(() {
+                                        if (draft.text.isNotEmpty) {
+                                          clearedDraft = draft.text;
+                                          draft.clear();
+                                        } else if (clearedDraft != null) {
+                                          draft.text = clearedDraft!;
+                                          clearedDraft = null;
+                                        }
+                                      }),
+                                icon: Icon(
+                                  draft.text.isNotEmpty
+                                      ? Icons.clear
+                                      : Icons.undo,
+                                ),
+                                label: Text(
+                                  draft.text.isNotEmpty
+                                      ? 'Entwurf leeren'
+                                      : 'Entwurf wiederherstellen',
+                                ),
+                              ),
                           ],
                         ),
                         SizedBox(height: 16),
                         FilledButton.icon(
-                          onPressed:
-                              busy ||
-                                  loading ||
-                                  selected.isEmpty ||
-                                  goal.text.trim().length < 3
+                          onPressed: busy || loading || formIssue != null
                               ? null
                               : () => create(),
                           icon: Icon(Icons.auto_awesome_rounded),
@@ -864,14 +1065,10 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                                 : 'Mein Lernprojekt vorbereiten',
                           ),
                         ),
-                        if (selected.isEmpty || goal.text.trim().length < 3)
+                        if (formIssue != null)
                           Padding(
                             padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              selected.isEmpty
-                                  ? 'Wähle zuerst mindestens ein bestätigtes Wort aus.'
-                                  : 'Beschreibe dein Lernziel mit mindestens 3 Zeichen.',
-                            ),
+                            child: Text(formIssue!),
                           ),
                         SizedBox(height: 8),
                         Text(
@@ -888,7 +1085,9 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                 heading('Deine gespeicherten Lernprojekte'),
                 if (projects.isNotEmpty ||
                     projectSearch.text.isNotEmpty ||
-                    projectFilter != 'all') ...[
+                    projectFilter != 'all' ||
+                    projectDays != null ||
+                    sourceProjectsOnly) ...[
                   TextField(
                     controller: projectSearch,
                     textInputAction: TextInputAction.search,
@@ -929,6 +1128,72 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                         setState(() => projectFilter = value ?? 'all');
                       }
                     },
+                  ),
+                  ExpansionTile(
+                    title: const Text('Projektansicht anpassen'),
+                    children: [
+                      const Text(
+                        'Diese Auswahl gilt für die geladenen Projekte dieser Seite.',
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: projectSort,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Geladene Projekte ordnen',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'newest',
+                            child: Text('Zuletzt gespeichert'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'goal',
+                            child: Text('Nach Lernziel A–Z'),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => projectSort = v!),
+                      ),
+                      DropdownButtonFormField<int>(
+                        initialValue: projectDays ?? 0,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Gespeichert im Zeitraum',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 0,
+                            child: Text('Alle gespeicherten Daten'),
+                          ),
+                          DropdownMenuItem(
+                            value: 7,
+                            child: Text('Letzte 7 Tage'),
+                          ),
+                          DropdownMenuItem(
+                            value: 30,
+                            child: Text('Letzte 30 Tage'),
+                          ),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => projectDays = v == 0 ? null : v),
+                      ),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Nur Projekte mit Heftquellen'),
+                        value: sourceProjectsOnly,
+                        onChanged: (v) =>
+                            setState(() => sourceProjectsOnly = v == true),
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() {
+                          projectFilter = 'all';
+                          projectSort = 'newest';
+                          projectDays = null;
+                          sourceProjectsOnly = false;
+                          projectSearch.clear();
+                        }),
+                        child: const Text('Projektansicht zurücksetzen'),
+                      ),
+                    ],
                   ),
                   if (!loading && visibleProjects.isEmpty)
                     Padding(
@@ -1019,8 +1284,46 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                     'Lernsprache nicht angegeben',
                 style: TextStyle(color: context.palette.muted),
               ),
-              if (row['mode'] == 'dialog')
+              if (row['mode'] == 'dialog') ...[
                 Text('Schritt ${row['step']} von höchstens 4'),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (row['previous_id'] is String &&
+                        RegExp(r'^[a-f0-9]{32}$').hasMatch(row['previous_id']))
+                      TextButton.icon(
+                        onPressed: () {
+                          if (current) {
+                            openRoute(
+                              context,
+                              '/language-projects/${widget.childId}?project=${row['previous_id']}',
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.chevron_left),
+                        label: const Text('Vorheriger Gesprächsschritt'),
+                      ),
+                    if (row['next_id'] is String &&
+                        RegExp(r'^[a-f0-9]{32}$').hasMatch(row['next_id']))
+                      TextButton.icon(
+                        onPressed: () {
+                          if (current) {
+                            openRoute(
+                              context,
+                              '/language-projects/${widget.childId}?project=${row['next_id']}',
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.chevron_right),
+                        label: const Text('Gespeichert weiterführen'),
+                      ),
+                  ],
+                ),
+              ],
+              if (row['created'] is num)
+                Text(
+                  'Gespeichert am ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.fromMillisecondsSinceEpoch((row['created'] as num).toInt() * 1000).toLocal())}',
+                ),
               SizedBox(height: 12),
               Semantics(
                 liveRegion: true,
@@ -1050,13 +1353,76 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
               if ((row['draft'] ?? '').toString().isNotEmpty)
                 ExpansionTile(
                   title: Text('Mein gespeicherter Versuch'),
-                  children: [SelectableText(row['draft'])],
+                  children: [
+                    SelectableText(row['draft']),
+                    TextButton.icon(
+                      onPressed: () => copySavedDraft(row),
+                      icon: const Icon(Icons.copy_outlined),
+                      label: const Text('Eigenen Versuch kopieren'),
+                    ),
+                  ],
                 ),
               if (result != null) ...[
                 SizedBox(height: 18),
                 Tag('Erzeugte Lernhilfe'),
                 SizedBox(height: 10),
-                LearningContent(result['response'] ?? ''),
+                if ((row['draft'] ?? '').toString().isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => compareDraft = !compareDraft),
+                    icon: const Icon(Icons.compare_arrows),
+                    label: Text(
+                      compareDraft
+                          ? 'Nur Lernhilfe ansehen'
+                          : 'Versuch und Hilfe vergleichen',
+                    ),
+                  ),
+                if (compareDraft && (row['draft'] ?? '').toString().isNotEmpty)
+                  LayoutBuilder(
+                    builder: (context, bounds) {
+                      final own = Panel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Mein eigener gespeicherter Versuch',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 8),
+                            SelectableText(row['draft']),
+                          ],
+                        ),
+                      );
+                      final help = Panel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Gespeicherte Lernhilfe',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 8),
+                            LearningContent(result['response'] ?? ''),
+                          ],
+                        ),
+                      );
+                      return bounds.maxWidth >= 720
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: own),
+                                const SizedBox(width: 12),
+                                Expanded(child: help),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [own, const SizedBox(height: 12), help],
+                            );
+                    },
+                  )
+                else
+                  LearningContent(result['response'] ?? ''),
                 ReadAloudButton(
                   text: result['response'] ?? '',
                   locale: result['response_locale'] ?? 'de-DE',
@@ -1144,8 +1510,12 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                   locale: row['target_locale'],
                   maxLength: 4000,
                 ),
+                if (draft.text.trim().length < 2)
+                  const Text(
+                    'Schreibe mindestens zwei Zeichen als eigene Gesprächsantwort.',
+                  ),
                 FilledButton(
-                  onPressed: busy || loading || draft.text.trim().isEmpty
+                  onPressed: busy || loading || draft.text.trim().length < 2
                       ? null
                       : () => create(previous: row),
                   child: Text('Nächster Gesprächsschritt'),

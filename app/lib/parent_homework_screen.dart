@@ -7,6 +7,15 @@ import 'parent_insights_panel.dart' show reviewDate;
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
 
+String parentHomeworkDate(Json photo, String? zone) {
+  final local = photo['created_local'];
+  if (local is String &&
+      RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}').hasMatch(local)) {
+    return '${friendlyDate(local.substring(0, 10))} · ${local.substring(11, 16)}${zone == null ? '' : ' · $zone'}';
+  }
+  return '${reviewDate(photo['created'])} · Gerätezeit';
+}
+
 class ParentHomeworkScreen extends StatefulWidget {
   final AppState state;
   final String childId;
@@ -20,7 +29,9 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   String filter = 'all';
   final search = TextEditingController();
   String query = '';
-  String? subject;
+  String? subject, start, end;
+  String order = 'newest', progress = 'any';
+  Json? collectionTotals;
   List<String> subjects = [];
   String? cursor, error, childName;
   int generation = 0, total = 0;
@@ -54,7 +65,10 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
         error = null;
         search.clear();
         query = '';
-        subject = null;
+        subject = start = end = null;
+        order = 'newest';
+        progress = 'any';
+        collectionTotals = null;
         subjects = [];
       });
     }
@@ -85,6 +99,22 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
         ? view['q']
         : '';
     subject = view?['subject'] is String ? view!['subject'] : null;
+    start = view?['start'] as String?;
+    end = view?['end'] as String?;
+    order = ['newest', 'oldest'].contains(view?['order'])
+        ? view!['order']
+        : 'newest';
+    progress =
+        [
+          'any',
+          'none',
+          'partial',
+          'complete',
+          'unanalyzed',
+        ].contains(view?['progress'])
+        ? view!['progress']
+        : 'any';
+    collectionTotals = null;
     search.text = query;
     subjects = [];
   }
@@ -106,6 +136,8 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
     query = '';
     subject = null;
     filter = 'all';
+    start = end = null;
+    progress = 'any';
     load();
   }
 
@@ -135,6 +167,10 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
       'filter': filter,
       'q': query,
       'subject': subject,
+      'start': start,
+      'end': end,
+      'order': order,
+      'progress': progress,
     };
     try {
       final value = await widget.state.api.get(
@@ -145,6 +181,10 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
             'cursor': ?next,
             if (query.isNotEmpty) 'q': query,
             'subject': ?subject,
+            'start': ?start,
+            'end': ?end,
+            if (order != 'newest') 'order': order,
+            if (progress != 'any') 'progress': progress,
           },
         ).toString(),
       );
@@ -154,14 +194,30 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
           'Die Suche ist auf diesem Server noch nicht verfügbar. Setze die Filter zurück, um alle Fotos zu sehen.',
         );
       }
+      final requested = <String, String>{
+        'start': ?start,
+        'end': ?end,
+        if (order != 'newest') 'order': order,
+        if (progress != 'any') 'progress': progress,
+      };
+      if (requested.entries.any(
+        (e) => value['filters']?[e.key]?.toString() != e.value,
+      )) {
+        throw ApiError(
+          'Diese zeitliche Hausaufgabenauswahl ist auf dem Server noch nicht verfügbar. Setze die Filter zurück und aktualisiere die App.',
+        );
+      }
       setState(() {
+        collectionTotals = value['collection_totals'] is Map
+            ? Json.from(value['collection_totals'])
+            : null;
         subjects = (value['subjects'] as List? ?? [])
             .whereType<String>()
             .toList();
         final known = photos.map((p) => p['id']).toSet();
         photos.addAll(
           (value['photos'] as List)
-              .map((p) => Json.from(p))
+              .map((p) => {...Json.from(p), 'timezone': value['timezone']})
               .where((p) => known.add(p['id'])),
         );
         cursor = value['next_cursor'];
@@ -202,6 +258,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ParentChildNavigation(
+                  state: widget.state,
                   childId: widget.childId,
                   childName: childName,
                   selected: 'homework',
@@ -219,9 +276,65 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                   '„Bearbeitet“ ist eine Angabe deines Kindes. Häkchen beweisen keine richtige Lösung. In den Details siehst du Fragen, eigene abgeschickte Versuche und erhaltene Hilfen.',
                 ),
                 const SizedBox(height: 16),
+                ParentAppliedFilters(
+                  enabled: !loading,
+                  filters: [
+                    if (query.isNotEmpty)
+                      (
+                        'Suche: $query',
+                        () {
+                          if (!own || loading || viewChild != widget.childId) {
+                            return;
+                          }
+                          query = '';
+                          search.clear();
+                          load();
+                        },
+                      ),
+                    if (subject != null)
+                      (
+                        'Fach: $subject',
+                        () {
+                          if (!own || loading || viewChild != widget.childId) {
+                            return;
+                          }
+                          subject = null;
+                          load();
+                        },
+                      ),
+                    if (start != null || end != null)
+                      (
+                        'Zeitraum: ${start == null ? 'offen' : friendlyDate(start)} – ${end == null ? 'offen' : friendlyDate(end)}',
+                        () {
+                          if (!own || loading || viewChild != widget.childId) {
+                            return;
+                          }
+                          start = end = null;
+                          load();
+                        },
+                      ),
+                    if (progress != 'any')
+                      (
+                        'Häkchen: ${switch (progress) {
+                          'none' => 'keine',
+                          'partial' => 'teilweise',
+                          'complete' => 'alle erkannten',
+                          _ => 'Übersicht fehlt',
+                        }}',
+                        () {
+                          if (!own || loading || viewChild != widget.childId) {
+                            return;
+                          }
+                          progress = 'any';
+                          load();
+                        },
+                      ),
+                  ],
+                ),
                 ParentCollectionSearch(
                   controller: search,
                   label: 'Hausaufgaben suchen',
+                  helperText: 'Sucht nach Fach, Thema, Fototitel und Titeln der aktuell erkannten Aufgaben.',
                   appliedQuery: query,
                   enabled: !loading,
                   onSearch: applySearch,
@@ -255,11 +368,16 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                           },
                   ),
                 ],
-                if (query.isNotEmpty || subject != null)
+                if (query.isNotEmpty ||
+                    subject != null ||
+                    start != null ||
+                    end != null ||
+                    progress != 'any' ||
+                    filter != 'all')
                   TextButton.icon(
                     onPressed: loading ? null : clearFilters,
                     icon: const Icon(Icons.filter_alt_off_outlined),
-                    label: const Text('Suche und Fach zurücksetzen'),
+                    label: const Text('Alle Hausaufgabenfilter zurücksetzen'),
                   ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -292,7 +410,71 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                   _ => 'Alle gespeicherten Hausaufgabenfotos.',
                 }, style: TextStyle(color: context.palette.muted)),
                 const SizedBox(height: 8),
-                const Text('Neueste Fotos zuerst'),
+                ParentChoiceFilter(
+                  label: 'Reihenfolge der Fotos',
+                  value: order,
+                  enabled: !loading,
+                  choices: const [
+                    ('newest', 'Neueste Fotos zuerst'),
+                    ('oldest', 'Älteste Fotos zuerst'),
+                  ],
+                  onChanged: (v) {
+                    if (!own || loading) return;
+                    order = v;
+                    load();
+                  },
+                ),
+                ExpansionTile(
+                  title: const Text('Zeitraum und Bearbeitung eingrenzen'),
+                  children: [
+                    ParentDateRange(
+                      key: ValueKey('homework-range-${widget.childId}'),
+                      start: start,
+                      end: end,
+                      enabled: !loading,
+                      onApply: (from, to) {
+                        if (!own || loading) return;
+                        start = from;
+                        end = to;
+                        load();
+                      },
+                    ),
+                    const Text(
+                      'Der Aufnahmetag gilt in der gespeicherten Zeitzone deines Kindes.',
+                    ),
+                    ParentChoiceFilter(
+                      label: 'Stand der eigenen Häkchen',
+                      value: progress,
+                      enabled: !loading,
+                      choices: const [
+                        ('any', 'Jeder Bearbeitungsstand'),
+                        ('none', 'Noch keine Aufgabe abgehakt'),
+                        (
+                          'partial',
+                          'Teilweise abgehakt / weitere Aufgaben offen',
+                        ),
+                        ('complete', 'Alle erkannten Aufgaben abgehakt'),
+                        ('unanalyzed', 'Noch keine aktuelle Aufgabenübersicht'),
+                      ],
+                      onChanged: (v) {
+                        if (!own || loading) return;
+                        progress = v;
+                        load();
+                      },
+                    ),
+                    const Text(
+                      'Vollständig abgehakt bedeutet nur die eigene Markierung, ohne weitere unerkannte Aufgaben. Es ist keine Prüfung der Lösung.',
+                    ),
+                  ],
+                ),
+                if (collectionTotals != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Gespeicherter Bestand: ${collectionTotals!['all']} Aufgabenfotos · ${collectionTotals!['needs_review']} Fotos noch als Quelle prüfen. Die Auswahl darunter kann kleiner sein.',
+                    ),
+                  ),
+
                 const SizedBox(height: 16),
                 if (loading)
                   Semantics(
@@ -336,12 +518,22 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                   Semantics(
                     liveRegion: true,
                     child: Notice(
-                      filter == 'all' && query.isEmpty && subject == null
+                      filter == 'all' &&
+                              query.isEmpty &&
+                              subject == null &&
+                              start == null &&
+                              end == null &&
+                              progress == 'any'
                           ? 'Noch keine Hausaufgabenfotos. Dein Kind kann sie im eigenen Bereich „Hausaufgaben“ fotografieren.'
                           : 'Für diesen Filter sind noch keine Fotos vorhanden.',
                     ),
                   ),
-                  if (filter != 'all' || query.isNotEmpty || subject != null)
+                  if (filter != 'all' ||
+                      query.isNotEmpty ||
+                      subject != null ||
+                      start != null ||
+                      end != null ||
+                      progress != 'any')
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
@@ -399,7 +591,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                               ),
                             ),
                           const SizedBox(height: 8),
-                          Text(reviewDate(photo['created'])),
+                          Text(parentHomeworkDate(photo, photo['timezone'])),
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 8,

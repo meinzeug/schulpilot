@@ -1,0 +1,1985 @@
+{
+  "baseline": "a431fb447af584f017cbd2bd019514bb584f2132",
+  "baseline_version": "1.21.1+89",
+  "round": 3,
+  "earlier_638_recounted": false,
+  "scope": "Gemeinsame Lern-, Wörter-, Rückblick- und Kontextbedienung. Schulbuddy und Vorwissens-Erweiterungen separat dokumentiert.",
+  "independent_count": 98,
+  "items": [
+    {
+      "id": "RQ001",
+      "problem_and_change": "Wortkorrektur behält Eingaben bei fehlgeschlagenem Speichern",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 36,
+          "case": "testWidgets('RQ001 word correction retains exact edits when saving fails', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ002",
+      "problem_and_change": "Unveränderte Wortkorrektur kann keine neue Revision erzeugen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 59,
+          "case": "testWidgets('RQ002 unchanged correction cannot reset a word revision', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ003",
+      "problem_and_change": "Leere Wortbedeutung vor dem Speichern lokal klären",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 76,
+          "case": "'RQ003 missing word meaning is corrected locally without losing input',"
+        }
+      ]
+    },
+    {
+      "id": "RQ004",
+      "problem_and_change": "Doppelte oder zu viele Antwortvarianten im Editor klären",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 88,
+          "case": "'RQ004 excess or duplicate variants stay editable instead of rejected POST',"
+        }
+      ]
+    },
+    {
+      "id": "RQ005",
+      "problem_and_change": "Wortart ausdrücklich revisionsgebunden korrigieren",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 107,
+          "case": "'RQ005 word class can be deliberately corrected with original revision',"
+        }
+      ]
+    },
+    {
+      "id": "RQ006",
+      "problem_and_change": "Manuelle Korrektur eines Heftwortes erklärt getrennte Quellenrevision",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 123,
+          "case": "'RQ006 corrected source word explains its separate manual revision',"
+        }
+      ]
+    },
+    {
+      "id": "RQ007",
+      "problem_and_change": "Wortlöschung zeigt konkrete Bedeutung und bindet geprüfte Revision",
+      "code": [
+        "app/lib/vocabulary_screen.dart / removeWord",
+        "backend/schulpilot/vocabulary.py / remove"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 137,
+          "case": "'RQ007 word removal names exact word and preserves old answer policy',"
+        },
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 152,
+          "case": "testWidgets('RQ007 confirmed word removal carries reviewed revision', ("
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 79,
+          "case": "def test_rq007_changed_word_cannot_be_deleted_from_an_old_card(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ008",
+      "problem_and_change": "Aufgedecktes Wort lokal wieder verdecken ohne Lernbeleg zurückzusetzen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / revealed"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 165,
+          "case": "'RQ008 a revealed card can be covered without undoing its exposure',"
+        }
+      ]
+    },
+    {
+      "id": "RQ009",
+      "problem_and_change": "Nach Löschung einer letzten Seite auf tatsächliche letzte Wortseite begrenzen",
+      "code": [
+        "backend/schulpilot/vocabulary.py / listing"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 10,
+          "case": "def test_rq009_words_clamp_a_deleted_last_page_and_keep_stable_order(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ010",
+      "problem_and_change": "Wörter vor Seitenteilung nach Lernwort oder Bedeutung sortieren",
+      "code": [
+        "app/lib/vocabulary_screen.dart / sort",
+        "backend/schulpilot/vocabulary.py / listing"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 177,
+          "case": "('RQ010', 'Reihenfolge', 'Nach Lernwort A–Z', 'sort', 'word'),"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 22,
+          "case": "def test_rq010_word_sort_has_real_server_order(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ011",
+      "problem_and_change": "Wörter serverseitig nach bestätigter Herkunft filtern",
+      "code": [
+        "app/lib/vocabulary_screen.dart / origin",
+        "backend/schulpilot/vocabulary.py / listing"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 179,
+          "case": "'RQ011',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 34,
+          "case": "def test_rq011_word_origin_filter_is_not_a_local_page_filter(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ012",
+      "problem_and_change": "Nur offene Bewertungen der aktuellen Wortrevision filtern",
+      "code": [
+        "backend/schulpilot/vocabulary.py / listing"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 211,
+          "case": "('RQ012', 'Nur Wörter mit offener Bewertung', 'clarification'),"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 44,
+          "case": "def test_rq012_only_current_revision_clarifications_are_in_the_word_filter(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ013",
+      "problem_and_change": "Beispielsatz ausdrücklich und mit wörtlicher Suche durchsuchen",
+      "code": [
+        "backend/schulpilot/vocabulary.py / listing"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 212,
+          "case": "('RQ013', 'Im Beispielsatz suchen', 'search_context'),"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 57,
+          "case": "def test_rq013_context_search_is_literal_and_does_not_search_hidden_answers(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ014",
+      "problem_and_change": "Wortübersicht zeigt Kennzahlen der ausgewählten Lernsprache",
+      "code": [
+        "app/lib/vocabulary_screen.dart / locale_summary",
+        "backend/schulpilot/vocabulary.py / summary"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 231,
+          "case": "testWidgets('RQ014 selected language has its own true summary', (t) async {"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 67,
+          "case": "def test_rq014_selected_language_summary_does_not_mix_languages(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ015",
+      "problem_and_change": "Modus Richtung und Rundengröße innerhalb des angemeldeten Kontos merken",
+      "code": [
+        "app/lib/vocabulary_screen.dart / startRound"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 245,
+          "case": "'RQ015 round mode and count are remembered only within the account',"
+        }
+      ]
+    },
+    {
+      "id": "RQ016",
+      "problem_and_change": "Vor Wortübung tatsächlichen Sammlungsumfang statt Suchauswahl erklären",
+      "code": [
+        "app/lib/vocabulary_screen.dart / startRound"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 273,
+          "case": "'RQ016 round dialog explains its real collection and search scope',"
+        }
+      ]
+    },
+    {
+      "id": "RQ017",
+      "problem_and_change": "Wortübungsmodus beschreibt die konkrete eigene Tätigkeit",
+      "code": [
+        "app/lib/vocabulary_screen.dart / startRound"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 289,
+          "case": "testWidgets('RQ017 learning mode explains what the child will actually do', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ018",
+      "problem_and_change": "Zu große manuelle Wortlisten vor dem Import bearbeitbar halten",
+      "code": [
+        "app/lib/vocabulary_screen.dart / importDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 301,
+          "case": "testWidgets('RQ018 oversized manual lists stay in the form before import', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ019",
+      "problem_and_change": "Altes Backend darf nicht ungefilterte Wörter als neue gewählte Sortierung ausgeben",
+      "code": [
+        "app/lib/vocabulary_screen.dart / load"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_vocabulary_ux90_test.dart",
+          "line": 319,
+          "case": "'RQ019 old servers cannot present unsorted data as a chosen sort',"
+        }
+      ],
+      "exclusion": "RQ010–013: Altserverabsicherung derselben neuen Wortfilter."
+    },
+    {
+      "id": "RQ020",
+      "problem_and_change": "Prüfvorschau zählt ausdrückliche Entscheidungen ohne vorzeitigen Import",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 69,
+          "case": "'RQ020 review counters track explicit choices without importing them early',"
+        }
+      ]
+    },
+    {
+      "id": "RQ021",
+      "problem_and_change": "Wortvorschläge lokal finden ohne Entscheidungen außerhalb der Suche zu verlieren",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 83,
+          "case": "'RQ021 review search preserves earlier decisions outside the visible pair',"
+        }
+      ]
+    },
+    {
+      "id": "RQ022",
+      "problem_and_change": "Noch unentschiedene Wortvorschläge gezielt anzeigen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 99,
+          "case": "'RQ022 undecided view hides decided pairs without changing stored words',"
+        }
+      ]
+    },
+    {
+      "id": "RQ023",
+      "problem_and_change": "Laufende Wortbestätigung weder schließen noch doppelt senden",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 72,
+          "case": "'RQ023 pending word confirmation cannot be dismissed or sent twice',"
+        }
+      ]
+    },
+    {
+      "id": "RQ024",
+      "problem_and_change": "Ausgewählte Vorschläge mit leerer Bedeutung lokal korrigierbar halten",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 114,
+          "case": "'RQ024 an explicitly selected empty meaning remains local and editable before confirmation',"
+        }
+      ]
+    },
+    {
+      "id": "RQ025",
+      "problem_and_change": "Unerwartete Wortaktionen zeigen neutralen Fehler ohne Exceptiontext",
+      "code": [
+        "app/lib/vocabulary_screen.dart / run"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 143,
+          "case": "'RQ025 unexpected vocabulary errors show a neutral retry message instead of exception text',"
+        }
+      ],
+      "exclusion": "KK020: gemeinsamer neutraler Exception-/ApiError-Fehlertextpfad, nicht je Seite erneut zählen."
+    },
+    {
+      "id": "RQ026",
+      "problem_and_change": "Aufdecken einer inzwischen geänderten Wortfassung ablehnen",
+      "code": [
+        "backend/schulpilot/vocabulary.py / reveal"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 90,
+          "case": "def test_rq026_old_word_revision_cannot_be_exposed_and_records_no_help(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ027",
+      "problem_and_change": "Älteren Tutorverlauf mit begrenzten erneut autorisierten IDs aktualisieren",
+      "code": [
+        "app/lib/tutor_sheet.dart / load",
+        "backend/schulpilot/tutor.py / questions"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tutor_ux90_test.dart",
+          "line": 80,
+          "case": "'RQ027 older tutor pages are refreshed by bounded reauthorized ids',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 166,
+          "case": "def test_rq027_retained_tutor_questions_are_reauthorized_in_exact_scope(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ028",
+      "problem_and_change": "Bewusst aus altem Tutorausschnitt zur jüngsten Seite zurückkehren",
+      "code": [
+        "app/lib/tutor_sheet.dart / load"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tutor_ux90_test.dart",
+          "line": 116,
+          "case": "'RQ028 reset returns from an older history slice to the latest authorized page',"
+        }
+      ]
+    },
+    {
+      "id": "RQ029",
+      "problem_and_change": "Geeignete kurze Zahlenantworten erhalten Dezimaltastatur ohne Antwortoffenlegung",
+      "code": [
+        "app/lib/unit_screen.dart / body",
+        "backend/schulpilot/learning.py / unit_data"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 145,
+          "case": "'RQ029 numeric input uses a signed decimal keyboard without changing grading',"
+        }
+      ]
+    },
+    {
+      "id": "RQ030",
+      "problem_and_change": "Eigenen Antwortentwurf leeren und genau einmal lokal wiederherstellen",
+      "code": [
+        "app/lib/unit_screen.dart / clearInput, undoInput"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 163,
+          "case": "'RQ030 clearing a draft retains one recoverable exact input and does not answer',"
+        }
+      ]
+    },
+    {
+      "id": "RQ031",
+      "problem_and_change": "Eltern suchen innerhalb der bereits berechtigten Aufgaben einer Runde",
+      "code": [
+        "app/lib/unit_screen.dart / parentQuestionMatches"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 185,
+          "case": "'RQ031 parent search and result filtering inspect stored evidence without POST',"
+        }
+      ]
+    },
+    {
+      "id": "RQ032",
+      "problem_and_change": "Lernstand nach tatsächlichem letztem Antwortzeitraum filtern und Gesamthistorie erhalten",
+      "code": [
+        "app/lib/progress_screen.dart / readView",
+        "backend/schulpilot/learning_progress.py / read_ledger"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 34,
+          "case": "('RQ032', 'Zeitraum', 'Letzte 7 Tage', 'period', '7', 'zeitraum'),"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 108,
+          "case": "def test_rq032_period_uses_latest_task_observation_and_preserves_all_history(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ033",
+      "problem_and_change": "Lernstand nach Name Aktualität oder tatsächlichem Übungsbedarf sortieren",
+      "code": [
+        "backend/schulpilot/learning_progress.py / learning_progress"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 36,
+          "case": "'RQ033',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 126,
+          "case": "def test_rq033_progress_sorts_by_actual_practice_need(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ034",
+      "problem_and_change": "Lernstand ausdrücklich über Fächer und Themen durchsuchen",
+      "code": [
+        "app/lib/progress_screen.dart / load",
+        "backend/schulpilot/learning_progress.py / learning_progress"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 88,
+          "case": "'RQ034 progress subject search needs explicit submission and preserves evidence',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 136,
+          "case": "def test_rq034_progress_searches_real_subjects_and_topics(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ035",
+      "problem_and_change": "Begonnene pausierte und abgeschlossene Lernrunden getrennt ansehen",
+      "code": [
+        "backend/schulpilot/learning_progress.py / learning_progress"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 43,
+          "case": "('RQ035', 'Rundenstatus', 'Pausiert', 'status', 'paused', 'status'),"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 146,
+          "case": "def test_rq035_progress_separates_paused_and_completed_rounds(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ036",
+      "problem_and_change": "Tatsächliche Rundenarten im Lernstand unterscheiden",
+      "code": [
+        "backend/schulpilot/learning_progress.py / learning_progress"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 45,
+          "case": "'RQ036',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 156,
+          "case": "def test_rq036_progress_separates_vocabulary_without_changing_evidence(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ037",
+      "problem_and_change": "Lange Lernstandlisten über begrenzten direkten Seitenwähler öffnen",
+      "code": [
+        "app/lib/progress_screen.dart / pickPage"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 117,
+          "case": "f.scenario('RQ037 a long progress ledger has a bounded direct page chooser', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ038",
+      "problem_and_change": "Konkrete Lernstandfilter als geprüfte Deep-Link-Parameter wiederaufnehmen",
+      "code": [
+        "app/lib/main.dart / progress route",
+        "app/lib/progress_screen.dart / readView"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 150,
+          "case": "'RQ038 progress deep links restore explicit view filters without local guessing',"
+        }
+      ]
+    },
+    {
+      "id": "RQ039",
+      "problem_and_change": "Neue Lernstandfilter bei älterem Backend ehrlich zurücksetzen können",
+      "code": [
+        "app/lib/progress_screen.dart / load"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_progress_ux90_test.dart",
+          "line": 173,
+          "case": "f.scenario('RQ039 older servers show an honest filter error and safe reset', ("
+        }
+      ],
+      "exclusion": "RQ032–036: Altserverabsicherung derselben neuen Lernstandfilter."
+    },
+    {
+      "id": "RQ040",
+      "problem_and_change": "Veraltete Bestätigungsaktion darf keinen neueren Dialog schließen",
+      "code": [
+        "app/lib/ui.dart / confirmDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 35,
+          "case": "testWidgets('RQ040 an old confirmation action cannot close a newer modal', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ041",
+      "problem_and_change": "Mobiler Hausaufgabenreiter behält Lesbarkeit und native Reitersemantik",
+      "code": [
+        "app/lib/ui.dart / WorkspaceShell"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 72,
+          "case": "'RQ041 mobile homework label wraps as words and preserves native tab role',"
+        }
+      ]
+    },
+    {
+      "id": "RQ042",
+      "problem_and_change": "Konkurrierende Anmeldungen Abbruch und native Sitzungsschreibung serialisieren",
+      "code": [
+        "app/lib/api.dart / AppState.accept, authenticationRevision"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 93,
+          "case": "test('RQ042 a late login cannot replace a newer accepted account', () async {"
+        },
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 113,
+          "case": "'RQ042 explicit cancellation prevents a late native session write',"
+        },
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 132,
+          "case": "test('RQ042 racing native accepts serialize session persistence', () async {"
+        }
+      ]
+    },
+    {
+      "id": "RQ043",
+      "problem_and_change": "Lernrunde bei Familienwechsel desselben Kontos sofort verwerfen",
+      "code": [
+        "app/lib/unit_screen.dart / accountChanged, build"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 280,
+          "case": "'RQ043 a family change removes a rendered unit even if the account object stays identical',"
+        }
+      ],
+      "exclusion": "KK012: gemeinsamer Konto-/Familienkontextschutz, nicht erneut je Komponente zählen."
+    },
+    {
+      "id": "RQ044",
+      "problem_and_change": "Numerische Eingabemetadaten enthalten keine Antwortschlüssel",
+      "code": [
+        "backend/schulpilot/learning.py / unit_data"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 209,
+          "case": "def test_rq044_numeric_keyboard_metadata_never_exposes_the_answer(api, household):"
+        }
+      ],
+      "exclusion": "RQ029: ein gemeinsamer numerischer Eingabepfad, nicht Backend und Client getrennt zählen."
+    },
+    {
+      "id": "RQ045",
+      "problem_and_change": "Unvollständige Authentifizierungsantwort ändert Konto nicht teilweise",
+      "code": [
+        "app/lib/api.dart / AppState.accept"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 142,
+          "case": "'RQ045 incomplete authentication response cannot partially change account',"
+        }
+      ]
+    },
+    {
+      "id": "RQ046",
+      "problem_and_change": "Gespeicherte Erklärung wahlweise vollständig lesen",
+      "code": [
+        "app/lib/learning_explanation.dart / showAll"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 157,
+          "case": "'RQ046 an explanation offers full text without changing the stored content',"
+        }
+      ]
+    },
+    {
+      "id": "RQ047",
+      "problem_and_change": "Langen Erklärungstext über konkreten Schrittwähler öffnen",
+      "code": [
+        "app/lib/learning_explanation.dart / changeStep"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 180,
+          "case": "testWidgets('RQ047 a long explanation has a direct saved-step chooser', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ048",
+      "problem_and_change": "Geänderte gespeicherte Erklärungsschrittposition bei gleichem Text übernehmen",
+      "code": [
+        "app/lib/learning_explanation.dart / didUpdateWidget"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 205,
+          "case": "'RQ048 changed restored explanation step is respected for the same text',"
+        }
+      ]
+    },
+    {
+      "id": "RQ049",
+      "problem_and_change": "Bereits freigegebene Fachgrafik lokal zoomen und bei Kontowechsel schließen",
+      "code": [
+        "app/lib/graphic_zoom.dart / GraphicZoom"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_common_ux90_test.dart",
+          "line": 221,
+          "case": "'RQ049 zoom is local has explicit controls and closes on family change',"
+        }
+      ]
+    },
+    {
+      "id": "RQ050",
+      "problem_and_change": "Fertige Tutorfragen ausdrücklich per GET aktualisieren",
+      "code": [
+        "app/lib/tutor_sheet.dart / load"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tutor_ux90_test.dart",
+          "line": 138,
+          "case": "'RQ050 manual refresh is read only even without a pending answer',"
+        }
+      ]
+    },
+    {
+      "id": "RQ051",
+      "problem_and_change": "Nachrichten bei Transportwiederholung exakt einmal speichern",
+      "code": [
+        "backend/schulpilot/learning.py / send_message"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 222,
+          "case": "def test_rq051_message_retry_keeps_one_message_and_one_event(api, household):"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 240,
+          "case": "def test_rq051_concurrent_parent_message_retries_are_exactly_once(api, household):"
+        }
+      ],
+      "exclusion": "CK049: gemeinsame Nachrichtenspeicherung genau einmal gezählt."
+    },
+    {
+      "id": "RQ052",
+      "problem_and_change": "Leere Wortsammlung bewusst mit wiederholbarem Anfrageschlüssel anlegen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / collectionEditor",
+        "backend/schulpilot/vocabulary.py / create_collection"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 66,
+          "case": "'RQ052 an empty collection is explicitly saved once with a retry key',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 268,
+          "case": "def test_rq052_collection_creation_is_idempotent_and_has_actual_empty_count(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ053",
+      "problem_and_change": "Sammlungsnamen gegen tatsächlich geprüften alten Namen speichern und Fehlerentwurf halten",
+      "code": [
+        "app/lib/vocabulary_screen.dart / collectionEditor",
+        "backend/schulpilot/vocabulary.py / rename_collection"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 86,
+          "case": "testWidgets('RQ053 renaming uses the title that was actually reviewed', ("
+        },
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 103,
+          "case": "'RQ053 a failed rename retains the exact input and does not close the editor',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 280,
+          "case": "def test_rq053_collection_rename_preserves_membership_and_rejects_lost_update(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ054",
+      "problem_and_change": "Sammlung mit Umfangsvorschau entfernen ohne Wörter oder Übungsbelege zu löschen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / removeCollection",
+        "backend/schulpilot/vocabulary.py / erase_collection"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 131,
+          "case": "'RQ054 collection removal previews scope and preserves words policy',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 291,
+          "case": "def test_rq054_removing_a_collection_preserves_words_reviews_and_old_answers(api, household):"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 313,
+          "case": "def test_rq054_changed_collection_snapshot_cannot_be_removed(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ055",
+      "problem_and_change": "Wort einer oder mehreren eigenen Sammlungen revisionsgebunden zuordnen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / wordCollections",
+        "backend/schulpilot/vocabulary.py / choose_collections"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 151,
+          "case": "'RQ055 membership changes preserve the word revision and reviewed memberships',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 321,
+          "case": "def test_rq055_word_can_belong_to_multiple_collections_without_new_revision(api, household):"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 338,
+          "case": "def test_rq055_membership_respects_revision_and_language(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ056",
+      "problem_and_change": "Wortimport ausdrücklich einer vorhandenen Sammlung zuordnen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / importDialog",
+        "backend/schulpilot/vocabulary.py / create_import"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 170,
+          "case": "'RQ056 adding words to a chosen collection keeps its actual target',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 350,
+          "case": "def test_rq056_manual_words_can_extend_an_existing_collection(api, household):"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 363,
+          "case": "def test_rq056_open_import_keeps_its_target_collection_until_review_finished(api, household):"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 372,
+          "case": "def test_rq056_import_does_not_accept_another_child_or_language_collection(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ057",
+      "problem_and_change": "Freigegebene Wortvarianten und Wortart erst nach Aufdecken anzeigen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / word-details"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_collections_ux90_test.dart",
+          "line": 197,
+          "case": "'RQ057 exact approved variants and word class remain hidden until exposure',"
+        }
+      ]
+    },
+    {
+      "id": "RQ058",
+      "problem_and_change": "Sammlungsvorschau nennt tatsächliche Wortzahl",
+      "code": [
+        "app/lib/vocabulary_screen.dart / collectionBrowser"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 171,
+          "case": "'RQ058 collection removal scope contains the actual selected word count',"
+        }
+      ],
+      "exclusion": "RQ054: Wortzahl ist Bestandteil derselben Löschumfangsvorschau."
+    },
+    {
+      "id": "RQ059",
+      "problem_and_change": "Geladene Werkstattwörter tatsächlich alphabetisch ordnen",
+      "code": [
+        "app/lib/language_workshop.dart / visibleWords"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 195,
+          "case": "'RQ059 workshop alphabet choice actually reorders reverse supplied words locally',"
+        }
+      ]
+    },
+    {
+      "id": "RQ060",
+      "problem_and_change": "Eigene Sprachaufgabe erst nach hinreichendem eigenen Entwurf vorbereiten",
+      "code": [
+        "app/lib/language_workshop.dart / formIssue"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 33,
+          "case": "'RQ060 an own-text project explains missing work locally without paid POST',"
+        }
+      ]
+    },
+    {
+      "id": "RQ061",
+      "problem_and_change": "Grammatikprojekt benötigt ausdrücklich bestätigte Heftquelle",
+      "code": [
+        "app/lib/language_workshop.dart / formIssue"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 50,
+          "case": "testWidgets('RQ061 grammar preparation requires an actual confirmed page', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ062",
+      "problem_and_change": "Nicht unterstützte Grammatik-Lernsprache vor kostenpflichtiger Erzeugung erklären",
+      "code": [
+        "app/lib/language_workshop.dart / formIssue"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 65,
+          "case": "'RQ062 grammar for an unsupported chosen language cannot create an invalid job',"
+        }
+      ]
+    },
+    {
+      "id": "RQ063",
+      "problem_and_change": "Abgelehnten Sprachwechsel samt sichtbarer Auswahl und Wortauswahl zurücknehmen",
+      "code": [
+        "app/lib/language_workshop.dart / localePickerRevision"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 81,
+          "case": "'RQ063 cancelling a language change preserves the exact selected words and visual locale',"
+        }
+      ]
+    },
+    {
+      "id": "RQ064",
+      "problem_and_change": "Ganze ausdrückliche Wortauswahl lokal leeren und wiederherstellen",
+      "code": [
+        "app/lib/language_workshop.dart / selected"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 109,
+          "case": "'RQ064 the whole deliberate word selection can be cleared and restored locally',"
+        }
+      ]
+    },
+    {
+      "id": "RQ065",
+      "problem_and_change": "Eigenen ungesendeten Sprachentwurf lokal leeren und wiederherstellen",
+      "code": [
+        "app/lib/language_workshop.dart / clearedDraft"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 128,
+          "case": "'RQ065 clearing an unsent draft offers one local recovery with its exact text',"
+        }
+      ]
+    },
+    {
+      "id": "RQ066",
+      "problem_and_change": "Geladene Sprachprojekte nach Lernziel ordnen",
+      "code": [
+        "app/lib/language_workshop.dart / projectSort"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 158,
+          "case": "('RQ066', 'Geladene Projekte ordnen', 'Nach Lernziel A–Z'),"
+        },
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 167,
+          "case": "final control = scenario.$1 == 'RQ066'"
+        }
+      ]
+    },
+    {
+      "id": "RQ067",
+      "problem_and_change": "Geladene Sprachprojekte nach echtem Speicherzeitraum eingrenzen",
+      "code": [
+        "app/lib/language_workshop.dart / projectDays"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 159,
+          "case": "('RQ067', 'Gespeichert im Zeitraum', 'Letzte 7 Tage'),"
+        }
+      ]
+    },
+    {
+      "id": "RQ068",
+      "problem_and_change": "Heftgebundene Projekte filtern und Ansicht ohne Formularverlust zurücksetzen",
+      "code": [
+        "app/lib/language_workshop.dart / sourceProjectsOnly"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 187,
+          "case": "'RQ068 source project filtering can be reset without losing the form',"
+        }
+      ]
+    },
+    {
+      "id": "RQ069",
+      "problem_and_change": "Bereits gespeicherte vorherige und nächste Gesprächsschritte direkt öffnen",
+      "code": [
+        "app/lib/language_workshop.dart / projectView",
+        "backend/schulpilot/language_projects.py / project_data"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 213,
+          "case": "'RQ069 previous and already stored next conversation steps open exact references',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 387,
+          "case": "def test_rq069_existing_conversation_continuation_is_a_read_only_navigation_target(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ070",
+      "problem_and_change": "Zu kurze Gesprächsfortsetzung vor kostenpflichtigem Auftrag erklären",
+      "code": [
+        "app/lib/language_workshop.dart / create(previous: row)"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 243,
+          "case": "'RQ070 a one-character continuation is not sent as a paid project',"
+        }
+      ]
+    },
+    {
+      "id": "RQ071",
+      "problem_and_change": "Eigenen gespeicherten Sprachversuch und vorhandene Hilfe gegenüberstellen",
+      "code": [
+        "app/lib/language_workshop.dart / projectView"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_workshop_ux90_test.dart",
+          "line": 273,
+          "case": "'RQ071 saved own work and learning help can be compared without changing either',"
+        }
+      ]
+    },
+    {
+      "id": "RQ072",
+      "problem_and_change": "Eltern-Aufgabenfilter trennt ersten selbstständigen Erfolg von erneut richtiger Lösung",
+      "code": [
+        "app/lib/unit_screen.dart / parentQuestionMatches"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 205,
+          "case": "'RQ072 own task filters distinguish first independent success from repeat success',"
+        }
+      ]
+    },
+    {
+      "id": "RQ073",
+      "problem_and_change": "Nur bereits berechtigte gespeicherte Antworten ausdrücklich lokal durchsuchen",
+      "code": [
+        "app/lib/unit_screen.dart / parentSearchAnswers"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 218,
+          "case": "'RQ073 parents may search only the already authorized stored answers locally',"
+        }
+      ]
+    },
+    {
+      "id": "RQ074",
+      "problem_and_change": "Eltern-Deep-Link öffnet konkrete gespeicherte Aufgabe mit ehrlichem Rückweg",
+      "code": [
+        "app/lib/unit_screen.dart / readParentView",
+        "app/lib/main.dart / unit route"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 238,
+          "case": "'RQ074 parent task deep links focus exact saved task and can restore the whole round',"
+        }
+      ]
+    },
+    {
+      "id": "RQ075",
+      "problem_and_change": "Fehlende konkrete Aufgabenreferenz erhält ehrlichen Rückweg",
+      "code": [
+        "app/lib/unit_screen.dart / readParentView"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 250,
+          "case": "'RQ075 absent task references show an honest recovery without another write',"
+        }
+      ],
+      "exclusion": "RQ074: Fehlerzweig desselben konkreten Aufgabenlinks."
+    },
+    {
+      "id": "RQ076",
+      "problem_and_change": "Kinder ignorieren reine Eltern-Inspektionsparameter",
+      "code": [
+        "app/lib/unit_screen.dart / readParentView"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_unit_ux90_test.dart",
+          "line": 265,
+          "case": "'RQ076 child routes ignore parent inspection filters and keep the guided question',"
+        }
+      ],
+      "exclusion": "RQ074: Rechte-/Rollenbegrenzung desselben Aufgabenlinks."
+    },
+    {
+      "id": "RQ077",
+      "problem_and_change": "Geladene Lerntipps ohne Interaktion oder KI lokal durchsuchen",
+      "code": [
+        "app/lib/learning_tips.dart / tipSearch"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 152,
+          "case": "'RQ077 loaded learning tips can be searched without model or interaction writes',"
+        }
+      ]
+    },
+    {
+      "id": "RQ078",
+      "problem_and_change": "Lerntexte oder Videos ausdrücklich unter geladenen Lerntipps auswählen",
+      "code": [
+        "app/lib/learning_tips.dart / tipType"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 173,
+          "case": "'RQ078 a child can deliberately choose readable text rather than video among loaded tips',"
+        }
+      ]
+    },
+    {
+      "id": "RQ079",
+      "problem_and_change": "Erweiterte Lerntipps wieder auf kleine Übersicht verkleinern",
+      "code": [
+        "app/lib/learning_tips.dart / more"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 199,
+          "case": "'RQ079 expanded recommendations can return to a smaller saved view',"
+        }
+      ]
+    },
+    {
+      "id": "RQ080",
+      "problem_and_change": "Fertige Lerntipps bewusst per GET aktualisieren und lokale Suche erhalten",
+      "code": [
+        "app/lib/learning_tips.dart / load"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 216,
+          "case": "'RQ080 refresh of ready tips is an explicit GET and preserves local narrowed reading',"
+        }
+      ]
+    },
+    {
+      "id": "RQ081",
+      "problem_and_change": "Private Lerntipps bei Familienwechsel sofort verbergen",
+      "code": [
+        "app/lib/learning_tips.dart / changed"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 234,
+          "case": "'RQ081 learning tips are hidden immediately after same-account family change',"
+        }
+      ],
+      "exclusion": "KK012: gemeinsamer Konto-/Familienkontextschutz, nicht erneut je Komponente zählen."
+    },
+    {
+      "id": "RQ082",
+      "problem_and_change": "Ausgewählte Lernthemen vor Bestätigung gemeinsam leeren und wiederherstellen",
+      "code": [
+        "app/lib/learning_tips.dart / TopicBrowser"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 246,
+          "case": "'RQ082 the whole selected topic set can be emptied and restored before deliberate confirmation',"
+        }
+      ]
+    },
+    {
+      "id": "RQ083",
+      "problem_and_change": "Wartende Aktionsanimation unter eigener Dialogroute anhalten",
+      "code": [
+        "app/lib/ui.dart / _ButtonProgress"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 282,
+          "case": "'RQ083 a covered async action pauses its busy animation until its own dialog closes',"
+        }
+      ]
+    },
+    {
+      "id": "RQ084",
+      "problem_and_change": "Alle eigenen Wortsammlungen serverseitig begrenzt durchblättern",
+      "code": [
+        "app/lib/vocabulary_screen.dart / collectionBrowser",
+        "backend/schulpilot/vocabulary.py / collection_list"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 230,
+          "case": "'RQ084 collection browser next and previous use server pages without writes',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 408,
+          "case": "def test_rq084_collection_previews_are_bounded_and_selected_old_collection_stays_reachable(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ085",
+      "problem_and_change": "Sammlungen über vollständigen serverseitigen Titelbestand suchen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / collectionBrowser",
+        "backend/schulpilot/vocabulary.py / collection_list"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 243,
+          "case": "'RQ085 collection search keeps the submitted snapshot while new text is typed',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 426,
+          "case": "def test_rq085_collection_search_is_literal_and_uses_real_server_sort(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ086",
+      "problem_and_change": "Sammlungsbrowser vor Seitenteilung nach Titel oder Speicherzeit ordnen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / collectionBrowser",
+        "backend/schulpilot/vocabulary.py / collection_list"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 280,
+          "case": "'RQ086 collection sort submits a fresh first-page request with real criterion',"
+        }
+      ]
+    },
+    {
+      "id": "RQ087",
+      "problem_and_change": "Ergebniskarten verwenden letztes Urteil und zählen erneuten Erfolg als unterstützt",
+      "code": [
+        "app/lib/coaching_panel.dart / storedQuestionCategory"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_coaching_ux90_test.dart",
+          "line": 18,
+          "case": "test('RQ087 stored result groups follow latest evidence and never promote a repeat to first success', () {"
+        }
+      ]
+    },
+    {
+      "id": "RQ088",
+      "problem_and_change": "Gespeicherte Aufgaben innerhalb einer Ergebnisgruppe gezielt finden",
+      "code": [
+        "app/lib/coaching_panel.dart / RoundAnswerExplorer"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_coaching_ux90_test.dart",
+          "line": 47,
+          "case": "'RQ088 saved task questions can be located inside a selected result group without a request',"
+        }
+      ]
+    },
+    {
+      "id": "RQ089",
+      "problem_and_change": "Frühere Versuche direkt aus Ergebnisgruppe mit Unterstützung und Rückmeldung öffnen",
+      "code": [
+        "app/lib/coaching_panel.dart / _SavedQuestionResult"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_coaching_ux90_test.dart",
+          "line": 77,
+          "case": "'RQ089 previous saved attempts remain inspectable without replacing the latest feedback',"
+        }
+      ]
+    },
+    {
+      "id": "RQ090",
+      "problem_and_change": "Gespeichertes Aufgabenergebnis ausdrücklich vorlesen lassen",
+      "code": [
+        "app/lib/coaching_panel.dart / _SavedQuestionResult"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_coaching_ux90_test.dart",
+          "line": 93,
+          "case": "'RQ090 reading a stored result aloud always needs an explicit action',"
+        }
+      ]
+    },
+    {
+      "id": "RQ091",
+      "problem_and_change": "Nicht gespeicherte Wortvorschlagskorrekturen kontogebunden wiederaufnehmen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 111,
+          "case": "'RQ091 corrected word proposals resume within the same signed in account',"
+        }
+      ]
+    },
+    {
+      "id": "RQ092",
+      "problem_and_change": "Offene Importvorschläge ausdrücklich ohne Quellen- oder Wortlöschung verwerfen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / reviewDialog",
+        "backend/schulpilot/vocabulary.py / discard_import"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 134,
+          "case": "'RQ092 discarding open proposals names its exact scope and waits for confirmation',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 441,
+          "case": "def test_rq092_discard_only_open_word_proposals_preserves_existing_words(api, household):"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 455,
+          "case": "def test_rq092_confirmed_and_processing_word_imports_are_protected(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ093",
+      "problem_and_change": "Geänderte Wortkorrektur erst nach ausdrücklichem Verwerfen schließen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / edit"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 161,
+          "case": "'RQ093 cancelling a changed word correction does not silently discard input',"
+        }
+      ]
+    },
+    {
+      "id": "RQ094",
+      "problem_and_change": "Tutoranschlussfrage an bewusst gewählte frühere Erklärung statt jüngste Antwort binden",
+      "code": [
+        "app/lib/tutor_sheet.dart / answerPrompt, useStarter"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tutor_ux90_test.dart",
+          "line": 40,
+          "case": "'RQ094 a source change after selecting an explanation preserves input and clears its old reply relation',"
+        },
+        {
+          "file": "app/test/root_tutor_ux90_test.dart",
+          "line": 159,
+          "case": "'RQ094 a follow-up targets its selected saved explanation; changed source starts a fresh question $changed',"
+        }
+      ]
+    },
+    {
+      "id": "RQ095",
+      "problem_and_change": "Ältere Wortimporte über autorisierten begrenzten Archivbrowser erreichen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / browseImports",
+        "backend/schulpilot/vocabulary.py / imports"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 175,
+          "case": "'RQ095 old word lists are opened through the authorized paginated browser',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 473,
+          "case": "def test_rq095_all_word_imports_are_searchable_past_the_old_thirty_row_preview(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ096",
+      "problem_and_change": "Fehlenden Importjob als tatsächlichen Fehler im Statusfilter finden",
+      "code": [
+        "backend/schulpilot/vocabulary.py / imports"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 492,
+          "case": "def test_rq096_missing_job_is_visible_in_the_actual_failed_import_view(api, household):"
+        }
+      ],
+      "exclusion": "RQ105: tatsächlicher Fehlerzustand im selben Archivstatusfilter."
+    },
+    {
+      "id": "RQ097",
+      "problem_and_change": "Ältere offene Importe verhindern fälschliches Alles-geprüft-Signal",
+      "code": [
+        "app/lib/vocabulary_screen.dart / open_total"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 211,
+          "case": "'RQ097 an older pending list prevents a false all reviewed empty state',"
+        }
+      ]
+    },
+    {
+      "id": "RQ098",
+      "problem_and_change": "Importübersicht lädt Metadaten statt aller Wortpaare",
+      "code": [
+        "app/lib/vocabulary_screen.dart / load",
+        "backend/schulpilot/vocabulary.py / imports"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 228,
+          "case": "'RQ098 list previews request metadata and load pairs only for explicit review',"
+        },
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 502,
+          "case": "def test_rq098_import_metadata_preview_omits_pairs_until_explicit_detail_read(api, household):"
+        }
+      ]
+    },
+    {
+      "id": "RQ099",
+      "problem_and_change": "Unsicheren Wortimport mit exaktem Text und identischem Schlüssel wiederaufnehmen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / pendingImport"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 265,
+          "case": "'RQ099 an uncertain word import restores exact typed pairs and reuses the same request key',"
+        }
+      ]
+    },
+    {
+      "id": "RQ100",
+      "problem_and_change": "Wortimport vor tatsächlicher UTF8-JSON-Körpergrenze lokal prüfen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / importDialog"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_word_review_ux90_test.dart",
+          "line": 307,
+          "case": "'RQ100 oversized UTF8 word lists stay in the editor before a body-limit rejection',"
+        }
+      ]
+    },
+    {
+      "id": "RQ101",
+      "problem_and_change": "Eigenen gespeicherten Sprachentwurf ausdrücklich exakt kopieren",
+      "code": [
+        "app/lib/language_workshop.dart / Clipboard"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 292,
+          "case": "'RQ101 saved own project draft is copied exactly after explicit clipboard action',"
+        }
+      ]
+    },
+    {
+      "id": "RQ102",
+      "problem_and_change": "Eingelagerte Materialflächen malen sichtbare interaktive Kontrollelemente",
+      "code": [
+        "app/lib/ui.dart / SurfaceInset"
+      ],
+      "status": "coupled",
+      "counted": false,
+      "tests": [],
+      "exclusion": "Nicht zusätzlich gezählt: Materialkorrektur sichert die neuen interaktiven Gruppen ab."
+    },
+    {
+      "id": "RQ103",
+      "problem_and_change": "Fehlgeschlagene ausdrückliche Lernthemenauswahl zum erneuten Prüfen behalten",
+      "code": [
+        "app/lib/learning_tips.dart / pendingSelection"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 27,
+          "case": "'RQ103 failed deliberate topic selection remains available for review',"
+        }
+      ]
+    },
+    {
+      "id": "RQ104",
+      "problem_and_change": "Bestätigtes Wortimportarchiv zeigt historische Paare mit korrektem Status",
+      "code": [
+        "app/lib/vocabulary_screen.dart / importDetails"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 330,
+          "case": "'RQ104 confirmed import archive exposes its exact historical pairs without correcting current words',"
+        }
+      ]
+    },
+    {
+      "id": "RQ105",
+      "problem_and_change": "Wortimportarchiv nach tatsächlichem Verarbeitungsstand filtern",
+      "code": [
+        "app/lib/vocabulary_screen.dart / browseImports",
+        "backend/schulpilot/vocabulary.py / imports"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 367,
+          "case": "for (final scenario in [('RQ105', 'status'), ('RQ106', 'search')]) {"
+        }
+      ]
+    },
+    {
+      "id": "RQ106",
+      "problem_and_change": "Wortimportarchiv serverseitig über vollständigen Titelbestand durchsuchen",
+      "code": [
+        "app/lib/vocabulary_screen.dart / browseImports",
+        "backend/schulpilot/vocabulary.py / imports"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 367,
+          "case": "for (final scenario in [('RQ105', 'status'), ('RQ106', 'search')]) {"
+        }
+      ]
+    },
+    {
+      "id": "RQ107",
+      "problem_and_change": "Nach Revalidierung entfernte Werkstattwörter ausdrücklich erklären",
+      "code": [
+        "app/lib/language_workshop.dart / load"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 412,
+          "case": "'RQ107 deleted selected workshop word is explained after authorized revalidation',"
+        }
+      ]
+    },
+    {
+      "id": "RQ108",
+      "problem_and_change": "Gespeichertes Sprachprojekt mit tatsächlichem Erstellungsdatum anzeigen",
+      "code": [
+        "app/lib/language_workshop.dart / projectView"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_completion_ux90_test.dart",
+          "line": 464,
+          "case": "testWidgets('RQ108 saved project displays its actual creation timestamp', ("
+        }
+      ]
+    },
+    {
+      "id": "RQ109",
+      "problem_and_change": "Späte Lerntippaktion darf neueren Quellenkontext nicht verändern",
+      "code": [
+        "app/lib/learning_tips.dart / action, selectTopics, returnAction"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "app/test/root_tips_ux90_test.dart",
+          "line": 71,
+          "case": "'RQ109 delayed old media writes and stale card callbacks cannot change a new source',"
+        }
+      ]
+    },
+    {
+      "id": "RQ110",
+      "problem_and_change": "Zeitgleiche gespeicherte Versuche folgen der erfassten Versuchsnummer statt zufälliger ID-Reihenfolge",
+      "code": [
+        "backend/schulpilot/learning.py / unit_data"
+      ],
+      "status": "targeted_passed",
+      "counted": true,
+      "tests": [
+        {
+          "file": "backend/tests/test_ux90_learning_views.py",
+          "line": 197,
+          "case": "def test_rq110_unit_attempt_ties_keep_the_recorded_attempt_order(api, household):"
+        }
+      ]
+    }
+  ],
+  "validation_limits": [
+    "Gezielte künstliche Widget-/PostgreSQL-Prüfungen; komplette Abnahme und Produktionsdeployment noch offen.",
+    "Testvarianten und Client-/Backendteile derselben Maßnahme werden nicht zusätzlich gezählt.",
+    "Browser-Set-Cookie-Verarbeitung wird durch den lokalen Authentifizierungs-Intentguard nicht rückgängig gemacht."
+  ],
+  "sources": [
+    "https://www.w3.org/WAI/WCAG2/supplemental/patterns/o2p03-page-structure/",
+    "https://design-system.service.gov.uk/components/error-summary/",
+    "https://www.w3.org/WAI/WCAG22/Understanding/redundant-entry.html"
+  ]
+}

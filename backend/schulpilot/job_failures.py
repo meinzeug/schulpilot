@@ -15,6 +15,11 @@ CODES = {
     "cost_preflight",
     "interrupted",
     "unknown",
+    "decision_shape",
+    "decision_refs",
+    "decision_closed",
+    "decision_not_new",
+    "decision_flow",
 }
 
 

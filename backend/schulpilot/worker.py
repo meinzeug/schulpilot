@@ -1,9 +1,11 @@
 """Durable DB queue. At most one provider attempt; abandoned jobs never replay."""
 
 import logging
+import re
 import signal
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -97,6 +99,11 @@ def process(job_id):
         from .language_projects import process as process_language
 
         process_language(job_id)
+        return
+    if kind == "schulbuddy":
+        from .schulbuddy import process as process_buddy
+
+        process_buddy(job_id)
         return
     if kind in ("coach", "coach_practice", "study_block", "tutor", "controller_check", "decision", "parent_review"):
         from . import coaching, controller_jobs, instructional_decisions, parent_insights, study_path, tutor
@@ -463,10 +470,13 @@ def process(job_id):
 
 def maintenance():
     paths = []
+    repair_paths = []
     with DB.begin() as db:
         from .commerce import maintenance as commerce_maintenance
+        from .operator_incidents import maintenance as incident_maintenance
 
         commerce_maintenance(db)
+        repair_paths = incident_maintenance(db)
         stale = list(db.scalars(select(Job).where(Job.status == "running", Job.started < int(now()) - 240)))
         for job in stale:
             job.status = "failed"
@@ -562,6 +572,9 @@ def maintenance():
         db.execute(delete(Activity).where(Activity.created < int(now()) - 365 * 86400))
         db.execute(delete(Message).where(Message.created < int(now()) - 365 * 86400))
         db.execute(delete(TutorTurn).where(TutorTurn.created < int(now()) - 365 * 86400))
+        from .db import SchulbuddyTurn
+
+        db.execute(delete(SchulbuddyTurn).where(SchulbuddyTurn.created < int(now()) - 365 * 86400))
         from .db import ParentLearningReview
 
         db.execute(delete(ParentLearningReview).where(ParentLearningReview.created < int(now()) - 365 * 86400))
@@ -612,6 +625,12 @@ def maintenance():
                     )
                 )
     unlink_uploads(paths)
+    # Only our fixed flat patch namespace, never an arbitrary stored path.
+    repair_root = (settings.data_dir / "operator-repairs").resolve()
+    for value in repair_paths:
+        path = Path(value)
+        if not path.is_symlink() and path.resolve().parent == repair_root and re.fullmatch(r"[a-f0-9]{32}\.patch", path.name):
+            path.unlink(missing_ok=True)
     from .erasure import flush_journal, prune_journal, prune_orphan_images
 
     flush_journal()
@@ -688,6 +707,9 @@ def main():
                     time.sleep(1)
         except Exception as exc:
             log.error("worker_error type=%s", type(exc).__name__)
+            from .operator_incidents import record_api_failure
+
+            record_api_failure(exc)
             time.sleep(3)
 
 

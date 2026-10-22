@@ -308,6 +308,10 @@ void main() {
         'q',
         'page',
         'section',
+        'sort',
+        'origin',
+        'clarification',
+        'search_context',
       });
       f.router.go('/away');
       await tester.pumpAndSettle();
@@ -321,7 +325,7 @@ void main() {
       expect(request.url.queryParameters, containsPair('page', '2'));
       expect(
         find.text(
-          'Alles geprüft. Deine bestätigten Wörter findest du im Wortschatz.',
+          'In dieser Vorschau ist nichts mehr zu prüfen. Deine bestätigten Wörter findest du im Wortschatz.',
         ),
         findsOneWidget,
       );

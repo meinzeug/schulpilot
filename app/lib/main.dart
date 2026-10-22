@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api.dart';
+import 'schulbuddy.dart';
 import 'account_deletion_screen.dart';
 import 'auth_screens.dart';
 import 'dashboard.dart';
@@ -18,6 +19,7 @@ import 'parent_homework_screen.dart';
 import 'parent_plan_screen.dart';
 import 'material_actions.dart';
 import 'settings_screen.dart';
+import 'operator_incidents_screen.dart';
 import 'installation_screen.dart';
 import 'school_day_screen.dart';
 import 'school_day_history.dart';
@@ -187,6 +189,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           path.startsWith('/language-projects/') ||
           path.startsWith('/bestellen/') ||
           path.startsWith('/admin') ||
+          path == '/operator-incidents' ||
           path.startsWith('/child/') ||
           path.startsWith('/messages/') ||
           path.startsWith('/family-call/') ||
@@ -212,7 +215,10 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         return '/admin';
       }
       if (path == '/' && widget.state.user != null) return '/app';
-      if (path.startsWith('/admin') && !widget.state.isAdmin) return '/app';
+      if ((path.startsWith('/admin') || path == '/operator-incidents') &&
+          !widget.state.isAdmin) {
+        return '/app';
+      }
       if (path == '/notifications' && widget.state.isAdmin) {
         return '/admin/push';
       }
@@ -357,6 +363,8 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           widget.state,
           childId: s.pathParameters['childId']!,
           initialSection: s.uri.queryParameters['ansicht'],
+          initialAssignmentId: s.uri.queryParameters['auftrag'],
+          initialFilters: s.uri.queryParameters,
         ),
       ),
       GoRoute(
@@ -418,6 +426,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           initialSubject: s.uri.queryParameters['fach'],
           initialTopic: s.uri.queryParameters['thema'],
           initialCategory: s.uri.queryParameters['ergebnis'],
+          initialPeriod: s.uri.queryParameters['zeitraum'],
+          initialSort: s.uri.queryParameters['sortierung'],
+          initialSearch: s.uri.queryParameters['suche'],
+          initialStatus: s.uri.queryParameters['status'],
+          initialRoundKind: s.uri.queryParameters['rundenart'],
         ),
       ),
       GoRoute(
@@ -432,8 +445,12 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/unit/:id',
-        builder: (context, s) =>
-            UnitScreen(widget.state, unitId: s.pathParameters['id']!),
+        builder: (context, s) => UnitScreen(
+          widget.state,
+          unitId: s.pathParameters['id']!,
+          initialQuestionId: s.uri.queryParameters['frage'],
+          initialOutcome: s.uri.queryParameters['ergebnis'],
+        ),
       ),
       GoRoute(
         path: '/words',
@@ -497,9 +514,16 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         builder: (context, s) => AdminScreen(widget.state),
       ),
       GoRoute(
+        path: '/operator-incidents',
+        builder: (context, s) => OperatorIncidentsScreen(widget.state),
+      ),
+      GoRoute(
         path: '/privacy',
-        builder: (context, s) =>
-            InformationScreen('privacy', api: widget.state.api),
+        builder: (context, s) => InformationScreen(
+          'privacy',
+          api: widget.state.api,
+          section: s.uri.queryParameters['section'],
+        ),
       ),
       GoRoute(
         path: '/about',
@@ -549,12 +573,17 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       routerConfig: router,
       builder: (context, child) => ListenableBuilder(
         listenable: router.routeInformationProvider,
-        builder: (context, _) => FamilyCallHost(
-          widget.state,
+        builder: (context, _) => SchulbuddyHost(
+          state: widget.state,
           navigatorKey: navigator,
-          currentPath: router.routeInformationProvider.value.uri.path,
-          openCall: (id) => router.push('/family-call/$id'),
-          child: child ?? const SizedBox.shrink(),
+          location: router.routeInformationProvider.value.uri.toString(),
+          child: FamilyCallHost(
+            widget.state,
+            navigatorKey: navigator,
+            currentPath: router.routeInformationProvider.value.uri.path,
+            openCall: (id) => router.push('/family-call/$id'),
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     ),

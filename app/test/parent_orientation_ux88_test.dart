@@ -214,7 +214,11 @@ void main() {
             )
           : null;
       await f.mount(tester, '/insights');
-      final dropdown = find.byType(DropdownButtonFormField<String>);
+      final dropdown = find.byWidgetPredicate(
+        (w) =>
+            w is DropdownButtonFormField<String> &&
+            w.decoration.labelText == 'Gespeicherte Auswertung ansehen',
+      );
       await tap(tester, dropdown);
       await tap(tester, find.textContaining('2. Auswertung ·').last);
       await settle(tester);

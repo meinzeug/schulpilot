@@ -27,7 +27,10 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     with WidgetsBindingObserver {
   Json? path;
   String? readError, actionError, activeJob;
-  String? openingJob;
+  String? openingJob, actionErrorBlock;
+  final blockSearch = TextEditingController();
+  String blockFilter = 'all';
+  final privateRoutes = <Route<dynamic>>{};
   Timer? poll;
   bool reading = false, posting = false, polling = false;
   bool foreground = true, routeVisible = true;
@@ -92,6 +95,9 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       generation++;
       poll?.cancel();
       path = null;
+      blockSearch.clear();
+      blockFilter = 'all';
+      closePrivateRoutes();
       activeJob = openingJob = readError = actionError = null;
       reading = posting = polling = false;
       failedJobs.clear();
@@ -126,6 +132,8 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     if (!ownerMatches) {
       generation++;
       poll?.cancel();
+      closePrivateRoutes();
+      blockSearch.clear();
       if (mounted) setState(() => path = null);
     }
   }
@@ -136,6 +144,8 @@ class _StudyPathPanelState extends State<StudyPathPanel>
     poll?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     state.removeListener(identityChanged);
+    closePrivateRoutes();
+    blockSearch.dispose();
     super.dispose();
   }
 
@@ -151,7 +161,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
 
   Future<void> load() async {
     if (reading || !ownerMatches) return;
-    reading = true;
+    if (mounted) setState(() => reading = true);
     final version = generation;
     try {
       final data = await state.api.get(endpoint);
@@ -159,6 +169,17 @@ class _StudyPathPanelState extends State<StudyPathPanel>
         setState(() {
           path = data;
           readError = null;
+          final confirmed = blocks.any(
+            (block) =>
+                block['id'] == actionErrorBlock &&
+                block['unit_id'] != null &&
+                ['ready', 'completed'].contains(block['status']),
+          );
+          if (confirmed ||
+              actionErrorBlock == null && data['available'] == true) {
+            actionError = null;
+            actionErrorBlock = null;
+          }
         });
       }
     } catch (error) {
@@ -167,7 +188,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       }
     } finally {
       if (version == generation) {
-        reading = false;
+        if (mounted) setState(() => reading = false);
         schedule();
       }
     }
@@ -246,7 +267,10 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       schedule();
     } catch (error) {
       if (mounted && version == generation && ownerMatches) {
-        setState(() => actionError = _studyError(error));
+        setState(() {
+          actionError = _studyError(error);
+          actionErrorBlock = id;
+        });
       }
     } finally {
       if (mounted && version == generation) setState(() => posting = false);
@@ -285,6 +309,9 @@ class _StudyPathPanelState extends State<StudyPathPanel>
           setState(() {
             failedJobs.add(jobId);
             activeJob = openingJob = null;
+            actionErrorBlock = blocks
+                .where((block) => block['job_id'] == jobId)
+                .firstOrNull?['id'];
             actionError =
                 job['error'] as String? ??
                 'Diese Etappe konnte noch nicht vorbereitet werden.';
@@ -306,6 +333,85 @@ class _StudyPathPanelState extends State<StudyPathPanel>
         schedule();
       }
     }
+  }
+
+  void closePrivateRoutes() {
+    for (final route in privateRoutes.toList()) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    }
+    privateRoutes.clear();
+  }
+
+  Future<void> blockDetails(Json block) async {
+    if (!active || !blocks.any((row) => row['id'] == block['id'])) return;
+    final version = generation;
+    late DialogRoute<void> route;
+    route = DialogRoute<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(block['title'] ?? _phaseLabel(block['phase'])),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Lernschritt: ${block['label'] ?? _phaseLabel(block['phase'])}',
+            ),
+            SizedBox(height: 10),
+            Text('Stand: ${_blockLabel(block['status'])}'),
+            SizedBox(height: 10),
+            Text(
+              '${block['question_count'] ?? 0} ${block['unit_id'] == null ? 'geplante' : 'vorbereitete'} Aufgaben',
+            ),
+            if (block['unit_id'] == null)
+              Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'Dies ist nur dein Plan. Hier werden keine neuen Aufgaben vorbereitet. Starte die nächste passende Etappe oben im Lernweg.',
+                ),
+              ),
+            if ((block['error'] ?? '').toString().isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Notice(block['error'], warning: true),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  ownerMatches &&
+                  version == generation &&
+                  route.isCurrent) {
+                Navigator.pop(ctx);
+              }
+            },
+            child: Text('Zurück zum Lernweg'),
+          ),
+        ],
+      ),
+    );
+    privateRoutes.add(route);
+    try {
+      await Navigator.of(context).push(route);
+    } finally {
+      privateRoutes.remove(route);
+    }
+  }
+
+  List<Json> get visibleBlocks {
+    final query = blockSearch.text.trim().toLowerCase();
+    return blocks
+        .where(
+          (block) =>
+              (blockFilter == 'all' || block['status'] == blockFilter) &&
+              (query.isEmpty ||
+                  '${block['title'] ?? ''} ${block['label'] ?? ''} ${_phaseLabel(block['phase'])}'
+                      .toLowerCase()
+                      .contains(query)),
+        )
+        .toList();
   }
 
   @override
@@ -384,6 +490,11 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                 '$ready bereit · verteilt auf mehrere Lerntage',
                 style: TextStyle(color: context.palette.muted, fontSize: 12),
               ),
+              SizedBox(height: 8),
+              Text(
+                'Insgesamt geplant: $total · offen und vorbereitet: $ready · bearbeitet: $completed. Noch geplante Aufgaben sind keine fertigen Übungen.',
+                style: TextStyle(color: context.palette.muted),
+              ),
               SizedBox(height: 20),
               if (current != null) ...[
                 if (current['unit_id'] != null &&
@@ -433,6 +544,12 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                   ),
                   SizedBox(height: 16),
                 ],
+                if ((current['error'] ?? '').toString().isNotEmpty &&
+                    actionError == null)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Notice(current['error'], warning: true),
+                  ),
                 if (waiting || posting) ...[
                   LinearProgressIndicator(),
                   SizedBox(height: 10),
@@ -501,7 +618,61 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               ExpansionTile(
                 title: Text('Alle Etappen'),
                 children: [
-                  for (final block in blocks)
+                  TextField(
+                    controller: blockSearch,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      labelText: 'Etappen durchsuchen',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
+                    onChanged: (_) {
+                      if (ownerMatches) setState(() {});
+                    },
+                    onSubmitted: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                  ),
+                  SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final item in [
+                        ('all', 'Alle'),
+                        ('planned', 'Geplant'),
+                        ('ready', 'Bereit'),
+                        ('completed', 'Bearbeitet'),
+                      ])
+                        ChoiceChip(
+                          label: Text(item.$2),
+                          selected: blockFilter == item.$1,
+                          onSelected: (_) {
+                            if (ownerMatches) {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              setState(() => blockFilter = item.$1);
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      '${visibleBlocks.length} von ${blocks.length} Etappen in dieser Ansicht',
+                    ),
+                  ),
+                  if (visibleBlocks.isEmpty)
+                    TextButton(
+                      onPressed: () {
+                        if (ownerMatches) {
+                          setState(() {
+                            blockSearch.clear();
+                            blockFilter = 'all';
+                          });
+                        }
+                      },
+                      child: Text('Alle Etappen zeigen'),
+                    ),
+                  for (final block in visibleBlocks)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
@@ -516,11 +687,13 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                       subtitle: Text(
                         '${block['label'] ?? _phaseLabel(block['phase'])} · ${block['question_count'] ?? 0} Aufgaben · ${_blockLabel(block['status'])}',
                       ),
-                      trailing: block['unit_id'] != null
-                          ? Icon(Icons.chevron_right_rounded)
-                          : null,
+                      trailing: Icon(
+                        block['unit_id'] != null
+                            ? Icons.chevron_right_rounded
+                            : Icons.info_outline_rounded,
+                      ),
                       onTap: block['unit_id'] == null
-                          ? null
+                          ? () => blockDetails(block)
                           : () {
                               if (active &&
                                   blocks.any(

@@ -44,15 +44,16 @@ def project_data(db, row, *, child_view=True):
         status, error = "failed", job.error if job else "Dieser Auftrag ist nicht mehr verfügbar. Bitte neu vorbereiten."
     result = row.result if status == "ready" else None
     unit = db.get(LearningUnit, row.unit_id) if row.unit_id else None
+    following = db.scalar(select(LanguageProject.id).where(LanguageProject.previous_id == row.id, LanguageProject.child_id == row.child_id).order_by(LanguageProject.created, LanguageProject.id))
     if row.mode == "exam" and child_view and (not unit or unit.status != "completed"):
         result = {"title": result["title"], "response": "Die Auswertung und Lernhinweise siehst du nach deinem Versuch.",
                   "response_locale": "de-DE"} if result else None
     return {"id": row.id, "mode": row.mode, "target_locale": row.target_locale, "status": status, "error": error,
             "result": result, "unit_id": row.unit_id, "job_id": row.job_id, "step": row.step,
             "goal": row.inputs["goal"], "draft": row.inputs["draft"], "source_revisions": row.source_revisions,
-            "previous_id": row.previous_id, "created": row.created,
+            "previous_id": row.previous_id, "next_id": following, "created": row.created,
             "item_ids": row.inputs["item_ids"], "material_id": row.inputs.get("material_id"),
-            "can_continue": row.mode == "dialog" and row.step < 4 and row.status == "ready",
+            "can_continue": row.mode == "dialog" and row.step < 4 and row.status == "ready" and not following,
             "can_retry": bool(child_view and status == "failed" and job and job.status == "failed" and not row.unit_id and not row.result
                               and not db.scalar(select(Audit.id).where(Audit.action.in_(REQUEUE_ACTIONS), Audit.target == row.id)))}
 

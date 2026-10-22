@@ -830,6 +830,21 @@ class _ChildCoachingPanel extends StatelessWidget {
   }
 }
 
+String storedQuestionCategory(Map question) {
+  final attempts = question['attempts'] as List? ?? [];
+  if (attempts.isEmpty) return 'none';
+  final last = attempts.last;
+  if (last['evaluation']?['method'] == 'open_learning_v1') {
+    return 'contribution';
+  }
+  if (last['outcome'] == 'correct') {
+    if (attempts.length > 1 || last['assisted'] == true) return 'assisted';
+    if (last['assisted'] == false) return 'independent';
+    return 'unclassified';
+  }
+  return last['outcome'] == 'incorrect' ? 'practice' : 'uncertain';
+}
+
 class _RoundFacts {
   int answered = 0,
       independent = 0,
@@ -840,28 +855,22 @@ class _RoundFacts {
       contributions = 0;
   _RoundFacts(List questions) {
     for (final question in questions) {
-      final attempts = question['attempts'] as List? ?? [];
-      if (attempts.isEmpty) continue;
+      final category = storedQuestionCategory(question);
+      if (category == 'none') continue;
       answered++;
-      if (attempts.last['evaluation']?['method'] == 'open_learning_v1') {
-        contributions++;
-        continue;
-      }
-      final correct = attempts
-          .where((attempt) => attempt['outcome'] == 'correct')
-          .toList();
-      if (correct.isNotEmpty) {
-        if (correct.any((attempt) => attempt['assisted'] == true)) {
-          assisted++;
-        } else if (correct.every((attempt) => attempt['assisted'] == false)) {
+      switch (category) {
+        case 'independent':
           independent++;
-        } else {
+        case 'assisted':
+          assisted++;
+        case 'uncertain':
+          uncertain++;
+        case 'practice':
+          practice++;
+        case 'contribution':
+          contributions++;
+        default:
           unclassified++;
-        }
-      } else if (attempts.any((attempt) => attempt['outcome'] == 'uncertain')) {
-        uncertain++;
-      } else {
-        practice++;
       }
     }
   }
@@ -879,21 +888,15 @@ class RoundAnswerExplorer extends StatefulWidget {
 class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
   String? chosen;
 
-  String category(Map question) {
-    final attempts = question['attempts'] as List? ?? [];
-    if (attempts.isEmpty) return 'none';
-    if (attempts.last['evaluation']?['method'] == 'open_learning_v1') {
-      return 'contribution';
-    }
-    final correct = attempts.where((a) => a['outcome'] == 'correct').toList();
-    if (correct.isNotEmpty) {
-      if (correct.any((a) => a['assisted'] == true)) return 'assisted';
-      if (correct.every((a) => a['assisted'] == false)) return 'independent';
-      return 'unclassified';
-    }
-    if (attempts.any((a) => a['outcome'] == 'uncertain')) return 'uncertain';
-    return 'practice';
+  final query = TextEditingController();
+  bool searchAnswers = false;
+  @override
+  void dispose() {
+    query.dispose();
+    super.dispose();
   }
+
+  String category(Map question) => storedQuestionCategory(question);
 
   @override
   Widget build(BuildContext context) {
@@ -923,7 +926,15 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
     ];
     final visible = [
       for (final item in widget.questions)
-        if (chosen == category(item)) Json.from(item),
+        if (chosen == category(item) &&
+            (searchAnswers
+                    ? (item['attempts'] as List? ?? [])
+                          .map((a) => a['answer'])
+                          .join(' ')
+                    : item['prompt'].toString())
+                .toLowerCase()
+                .contains(query.text.trim().toLowerCase()))
+          Json.from(item),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -958,6 +969,27 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
                   ),
                 ),
                 SizedBox(height: 12),
+                TextField(
+                  controller: query,
+                  maxLength: 100,
+                  textInputAction: TextInputAction.search,
+                  decoration: const InputDecoration(
+                    labelText: 'In diesen gespeicherten Aufgaben suchen',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('In meinen gespeicherten Antworten suchen'),
+                  value: searchAnswers,
+                  onChanged: (v) => setState(() => searchAnswers = v == true),
+                ),
+                if (visible.isEmpty)
+                  const Text(
+                    'Keine gespeicherte Aufgabe passt zu deiner Suche. Ändere die Suche oder die Ergebnisgruppe.',
+                  ),
                 for (final question in visible) _SavedQuestionResult(question),
                 TextButton.icon(
                   onPressed: () => setState(() => chosen = null),
@@ -1013,6 +1045,38 @@ class _SavedQuestionResult extends StatelessWidget {
           MathText('Deine Antwort: ${last['answer']}'),
           MathText(label),
           AnswerSupport(Json.from(last)),
+          ReadAloudButton(
+            text: MathText.spoken(
+              '${question['prompt']} Deine Antwort: ${last['answer']}. $label',
+            ),
+          ),
+          if (attempts.length > 1)
+            ExpansionTile(
+              title: Text('Alle ${attempts.length} gespeicherten Versuche'),
+              children: [
+                for (var index = 0; index < attempts.length; index++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Versuch ${index + 1}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        MathText('Antwort: ${attempts[index]['answer']}'),
+                        Text(outcomeLabel(attempts[index]['outcome'])),
+                        AnswerSupport(Json.from(attempts[index])),
+                        if (attempts[index]['feedback'] is String)
+                          MathText(attempts[index]['feedback']),
+                        AssessmentTrail(
+                          attempts[index]['assessment_history'] as List? ?? [],
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           if (question['feedback_explanation'] != null)
             MathText(question['feedback_explanation']),
         ],

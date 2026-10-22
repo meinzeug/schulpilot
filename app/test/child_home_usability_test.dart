@@ -308,7 +308,13 @@ void main() {
       sent.single.url.path,
       '/api/children/${data['child']['id']}/messages',
     );
-    expect(jsonDecode(sent.single.body), {
+    final payload = Json.from(jsonDecode(sent.single.body));
+    expect(
+      payload.remove('request_key'),
+      matches(RegExp(r'^[A-Za-z0-9_-]{16,80}$')),
+    );
+    expect(payload, {
+      'unit_id': '00000000000000000000000000000001',
       'kind': 'help',
       'body': 'Ich brauche Unterstützung beim Lernen.',
     });

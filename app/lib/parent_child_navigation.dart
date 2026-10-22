@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'ui.dart';
+import 'api.dart';
+import 'parent_child_picker.dart';
 
 /// The same child context and destinations on every parent detail page.
 /// Navigation never loads content or starts learning work itself.
 class ParentChildNavigation extends StatelessWidget {
   final String childId, selected;
+  final AppState? state;
   final String? childName, subtitle;
   final VoidCallback? onRefresh;
   final bool refreshing;
@@ -13,6 +16,7 @@ class ParentChildNavigation extends StatelessWidget {
     super.key,
     required this.childId,
     required this.selected,
+    this.state,
     this.childName,
     this.subtitle,
     this.onRefresh,
@@ -138,6 +142,13 @@ class ParentChildNavigation extends StatelessWidget {
               constraints.maxWidth >= 650 &&
               MediaQuery.textScalerOf(context).scale(1) <= 1.3;
           final actions = <Widget>[
+            if (state?.isParent == true && state?.familyId != null)
+              ParentChildPicker(
+                state!,
+                childId: childId,
+                section: selected,
+                location: (id) => location(id, selected),
+              ),
             IconButton(
               onPressed: () => openRoute(context, '/app'),
               tooltip: 'Zur Familie',
@@ -183,6 +194,13 @@ class ParentChildNavigation extends StatelessWidget {
                       icon: const Icon(Icons.arrow_back_rounded, size: 18),
                       label: const Text('Zur Familie'),
                     ),
+                    if (state?.isParent == true && state?.familyId != null)
+                      ParentChildPicker(
+                        state!,
+                        childId: childId,
+                        section: selected,
+                        location: (id) => location(id, selected),
+                      ),
                     if (onRefresh != null) actions.last,
                   ],
                 ),

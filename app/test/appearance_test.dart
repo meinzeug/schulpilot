@@ -95,19 +95,11 @@ void main() {
         final inset = find
             .ancestor(of: legend, matching: find.byType(SurfaceInset))
             .first;
-        final box =
-            tester
-                    .widget<Container>(
-                      find
-                          .descendant(
-                            of: inset,
-                            matching: find.byType(Container),
-                          )
-                          .first,
-                    )
-                    .decoration!
-                as BoxDecoration;
-        final x = color.computeLuminance(), y = box.color!.computeLuminance();
+        final surface = tester.widget<Material>(
+          find.descendant(of: inset, matching: find.byType(Material)).first,
+        );
+        final x = color.computeLuminance(),
+            y = surface.color!.computeLuminance();
         expect(
           x > y ? (x + .05) / (y + .05) : (y + .05) / (x + .05),
           greaterThanOrEqualTo(4.5),

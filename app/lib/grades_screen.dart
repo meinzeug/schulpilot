@@ -1,9 +1,13 @@
 import 'dart:math';
+import 'dart:convert';
+
+import 'package:file_saver/file_saver.dart';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'parent_form_guard.dart';
 import 'grade_import_screen.dart';
 import 'ui.dart';
 import 'parent_child_navigation.dart';
@@ -28,6 +32,15 @@ String gradeDate(Json grade) => grade['assessed_on'] != null
     : grade['date_label']?.toString() ??
           '${grade['semester']}. Halbjahr ${grade['school_year_start']}/${(grade['school_year_start'] as num? ?? 0) + 1}';
 
+String gradeProvenance(Json grade) {
+  final source = grade['provenance'] as Map?;
+  if (source?['kind'] != 'pdf') {
+    return 'Zu diesem Eintrag ist kein PDF-Beleg gespeichert. Daraus lässt sich die ursprüngliche Erfassungsart nicht sicher ableiten.';
+  }
+  final year = source?['school_year_start'] as num?;
+  return 'Herkunft: bestätigte PDF-Position aus dem Schuljahr ${year == null ? 'nicht gemeldet' : '$year/${year + 1}'}. Zuletzt im PDF gelesen: ${source?['last_pdf_value'] ?? 'nicht gemeldet'}. Der aktuelle Notenwert kann danach ausdrücklich geändert worden sein.';
+}
+
 class GradesScreen extends StatefulWidget {
   final AppState state;
   final String childId;
@@ -39,7 +52,9 @@ class GradesScreen extends StatefulWidget {
 class _GradesScreenState extends State<GradesScreen> {
   Json? data;
   Object? error;
-  String? subject;
+  String? subject, start, end;
+  int? schoolYear, semester;
+  String order = 'default', sourceFilter = 'all', goalFilter = 'all';
   final search = TextEditingController();
   String query = '',
       kindFilter = 'all',
@@ -51,7 +66,13 @@ class _GradesScreenState extends State<GradesScreen> {
       query.isNotEmpty ||
       kindFilter != 'all' ||
       scaleFilter != 'all' ||
-      precisionFilter != 'all';
+      precisionFilter != 'all' ||
+      start != null ||
+      end != null ||
+      schoolYear != null ||
+      semester != null ||
+      sourceFilter != 'all' ||
+      goalFilter != 'all';
   int page = 1, generation = 0;
   bool loading = true, saving = false;
   late Json? owner;
@@ -129,6 +150,19 @@ class _GradesScreenState extends State<GradesScreen> {
         ['all', 'day', 'semester'].contains(saved?['date_precision'])
         ? saved!['date_precision']
         : 'all';
+    sourceFilter = ['all', 'pdf', 'manual'].contains(saved?['source'])
+        ? saved!['source']
+        : 'all';
+    goalFilter = ['all', 'linked', 'none'].contains(saved?['goal'])
+        ? saved!['goal']
+        : 'all';
+    start = saved?['start'] as String?;
+    end = saved?['end'] as String?;
+    schoolYear = saved?['school_year'] as int?;
+    semester = saved?['semester'] as int?;
+    order = ['default', 'oldest', 'newest', 'subject'].contains(saved?['order'])
+        ? saved!['order']
+        : 'default';
     page = saved?['page'] is int && saved!['page'] > 0 ? saved['page'] : 1;
   }
 
@@ -141,6 +175,13 @@ class _GradesScreenState extends State<GradesScreen> {
       'scale': scaleFilter,
       'date_precision': precisionFilter,
       'page': page,
+      'start': start,
+      'end': end,
+      'school_year': schoolYear,
+      'semester': semester,
+      'order': order,
+      'source': sourceFilter,
+      'goal': goalFilter,
     };
   }
 
@@ -156,7 +197,10 @@ class _GradesScreenState extends State<GradesScreen> {
     subject = null;
     query = '';
     search.clear();
-    kindFilter = scaleFilter = precisionFilter = 'all';
+    kindFilter = scaleFilter = precisionFilter = sourceFilter = goalFilter =
+        'all';
+    start = end = null;
+    schoolYear = semester = null;
   });
 
   void closeDialog() {
@@ -201,26 +245,33 @@ class _GradesScreenState extends State<GradesScreen> {
       final result = await widget.state.api.get(
         Uri(
           path: '/children/${widget.childId}/grades',
-          queryParameters: {
-            'page': '$page',
-            'subject': ?subject,
-            if (query.isNotEmpty) 'q': query,
-            if (kindFilter != 'all') 'kind': kindFilter,
-            if (scaleFilter != 'all') 'scale': scaleFilter,
-            if (precisionFilter != 'all') 'date_precision': precisionFilter,
-          },
+          queryParameters: {'page': '$page', ...gradeFilters},
         ).toString(),
       );
       if (current && child == widget.childId && request == generation) {
-        if ((query.isNotEmpty ||
-                kindFilter != 'all' ||
-                scaleFilter != 'all' ||
-                precisionFilter != 'all') &&
+        if (gradeFilters.keys.any((key) => key != 'subject') &&
             result['filters'] is! Map) {
           throw ApiError(
             'Diese Notenfilter sind auf dem Server noch nicht verfügbar. Bitte Filter zurücksetzen und die App aktualisieren.',
             409,
           );
+        }
+        for (final key in [
+          'start',
+          'end',
+          'school_year',
+          'semester',
+          'order',
+          'source',
+          'goal',
+        ]) {
+          if (gradeFilters.containsKey(key) &&
+              result['filters']?[key]?.toString() != gradeFilters[key]) {
+            throw ApiError(
+              'Diese zeitliche Notenauswahl ist auf dem Server noch nicht verfügbar. Setze die Filter zurück und aktualisiere die App.',
+              409,
+            );
+          }
         }
         setState(() {
           data = result;
@@ -244,6 +295,59 @@ class _GradesScreenState extends State<GradesScreen> {
     }
   }
 
+  Map<String, String> get gradeFilters => {
+    'subject': ?subject,
+    if (query.isNotEmpty) 'q': query,
+    if (kindFilter != 'all') 'kind': kindFilter,
+    if (scaleFilter != 'all') 'scale': scaleFilter,
+    if (precisionFilter != 'all') 'date_precision': precisionFilter,
+    'start': ?start,
+    'end': ?end,
+    if (schoolYear != null) 'school_year': '$schoolYear',
+    if (semester != null) 'semester': '$semester',
+    if (order != 'default') 'order': order,
+    if (sourceFilter != 'all') 'source': sourceFilter,
+    if (goalFilter != 'all') 'goal': goalFilter,
+  };
+
+  Future<void> exportSelection() async {
+    if (!current || loading || saving) return;
+    final child = widget.childId;
+    final path = Uri(
+      path: '/children/$child/grades-export.csv',
+      queryParameters: gradeFilters,
+    ).toString();
+    setState(() => saving = true);
+    try {
+      final bytes = await widget.state.api.bytes(path);
+      if (!current || child != widget.childId) return;
+      final result = await FileSaver.instance.saveAs(
+        name: 'schulpilot-noten',
+        bytes: bytes,
+        fileExtension: 'csv',
+        mimeType: MimeType.csv,
+      );
+      if (current && child == widget.childId && result != null && mounted) {
+        toast(
+          context,
+          'Notenexport gespeichert. Bewahre die private Datei sicher auf.',
+        );
+      }
+    } catch (e) {
+      if (current && child == widget.childId) {
+        setState(
+          () => error = e is ApiError
+              ? e
+              : ApiError(
+                  'Der Notenexport konnte nicht gespeichert werden. Die Einträge bleiben erhalten.',
+                ),
+        );
+      }
+    } finally {
+      if (current && child == widget.childId) setState(() => saving = false);
+    }
+  }
+
   Future<void> showSubject(
     String? value, {
     bool resetOtherFilters = false,
@@ -255,7 +359,10 @@ class _GradesScreenState extends State<GradesScreen> {
     if (resetOtherFilters) {
       query = '';
       search.clear();
-      kindFilter = scaleFilter = precisionFilter = 'all';
+      kindFilter = scaleFilter = precisionFilter = sourceFilter = goalFilter =
+          'all';
+      start = end = null;
+      schoolYear = semester = null;
     }
     page = 1;
     await load();
@@ -377,7 +484,10 @@ class _GradesScreenState extends State<GradesScreen> {
       await change(() async {
         await widget.state.api.post(
           '/children/$child/grades/${grade['id']}/goal',
-          {'mandatory': true},
+          {
+            'mandatory': true,
+            if (grade['revision'] is int) 'revision': grade['revision'],
+          },
         );
       }, sourceHint: true);
     }
@@ -419,7 +529,9 @@ class _GradesScreenState extends State<GradesScreen> {
     );
     if (accepted == true && current && child == widget.childId) {
       await change(() async {
-        await widget.state.api.delete('/children/$child/grades/${grade['id']}');
+        await widget.state.api.delete(
+          '/children/$child/grades/${grade['id']}${grade['revision'] is int ? '?revision=${grade['revision']}' : ''}',
+        );
       });
     }
   }
@@ -451,6 +563,7 @@ class _GradesScreenState extends State<GradesScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ParentChildNavigation(
+                  state: widget.state,
                   childId: widget.childId,
                   selected: 'grades',
                   childName: childName,
@@ -598,6 +711,114 @@ class _GradesScreenState extends State<GradesScreen> {
                     onChanged: loading || saving ? null : showSubject,
                   ),
                   const SizedBox(height: 12),
+                  ParentAppliedFilters(
+                    enabled: !loading && !saving,
+                    filters: [
+                      if (query.isNotEmpty)
+                        (
+                          'Suche: $query',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() {
+                                query = '';
+                                search.clear();
+                              });
+                            }
+                          },
+                        ),
+                      if (subject != null)
+                        (
+                          'Fach: $subject',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() => subject = null);
+                            }
+                          },
+                        ),
+                      if (kindFilter != 'all')
+                        (
+                          'Leistung: ${gradeKinds[kindFilter]}',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() => kindFilter = 'all');
+                            }
+                          },
+                        ),
+                      if (scaleFilter != 'all')
+                        (
+                          scaleFilter == 'points_0_15'
+                              ? 'Punkte 0–15'
+                              : 'Noten 1–6',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() => scaleFilter = 'all');
+                            }
+                          },
+                        ),
+                      if (sourceFilter != 'all')
+                        (
+                          sourceFilter == 'pdf'
+                              ? 'Mit PDF-Beleg'
+                              : 'Ohne PDF-Beleg',
+                          () {
+                            if (current && viewChild == widget.childId) {
+                              filter(() => sourceFilter = 'all');
+                            }
+                          },
+                        ),
+                      if (goalFilter != 'all')
+                        (
+                          goalFilter == 'linked'
+                              ? 'Mit Lernziel'
+                              : 'Ohne Lernziel',
+                          () {
+                            if (current && viewChild == widget.childId) {
+                              filter(() => goalFilter = 'all');
+                            }
+                          },
+                        ),
+                      if (precisionFilter != 'all')
+                        (
+                          precisionFilter == 'day'
+                              ? 'Mit Einzeldatum'
+                              : 'Nur Halbjahr bekannt',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() => precisionFilter = 'all');
+                            }
+                          },
+                        ),
+                      if (start != null || end != null)
+                        (
+                          'Zeitraum: ${start == null ? 'offen' : friendlyDate(start)} – ${end == null ? 'offen' : friendlyDate(end)}',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() {
+                                start = end = null;
+                              });
+                            }
+                          },
+                        ),
+                      if (schoolYear != null)
+                        (
+                          'Schuljahr $schoolYear/${schoolYear! + 1}',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() => schoolYear = null);
+                            }
+                          },
+                        ),
+                      if (semester != null)
+                        (
+                          '$semester. Halbjahr',
+                          () {
+                            if (viewChild == widget.childId) {
+                              filter(() => semester = null);
+                            }
+                          },
+                        ),
+                    ],
+                  ),
                   ParentCollectionSearch(
                     controller: search,
                     label: 'Noten suchen',
@@ -646,7 +867,111 @@ class _GradesScreenState extends State<GradesScreen> {
                         enabled: !loading && !saving,
                         onChanged: (v) => filter(() => precisionFilter = v),
                       ),
+                      const SizedBox(height: 12),
+                      ParentDateRange(
+                        key: ValueKey('grade-range-${widget.childId}'),
+                        start: start,
+                        end: end,
+                        enabled: !loading && !saving,
+                        onApply: (from, to) => filter(() {
+                          start = from;
+                          end = to;
+                        }),
+                      ),
+                      const Text(
+                        'Ein Zeitraum berücksichtigt nur belegte Einzeldaten. Noten ohne genaues Datum bleiben über das Schulhalbjahr erreichbar.',
+                      ),
+                      if ((data!['school_years'] as List? ?? [])
+                          .isNotEmpty) ...[
+                        ParentChoiceFilter(
+                          label: 'Belegtes Schuljahr',
+                          value: schoolYear?.toString() ?? 'all',
+                          enabled: !loading && !saving,
+                          choices: [
+                            ('all', 'Alle belegten Schuljahre'),
+                            for (final year in data!['school_years'])
+                              ('$year', '$year/${(year as int) + 1}'),
+                          ],
+                          onChanged: (v) => filter(
+                            () => schoolYear = v == 'all' ? null : int.parse(v),
+                          ),
+                        ),
+                        ParentChoiceFilter(
+                          label: 'Belegtes Schulhalbjahr',
+                          value: semester?.toString() ?? 'all',
+                          enabled: !loading && !saving,
+                          choices: const [
+                            ('all', 'Beide Schulhalbjahre'),
+                            ('1', '1. Halbjahr'),
+                            ('2', '2. Halbjahr'),
+                          ],
+                          onChanged: (v) => filter(
+                            () => semester = v == 'all' ? null : int.parse(v),
+                          ),
+                        ),
+                      ],
                     ],
+                  ),
+                  ParentChoiceFilter(
+                    label: 'Gespeicherte Notenherkunft',
+                    value: sourceFilter,
+                    enabled: !loading && !saving,
+                    choices: const [
+                      ('all', 'Alle Herkunftsangaben'),
+                      ('pdf', 'Mit bestätigtem PDF-Beleg'),
+                      ('manual', 'Ohne gespeicherten PDF-Beleg'),
+                    ],
+                    onChanged: (v) => filter(() => sourceFilter = v),
+                  ),
+                  ParentChoiceFilter(
+                    label: 'Verknüpftes Lernziel',
+                    value: goalFilter,
+                    enabled: !loading && !saving,
+                    choices: const [
+                      ('all', 'Mit und ohne Lernziel'),
+                      ('linked', 'Mit zugeordnetem Lernziel'),
+                      ('none', 'Noch ohne zugeordnetes Lernziel'),
+                    ],
+                    onChanged: (v) => filter(() => goalFilter = v),
+                  ),
+                  ParentChoiceFilter(
+                    label: 'Reihenfolge der Noten',
+                    value: order,
+                    enabled: !loading && !saving,
+                    choices: const [
+                      ('default', 'Bisherige Reihenfolge'),
+                      ('newest', 'Neuestes Einzeldatum zuerst'),
+                      ('oldest', 'Ältestes Einzeldatum zuerst'),
+                      ('subject', 'Nach Fach'),
+                    ],
+                    onChanged: (v) => filter(() => order = v),
+                  ),
+                  if ((data!['selected_summary'] as List? ?? []).isNotEmpty)
+                    ExpansionTile(
+                      title: const Text('Diese Auswahl zusammengefasst'),
+                      subtitle: const Text(
+                        'Gewichtet je Fach und Notensystem · keine Zeugnisprognose',
+                      ),
+                      children: [
+                        for (final row in data!['selected_summary'])
+                          ListTile(
+                            title: Text(
+                              '${row['subject']} · ${row['scale'] == 'points_0_15' ? 'Punkte' : 'Noten 1–6'}',
+                            ),
+                            subtitle: Text(
+                              '${row['count']} Einträge · Gewichtungssumme ${row['weight_total']}',
+                            ),
+                            trailing: Text('Ø ${gradeNumber(row['average'])}'),
+                          ),
+                      ],
+                    ),
+                  OutlinedButton.icon(
+                    onPressed: loading || saving ? null : exportSelection,
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Diese Notenauswahl als CSV speichern'),
+                  ),
+                  const Text(
+                    'Enthält die gewählten Einträge aller Seiten einschließlich privater Notizen. Kein PDF und keine KI-Verarbeitung.',
                   ),
                   const SizedBox(height: 20),
                   Semantics(
@@ -662,10 +987,7 @@ class _GradesScreenState extends State<GradesScreen> {
                     _gradeCard(Json.from(raw)),
                   if ((data!['items'] as List).isEmpty)
                     Notice(
-                      (query.isNotEmpty ||
-                              kindFilter != 'all' ||
-                              scaleFilter != 'all' ||
-                              precisionFilter != 'all')
+                      filtered
                           ? 'Keine Noten passen zu diesen Filtern. Du kannst die Filter zurücksetzen.'
                           : subject == null
                           ? 'Noch keine Noten eingetragen. Der Lernplan funktioniert auch ohne Noten.'
@@ -811,6 +1133,10 @@ class _GradesScreenState extends State<GradesScreen> {
                 const Text('Eigene Notiz'),
                 SelectableText(grade['note']),
               ],
+              if (grade['provenance'] is Map) ...[
+                const SizedBox(height: 12),
+                Text(gradeProvenance(grade)),
+              ],
               for (final field in [
                 ('created', 'Eingetragen'),
                 ('updated', 'Zuletzt gespeichert'),
@@ -892,6 +1218,13 @@ class _GradesScreenState extends State<GradesScreen> {
                         ),
                       ),
                       if (grade['topic'] != '') Text(grade['topic']),
+                      if (grade['provenance'] is Map)
+                        Text(
+                          grade['provenance']['kind'] == 'pdf'
+                              ? 'Bestätigter PDF-Beleg'
+                              : 'Ohne gespeicherten PDF-Beleg',
+                          style: TextStyle(color: context.palette.muted),
+                        ),
                     ],
                   ),
                 ),
@@ -939,7 +1272,13 @@ class _GradesScreenState extends State<GradesScreen> {
                         if (grade['assignment_id'] != null) {
                           openRoute(
                             context,
-                            '/parent-plan/${widget.childId}?ansicht=topics',
+                            Uri(
+                              path: '/parent-plan/${widget.childId}',
+                              queryParameters: {
+                                'ansicht': 'topics',
+                                'auftrag': grade['assignment_id'],
+                              },
+                            ).toString(),
                           );
                         } else {
                           goal(grade);
@@ -979,9 +1318,48 @@ class GradeEditor extends StatefulWidget {
 
 class _GradeEditorState extends State<GradeEditor> {
   final form = GlobalKey<FormState>();
-  late final TextEditingController subject, topic, value, note;
+  late final TextEditingController subject, topic, value, note, year;
   late String scale, kind;
   String? day;
+  int? semester;
+  ModalRoute<dynamic>? calendarRoute, discardRoute;
+  late String baseline;
+  String fingerprint() => jsonEncode([
+    subject.text,
+    topic.text,
+    value.text,
+    note.text,
+    year.text,
+    semester,
+    day,
+    scale,
+    kind,
+    weight,
+  ]);
+  bool get dirty => baseline != fingerprint();
+  Future<void> requestClose() async {
+    if (!current ||
+        closing ||
+        saving ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        discardRoute?.isActive == true) {
+      return;
+    }
+    if (dirty) {
+      final accepted = await confirmParentDiscard(
+        context,
+        current: () => current && !closing,
+        subject: 'Diese Note',
+        onRoute: (route) => discardRoute = route,
+      );
+      discardRoute = null;
+      if (!accepted || !current || closing || saving) return;
+    }
+    if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+      Navigator.pop(context, false);
+    }
+  }
+
   late int weight;
   late Json? owner;
   late String? family;
@@ -1014,18 +1392,31 @@ class _GradeEditorState extends State<GradeEditor> {
       text: g == null ? '' : gradeNumber(g['value']),
     );
     note = TextEditingController(text: g?['note'] ?? '');
+    year = TextEditingController(
+      text: g?['school_year_start']?.toString() ?? '',
+    );
+    semester = g?['semester'] as int?;
     scale = g?['scale'] ?? 'grade_1_6';
     kind = g?['kind'] ?? 'test';
     weight = g?['weight'] ?? 1;
     day = g != null
         ? g['assessed_on'] as String?
         : widget.today ?? DateTime.now().toIso8601String().substring(0, 10);
+    baseline = fingerprint();
   }
 
   @override
   void dispose() {
     widget.state.removeListener(contextChanged);
-    for (final controller in [subject, topic, value, note]) {
+    final discard = discardRoute;
+    if (discard?.isActive == true) {
+      Future<void>.microtask(() => discard!.navigator?.removeRoute(discard));
+    }
+    final calendar = calendarRoute;
+    if (calendar?.isActive == true) {
+      Future<void>.microtask(() => calendar!.navigator?.removeRoute(calendar));
+    }
+    for (final controller in [subject, topic, value, note, year]) {
       controller.dispose();
     }
     super.dispose();
@@ -1035,8 +1426,13 @@ class _GradeEditorState extends State<GradeEditor> {
     if (current || closing || !mounted) return;
     closing = true;
     final route = ModalRoute.of(context);
+    final calendar = calendarRoute, discard = discardRoute;
     setState(() {});
     Future<void>.microtask(() {
+      if (discard?.isActive == true) discard!.navigator?.removeRoute(discard);
+      if (calendar?.isActive == true) {
+        calendar!.navigator?.removeRoute(calendar);
+      }
       if (route is PopupRoute && route.isActive) {
         route.navigator?.removeRoute(route);
       }
@@ -1078,9 +1474,11 @@ class _GradeEditorState extends State<GradeEditor> {
         'kind': kind,
         'weight': weight,
         'assessed_on': day,
-        if (widget.grade?['school_year_start'] != null)
+        if (day == null) 'school_year_start': int.parse(year.text.trim()),
+        if (day == null) 'semester': semester,
+        if (day != null && widget.grade?['school_year_start'] != null)
           'school_year_start': widget.grade!['school_year_start'],
-        if (widget.grade?['semester'] != null)
+        if (day != null && widget.grade?['semester'] != null)
           'semester': widget.grade!['semester'],
         'note': note.text.trim(),
         if (widget.grade != null) 'revision': widget.grade!['revision'],
@@ -1116,7 +1514,10 @@ class _GradeEditorState extends State<GradeEditor> {
   Widget build(BuildContext context) => !current || closing
       ? const SizedBox.shrink()
       : PopScope(
-          canPop: !saving,
+          canPop: !saving && !dirty,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && !saving) requestClose();
+          },
           child: AlertDialog(
             title: Text(
               widget.grade == null ? 'Note eintragen' : 'Note bearbeiten',
@@ -1126,6 +1527,9 @@ class _GradeEditorState extends State<GradeEditor> {
               width: 480,
               child: Form(
                 key: form,
+                onChanged: () {
+                  if (mounted) setState(() {});
+                },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1147,6 +1551,7 @@ class _GradeEditorState extends State<GradeEditor> {
                       controller: subject,
                       enabled: !saving,
                       maxLength: 80,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(labelText: 'Fach'),
                       validator: (v) => v == null || v.trim().isEmpty
                           ? 'Bitte Fach angeben'
@@ -1156,6 +1561,7 @@ class _GradeEditorState extends State<GradeEditor> {
                       controller: topic,
                       enabled: !saving,
                       maxLength: 160,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Thema (optional)',
                       ),
@@ -1185,6 +1591,7 @@ class _GradeEditorState extends State<GradeEditor> {
                     TextFormField(
                       controller: value,
                       enabled: !saving,
+                      textInputAction: TextInputAction.next,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -1196,6 +1603,9 @@ class _GradeEditorState extends State<GradeEditor> {
                         helperMaxLines: 3,
                       ),
                       validator: (v) {
+                        if (RegExp(r'[.,]\d{3,}').hasMatch((v ?? '').trim())) {
+                          return 'Nutze höchstens zwei Nachkommastellen.';
+                        }
                         final n = num.tryParse((v ?? '').replaceAll(',', '.'));
                         return n == null ||
                                 !n.isFinite ||
@@ -1226,6 +1636,70 @@ class _GradeEditorState extends State<GradeEditor> {
                           : (v) => setState(() => kind = v!),
                     ),
                     const SizedBox(height: 8),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Einzeldatum unbekannt'),
+                      subtitle: const Text(
+                        'Nur ein belegtes Schuljahr und Halbjahr angeben. Es wird kein genaues Datum erfunden.',
+                      ),
+                      value: day == null,
+                      onChanged: saving
+                          ? null
+                          : (unknown) => setState(
+                              () => day = unknown
+                                  ? null
+                                  : widget.today ??
+                                        DateTime.now()
+                                            .toIso8601String()
+                                            .substring(0, 10),
+                            ),
+                    ),
+                    if (day == null) ...[
+                      TextFormField(
+                        controller: year,
+                        enabled: !saving,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Schuljahr beginnt im Jahr',
+                          hintText: 'Zum Beispiel 2026 für 2026/2027',
+                        ),
+                        validator: (v) {
+                          final parsed = int.tryParse((v ?? '').trim());
+                          return parsed == null ||
+                                  parsed < 2000 ||
+                                  parsed > 2200
+                              ? 'Gib das belegte Anfangsjahr von 2000 bis 2200 an.'
+                              : null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        key: ValueKey('grade-semester-$semester'),
+                        initialValue: semester,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Bekanntes Schulhalbjahr',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 1,
+                            child: Text('1. Halbjahr'),
+                          ),
+                          DropdownMenuItem(
+                            value: 2,
+                            child: Text('2. Halbjahr'),
+                          ),
+                        ],
+                        onChanged: saving
+                            ? null
+                            : (v) => setState(() => semester = v),
+                        validator: (v) => v == null
+                            ? 'Wähle das belegte Schulhalbjahr.'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     OutlinedButton.icon(
                       onPressed: saving
                           ? null
@@ -1247,7 +1721,22 @@ class _GradeEditorState extends State<GradeEditor> {
                                     : DateTime.parse(day!),
                                 firstDate: DateTime(2000),
                                 lastDate: last,
+                                builder: (ctx, child) {
+                                  calendarRoute = ModalRoute.of(ctx);
+                                  final theme = Theme.of(ctx);
+                                  return Theme(
+                                    data: theme.copyWith(
+                                      datePickerTheme: theme.datePickerTheme
+                                          .copyWith(
+                                            headerHeadlineStyle:
+                                                theme.textTheme.headlineMedium,
+                                          ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
                               );
+                              calendarRoute = null;
                               if (selected != null && current && !closing) {
                                 setState(
                                   () => day = selected
@@ -1317,7 +1806,7 @@ class _GradeEditorState extends State<GradeEditor> {
             ),
             actions: [
               TextButton(
-                onPressed: saving ? null : () => Navigator.pop(context, false),
+                onPressed: saving ? null : requestClose,
                 child: Text('Abbrechen'),
               ),
               FilledButton(

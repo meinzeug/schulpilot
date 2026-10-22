@@ -336,13 +336,17 @@ void main() {
       expect(server.requests.where((r) => r.startsWith('DELETE ')), isEmpty);
 
       await tapText(tester, 'Seite löschen');
-      await tapText(tester, 'Bestätigen');
+      expect(
+        find.widgetWithText(FilledButton, 'Heftseite löschen'),
+        findsOneWidget,
+      );
+      await tapText(tester, 'Heftseite löschen');
       expect(server.pages.single['id'], 'page2');
       expect(find.text('Seite 2 prüfen'), findsOneWidget);
       expect(server.pages.single['confirmed'], false);
 
       await tapText(tester, 'Seite löschen');
-      await tapText(tester, 'Bestätigen');
+      await tapText(tester, 'Heftseite löschen');
       expect(server.pages, isEmpty);
       expect(find.text('Zeig mir deine Heftseiten'), findsOneWidget);
       expect(
@@ -372,7 +376,11 @@ void main() {
     );
     await settleUi(tester);
     await tapText(tester, 'Seite löschen');
-    await tapText(tester, 'Bestätigen');
+    expect(
+      find.widgetWithText(FilledButton, 'Heftseite löschen'),
+      findsOneWidget,
+    );
+    await tapText(tester, 'Heftseite löschen');
     expect(server.pages, isEmpty);
     expect(find.text('Startseite'), findsOneWidget);
     expect(server.submissions, 0);

@@ -7,6 +7,8 @@ import uuid
 from pathlib import Path
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from schulpilot.db import engine
 from sqlalchemy import create_engine, event, text
 
@@ -33,6 +35,7 @@ def test_family_call_migration_preserves_accounts_answers_and_push_opt_in(tmp_pa
     if schema:
         env["PGOPTIONS"] = f"-c search_path={schema}"
     command = [sys.executable, "-m", "alembic", "-c", str(Path(__file__).resolve().parents[1] / "alembic.ini")]
+    expected_head = ScriptDirectory.from_config(Config(command[-1])).get_current_head()
 
     def scoped(con):
         if schema:
@@ -55,7 +58,7 @@ def test_family_call_migration_preserves_accounts_answers_and_push_opt_in(tmp_pa
         subprocess.run([*command, "upgrade", "head"], env=env, capture_output=True, check=True)
         with tested.begin() as con:
             scoped(con)
-            assert con.scalar(text("SELECT version_num FROM alembic_version")) == "0026"
+            assert con.scalar(text("SELECT version_num FROM alembic_version")) == expected_head
             record = con.execute(text("SELECT family_calls,call_binding,help_requests,encrypted_token FROM push_devices WHERE id='p'")).first()
             assert tuple(record) == (False, None, True, "SYNTHETIC-ENCRYPTED-TOKEN")
             answer, assisted = con.execute(text("SELECT answer,assisted FROM attempts WHERE id='attempt'")).first()
@@ -74,7 +77,7 @@ def test_family_call_migration_preserves_accounts_answers_and_push_opt_in(tmp_pa
         subprocess.run([*command, "upgrade", "head"], env=env, capture_output=True, check=True)
         with tested.begin() as con:
             scoped(con)
-            assert con.scalar(text("SELECT version_num FROM alembic_version")) == "0026"
+            assert con.scalar(text("SELECT version_num FROM alembic_version")) == expected_head
             assert not bool(con.scalar(text("SELECT family_calls FROM push_devices WHERE id='p'")))
     finally:
         if schema:

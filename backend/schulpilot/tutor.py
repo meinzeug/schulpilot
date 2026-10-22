@@ -1,6 +1,7 @@
 """Source-bound notebook questions through the existing durable job queue."""
 
 import json
+import re
 import unicodedata
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -347,6 +348,7 @@ def questions(
     material_id: str | None = Query(None, min_length=1, max_length=32),
     unit_id: str | None = Query(None, min_length=1, max_length=32),
     cursor: str | None = Query(None, min_length=1, max_length=32),
+    retain: str | None = Query(None, min_length=1, max_length=2640),
     p=Depends(authenticated),
     db=Depends(get_db),
 ):
@@ -370,6 +372,10 @@ def questions(
     query = select(TutorTurn).where(TutorTurn.child_id == child.id, *scope_filter(scope))
     if p.user.role == "child":
         query = query.where(TutorTurn.user_id == p.user.id)
+    retained_ids = [] if retain is None else list(dict.fromkeys(retain.split(",")))
+    if len(retained_ids) > 80 or any(not re.fullmatch(r"[0-9a-f]{32}", value) for value in retained_ids):
+        raise HTTPException(422, "Bitte höchstens80 gültige frühere Fragen auswählen.")
+    scoped_query = query
     if cursor:
         previous = db.get(TutorTurn, cursor)
         if (
@@ -386,7 +392,11 @@ def questions(
             )
         )
     rows = list(db.scalars(query.order_by(TutorTurn.created.desc(), TutorTurn.id.desc()).limit(PAGE_SIZE + 1)))
+    retained = list(db.scalars(scoped_query.where(TutorTurn.id.in_(retained_ids))
+        .order_by(TutorTurn.created, TutorTurn.id))) if retained_ids else []
     return {
+        "retained_questions": [turn_data(db, turn) for turn in retained],
+        "retained_cursor": retained[0].id if retained else None,
         "questions": [turn_data(db, turn) for turn in reversed(rows[:PAGE_SIZE])],
         "next_cursor": rows[PAGE_SIZE - 1].id if len(rows) > PAGE_SIZE else None,
     }
@@ -570,6 +580,9 @@ def purge_source_turns(db, material_ids, *, child_id=None):
     the material/account deletion workflow. Job payloads contain no private text.
     """
     material_ids = set(material_ids)
+    from .schulbuddy import purge_sources as purge_buddy_sources
+
+    purge_buddy_sources(db, material_ids, child_id=child_id)
     if child_id:
         from .vocabulary import purge_sources
 

@@ -365,7 +365,9 @@ void main() {
       await click(tester, find.byKey(const ValueKey('grade-subject-null')));
       await click(tester, find.text('Mathematik').last);
       expect(
-        find.text('Für „Mathematik“ sind noch keine Noten eingetragen.'),
+        find.text(
+          'Keine Noten passen zu diesen Filtern. Du kannst die Filter zurücksetzen.',
+        ),
         findsOneWidget,
       );
       expect(find.text('0 von 0 Einträgen · Mathematik'), findsOneWidget);

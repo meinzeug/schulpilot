@@ -15,7 +15,7 @@ import 'package:schulpilot/ui.dart';
 const flow = 'aabbccddeeff00112233445566778899';
 String proof(String id) => jsonEncode({
   'flow_id': id,
-  'client_verifier': 'synthetic-verifier',
+  'client_verifier': 'V' * 64,
   'expires': DateTime.now().millisecondsSinceEpoch + 600000,
 });
 http.Response reply(Json value, [int status = 200]) => http.Response(
@@ -32,6 +32,7 @@ Future<void> withGoogle(
   Future<http.Response> Function(http.Request) handle,
   Future<void> Function(AppState, GoRouter) body, {
   double scale = 1,
+  String? ticket,
 }) async {
   FlutterSecureStorage.setMockInitialValues({
     'google_login_proof': proof(flow),
@@ -40,7 +41,8 @@ Future<void> withGoogle(
     api: Api(base: 'https://example.invalid/api', client: MockClient(handle)),
   );
   final router = GoRouter(
-    initialLocation: '/auth/google/complete#flow=$flow',
+    initialLocation:
+        '/auth/google/complete#flow=$flow${ticket == null ? '' : '&ticket=$ticket'}',
     routes: [
       GoRoute(
         path: '/auth/google/complete',
@@ -430,6 +432,7 @@ void main() {
             expect(find.text('SCHULPILOT öffnen'), findsOneWidget);
             expect(state.user, isNull);
           },
+          ticket: 'T' * 64,
         );
       } finally {
         messenger.setMockMethodCallHandler(channel, null);

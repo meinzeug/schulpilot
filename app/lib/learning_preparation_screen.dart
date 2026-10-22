@@ -172,7 +172,9 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
                             ? 'Dein Lernplan ist bereit.'
                             : 'Deine Runde ist bereit.'
                       : failed
-                      ? 'Diese Runde konnte nicht vorbereitet werden.'
+                      ? planning
+                            ? 'Dein Lernplan konnte nicht vorbereitet werden.'
+                            : 'Diese Runde konnte nicht vorbereitet werden.'
                       : error != null
                       ? 'Wir können gerade nicht nachsehen.'
                       : job?['status'] == 'queued'

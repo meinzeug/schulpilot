@@ -66,6 +66,7 @@ Future<(AppState, GoRouter)> open(
   List<http.Request> requests, {
   double width = 320,
   bool parent = false,
+  bool manage = false,
   bool workshop = false,
   Json? wordListing,
   Future<http.Response> Function(http.Request)? respond,
@@ -127,6 +128,7 @@ Future<(AppState, GoRouter)> open(
             }),
           ),
         )
+        ..familyId = parent && manage ? 'family' : null
         ..user = {
           'id': 'account',
           'role': parent ? 'parent' : 'child',

@@ -35,6 +35,15 @@ class ParentOverview extends StatelessWidget {
     }
     final plan = Json.from(data['plan'] as Map? ?? {});
     final evidence = Json.from(data['practice_summary'] as Map? ?? {});
+    final hasEvidence = [
+      'practiced_tasks',
+      'independent_tasks',
+      'assisted_tasks',
+      'needs_practice_tasks',
+      'uncertain_tasks',
+    ].every((key) => evidence[key] is num);
+    final hasSubjects =
+        data['subject_count'] is num || data['subject_progress'] is List;
     final day = data['day_summary'] as Map? ?? {};
     final help = (day['help_requests'] as num? ?? 0).toInt();
     final coachingSupport =
@@ -96,31 +105,40 @@ class ParentOverview extends StatelessWidget {
           facts: [
             ParentHeroFact(
               icon: Icons.fact_check_outlined,
-              label: counted(
-                evidence['practiced_tasks'] as num? ?? 0,
-                'beantwortete Aufgabe',
-                'beantwortete Aufgaben',
-              ),
+              label: hasEvidence
+                  ? counted(
+                      evidence['practiced_tasks'] as num,
+                      'beantwortete Aufgabe',
+                      'beantwortete Aufgaben',
+                    )
+                  : 'Übungsstand nicht vollständig gemeldet',
             ),
             ParentHeroFact(
               icon: Icons.menu_book_outlined,
-              label: counted(
-                data['subject_count'] as num? ?? subjects.length,
-                'Fach',
-                'Fächer',
-              ),
+              label: hasSubjects
+                  ? counted(
+                      data['subject_count'] as num? ?? subjects.length,
+                      'Fach',
+                      'Fächer',
+                    )
+                  : 'Fachübersicht nicht gemeldet',
             ),
           ],
         ),
-        ParentPracticeSummary(
-          evidence,
-          onCategorySelected: (category) => visit(
-            Uri(
-              path: '/progress/$childId',
-              queryParameters: {'ergebnis': category},
-            ).toString(),
+        if (!hasEvidence)
+          const Notice(
+            'Die gespeicherten Übungsbelege wurden nicht vollständig gemeldet. Daraus lässt sich weder kein Lernen noch ein Lernerfolg ableiten. Öffne die Detailansicht oder lade den Stand neu.',
           ),
-        ),
+        if (hasEvidence)
+          ParentPracticeSummary(
+            evidence,
+            onCategorySelected: (category) => visit(
+              Uri(
+                path: '/progress/$childId',
+                queryParameters: {'ergebnis': category},
+              ).toString(),
+            ),
+          ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -182,7 +200,16 @@ class ParentOverview extends StatelessWidget {
                       '${counted(voluntaryAssignments, 'freiwilliger Auftrag', 'freiwillige Aufträge')} im Plan.',
                   ].join(' '),
                   action: 'Plan ansehen',
-                  onTap: () => visit('/parent-plan/$childId?ansicht=topics'),
+                  onTap: () => visit(
+                    Uri(
+                      path: '/parent-plan/$childId',
+                      queryParameters: {
+                        'ansicht': 'topics',
+                        'obligation': 'mandatory',
+                        'source': 'confirmed',
+                      },
+                    ).toString(),
+                  ),
                 ),
                 if (changedAssignments > 0)
                   _OverviewAction(
@@ -191,7 +218,15 @@ class ParentOverview extends StatelessWidget {
                         '${counted(changedAssignments, 'Auftragsquelle', 'Auftragsquellen')} prüfen',
                     detail: 'Der Heftstoff hat sich geändert. Diese Aufträge zählen erst nach der Prüfung wieder zu den bestätigten offenen Zielen.',
                     action: 'Aufträge im Lernplan prüfen',
-                    onTap: () => visit('/parent-plan/$childId?ansicht=topics'),
+                    onTap: () => visit(
+                      Uri(
+                        path: '/parent-plan/$childId',
+                        queryParameters: {
+                          'ansicht': 'topics',
+                          'source': 'changed',
+                        },
+                      ).toString(),
+                    ),
                     highlighted: true,
                   ),
                 if (guidance != null &&

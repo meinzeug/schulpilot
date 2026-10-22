@@ -4,7 +4,9 @@ Grades never change a saved answer, prove mastery or reach the AI provider.
 Five recent observations in 90 days inform weighting inside the same time plan.
 """
 
+import csv
 import hashlib
+import io
 import json
 import re
 from datetime import date, timedelta
@@ -12,12 +14,13 @@ from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import Field, model_validator
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import defer
 
 from . import schemas as s
-from .db import Assignment, Child, Material, SchoolGrade, User, get_db, now
+from .db import Assignment, Child, GradeSourceSlot, Material, SchoolGrade, User, get_db, now
 from .security import audit, child_access, family_access, parent, rate_limit
 
 router = APIRouter(tags=["Noten und Lernschwerpunkte"])
@@ -61,6 +64,7 @@ class GradeSettings(s.Strict):
 
 
 class GradeGoal(s.Strict):
+    revision: int | None = Field(default=None, ge=1)
     mandatory: bool = True
     due: date | None = None
 
@@ -140,26 +144,20 @@ def valid_date(child, value):
         raise HTTPException(422, "Eine erhaltene Note kann nicht in der Zukunft liegen.")
 
 
-@router.get("/children/{child_id}/grades")
-def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
-                q: str = Query("", max_length=160),
-                kind: Literal["all", "classwork", "test", "oral", "homework", "other"] = "all",
-                scale: Literal["all", "grade_1_6", "points_0_15"] = "all",
-                date_precision: Literal["all", "day", "semester"] = "all",
-                page: int = Query(1, ge=1, le=1000000), page_size: int = Query(20, ge=1, le=50),
-                p=Depends(parent), db=Depends(get_db)):
-    from .learning import local_day
-    from .library import bounds
-
-    child = child_access(db, p, child_id)
-    names = sorted(set(child.subjects) | set(db.scalars(select(SchoolGrade.subject).where(
-        SchoolGrade.child_id == child.id).distinct())), key=lambda name: (name.casefold(), name))
-    subjects = {}
-    for name in names:
-        key = subject_key(name)
-        subjects.setdefault(key, "Mathematik" if key == "mathematik" else name)
+def filtered_grades(db, child, *, subject=None, q="", kind="all", scale="all", date_precision="all",
+                    start=None, end=None, school_year=None, semester=None, source="all", goal="all"):
+    """One authorization-scoped selection for the list and explicit local export."""
+    if start and end and start > end:
+        raise HTTPException(422, "Der Beginn des Zeitraums muss vor seinem Ende liegen.")
     query = select(SchoolGrade).where(SchoolGrade.child_id == child.id)
+    pdf_source = select(GradeSourceSlot.id).where(GradeSourceSlot.child_id == child.id,
+        GradeSourceSlot.grade_id == SchoolGrade.id).exists()
+    if source != "all":
+        query = query.where(pdf_source if source == "pdf" else ~pdf_source)
+    if goal != "all":
+        query = query.where(SchoolGrade.assignment_id.is_not(None) if goal == "linked" else SchoolGrade.assignment_id.is_(None))
     if subject:
+        names = list(db.scalars(select(SchoolGrade.subject).where(SchoolGrade.child_id == child.id).distinct()))
         query = query.where(SchoolGrade.subject.in_([name for name in names if subject_key(name) == subject_key(subject)]))
     search = q.strip()
     if search:
@@ -172,22 +170,120 @@ def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
     if date_precision != "all":
         query = query.where(SchoolGrade.assessed_on.is_not(None) if date_precision == "day"
                             else SchoolGrade.assessed_on.is_(None))
+    if start:
+        query = query.where(SchoolGrade.assessed_on >= start.isoformat())
+    if end:
+        query = query.where(SchoolGrade.assessed_on <= end.isoformat())
+    if school_year is not None:
+        query = query.where(SchoolGrade.school_year_start == school_year)
+    if semester is not None:
+        query = query.where(SchoolGrade.semester == semester)
+    return query
+
+
+def ordered_grades(query, order):
+    if order == "oldest":
+        return query.order_by(SchoolGrade.assessed_on.asc().nulls_last(), SchoolGrade.created, SchoolGrade.id)
+    if order == "newest":
+        return query.order_by(SchoolGrade.assessed_on.desc().nulls_last(), SchoolGrade.created.desc(), SchoolGrade.id.desc())
+    if order == "subject":
+        return query.order_by(func.lower(SchoolGrade.subject), SchoolGrade.assessed_on.desc().nulls_last(), SchoolGrade.id)
+    return query.order_by(SchoolGrade.assessed_on.desc(), SchoolGrade.created.desc(), SchoolGrade.id.desc())
+
+
+def selected_summary(db, query):
+    selected = query.subquery()
+    rows = db.execute(select(selected.c.subject, selected.c.scale, func.count(),
+        func.sum(selected.c.value * selected.c.weight), func.sum(selected.c.weight))
+        .group_by(selected.c.subject, selected.c.scale).order_by(selected.c.subject, selected.c.scale)).all()
+    return [{"subject": subject, "scale": scale, "count": count,
+             "weight_total": weight, "average": round(float(total) / weight, 2)}
+            for subject, scale, count, total, weight in rows]
+
+
+@router.get("/children/{child_id}/grades")
+def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
+                q: str = Query("", max_length=160),
+                kind: Literal["all", "classwork", "test", "oral", "homework", "other"] = "all",
+                scale: Literal["all", "grade_1_6", "points_0_15"] = "all",
+                date_precision: Literal["all", "day", "semester"] = "all",
+                start: date | None = None, end: date | None = None,
+                school_year: int | None = Query(None, ge=2000, le=2200), semester: int | None = Query(None, ge=1, le=2),
+                order: Literal["default", "oldest", "newest", "subject"] = "default",
+                source: Literal["all", "pdf", "manual"] = "all", goal: Literal["all", "linked", "none"] = "all",
+                page: int = Query(1, ge=1, le=1000000), page_size: int = Query(20, ge=1, le=50),
+                p=Depends(parent), db=Depends(get_db)):
+    from .learning import local_day
+    from .library import bounds
+
+    child = child_access(db, p, child_id)
+    names = sorted(set(child.subjects) | set(db.scalars(select(SchoolGrade.subject).where(
+        SchoolGrade.child_id == child.id).distinct())), key=lambda name: (name.casefold(), name))
+    subjects = {}
+    for name in names:
+        key = subject_key(name)
+        subjects.setdefault(key, "Mathematik" if key == "mathematik" else name)
+    query = filtered_grades(db, child, subject=subject, q=q, kind=kind, scale=scale,
+        date_precision=date_precision, start=start, end=end, school_year=school_year, semester=semester, source=source, goal=goal)
     count = db.scalar(select(func.count()).select_from(query.subquery()))
     pagination = bounds(count, page, page_size)
-    rows = db.scalars(query.order_by(SchoolGrade.assessed_on.desc(), SchoolGrade.created.desc(), SchoolGrade.id.desc())
-                      .offset((pagination["page"] - 1) * page_size).limit(page_size))
-    # Keep the current selection renderable in existing clients, including an
-    # old alias or a subject whose last grade was just deleted.
+    rows = list(db.scalars(ordered_grades(query, order).offset((pagination["page"] - 1) * page_size).limit(page_size)))
+    source_slots = {slot.grade_id: slot for slot in db.scalars(select(GradeSourceSlot).where(
+        GradeSourceSlot.child_id == child.id, GradeSourceSlot.grade_id.in_([row.id for row in rows])))}
+    items = []
+    for row in rows:
+        slot = source_slots.get(row.id)
+        provenance = {"kind": "pdf" if slot else "without_pdf"}
+        if slot:
+            provenance.update({"school_year_start": slot.school_year_start, "last_pdf_value": slot.last_value})
+        items.append(grade_data(row) | {"provenance": provenance})
     options = set(subjects.values()) | ({subject} if subject is not None else set())
-    return {"child_id": child.id, "items": [grade_data(r) for r in rows], "pagination": pagination,
-            "today": local_day(child).isoformat(),
+    years = list(db.scalars(select(SchoolGrade.school_year_start).where(SchoolGrade.child_id == child.id,
+        SchoolGrade.school_year_start.is_not(None)).distinct().order_by(SchoolGrade.school_year_start.desc())))
+    return {"child_id": child.id, "items": items, "pagination": pagination,
+            "today": local_day(child).isoformat(), "school_years": years,
+            "selected_summary": selected_summary(db, query),
             "child_name": db.get(User, child.user_id).display_name,
             "can_manage": family_access(db, p, child.family_id)[1].permission != "view",
             "planning_enabled": child.grade_planning_enabled,
             "subjects": sorted(options, key=lambda name: (name.casefold(), name)),
             "focus": focus_summary(db, child),
-            "filters": {"q": search, "kind": kind, "scale": scale, "date_precision": date_precision},
+            "filters": {"q": q.strip(), "kind": kind, "scale": scale, "date_precision": date_precision,
+                "start": start, "end": end, "school_year": school_year, "semester": semester, "order": order, "source": source, "goal": goal},
             "notice": "Der Schnitt gilt nur für diese Einträge, nicht als Zeugnisnote. Im Plan zählen bis zu fünf datierte Noten je Fach aus 90 Tagen sowie undatierte PDF-Noten des aktuellen Schuljahres. Ohne Einzeldaten wird kein zeitlicher Trend behauptet. Zeitziele und Elternaufträge bleiben erhalten."}
+
+
+def csv_cell(value):
+    """Keep user text literal in spreadsheet programs, including leading whitespace."""
+    value = str(value or "")
+    return "'" + value if value.startswith(("\t", "\r", "\n")) or re.match(r"^\s*[=+@-]", value) else value
+
+
+@router.get("/children/{child_id}/grades-export.csv")
+def export_grades(child_id: str, subject: str | None = Query(None, max_length=80),
+                q: str = Query("", max_length=160),
+                kind: Literal["all", "classwork", "test", "oral", "homework", "other"] = "all",
+                scale: Literal["all", "grade_1_6", "points_0_15"] = "all",
+                date_precision: Literal["all", "day", "semester"] = "all",
+                start: date | None = None, end: date | None = None,
+                school_year: int | None = Query(None, ge=2000, le=2200), semester: int | None = Query(None, ge=1, le=2),
+                order: Literal["default", "oldest", "newest", "subject"] = "default",
+                source: Literal["all", "pdf", "manual"] = "all", goal: Literal["all", "linked", "none"] = "all",
+                p=Depends(parent), db=Depends(get_db)):
+    child = child_access(db, p, child_id)
+    query = filtered_grades(db, child, subject=subject, q=q, kind=kind, scale=scale,
+        date_precision=date_precision, start=start, end=end, school_year=school_year, semester=semester, source=source, goal=goal)
+    rows = list(db.scalars(ordered_grades(query, order).limit(10001)))
+    if len(rows) > 10000:
+        raise HTTPException(422, "Bitte den Zeitraum oder das Fach eingrenzen. Ein Export umfasst höchstens 10.000 Noten.")
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(["Fach", "Thema", "Leistungsart", "Notensystem", "Wert", "Gewichtung", "Einzeldatum", "Schuljahr Beginn", "Halbjahr", "Notiz"])
+    for row in rows:
+        writer.writerow([csv_cell(row.subject), csv_cell(row.topic), row.kind, row.scale, str(row.value),
+            row.weight, row.assessed_on or "", row.school_year_start or "", row.semester or "", csv_cell(row.note)])
+    return Response(content="\ufeff" + output.getvalue(), media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="schulpilot-noten.csv"', "Cache-Control": "private, no-store"})
 
 
 @router.post("/children/{child_id}/grades", status_code=201)
@@ -233,9 +329,11 @@ def update_grade(child_id: str, grade_id: str, data: GradeUpdate,
 
 
 @router.delete("/children/{child_id}/grades/{grade_id}")
-def delete_grade(child_id: str, grade_id: str, p=Depends(parent), db=Depends(get_db)):
+def delete_grade(child_id: str, grade_id: str, revision: int | None = Query(None, ge=1), p=Depends(parent), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=True)
     row = owned_grade(db, child, grade_id, lock=True)
+    if revision is not None and revision != row.revision:
+        raise HTTPException(409, "Diese Note wurde inzwischen geändert. Bitte zuerst neu laden.")
     # A previously accepted parent goal has its own lifecycle, not a hidden cascade.
     db.delete(row)
     audit(db, p.user.id, "grade.delete", grade_id)
@@ -258,6 +356,8 @@ def create_goal(child_id: str, grade_id: str, data: GradeGoal, p=Depends(parent)
 
     child = child_access(db, p, child_id, write=True)
     row = owned_grade(db, child, grade_id, lock=True)
+    if data.revision is not None and data.revision != row.revision:
+        raise HTTPException(409, "Diese Note wurde inzwischen geändert. Bitte zuerst neu laden.")
     if row.assignment_id:
         return assignment_data(db.get(Assignment, row.assignment_id))
     candidates = list(db.scalars(select(Material).where(Material.child_id == child.id, Material.confirmed.is_(True))

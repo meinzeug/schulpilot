@@ -1,24 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 
 import 'api.dart';
-import 'dashboard.dart' show assignmentDialog, preferencesDialog;
+import 'dashboard.dart' show preferencesDialog;
+import 'parent_assignment_dialog.dart';
+
+import 'package:intl/intl.dart';
+
 import 'homework_screen.dart' show homeworkKey;
 import 'learning_content.dart';
 import 'collection_screen.dart' show pickLibraryMaterial;
 import 'parent_child_navigation.dart';
 import 'parent_insights_panel.dart';
 import 'parent_workspace_ui.dart';
+import 'parent_deadlines_dialog.dart';
 import 'ui.dart';
 
 class ParentPlanScreen extends StatefulWidget {
   final AppState state;
   final String childId;
-  final String? initialSection;
+  final String? initialSection, initialAssignmentId;
+  final Map<String, String>? initialFilters;
   const ParentPlanScreen(
     this.state, {
     super.key,
     required this.childId,
     this.initialSection,
+    this.initialAssignmentId,
+    this.initialFilters,
   });
   @override
   State<ParentPlanScreen> createState() => _ParentPlanScreenState();
@@ -33,16 +42,26 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   bool loading = false, includeCompleted = false, busy = false;
   bool loadFailed = false;
   final Map<String, String> preparationKeys = {};
-  ModalRoute<bool>? editorRoute;
+  ModalRoute<dynamic>? editorRoute;
   final search = TextEditingController();
   String query = '', sourceFilter = 'all', obligation = 'all', timing = 'all';
-  String? subjectFilter;
+  String? subjectFilter, assignmentId;
+  String completion = 'open',
+      order = 'default',
+      rounds = 'all',
+      kindFilter = 'all',
+      startFilter = 'all';
   bool get filtered =>
       query.isNotEmpty ||
       subjectFilter != null ||
       sourceFilter != 'all' ||
       obligation != 'all' ||
-      timing != 'all';
+      timing != 'all' ||
+      assignmentId != null ||
+      completion == 'done' ||
+      rounds != 'all' ||
+      kindFilter != 'all' ||
+      startFilter != 'all';
   String get cacheKey => 'parent-plan:${widget.childId}';
   bool get own =>
       mounted &&
@@ -57,6 +76,8 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     family = widget.state.familyId;
     restoreView();
     applyInitialSection();
+    applyInitialFilters();
+    applyInitialAssignment();
     widget.state.addListener(identityChanged);
     load();
   }
@@ -86,7 +107,18 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
       busy = false;
       restoreView();
       applyInitialSection();
+      applyInitialFilters();
+      applyInitialAssignment();
       preparationKeys.clear();
+      load();
+    } else if (oldWidget.initialAssignmentId != widget.initialAssignmentId ||
+        !mapEquals(oldWidget.initialFilters, widget.initialFilters)) {
+      closeEditor();
+      operation++;
+      busy = false;
+      applyInitialFilters();
+      applyInitialAssignment();
+      applyInitialSection();
       load();
     } else if (oldWidget.initialSection != widget.initialSection && !busy) {
       applyInitialSection();
@@ -99,13 +131,87 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     if (value != null) section = value;
   }
 
-  void showTopic(String topic) {
+  void applyInitialFilters() {
+    final values = widget.initialFilters ?? const <String, String>{};
+    const allowed = {
+      'q',
+      'subject',
+      'source',
+      'obligation',
+      'timing',
+      'completion',
+      'order',
+      'rounds',
+      'kind',
+      'start',
+    };
+    if (!values.keys.any(allowed.contains)) return;
+    section = 1;
+    page = 1;
+    assignmentId = null;
+    query = (values['q'] ?? '').length <= 160 ? values['q'] ?? '' : '';
+    subjectFilter =
+        (values['subject'] ?? '').isNotEmpty && values['subject']!.length <= 160
+        ? values['subject']
+        : null;
+    String choose(String key, List<String> choices, String fallback) =>
+        choices.contains(values[key]) ? values[key]! : fallback;
+    sourceFilter = choose('source', [
+      'all',
+      'notebook',
+      'manual',
+      'changed',
+      'confirmed',
+    ], 'all');
+    obligation = choose('obligation', ['all', 'mandatory', 'voluntary'], 'all');
+    timing = choose('timing', [
+      'all',
+      'today',
+      'past',
+      'future',
+      'undated',
+    ], 'all');
+    completion = choose('completion', ['open', 'done', 'all'], 'open');
+    includeCompleted = completion == 'all';
+    order = choose('order', ['default', 'due', 'oldest', 'subject'], 'default');
+    rounds = choose('rounds', ['all', 'open', 'none', 'finished'], 'all');
+    kindFilter = choose('kind', [
+      'all',
+      'parent',
+      'exam',
+      'homework',
+      'interest',
+    ], 'all');
+    startFilter = choose('start', ['all', 'available', 'later'], 'all');
+    search.text = query;
+  }
+
+  void applyInitialAssignment() {
+    final id = widget.initialAssignmentId;
+    if (id == null || id.isEmpty || id.length > 32) return;
+    assignmentId = id;
+    section = 1;
+    completion = 'all';
+    includeCompleted = true;
+    query = '';
+    search.clear();
+    subjectFilter = null;
+    sourceFilter = obligation = timing = rounds = kindFilter = startFilter =
+        'all';
+    page = 1;
+  }
+
+  void showTopic(String topic, {String? id}) {
     if (!own || busy || loading) return;
     section = 1;
-    query = topic;
-    search.text = topic;
+    assignmentId = id;
+    query = id == null ? topic : '';
+    search.text = query;
+    completion = 'all';
+    includeCompleted = true;
     subjectFilter = null;
-    sourceFilter = obligation = timing = 'all';
+    sourceFilter = obligation = timing = rounds = kindFilter = startFilter =
+        'all';
     page = 1;
     load();
   }
@@ -124,7 +230,13 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
         : '';
     subjectFilter = saved?['subject'] is String ? saved!['subject'] : null;
     sourceFilter =
-        ['all', 'notebook', 'manual', 'changed'].contains(saved?['source'])
+        [
+          'all',
+          'notebook',
+          'manual',
+          'changed',
+          'confirmed',
+        ].contains(saved?['source'])
         ? saved!['source']
         : 'all';
     obligation =
@@ -135,6 +247,31 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
         ['all', 'today', 'past', 'future', 'undated'].contains(saved?['timing'])
         ? saved!['timing']
         : 'all';
+    completion = ['open', 'done', 'all'].contains(saved?['completion'])
+        ? saved!['completion']
+        : includeCompleted
+        ? 'all'
+        : 'open';
+    order = ['default', 'due', 'oldest', 'subject'].contains(saved?['order'])
+        ? saved!['order']
+        : 'default';
+    rounds = ['all', 'open', 'none', 'finished'].contains(saved?['rounds'])
+        ? saved!['rounds']
+        : 'all';
+    kindFilter =
+        [
+          'all',
+          'parent',
+          'exam',
+          'homework',
+          'interest',
+        ].contains(saved?['kind'])
+        ? saved!['kind']
+        : 'all';
+    startFilter = ['all', 'available', 'later'].contains(saved?['start'])
+        ? saved!['start']
+        : 'all';
+    assignmentId = saved?['assignment_id'] as String?;
     search.text = query;
   }
 
@@ -149,6 +286,12 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
       'source': sourceFilter,
       'obligation': obligation,
       'timing': timing,
+      'completion': completion,
+      'order': order,
+      'rounds': rounds,
+      'kind': kindFilter,
+      'start': startFilter,
+      'assignment_id': assignmentId,
     };
   }
 
@@ -179,7 +322,11 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     query = '';
     search.clear();
     subjectFilter = null;
-    sourceFilter = obligation = timing = 'all';
+    sourceFilter = obligation = timing = rounds = kindFilter = startFilter =
+        'all';
+    assignmentId = null;
+    completion = 'open';
+    includeCompleted = false;
   });
 
   @override
@@ -219,6 +366,13 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
             if (sourceFilter != 'all') 'source': sourceFilter,
             if (obligation != 'all') 'obligation': obligation,
             if (timing != 'all') 'timing': timing,
+            if (completion != (includeCompleted ? 'all' : 'open'))
+              'completion': completion,
+            if (order != 'default') 'order': order,
+            if (rounds != 'all') 'rounds': rounds,
+            if (kindFilter != 'all') 'kind': kindFilter,
+            if (startFilter != 'all') 'start': startFilter,
+            'assignment_id': ?assignmentId,
           },
         ).toString(),
       );
@@ -226,6 +380,23 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
       if (filtered && value['filters'] is! Map) {
         throw ApiError(
           'Diese Suche ist auf diesem Server noch nicht verfügbar. Setze die Filter zurück, um alle Themen zu sehen.',
+        );
+      }
+      final requested = <String, String>{
+        'assignment_id': ?assignmentId,
+        if (completion == 'done') 'completion': completion,
+        if (order != 'default') 'order': order,
+        if (rounds != 'all') 'rounds': rounds,
+        if (kindFilter != 'all') 'kind': kindFilter,
+        if (startFilter != 'all') 'start': startFilter,
+        if (sourceFilter == 'confirmed') 'source': sourceFilter,
+      };
+      if (requested.entries.any(
+        (e) => value['filters']?[e.key]?.toString() != e.value,
+      )) {
+        throw ApiError(
+          'Diese gezielte Auftragsansicht ist auf dem Server noch nicht verfügbar. Setze die Filter zurück und aktualisiere die App.',
+          409,
         );
       }
       setState(() {
@@ -249,18 +420,34 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     }
   }
 
-  Future<void> add({Json? source, Json? sourceUnit, Json? existing}) async {
+  Future<void> add({
+    Json? source,
+    Json? sourceUnit,
+    Json? existing,
+    Json? copyFrom,
+  }) async {
     if (!own || data == null || busy || loading) return;
     final child = widget.childId;
     final action = ++operation;
     setState(() => busy = true);
     ModalRoute<bool>? openedRoute;
     try {
-      await assignmentDialog(
+      await showParentAssignmentDialog(
         context,
         widget.state,
-        Json.from(data!['child']),
+        {
+          ...Json.from(data!['child']),
+          'planning_today': data!['plan']?['date'],
+        },
         [],
+        parseDate: (input) {
+          try {
+            return DateFormat('dd.MM.yyyy').parseStrict(input);
+          } catch (_) {
+            return null;
+          }
+        },
+        copyFrom: copyFrom,
         source: source,
         sourceUnit: sourceUnit,
         existing: existing,
@@ -527,6 +714,12 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('Ziel & Termin bearbeiten'),
                   ),
+                if (canManage)
+                  TextButton.icon(
+                    onPressed: busy ? null : () => add(copyFrom: topic),
+                    icon: const Icon(Icons.copy_outlined),
+                    label: const Text('Als neues Ziel kopieren'),
+                  ),
                 if (canManage && topic['done'] != true)
                   TextButton.icon(
                     onPressed: busy ? null : () => complete(topic),
@@ -594,6 +787,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ParentChildNavigation(
+                  state: widget.state,
                   childId: widget.childId,
                   childName: data?['child']?['display_name'],
                   selected: 'plan',
@@ -729,6 +923,109 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                       ),
                   ],
                   if (section == 1) ...[
+                    ParentAppliedFilters(
+                      enabled: !loading && !busy,
+                      filters: [
+                        if (query.isNotEmpty)
+                          (
+                            'Suche: $query',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() {
+                                  query = '';
+                                  search.clear();
+                                });
+                              }
+                            },
+                          ),
+                        if (subjectFilter != null)
+                          (
+                            'Fach: $subjectFilter',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => subjectFilter = null);
+                              }
+                            },
+                          ),
+                        if (sourceFilter != 'all')
+                          (
+                            'Quelle: ${switch (sourceFilter) {
+                              'changed' => 'geändert',
+                              'confirmed' => 'bestätigt',
+                              'notebook' => 'Heftquelle',
+                              _ => 'ohne Heftfoto',
+                            }}',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => sourceFilter = 'all');
+                              }
+                            },
+                          ),
+                        if (obligation != 'all')
+                          (
+                            obligation == 'mandatory'
+                                ? 'Nur verbindlich'
+                                : 'Nur freiwillig',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => obligation = 'all');
+                              }
+                            },
+                          ),
+                        if (timing != 'all')
+                          (
+                            'Termin: ${switch (timing) {
+                              'today' => 'heute',
+                              'past' => 'zurückliegend',
+                              'future' => 'zukünftig',
+                              _ => 'ohne Datum',
+                            }}',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => timing = 'all');
+                              }
+                            },
+                          ),
+                        if (rounds != 'all')
+                          (
+                            'Runden: ${switch (rounds) {
+                              'open' => 'fortsetzbar',
+                              'none' => 'noch keine',
+                              _ => 'abgeschlossen',
+                            }}',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => rounds = 'all');
+                              }
+                            },
+                          ),
+                        if (kindFilter != 'all')
+                          (
+                            'Art: ${switch (kindFilter) {
+                              'exam' => 'Klassenarbeit',
+                              'homework' => 'Hausaufgabe',
+                              'interest' => 'Interesse',
+                              _ => 'Lernauftrag',
+                            }}',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => kindFilter = 'all');
+                              }
+                            },
+                          ),
+                        if (startFilter != 'all')
+                          (
+                            startFilter == 'later'
+                                ? 'Start später'
+                                : 'Start heute möglich',
+                            () {
+                              if (viewChild == widget.childId) {
+                                filterTopics(() => startFilter = 'all');
+                              }
+                            },
+                          ),
+                      ],
+                    ),
                     ParentCollectionSearch(
                       controller: search,
                       label: 'Lernaufträge suchen',
@@ -770,6 +1067,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                             ('notebook', 'Mit Heftquelle'),
                             ('manual', 'Ohne Heftfoto'),
                             ('changed', 'Geänderte Quelle prüfen'),
+                            ('confirmed', 'Bestätigte Auftragsgrundlage'),
                           ],
                           onChanged: (value) =>
                               filterTopics(() => sourceFilter = value),
@@ -799,6 +1097,42 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ],
                           onChanged: (value) =>
                               filterTopics(() => timing = value),
+                        ),
+                        ParentChoiceFilter(
+                          label: 'Gespeicherte Runden',
+                          value: rounds,
+                          enabled: !loading && !busy,
+                          choices: const [
+                            ('all', 'Mit und ohne Runden'),
+                            ('open', 'Mit fortsetzbarer Runde'),
+                            ('none', 'Noch keine gespeicherte Runde'),
+                            ('finished', 'Mit abgeschlossener Runde'),
+                          ],
+                          onChanged: (v) => filterTopics(() => rounds = v),
+                        ),
+                        ParentChoiceFilter(
+                          label: 'Auftragsart',
+                          value: kindFilter,
+                          enabled: !loading && !busy,
+                          choices: const [
+                            ('all', 'Alle Auftragsarten'),
+                            ('parent', 'Lernauftrag'),
+                            ('exam', 'Klassenarbeit / Test'),
+                            ('homework', 'Notierte Hausaufgabe'),
+                            ('interest', 'Interesse'),
+                          ],
+                          onChanged: (v) => filterTopics(() => kindFilter = v),
+                        ),
+                        ParentChoiceFilter(
+                          label: 'Frühester Lernbeginn',
+                          value: startFilter,
+                          enabled: !loading && !busy,
+                          choices: const [
+                            ('all', 'Alle Startzeiten'),
+                            ('available', 'Heute bereits möglich'),
+                            ('later', 'Für später vorgesehen'),
+                          ],
+                          onChanged: (v) => filterTopics(() => startFilter = v),
                         ),
                       ],
                     ),
@@ -858,18 +1192,60 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ],
                         ),
                     ],
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Abgeschlossene Themen mit anzeigen'),
-                      value: includeCompleted,
-                      onChanged: loading
-                          ? null
-                          : (value) {
-                              includeCompleted = value;
-                              page = 1;
-                              load();
-                            },
+                    ParentChoiceFilter(
+                      label: 'Auftragsstatus',
+                      value: completion,
+                      enabled: !loading && !busy,
+                      choices: const [
+                        ('open', 'Offene Themen'),
+                        ('done', 'Erledigte Themen'),
+                        ('all', 'Offene und erledigte Themen'),
+                      ],
+                      onChanged: (v) => filterTopics(() {
+                        completion = v;
+                        includeCompleted = v == 'all';
+                      }),
                     ),
+                    ParentChoiceFilter(
+                      label: 'Reihenfolge der Aufträge',
+                      value: order,
+                      enabled: !loading && !busy,
+                      choices: const [
+                        ('default', 'Verbindlich und zuletzt angelegt'),
+                        ('due', 'Nächster Termin zuerst'),
+                        ('oldest', 'Zuerst angelegte Ziele'),
+                        ('subject', 'Nach Fach und Thema'),
+                      ],
+                      onChanged: (v) => filterTopics(() => order = v),
+                    ),
+                    if (assignmentId != null)
+                      Panel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ein bestimmter gespeicherter Auftrag ist ausgewählt.',
+                            ),
+                            TextButton.icon(
+                              onPressed: loading || busy
+                                  ? null
+                                  : () =>
+                                        filterTopics(() => assignmentId = null),
+                              icon: const Icon(Icons.list_alt_outlined),
+                              label: const Text(
+                                'Andere Aufträge mit diesen Filtern ansehen',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (data!['assignment_totals'] is Map)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'Gespeicherter Bestand: ${data!['assignment_totals']['open']} offen · ${data!['assignment_totals']['done']} erledigt markiert · ${data!['assignment_totals']['overdue']} offene Termine liegen zurück. Dies ist keine Kompetenzbewertung.',
+                        ),
+                      ),
                     if (loading)
                       Semantics(
                         liveRegion: true,
@@ -986,6 +1362,25 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: loading || busy
+                          ? null
+                          : () {
+                              if (own && viewChild == widget.childId) {
+                                showParentDeadlines(
+                                  context,
+                                  widget.state,
+                                  widget.childId,
+                                  isCurrent: () =>
+                                      own && viewChild == widget.childId,
+                                  onRoute: (route) => editorRoute = route,
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      label: const Text('Gespeicherte Termine & Kalenderdatei'),
+                    ),
+                    const SizedBox(height: 16),
                     for (final conflict
                         in data!['plan']['conflicts'] as List? ?? [])
                       Padding(
@@ -993,7 +1388,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         child: ActionPanel(
                           tone: PanelTone.warning,
                           actionLabel: 'Aufträge zu diesem Termin prüfen',
-                          onPressed: () => showTopic('${conflict['topic']}'),
+                          onPressed: () => showTopic(
+                            '${conflict['topic']}',
+                            id: conflict['assignment_id'] as String?,
+                          ),
                           child: Text(
                             'Termin prüfen: ${conflict['topic']} bis ${friendlyDate(conflict['due'])}. Der gespeicherte Vorschlag meldet einen Terminkonflikt.',
                           ),
@@ -1062,7 +1460,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                                       ? () {
                                           if (!own || loading) return;
                                           if (item['kind'] == 'assignment') {
-                                            showTopic('${item['topic']}');
+                                            showTopic(
+                                              '${item['topic']}',
+                                              id: item['id'] as String?,
+                                            );
                                           } else if (item['kind'] ==
                                               'vocabulary') {
                                             openRoute(

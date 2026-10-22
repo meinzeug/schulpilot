@@ -33,12 +33,14 @@ from . import (
     materials,
     notification_inbox,
     notifications,
+    operator_incidents,
     parent_insights,
     parent_plans,
     public_privacy,
     releases,
     routing_admin,
     school_day,
+    schulbuddy,
     study_path,
     subjects,
     synthetic,
@@ -149,6 +151,7 @@ async def security_headers(request: Request, call_next):
         # Catch before ASGI's default error middleware can re-raise and log a
         # traceback containing SQL parameters, private answers or credentials.
         log.error("request_failed method=%s type=%s", request.method, type(exc).__name__)
+        await run_in_threadpool(operator_incidents.record_api_failure, exc)
         response = JSONResponse({"detail": "Interner Fehler. Bitte später erneut versuchen."}, status_code=500)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -166,6 +169,7 @@ async def validation_error(request, exc):
 @app.exception_handler(Exception)
 async def unexpected_error(request, exc):
     log.error("request_failed method=%s type=%s", request.method, type(exc).__name__)
+    await run_in_threadpool(operator_incidents.record_api_failure, exc)
     return JSONResponse({"detail": "Interner Fehler. Bitte später erneut versuchen."}, status_code=500)
 
 
@@ -253,12 +257,14 @@ for router in (
     materials.router,
     synthetic.router,
     admin.router,
+    operator_incidents.router,
     notifications.router,
     notification_inbox.router,
     public_privacy.router,
     commerce.router,
     releases.router,
     school_day.router,
+    schulbuddy.router,
     study_path.router,
     tutor.router,
     homework.router,

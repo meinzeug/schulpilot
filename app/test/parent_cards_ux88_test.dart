@@ -24,7 +24,13 @@ http.Response response(Object value) => http.Response(
 Json summary() => {
   'child': {'id': 'child', 'display_name': 'Künstliches Kind'},
   'plan': <String, dynamic>{},
-  'practice_summary': <String, dynamic>{},
+  'practice_summary': <String, dynamic>{
+    'practiced_tasks': 0,
+    'independent_tasks': 0,
+    'assisted_tasks': 0,
+    'needs_practice_tasks': 0,
+    'uncertain_tasks': 0,
+  },
   'day_summary': {'help_requests': 1},
   'week_summary': {'completed_units': 1, 'answer_count': 3, 'hints_used': 1},
   'assignments': [
@@ -332,7 +338,14 @@ void main() {
       'PP030 overview category ${target.$3} opens genuinely filtered evidence',
       (tester) async {
         final f = Fixture();
-        f.overview['practice_summary'] = {target.$1: 1, 'practiced_tasks': 1};
+        f.overview['practice_summary'] = {
+          'practiced_tasks': 1,
+          'independent_tasks': 0,
+          'assisted_tasks': 0,
+          'needs_practice_tasks': 0,
+          'uncertain_tasks': 0,
+          target.$1: 1,
+        };
         await f.mount(tester, '/overview');
         await tapBody(tester, '1 ${target.$2}');
         expect(

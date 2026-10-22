@@ -36,19 +36,22 @@ class _GradePdfImportState extends State<GradePdfImport> {
   int? fileSize;
   List<Json> rows = [];
   final choices = <String, String>{};
+  final choiceHistory = <Map<String, String>>[];
   final search = TextEditingController();
   String query = '',
       subjectFilter = 'all',
       semesterFilter = 'all',
       kindFilter = 'all',
-      statusFilter = 'all';
+      statusFilter = 'all',
+      choiceFilter = 'all';
   ModalRoute<bool>? ownDialog;
   bool get filtered =>
       query.isNotEmpty ||
       subjectFilter != 'all' ||
       semesterFilter != 'all' ||
       kindFilter != 'all' ||
-      statusFilter != 'all';
+      statusFilter != 'all' ||
+      choiceFilter != 'all';
 
   bool busy = false, closing = false, unresolvedOnly = false;
   int classworkWeight = 1, otherWeight = 1;
@@ -59,7 +62,95 @@ class _GradePdfImportState extends State<GradePdfImport> {
       family == widget.state.familyId &&
       child == widget.childId;
   List<Json> get items => rows;
-  bool get complete => items.every((r) => choices[r['slot_key']] != null);
+  bool get complete =>
+      items.every((r) => choices[r['slot_key']] != null) &&
+      duplicateLinks.isEmpty;
+  Map<String, List<Json>> get duplicateLinks {
+    final targets = <String, List<Json>>{};
+    for (final row in rows) {
+      final action = choices[row['slot_key']];
+      if (action?.startsWith('link:') == true) {
+        targets.putIfAbsent(action!, () => []).add(row);
+      }
+    }
+    return Map.fromEntries(targets.entries.where((e) => e.value.length > 1));
+  }
+
+  void rememberChoices() {
+    choiceHistory.add(Map<String, String>.from(choices));
+    if (choiceHistory.length > 20) choiceHistory.removeAt(0);
+  }
+
+  void undoChoice() {
+    if (!current || busy || choiceHistory.isEmpty) return;
+    setState(() {
+      choices
+        ..clear()
+        ..addAll(choiceHistory.removeLast());
+    });
+  }
+
+  Future<void> skipVisible(List<Json> visible) async {
+    if (!current ||
+        busy ||
+        preview == null ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    final id = preview!['id'], revision = preview!['context_revision'];
+    final selected = visible
+        .where(
+          (r) =>
+              !['existing', 'ignored'].contains(r['status']) &&
+              choices[r['slot_key']] != 'skip' &&
+              choices[r['slot_key']] != 'keep',
+        )
+        .toList();
+    if (selected.isEmpty) return;
+    final accepted = await question(
+      title: 'Angezeigte Übernahmen auslassen?',
+      content: Text(
+        '${selected.length} angezeigte neue, geänderte oder offene Positionen werden in deiner Auswahl auf „Nicht übernehmen“ gestellt. Ausgeblendete und bereits beibehaltene Zuordnungen bleiben erhalten. Erst mit der späteren Übernahme wird das Auslassen gespeichert. Vorhandene Noten werden nicht gelöscht.',
+      ),
+      accept: 'Diese Positionen auslassen',
+    );
+    if (!accepted ||
+        !current ||
+        busy ||
+        preview?['id'] != id ||
+        preview?['context_revision'] != revision) {
+      return;
+    }
+    setState(() {
+      rememberChoices();
+      for (final row in selected) {
+        choices[row['slot_key']] = 'skip';
+      }
+    });
+  }
+
+  Future<void> restartPreview() async {
+    if (!current ||
+        busy ||
+        bytes == null ||
+        preview == null ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    final id = preview!['id'];
+    if (!await question(
+      title: 'PDF erneut mit dem aktuellen Stand prüfen?',
+      content: const Text(
+        'Die vorhandene Datei wird lokal auf dem Server neu gelesen und mit den aktuell gespeicherten Noten verglichen. Deine bisherige Auswahl wird erst nach einer erfolgreichen neuen Vorschau ersetzt. Es werden keine Noten übernommen und keine Daten an KI gesendet.',
+      ),
+      accept: 'Neue Vorschau erstellen',
+    )) {
+      return;
+    }
+    if (!current || busy || preview?['id'] != id) return;
+    requestKey = vocabularyKey();
+    await upload();
+  }
 
   @override
   void initState() {
@@ -110,6 +201,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
   }
 
   void usePreview(Json data) {
+    choiceHistory.clear();
     final previous = {for (final row in rows) row['slot_key']: row};
     final saved = Map<String, String>.from(choices);
     final same = preview?['id'] == data['id'];
@@ -223,7 +315,8 @@ class _GradePdfImportState extends State<GradePdfImport> {
   void resetFilters() {
     query = '';
     search.clear();
-    subjectFilter = semesterFilter = kindFilter = statusFilter = 'all';
+    subjectFilter = semesterFilter = kindFilter = statusFilter = choiceFilter =
+        'all';
   }
 
   Future<void> selectFile() async {
@@ -414,6 +507,12 @@ class _GradePdfImportState extends State<GradePdfImport> {
                   '${row['semester']}' == semesterFilter) &&
               (kindFilter == 'all' || row['kind'] == kindFilter) &&
               (statusFilter == 'all' || row['status'] == statusFilter) &&
+              (choiceFilter == 'all' ||
+                  (choiceFilter == 'changes'
+                      ? ['add', 'update'].contains(choices[row['slot_key']]) ||
+                            choices[row['slot_key']]?.startsWith('link:') ==
+                                true
+                      : choices[row['slot_key']] == choiceFilter)) &&
               (query.isEmpty ||
                   '${row['subject']} ${row['matches']}'.toLowerCase().contains(
                     query.toLowerCase(),
@@ -615,7 +714,59 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                           search.clear();
                                         }),
                                       ),
+                                      if (preview != null &&
+                                          result == null) ...[
+                                        Semantics(
+                                          liveRegion: true,
+                                          child: Text(
+                                            'Übernahme der gesamten Vorschau: ${actionCounts['add'] ?? 0} neu · ${actionCounts['update'] ?? 0} aktualisieren · ${actionCounts['link'] ?? 0} zuordnen · ${actionCounts['skip'] ?? 0} auslassen.',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        if (duplicateLinks.isNotEmpty) ...[
+                                          const Text(
+                                            'Eine vorhandene Note ist mehreren PDF-Positionen zugeordnet. Korrigiere die Zuordnung vor der Übernahme.',
+                                          ),
+                                          TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => question(
+                                                    title: 'Mehrfache Zuordnungen prüfen',
+                                                    accept: 'Zur Vorschau',
+                                                    content: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .stretch,
+                                                      children: [
+                                                        for (final group
+                                                            in duplicateLinks
+                                                                .values)
+                                                          Text(
+                                                            group
+                                                                .map(
+                                                                  (r) =>
+                                                                      '${r['subject']} · ${r['semester']}. Halbjahr · Position ${r['slot']}',
+                                                                )
+                                                                .join('\n'),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                            child: const Text(
+                                              'Mehrfache Zuordnungen ansehen',
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 8),
+                                      ],
                                       ExpansionTile(
+                                        key: const PageStorageKey(
+                                          'grade-pdf-filters',
+                                        ),
                                         title: const Text(
                                           'PDF-Einträge gezielt prüfen',
                                         ),
@@ -681,6 +832,88 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                             ],
                                             onChanged: (v) => changeView(
                                               () => statusFilter = v,
+                                            ),
+                                          ),
+                                          ParentChoiceFilter(
+                                            label: 'Deine Übernahmeauswahl',
+                                            value: choiceFilter,
+                                            enabled: !busy,
+                                            choices: const [
+                                              ('all', 'Alle Entscheidungen'),
+                                              (
+                                                'changes',
+                                                'Übernahmen und Änderungen',
+                                              ),
+                                              (
+                                                'add',
+                                                'Als zusätzliche Note gewählt',
+                                              ),
+                                              (
+                                                'update',
+                                                'Zum Aktualisieren gewählt',
+                                              ),
+                                              (
+                                                'skip',
+                                                'Bewusst nicht übernehmen',
+                                              ),
+                                              (
+                                                'keep',
+                                                'Bisherige Note behalten',
+                                              ),
+                                            ],
+                                            onChanged: (v) => changeView(
+                                              () => choiceFilter = v,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      ExpansionTile(
+                                        title: const Text(
+                                          'Fächer dieser PDF im Überblick',
+                                        ),
+                                        children: [
+                                          for (final name in subjects)
+                                            ListTile(
+                                              title: Text(name),
+                                              subtitle: Text(
+                                                '${rows.where((r) => r['subject'] == name).length} gelesene Einträge · ${rows.where((r) => r['subject'] == name && choices[r['slot_key']] == null).length} Zuordnungen offen',
+                                              ),
+                                              trailing: const Icon(
+                                                Icons.filter_alt_outlined,
+                                              ),
+                                              onTap: busy
+                                                  ? null
+                                                  : () => changeView(() {
+                                                      resetFilters();
+                                                      subjectFilter = name;
+                                                      unresolvedOnly = false;
+                                                    }),
+                                            ),
+                                        ],
+                                      ),
+                                      Wrap(
+                                        spacing: 12,
+                                        runSpacing: 8,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: busy || visible.isEmpty
+                                                ? null
+                                                : () => skipVisible(visible),
+                                            icon: const Icon(
+                                              Icons.playlist_remove,
+                                            ),
+                                            label: const Text(
+                                              'Angezeigte Übernahmen auslassen',
+                                            ),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed:
+                                                busy || choiceHistory.isEmpty
+                                                ? null
+                                                : undoChoice,
+                                            icon: const Icon(Icons.undo),
+                                            label: const Text(
+                                              'Letzte Zuordnung zurücknehmen',
                                             ),
                                           ),
                                         ],
@@ -824,6 +1057,15 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                               'Vorschau neu laden',
                                             ),
                                           ),
+                                          if (bytes != null)
+                                            TextButton(
+                                              onPressed: busy
+                                                  ? null
+                                                  : restartPreview,
+                                              child: const Text(
+                                                'PDF mit aktuellem Stand neu prüfen',
+                                              ),
+                                            ),
                                           TextButton(
                                             onPressed: busy ? null : selectFile,
                                             child: const Text(
@@ -891,6 +1133,8 @@ class _GradePdfImportState extends State<GradePdfImport> {
 
   Widget entry(Json row) {
     final status = row['status'];
+    final previewId = preview?['id'],
+        previewRevision = preview?['context_revision'];
     return Padding(
       padding: EdgeInsets.only(bottom: 12),
       child: Panel(
@@ -1009,8 +1253,16 @@ class _GradePdfImportState extends State<GradePdfImport> {
                   onChanged: busy
                       ? null
                       : (v) {
-                          if (v != null) {
-                            setState(() => choices[row['slot_key']] = v);
+                          if (v != null &&
+                              current &&
+                              !busy &&
+                              preview?['id'] == previewId &&
+                              preview?['context_revision'] == previewRevision &&
+                              allowed(row).contains(v)) {
+                            setState(() {
+                              rememberChoices();
+                              choices[row['slot_key']] = v;
+                            });
                           }
                         },
                 ),

@@ -343,6 +343,10 @@ class LearningTips extends StatefulWidget {
 class _LearningTipsState extends State<LearningTips>
     with WidgetsBindingObserver {
   late final Json? owner;
+  late final String? ownerFamily = widget.state.familyId;
+  final tipSearch = TextEditingController();
+  String tipType = 'all';
+  Set<String>? pendingSelection;
   Json? data;
   String? error;
   bool expanded = false,
@@ -353,7 +357,10 @@ class _LearningTipsState extends State<LearningTips>
   final pendingKeys = <String, String>{};
   int generation = 0, revision = 0;
   bool get current =>
-      mounted && owner != null && identical(owner, widget.state.user);
+      mounted &&
+      owner != null &&
+      identical(owner, widget.state.user) &&
+      ownerFamily == widget.state.familyId;
   String get path =>
       '/children/${widget.childId}/learning-tips/${widget.kind}/${widget.resourceId}';
   @override
@@ -379,6 +386,9 @@ class _LearningTipsState extends State<LearningTips>
       unavailable = false;
       error = null;
       pendingKeys.clear();
+      pendingSelection = null;
+      tipSearch.clear();
+      tipType = 'all';
       writing = false;
     }
   }
@@ -387,6 +397,8 @@ class _LearningTipsState extends State<LearningTips>
     if (!current && mounted) {
       generation++;
       pendingKeys.clear();
+      pendingSelection = null;
+      tipSearch.clear();
       setState(() {
         data = null;
         error = null;
@@ -402,6 +414,7 @@ class _LearningTipsState extends State<LearningTips>
   void dispose() {
     generation++;
     widget.state.removeListener(changed);
+    tipSearch.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -440,16 +453,27 @@ class _LearningTipsState extends State<LearningTips>
     }
   }
 
-  Future<void> action(Json item, String kind) async {
-    if (!current || (writing && kind != 'open')) return;
+  Future<void> action(Json item, String kind, {Json? expectedData}) async {
+    if (!current ||
+        (writing && kind != 'open') ||
+        (expectedData != null && !identical(data, expectedData))) {
+      return;
+    }
+    final resource = (widget.childId, widget.kind, widget.resourceId);
+    final snapshot = data;
+    final endpoint = path;
+    bool same() =>
+        current &&
+        resource == (widget.childId, widget.kind, widget.resourceId) &&
+        identical(data, snapshot);
     final identity =
         '${widget.resourceId}:${data?['revision']}:$kind:${item['id']}';
     final key = pendingKeys.putIfAbsent(identity, tipRequestKey);
     if (kind != 'open') setState(() => writing = true);
     try {
-      await widget.state.api.post('$path/interactions', {
+      await widget.state.api.post('$endpoint/interactions', {
         'request_key': key,
-        'revision': data?['revision'],
+        'revision': snapshot?['revision'],
         'kind': kind,
         'content_id': item['id'],
         'topic_id': item['topic_id'],
@@ -458,10 +482,17 @@ class _LearningTipsState extends State<LearningTips>
               ? widget.questionId
               : data?['media_return']?['question_id'] ?? widget.questionId,
       });
-      pendingKeys.remove(identity);
-      if (current) await load();
+      if (same()) {
+        pendingKeys.remove(identity);
+        await load();
+      }
     } finally {
-      if (current && kind != 'open') setState(() => writing = false);
+      if (mounted &&
+          current &&
+          resource == (widget.childId, widget.kind, widget.resourceId) &&
+          kind != 'open') {
+        setState(() => writing = false);
+      }
     }
   }
 
@@ -498,15 +529,27 @@ class _LearningTipsState extends State<LearningTips>
     }
   }
 
-  Future<void> returnAction(Json item, String kind) async {
+  Future<void> returnAction(
+    Json item,
+    String kind, {
+    Json? expectedData,
+  }) async {
+    final resource = (widget.childId, widget.kind, widget.resourceId);
+    final snapshot = data;
     try {
-      await action(item, kind);
+      await action(item, kind, expectedData: expectedData);
     } catch (e) {
-      if (mounted && current) showError(context, e);
+      if (mounted &&
+          current &&
+          resource == (widget.childId, widget.kind, widget.resourceId) &&
+          identical(data, snapshot)) {
+        showError(context, e);
+      }
     }
   }
 
   Widget mediaReturn(Json media) {
+    final snapshot = data;
     final item = {'id': media['content_id'], 'topic_id': media['topic_id']};
     final opened = media['status'] == 'opened';
     if (!widget.state.isChild) {
@@ -560,15 +603,24 @@ class _LearningTipsState extends State<LearningTips>
             SizedBox(height: 12),
             if (opened) ...[
               FilledButton(
-                onPressed: writing ? null : () => returnAction(item, 'watched'),
+                onPressed: writing
+                    ? null
+                    : () =>
+                          returnAction(item, 'watched', expectedData: snapshot),
                 child: Text('Ich habe ihn angesehen'),
               ),
               OutlinedButton(
-                onPressed: writing ? null : () => returnAction(item, 'skipped'),
+                onPressed: writing
+                    ? null
+                    : () =>
+                          returnAction(item, 'skipped', expectedData: snapshot),
                 child: Text('Ohne Video weiterlernen'),
               ),
               TextButton(
-                onPressed: writing ? null : () => returnAction(item, 'broken'),
+                onPressed: writing
+                    ? null
+                    : () =>
+                          returnAction(item, 'broken', expectedData: snapshot),
                 child: Text('Link oder Zugang klappt nicht'),
               ),
             ] else ...[
@@ -597,7 +649,11 @@ class _LearningTipsState extends State<LearningTips>
                 TextButton(
                   onPressed: writing
                       ? null
-                      : () => returnAction(item, 'not_helpful'),
+                      : () => returnAction(
+                          item,
+                          'not_helpful',
+                          expectedData: snapshot,
+                        ),
                   child: Text('Ich brauche eine andere Erklärung'),
                 ),
             ],
@@ -609,17 +665,18 @@ class _LearningTipsState extends State<LearningTips>
 
   Future<void> selectTopics() async {
     final subjectId = data?['subject_id'] as String?;
-    if (subjectId == null || !current) return;
+    if (subjectId == null || !current || writing) return;
     final resource = (widget.childId, widget.kind, widget.resourceId);
+    final snapshot = data;
     final sourceRevision = data?['revision'];
     final result = await showTopicBrowser(
       context,
       widget.state,
       widget.childId,
       subjectId,
-      selected: {
-        for (final t in data?['topics'] as List? ?? []) t['id'] as String,
-      },
+      selected:
+          pendingSelection ??
+          {for (final t in data?['topics'] as List? ?? []) t['id'] as String},
       selectedLabels: {
         for (final topic in data?['topics'] as List? ?? [])
           topic['id'] as String:
@@ -628,31 +685,66 @@ class _LearningTipsState extends State<LearningTips>
     );
     if (result == null ||
         !current ||
-        resource != (widget.childId, widget.kind, widget.resourceId)) {
+        resource != (widget.childId, widget.kind, widget.resourceId) ||
+        !identical(data, snapshot)) {
       return;
     }
+    setState(() => writing = true);
     try {
+      pendingSelection = {...result};
       final value = await widget.state.api.put('$path/selection', {
         'revision': sourceRevision,
         'topic_ids': result.toList(),
         'confirmed': true,
       });
-      if (current) setState(() => data = value);
+      if (current &&
+          resource == (widget.childId, widget.kind, widget.resourceId) &&
+          identical(data, snapshot)) {
+        setState(() {
+          data = value;
+          pendingSelection = null;
+        });
+      }
     } catch (e) {
-      if (mounted && current) showError(context, e);
+      if (mounted &&
+          current &&
+          resource == (widget.childId, widget.kind, widget.resourceId) &&
+          identical(data, snapshot)) {
+        showError(context, e);
+      }
+    } finally {
+      if (current &&
+          resource == (widget.childId, widget.kind, widget.resourceId)) {
+        setState(() => writing = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (!current || unavailable) return SizedBox.shrink();
+    final shownData = data;
     final recommended = (data?['recommended'] as List? ?? [])
         .map((r) => Json.from(r))
         .toList();
     final additional = (data?['additional'] as List? ?? [])
         .map((r) => Json.from(r))
         .toList();
-    final items = [...recommended, ...additional].take(more ? 12 : 3).toList();
+    final loadedItems = [
+      ...recommended,
+      ...additional,
+    ].take(more ? 12 : 3).toList();
+    final query = tipSearch.text.trim().toLowerCase();
+    final items = loadedItems
+        .where(
+          (r) =>
+              (tipType == 'all' || r['content_type'] == tipType) &&
+              (query.isEmpty ||
+                  '${r['title']} ${r['reason'] ?? ''}'.toLowerCase().contains(
+                    query,
+                  )),
+        )
+        .toList();
     return Padding(
       padding: EdgeInsets.only(top: 16),
       child: Panel(
@@ -708,6 +800,72 @@ class _LearningTipsState extends State<LearningTips>
                       Text(
                         'Noch kein passender Lerntipp. Du kannst ein Thema auswählen.',
                       ),
+                    if (loadedItems.isNotEmpty)
+                      ExpansionTile(
+                        title: const Text('Lerntipps eingrenzen'),
+                        children: [
+                          TextField(
+                            controller: tipSearch,
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              labelText: 'Geladene Lerntipps durchsuchen',
+                              helperText:
+                                  'Suche nur in den ${loadedItems.length} hier geladenen Tipps.',
+                              suffixIcon: tipSearch.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip: 'Lerntippsuche leeren',
+                                      onPressed: () =>
+                                          setState(() => tipSearch.clear()),
+                                      icon: const Icon(Icons.close),
+                                    ),
+                            ),
+                            onChanged: (_) => setState(() {}),
+                            onSubmitted: (_) =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
+                          ),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey(tipType),
+                            initialValue: tipType,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Darstellung des Lerntipps',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: Text('Videos und Lerntexte'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'video',
+                                child: Text('Erklärvideos'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'learning_text',
+                                child: Text('Lerntexte'),
+                              ),
+                            ],
+                            onChanged: (v) => setState(() => tipType = v!),
+                          ),
+                          if (query.isNotEmpty || tipType != 'all')
+                            TextButton(
+                              onPressed: () => setState(() {
+                                tipSearch.clear();
+                                tipType = 'all';
+                              }),
+                              child: const Text('Lerntippfilter zurücksetzen'),
+                            ),
+                        ],
+                      ),
+                    if (loadedItems.isNotEmpty && items.isEmpty)
+                      const Text(
+                        'Kein geladener Tipp passt zu deiner Auswahl. Ändere den Filter oder lade weitere Tipps.',
+                      ),
+                    if (pendingSelection != null)
+                      const Notice(
+                        'Deine Themenauswahl ist noch nicht bestätigt. Öffne die Auswahl erneut, um sie zu prüfen und bewusst zu speichern.',
+                        warning: true,
+                      ),
                     if (widget.state.isChild && items.isNotEmpty)
                       Text(
                         'Deine Eltern können sehen, welche Lerntipps du hier öffnest.',
@@ -728,18 +886,15 @@ class _LearningTipsState extends State<LearningTips>
                       TipContentCard(
                         item,
                         beforeOpen: widget.beforeOpen,
-                        onOpened: () => action(item, 'open'),
+                        onOpened: () =>
+                            action(item, 'open', expectedData: shownData),
                         onReject: data?['can_respond'] != true || writing
                             ? null
-                            : () async {
-                                try {
-                                  await action(item, 'not_relevant');
-                                } catch (e) {
-                                  if (context.mounted && current) {
-                                    showError(context, e);
-                                  }
-                                }
-                              },
+                            : () => returnAction(
+                                item,
+                                'not_relevant',
+                                expectedData: shownData,
+                              ),
                       ),
                     ],
                     if (items.isNotEmpty)
@@ -789,6 +944,21 @@ class _LearningTipsState extends State<LearningTips>
                     Wrap(
                       spacing: 8,
                       children: [
+                        TextButton.icon(
+                          onPressed: loading || writing ? null : load,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Lerntipps aktualisieren'),
+                        ),
+                        if (more)
+                          TextButton(
+                            onPressed: loading || writing
+                                ? null
+                                : () {
+                                    setState(() => more = false);
+                                    load();
+                                  },
+                            child: const Text('Weniger Lerntipps anzeigen'),
+                          ),
                         if (!more &&
                             (data?['has_more'] == true ||
                                 recommended.length + additional.length > 3))
@@ -802,7 +972,7 @@ class _LearningTipsState extends State<LearningTips>
                         if (data?['can_respond'] == true &&
                             data?['subject_id'] != null)
                           TextButton.icon(
-                            onPressed: selectTopics,
+                            onPressed: writing ? null : selectTopics,
                             icon: Icon(Icons.manage_search_rounded),
                             label: Text('Thema auswählen'),
                           ),
@@ -893,6 +1063,8 @@ class _TopicBrowserBody extends StatefulWidget {
 class _TopicBrowserState extends State<_TopicBrowserBody> {
   final search = TextEditingController();
   late final Json? owner;
+  late final String? ownerFamily = widget.state.familyId;
+  Set<String>? clearedChoice;
   late final chosen = {...?widget.selected};
   late final chosenLabels = <String, String>{...widget.selectedLabels};
   Json? data;
@@ -901,7 +1073,10 @@ class _TopicBrowserState extends State<_TopicBrowserBody> {
   Timer? debounce;
   bool loading = true, knownOnly = false;
   bool get current =>
-      mounted && owner != null && identical(owner, widget.state.user);
+      mounted &&
+      owner != null &&
+      identical(owner, widget.state.user) &&
+      ownerFamily == widget.state.familyId;
   String get path => '/children/${widget.childId}/subjects/${widget.subjectId}';
   @override
   void initState() {
@@ -914,6 +1089,11 @@ class _TopicBrowserState extends State<_TopicBrowserBody> {
   void changed() {
     if (!current && mounted) {
       generation++;
+      debounce?.cancel();
+      search.clear();
+      chosen.clear();
+      chosenLabels.clear();
+      clearedChoice = null;
       setState(() => data = null);
     }
   }
@@ -1130,6 +1310,29 @@ class _TopicBrowserState extends State<_TopicBrowserBody> {
                       ],
                     ),
                   ],
+                  if (widget.selected != null &&
+                      (chosen.isNotEmpty || clearedChoice != null))
+                    TextButton.icon(
+                      onPressed: loading
+                          ? null
+                          : () => setState(() {
+                              if (chosen.isNotEmpty) {
+                                clearedChoice = {...chosen};
+                                chosen.clear();
+                              } else {
+                                chosen.addAll(clearedChoice!);
+                                clearedChoice = null;
+                              }
+                            }),
+                      icon: Icon(
+                        chosen.isNotEmpty ? Icons.deselect : Icons.undo,
+                      ),
+                      label: Text(
+                        chosen.isNotEmpty
+                            ? 'Themenauswahl leeren'
+                            : 'Themenauswahl wiederherstellen',
+                      ),
+                    ),
                   for (final row in rows)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1255,10 +1458,18 @@ class _TopicRow extends StatefulWidget {
 }
 
 class _TopicRowState extends State<_TopicRow> {
+  late final Json? owner = widget.state.user;
+  late final String? family = widget.state.familyId;
+  int generation = 0;
+  bool get current =>
+      mounted &&
+      identical(owner, widget.state.user) &&
+      family == widget.state.familyId;
   Json? detail;
   String? error;
   bool loading = false;
   Future<void> opened(Json item) async {
+    if (!current) return;
     await widget.state.api.post(
       '/children/${widget.childId}/subjects/${widget.subjectId}/topic-interactions',
       {
@@ -1271,7 +1482,9 @@ class _TopicRowState extends State<_TopicRow> {
   }
 
   Future<void> load() async {
-    final owner = widget.state.user, id = widget.topic['id'];
+    if (!current) return;
+    final request = ++generation;
+    final id = widget.topic['id'];
     setState(() {
       loading = true;
       error = null;
@@ -1280,16 +1493,14 @@ class _TopicRowState extends State<_TopicRow> {
       final value = await widget.state.api.get(
         '/children/${widget.childId}/subjects/${widget.subjectId}/topics/${Uri.encodeComponent(id)}',
       );
-      if (mounted &&
-          identical(owner, widget.state.user) &&
-          id == widget.topic['id']) {
+      if (current && request == generation && id == widget.topic['id']) {
         setState(() {
           detail = value;
           loading = false;
         });
       }
     } catch (e) {
-      if (mounted && identical(owner, widget.state.user)) {
+      if (current && request == generation) {
         setState(() {
           error = '$e';
           loading = false;
@@ -1299,55 +1510,59 @@ class _TopicRowState extends State<_TopicRow> {
   }
 
   @override
-  Widget build(BuildContext context) => ExpansionTile(
-    key: ValueKey(widget.topic['id']),
-    title: Text(
-      widget.topic['title'],
-      style: TextStyle(fontWeight: FontWeight.w600),
-    ),
-    onExpansionChanged: (value) {
-      if (value && detail == null && !loading) load();
-    },
-    children: [
-      if (loading) LinearProgressIndicator(minHeight: 3),
-      if (error != null) Notice(error!, warning: true),
-      if (error != null)
-        TextButton(onPressed: load, child: Text('Erneut laden')),
-      if (detail != null) ...[
-        if (widget.state.isChild)
-          Text(
-            'Deine Eltern können sehen, welche Lerntipps du hier öffnest.',
-            style: TextStyle(fontSize: 12, color: context.palette.muted),
+  Widget build(BuildContext context) => !current
+      ? const SizedBox.shrink()
+      : ExpansionTile(
+          key: ValueKey(widget.topic['id']),
+          title: Text(
+            widget.topic['title'],
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
-        for (final item in detail?['recommended'] as List? ?? [])
-          TipContentCard(
-            Json.from(item),
-            onOpened: () => opened(Json.from(item)),
-          ),
-        if ((detail?['additional'] as List? ?? []).isNotEmpty)
-          Padding(
-            padding: EdgeInsets.only(top: 12),
-            child: Text('Weitere Lerntipps'),
-          ),
-        for (final item in detail?['additional'] as List? ?? [])
-          TipContentCard(
-            Json.from(item),
-            onOpened: () => opened(Json.from(item)),
-          ),
-        if ((detail?['recommended'] as List? ?? []).isEmpty &&
-            (detail?['additional'] as List? ?? []).isEmpty)
-          Padding(
-            padding: EdgeInsets.all(12),
-            child: Text('Hier ist gerade kein passender Inhalt verfügbar.'),
-          ),
-        Padding(
-          padding: EdgeInsets.all(12),
-          child: Text(
-            'Bei Sofatutor können eine Anmeldung und ein Abo nötig sein.',
-            style: TextStyle(fontSize: 12, color: context.palette.muted),
-          ),
-        ),
-      ],
-    ],
-  );
+          onExpansionChanged: (value) {
+            if (value && detail == null && !loading) load();
+          },
+          children: [
+            if (loading) LinearProgressIndicator(minHeight: 3),
+            if (error != null) Notice(error!, warning: true),
+            if (error != null)
+              TextButton(onPressed: load, child: Text('Erneut laden')),
+            if (detail != null) ...[
+              if (widget.state.isChild)
+                Text(
+                  'Deine Eltern können sehen, welche Lerntipps du hier öffnest.',
+                  style: TextStyle(fontSize: 12, color: context.palette.muted),
+                ),
+              for (final item in detail?['recommended'] as List? ?? [])
+                TipContentCard(
+                  Json.from(item),
+                  onOpened: () => opened(Json.from(item)),
+                ),
+              if ((detail?['additional'] as List? ?? []).isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Text('Weitere Lerntipps'),
+                ),
+              for (final item in detail?['additional'] as List? ?? [])
+                TipContentCard(
+                  Json.from(item),
+                  onOpened: () => opened(Json.from(item)),
+                ),
+              if ((detail?['recommended'] as List? ?? []).isEmpty &&
+                  (detail?['additional'] as List? ?? []).isEmpty)
+                Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Hier ist gerade kein passender Inhalt verfügbar.',
+                  ),
+                ),
+              Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  'Bei Sofatutor können eine Anmeldung und ein Abo nötig sein.',
+                  style: TextStyle(fontSize: 12, color: context.palette.muted),
+                ),
+              ),
+            ],
+          ],
+        );
 }

@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show TextInput;
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -54,7 +55,9 @@ Future<String?> beginGoogleLogin(
   String intent = 'login',
   String password = '',
   bool Function()? isCurrent,
+  int? authenticationRevision,
 }) async {
+  if (authenticationRevision == null) state.beginAuthentication();
   final account = state.user;
   void check() {
     if (!identical(state.user, account) || isCurrent?.call() == false) {
@@ -133,14 +136,20 @@ class GoogleLoginButton extends StatefulWidget {
 class _GoogleLoginButtonState extends State<GoogleLoginButton> {
   late Future<Json> status;
   Object? owner;
+  bool statusLoading = false;
+  int statusGeneration = 0;
 
   Future<Json> loadStatus() async {
+    final generation = ++statusGeneration;
+    statusLoading = true;
     try {
       return await widget.state.api.get('/auth/google/status');
     } catch (_) {
       // A fast failed refresh may finish before the next build subscribes.
       // Keep an unavailable optional sign-in method from failing the form.
-      return {'available': false};
+      return {'available': false, 'status_unavailable': true};
+    } finally {
+      if (generation == statusGeneration) statusLoading = false;
     }
   }
 
@@ -153,7 +162,7 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton> {
   }
 
   void accountChanged() {
-    if (identical(owner, widget.state.user)) return;
+    if (!mounted || identical(owner, widget.state.user)) return;
     setState(() {
       owner = widget.state.user;
       status = loadStatus();
@@ -182,6 +191,30 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton> {
   Widget build(BuildContext context) => FutureBuilder<Json>(
     future: status,
     builder: (context, value) {
+      if (value.data?['status_unavailable'] == true) {
+        return Column(
+          children: [
+            const Text(
+              'Die optionale Google-Anmeldung konnte gerade nicht geprüft werden. Dein normaler Zugang bleibt verfügbar.',
+            ),
+            TextButton(
+              onPressed: statusLoading || !widget.enabled
+                  ? null
+                  : () {
+                      if (!mounted || statusLoading || !widget.enabled) return;
+                      setState(() {
+                        status = loadStatus();
+                      });
+                    },
+              child: Text(
+                statusLoading
+                    ? 'Google-Verfügbarkeit wird geprüft …'
+                    : 'Google-Verfügbarkeit erneut prüfen',
+              ),
+            ),
+          ],
+        );
+      }
       if (value.data?['available'] != true) return SizedBox.shrink();
       return Padding(
         padding: EdgeInsets.only(top: 16),
@@ -216,6 +249,15 @@ class _GoogleAction extends StatefulWidget {
 class _GoogleActionState extends State<_GoogleAction> {
   bool busy = false;
   String? error;
+  int? authenticationRevision;
+  AppState? authenticationState;
+  @override
+  void dispose() {
+    final revision = authenticationRevision;
+    if (revision != null) authenticationState?.cancelAuthentication(revision);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -246,12 +288,16 @@ class _GoogleActionState extends State<_GoogleAction> {
                 try {
                   final state = widget.state;
                   final account = state.user;
+                  authenticationState = state;
+                  authenticationRevision = state.beginAuthentication();
                   final flow = await beginGoogleLogin(
                     state,
+                    authenticationRevision: authenticationRevision,
                     isCurrent: () =>
                         mounted &&
                         identical(widget.state, state) &&
-                        identical(state.user, account),
+                        identical(state.user, account) &&
+                        ModalRoute.of(context)?.isCurrent != false,
                   );
                   if (context.mounted && flow != null) {
                     context.go('/auth/google/complete#flow=$flow');
@@ -305,12 +351,44 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       cancelling = false,
       passwordVisible = false;
   int generation = 0;
+  int? authenticationRevision;
+  AppState? authenticationState;
+  Object? owner;
+  bool expired = false, committing = false;
+  int? proofExpires;
+  bool existingLogin = false, awaitingReturn = false;
+
+  void cancelOwnAuthentication() {
+    final revision = authenticationRevision;
+    if (revision != null) authenticationState?.cancelAuthentication(revision);
+    authenticationRevision = null;
+  }
+
+  void accountChanged() {
+    if (!mounted || committing || identical(owner, widget.state.user)) return;
+    cancelOwnAuthentication();
+    ++generation;
+    timer?.cancel();
+    setState(() {
+      email = null;
+      flow = verifier = ticket = null;
+      name.clear();
+      family.clear();
+      password.clear();
+      passwordVisible = consent = busy = false;
+      error = 'Der Kontozugang hat sich geändert. Starte diesen Google-Schritt bei Bedarf neu.';
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    initialize();
+    owner = widget.state.user;
+    widget.state.addListener(accountChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) initialize();
+    });
   }
 
   @override
@@ -319,6 +397,10 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     if (oldWidget.uri != widget.uri ||
         oldWidget.start != widget.start ||
         !identical(oldWidget.state, widget.state)) {
+      if (!identical(oldWidget.state, widget.state)) {
+        oldWidget.state.removeListener(accountChanged);
+        widget.state.addListener(accountChanged);
+      }
       name.clear();
       family.clear();
       password.clear();
@@ -329,6 +411,10 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
   }
 
   Future<void> initialize() async {
+    cancelOwnAuthentication();
+    authenticationState = widget.state;
+    authenticationRevision = widget.state.beginAuthentication();
+    owner = widget.state.user;
     final current = ++generation;
     timer?.cancel();
     busy = false;
@@ -339,6 +425,9 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     ticket = null;
     returnToApp = false;
     error = null;
+    expired = false;
+    proofExpires = null;
+    existingLogin = awaitingReturn = false;
     try {
       if (widget.start) {
         if (!kIsWeb) throw ApiError('Bitte starte die Anmeldung in der App.');
@@ -367,6 +456,12 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
         final raw = await widget.state.storage.read(key: _proofKey);
         final proof = raw == null ? null : jsonDecode(raw) as Map;
         if (proof == null ||
+            proof['flow_id'] is! String ||
+            !RegExp(r'^[a-f0-9]{32}$').hasMatch(proof['flow_id']) ||
+            proof['client_verifier'] is! String ||
+            !RegExp(r'^[A-Za-z0-9_-]{43,128}$')
+                .hasMatch(proof['client_verifier']) ||
+            proof['expires'] is! int ||
             proof['expires'] < DateTime.now().millisecondsSinceEpoch ||
             (flow != null && flow != proof['flow_id'])) {
           throw ApiError(
@@ -375,6 +470,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
         }
         flow = proof['flow_id'];
         verifier = proof['client_verifier'];
+        proofExpires = proof['expires'];
       }
       if (flow == null) {
         throw ApiError('Die Anmeldung wurde abgebrochen. Bitte starte erneut.');
@@ -386,6 +482,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
           if (email == null &&
               error == null &&
               !returnToApp &&
+              ModalRoute.of(context)?.isCurrent != false &&
               WidgetsBinding.instance.lifecycleState ==
                   AppLifecycleState.resumed) {
             check();
@@ -394,6 +491,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       }
     } catch (e) {
       if (mounted && generation == current) {
+        flow = verifier = ticket = null;
         setState(
           () => error = e is ApiError ? e.message : 'Die Anmeldung konnte gerade nicht geprüft werden. Bitte versuche es erneut.',
         );
@@ -402,7 +500,25 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
   }
 
   Future<void> check({bool register = false}) async {
-    if (!mounted || busy || cancelling || flow == null) return;
+    if (!mounted ||
+        busy ||
+        cancelling ||
+        flow == null ||
+        expired ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    if (proofExpires != null &&
+        proofExpires! <= DateTime.now().millisecondsSinceEpoch) {
+      timer?.cancel();
+      setState(() {
+        expired = true;
+        password.clear();
+        passwordVisible = false;
+        error = 'Dieser Anmeldeschritt auf dem Gerät ist abgelaufen. Starte die Google-Anmeldung bewusst neu.';
+      });
+      return;
+    }
     if (register) {
       final invalid = form.currentState?.validateGranularly();
       if (invalid == null || invalid.isNotEmpty) {
@@ -410,6 +526,12 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
           final first = invalid.first;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !cancelling && first.mounted) {
+              final nodes = {
+                ValueKey(('google-name', generation)): nameFocus,
+                ValueKey(('google-family', generation)): familyFocus,
+                ValueKey(('google-password', generation)): passwordFocus,
+              };
+              nodes[first.widget.key]?.requestFocus();
               Scrollable.ensureVisible(first.context, alignment: .2);
             }
           });
@@ -448,22 +570,62 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
         if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
         if (!mounted || current != generation) return;
         if (result['status'] == 'authenticated') {
-          await widget.state.accept(result);
+          committing = true;
+          try {
+            await widget.state.accept(
+              result,
+              authenticationRevision: authenticationRevision,
+            );
+          } finally {
+            committing = false;
+          }
+          if (register) TextInput.finishAutofillContext(shouldSave: true);
         }
         if (mounted && current == generation) {
           context.go(result['status'] == 'linked' ? '/settings' : '/app');
         }
       } else {
+        if (![
+          'pending',
+          'awaiting_return',
+          'registration_required',
+          'return_to_app',
+        ].contains(result['status'])) {
+          throw ApiError(
+            'Dieser Google-Anmeldestand wird nicht unterstützt. Starte die Anmeldung erneut; dein vorhandenes Konto bleibt bestehen.',
+          );
+        }
+        if (result['status'] == 'registration_required' &&
+            (result['email'] is! String ||
+                (result['email'] as String).isEmpty)) {
+          throw ApiError(
+            'Die bestätigte Google-E-Mail fehlt. Starte die Anmeldung erneut.',
+          );
+        }
+        if (result['status'] == 'return_to_app' &&
+            (ticket == null ||
+                !RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(ticket!))) {
+          throw ApiError(
+            'Der sichere App-Rückkehrlink ist unvollständig. Starte Google erneut in der App.',
+          );
+        }
         setState(() {
           email = result['email'];
           returnToApp = result['status'] == 'return_to_app';
+          awaitingReturn = result['status'] == 'awaiting_return';
         });
       }
     } catch (e) {
+      if (!identical(owner, widget.state.user)) {
+        accountChanged();
+        return;
+      }
       if (mounted && current == generation) {
-        setState(
-          () => error = e is ApiError ? e.message : 'Die Anmeldung konnte gerade nicht geprüft werden. Bitte versuche es erneut.',
-        );
+        setState(() {
+          error = e is ApiError ? e.message : 'Die Anmeldung konnte gerade nicht geprüft werden. Bitte versuche es erneut.';
+          existingLogin =
+              register && e is ApiError && e.status == 409 && email != null;
+        });
       }
     } finally {
       if (mounted && current == generation) setState(() => busy = false);
@@ -472,6 +634,9 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed && passwordVisible) {
+      setState(() => passwordVisible = false);
+    }
     if (state == AppLifecycleState.resumed &&
         !widget.start &&
         email == null &&
@@ -484,6 +649,8 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
 
   @override
   void dispose() {
+    cancelOwnAuthentication();
+    widget.state.removeListener(accountChanged);
     ++generation;
     timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -496,15 +663,18 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     super.dispose();
   }
 
-  Future<void> cancel() async {
+  Future<void> cancel({bool passwordLogin = false}) async {
     if (!mounted || cancelling) return;
     ++generation;
+    cancelOwnAuthentication();
     timer?.cancel();
     setState(() => cancelling = true);
     try {
       if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
       if (!mounted) return;
-      context.go(widget.state.user == null ? '/login' : '/settings');
+      context.go(
+        passwordLogin || widget.state.user == null ? '/login' : '/settings',
+      );
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -541,6 +711,19 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                         liveRegion: true,
                         child: Notice(error!, warning: true),
                       ),
+                    if (existingLogin)
+                      TextButton(
+                        onPressed: busy || cancelling
+                            ? null
+                            : () {
+                                widget.state.rememberAuthIdentifier(email!);
+                                password.clear();
+                                cancel(passwordLogin: true);
+                              },
+                        child: const Text(
+                          'Mit vorhandenem Elternkonto anmelden',
+                        ),
+                      ),
                     if (busy || cancelling)
                       Semantics(
                         liveRegion: true,
@@ -567,7 +750,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                         key: ValueKey(('google-name', generation)),
                         controller: name,
                         focusNode: nameFocus,
-                        enabled: !busy && !cancelling,
+                        enabled: !busy && !cancelling && !expired,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
                         onFieldSubmitted: (_) => familyFocus.requestFocus(),
@@ -587,7 +770,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                         key: ValueKey(('google-family', generation)),
                         controller: family,
                         focusNode: familyFocus,
-                        enabled: !busy && !cancelling,
+                        enabled: !busy && !cancelling && !expired,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
                         onFieldSubmitted: (_) => passwordFocus.requestFocus(),
@@ -606,7 +789,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                         key: ValueKey(('google-password', generation)),
                         controller: password,
                         focusNode: passwordFocus,
-                        enabled: !busy && !cancelling,
+                        enabled: !busy && !cancelling && !expired,
                         obscureText: !passwordVisible,
                         enableSuggestions: false,
                         autocorrect: false,
@@ -631,7 +814,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                             tooltip: passwordVisible
                                 ? 'Passwort verbergen'
                                 : 'Passwort anzeigen',
-                            onPressed: busy || cancelling
+                            onPressed: busy || cancelling || expired
                                 ? null
                                 : () => setState(
                                     () => passwordVisible = !passwordVisible,
@@ -654,7 +837,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                             CheckboxListTile(
                               contentPadding: EdgeInsets.zero,
                               value: field.value,
-                              onChanged: busy || cancelling
+                              onChanged: busy || cancelling || expired
                                   ? null
                                   : (value) {
                                       field.didChange(value ?? false);
@@ -684,7 +867,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                         child: const Text('Datenschutz lesen'),
                       ),
                       FilledButton(
-                        onPressed: busy || cancelling
+                        onPressed: busy || cancelling || expired
                             ? null
                             : () => check(register: true),
                         child: const Text('Elternkonto erstellen'),
@@ -718,7 +901,36 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                         },
                       ),
                     ] else ...[
-                      if (error == null)
+                      if (awaitingReturn) ...[
+                        const Notice(
+                          'Google hat bereits geantwortet. Für die sichere Anmeldung fehlt noch der Rückkehrlink aus dem Browser auf diesem Gerät. Eine neue Google-Bestätigung ist dafür nicht nötig.',
+                        ),
+                        TextButton(
+                          onPressed: () => showDialog<void>(
+                            context: context,
+                            builder: (dialog) => AlertDialog(
+                              title: const Text('Sicher zur App zurückkehren'),
+                              scrollable: true,
+                              content: const Text(
+                                '1. Zum Browser wechseln, in dem du Google bestätigt hast.\n2. Dort „SCHULPILOT öffnen“ wählen.\n3. Den Wechsel in diese App erlauben.\nWenn der Browser geschlossen wurde oder der Link abgelaufen ist, diesen Anmeldeschritt beenden und bewusst neu starten. Es werden weder Codes noch Zugangsdaten kopiert oder versendet.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    if (ModalRoute.of(dialog)?.isCurrent ==
+                                        true) {
+                                      Navigator.of(dialog).pop();
+                                    }
+                                  },
+                                  child: const Text('Verstanden'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          child: const Text('Rückkehrschritte ansehen'),
+                        ),
+                      ],
+                      if (error == null && !awaitingReturn)
                         const Text(
                           'Bestätige deine Anmeldung bei Google. Danach geht es hier weiter.',
                         ),

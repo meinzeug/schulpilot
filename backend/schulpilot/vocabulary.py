@@ -3,9 +3,11 @@
 import json
 import re
 import unicodedata
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import func, or_, select, update
+from pydantic import Field
+from sqlalchemy import and_, func, or_, select, update
 
 from . import language_tasks as s
 from . import vocabulary_review as review
@@ -63,7 +65,7 @@ def import_data(db, row):
     return {"id": row.id, "target_locale": row.target_locale, "title": row.title, "status": status,
             "pairs": row.pairs if status in ("review", "confirmed") else [], "error": error,
             "source_revisions": row.source_revisions, "collection_id": row.collection_id, "job_id": row.job_id,
-            "supports_deferred_pairs": True}
+            "supports_deferred_pairs": True, "supports_import_discard": True}
 
 
 @router.get("/language-capabilities")
@@ -77,19 +79,26 @@ def create_import(child_id: str, data: s.ImportRequest, idempotency_key: str = K
                   p=Depends(authenticated), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     lock_child(db, child)
-    value = fingerprint(data.model_dump())
+    import_payload = data.model_dump()
+    if import_payload.get("collection_id") is None:
+        import_payload.pop("collection_id", None)  # Keep old request fingerprints stable.
+    value = fingerprint(import_payload)
     existing = db.scalar(select(VocabularyImport).where(VocabularyImport.child_id == child.id,
                                                        VocabularyImport.request_key == idempotency_key))
     if existing:
         if existing.request_digest != value:
             raise HTTPException(409, "Dieser Importschlüssel wurde für andere Wörter verwendet.")
         return import_data(db, existing)
+    if data.collection_id:
+        target = own_collection(db, child, data.collection_id)
+        if target.target_locale != data.target_locale:
+            raise HTTPException(422, "Sammlung und Wörter müssen dieselbe bestätigte Lernsprache haben.")
     rate_limit(db, "vocabulary-import:" + p.user.id, 20, 3600, commit=False)
     if db.get(Family, child.family_id).synthetic:
         raise HTTPException(403, "Eigene Wörter bitte im normalen Familienzugang anlegen; der Testraum hat feste Inhalte.")
     row = VocabularyImport(id=uid(), child_id=child.id, user_id=p.user.id, session_id=p.session.id,
                            request_key=idempotency_key, request_digest=value, target_locale=data.target_locale,
-                           title=data.title.strip(), text=data.text, source_revisions=[],
+                           title=data.title.strip(), collection_id=data.collection_id, text=data.text, source_revisions=[],
                            pairs=[pair.model_dump() for pair in data.pairs], status="review")
     if data.material_id:
         material = db.get(Material, data.material_id)
@@ -115,10 +124,33 @@ def create_import(child_id: str, data: s.ImportRequest, idempotency_key: str = K
 
 
 @router.get("/children/{child_id}/vocabulary/imports")
-def imports(child_id: str, p=Depends(authenticated), db=Depends(get_db)):
+def imports(child_id: str, status: Literal["all", "open", "review", "failed", "confirmed"] = "all",
+            search: str = Query("", max_length=100), page: int = Query(1, ge=1, le=100000),
+            page_size: int = Query(30, ge=1, le=50), compact: bool = False, p=Depends(authenticated), db=Depends(get_db)):
     child_access(db, p, child_id)
-    return {"imports": [import_data(db, row) for row in db.scalars(select(VocabularyImport).where(
-        VocabularyImport.child_id == child_id).order_by(VocabularyImport.created.desc(), VocabularyImport.id.desc()).limit(30))]}
+    query = select(VocabularyImport).where(VocabularyImport.child_id == child_id)
+    if status == "open":
+        query = query.where(VocabularyImport.status != "confirmed")
+    elif status == "failed":
+        viable_job = select(Job.id).where(Job.id == VocabularyImport.job_id, Job.status != "failed").exists()
+        query = query.where(or_(VocabularyImport.status == "failed", and_(VocabularyImport.status.in_(["queued", "running"]), ~viable_job)))
+    elif status != "all":
+        query = query.where(VocabularyImport.status == status)
+    if search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(VocabularyImport.title.ilike("%"+escaped+"%", escape="\\"))
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    actual = min(page, max(1, (total + page_size - 1) // page_size))
+    rows = db.scalars(query.order_by(VocabularyImport.created.desc(), VocabularyImport.id.desc()).offset((actual-1)*page_size).limit(page_size))
+    open_total = db.scalar(select(func.count()).select_from(VocabularyImport).where(VocabularyImport.child_id == child_id, VocabularyImport.status != "confirmed"))
+    def value(row):
+        data = import_data(db, row)
+        if compact:
+            data["pair_count"] = len(data.pop("pairs"))
+        return data
+    return {"imports": [value(row) for row in rows], "open_total": open_total, "compact": compact,
+            "pagination": {"page": actual, "page_size": page_size, "total": total},
+            "filters": {"status": status, "search": search}, "supports_import_browser": True}
 
 
 @router.get("/children/{child_id}/vocabulary/imports/{import_id}")
@@ -128,6 +160,25 @@ def get_import(child_id: str, import_id: str, p=Depends(authenticated), db=Depen
     if not row or row.child_id != child_id:
         raise HTTPException(404, "Wortimport nicht gefunden.")
     return import_data(db, row)
+
+
+@router.delete("/children/{child_id}/vocabulary/imports/{import_id}")
+def discard_import(child_id: str, import_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    lock_child(db, child)
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    row = db.get(VocabularyImport, import_id, populate_existing=True)
+    if not row:
+        return {"message": "Die Wortvorschläge sind nicht mehr offen."}
+    if row.child_id != child.id:
+        raise HTTPException(404, "Wortvorschläge nicht gefunden.")
+    job = db.get(Job, row.job_id) if row.job_id else None
+    if row.status != "review" or (job and job.status in ("queued", "running")):
+        raise HTTPException(409, "Nur noch nicht übernommene Wortvorschläge können verworfen werden. Laufende Erkennungen und gespeicherte Wörter bleiben geschützt.")
+    rate_limit(db, "vocabulary-discard:" + p.user.id, 30, 3600, commit=False)
+    db.delete(row)
+    db.commit()
+    return {"message": "Nur offene Wortvorschläge verworfen. Heftseite, Wortschatz und Übungsbelege bleiben erhalten."}
 
 
 def normalized(value):
@@ -190,9 +241,14 @@ def confirm_import_record(db, p, child, row, data):
     checked_pairs(data.pairs)
     if {fingerprint(pair) for pair in pairs} & {fingerprint(pair) for pair in deferred}:
         raise HTTPException(422, "Ein Wort kann nicht zugleich bestätigt und zurückgestellt werden.")
-    collection = VocabularyCollection(id=uid(), child_id=child.id, title=row.title, target_locale=row.target_locale)
-    db.add(collection)
-    db.flush()
+    if row.collection_id:
+        collection = own_collection(db, child, row.collection_id)
+        if collection.target_locale != row.target_locale:
+            raise HTTPException(409, "Die Lernsprache der Sammlung stimmt nicht mehr überein.")
+    else:
+        collection = VocabularyCollection(id=uid(), child_id=child.id, title=row.title, target_locale=row.target_locale)
+        db.add(collection)
+        db.flush()
     for pair in data.pairs:
         value = identity(row.target_locale, pair)
         source_text = normalized("\n".join(db.get(Material, source["id"]).content for source in row.source_revisions)
@@ -230,7 +286,7 @@ def confirm_import_record(db, p, child, row, data):
     if deferred:
         db.add(VocabularyImport(child_id=child.id, user_id=row.user_id, session_id=row.session_id,
             request_key="deferred-" + row.id, request_digest=fingerprint(deferred), target_locale=row.target_locale,
-            title=row.title[:140] + " · später prüfen", text=row.text, source_revisions=row.source_revisions,
+            title=row.title[:140] + " · später prüfen", collection_id=collection.id, text=row.text, source_revisions=row.source_revisions,
             pairs=deferred, status="review"))
     record(db, child.id, "vocabulary_confirmed", {"collection_id": collection.id, "count": len(data.pairs)})
     return import_data(db, row)
@@ -249,7 +305,7 @@ def item_data(db, item):
             "part_of_speech": item.part_of_speech, "variants": item.variants, "meaning_variants": item.meaning_variants,
             "target_locale": item.target_locale,
             "revision": item.revision, "origin": item.origin, "confirmed": item.confirmed, "source_changed": changed,
-            "source_revisions": item.source_revisions, "reviews": review.states(db, item)}
+            "source_revisions": item.source_revisions, "collection_ids": sorted(db.scalars(select(VocabularyMembership.collection_id).join(VocabularyCollection, VocabularyMembership.collection_id == VocabularyCollection.id).where(VocabularyMembership.item_id == item.id, VocabularyCollection.child_id == item.child_id))), "reviews": review.states(db, item)}
 
 
 def item_query(child_id, locale=None, collection=None, search=None):
@@ -268,10 +324,22 @@ def item_query(child_id, locale=None, collection=None, search=None):
 @router.get("/children/{child_id}/vocabulary")
 def listing(child_id: str, locale: str | None = None, collection: str | None = None,
             search: str | None = Query(None, max_length=100), due: bool = False,
+            sort: Literal["newest", "word", "meaning"] = "newest",
+            origin: Literal["manual", "material", "text"] | None = None,
+            clarification: bool = False, search_context: bool = False,
             page: int = Query(1, ge=1, le=100000), page_size: int = Query(20, ge=1, le=50),
             p=Depends(authenticated), db=Depends(get_db)):
     child = child_access(db, p, child_id)
-    query = item_query(child.id, locale, collection, search)
+    query = item_query(child.id, locale, collection, None if search_context else search)
+    if search_context and search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(VocabularyItem.context.ilike("%" + escaped + "%", escape="\\"))
+    if origin is not None:
+        query = query.where(VocabularyItem.origin == origin)
+    if clarification:
+        query = query.where(select(VocabularyReview.id).where(
+            VocabularyReview.item_id == VocabularyItem.id, VocabularyReview.revision == VocabularyItem.revision,
+            VocabularyReview.needs_clarification.is_(True)).exists())
     if due:
         query = query.where(or_(~select(VocabularyReview.id).where(
             VocabularyReview.item_id == VocabularyItem.id, VocabularyReview.revision == VocabularyItem.revision,
@@ -282,16 +350,28 @@ def listing(child_id: str, locale: str | None = None, collection: str | None = N
             select(VocabularyReview.id).where(VocabularyReview.item_id == VocabularyItem.id,
                 VocabularyReview.revision == VocabularyItem.revision, VocabularyReview.due <= review.local_day(child).isoformat()).exists()))
     total = db.scalar(select(func.count()).select_from(query.subquery()))
-    rows = list(db.scalars(query.order_by(VocabularyItem.created.desc(), VocabularyItem.id).offset((page - 1) * page_size).limit(page_size)))
+    actual_page = min(page, max(1, (total + page_size - 1) // page_size))
+    ordering = {"newest": VocabularyItem.created.desc(), "word": func.lower(VocabularyItem.word),
+                "meaning": func.lower(VocabularyItem.meaning)}[sort]
+    rows = list(db.scalars(query.order_by(ordering, VocabularyItem.id).offset((actual_page - 1) * page_size).limit(page_size)))
     open_rounds = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id,
         LearningUnit.round_kind == "vocabulary", LearningUnit.status != "completed")
         .order_by(LearningUnit.created.desc(), LearningUnit.id).limit(8)))
+    collections_query = select(VocabularyCollection).where(VocabularyCollection.child_id == child.id)
+    if locale:
+        collections_query = collections_query.where(VocabularyCollection.target_locale == locale)
+    collection_total = db.scalar(select(func.count()).select_from(collections_query.subquery()))
+    collection_rows = list(db.scalars(collections_query.order_by(VocabularyCollection.created.desc(), VocabularyCollection.id).limit(80)))
+    if collection and not any(row.id == collection for row in collection_rows):
+        chosen = db.get(VocabularyCollection, collection)
+        if chosen and chosen.child_id == child.id and (not locale or chosen.target_locale == locale):
+            collection_rows.append(chosen)
     return {"child": {"id": child.id, "display_name": db.get(User, child.user_id).display_name},
-            "items": [item_data(db, row) for row in rows], "pagination": {"page": page, "page_size": page_size, "total": total},
+            "items": [item_data(db, row) for row in rows], "pagination": {"page": actual_page, "page_size": page_size, "total": total},
+            "filters": {"sort": sort, "origin": origin, "clarification": clarification, "search_context": search_context},
             "open_rounds": [{"id": unit.id, "topic": unit.topic, "status": unit.status} for unit in open_rounds],
-            "collections": [{"id": row.id, "title": row.title, "target_locale": row.target_locale} for row in db.scalars(
-                select(VocabularyCollection).where(VocabularyCollection.child_id == child.id).order_by(VocabularyCollection.created.desc(), VocabularyCollection.id))],
-            "summary": summary(db, child)}
+            "supports_import_browser": True, "supports_collections": True, "collections_total": collection_total, "collections": [collection_data(db, row) for row in collection_rows],
+            "summary": summary(db, child), "locale_summary": summary(db, child, locale)}
 
 
 @router.put("/children/{child_id}/vocabulary/{item_id}")
@@ -324,12 +404,17 @@ def edit(child_id: str, item_id: str, data: s.ItemUpdate, p=Depends(authenticate
     return item_data(db, item)
 
 
-def summary(db, child):
+def summary(db, child, locale=None):
     items = list(db.execute(select(VocabularyItem.id, VocabularyItem.target_locale).where(
         VocabularyItem.child_id == child.id, VocabularyItem.confirmed.is_(True))))
+    if locale is not None:
+        items = [item for item in items if item.target_locale == locale]
     today = review.local_day(child).isoformat()
     rows = list(db.scalars(select(VocabularyReview).join(VocabularyItem).where(
-        VocabularyReview.child_id == child.id, VocabularyReview.revision == VocabularyItem.revision)))
+        VocabularyReview.child_id == child.id, VocabularyItem.child_id == child.id, VocabularyItem.confirmed.is_(True), VocabularyReview.revision == VocabularyItem.revision)))
+    if locale is not None:
+        item_ids = {item.id for item in items}
+        rows = [row for row in rows if row.item_id in item_ids]
     due_ids = {row.item_id for row in rows if row.due <= today}
     practiced_ids = {row.item_id for row in rows}
     missing_spelling = {item.id for item in items} - {row.item_id for row in rows if row.skill == "spelling" and row.direction == "de_to_target"}
@@ -549,26 +634,32 @@ def purge_sources(db, material_ids, child_id):
 
 
 @router.post("/children/{child_id}/vocabulary/{item_id}/reveal")
-def reveal(child_id: str, item_id: str, p=Depends(child_user), db=Depends(get_db)):
+def reveal(child_id: str, item_id: str, revision: int | None = Query(None, ge=1),
+           p=Depends(child_user), db=Depends(get_db)):
     child = child_access(db, p, child_id)
     lock_child(db, child)
     rate_limit(db, "vocabulary-reveal:" + p.user.id, 120, 3600, commit=False)
     item = db.get(VocabularyItem, item_id)
     if not item or item.child_id != child.id:
         raise HTTPException(404, "Wort nicht gefunden.")
+    if revision is not None and item.revision != revision:
+        raise HTTPException(409, "Das Wort wurde geändert. Bitte lade die aktuelle Karte neu, bevor du sie aufdeckst oder anhörst.")
     record(db, child.id, "vocabulary_exposure", {"item_id": item.id, "revision": item.revision, "via": "card"})
     db.commit()
     return {"word": item.word, "meaning": item.meaning, "context": item.context}
 
 
 @router.delete("/children/{child_id}/vocabulary/{item_id}")
-def delete_item(child_id: str, item_id: str, p=Depends(authenticated), db=Depends(get_db)):
+def delete_item(child_id: str, item_id: str, revision: int | None = Query(None, ge=1),
+                p=Depends(authenticated), db=Depends(get_db)):
     child = child_access(db, p, child_id, write=p.user.role == "parent")
     lock_child(db, child)
     rate_limit(db, "vocabulary-delete:" + p.user.id, 60, 3600, commit=False)
     item = db.get(VocabularyItem, item_id)
     if not item or item.child_id != child.id:
         raise HTTPException(404, "Wort nicht gefunden.")
+    if revision is not None and item.revision != revision:
+        raise HTTPException(409, "Das Wort wurde inzwischen geändert. Bitte die aktuelle Fassung erneut prüfen.")
     db.delete(item)
     db.commit()
     return {"message": "Wort und Wiederholungszustand gelöscht. Bereits abgegebene Antworten bleiben im Lernverlauf."}
@@ -603,3 +694,147 @@ def stimulus(unit_id: str, question_id: str, data: s.StimulusRequest,
         bank = [token for _, token in sorted((fingerprint([q["id"], index, token]), token) for index, token in enumerate(tokens))]
     return {"recorded": True, "solution": q["answer"] if data.kind == "solution" else None, "word_bank": bank,
             "joiner": "" if " " not in q["answer"] and len(q["answer"]) <= 25 else " "}
+
+
+class CollectionDraft(s.Strict):
+    title: str = Field(min_length=1, max_length=160)
+    target_locale: s.TargetLocale
+
+
+class CollectionName(s.Strict):
+    title: str = Field(min_length=1, max_length=160)
+    expected_title: str = Field(min_length=1, max_length=160)
+
+
+class CollectionErase(s.Strict):
+    snapshot: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]+$")
+
+
+class CollectionChoices(s.Strict):
+    revision: int = Field(ge=1)
+    collection_ids: list[str] = Field(max_length=80)
+    expected_collection_ids: list[str] = Field(max_length=80)
+
+
+def collection_data(db, row):
+    ids = sorted(db.scalars(select(VocabularyMembership.item_id).join(VocabularyItem, VocabularyMembership.item_id == VocabularyItem.id).where(VocabularyMembership.collection_id == row.id, VocabularyItem.child_id == row.child_id)))
+    return {"id": row.id, "title": row.title, "target_locale": row.target_locale, "word_count": len(ids),
+            "snapshot": fingerprint([row.id, row.title, row.target_locale, ids])}
+
+
+def own_collection(db, child, collection_id):
+    row = db.get(VocabularyCollection, collection_id, populate_existing=True)
+    if not row or row.child_id != child.id:
+        raise HTTPException(404, "Sammlung nicht gefunden.")
+    return row
+
+
+@router.get("/children/{child_id}/vocabulary/collections")
+def collection_list(child_id: str, locale: s.TargetLocale | None = None,
+                    search: str = Query("", max_length=100), sort: Literal["newest", "name"] = "name",
+                    page: int = Query(1, ge=1, le=100000), page_size: int = Query(20, ge=1, le=50),
+                    p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id)
+    query = select(VocabularyCollection).where(VocabularyCollection.child_id == child.id)
+    if locale:
+        query = query.where(VocabularyCollection.target_locale == locale)
+    if search:
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(VocabularyCollection.title.ilike("%" + escaped + "%", escape="\\"))
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    actual = min(page, max(1, (total + page_size - 1) // page_size))
+    order = func.lower(VocabularyCollection.title) if sort == "name" else VocabularyCollection.created.desc()
+    rows = db.scalars(query.order_by(order, VocabularyCollection.id).offset((actual-1)*page_size).limit(page_size))
+    return {"items": [collection_data(db, row) for row in rows], "pagination": {"page": actual, "page_size": page_size, "total": total},
+            "filters": {"locale": locale, "search": search, "sort": sort}}
+
+
+@router.get("/children/{child_id}/vocabulary/collections/{collection_id}")
+def get_collection(child_id: str, collection_id: str, p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id)
+    return collection_data(db, own_collection(db, child, collection_id))
+
+
+@router.post("/children/{child_id}/vocabulary/collections", status_code=201)
+def create_collection(child_id: str, data: CollectionDraft, idempotency_key: str = KEY,
+                      p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    lock_child(db, child)
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    title = data.title.strip()
+    if not title:
+        raise HTTPException(422, "Bitte einen Namen für die Sammlung eingeben.")
+    identity_key = digest("word-collection-v1:" + p.user.id + ":" + child.id + ":" + idempotency_key)[:32]
+    existing = db.get(VocabularyCollection, identity_key)
+    if existing:
+        if existing.child_id != child.id or existing.title != title or existing.target_locale != data.target_locale:
+            raise HTTPException(409, "Dieser Speicherschlüssel gehört zu einer anderen Sammlung.")
+        return collection_data(db, existing)
+    rate_limit(db, "vocabulary-collection:" + p.user.id, 30, 3600, commit=False)
+    row = VocabularyCollection(id=identity_key, child_id=child.id, title=title, target_locale=data.target_locale)
+    db.add(row)
+    db.flush()
+    result = collection_data(db, row)
+    db.commit()
+    return result
+
+
+@router.put("/children/{child_id}/vocabulary/collections/{collection_id}")
+def rename_collection(child_id: str, collection_id: str, data: CollectionName,
+                      p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    lock_child(db, child)
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    row = own_collection(db, child, collection_id)
+    if row.title != data.expected_title and row.title != data.title.strip():
+        raise HTTPException(409, "Der Sammlungsname wurde geändert. Bitte die aktuelle Sammlung neu öffnen.")
+    if not data.title.strip():
+        raise HTTPException(422, "Bitte einen Namen für die Sammlung eingeben.")
+    rate_limit(db, "vocabulary-collection:" + p.user.id, 30, 3600, commit=False)
+    row.title = data.title.strip()
+    result = collection_data(db, row)
+    db.commit()
+    return result
+
+
+@router.delete("/children/{child_id}/vocabulary/collections/{collection_id}")
+def erase_collection(child_id: str, collection_id: str, data: CollectionErase,
+                     p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    lock_child(db, child)
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    row = own_collection(db, child, collection_id)
+    if db.scalar(select(VocabularyImport.id).where(VocabularyImport.collection_id == row.id, VocabularyImport.status != "confirmed")):
+        raise HTTPException(409, "Für diese Sammlung sind noch Wörter zum Prüfen offen. Bitte diese zuerst abschließen.")
+    if collection_data(db, row)["snapshot"] != data.snapshot:
+        raise HTTPException(409, "Die Sammlung wurde inzwischen geändert. Bitte ihre aktuelle Vorschau prüfen.")
+    rate_limit(db, "vocabulary-collection:" + p.user.id, 30, 3600, commit=False)
+    db.delete(row)
+    db.commit()
+    return {"message": "Sammlung entfernt. Wörter, Wiederholungsstände und Antworten bleiben erhalten."}
+
+
+@router.put("/children/{child_id}/vocabulary/{item_id}/collections")
+def choose_collections(child_id: str, item_id: str, data: CollectionChoices,
+                       p=Depends(authenticated), db=Depends(get_db)):
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    lock_child(db, child)
+    child = child_access(db, p, child_id, write=p.user.role == "parent")
+    item = db.get(VocabularyItem, item_id, populate_existing=True)
+    if not item or item.child_id != child.id:
+        raise HTTPException(404, "Wort nicht gefunden.")
+    actual = set(db.scalars(select(VocabularyMembership.collection_id).join(VocabularyCollection, VocabularyMembership.collection_id == VocabularyCollection.id).where(VocabularyMembership.item_id == item.id, VocabularyCollection.child_id == child.id)))
+    selected = set(data.collection_ids)
+    if item.revision != data.revision or (actual != set(data.expected_collection_ids) and actual != selected):
+        raise HTTPException(409, "Wort oder Sammlungszuordnung geändert. Bitte die aktuelle Wortkarte prüfen.")
+    for collection_id in selected:
+        row = own_collection(db, child, collection_id)
+        if row.target_locale != item.target_locale:
+            raise HTTPException(422, "Wähle Sammlungen derselben bestätigten Lernsprache.")
+    rate_limit(db, "vocabulary-collection:" + p.user.id, 30, 3600, commit=False)
+    for collection_id in actual - selected:
+        db.delete(db.get(VocabularyMembership, (collection_id, item.id)))
+    for collection_id in selected - actual:
+        db.add(VocabularyMembership(collection_id=collection_id, item_id=item.id))
+    db.commit()
+    return {"collection_ids": sorted(selected), "message": "Zuordnung gespeichert. Wort und bisherige Übungen bleiben unverändert."}

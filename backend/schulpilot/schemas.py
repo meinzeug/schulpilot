@@ -364,6 +364,7 @@ class ExplanationRequest(Strict):
 
 
 class MessageRequest(Strict):
+    request_key: str | None = Field(default=None, min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
     kind: Literal["help", "interest", "plan_change", "reply"]
     body: str = Field(min_length=1, max_length=1000)
     unit_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")

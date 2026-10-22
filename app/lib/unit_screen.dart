@@ -20,16 +20,21 @@ import 'subject_graphic.dart';
 import 'family_call_screen.dart';
 import 'practice_evidence.dart';
 import 'adaptive_learning_step.dart';
+import 'knowledge_sheet.dart';
+import 'schulbuddy.dart';
 
 class UnitScreen extends StatefulWidget {
   final AppState state;
   final String unitId;
+  final String? initialQuestionId, initialOutcome;
   final DateTime Function()? activityClock;
   const UnitScreen(
     this.state, {
     super.key,
     required this.unitId,
     this.activityClock,
+    this.initialQuestionId,
+    this.initialOutcome,
   });
   @override
   State<UnitScreen> createState() => _UnitScreenState();
@@ -60,6 +65,26 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   bool clockOffline = false;
   bool clockWasRunning = false;
   Json? ownerAccount;
+  String? ownerFamily;
+  Json? resetInput;
+  String? parentQuestionFilter, parentExactQuestion;
+  bool parentSearchAnswers = false;
+  void readParentView() {
+    parentExactQuestion =
+        RegExp(r'^[A-Za-z0-9_-]{1,60}$')
+            .hasMatch(widget.initialQuestionId ?? '')
+        ? widget.initialQuestionId
+        : null;
+    parentQuestionFilter = {
+      'needs_practice': 'incorrect',
+      'uncertain': 'uncertain',
+      'independent': 'independent',
+      'assisted': 'supported',
+      'reflection': 'reflection',
+    }[widget.initialOutcome];
+  }
+
+  final parentQuestionSearch = TextEditingController();
   final text = TextEditingController();
   String? choice;
   Map<String, String> matches = {};
@@ -97,7 +122,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       requestedOwner != null &&
       widget.unitId == id &&
       identical(ownerAccount, requestedOwner) &&
-      identical(state.user, requestedOwner);
+      identical(state.user, requestedOwner) &&
+      state.familyId == ownerFamily;
   final explanationPositions = <(String, String), int>{};
   final privateRoutes = <PopupRoute<dynamic>, ({String id, Json? account})>{};
   void closePrivateRoutes() {
@@ -163,6 +189,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     ownerAccount = state.user;
+    ownerFamily = state.familyId;
+    readParentView();
     lastInteraction = interactionNow;
     visible =
         WidgetsBinding.instance.lifecycleState == null ||
@@ -199,9 +227,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       state.addListener(accountChanged);
       accountChanged();
     }
+    if (oldWidget.initialQuestionId != widget.initialQuestionId ||
+        oldWidget.initialOutcome != widget.initialOutcome) {
+      readParentView();
+    }
     if (oldWidget.unitId != widget.unitId) {
       closePrivateRoutes();
       explanationPositions.clear();
+      resetInput = null;
+      readParentView();
+      parentSearchAnswers = false;
+      parentQuestionSearch.clear();
       coachingPoll?.cancel();
       coachingPoll = null;
       unit = null;
@@ -217,6 +253,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       actionError = null;
       instructionalRequestKey = null;
       ownerAccount = state.user;
+      ownerFamily = state.familyId;
       savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
       draftOffline = draftConflict = false;
       needsTimeBaseline = true;
@@ -251,6 +288,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     coachingPoll?.cancel();
     text.removeListener(draftChanged);
     text.dispose();
+    parentQuestionSearch.dispose();
     roomScroll.dispose();
     super.dispose();
   }
@@ -479,7 +517,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   void accountChanged() {
-    if (!mounted || identical(state.user, ownerAccount)) return;
+    if (!mounted ||
+        (identical(state.user, ownerAccount) &&
+            state.familyId == ownerFamily)) {
+      return;
+    }
+    resetInput = null;
+    parentQuestionSearch.clear();
     closePrivateRoutes();
     explanationPositions.clear();
     resetBankText = resetBankQuestion = null;
@@ -626,6 +670,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     questionId = next?['id'];
     savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
     draftOffline = draftConflict = false;
+    resetInput = null;
     speechAnswer = false;
     languageBank = null;
     usedBank.clear();
@@ -873,7 +918,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (!identical(state.user, ownerAccount)) {
+    if (!identical(state.user, ownerAccount) || state.familyId != ownerFamily) {
       return Scaffold(
         body: SafeArea(
           child: Center(child: MathText('Bitte melde dich erneut an.')),
@@ -906,6 +951,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           children: [
             if (state.isParent && u?['child_id'] is String)
               ParentChildNavigation(
+                state: state,
                 childId: u!['child_id'],
                 selected: 'history',
               ),
@@ -914,7 +960,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
       );
     }
-    if (!identical(state.user, ownerAccount)) {
+    if (!identical(state.user, ownerAccount) || state.familyId != ownerFamily) {
       return Scaffold(
         body: SafeArea(
           child: Center(child: MathText('Bitte melde dich erneut an.')),
@@ -960,6 +1006,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               : null,
           scrollController: roomScroll,
           clock: u == null ? null : learningClock(u),
+          assistant: SchulbuddyButton(
+            unitId: u?['id'],
+            questionId: currentQuestion?['id'],
+          ),
           onLeave: () => unawaited(leaveLearning()),
           onPause: u?['status'] == 'active' && !actionBusy
               ? () => unawaited(perform(() => pauseUnit(u!)))
@@ -1397,8 +1447,82 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         )
       : SizedBox.shrink();
 
+  bool parentQuestionMatches(Json q) {
+    if (parentExactQuestion != null && q['id'] != parentExactQuestion) {
+      return false;
+    }
+    final attempts = q['attempts'] as List? ?? [];
+    final verdict = attempts.lastOrNull?['outcome'];
+    final independent =
+        verdict == 'correct' &&
+        attempts.length == 1 &&
+        attempts.first['assisted'] == false;
+    final matchesOutcome = switch (parentQuestionFilter) {
+      null => true,
+      'unanswered' => attempts.isEmpty,
+      'independent' => independent,
+      'supported' => verdict == 'correct' && !independent,
+      _ => verdict == parentQuestionFilter,
+    };
+    final haystack = parentSearchAnswers
+        ? attempts.map((a) => a['answer'].toString()).join('\n')
+        : q['prompt'].toString();
+    return matchesOutcome &&
+        haystack.toLowerCase().contains(
+          parentQuestionSearch.text.trim().toLowerCase(),
+        );
+  }
+
+  void clearInput(Json snapshot, Json q) {
+    if (!requestIsCurrent(widget.unitId, ownerAccount) ||
+        !routeVisible ||
+        actionBusy ||
+        !identical(unit, snapshot) ||
+        currentQuestion?['id'] != q['id'] ||
+        (text.text.isEmpty && choice == null && matches.isEmpty)) {
+      return;
+    }
+    setState(() {
+      resetInput = {
+        'question_id': q['id'],
+        'text': text.text,
+        'choice': choice,
+        'matches': Map<String, String>.from(matches),
+        'speech': speechAnswer,
+      };
+      text.clear();
+      choice = null;
+      matches = {};
+      speechAnswer = false;
+    });
+    noteInteraction();
+  }
+
+  void undoInput(Json snapshot, Json q) {
+    if (!requestIsCurrent(widget.unitId, ownerAccount) ||
+        !routeVisible ||
+        actionBusy ||
+        !identical(unit, snapshot) ||
+        resetInput?['question_id'] != currentQuestion?['id'] ||
+        currentQuestion?['id'] != q['id']) {
+      return;
+    }
+    final saved = resetInput!;
+    setState(() {
+      text.text = saved['text'];
+      choice = saved['choice'];
+      matches = Map<String, String>.from(saved['matches']);
+      speechAnswer = saved['speech'];
+      resetInput = null;
+    });
+    noteInteraction();
+  }
+
   Widget body(BuildContext context) {
     final u = unit!;
+    final renderedOwner = ownerAccount;
+    final renderedFamily = ownerFamily;
+    final renderedUnit = widget.unitId;
     final questions = u['questions'] as List;
     if (!state.isChild) {
       return Column(
@@ -1437,65 +1561,138 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             askButton(u),
             SizedBox(height: 20),
           ],
-          for (final q in questions)
-            Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Tag(typeLabel(q['type'])),
-                    SizedBox(height: 12),
-                    MathText(
-                      q['prompt'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                      ),
-                    ),
-                    SizedBox(height: 14),
-                    if ((q['attempts'] as List).isEmpty)
-                      Text(
-                        'Nicht begonnen.',
-                        style: TextStyle(color: context.palette.muted),
-                      ),
-                    for (final a in q['attempts'] as List)
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            MathText(
-                              'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
-                            ),
-                            AnswerSupport(Json.from(a)),
-                            AssessmentTrail(
-                              a['assessment_history'] as List? ?? [],
-                            ),
-                          ],
-                        ),
-                      ),
-                    Divider(height: 28),
-                    SubjectPresentation(
-                      q['presentation'] is Map
-                          ? Json.from(q['presentation'])
-                          : null,
-                    ),
-                    MathText('Aufgabenerklärung: ${q['explanation']}'),
-                    SizedBox(height: 12),
-                    MathText(
-                      '${counted(q['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')} genutzt. Verfügbare Hinweise:',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.palette.muted,
-                      ),
-                    ),
-                    for (final h in q['hints'] as List)
-                      MathText('• $h', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
+          OutlinedButton.icon(
+            onPressed: () {
+              if (!requestIsCurrent(renderedUnit, renderedOwner) ||
+                  state.familyId != renderedFamily ||
+                  !identical(unit, u)) {
+                return;
+              }
+              showKnowledgeSheet(context, state, unitId: renderedUnit);
+            },
+            icon: const Icon(Icons.psychology_alt_outlined),
+            label: const Text('Vorwissen & Lernziele ansehen'),
+          ),
+          if (parentExactQuestion != null)
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    questions.any((q) => q['id'] == parentExactQuestion)
+                        ? 'Eine gezielt geöffnete Aufgabe aus dieser Runde.'
+                        : 'Diese Aufgabe ist in der gespeicherten Runde nicht verfügbar.',
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => parentExactQuestion = null),
+                    child: const Text('Ganze Runde ansehen'),
+                  ),
+                ],
               ),
             ),
+          TextField(
+            controller: parentQuestionSearch,
+            maxLength: 100,
+            textInputAction: TextInputAction.search,
+            decoration: const InputDecoration(
+              labelText: 'Aufgabe in dieser Runde suchen',
+            ),
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('In gespeicherten Antworten suchen'),
+            value: parentSearchAnswers,
+            onChanged: (v) => setState(() => parentSearchAnswers = v == true),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in <String?, String>{
+                null: 'Alle Aufgaben',
+                'independent': 'Selbstständig im ersten Versuch',
+                'supported': 'Mit Hilfe oder erneut richtig',
+                'incorrect': 'Weiter üben',
+                'uncertain': 'Bewertung offen',
+                'unanswered': 'Unbeantwortet',
+              }.entries)
+                ChoiceChip(
+                  label: Text(entry.value),
+                  selected: parentQuestionFilter == entry.key,
+                  onSelected: (_) =>
+                      setState(() => parentQuestionFilter = entry.key),
+                ),
+            ],
+          ),
+          Text(
+            '${questions.where((q) => parentQuestionMatches(Json.from(q))).length} von ${questions.length} Aufgaben in dieser Ansicht',
+          ),
+          for (final q in questions)
+            if (parentQuestionMatches(Json.from(q)))
+              Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Tag(typeLabel(q['type'])),
+                      SizedBox(height: 12),
+                      MathText(
+                        q['prompt'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
+                      SizedBox(height: 14),
+                      if ((q['attempts'] as List).isEmpty)
+                        Text(
+                          'Nicht begonnen.',
+                          style: TextStyle(color: context.palette.muted),
+                        ),
+                      for (final a in q['attempts'] as List)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Versuch ${(q['attempts'] as List).indexOf(a) + 1}${a['created'] is num ? ' · ${friendlyDate(a['created'])}' : ''}',
+                              ),
+                              MathText(
+                                'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
+                              ),
+                              AnswerSupport(Json.from(a)),
+                              AssessmentTrail(
+                                a['assessment_history'] as List? ?? [],
+                              ),
+                            ],
+                          ),
+                        ),
+                      Divider(height: 28),
+                      SubjectPresentation(
+                        state: state,
+                        q['presentation'] is Map
+                            ? Json.from(q['presentation'])
+                            : null,
+                      ),
+                      MathText('Aufgabenerklärung: ${q['explanation']}'),
+                      SizedBox(height: 12),
+                      MathText(
+                        '${counted(q['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')} genutzt. Verfügbare Hinweise:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.palette.muted,
+                        ),
+                      ),
+                      for (final h in q['hints'] as List)
+                        MathText('• $h', style: TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ),
         ],
       );
     }
@@ -1718,6 +1915,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               questionPrompt(q),
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
+                state: state,
                 stages: {'given'},
               ),
               if (q['language'] is Map) languagePrompt(q),
@@ -1809,6 +2007,33 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
+              if (!awaitingContinue &&
+                  (choice != null ||
+                      matches.isNotEmpty ||
+                      text.text.isNotEmpty ||
+                      resetInput != null))
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    TextButton.icon(
+                      onPressed:
+                          actionBusy ||
+                              (text.text.isEmpty &&
+                                  choice == null &&
+                                  matches.isEmpty)
+                          ? null
+                          : () => clearInput(u, q),
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: const Text('Eingabe zurücksetzen'),
+                    ),
+                    if (resetInput?['question_id'] == q['id'])
+                      TextButton.icon(
+                        onPressed: actionBusy ? null : () => undoInput(u, q),
+                        icon: const Icon(Icons.undo_rounded),
+                        label: const Text('Eingabe wiederherstellen'),
+                      ),
+                  ],
+                ),
               if (q['type'] == 'short' || q['type'] == 'gap') ...[
                 if (expectsFraction(q))
                   FractionAnswerInput(
@@ -1820,6 +2045,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   TextField(
                     key: ValueKey('answer-${q['id']}'),
                     controller: text,
+                    keyboardType: q['input_kind'] == 'number'
+                        ? const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          )
+                        : TextInputType.multiline,
+                    autocorrect: q['input_kind'] != 'number',
+                    enableSuggestions: q['input_kind'] != 'number',
                     readOnly: actionBusy,
                     maxLength: q['type'] == 'short' ? 500 : 200,
                     minLines: 1,
@@ -2046,7 +2279,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       final attempts = q['attempts'] as List;
       return attempts.length == 1 &&
           attempts.first['outcome'] == 'correct' &&
-          attempts.first['assisted'] != true;
+          attempts.first['assisted'] == false;
     }).length;
     final result = u['vocabulary_result'] as Map? ?? {};
     return Column(
@@ -2358,6 +2591,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 MathText('Kontext: $languageContext'),
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
+                state: state,
                 stages: {'given'},
               ),
               SizedBox(height: 18),
@@ -2568,6 +2802,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ],
               SubjectPresentation(
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
+                state: state,
                 stages: {'solution'},
               ),
               if (explanation?.trim().isNotEmpty == true) ...[
@@ -2649,6 +2884,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           LearningContent(hint!, style: TextStyle(fontSize: 17, height: 1.5)),
         SubjectPresentation(
           q['presentation'] is Map ? Json.from(q['presentation']) : null,
+          state: state,
           stages: {'hint1', 'hint2', 'hint3'},
         ),
         SizedBox(height: 8),
@@ -2748,6 +2984,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     Icons.hourglass_top_rounded,
                   ),
                 ('parents', 'Eltern live dazuholen', Icons.video_call_rounded),
+                (
+                  'knowledge',
+                  'Vorwissen & Lernziele',
+                  Icons.psychology_alt_outlined,
+                ),
                 ('difficulty', 'Die Aufgabe passt nicht', Icons.tune_rounded),
                 if (u['status'] == 'active' && currentQuestion != null)
                   (
@@ -2824,6 +3065,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         );
       case 'parents':
         await requestParentHelp(context, u);
+      case 'knowledge':
+        if (identical(unit, u)) {
+          await showKnowledgeSheet(context, state, unitId: u['id']);
+        }
       case 'difficulty':
         await showTaskFeedback(context, u);
     }
@@ -2999,6 +3244,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     : null,
               ),
               SubjectPresentation(
+                state: state,
                 data['presentation'] is Map
                     ? Json.from(data['presentation'])
                     : null,

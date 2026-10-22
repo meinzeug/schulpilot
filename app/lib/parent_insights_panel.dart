@@ -47,7 +47,10 @@ class ParentInsightsPanel extends StatefulWidget {
 
 class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     with WidgetsBindingObserver {
-  Json? data;
+  Json? data, comparison;
+  String? comparisonId, comparisonError;
+  bool comparing = false;
+  int comparisonGeneration = 0;
   String? error, requestKey, selectedReview, operationLabel, historyNotice;
   bool loading = false, busy = false, foreground = true, routeVisible = true;
   int generation = 0, operation = 0;
@@ -78,7 +81,10 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
       generation++;
       operation++;
       setState(() {
-        data = null;
+        data = comparison = null;
+        comparisonId = comparisonError = null;
+        comparisonGeneration++;
+        comparing = false;
         error = null;
         requestKey = null;
       });
@@ -92,7 +98,10 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
       generation++;
       operation++;
       poll?.cancel();
-      data = null;
+      data = comparison = null;
+      comparisonId = comparisonError = null;
+      comparisonGeneration++;
+      comparing = false;
       requestKey = null;
       selectedReview = null;
       historyNotice = null;
@@ -163,6 +172,19 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
       }
       setState(() {
         data = value;
+        final available = (value['history'] as List? ?? [])
+            .whereType<Map>()
+            .map((row) => row['id'])
+            .toSet();
+        if (comparisonId != null &&
+            (!available.contains(comparisonId) ||
+                comparisonId == value['latest']?['id'])) {
+          comparisonGeneration++;
+          comparisonId = null;
+          comparison = null;
+          comparing = false;
+          comparisonError = null;
+        }
         error = null;
         loading = false;
       });
@@ -193,6 +215,82 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
       }
     }
   }
+
+  Future<void> compare(String? id) async {
+    if (!own || loading || busy || id == data?['latest']?['id']) return;
+    final child = widget.childId, selected = data?['latest']?['id'];
+    final stamp = ++comparisonGeneration;
+    setState(() {
+      comparison = null;
+      comparisonId = id;
+      comparisonError = null;
+      comparing = id != null;
+    });
+    if (id == null) return;
+    try {
+      final value = await widget.state.api.get(
+        Uri(path: route, queryParameters: {'review_id': id}).toString(),
+      );
+      if (!own ||
+          child != widget.childId ||
+          stamp != comparisonGeneration ||
+          data?['latest']?['id'] != selected) {
+        return;
+      }
+      if (value['latest']?['id'] != id ||
+          value['latest']?['observations']?['totals'] is! Map) {
+        throw const FormatException('Review comparison unavailable');
+      }
+      setState(() {
+        comparison = Json.from(value['latest']);
+        comparing = false;
+      });
+    } catch (e) {
+      if (own &&
+          child == widget.childId &&
+          stamp == comparisonGeneration &&
+          data?['latest']?['id'] == selected) {
+        setState(() {
+          comparisonError = e is ApiError ? e.message : 'Der Vergleich konnte gerade nicht geladen werden. Die gewählte Auswertung bleibt erhalten.';
+          comparing = false;
+        });
+      }
+    }
+  }
+
+  Widget evidenceComparison(
+    Map left,
+    Map right, {
+    required String leftLabel,
+    required String rightLabel,
+  }) => Panel(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '$leftLabel ↔ $rightLabel',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const Text(
+          'Gespeicherte Aufgabenbelege zu diesen Ständen. Unterschiede können auch durch geänderte oder gelöschte Quellen entstehen; sie beweisen keinen Lernzuwachs.',
+        ),
+        for (final item in const [
+          ('practiced_tasks', 'Beantwortete Aufgaben'),
+          ('independent_tasks', 'Selbstständig im ersten Versuch'),
+          ('assisted_tasks', 'Mit Hilfe / erneut richtig'),
+          ('needs_practice_tasks', 'Weiter üben'),
+          ('uncertain_tasks', 'Bewertung offen'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              '${item.$2}: ${left[item.$1] ?? 0} ↔ ${right[item.$1] ?? 0}',
+            ),
+          ),
+      ],
+    ),
+  );
 
   Future<void> prepare() async {
     if (!own || busy || loading) return;
@@ -548,6 +646,18 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                     ),
                 ],
               ),
+              if (!widget.compact && latest?['observations']?['totals'] is Map)
+                ExpansionTile(
+                  title: const Text('Belegstand damals und heute'),
+                  children: [
+                    evidenceComparison(
+                      latest!['observations']['totals'],
+                      data!['totals'],
+                      leftLabel: 'Auswertung ${reviewDate(latest['finished'])}',
+                      rightLabel: 'Aktuell gespeichert',
+                    ),
+                  ],
+                ),
               if (!widget.compact &&
                   (data!['history'] as List? ?? []).length > 1) ...[
                 const SizedBox(height: 18),
@@ -574,11 +684,63 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                           if (!own || value == selectedReview) return;
                           setState(() {
                             selectedReview = value;
+                            comparison = null;
+                            comparisonId = comparisonError = null;
+                            comparing = false;
+                            comparisonGeneration++;
                             historyNotice = null;
                             data = null;
                           });
                           load();
                         },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: ValueKey('compare-${latest?['id']}-$comparisonId'),
+                  initialValue: comparisonId,
+                  isExpanded: true,
+                  itemHeight: null,
+                  decoration: const InputDecoration(
+                    labelText: 'Mit anderem gespeicherten Stand vergleichen',
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Kein zusätzlicher Vergleich'),
+                    ),
+                    for (final row in data!['history'] as List)
+                      if (row['id'] != latest?['id'])
+                        DropdownMenuItem(
+                          value: row['id'] as String,
+                          child: Text(reviewDate(row['finished'])),
+                        ),
+                  ],
+                  onChanged: loading || busy || comparing ? null : compare,
+                ),
+                if (comparing)
+                  Semantics(
+                    liveRegion: true,
+                    child: Text('Gespeicherter Vergleich wird geladen …'),
+                  ),
+                if (comparisonError != null) ...[
+                  Notice(comparisonError!, warning: true),
+                  TextButton(
+                    onPressed: loading || busy || comparing
+                        ? null
+                        : () => compare(comparisonId),
+                    child: const Text('Vergleich erneut laden'),
+                  ),
+                ],
+                if (comparison != null &&
+                    latest?['observations']?['totals'] is Map)
+                  evidenceComparison(
+                    latest!['observations']['totals'],
+                    comparison!['observations']['totals'],
+                    leftLabel: reviewDate(latest['finished']),
+                    rightLabel: reviewDate(comparison!['finished']),
+                  ),
+                const Text(
+                  'Dieser Vergleich liest nur gespeicherte Berichte. Er startet keine neue KI-Auswertung.',
                 ),
                 if (historical)
                   TextButton.icon(
@@ -588,6 +750,10 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                             if (!own) return;
                             setState(() {
                               selectedReview = null;
+                              comparison = null;
+                              comparisonId = comparisonError = null;
+                              comparing = false;
+                              comparisonGeneration++;
                               historyNotice = null;
                               data = null;
                             });

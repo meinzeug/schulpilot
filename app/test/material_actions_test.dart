@@ -230,7 +230,7 @@ void main() {
         });
       });
       await tap(tester, 'Aktion öffnen');
-      await tap(tester, 'Bestätigen');
+      await tap(tester, 'Mit KI neu einlesen');
       expect(harness.result, isTrue);
       expect(harness.refreshed, 1);
       expect(
@@ -251,7 +251,7 @@ void main() {
         ),
         isFalse,
       );
-      expect(find.text('Die KI liest dein Foto …'), findsOneWidget);
+      expect(find.text('Deine Seite wartet auf das Einlesen.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -264,11 +264,11 @@ void main() {
         (_) async => reply({'detail': 'Künstlicher Netzausfall'}, status: 503),
       );
       await tap(tester, 'Aktion öffnen');
-      await tap(tester, 'Bestätigen');
+      await tap(tester, 'Mit KI neu einlesen');
       expect(harness.error, isA<ApiError>());
       final first = harness.requests.single.headers['Idempotency-Key'];
       await tap(tester, 'Aktion öffnen');
-      await tap(tester, 'Bestätigen');
+      await tap(tester, 'Mit KI neu einlesen');
       expect(harness.requests, hasLength(2));
       expect(harness.requests.last.headers['Idempotency-Key'], first);
       expect(harness.refreshed, 0);
@@ -491,7 +491,7 @@ void main() {
       final delayed = Completer<http.Response>();
       final harness = await mount(tester, (_) => delayed.future);
       await tap(tester, 'Aktion öffnen');
-      await tap(tester, 'Bestätigen');
+      await tap(tester, 'Mit KI neu einlesen');
       harness.state.user = {
         'id': 'another-account',
         'role': 'child',

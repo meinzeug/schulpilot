@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -495,6 +496,79 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
   AppState get state => widget.state;
   late final owner = state.user;
   bool get own => mounted && state.isAdmin && identical(owner, state.user);
+  Json? snapshot;
+  DateTime? loadedAt;
+  String? fetchError, copyResult;
+  bool loading = false;
+  int request = 0;
+  Future<void> reload() async {
+    if (!own || loading) return;
+    final revision = ++request;
+    setState(() {
+      loading = true;
+      fetchError = null;
+    });
+    try {
+      final data = await state.api.get('/notifications/admin/status');
+      if (!own || revision != request) return;
+      setState(() {
+        snapshot = data;
+        loadedAt = DateTime.now();
+        copyResult = null;
+      });
+    } catch (_) {
+      if (own && revision == request) {
+        setState(
+          () => fetchError = snapshot == null
+              ? 'Der Push-Status konnte nicht geladen werden. Bewusst erneut prüfen.'
+              : 'Die Aktualisierung ist fehlgeschlagen. Der zuvor geladene Stand bleibt sichtbar und kann inzwischen abweichen.',
+        );
+      }
+    } finally {
+      if (own && revision == request) setState(() => loading = false);
+    }
+  }
+
+  String deliveryLabel(String status) => switch (status) {
+    'queued' => 'Wartet auf Verarbeitung',
+    'sending' => 'Versandprüfung läuft',
+    'accepted' => 'Von FCM angenommen',
+    'validated' => 'Nur technisch validiert',
+    'suppressed' => 'Bewusst nicht versendet',
+    'failed' => 'Technischer Fehler',
+    _ => '$status (unbekannter Status)',
+  };
+
+  Future<void> copyDiagnostics() async {
+    if (!own || snapshot == null) return;
+    final data = snapshot!;
+    String entries(dynamic value, Set<String> allowed) => value is Map
+        ? value.entries
+              .where((e) => allowed.contains(e.key) && e.value is int && e.value >= 0)
+              .map((e) => '${e.key}: ${e.value}')
+              .join(', ')
+        : 'nicht gemeldet';
+    try {
+      await Clipboard.setData(
+        ClipboardData(
+          text:
+              'SCHULPILOT Push-Betriebsstand\nLokaler Abruf: ${loadedAt?.toIso8601String() ?? 'unbekannt'}\nBetreiberfreigabe: ${flag(data['production_approved'])}\nTechnisch verfügbar: ${flag(data['production_available'])}\nDienstkonto konfiguriert: ${flag(data['credential_configured'])}\nGerätezahlen: ${entries(data['device_counts'], {'android', 'web'})}\nTechnische Zustände (24 Stunden): ${entries(data['delivery_counts_24h'], {'queued', 'sending', 'accepted', 'validated', 'suppressed', 'failed'})}\nKeine Aussage über sichtbare Zustellung; keine Gerätekennungen, Tokens oder privaten Inhalte enthalten.',
+        ),
+      );
+      if (own) {
+        setState(
+          () => copyResult = 'Neutraler Betriebsstand kopiert. Vor Weitergabe den Stand selbst prüfen.',
+        );
+      }
+    } catch (_) {
+      if (own) {
+        setState(
+          () => copyResult = 'Der Betriebsstand konnte nicht kopiert werden. Die Angaben bleiben hier lesbar.',
+        );
+      }
+    }
+  }
+
   String count(dynamic value) => value is num && value.isFinite && value >= 0
       ? '$value'
       : 'nicht gemeldet';
@@ -507,10 +581,18 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
   void initState() {
     super.initState();
     state.addListener(changed);
+    reload();
   }
 
   void changed() {
-    if (!own && mounted) setState(() {});
+    if (!own && mounted) {
+      setState(() {
+        request++;
+        snapshot = null;
+        loadedAt = null;
+        copyResult = fetchError = null;
+      });
+    }
   }
 
   @override
@@ -536,258 +618,321 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
                 icon: Icons.notifications_outlined,
               ),
               SizedBox(height: 28),
-              LoadView<Json>(
-                load: () => state.api.get('/notifications/admin/status'),
-                builder: (data, refresh) {
-                  final p = context.palette;
-                  String deliveries(String key) {
-                    final values = data['delivery_counts_24h'];
-                    if (values is! Map) return 'nicht gemeldet';
-                    return count(values.containsKey(key) ? values[key] : 0);
-                  }
+              if (loading) const LinearProgressIndicator(),
+              if (loadedAt != null)
+                Text(
+                  'Letzter erfolgreicher Abruf (Gerätezeit): ${DateFormat('dd.MM.yyyy · HH:mm:ss').format(loadedAt!)}',
+                ),
+              if (fetchError != null)
+                Semantics(
+                  liveRegion: true,
+                  child: Notice(fetchError!, warning: true),
+                ),
+              if (snapshot == null)
+                OutlinedButton.icon(
+                  onPressed: loading ? null : reload,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(
+                    loading ? 'Push-Status wird geladen …' : 'Erneut laden',
+                  ),
+                ),
+              if (snapshot != null)
+                Builder(
+                  builder: (context) {
+                    final data = snapshot!;
+                    final p = context.palette;
+                    String deliveries(String key) {
+                      final values = data['delivery_counts_24h'];
+                      if (values is! Map) return 'nicht gemeldet';
+                      return count(values.containsKey(key) ? values[key] : 0);
+                    }
 
-                  final devices = ActionPanel(
-                    actionLabel: 'Geräte- und Versanddetails ansehen',
-                    onPressed: () => showAdminDetails(
-                      context,
-                      state,
-                      title: 'Geladener Geräte- und Versandstand',
-                      notice: 'Aggregierte Betriebszahlen. Weder eine Registrierung noch FCM-Annahme beweist eine sichtbare Nachricht.',
-                      rows: [
-                        (
-                          'Android-Registrierungen',
-                          count(data['device_counts']?['android']),
-                        ),
-                        (
-                          'Web-Registrierungen',
-                          count(data['device_counts']?['web']),
-                        ),
-                        ('FCM-Annahme · 24 Stunden', deliveries('accepted')),
-                        ('Fehler · 24 Stunden', deliveries('failed')),
-                        ('Ausstehend · 24 Stunden', deliveries('queued')),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        AdminSectionHeading(
-                          title: 'Geräte & Versand',
-                          subtitle: 'Technische Annahme ist kein Beleg für eine sichtbare Nachricht.',
-                          icon: Icons.send_outlined,
-                        ),
-                        AdminStatusLine(
-                          label: 'Angemeldete Geräte',
-                          value:
-                              '${count(data['device_counts']?['android'])} Android · ${count(data['device_counts']?['web'])} Web',
-                        ),
-                        Divider(color: p.surfaceBorder, height: 1),
-                        AdminStatusLine(
-                          label: 'Von FCM angenommen · 24 Stunden',
-                          value: '${deliveries('accepted')} Nachrichten',
-                        ),
-                        Divider(color: p.surfaceBorder, height: 1),
-                        AdminStatusLine(
-                          label: 'Fehlgeschlagen · 24 Stunden',
-                          value: '${deliveries('failed')} Nachrichten',
-                          ready:
-                              (data['delivery_counts_24h']?['failed'] as num? ??
-                                      0) >
-                                  0
-                              ? false
-                              : null,
-                        ),
-                        Divider(color: p.surfaceBorder, height: 1),
-                        AdminStatusLine(
-                          label: 'Ausstehend · 24 Stunden',
-                          value: '${deliveries('queued')} Nachrichten',
-                        ),
-                      ],
-                    ),
-                  );
-                  final config = ActionPanel(
-                    actionLabel: 'Push-Konfigurationsnachweise ansehen',
-                    onPressed: () => showAdminDetails(
-                      context,
-                      state,
-                      title: 'Gespeicherte Push-Nachweise',
-                      notice: 'Nur ausdrücklich gespeicherte Betriebsangaben. Öffnen erteilt keine Freigabe und sendet keinen Test.',
-                      rows: [
-                        (
-                          'Projekt',
-                          '${data['project_id'] ?? 'nicht bestätigt'}',
-                        ),
-                        (
-                          'Senderkonto',
-                          '${data['sender_identity'] ?? 'nicht eingerichtet'}',
-                        ),
-                        (
-                          'Dienstkonto konfiguriert',
-                          flag(data['credential_configured']),
-                        ),
-                        (
-                          'Künstliche Tests vorbereitet',
-                          flag(data['test_available']),
-                        ),
-                        (
-                          'App-/API-/Schlüsselprüfung',
-                          '${data['config_verification'] ?? 'nicht gemeldet'}',
-                        ),
-                        (
-                          'Datenschutzentscheidung',
-                          '${data['privacy_evidence'] ?? 'nicht gemeldet'}',
-                        ),
-                      ],
-                      continueLabel: 'Push-Einstellungen öffnen',
-                      onContinue: () {
-                        if (own) {
-                          openRoute(context, '/admin/settings?section=push');
-                        }
-                      },
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        AdminSectionHeading(
-                          title: 'Konfiguration & Nachweise',
-                          subtitle: 'Nur Betriebsdaten. Private Lerninhalte gehören nicht in Push-Nachrichten.',
-                          icon: Icons.fact_check_outlined,
-                        ),
-                        Text(
-                          'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
-                          style: TextStyle(color: p.muted, fontSize: 13),
-                        ),
-                        SizedBox(height: 12),
-                        AdminStatusLine(
-                          label: 'Dienstkonto konfiguriert',
-                          value: flag(data['credential_configured']),
-                          ready: data['credential_configured'] is bool
-                              ? data['credential_configured']
-                              : null,
-                        ),
-                        AdminStatusLine(
-                          label: 'Künstliche Tests vorbereitet',
-                          value: flag(data['test_available']),
-                          ready: data['test_available'] is bool
-                              ? data['test_available']
-                              : null,
-                        ),
-                        AdminStatusLine(
-                          label: 'App-/API-/Schlüsselprüfung',
-                          value: '${data['config_verification'] ?? ''}'.isEmpty
-                              ? 'Ausstehend'
-                              : '${data['config_verification']}',
-                          ready:
-                              '${data['config_verification'] ?? ''}'.isNotEmpty,
-                        ),
-                        AdminStatusLine(
-                          label: 'Datenschutzentscheidung',
-                          value: '${data['privacy_evidence'] ?? ''}'.isEmpty
-                              ? 'Ausstehend'
-                              : '${data['privacy_evidence']}',
-                          ready: '${data['privacy_evidence'] ?? ''}'.isNotEmpty,
-                        ),
-                      ],
-                    ),
-                  );
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      AdminWorkSurface(
-                        color: data['production_available'] == true
-                            ? p.successSurface
-                            : p.warningSurface,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            AdminSectionHeading(
-                              title: data['production_available'] == true
-                                  ? 'Push ist freigegeben'
-                                  : data['production_available'] == false
-                                  ? 'Allgemeiner Push-Versand ist gesperrt'
-                                  : 'Push-Freigabestatus nicht gemeldet',
-                              subtitle: 'Die Betreiberfreigabe ersetzt keine persönliche Geräte-Einwilligung.',
-                              icon: Icons.verified_user_outlined,
-                            ),
-                            Text(
-                              '${data['delivery_notice'] ?? 'FCM-Annahme und sichtbare Zustellung sind unterschiedliche Nachweise.'}',
-                              style: TextStyle(color: p.ink),
-                            ),
-                            SizedBox(height: 18),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: refresh,
-                                  icon: Icon(Icons.refresh_rounded),
-                                  label: Text('Status aktualisieren'),
-                                ),
-                                OutlinedButton.icon(
-                                  onPressed: () => openRoute(
-                                    context,
-                                    '/admin/settings?section=push',
-                                  ),
-                                  icon: Icon(Icons.tune_rounded),
-                                  label: Text('Push-Einstellungen öffnen'),
-                                ),
-                                OutlinedButton.icon(
-                                  onPressed: () => showAdminDetails(
-                                    context,
-                                    state,
-                                    title: 'Gespeicherter Push-Freigabestatus',
-                                    notice: 'Betreiberentscheidung, technische Voraussetzungen und persönliches Geräte-Opt-in sind getrennte Nachweise.',
-                                    rows: [
-                                      (
-                                        'Produktionsbetrieb verfügbar',
-                                        flag(data['production_available']),
-                                      ),
-                                      (
-                                        'Betreiberfreigabe gespeichert',
-                                        flag(data['production_approved']),
-                                      ),
-                                      (
-                                        'Datenschutzentscheidung',
-                                        '${data['privacy_evidence'] ?? 'nicht gemeldet'}',
-                                      ),
-                                      (
-                                        'Technische Konfiguration',
-                                        '${data['config_verification'] ?? 'nicht gemeldet'}',
-                                      ),
-                                    ],
-                                  ),
-                                  icon: const Icon(Icons.fact_check_outlined),
-                                  label: const Text('Freigabenachweise prüfen'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                    final devices = ActionPanel(
+                      actionLabel: 'Geräte- und Versanddetails ansehen',
+                      onPressed: () => showAdminDetails(
+                        context,
+                        state,
+                        title: 'Geladener Geräte- und Versandstand',
+                        notice: 'Aggregierte Betriebszahlen. Weder eine Registrierung noch FCM-Annahme beweist eine sichtbare Nachricht.',
+                        rows: [
+                          (
+                            'Android-Registrierungen',
+                            count(data['device_counts']?['android']),
+                          ),
+                          (
+                            'Web-Registrierungen',
+                            count(data['device_counts']?['web']),
+                          ),
+                          ('FCM-Annahme · 24 Stunden', deliveries('accepted')),
+                          ('Fehler · 24 Stunden', deliveries('failed')),
+                          ('Ausstehend · 24 Stunden', deliveries('queued')),
+                        ],
                       ),
-                      SizedBox(height: 22),
-                      LayoutBuilder(
-                        builder: (context, constraints) =>
-                            constraints.maxWidth >= 880
-                            ? Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AdminSectionHeading(
+                            title: 'Geräte & Versand',
+                            subtitle: 'Technische Annahme ist kein Beleg für eine sichtbare Nachricht.',
+                            icon: Icons.send_outlined,
+                          ),
+                          AdminStatusLine(
+                            label: 'Angemeldete Geräte',
+                            value:
+                                '${count(data['device_counts']?['android'])} Android · ${count(data['device_counts']?['web'])} Web',
+                          ),
+                          Divider(color: p.surfaceBorder, height: 1),
+                          AdminStatusLine(
+                            label: 'Von FCM angenommen · 24 Stunden',
+                            value: '${deliveries('accepted')} Nachrichten',
+                          ),
+                          Divider(color: p.surfaceBorder, height: 1),
+                          AdminStatusLine(
+                            label: 'Fehlgeschlagen · 24 Stunden',
+                            value: '${deliveries('failed')} Nachrichten',
+                            ready:
+                                (data['delivery_counts_24h']?['failed']
+                                            as num? ??
+                                        0) >
+                                    0
+                                ? false
+                                : null,
+                          ),
+                          Divider(color: p.surfaceBorder, height: 1),
+                          AdminStatusLine(
+                            label: 'Ausstehend · 24 Stunden',
+                            value: '${deliveries('queued')} Nachrichten',
+                          ),
+                        ],
+                      ),
+                    );
+                    final config = ActionPanel(
+                      actionLabel: 'Push-Konfigurationsnachweise ansehen',
+                      onPressed: () => showAdminDetails(
+                        context,
+                        state,
+                        title: 'Gespeicherte Push-Nachweise',
+                        notice: 'Nur ausdrücklich gespeicherte Betriebsangaben. Öffnen erteilt keine Freigabe und sendet keinen Test.',
+                        rows: [
+                          (
+                            'Projekt',
+                            '${data['project_id'] ?? 'nicht bestätigt'}',
+                          ),
+                          (
+                            'Senderkonto',
+                            '${data['sender_identity'] ?? 'nicht eingerichtet'}',
+                          ),
+                          (
+                            'Dienstkonto konfiguriert',
+                            flag(data['credential_configured']),
+                          ),
+                          (
+                            'Künstliche Tests vorbereitet',
+                            flag(data['test_available']),
+                          ),
+                          (
+                            'App-/API-/Schlüsselprüfung',
+                            '${data['config_verification'] ?? 'nicht gemeldet'}',
+                          ),
+                          (
+                            'Datenschutzentscheidung',
+                            '${data['privacy_evidence'] ?? 'nicht gemeldet'}',
+                          ),
+                        ],
+                        continueLabel: 'Push-Einstellungen öffnen',
+                        onContinue: () {
+                          if (own) {
+                            openRoute(context, '/admin/settings?section=push');
+                          }
+                        },
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AdminSectionHeading(
+                            title: 'Konfiguration & Nachweise',
+                            subtitle: 'Nur Betriebsdaten. Private Lerninhalte gehören nicht in Push-Nachrichten.',
+                            icon: Icons.fact_check_outlined,
+                          ),
+                          Text(
+                            'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
+                            style: TextStyle(color: p.muted, fontSize: 13),
+                          ),
+                          SizedBox(height: 12),
+                          AdminStatusLine(
+                            label: 'Dienstkonto konfiguriert',
+                            value: flag(data['credential_configured']),
+                            ready: data['credential_configured'] is bool
+                                ? data['credential_configured']
+                                : null,
+                          ),
+                          AdminStatusLine(
+                            label: 'Künstliche Tests vorbereitet',
+                            value: flag(data['test_available']),
+                            ready: data['test_available'] is bool
+                                ? data['test_available']
+                                : null,
+                          ),
+                          AdminStatusLine(
+                            label: 'App-/API-/Schlüsselprüfung',
+                            value:
+                                '${data['config_verification'] ?? ''}'.isEmpty
+                                ? 'Ausstehend'
+                                : '${data['config_verification']}',
+                            ready: '${data['config_verification'] ?? ''}'
+                                .isNotEmpty,
+                          ),
+                          AdminStatusLine(
+                            label: 'Datenschutzentscheidung',
+                            value: '${data['privacy_evidence'] ?? ''}'.isEmpty
+                                ? 'Ausstehend'
+                                : '${data['privacy_evidence']}',
+                            ready:
+                                '${data['privacy_evidence'] ?? ''}'.isNotEmpty,
+                          ),
+                        ],
+                      ),
+                    );
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AdminWorkSurface(
+                          color: data['production_available'] == true
+                              ? p.successSurface
+                              : p.warningSurface,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              AdminSectionHeading(
+                                title: data['production_available'] == true
+                                    ? 'Push ist freigegeben'
+                                    : data['production_available'] == false
+                                    ? 'Allgemeiner Push-Versand ist gesperrt'
+                                    : 'Push-Freigabestatus nicht gemeldet',
+                                subtitle: 'Die Betreiberfreigabe ersetzt keine persönliche Geräte-Einwilligung.',
+                                icon: Icons.verified_user_outlined,
+                              ),
+                              Text(
+                                '${data['delivery_notice'] ?? 'FCM-Annahme und sichtbare Zustellung sind unterschiedliche Nachweise.'}',
+                                style: TextStyle(color: p.ink),
+                              ),
+                              SizedBox(height: 18),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
                                 children: [
-                                  Expanded(child: devices),
-                                  SizedBox(width: 22),
-                                  Expanded(child: config),
-                                ],
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  devices,
-                                  SizedBox(height: 20),
-                                  config,
+                                  OutlinedButton.icon(
+                                    onPressed: loading ? null : reload,
+                                    icon: Icon(Icons.refresh_rounded),
+                                    label: Text('Status aktualisieren'),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: copyDiagnostics,
+                                    icon: const Icon(Icons.copy),
+                                    label: const Text(
+                                      'Neutralen Betriebsstand kopieren',
+                                    ),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () => openRoute(
+                                      context,
+                                      '/admin/settings?section=push',
+                                    ),
+                                    icon: Icon(Icons.tune_rounded),
+                                    label: Text('Push-Einstellungen öffnen'),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () => showAdminDetails(
+                                      context,
+                                      state,
+                                      title:
+                                          'Gespeicherter Push-Freigabestatus',
+                                      notice: 'Betreiberentscheidung, technische Voraussetzungen und persönliches Geräte-Opt-in sind getrennte Nachweise.',
+                                      rows: [
+                                        (
+                                          'Produktionsbetrieb verfügbar',
+                                          flag(data['production_available']),
+                                        ),
+                                        (
+                                          'Betreiberfreigabe gespeichert',
+                                          flag(data['production_approved']),
+                                        ),
+                                        (
+                                          'Datenschutzentscheidung',
+                                          '${data['privacy_evidence'] ?? 'nicht gemeldet'}',
+                                        ),
+                                        (
+                                          'Technische Konfiguration',
+                                          '${data['config_verification'] ?? 'nicht gemeldet'}',
+                                        ),
+                                      ],
+                                    ),
+                                    icon: const Icon(Icons.fact_check_outlined),
+                                    label: const Text(
+                                      'Freigabenachweise prüfen',
+                                    ),
+                                  ),
                                 ],
                               ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 22),
+                        if (copyResult != null)
+                          Semantics(
+                            liveRegion: true,
+                            child: Notice(copyResult!),
+                          ),
+                        ExpansionTile(
+                          title: const Text(
+                            'Alle technischen Versandzustände · 24 Stunden',
+                          ),
+                          children: [
+                            const Text(
+                              'Validierung sendet keine sichtbare Nachricht. Unterdrückte Vorgänge wurden bewusst nicht versendet; sie sind keine FCM-Fehler.',
+                            ),
+                            if (data['delivery_counts_24h'] is! Map)
+                              const Text('Verteilung nicht gemeldet.'),
+                            if (data['delivery_counts_24h'] is Map)
+                              for (final entry
+                                  in (data['delivery_counts_24h'] as Map)
+                                      .entries)
+                                AdminStatusLine(
+                                  label: deliveryLabel('${entry.key}'),
+                                  value: count(entry.value),
+                                ),
+                            if (data['delivery_counts_24h'] is Map &&
+                                (data['delivery_counts_24h'] as Map).isEmpty)
+                              const Text(
+                                'Keine technischen Versandvorgänge in diesem 24-Stunden-Ausschnitt gemeldet.',
+                              ),
+                          ],
+                        ),
+                        LayoutBuilder(
+                          builder: (context, constraints) =>
+                              constraints.maxWidth >= 880
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: devices),
+                                    SizedBox(width: 22),
+                                    Expanded(child: config),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    devices,
+                                    SizedBox(height: 20),
+                                    config,
+                                  ],
+                                ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
             ],
           ),
         );

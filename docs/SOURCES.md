@@ -1,3 +1,41 @@
+Arbeitsstand22.10.2026 · Releasekandidat1.22.0+90: dritte zusätzliche Bedienrunde
+mit300 unabhängig gezählten Maßnahmen gegenüber den vorherigen638.
+Tatsächlich recherchierte Primärquellen: [W3C, klare Seitenstruktur](https://www.w3.org/WAI/WCAG2/supplemental/patterns/o2p03-page-structure/),
+[GOV.UK, Fehlersammlung](https://design-system.service.gov.uk/components/error-summary/),
+[W3C, redundante Eingaben](https://www.w3.org/WAI/WCAG22/Understanding/redundant-entry.html),
+[W3C, Fehlervermeidung](https://www.w3.org/WAI/WCAG22/Understanding/error-prevention-legal-financial-data.html),
+[GOV.UK, Antworten vor Bestätigung prüfen](https://design-system.service.gov.uk/patterns/check-answers/),
+[Flutter PopScope](https://api.flutter.dev/flutter/widgets/PopScope-class.html) und
+[RFC5545](https://www.rfc-editor.org/rfc/rfc5545) für den ausdrücklich gespeicherten Kalenderexport.
+Code-/Testreferenzen und konservative Entdoppelung stehen in
+[UX_300_ROUND3_INDEX_2026_10_22.json](UX_300_ROUND3_INDEX_2026_10_22.json)
+und den vier dort benannten Bereichsmatrizen. Dies ist keine vollständige
+WCAG-/Screenreader- oder pädagogische Wirksamkeitsabnahme.
+
+Schulbuddy: am22.10.2026 auf ausdrücklichen Auftrag die angemeldete
+[Sofatutor-Lernseite](https://www.sofatutor.com/mathematik/videos/brueche-erweitern-und-kuerzen-3)
+im Browser angesehen und den kontextbezogenen Vorwissenseinstieg mit einer
+öffentlichen Fachfrage ausprobiert. Daraus stammen die Bedienbeobachtungen
+Panel, drei Einstiegsfragen und eine Rückfrage; bestehende eigene Roboterassets
+bleiben die Schulpilotdarstellung. Tatsächlicher eigener isolierter CLI0.162.1-
+`model/list` meldet `gpt-6-luna/high` sowie `gpt-6.1-sol/max`. Metadaten sind noch
+kein Inferenz- oder Reparaturnachweis. Konkrete Freigabe-/Testgrenzen:
+[SCHULBUDDY.md](SCHULBUDDY.md).
+
+Für den getrennten Reparaturauftrag mit Skill OpenAI Docs tatsächlich gesucht
+und vollständig abgerufen:
+[offizielle OpenAI-Dokumentation zu Codex im nicht interaktiven Betrieb](https://learn.chatgpt.com/docs/non-interactive-mode).
+Grundlage für getrennten Credentialbroker, begrenzten Codearbeitsbereich und
+prüfbares Patchartefakt. Tatsächlich installierte CLI-Hilfe entscheidet über
+verwendbare Flags; keine ungeprüfte Übernahme neuerer Dokumentationsoptionen.
+Der Lernworker behält seine bisherigen Rechte und Grenzen.
+Für den belegten fehlenden Bubblewrap-Pfad der installierten CLI zusätzlich
+die [offizielle Anleitung zur äußeren Containerisolation](https://learn.chatgpt.com/docs/agent-approvals-security#os-level-sandbox)
+geprüft. Der Reparaturcontainer verwendet einen festen CLI-Modus innerhalb
+seiner schreibgeschützten, netzlosen äußeren Grenze; harte Runtimeguards und
+die tatsächlich ausgeführte lokale Shellprobe prüfen diese Grenze vor einem
+Modellaufruf. Kein automatischer Sandboxwechsel oder Modellretry.
+
 Weitere Bedienprüfung 22.10.2026, Version 1.19.7+86: bestehende Flutter-
 Sammlungen, Eltern-Lerndetails und Kontodialoge. Recherche zu
 [redundanter Eingabe und verständlicher Authentifizierung](https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html),

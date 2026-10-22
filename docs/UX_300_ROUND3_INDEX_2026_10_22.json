@@ -1,0 +1,1601 @@
+{
+  "baseline": "a431fb447af584f017cbd2bd019514bb584f2132",
+  "previous_count_excluded": 638,
+  "required_additional_count": 300,
+  "targeted_additional_count": 300,
+  "counts": {
+    "shared": 98,
+    "child": 73,
+    "access": 70,
+    "parent": 59
+  },
+  "integration_status": "targeted_checks_passed_full_release_pending",
+  "items": [
+    {
+      "id": "RQ001",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ002",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ003",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ004",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ005",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ006",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ007",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ008",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ009",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ010",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ011",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ012",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ013",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ014",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ015",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ016",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ017",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ018",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ020",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ021",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ022",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ023",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ024",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ026",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ027",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ028",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ029",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ030",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ031",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ032",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ033",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ034",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ035",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ036",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ037",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ038",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ040",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ041",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ042",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ045",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ046",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ047",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ048",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ049",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ050",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ052",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ053",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ054",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ055",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ056",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ057",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ059",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ060",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ061",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ062",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ063",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ064",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ065",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ066",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ067",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ068",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ069",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ070",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ071",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ072",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ073",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ074",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ077",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ078",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ079",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ080",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ082",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ083",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ084",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ085",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ086",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ087",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ088",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ089",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ090",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ091",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ092",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ093",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ094",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ095",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ097",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ098",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ099",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ100",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ101",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ103",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ104",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ105",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ106",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ107",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ108",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ109",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "RQ110",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK001",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK002",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK003",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK004",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK005",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK006",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK007",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK008",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK009",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK010",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK011",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK012",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK013",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK014",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK015",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK016",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK017",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK018",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK019",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK020",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK021",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK022",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK023",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK024",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK025",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK026",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK027",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK028",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK029",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK030",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK031",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK032",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK033",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK034",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK035",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK036",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK037",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK038",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK039",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK040",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK041",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK042",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK043",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK044",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK045",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK046",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK047",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK048",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK049",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK050",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK051",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK052",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK053",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK054",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK055",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK056",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK057",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK058",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK059",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK061",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK062",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK063",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK064",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK065",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK066",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK067",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK068",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK069",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK070",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK071",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK072",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK073",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "CK074",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK001",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK002",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK003",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK004",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK005",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK006",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK007",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK008",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK009",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK010",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK011",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK012",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK013",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK014",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK015",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK016",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK017",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK018",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK019",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK020",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK021",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK022",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK023",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK024",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK025",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK026",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK027",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK028",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK029",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK030",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK031",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK032",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK033",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK034",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK035",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK036",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK037",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK038",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK039",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK040",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK041",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK042",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK043",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK044",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK045",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK046",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK047",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK048",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK049",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK050",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK051",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK052",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK053",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK054",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK055",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK056",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK057",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK058",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK059",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK060",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK061",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK062",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK063",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK064",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK065",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK066",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK067",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK068",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK069",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "AK070",
+      "area": "access",
+      "matrix": "UX_300_ACCESS_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK001",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK002",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK003",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK004",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK005",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK006",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK007",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK008",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK009",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK010",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK012",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK013",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK014",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK015",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK016",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK017",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK018",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK019",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK021",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK022",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK023",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK024",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK025",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK026",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK027",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK028",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK029",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK030",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK031",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK032",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK033",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK034",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK035",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK036",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK037",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK038",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK039",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK040",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK041",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK042",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK043",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK044",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK045",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK046",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK047",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK048",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK049",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK050",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK051",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK052",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK053",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK054",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK055",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK056",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK057",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK058",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK059",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK060",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    },
+    {
+      "id": "PK061",
+      "area": "parent",
+      "matrix": "UX_300_PARENT_ROUND3_2026_10_22.json"
+    }
+  ],
+  "excluded": [
+    {
+      "id": "RQ019",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ010–013: Altserverabsicherung derselben neuen Wortfilter."
+    },
+    {
+      "id": "RQ025",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "KK020: gemeinsamer neutraler Exception-/ApiError-Fehlertextpfad, nicht je Seite erneut zählen."
+    },
+    {
+      "id": "RQ039",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ032–036: Altserverabsicherung derselben neuen Lernstandfilter."
+    },
+    {
+      "id": "RQ043",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "KK012: gemeinsamer Konto-/Familienkontextschutz, nicht erneut je Komponente zählen."
+    },
+    {
+      "id": "RQ044",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ029: ein gemeinsamer numerischer Eingabepfad, nicht Backend und Client getrennt zählen."
+    },
+    {
+      "id": "RQ051",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "CK049: gemeinsame Nachrichtenspeicherung genau einmal gezählt."
+    },
+    {
+      "id": "RQ058",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ054: Wortzahl ist Bestandteil derselben Löschumfangsvorschau."
+    },
+    {
+      "id": "RQ075",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ074: Fehlerzweig desselben konkreten Aufgabenlinks."
+    },
+    {
+      "id": "RQ076",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ074: Rechte-/Rollenbegrenzung desselben Aufgabenlinks."
+    },
+    {
+      "id": "RQ081",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "KK012: gemeinsamer Konto-/Familienkontextschutz, nicht erneut je Komponente zählen."
+    },
+    {
+      "id": "RQ096",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "RQ105: tatsächlicher Fehlerzustand im selben Archivstatusfilter."
+    },
+    {
+      "id": "RQ102",
+      "area": "shared",
+      "matrix": "UX_300_SHARED_ROUND3_2026_10_22.json",
+      "reason": "Nicht zusätzlich gezählt: Materialkorrektur sichert die neuen interaktiven Gruppen ab."
+    },
+    {
+      "id": "CK060",
+      "area": "child",
+      "matrix": "UX_300_CHILD_ROUND3_2026_10_22.json",
+      "reason": "coupled"
+    }
+  ],
+  "additional_features": [
+    "Schulbuddy mit tatsächlicher Luna/high-Bindung",
+    "Gespeicherte Vorwissensbelege im Schulbuddy und lesende Lernzielansicht",
+    "Fehleranalyse Lernentscheidung für benannten Kinderzugang",
+    "Neutrale Betreiberfehlerliste und getrennter Codex-Reparaturauftrag: in Arbeit, nicht mitgezählt"
+  ]
+}

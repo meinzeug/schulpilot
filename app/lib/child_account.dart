@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'api.dart';
 import 'app_version.dart';
 import 'child_section_ui.dart';
+import 'child_photo_preview.dart';
 import 'notification_panel.dart';
 import 'ui.dart';
 
@@ -32,7 +35,9 @@ class _ChildAccountState extends State<ChildAccount> {
     final saved = identical(memory?['account'], ownerAccount)
         ? (memory?['section'])
         : null;
-    if (['devices', 'notifications', 'about'].contains(saved)) section = saved;
+    if (['devices', 'notifications', 'photos', 'about'].contains(saved)) {
+      section = saved;
+    }
   }
 
   Future<void> deviceDetails(Json session) async {
@@ -204,6 +209,130 @@ class _ChildAccountState extends State<ChildAccount> {
     }
   }
 
+  Future<void> revokeOthers(List<Json> sessions) async {
+    if (!mounted ||
+        ownerAccount == null ||
+        !identical(state.user, ownerAccount) ||
+        pendingSession != null ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    final targets = sessions
+        .where((session) => session['current'] != true)
+        .toList();
+    if (targets.isEmpty) return;
+    final ids = targets
+        .map((session) => session['id'])
+        .whereType<String>()
+        .toSet();
+    late final DialogRoute<bool> route;
+    route = DialogRoute<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text('Andere Geräte abmelden?'),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Du bleibst hier angemeldet. Nur diese ${ids.length} weiteren Geräte werden abgemeldet:',
+            ),
+            SizedBox(height: 12),
+            for (final session in targets)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('• ${session['device'] ?? 'Weiteres Gerät'}'),
+              ),
+            SizedBox(height: 12),
+            Text(
+              'Zum erneuten Anmelden brauchen sie wieder deine Zugangsdaten.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  identical(state.user, ownerAccount) &&
+                  route.isCurrent) {
+                Navigator.pop(ctx, false);
+              }
+            },
+            child: Text('Behalten'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  identical(state.user, ownerAccount) &&
+                  route.isCurrent) {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: Text('Andere Geräte abmelden'),
+          ),
+        ],
+      ),
+    );
+    void changed() {
+      if (!identical(state.user, ownerAccount) && route.isActive) {
+        route.navigator?.removeRoute(route);
+      }
+    }
+
+    state.addListener(changed);
+    bool? accepted;
+    try {
+      accepted = await Navigator.of(context).push(route);
+    } finally {
+      state.removeListener(changed);
+    }
+    if (accepted != true || !mounted || !identical(state.user, ownerAccount)) {
+      return;
+    }
+    setState(() {
+      pendingSession = 'other-devices';
+      deletingSession = true;
+    });
+    var removed = 0;
+    try {
+      final fresh = await state.api.list('/auth/sessions');
+      if (!mounted || !identical(state.user, ownerAccount)) return;
+      final stillOwn = fresh
+          .where((s) => s['current'] != true && ids.contains(s['id']))
+          .map((s) => s['id'].toString())
+          .toList();
+      for (final id in stillOwn) {
+        if (!mounted || !identical(state.user, ownerAccount)) return;
+        await state.api.delete('/auth/sessions/$id');
+        if (!mounted || !identical(state.user, ownerAccount)) return;
+        removed++;
+      }
+      if (mounted && identical(state.user, ownerAccount)) {
+        toast(
+          context,
+          '$removed weitere ${removed == 1 ? 'Gerät ist' : 'Geräte sind'} abgemeldet. Hier bleibst du angemeldet.',
+        );
+      }
+    } catch (error) {
+      if (mounted && identical(state.user, ownerAccount)) {
+        showError(
+          context,
+          ApiError(
+            '$removed weitere Geräte wurden abgemeldet. Die übrigen bleiben in deiner Liste; du kannst sie einzeln prüfen.',
+          ),
+        );
+      }
+    } finally {
+      if (mounted && identical(state.user, ownerAccount)) {
+        setState(() {
+          pendingSession = null;
+          deletingSession = false;
+          version++;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state,
@@ -248,6 +377,11 @@ class _ChildAccountState extends State<ChildAccount> {
                       id: 'notifications',
                       label: 'Mitteilungen',
                       icon: Icons.notifications_none_rounded,
+                    ),
+                    (
+                      id: 'photos',
+                      label: 'Lokale Fotos',
+                      icon: Icons.photo_library_outlined,
                     ),
                     (
                       id: 'about',
@@ -304,6 +438,23 @@ class _ChildAccountState extends State<ChildAccount> {
                               label: Text('Geräte aktualisieren'),
                             ),
                           ),
+                          if (sessions
+                              .where((session) => session['current'] != true)
+                              .isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: OutlinedButton.icon(
+                                onPressed: pendingSession == null
+                                    ? () => revokeOthers(sessions)
+                                    : null,
+                                icon: Icon(Icons.devices_other_rounded),
+                                label: Text(
+                                  pendingSession == 'other-devices'
+                                      ? 'Andere Geräte werden abgemeldet …'
+                                      : 'Andere Geräte gemeinsam abmelden',
+                                ),
+                              ),
+                            ),
                           SizedBox(height: 12),
                           if (sessions.isEmpty)
                             Panel(
@@ -460,6 +611,132 @@ class _ChildAccountState extends State<ChildAccount> {
                         ],
                       );
                     },
+                  ),
+                ],
+                if (section == 'photos') ...[
+                  heading(
+                    'Noch nicht gesendete Fotos',
+                    subtitle: 'Nur auf diesem Gerät, höchstens 24 Stunden. Öffnen sendet kein Foto.',
+                  ),
+                  LoadView<List<Json>>(
+                    key: ValueKey(('pending-local', ObjectKey(ownerAccount))),
+                    load: () async {
+                      if (!identical(state.user, ownerAccount) ||
+                          ownerAccount?['id'] is! String) {
+                        return [];
+                      }
+                      final photos = await state.pendingUploads.read(
+                        ownerAccount!['id'],
+                      );
+                      if (!identical(state.user, ownerAccount)) return [];
+                      return photos
+                          .where(
+                            (photo) =>
+                                photo['child'] == ownerAccount!['child_id'],
+                          )
+                          .toList();
+                    },
+                    builder: (photos, reload) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (photos.isEmpty)
+                          Notice(
+                            'Hier warten keine Fotos auf das Senden. Deine gespeicherten Heftseiten findest du unter Hefte.',
+                          ),
+                        Text(
+                          '${photos.length} von höchstens 8 vorgemerkten Fotos auf diesem Gerät',
+                        ),
+                        for (final photo in photos)
+                          Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Panel(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    'Vorgemerktes Foto ${photos.indexOf(photo) + 1}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (photo['created'] is num)
+                                    Text(
+                                      'Vorgemerkt am ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((photo['created'] as num).toInt()).toLocal())}',
+                                    ),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: () async {
+                                          if (!identical(
+                                                state.user,
+                                                ownerAccount,
+                                              ) ||
+                                              ModalRoute.of(context)
+                                                      ?.isCurrent ==
+                                                  false) {
+                                            return;
+                                          }
+                                          try {
+                                            await showChildPhotoPreview(
+                                              context,
+                                              state,
+                                              photos: [
+                                                base64Decode(photo['image']),
+                                              ],
+                                              title: 'Dein lokales Heftfoto',
+                                            );
+                                          } catch (_) {
+                                            if (context.mounted &&
+                                                identical(
+                                                  state.user,
+                                                  ownerAccount,
+                                                )) {
+                                              toast(
+                                                context,
+                                                'Dieses lokale Foto konnte nicht geöffnet werden.',
+                                              );
+                                            }
+                                          }
+                                        },
+                                        icon: Icon(Icons.zoom_in_rounded),
+                                        label: Text('Foto ansehen'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          if (identical(
+                                                state.user,
+                                                ownerAccount,
+                                              ) &&
+                                              ModalRoute.of(context)
+                                                      ?.isCurrent !=
+                                                  false) {
+                                            openRoute(
+                                              context,
+                                              '/after-school/${ownerAccount!['child_id']}?day=${Uri.encodeQueryComponent(photo['day'])}',
+                                            );
+                                          }
+                                        },
+                                        icon: Icon(Icons.arrow_forward_rounded),
+                                        label: Text('Zum zugehörigen Tag'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () {
+                            if (identical(state.user, ownerAccount)) reload();
+                          },
+                          icon: Icon(Icons.refresh_rounded),
+                          label: Text('Lokale Fotos aktualisieren'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
                 if (section == 'about') ...[

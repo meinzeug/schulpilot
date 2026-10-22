@@ -27,6 +27,7 @@ class LearningExplanation extends StatefulWidget {
 class _LearningExplanationState extends State<LearningExplanation> {
   late int step = widget.initialStep;
   final stepTop = GlobalKey();
+  bool showAll = false;
 
   void revealBeginning() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,7 +47,12 @@ class _LearningExplanationState extends State<LearningExplanation> {
   @override
   void didUpdateWidget(LearningExplanation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text || oldWidget.prompt != widget.prompt) {
+    if (oldWidget.text != widget.text ||
+        oldWidget.prompt != widget.prompt ||
+        oldWidget.initialStep != widget.initialStep) {
+      if (oldWidget.text != widget.text || oldWidget.prompt != widget.prompt) {
+        showAll = false;
+      }
       step = widget.initialStep;
       revealBeginning();
     }
@@ -99,17 +105,62 @@ class _LearningExplanationState extends State<LearningExplanation> {
           ),
           SizedBox(height: 10),
         ],
-        LearningContent(chunks[current]),
+        if (chunks.length > 1)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: () => setState(() => showAll = !showAll),
+                icon: Icon(
+                  showAll
+                      ? Icons.view_carousel_outlined
+                      : Icons.article_outlined,
+                ),
+                label: Text(
+                  showAll
+                      ? 'Wieder Schritt für Schritt'
+                      : 'Ganze Erklärung ansehen',
+                ),
+              ),
+              if (!showAll)
+                SizedBox(
+                  width: 220,
+                  child: DropdownButtonFormField<int>(
+                    key: ValueKey('step-$current'),
+                    initialValue: current,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Erklärungsschritt wählen',
+                    ),
+                    items: [
+                      for (var i = 0; i < chunks.length; i++)
+                        DropdownMenuItem(
+                          value: i,
+                          child: Text('Schritt ${i + 1}'),
+                        ),
+                    ],
+                    onChanged: (v) => changeStep(v!),
+                  ),
+                ),
+            ],
+          ),
+        LearningContent(showAll ? widget.text : chunks[current]),
         SizedBox(height: 12),
         Wrap(
           spacing: 8,
           children: [
-            ReadAloudButton(text: MathText.spoken(chunks[current])),
-            ReadAloudButton(text: MathText.spoken(chunks[current]), slow: true),
+            ReadAloudButton(
+              text: MathText.spoken(showAll ? widget.text : chunks[current]),
+            ),
+            ReadAloudButton(
+              text: MathText.spoken(showAll ? widget.text : chunks[current]),
+              slow: true,
+            ),
           ],
         ),
         FractionSumDiagram(prompt: widget.prompt ?? chunks[current]),
-        if (chunks.length > 1)
+        if (chunks.length > 1 && !showAll)
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             spacing: 8,

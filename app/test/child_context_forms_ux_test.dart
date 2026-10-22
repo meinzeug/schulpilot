@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show SemanticsAction;
 
 import 'package:image/image.dart' as image;
 
@@ -67,48 +68,68 @@ Future<void> tap(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
-  testWidgets(
-    'K046 K048 history is single-flight and merges overlapping pages',
-    (tester) async {
-      final next = Completer<http.Response>();
-      var gets = 0;
-      Json day(String id) => {
-        'id': id,
-        'date': '2026-10-20',
-        'subjects': ['Mathematik'],
-        'page_count': 1,
-        'completed_units': 0,
-        'unit_count': 1,
-      };
-      final state = account(
-        MockClient((r) async {
-          gets++;
-          return r.url.hasQuery
-              ? next.future
-              : reply({
-                  'days': [day('one')],
-                  'next_before': 'one',
-                });
-        }),
-      );
-      await tester.pumpWidget(home(SchoolDayHistory(state, childId: 'child')));
-      await tester.pumpAndSettle();
-      final button = tester.widget<ActionButton>(find.byType(ActionButton));
-      button.onPressed();
-      button.onPressed();
-      await flush(tester);
-      expect(gets, 2);
-      next.complete(
-        reply({
-          'days': [day('one'), day('two')],
-          'next_before': null,
-        }),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(ListTile), findsNWidgets(2));
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('K046 K048 history is single-flight and merges overlapping pages', (
+    tester,
+  ) async {
+    final next = Completer<http.Response>();
+    var gets = 0;
+    Json day(String id) => {
+      'id': id,
+      'date': id == 'one' ? '2026-10-20' : '2026-10-19',
+      'subjects': ['Mathematik'],
+      'page_count': 1,
+      'completed_units': 0,
+      'unit_count': 1,
+    };
+    final state = account(
+      MockClient((r) async {
+        gets++;
+        return r.url.hasQuery
+            ? next.future
+            : reply({
+                'days': [day('one')],
+                'next_before': 'one',
+              });
+      }),
+    );
+    await tester.pumpWidget(home(SchoolDayHistory(state, childId: 'child')));
+    await tester.pumpAndSettle();
+    final button = tester.widget<ActionButton>(find.byType(ActionButton));
+    button.onPressed();
+    button.onPressed();
+    await flush(tester);
+    expect(gets, 2);
+    next.complete(
+      reply({
+        'days': [day('one'), day('two')],
+        'next_before': null,
+      }),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ActionPanel), findsNWidgets(2));
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pump();
+      for (var index = 0; index < 2; index++) {
+        final card = find.byType(ActionPanel).at(index);
+        await tester.ensureVisible(card);
+        await tester.pumpAndSettle();
+        final data = tester.getSemantics(card).getSemanticsData();
+        expect(data.flagsCollection.isButton, isTrue);
+        expect(data.hasAction(SemanticsAction.tap), isTrue);
+        expect(
+          data.label,
+          contains(
+            'Tagespaket vom ${index == 0 ? '20.10.2026' : '19.10.2026'} öffnen',
+          ),
+        );
+      }
+    } finally {
+      semantics.dispose();
+    }
+    expect(gets, 2);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'K032 K047 history rejects old child results and same-ID re-login',
     (tester) async {

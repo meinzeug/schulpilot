@@ -9,6 +9,7 @@ import 'api.dart';
 import 'app_palette.dart';
 export 'app_palette.dart';
 import 'download_panel.dart';
+import 'schulbuddy.dart';
 
 // Shared light-surface palette. Cyan is an accent on navy, not a text color
 // on white. Keep secondary text opaque so nested surfaces preserve contrast.
@@ -682,18 +683,18 @@ class SurfaceInset extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
   });
   @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: context.palette.surface(panelColor(tone)),
-      border: Border.all(
+  Widget build(BuildContext context) => Material(
+    color: context.palette.surface(panelColor(tone)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(
         color: tone == PanelTone.subtle || tone == PanelTone.neutral
             ? context.palette.surfaceBorder
             : context.palette.resolve(panelAccent(tone)).withValues(alpha: .65),
       ),
-      borderRadius: BorderRadius.circular(14),
     ),
-    child: child,
+    clipBehavior: Clip.antiAlias,
+    child: Padding(padding: padding, child: child),
   );
 }
 
@@ -893,10 +894,22 @@ class _ActionButtonState extends State<ActionButton> {
 class _ButtonProgress extends StatelessWidget {
   const _ButtonProgress();
   @override
-  Widget build(BuildContext context) => CircularProgressIndicator(
-    strokeWidth: 2,
-    color: DefaultTextStyle.of(context).style.color,
+  Widget build(BuildContext context) => TickerMode(
+    enabled:
+        ModalRoute.of(context)?.isCurrent != false &&
+        !MediaQuery.disableAnimationsOf(context),
+    child: CircularProgressIndicator(
+      value: MediaQuery.disableAnimationsOf(context) ? .65 : null,
+      strokeWidth: 2,
+      color: DefaultTextStyle.of(context).style.color,
+    ),
   );
+}
+
+void popCurrentRoute<T>(BuildContext context, [T? result]) {
+  if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
+    Navigator.pop(context, result);
+  }
 }
 
 void showError(BuildContext context, Object error) =>
@@ -1251,6 +1264,29 @@ class WorkspaceShell extends StatelessWidget {
     final owner = state.user;
     final family = state.familyId;
 
+    Future<void> selectDestination(int i) async {
+      if (owner == null ||
+          !identical(state.user, owner) ||
+          state.familyId != family ||
+          ModalRoute.of(context)?.isCurrent == false) {
+        return;
+      }
+      FocusManager.instance.primaryFocus?.unfocus();
+      if (compactChild && i == 3) {
+        final route = await _moreMenu(context, entries, path);
+        if (route != null &&
+            context.mounted &&
+            identical(state.user, owner) &&
+            state.familyId == family) {
+          _workspaceLink(context, state, route)();
+        }
+      } else {
+        if (i >= 0 && i < mobileEntries.length) {
+          _workspaceLink(context, state, mobileEntries[i].$3)();
+        }
+      }
+    }
+
     return Scaffold(
       appBar: desktop
           ? null
@@ -1258,6 +1294,7 @@ class WorkspaceShell extends StatelessWidget {
               title: brand(),
               toolbarHeight: 68,
               actions: [
+                SchulbuddyButton(),
                 AppearanceToggle(state),
                 NotificationBell(state),
                 AccountMenu(state, compact: true),
@@ -1282,32 +1319,25 @@ class WorkspaceShell extends StatelessWidget {
               ),
               child: NavigationBar(
                 selectedIndex: compactChild && selected >= 3 ? 3 : selected,
-                onDestinationSelected: (i) async {
-                  if (owner == null ||
-                      !identical(state.user, owner) ||
-                      state.familyId != family ||
-                      ModalRoute.of(context)?.isCurrent == false) {
-                    return;
-                  }
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  if (compactChild && i == 3) {
-                    final route = await _moreMenu(context, entries, path);
-                    if (route != null &&
-                        context.mounted &&
-                        identical(state.user, owner) &&
-                        state.familyId == family) {
-                      _workspaceLink(context, state, route)();
-                    }
-                  } else {
-                    _workspaceLink(context, state, mobileEntries[i].$3)();
-                  }
-                },
+                onDestinationSelected: selectDestination,
                 destinations: [
-                  for (final entry in mobileEntries)
-                    NavigationDestination(
-                      icon: Icon(entry.$1),
-                      label: entry.$2,
-                    ),
+                  for (var i = 0; i < mobileEntries.length; i++)
+                    if (mobileEntries[i].$2 == 'Hausaufgaben')
+                      Semantics(
+                        label: 'Hausaufgaben',
+                        excludeSemantics: true,
+                        onTap: () => selectDestination(i),
+                        child: NavigationDestination(
+                          icon: Icon(mobileEntries[i].$1),
+                          label: 'Haus\naufgaben',
+                          tooltip: 'Hausaufgaben',
+                        ),
+                      )
+                    else
+                      NavigationDestination(
+                        icon: Icon(mobileEntries[i].$1),
+                        label: mobileEntries[i].$2,
+                      ),
                   if (compactChild)
                     NavigationDestination(
                       icon: Icon(Icons.more_horiz_rounded),
@@ -1720,6 +1750,7 @@ class _WorkspaceHeader extends StatelessWidget {
           ),
         ),
         SizedBox(width: 16),
+        SchulbuddyButton(),
         AppearanceToggle(state),
         SizedBox(width: 8),
         notificationBell,
@@ -2433,7 +2464,11 @@ Future<bool> confirmDialog(
         actions: [
           TextButton(
             autofocus: destructive,
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              if (ctx.mounted && ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx, false);
+              }
+            },
             child: const Text('Abbrechen'),
           ),
           FilledButton(
@@ -2443,7 +2478,11 @@ Future<bool> confirmDialog(
                     foregroundColor: context.palette.dangerSurface,
                   )
                 : null,
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              if (ctx.mounted && ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx, true);
+              }
+            },
             child: Text(confirmLabel),
           ),
         ],

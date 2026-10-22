@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -632,6 +633,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ParentChildNavigation(
+                      state: state,
                       childId: child['id'],
                       onRefresh: refresh,
                       selected: tab == 1
@@ -1145,6 +1147,19 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ),
         hero,
+        if ((guidance?['reason'] ?? '').toString().trim().isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                if (current()) {
+                  _showLearningReason(context, state, guidance!['reason']);
+                }
+              },
+              icon: Icon(Icons.info_outline_rounded),
+              label: Text('Warum dieser Lernschritt?'),
+            ),
+          ),
         if (homeworkPhotoWaiting) ...[
           SizedBox(height: 14),
           ChildTodayTile(
@@ -1265,6 +1280,25 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             ),
           ],
         ),
+        if ((data['messages'] as List? ?? [])
+            .where((m) => m['sender_role'] == 'parent')
+            .isNotEmpty) ...[
+          SizedBox(height: 14),
+          ChildTodayTile(
+            title: 'Letzte Nachricht von deinen Eltern',
+            subtitle:
+                ((data['messages'] as List)
+                            .where((m) => m['sender_role'] == 'parent')
+                            .first['body'] ??
+                        '')
+                    .toString()
+                    .characters
+                    .take(120)
+                    .toString(),
+            icon: Icons.mail_outline_rounded,
+            onTap: () => openSaved('/messages/${child['id']}'),
+          ),
+        ],
         SizedBox(height: 14),
         Wrap(
           spacing: 12,
@@ -1323,6 +1357,46 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
         if (state.demoCredentials != null) demoAccess(context, state),
       ],
     );
+  }
+}
+
+Future<void> _showLearningReason(
+  BuildContext context,
+  AppState state,
+  String reason,
+) async {
+  final owner = state.user, family = state.familyId;
+  bool current() =>
+      context.mounted &&
+      owner != null &&
+      identical(state.user, owner) &&
+      state.familyId == family;
+  late final DialogRoute<void> route;
+  route = DialogRoute<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      scrollable: true,
+      title: Text('Warum dieser Lernschritt?'),
+      content: SelectableText(reason),
+      actions: [
+        TextButton(
+          onPressed: () {
+            if (ctx.mounted && current() && route.isCurrent) Navigator.pop(ctx);
+          },
+          child: Text('Zurück zu meinem Tag'),
+        ),
+      ],
+    ),
+  );
+  void changed() {
+    if (!current() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  state.addListener(changed);
+  try {
+    await Navigator.of(context).push(route);
+  } finally {
+    state.removeListener(changed);
   }
 }
 
@@ -1465,7 +1539,54 @@ Future<void> _showChildPlan(
                             Navigator.pop(dialogContext, item);
                           }
                         },
+                        onPlanWish: () {
+                          if (current() && ownRoute.isCurrent) {
+                            Navigator.pop(dialogContext, {'plan_wish': item});
+                          }
+                        },
                       ),
+                    if ((plan['today_count'] as num? ?? today.length) >
+                        today.length) ...[
+                      SizedBox(height: 12),
+                      Text(
+                        'Hier siehst du ${today.length} von ${plan['today_count']} heutigen Schritten.',
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          if (current() && ownRoute.isCurrent) {
+                            Navigator.pop(dialogContext, 'open_collection');
+                          }
+                        },
+                        icon: Icon(Icons.view_list_outlined),
+                        label: Text('Alle gespeicherten Lernrunden ansehen'),
+                      ),
+                    ],
+                    if ((plan['voluntary'] as List? ?? []).isNotEmpty) ...[
+                      SizedBox(height: 16),
+                      Text(
+                        'Weitere passende Möglichkeiten',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Dein Tagesziel und Elternaufträge gelten weiterhin. Du kannst auch einen dieser verfügbaren Schritte wählen.',
+                      ),
+                      for (final item in plan['voluntary'] as List)
+                        _ChildPlanRow(
+                          state: state,
+                          data: data,
+                          item: item,
+                          onPlanWish: () {
+                            if (current() && ownRoute.isCurrent) {
+                              Navigator.pop(dialogContext, {'plan_wish': item});
+                            }
+                          },
+                          onOpen: () {
+                            if (current() && ownRoute.isCurrent) {
+                              Navigator.pop(dialogContext, item);
+                            }
+                          },
+                        ),
+                    ],
                     if ((plan['week'] as List? ?? []).isNotEmpty) ...[
                       SizedBox(height: 16),
                       Text(
@@ -1509,6 +1630,39 @@ Future<void> _showChildPlan(
     chosen = await navigator.push(ownRoute);
   } finally {
     state.removeListener(identityChanged);
+  }
+  if (chosen is Map &&
+      chosen['plan_wish'] is Map &&
+      context.mounted &&
+      current()) {
+    final item = chosen['plan_wish'] as Map;
+    final key = switch (item['kind']) {
+      'unit' => 'unit_id',
+      'material' => 'material_id',
+      'study_path' => 'day_id',
+      _ => null,
+    };
+    final id = key == null ? item['material_id'] : item['id'];
+    final references = <String, dynamic>{};
+    if (id is String && RegExp(r'^[a-f0-9]{32}$').hasMatch(id)) {
+      references[key ?? 'material_id'] = id;
+    }
+    await showLearningMessage(
+      context,
+      state,
+      childId: child['id'],
+      kind: 'plan_change',
+      title: 'Mein Wunsch zu diesem Lernschritt',
+      refresh: state.refreshState,
+      offerLiveCall: false,
+      messageContext: references,
+      referenceText: '${item['subject']} · ${item['topic']}',
+    );
+    return;
+  }
+  if (chosen == 'open_collection' && context.mounted && current()) {
+    openRoute(context, '/learn/${child['id']}');
+    return;
   }
   if (chosen != null && context.mounted && current()) {
     try {
@@ -1576,12 +1730,13 @@ class _ChildPlanRow extends StatelessWidget {
   final AppState state;
   final Json data;
   final dynamic item;
-  final VoidCallback? onOpen;
+  final VoidCallback? onOpen, onPlanWish;
   const _ChildPlanRow({
     required this.state,
     required this.data,
     required this.item,
     this.onOpen,
+    this.onPlanWish,
   });
 
   @override
@@ -1618,28 +1773,49 @@ class _ChildPlanRow extends StatelessWidget {
       }
     }
 
-    return Semantics(
-      button: available,
-      child: ListTile(
-        onTap: available ? open : null,
-        contentPadding: EdgeInsets.symmetric(horizontal: 4),
-        title: Text(
-          item['topic'],
-          style: TextStyle(fontWeight: FontWeight.w600),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          button: available,
+          child: ListTile(
+            onTap: available ? open : null,
+            contentPadding: EdgeInsets.symmetric(horizontal: 4),
+            title: Text(
+              item['topic'],
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}${item['due'] != null ? '\nTermin: ${_shortDate(item['due'])}' : ''}',
+            ),
+            isThreeLine: true,
+            trailing: available
+                ? ExcludeSemantics(
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: context.palette.teal,
+                    ),
+                  )
+                : null,
+          ),
         ),
-        subtitle: Text(
-          '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}',
-        ),
-        isThreeLine: true,
-        trailing: available
-            ? ExcludeSemantics(
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: context.palette.teal,
-                ),
-              )
-            : null,
-      ),
+        if (state.isChild && onPlanWish != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                if (context.mounted &&
+                    identical(state.user, account) &&
+                    state.familyId == family &&
+                    ModalRoute.of(context)?.isCurrent != false) {
+                  onPlanWish!();
+                }
+              },
+              icon: Icon(Icons.edit_calendar_outlined),
+              label: Text('Wunsch zu diesem Lernschritt'),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -2540,38 +2716,75 @@ Future<void> showHomeHelp(
   String? unitId,
   required VoidCallback refresh,
 }) async {
-  final choice = await showModalBottomSheet<String>(
-    context: context,
-    showDragHandle: true,
-    builder: (ctx) => SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Wobei brauchst du Hilfe?',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-              ),
+  final account = state.user, family = state.familyId;
+  final sourceRoute = ModalRoute.of(context);
+  bool current() =>
+      context.mounted &&
+      account != null &&
+      identical(state.user, account) &&
+      state.familyId == family &&
+      sourceRoute?.isCurrent != false;
+  if (!current()) return;
+  ModalRoute<dynamic>? helpRoute;
+  void changed() {
+    if (!identical(state.user, account) || state.familyId != family) {
+      final route = helpRoute;
+      if (route?.isActive == true) route!.navigator?.removeRoute(route);
+    }
+  }
+
+  state.addListener(changed);
+  String? choice;
+  try {
+    choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        helpRoute = ModalRoute.of(ctx);
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'Wobei brauchst du Hilfe?',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                for (final option in [
+                  ('explain', 'Etwas erklären lassen', Icons.lightbulb_outline),
+                  ('task', 'Eine Aufgabe verstehen', Icons.help_outline),
+                  (
+                    'technical',
+                    'Etwas funktioniert nicht',
+                    Icons.build_outlined,
+                  ),
+                  ('parents', 'Meine Eltern fragen', Icons.family_restroom),
+                ])
+                  ListTile(
+                    leading: Icon(option.$3),
+                    title: Text(option.$2),
+                    onTap: () {
+                      if (ctx.mounted &&
+                          identical(state.user, account) &&
+                          state.familyId == family &&
+                          helpRoute?.isCurrent == true) {
+                        Navigator.pop(ctx, option.$1);
+                      }
+                    },
+                  ),
+              ],
             ),
-            for (final option in [
-              ('explain', 'Etwas erklären lassen', Icons.lightbulb_outline),
-              ('task', 'Eine Aufgabe verstehen', Icons.help_outline),
-              ('technical', 'Etwas funktioniert nicht', Icons.build_outlined),
-              ('parents', 'Meine Eltern fragen', Icons.family_restroom),
-            ])
-              ListTile(
-                leading: Icon(option.$3),
-                title: Text(option.$2),
-                onTap: () => Navigator.pop(ctx, option.$1),
-              ),
-          ],
-        ),
-      ),
-    ),
-  );
-  if (!context.mounted || choice == null) return;
+          ),
+        );
+      },
+    );
+  } finally {
+    state.removeListener(changed);
+  }
+  if (!context.mounted || !current() || choice == null) return;
   if (choice == 'parents') {
     await showLearningMessage(
       context,
@@ -2580,32 +2793,54 @@ Future<void> showHomeHelp(
       kind: 'help',
       title: 'Meine Eltern fragen',
       refresh: refresh,
+      messageContext:
+          unitId != null && RegExp(r'^[a-f0-9]{32}$').hasMatch(unitId)
+          ? {'unit_id': unitId}
+          : null,
     );
   } else if (choice == 'explain' && unitId != null) {
     await showTutorSheet(context, state, childId: childId, unitId: unitId);
   } else if (choice == 'technical') {
-    await showDialog<void>(
+    final route = DialogRoute<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Gespeicherten Stand neu laden'),
-        content: Text(
-          'Prüfe deine Internetverbindung. Lade dann den Stand neu. Geprüfte Antworten und gespeicherte Heftseiten bleiben erhalten.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Zurück'),
+      builder: (ctx) {
+        bool canClose() =>
+            ctx.mounted &&
+            identical(state.user, account) &&
+            state.familyId == family &&
+            ModalRoute.of(ctx)?.isCurrent == true;
+        return AlertDialog(
+          title: Text('Gespeicherten Stand neu laden'),
+          content: Text(
+            'Prüfe deine Internetverbindung. Lade dann den Stand neu. Geprüfte Antworten und gespeicherte Heftseiten bleiben erhalten.',
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              refresh();
-            },
-            child: Text('Erneut laden'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (canClose()) Navigator.pop(ctx, false);
+              },
+              child: Text('Zurück'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (canClose()) Navigator.pop(ctx, true);
+              },
+              child: Text('Erneut laden'),
+            ),
+          ],
+        );
+      },
     );
+    helpRoute = route;
+    state.addListener(changed);
+    bool? reload;
+    try {
+      reload = await Navigator.of(context, rootNavigator: true).push(route);
+      await route.completed;
+    } finally {
+      state.removeListener(changed);
+    }
+    if (reload == true && current()) refresh();
   } else {
     openRoute(
       context,
@@ -2657,6 +2892,12 @@ Future<void> showLearningMessage(
     await showFamilyHelp(
       context,
       state,
+      contextKind: references.containsKey('unit_id')
+          ? 'learning'
+          : references.containsKey('material_id')
+          ? 'homework'
+          : 'general',
+      contextId: references['unit_id'] ?? references['material_id'],
       sendMessage: () async {
         if (!currentAccount()) return;
         await showLearningMessage(
@@ -2675,9 +2916,65 @@ Future<void> showLearningMessage(
     return;
   }
   final help = kind == 'help';
+  final draftKey =
+      'message_edit:$childId:$kind:${references.entries.map((e) => '${e.key}:${e.value}').join()}:${referenceText?.hashCode ?? 0}';
+  final now = DateTime.now().millisecondsSinceEpoch;
+  for (final key
+      in state.collectionViews.keys
+          .where((key) => key.startsWith('message_edit:'))
+          .toList()) {
+    if ((state.collectionViews[key]!['updated'] as num? ?? 0) <
+        now - 86400000) {
+      state.collectionViews.remove(key);
+    }
+  }
+  final memory = state.collectionViews[draftKey];
+  final stored =
+      identical(memory?['account'], account) &&
+      memory?['family'] == family &&
+      memory?['reference'] == referenceText;
   final controller = TextEditingController(
-    text: help ? 'Ich brauche Unterstützung beim Lernen.' : '',
+    text: stored
+        ? memory!['text']
+        : help
+        ? 'Ich brauche Unterstützung beim Lernen.'
+        : '',
   );
+  final inputFocus = FocusNode();
+  bool sending = false;
+  String? inputError;
+  void retainDraft() {
+    if (!currentAccount()) return;
+    if (controller.text.trim().isEmpty) {
+      state.collectionViews.remove(draftKey);
+      return;
+    }
+    final keys = state.collectionViews.keys
+        .where((key) => key.startsWith('message_edit:'))
+        .toList();
+    if (!state.collectionViews.containsKey(draftKey) && keys.length >= 8) {
+      keys.sort(
+        (a, b) => (state.collectionViews[a]!['updated'] as num).compareTo(
+          state.collectionViews[b]!['updated'] as num,
+        ),
+      );
+      state.collectionViews.remove(keys.first);
+    }
+    state.collectionViews[draftKey] = {
+      'account': account,
+      'family': family,
+      'reference': referenceText,
+      'updated': DateTime.now().millisecondsSinceEpoch,
+      'text': controller.text,
+      if (state.collectionViews[draftKey]?['sent_body'] ==
+          controller.text.trim()) ...{
+        'send_key': state.collectionViews[draftKey]?['send_key'],
+        'sent_body': state.collectionViews[draftKey]?['sent_body'],
+      },
+    };
+  }
+
+  controller.addListener(retainDraft);
   ModalRoute<dynamic>? draftRoute;
   void accountChanged() {
     if (currentAccount()) return;
@@ -2698,97 +2995,157 @@ Future<void> showLearningMessage(
       builder: (ctx) {
         draftRoute ??= ModalRoute.of(ctx);
         accountChanged();
-        return AlertDialog(
-          scrollable: true,
-          title: Text(
-            help && referenceText == null ? 'Hilfe von deinen Eltern' : title,
-          ),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(state.isChild ? 'An: Deine Eltern' : 'An: Dein Kind'),
-                if (referenceText?.trim().isNotEmpty == true) ...[
-                  SizedBox(height: 12),
-                  Text(
-                    'Bezug zur Nachricht',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  SelectableText(
-                    referenceText!.characters.take(1000).toString(),
-                  ),
-                ],
-                if (references.isNotEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      references.containsKey('unit_id')
-                          ? 'Zur gleichen Lernrunde'
-                          : references.containsKey('material_id')
-                          ? 'Zur gleichen Heftseite'
-                          : 'Zum gleichen Schultag',
+        return StatefulBuilder(
+          builder: (ctx, change) => PopScope(
+            canPop: !sending,
+            child: AlertDialog(
+              scrollable: true,
+              title: Text(
+                help && referenceText == null
+                    ? 'Hilfe von deinen Eltern'
+                    : title,
+              ),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(state.isChild ? 'An: Deine Eltern' : 'An: Dein Kind'),
+                    if (referenceText?.trim().isNotEmpty == true) ...[
+                      SizedBox(height: 12),
+                      Text(
+                        'Bezug zur Nachricht',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      SelectableText(
+                        referenceText!.characters.take(1000).toString(),
+                      ),
+                    ],
+                    if (references.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          references.containsKey('unit_id')
+                              ? 'Zur gleichen Lernrunde'
+                              : references.containsKey('material_id')
+                              ? 'Zur gleichen Heftseite'
+                              : 'Zum gleichen Schultag',
+                        ),
+                      ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      focusNode: inputFocus,
+                      enabled: !sending,
+                      onChanged: (_) {
+                        if (inputError != null) change(() => inputError = null);
+                      },
+                      maxLines: 3,
+                      maxLength: 1000,
+                      decoration: InputDecoration(
+                        labelText: 'Deine Nachricht',
+                        errorText: inputError,
+                      ),
                     ),
-                  ),
-                SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  maxLines: 3,
-                  maxLength: 1000,
-                  decoration: InputDecoration(labelText: 'Deine Nachricht'),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: sending
+                      ? null
+                      : () {
+                          if (ctx.mounted &&
+                              currentAccount() &&
+                              draftRoute?.isCurrent == true) {
+                            state.collectionViews.remove(draftKey);
+                            Navigator.pop(ctx);
+                          }
+                        },
+                  child: Text('Abbrechen'),
+                ),
+                ActionButton(
+                  label: help ? 'Um Hilfe bitten' : 'Senden',
+                  icon: help
+                      ? Icons.volunteer_activism_outlined
+                      : Icons.send_rounded,
+                  onPressed: () async {
+                    if (!currentAccount() ||
+                        sending ||
+                        draftRoute?.isCurrent != true) {
+                      return;
+                    }
+                    final body = controller.text.trim();
+                    if (!help && body.isEmpty) {
+                      change(
+                        () => inputError =
+                            'Schreibe kurz, was du mitteilen möchtest.',
+                      );
+                      inputFocus.requestFocus();
+                      return;
+                    }
+                    inputFocus.unfocus();
+                    final sentBody = help && body.isEmpty
+                        ? 'Ich brauche Unterstützung beim Lernen.'
+                        : body;
+                    final previous = state.collectionViews[draftKey];
+                    final sendKey =
+                        previous?['sent_body'] == sentBody &&
+                            previous?['send_key'] is String
+                        ? previous!['send_key'] as String
+                        : 'msg-${List.generate(24, (_) => Random.secure().nextInt(16).toRadixString(16)).join()}';
+                    state.collectionViews[draftKey] = {
+                      'account': account,
+                      'family': family,
+                      'reference': referenceText,
+                      'updated': DateTime.now().millisecondsSinceEpoch,
+                      'text': controller.text,
+                      'send_key': sendKey,
+                      'sent_body': sentBody,
+                    };
+                    change(() => sending = true);
+                    try {
+                      await state.api.post('/children/$childId/messages', {
+                        'request_key': sendKey,
+                        'kind': kind,
+                        ...references,
+                        'body': help && body.isEmpty
+                            ? 'Ich brauche Unterstützung beim Lernen.'
+                            : body,
+                      });
+                      if (!currentAccount()) return;
+                      state.collectionViews.remove(draftKey);
+                      if (ctx.mounted && draftRoute?.isActive == true) {
+                        if (draftRoute!.isCurrent) {
+                          Navigator.pop(ctx);
+                        } else {
+                          draftRoute!.navigator?.removeRoute(draftRoute!);
+                        }
+                      }
+                      if (!context.mounted) return;
+                      refresh();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              help
+                                  ? 'Hilfewunsch gesendet.'
+                                  : 'Nachricht gesendet.',
+                            ),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (ctx.mounted && currentAccount()) {
+                        change(() => sending = false);
+                      }
+                    }
+                  },
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (ctx.mounted &&
-                    currentAccount() &&
-                    draftRoute?.isCurrent == true) {
-                  Navigator.pop(ctx);
-                }
-              },
-              child: Text('Abbrechen'),
-            ),
-            ActionButton(
-              label: help ? 'Um Hilfe bitten' : 'Senden',
-              icon: help
-                  ? Icons.volunteer_activism_outlined
-                  : Icons.send_rounded,
-              onPressed: () async {
-                if (!currentAccount()) return;
-                final body = controller.text.trim();
-                await state.api.post('/children/$childId/messages', {
-                  'kind': kind,
-                  ...references,
-                  'body': help && body.isEmpty
-                      ? 'Ich brauche Unterstützung beim Lernen.'
-                      : body,
-                });
-                if (!currentAccount()) return;
-                if (ctx.mounted && draftRoute?.isActive == true) {
-                  if (draftRoute!.isCurrent) {
-                    Navigator.pop(ctx);
-                  } else {
-                    draftRoute!.navigator?.removeRoute(draftRoute!);
-                  }
-                }
-                if (!context.mounted) return;
-                refresh();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        help ? 'Hilfewunsch gesendet.' : 'Nachricht gesendet.',
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-          ],
         );
       },
     );
@@ -2797,7 +3154,9 @@ Future<void> showLearningMessage(
     // The pop result arrives before the closing transition removes TextField.
     // Its controller must remain alive until that route's widgets are gone.
     if (draftRoute != null) await draftRoute!.completed;
+    controller.removeListener(retainDraft);
     controller.dispose();
+    inputFocus.dispose();
   }
 }
 

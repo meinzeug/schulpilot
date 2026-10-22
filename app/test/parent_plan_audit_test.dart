@@ -49,7 +49,16 @@ void main() {
       await fixture.tap(tester, 'Bestätigen');
       expect(requests.where((r) => r.method == 'POST').length, 1);
       expect(find.text('Als erledigt markieren'), findsNothing);
-      await fixture.tap(tester, 'Abgeschlossene Themen mit anzeigen');
+      final status = find.byWidgetPredicate(
+        (w) =>
+            w is DropdownButtonFormField<String> &&
+            w.decoration.labelText == 'Auftragsstatus',
+      );
+      await tester.ensureVisible(status);
+      await tester.tap(status);
+      await tester.pumpAndSettle();
+      await fixture.tap(tester, 'Offene und erledigte Themen');
+      expect(requests.last.url.queryParameters['include_completed'], 'true');
       expect(find.text('Als abgeschlossen markiert'), findsOneWidget);
       expect(find.text('Als erledigt markieren'), findsNothing);
     },

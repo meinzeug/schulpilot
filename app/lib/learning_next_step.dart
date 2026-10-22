@@ -24,13 +24,15 @@ class LearningNextStep extends StatefulWidget {
   State<LearningNextStep> createState() => _LearningNextStepState();
 }
 
-class _LearningNextStepState extends State<LearningNextStep> {
+class _LearningNextStepState extends State<LearningNextStep>
+    with WidgetsBindingObserver {
   Json? data;
   bool loading = true;
   bool failed = false;
   late final Json? owner;
   late final String? family;
   bool reading = false, opening = false;
+  bool routeVisible = true, foreground = true;
   bool get current =>
       mounted &&
       identical(widget.state.user, owner) &&
@@ -42,6 +44,10 @@ class _LearningNextStepState extends State<LearningNextStep> {
     super.initState();
     owner = widget.state.user;
     family = widget.state.familyId;
+    WidgetsBinding.instance.addObserver(this);
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     widget.state.addListener(accountChanged);
     load();
   }
@@ -61,6 +67,26 @@ class _LearningNextStepState extends State<LearningNextStep> {
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visible = ModalRoute.of(context)?.isCurrent ?? true;
+    final resumed = !routeVisible && visible;
+    routeVisible = visible;
+    if (resumed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (current && routeVisible && foreground) load();
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    final wasForeground = foreground;
+    foreground = lifecycle == AppLifecycleState.resumed;
+    if (!wasForeground && foreground && current && routeVisible) load();
+  }
+
   void accountChanged() {
     if (!current && mounted) {
       version++;
@@ -75,6 +101,7 @@ class _LearningNextStepState extends State<LearningNextStep> {
   void dispose() {
     version++;
     widget.state.removeListener(accountChanged);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -132,6 +159,12 @@ class _LearningNextStepState extends State<LearningNextStep> {
         ],
       );
     }
+    final rendered = data;
+    bool canOpen() =>
+        current &&
+        identical(data, rendered) &&
+        !reading &&
+        ModalRoute.of(context)?.isCurrent != false;
     final plan = Json.from(data?['plan'] as Map? ?? {});
     final next = nextLearningItem(data!, excludeUnitId: widget.currentUnitId);
     final minimumOpen =
@@ -169,7 +202,7 @@ class _LearningNextStepState extends State<LearningNextStep> {
                 ? 'Weiterlernen'
                 : 'Noch eine Runde',
             onPressed: () async {
-              if (!current || data == null || opening) return;
+              if (!canOpen() || data == null || opening) return;
               setState(() => opening = true);
               try {
                 await openPlanItem(context, widget.state, data!, next);
@@ -201,7 +234,7 @@ class _LearningNextStepState extends State<LearningNextStep> {
           ActionPanel(
             actionLabel: 'Vorbereitung ansehen',
             onPressed: () {
-              if (current) {
+              if (canOpen()) {
                 openRoute(
                   context,
                   '/learning-preparation/${widget.childId}/${preparing['id']}',
@@ -214,12 +247,23 @@ class _LearningNextStepState extends State<LearningNextStep> {
           ActionPanel(
             actionLabel: 'Mein Lernen öffnen',
             onPressed: () {
-              if (current) openRoute(context, '/learn/${widget.childId}');
+              if (canOpen()) openRoute(context, '/learn/${widget.childId}');
             },
             child: Text(
               minimumOpen
                   ? 'Für den nächsten Schritt brauchen wir passenden Lernstoff.'
                   : 'Diese Runde ist gespeichert. Deinen weiteren Stoff findest du unter Lernen.',
+            ),
+          ),
+        if (available || pending)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                if (canOpen()) openRoute(context, '/learn/${widget.childId}');
+              },
+              icon: Icon(Icons.view_list_outlined),
+              label: Text('Andere gespeicherte Themen ansehen'),
             ),
           ),
       ],

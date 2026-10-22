@@ -12,6 +12,7 @@ import 'package:schulpilot/parent_homework_screen.dart';
 import 'package:schulpilot/parent_insights_panel.dart';
 import 'package:schulpilot/parent_overview.dart';
 import 'package:schulpilot/parent_plan_screen.dart';
+import 'package:schulpilot/parent_workspace_ui.dart';
 import 'package:schulpilot/practice_evidence.dart';
 import 'package:schulpilot/ui.dart';
 
@@ -243,8 +244,14 @@ void main() {
         isTrue,
       );
       expect(
-        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isTrue,
+        tester
+            .widget<ParentChoiceFilter>(
+              find.byWidgetPredicate(
+                (w) => w is ParentChoiceFilter && w.label == 'Auftragsstatus',
+              ),
+            )
+            .value,
+        'all',
       );
       expect(f.requests.first.url.queryParameters['page'], '2');
       expect(f.requests.first.url.queryParameters['include_completed'], 'true');
@@ -265,8 +272,14 @@ void main() {
         isTrue,
       );
       expect(
-        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isTrue,
+        tester
+            .widget<ParentChoiceFilter>(
+              find.byWidgetPredicate(
+                (w) => w is ParentChoiceFilter && w.label == 'Auftragsstatus',
+              ),
+            )
+            .value,
+        'all',
       );
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
       await tester.pumpWidget(const SizedBox());
@@ -566,7 +579,11 @@ void main() {
       f.respond = (r) async =>
           r.url.queryParameters['review_id'] == 'old' ? pending.future : null;
       await f.mount(tester, path: '/insights/child-a');
-      final picker = find.byType(DropdownButtonFormField<String>);
+      final picker = find.byWidgetPredicate(
+        (w) =>
+            w is DropdownButtonFormField<String> &&
+            w.decoration.labelText == 'Gespeicherte Auswertung ansehen',
+      );
       await tester.ensureVisible(picker);
       await tester.tap(picker);
       await tester.pumpAndSettle();

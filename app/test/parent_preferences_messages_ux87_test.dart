@@ -650,7 +650,9 @@ void main() {
       );
       await tap(tester, 'Senden');
       final sent = f.requests.singleWhere((r) => r.method == 'POST');
-      expect(jsonDecode(sent.body), {
+      final payload = Map<String, dynamic>.from(jsonDecode(sent.body) as Map);
+      expect(payload.remove('request_key'), matches(r'^msg-[a-f0-9]{24}$'));
+      expect(payload, {
         'kind': 'reply',
         'body': 'Schau auf die gleich großen Teile.',
         'unit_id': '22222222222222222222222222222222',
@@ -690,7 +692,9 @@ void main() {
       await tester.enterText(input, 'Wir schauen gemeinsam darauf.');
       await tap(tester, 'Senden');
       final sent = f.requests.singleWhere((r) => r.method == 'POST');
-      expect(jsonDecode(sent.body), {
+      final payload = Map<String, dynamic>.from(jsonDecode(sent.body) as Map);
+      expect(payload.remove('request_key'), matches(r'^msg-[a-f0-9]{24}$'));
+      expect(payload, {
         'kind': 'reply',
         'body': 'Wir schauen gemeinsam darauf.',
       });
