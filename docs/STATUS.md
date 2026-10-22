@@ -1,4 +1,59 @@
-# Produktionsstand 1.19.3+82 · 21.10.2026
+# Produktionsstand 1.19.4+83 · 22.10.2026
+
+Live: `20261022T052536Z-e502960`, Produktcommit
+`e502960a96ce84f4c26899f0fc4bf44ee02ea3a3`, main gepusht.
+
+Die Livehilfe öffnet beim Kind keine eigene Gesprächsseite mehr. Ein kompakter,
+aufklappbarer Dock sitzt oberhalb der weiterhin geöffneten Aufgabe. Mikrofon,
+Kamera, Teilen/Stopp und Auflegen bleiben erreichbar; Videos sind optional.
+Entwurf und Antwortfeedback bleiben erhalten. Auch native Anrufaktionen ersetzen
+keine laufende Aufgabenroute. Alte Anruflinks verdrängen kein neueres Gespräch.
+Eine freiwillige Großansicht bietet einen Rückweg; ihre Rendererbelegung bleibt
+bis nach der Pop-Animation exklusiv. Overlay- und Semantikgrenzen erhalten
+Tooltips und zugängliche Bedienelemente außerhalb des Aufgaben-Navigators.
+
+98 gemeinsame Fluttertests einschließlich zehn neuer Dock- und fünf neuer
+Main-/Navigationsfälle sowie vollständige Flutter-Analyse bestanden.
+36 Anruffälle erneut in isoliertem PostgreSQL bestanden. Echte Browserprüfung
+der ausdrücklich synthetischen Vorschau in hell/dunkel und 390 × 844: Aufgabe,
+Entwurf, Freigabedialog und Rückkehr aus Großansicht geprüft. Kameraansichten in
+dieser Vorschau sind ausschließlich gezeichnete Platzhalter.
+
+Zwei begrenzte künstliche Liveproben mit der signierten 83-APK auf Android 36:
+Kamera/Audio/Screen wurden über den Produktionsrelay empfangen, Entwurf und
+Antwortaktion blieben während echter Tastatureingabe nutzbar. Gezielter
+Bildschirmstopp 224→192 beendet Projection und erhält Kamera/Ton. Der Rückweg
+über Heute und Lernen zeigt dieselbe Aufgabe 2/4 mit erhaltenem Bruchentwurf;
+dieser Teil ist separat visuell mit zeitgleichen nativen Metadaten geprüft,
+nicht als grüne alte Helferdatei ausgegeben. Beide Parentpeers normal beendet
+und ausgeloggt, Kinderlogout/Capture-Aus und Emulatorende geprüft. Keine dritte
+Probe. Der neue Demohaushalt ist über seinen regulären authentifizierten
+Löschweg vollständig bereinigt; alle zugehörigen Datenzähler stehen auf null.
+Zugangsdaten und privater IDs-Checkpoint entfernt, beide alten Logins ungültig.
+Physische Smartphone-Ruflautstärke und Tonqualität bleiben getrennt ungeprüft.
+
+Web, signierte Direct-APK und Play-AAB aus demselben Produktcommit geprüft.
+APK 111744163 Bytes, SHA256
+`97dc018cf9537f955820b306f6a1b911b49f27581ea94b25afad50ddd53ba2ee`;
+AAB 88983781 Bytes, SHA256
+`72a2eccbad9c8cce14662cb334cecd1ea110cade0d0fcda03a86ac86f5217708`.
+Vollständiger öffentlicher APK-Download identisch, Play ohne Installerberechtigung,
+kein Play-Upload. 684 Quellen/Assets und 350 Archiveinträge gegen 14 lokale
+Secretquellen ohne Treffer; Relaysecret zusätzlich nur im Speicher gegen 782
+Dateien und dieselben Archiveinträge geprüft: 0 Treffer.
+
+API/Worker/Caddy aktiv, Sicherung erfolgreich, Schema 0026 und Providerrevision 29
+Paid/Economy/ZDR unverändert. Keine neuen Pakete, Dienste, KI-Aufträge oder
+Berechtigungen. Vorheriger kompatibler Release für Web/API-Rückweg:
+`20261021T194514Z-e58e6c4`. Keine Datenbankrücksetzung; bereits installierte
+Android-83-Clients benötigen bei einer nativen Korrektur eine höhere Version.
+
+Bedienung und Abnahme in [FAMILY_CALLS.md](FAMILY_CALLS.md) und
+[FAMILY_CALL_EVALUATION_2026_10_21.md](FAMILY_CALL_EVALUATION_2026_10_21.md).
+
+---
+
+# Historischer Produktionsstand 1.19.3+82 · 21.10.2026
 
 Live: `20261021T194514Z-e58e6c4`, Produktcommit
 `e58e6c4e98411052bda37378d158cf9d30a360b2`, main gepusht.

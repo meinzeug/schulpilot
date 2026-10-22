@@ -2,7 +2,7 @@
 
 ## Aufgabenbegleitende Livehilfe83 · 22.10.2026
 
-Version1.19.4+83 ersetzt beim Kinderaufruf den automatischen Seitenwechsel durch
+Version 1.19.4+83 ersetzt beim Kinderaufruf den automatischen Seitenwechsel durch
 einen kompakten, aufklappbaren Gesprächsdock. Kamera/Ton/Freigabe bleiben im
 kontogebundenen Service, Aufgabe und Entwurf im selben Routerzustand. Native
 Benachrichtigungsaktionen erhalten ebenfalls die laufende Aufgabenroute.
@@ -18,7 +18,7 @@ KI-Auftrag oder geändertes Budget.
 | Aufgabe mit Entwurf/Feedback → Elternhilfe starten | Gleicher Aufgaben-State und Route, genau ein Start, Eingabe und Rückmeldung bleiben. |
 | Kompakter Dock → Teilen bestätigen → Stopp | Getrennte ausdrückliche Freigabe; direkt erreichbarer Stopp ohne Wechsel von der Aufgabe. |
 | Großansicht → Zurückanimation | Höchstens eine montierte Ansicht pro Renderer, auch mit zusätzlichem Kinderbildschirm in der Elternansicht. |
-|320×568/640×320, doppelte Schrift, Tastatur, hell/dunkel | Bedienelemente mindestens48px, keine Test-Overflows, Entwurf weiter bearbeitbar. |
+|320×568 / 640×320, doppelte Schrift, Tastatur, hell/dunkel | Bedienelemente mindestens 48px, keine Test-Overflows, Entwurf weiter bearbeitbar. |
 | Nativer Anrufhinweis → Ansehen/Annehmen/Ablehnen | Aufgabe bleibt; Annahme weiterhin ausdrücklich; Ablehnen öffnet keine Medien. |
 | Älterer Anruflink oder verspätete Ladeantwort → neueres Gespräch | Kein Ersetzen oder Schließen des neueren Gesprächs. |
 
@@ -35,6 +35,52 @@ Mockantworten; sie ist kein Nachweis einer realen Medienverbindung. Der neue
 öffentliche Demohaushalt enthält ausschließlich vier feste künstliche Aufgaben
 und dient der getrennten signierten Android-Liveprobe. Keine alten Testzugänge
 wurden wieder aktiviert und keine Pushfreigaben erteilt.
+
+Die erste signierte 83-Probe hat echte Kamera-/Audio-/Screenübertragung über den
+erzwungenen Produktionsrelay nachgewiesen: 180,34 Sekunden, 1962 Kameraframes,
+527 Bildschirmframes 1080×2400 und 8551 Audioframes. Die Quellzuordnung verwendet
+die signalisierten MSIDs und Transceiver-MIDs. Neun Healthchecks bestanden,
+langsamster 0,016 Sekunden; reguläres Ende und Logout per HTTP bestätigt.
+Die Android-Aufgabe und ihr Entwurf blieben beim Start erhalten; Tippen mit
+sichtbarer Tastatur, Mikrofon/Kamera AUS/AN und der aufgeklappte Videodock wurden
+tatsächlich bedient. Danach waren Projection, Capture-Service und FGS aus;
+globale Mikrofon-Schutzschalter blieben unverändert.
+
+Die QA-Helfer mussten an aktuelle Einstiegsbezeichnungen, gesprochen dargestellte
+Brüche und den nicht selbst anklickbaren TextView des Android-Systemspinners
+angepasst werden. Die negativen Helferbelege bleiben erhalten. Die erste Probe
+bestätigt weder den separaten 224→192-Stopp vor Gesprächsende noch den kompletten
+Sammlungsrückweg bei aktiver Verbindung. Dafür wurde ausdrücklich genau eine
+zweite, getrennte künstliche Probe im selben Haushalt freigegeben; keine weitere
+Antwort, KI-Wiederholung oder Produktgrenze wurde daraus abgeleitet.
+
+Die zweite Probe übertrug in 180,23 Sekunden 1968 Kamera-, 35 Screen- und 8853
+Audioframes, mit drei Angeboten/Antworten und neun erfolgreichen Healthchecks
+(maximal 0,020 Sekunden). Vor dem gezielten Stopp war Projection mit FGS 224
+aktiv; danach waren Projection=false und Kamera-/Mikrofon-FGS 192 tatsächlich
+belegt. Die Screenframes blieben bei 35, Kamera und Audio liefen weiter.
+Normales Ende und Eltern-Logout wurden per HTTP bestätigt.
+
+Der echte Rückweg führte nach ausdrücklichem Pausieren über Heute und Lernen
+wieder zur selben Aufgabe 2/4. Die unmittelbar dabei gesicherte Android-Aufnahme
+zeigt die verbundene Liveleiste und den erhaltenen Entwurf als Zähler 1/Nenner 2;
+zeitgleiche native Metadaten zeigen weiter Capture 192 ohne Projection und ohne
+globale Mutes. Root hat diesen Sichtbeleg eigenständig geprüft. Ein QA-Helfer
+wartete fälschlich auf einen zusätzlichen „Lernen fortsetzen“-Dialog, obwohl die
+gespeicherte Runde bereits direkt geöffnet war. Seine negative Datei bleibt
+unverändert. Die erneute spätere UIA-Abfrage erreichte das normale 180s-Ende und
+bestätigt die Verbindung nicht nachträglich. Dieser Rückweg ist deshalb als
+getrennte manuelle Sichtprüfung mit zeitgleichen Metadaten dokumentiert und
+nicht als vollständig grüner automatischer Helferlauf. Es gab keine dritte Probe.
+
+Kinderlogout, sämtliche Capture-/Projection-Endflags und vollständiges
+Emulatorende sind geprüft. Der neue Demohaushalt wurde danach über seinen
+normalen authentifizierten Kontolöschweg entfernt. Die separate lesende
+Kaskadenprüfung bestätigt alle gebundenen Datenzähler als null. Zugangsdaten
+und privater IDs-Checkpoint sind lokal entfernt; beide alten Logins werden
+abgewiesen. API/Worker/Caddy/TURN und Sicherung bleiben gesund, Schema0026 und
+Providerrevision29 unverändert. Android36 wurde im eigenen Emulator geprüft;
+hörbares Klingeln und Tonqualität eines physischen Telefons bleiben offen.
 
 ## Historische Produktionsabnahme82
 
