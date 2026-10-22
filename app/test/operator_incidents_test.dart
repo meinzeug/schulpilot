@@ -106,6 +106,50 @@ Future<void> openDetail(WidgetTester t) =>
 
 void main() {
   testWidgets(
+    'empty patch preserves real before checks without claiming after checks or offering download',
+    (t) async {
+      final f = saved.Fixture();
+      final failed = {
+        ...repair(),
+        'status': 'failed',
+        'error_code': 'empty_patch',
+        'test_summary': {
+          'source': 'not_run',
+          'executed': false,
+          'baseline': {
+            'executed': true,
+            'passed': 5,
+            'failed': 1,
+            'skipped': 0,
+            'duration_ms': 7,
+          },
+        },
+      };
+      f.respond = (r) async => r.url.path.endsWith('/$identifier')
+          ? response(detail(repairs: [failed]))
+          : regular(r);
+      await mount(t, f);
+      await openDetail(t);
+      expect(
+        find.text('Technischer Auftragscode: empty_patch'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Pytest vor der Änderung: 5 bestanden, 1 fehlgeschlagen.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Kein unabhängig ausgeführter Prüflauf nach der Änderung nachgewiesen',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Isolierter Prüflauf:'), findsNothing);
+      expect(find.text('Patchdatei herunterladen'), findsNothing);
+      expect(f.requests.every((r) => r.method == 'GET'), isTrue);
+    },
+  );
+  testWidgets(
     'operator error overview and explicit detail are metadata GET only',
     (t) async {
       final f = saved.Fixture();
@@ -187,7 +231,7 @@ void main() {
       expect(jsonDecode(post.body), containsPair('source_commit', 'c' * 40));
       expect(
         find.textContaining(
-          'Kein unabhängig ausgeführter Testlauf nachgewiesen',
+          'Kein unabhängig ausgeführter Prüflauf nach der Änderung nachgewiesen',
         ),
         findsOneWidget,
       );

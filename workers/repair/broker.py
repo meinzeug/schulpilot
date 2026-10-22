@@ -226,6 +226,17 @@ def verification(image, job, identifier, scope, source, deadline, phase):
 def run(body):
     deadline = time.monotonic() + MAX_SECONDS
     state = {"calls": 0, "dispatched": False, "clients": set(), "responses": set()}
+    baseline_check = None
+
+    def failure(code):
+        result = {"status": "failed", "error_code": code, "dispatched": state["dispatched"]}
+        if baseline_check is not None:
+            # Keep the trusted before-check even if no candidate patch exists.
+            # No after-check is claimed and no model/tool output is retained.
+            result["test_summary"] = {"source": "isolated_worker", "executed": False,
+                                      "verification_kind": "not_run", "baseline": baseline_check}
+        return result
+
     try:
         identifier, commit = body["id"], body["source_commit"]
         if not re.fullmatch(r"[a-f0-9]{32}", identifier) or (body.get("model"), body.get("reasoning_effort")) != (MODEL, EFFORT):
@@ -236,7 +247,7 @@ def run(body):
             raise ValueError("incident_digest")
         bound = catalog(fresh=True)
         if bound["catalog_fingerprint"] != body["catalog_fingerprint"]:
-            return {"status": "failed", "error_code": "catalog_changed", "dispatched": False}
+            return failure("catalog_changed")
         raw = base64.b64decode(body["source"], validate=True)
         if hashlib.sha256(raw).hexdigest() != body["source_sha256"]:
             raise ValueError("source_digest")
@@ -268,6 +279,13 @@ def run(body):
 
             scope = "instructional_decisions" if incident.get("function") == "instructional_decisions.process" else None
             baseline_check = verification(image, job, identifier, scope, job / "baseline", deadline, "before")
+            if body.get("synthetic_fixture") and (
+                baseline_check.get("executed") is not True
+                or baseline_check.get("verification_kind") != "pytest"
+                or tuple(baseline_check.get(k) for k in ("passed", "failed", "skipped")) != (5, 1, 0)
+            ):
+                # The fixed prompt must describe a genuinely observed failure.
+                return failure("run_failed")
             # Leave time for the fixed post-run regression; all phases share 240s.
             model_deadline = deadline - (65 if scope else 15)
             job_metadata["seconds"] = max(1, min(165, int(model_deadline - time.monotonic())))
@@ -400,9 +418,9 @@ def run(body):
                 thread.join(timeout=2)
                 watchdog.join(timeout=6)
             if timed_out:
-                return {"status": "failed", "error_code": "run_timeout", "dispatched": state["dispatched"]}
+                return failure("run_timeout")
             if result.returncode:
-                return {"status": "failed", "error_code": "run_failed", "dispatched": state["dispatched"]}
+                return failure("run_failed")
             current = read_archive(bytes(output), commit)
             for name, value in current.items():
                 target = job / "workspace" / name
@@ -415,12 +433,12 @@ def run(body):
             summary["baseline"] = baseline_check
             after = catalog(fresh=True)
             if after["catalog_fingerprint"] != bound["catalog_fingerprint"]:
-                return {"status": "failed", "error_code": "catalog_changed", "dispatched": state["dispatched"]}
+                return failure("catalog_changed")
             return {"status": "completed", "patch": base64.b64encode(patch).decode(), "test_summary": summary,
                     "dispatched": state["dispatched"], "responses": state["calls"], "cost_source": "unknown"}
     except Exception as error:
         code = "empty_patch" if str(error) == "empty_patch" else "invalid_patch" if isinstance(error, ValueError) else "run_failed"
-        return {"status": "failed", "error_code": code, "dispatched": state["dispatched"]}
+        return failure(code)
 
 
 class Control(BaseHTTPRequestHandler):

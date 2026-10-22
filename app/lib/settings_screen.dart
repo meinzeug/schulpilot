@@ -1428,6 +1428,67 @@ class _AdminScreenState extends State<AdminScreen> {
     ),
   );
 
+  bool get compactHeader => MediaQuery.sizeOf(context).width < 720;
+
+  List<Widget> headerActions(BuildContext context) => <Widget>[
+    OutlinedButton.icon(
+      onPressed: refresh,
+      icon: Icon(Icons.refresh_rounded, size: 18),
+      label: const Text('Aktualisieren'),
+    ),
+    PopupMenuButton<String>(
+      tooltip: 'Schnellzugriff',
+      icon: Icon(Icons.more_horiz_rounded),
+      onSelected: (route) => openRoute(context, route),
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: '/admin/settings',
+          child: Text('Betriebseinstellungen'),
+        ),
+        PopupMenuItem(value: '/admin/verkauf', child: Text('Zahlungen prüfen')),
+        PopupMenuItem(value: '/admin/push', child: Text('Push prüfen')),
+        PopupMenuItem(
+          value: '/operator-incidents',
+          child: Text('Technische Fehler'),
+        ),
+      ],
+    ),
+    Theme(
+      data: Theme.of(context).copyWith(
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
+            foregroundColor: WidgetStatePropertyAll(context.palette.dangerInk),
+            backgroundColor: WidgetStatePropertyAll(
+              context.palette.dangerSurface,
+            ),
+            side: WidgetStateProperty.resolveWith(
+              (states) => BorderSide(
+                color: context.palette.dangerInk,
+                width: states.contains(WidgetState.focused) ? 2.5 : 1.25,
+              ),
+            ),
+          ),
+        ),
+      ),
+      child: ActionButton(
+        label: 'KI-Aufrufe sofort stoppen',
+        secondary: true,
+        icon: Icons.stop_circle_outlined,
+        onPressed: () async {
+          if (!own) return;
+          await widget.state.api.post('/admin/emergency-stop');
+          if (own) {
+            setState(
+              () => emergencyMessage =
+                  'Notfallstopp gespeichert. Neue KI-Aufrufe sind gesperrt.',
+            );
+            refresh();
+          }
+        },
+      ),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) => !own
       ? const SizedBox.shrink()
@@ -1435,93 +1496,67 @@ class _AdminScreenState extends State<AdminScreen> {
           state: widget.state,
           title: 'Kontrollzentrum',
           showTitle: false,
-          actions: [
-            OutlinedButton.icon(
-              onPressed: refresh,
-              icon: Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Aktualisieren'),
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'Schnellzugriff',
-              icon: Icon(Icons.more_horiz_rounded),
-              onSelected: (route) => openRoute(context, route),
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: '/admin/settings',
-                  child: Text('Betriebseinstellungen'),
-                ),
-                PopupMenuItem(
-                  value: '/admin/verkauf',
-                  child: Text('Zahlungen prüfen'),
-                ),
-                PopupMenuItem(value: '/admin/push', child: Text('Push prüfen')),
-                PopupMenuItem(
-                  value: '/operator-incidents',
-                  child: Text('Technische Fehler'),
-                ),
-              ],
-            ),
-            Theme(
-              data: Theme.of(context).copyWith(
-                outlinedButtonTheme: OutlinedButtonThemeData(
-                  style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
-                    foregroundColor: WidgetStatePropertyAll(
-                      context.palette.dangerInk,
-                    ),
-                    backgroundColor: WidgetStatePropertyAll(
-                      context.palette.dangerSurface,
-                    ),
-                    side: WidgetStateProperty.resolveWith(
-                      (states) => BorderSide(
-                        color: context.palette.dangerInk,
-                        width: states.contains(WidgetState.focused)
-                            ? 2.5
-                            : 1.25,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              child: ActionButton(
-                label: 'KI-Aufrufe sofort stoppen',
-                secondary: true,
-                icon: Icons.stop_circle_outlined,
-                onPressed: () async {
-                  if (!own) return;
-                  await widget.state.api.post('/admin/emergency-stop');
-                  if (own) {
-                    setState(
-                      () => emergencyMessage = 'Notfallstopp gespeichert. Neue KI-Aufrufe sind gesperrt.',
-                    );
-                    refresh();
-                  }
-                },
-              ),
-            ),
-          ],
+          actions: compactHeader ? const [] : headerActions(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const AdminWorkspaceHeader(
-                title: 'Deine Plattform im Blick',
-                subtitle: 'Aufträge prüfen, Kosten verstehen und den Betrieb sicher steuern.',
-                currentPath: '/admin',
-              ),
+              if (compactHeader) ...[
+                Row(
+                  key: const ValueKey('compact-admin-dashboard-heading'),
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        header: true,
+                        child: const Text(
+                          'Betrieb',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Aktualisieren',
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      onPressed: refresh,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                    headerActions(context)[1],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                headerActions(context)[2],
+              ] else
+                const AdminWorkspaceHeader(
+                  title: 'Deine Plattform im Blick',
+                  subtitle: 'Aufträge prüfen, Kosten verstehen und den Betrieb sicher steuern.',
+                  currentPath: '/admin',
+                ),
               if (emergencyMessage != null)
                 Semantics(liveRegion: true, child: Notice(emergencyMessage!)),
-              const SizedBox(height: 24),
-              AdminContextTabs(
-                selected: section,
-                onSelected: selectSection,
-                items: const [
-                  (Icons.grid_view_rounded, 'Übersicht'),
-                  (Icons.auto_awesome_rounded, 'KI-Konfiguration'),
-                  (Icons.family_restroom_rounded, 'Familientarife'),
-                  (Icons.history_rounded, 'Protokoll'),
-                  (Icons.savings_outlined, 'KI-Kosten'),
-                ],
-              ),
-              const SizedBox(height: 24),
+              SizedBox(height: compactHeader ? 12 : 24),
+              if (compactHeader)
+                _CompactAdminDashboardTabs(
+                  selected: section,
+                  onSelected: selectSection,
+                )
+              else
+                AdminContextTabs(
+                  selected: section,
+                  onSelected: selectSection,
+                  items: const [
+                    (Icons.grid_view_rounded, 'Übersicht'),
+                    (Icons.auto_awesome_rounded, 'KI-Konfiguration'),
+                    (Icons.family_restroom_rounded, 'Familientarife'),
+                    (Icons.history_rounded, 'Protokoll'),
+                    (Icons.savings_outlined, 'KI-Kosten'),
+                  ],
+                ),
+              SizedBox(height: compactHeader ? 12 : 24),
               _AdminSection(
                 offstage: section != 0,
                 child: Column(
@@ -1781,6 +1816,124 @@ class _AdminScreenState extends State<AdminScreen> {
             ],
           ),
         );
+}
+
+class _CompactAdminDashboardTabs extends StatefulWidget {
+  final int selected;
+  final ValueChanged<int> onSelected;
+  const _CompactAdminDashboardTabs({
+    required this.selected,
+    required this.onSelected,
+  });
+  @override
+  State<_CompactAdminDashboardTabs> createState() =>
+      _CompactAdminDashboardTabsState();
+}
+
+class _CompactAdminDashboardTabsState
+    extends State<_CompactAdminDashboardTabs> {
+  static const items = [
+    (Icons.grid_view_rounded, 'Übersicht'),
+    (Icons.auto_awesome_rounded, 'KI-Konfiguration'),
+    (Icons.family_restroom_rounded, 'Familientarife'),
+    (Icons.history_rounded, 'Protokoll'),
+    (Icons.savings_outlined, 'KI-Kosten'),
+  ];
+  final scroll = ScrollController();
+  final keys = List.generate(items.length, (_) => GlobalKey());
+
+  void revealSelected() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !scroll.hasClients) return;
+      final target = keys[widget.selected].currentContext?.findRenderObject();
+      if (target != null && target.attached) {
+        scroll.position.ensureVisible(
+          target,
+          alignment: .5,
+          duration: const Duration(milliseconds: 160),
+        );
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    revealSelected();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompactAdminDashboardTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected) revealSelected();
+  }
+
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      key: const ValueKey('compact-admin-dashboard-tabs'),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: p.panelSurface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: 'Betriebsbereiche; aktuell ${items[widget.selected].$2}',
+        child: SingleChildScrollView(
+          controller: scroll,
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final (index, item) in items.indexed) ...[
+                if (index > 0) const SizedBox(width: 5),
+                ConstrainedBox(
+                  key: keys[index],
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: ChoiceChip(
+                    avatar: Icon(
+                      item.$1,
+                      size: 18,
+                      color: widget.selected == index ? Colors.white : p.muted,
+                    ),
+                    label: Text(item.$2),
+                    labelStyle: TextStyle(
+                      color: widget.selected == index ? Colors.white : p.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    selected: widget.selected == index,
+                    showCheckmark: false,
+                    backgroundColor: Colors.transparent,
+                    selectedColor: p.actionPurple,
+                    side: WidgetStateBorderSide.resolveWith(
+                      (states) => BorderSide(
+                        color: states.contains(WidgetState.focused)
+                            ? p.teal
+                            : Colors.transparent,
+                        width: 2.5,
+                      ),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onSelected: (_) => widget.onSelected(index),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Metadata-only operations list; the API applies the admin role and filters.

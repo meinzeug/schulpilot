@@ -1,4 +1,59 @@
-# Produktionsstand 1.21.1+89 · 22.10.2026
+# Produktionsstand 1.22.1+91 · 22.10.2026
+
+Live: `20261022T204523Z-b42447c`, Produktcommit
+`b42447cb61a53d2249a0eddd09cd31f51e67b50a`, main gepusht, Schema 0029.
+Web, signierte Direct-APK und tatsächliches Play-AAB sind aus diesem sauberen
+Quellstand gebaut und unabhängig geprüft. Öffentliche APK und öffentliches
+JavaScript stimmen bytegenau mit den lokalen Release-Dateien überein.
+Signierer/Version, Play-Bundle und fehlende Play-Installerberechtigung sind
+geprüft; kein Storeupload. Erneute Geheimnisprüfung: 909 Quellen/Assets,
+350 Archiveinträge, 24 bekannte Secretquellen, 0 Treffer. Belege und Hashes:
+[RELEASE_91_2026_10_22.md](RELEASE_91_2026_10_22.md), `artifacts/ux91/`.
+
+Die kompaktere mobile Führung, erhaltene Info-/Filter-/Mehrmenüaktionen und
+Google-Zugangshinweise sind veröffentlicht. Der neue öffentliche Einstieg
+bezieht Trial und Preise aus dem echten Katalog. Betreiberangaben werden vom
+Nutzer später nachgereicht; kostenlose 30-Tage-Testphase und bezahlter Verkauf
+bleiben bis zu vollständiger Konfiguration und bewusster Freigabe gesperrt.
+Veröffentlichung der Oberfläche ist keine Freigabe dieser Angebote.
+
+Schulbuddy ist mit eigener Luna/high-Bindung ohne Websuche integriert. Die
+normale 91er-UI-Probe verwendete eine neu registrierte und per Plusmail
+verifizierte eigene künstliche Familie mit genau einem Kind und einer eng
+begrenzten, einmaligen auditierten QA-Freigabe; kein Demo-Flag. Genau ein
+Starter wurde gesendet. Die sichtbare Antwort gab einen Denkschritt ohne
+Lösungsverrat; Schließen/Wiederöffnen erhielt die History. Serverbeleg:
+genau ein abgeschlossener Job, ein bereiter Turn und ein Verbrauchsbeleg,
+Settlementversion 1 und 150000 USD-Mikroeinheiten weiterhin angerechnet.
+Tatsächliche Codex-Kontokosten bleiben unbekannt. Bild-/Metadatenbelege:
+`buddy-regular-ready.png`, `buddy-regular-answer.png` und
+`regular-buddy-after-ui.json` unter `artifacts/ux91/`. Dies ist getrennt von der
+historischen 90-Operatorprobe und kein allgemeiner fachlicher Qualitätsnachweis.
+
+Die vollständigen lokalen Erstläufe bleiben dokumentiert:
+PostgreSQL 1896 bestanden/2 fehlgeschlagen; Flutter 2466 bestanden/12 Webskips/
+7 fehlgeschlagen. Die betroffenen korrigierten Pfade bestanden ihre gezielten
+Nachläufe, darunter 175 Backend-/Betriebsfälle und 38 mobile Vertragsfälle.
+Google 28 nativ/9 Chrome, Commerce 17 nativ/2 Webskips sowie 19 Chrome und
+Schulbuddy 34 nativ/9 Chrome sind getrennte, teilweise überlappende Nachweise;
+ein vollständig grüner Wiederholungslauf liegt damit nicht vor.
+Vollständige Analyse und Ruff sind ohne Befund. Ein gehosteter grüner CI-Lauf
+ist hier nicht belegt.
+
+Die getrennte zweite echte Sol/max-Reparaturprobe endete mit `empty_patch`;
+ein erfolgreicher Patch und Nachhertest sind nicht belegt. Das normale künstliche
+Buddy-Testkonto wurde über den regulären Löschweg vollständig bereinigt
+(`artifacts/ux91/regular-buddy-cleanup.json`); Demo und Reparaturtestadmin bleiben
+bis zur abschließenden Nachprüfung getrennt offen. Die tatsächliche 320px-
+Browserprüfung fand außerdem einen weiterhin zu hohen Eltern-Kind-
+Navigationsblock; eine enge 92-Folgekorrektur wird separat bearbeitet.
+Keine pauschale erfolgreiche Browserprüfung aller Menüs, keine neue physische
+Android-/Pushzustell-/vollständige WCAG-Abnahme. Die unveränderlichen 91er-
+Produktbelege werden durch nachfolgende Dokumentation nicht ersetzt.
+
+---
+
+# Historischer Produktionsstand 1.21.1+89 · 22.10.2026
 
 Live: `20261022T134524Z-03e3bfe`, Produktcommit
 `03e3bfeffd654ff169ebf2daceb6537476cadf03`, main gepusht.

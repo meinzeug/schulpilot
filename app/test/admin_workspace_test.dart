@@ -400,7 +400,13 @@ void main() {
       );
       expect(find.text('Betriebsübersicht'), findsOneWidget);
       expect(find.text('Worker · noch kein Signal'), findsOneWidget);
-      expect(find.text('Deine Plattform im Blick'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('compact-admin-dashboard-heading')),
+          matching: find.text('Betrieb'),
+        ),
+        findsOneWidget,
+      );
       await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
       expect(find.textContaining('synthetic-family-a'), findsOneWidget);
       await tap(tester, find.widgetWithText(ChoiceChip, 'Übersicht'));

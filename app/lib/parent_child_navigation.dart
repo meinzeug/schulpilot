@@ -6,7 +6,7 @@ import 'parent_child_picker.dart';
 
 /// The same child context and destinations on every parent detail page.
 /// Navigation never loads content or starts learning work itself.
-class ParentChildNavigation extends StatelessWidget {
+class ParentChildNavigation extends StatefulWidget {
   final String childId, selected;
   final AppState? state;
   final String? childName, subtitle;
@@ -48,71 +48,108 @@ class ParentChildNavigation extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: Container(
-      padding: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: context.palette.surfaceBorder),
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final identity = Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: context.palette.mint,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  childName?.characters.firstOrNull?.toUpperCase() ?? 'L',
-                  style: TextStyle(
-                    color: context.palette.teal,
-                    fontSize: 21,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                  ),
+  State<ParentChildNavigation> createState() => _ParentChildNavigationState();
+}
+
+class _ParentChildNavigationState extends State<ParentChildNavigation> {
+  bool details = false;
+
+  @override
+  void didUpdateWidget(covariant ParentChildNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId ||
+        !identical(oldWidget.state, widget.state)) {
+      details = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final childId = widget.childId,
+        selected = widget.selected,
+        state = widget.state,
+        account = widget.state?.user,
+        family = widget.state?.familyId,
+        ownRoute = ModalRoute.of(context);
+    bool current() =>
+        mounted &&
+        childId == widget.childId &&
+        selected == widget.selected &&
+        identical(state, widget.state) &&
+        identical(account, state?.user) &&
+        family == state?.familyId &&
+        (ownRoute?.isCurrent ?? true);
+    final canPick = state?.isParent == true && family != null;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 650;
+        final wide =
+            !compact && MediaQuery.textScalerOf(context).scale(1) <= 1.3;
+        final identity = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: context.palette.mint,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                widget.childName?.characters.firstOrNull?.toUpperCase() ?? 'L',
+                style: TextStyle(
+                  color: context.palette.teal,
+                  fontSize: 21,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      childName ?? 'Lernübersicht',
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                      ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.childName ?? 'Lernübersicht',
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
                     ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle!,
-                        style: TextStyle(color: context.palette.muted),
-                      ),
-                  ],
-                ),
+                  ),
+                  if (widget.subtitle != null)
+                    Text(
+                      widget.subtitle!,
+                      style: TextStyle(color: context.palette.muted),
+                    ),
+                ],
               ),
-            ],
-          );
-          final section = destinations.any((item) => item.$1 == selected)
-              ? selected
-              : 'overview';
-          final picker = DropdownButtonFormField<String>(
+            ),
+          ],
+        );
+        final section =
+            ParentChildNavigation.destinations.any(
+              (item) => item.$1 == selected,
+            )
+            ? selected
+            : 'overview';
+        final picker = ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: DropdownButtonFormField<String>(
             key: ValueKey('parent-section-$childId-$section'),
             initialValue: section,
             isExpanded: true,
             itemHeight: null,
-            decoration: const InputDecoration(labelText: 'Bereich öffnen'),
+            decoration: InputDecoration(
+              labelText: 'Bereich öffnen',
+              isDense: compact,
+              contentPadding: compact
+                  ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+                  : null,
+            ),
             selectedItemBuilder: (context) => [
-              for (final item in destinations)
+              for (final item in ParentChildNavigation.destinations)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -123,7 +160,7 @@ class ParentChildNavigation extends StatelessWidget {
                 ),
             ],
             items: [
-              for (final item in destinations)
+              for (final item in ParentChildNavigation.destinations)
                 DropdownMenuItem(
                   value: item.$1,
                   child: Padding(
@@ -133,52 +170,128 @@ class ParentChildNavigation extends StatelessWidget {
                 ),
             ],
             onChanged: (value) {
-              if (value != null && value != section) {
-                openRoute(context, location(childId, value));
+              if (current() && value != null && value != section) {
+                openRoute(
+                  context,
+                  ParentChildNavigation.location(childId, value),
+                );
               }
             },
-          );
-          final wide =
-              constraints.maxWidth >= 650 &&
-              MediaQuery.textScalerOf(context).scale(1) <= 1.3;
-          final actions = <Widget>[
-            if (state?.isParent == true && state?.familyId != null)
-              ParentChildPicker(
-                state!,
-                childId: childId,
-                section: selected,
-                location: (id) => location(id, selected),
-              ),
-            IconButton(
-              onPressed: () => openRoute(context, '/app'),
-              tooltip: 'Zur Familie',
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            if (onRefresh != null)
-              IconButton(
-                onPressed: refreshing ? null : onRefresh,
-                tooltip: refreshing ? 'Wird aktualisiert …' : 'Aktualisieren',
-                icon: refreshing
+          ),
+        );
+        final back = IconButton(
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          onPressed: () {
+            if (current()) openRoute(context, '/app');
+          },
+          tooltip: 'Zur Familie',
+          icon: const Icon(Icons.arrow_back_rounded),
+        );
+        final refresh = widget.onRefresh == null
+            ? null
+            : IconButton(
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: widget.refreshing
+                    ? null
+                    : () {
+                        if (current()) widget.onRefresh?.call();
+                      },
+                tooltip: widget.refreshing
+                    ? 'Wird aktualisiert …'
+                    : 'Aktualisieren',
+                icon: widget.refreshing
                     ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh_rounded),
+              );
+        Widget childPicker() => ParentChildPicker(
+          state!,
+          childId: childId,
+          section: selected,
+          location: (id) => ParentChildNavigation.location(id, selected),
+        );
+        final actions = <Widget>[if (canPick) childPicker(), back, ?refresh];
+        Widget content;
+        if (compact) {
+          final hasDetails = canPick || widget.subtitle?.isNotEmpty == true;
+          content = Column(
+            key: const ValueKey('compact-parent-child-navigation'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  back,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      widget.childName ?? 'Lernübersicht',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (hasDetails)
+                    Semantics(
+                      expanded: details,
+                      child: IconButton(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        tooltip: canPick
+                            ? 'Infos und Kindwechsel'
+                            : 'Infos zu diesem Kind',
+                        onPressed: () {
+                          if (current()) setState(() => details = !details);
+                        },
+                        icon: Icon(
+                          details
+                              ? Icons.expand_less_rounded
+                              : Icons.more_horiz_rounded,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-          ];
-          if (wide) {
-            return Row(
-              children: [
-                Expanded(child: identity),
-                const SizedBox(width: 16),
-                SizedBox(width: 225, child: picker),
-                const SizedBox(width: 12),
-                ...actions,
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: picker),
+                  if (refresh != null) ...[const SizedBox(width: 4), refresh],
+                ],
+              ),
+              if (hasDetails && details) ...[
+                const SizedBox(height: 8),
+                if (widget.subtitle?.isNotEmpty == true)
+                  Text(
+                    widget.subtitle!,
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                if (canPick)
+                  Align(alignment: Alignment.centerLeft, child: childPicker()),
               ],
-            );
-          }
-          return Column(
+            ],
+          );
+        } else if (wide) {
+          content = Row(
+            children: [
+              Expanded(child: identity),
+              const SizedBox(width: 16),
+              SizedBox(width: 225, child: picker),
+              const SizedBox(width: 12),
+              ...actions,
+            ],
+          );
+        } else {
+          content = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               identity,
@@ -190,25 +303,33 @@ class ParentChildNavigation extends StatelessWidget {
                   spacing: 4,
                   children: [
                     TextButton.icon(
-                      onPressed: () => openRoute(context, '/app'),
+                      onPressed: () {
+                        if (current()) openRoute(context, '/app');
+                      },
                       icon: const Icon(Icons.arrow_back_rounded, size: 18),
                       label: const Text('Zur Familie'),
                     ),
-                    if (state?.isParent == true && state?.familyId != null)
-                      ParentChildPicker(
-                        state!,
-                        childId: childId,
-                        section: selected,
-                        location: (id) => location(id, selected),
-                      ),
-                    if (onRefresh != null) actions.last,
+                    if (canPick) childPicker(),
+                    ?refresh,
                   ],
                 ),
               ),
             ],
           );
-        },
-      ),
-    ),
-  );
+        }
+        return Padding(
+          padding: EdgeInsets.only(bottom: compact ? 10 : 20),
+          child: Container(
+            padding: EdgeInsets.only(bottom: compact ? 10 : 18),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: context.palette.surfaceBorder),
+              ),
+            ),
+            child: content,
+          ),
+        );
+      },
+    );
+  }
 }

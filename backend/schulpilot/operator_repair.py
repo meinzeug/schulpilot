@@ -33,8 +33,9 @@ SOURCE = "isolated_repair_cli"
 
 
 class RepairError(Exception):
-    def __init__(self, code, *, not_sent=False):
+    def __init__(self, code, *, not_sent=False, test_summary=None):
         self.code, self.not_sent = code, not_sent
+        self.test_summary = test_summary
         super().__init__(code)
 
 
@@ -158,12 +159,33 @@ def interrupt_running():
         return len(rows)
 
 
+def checked_failure_tests(value):
+    """Only fixed trusted before-counts; never turn a failure into passed tests."""
+    if value is None:
+        return None  # Older broker: no invented historical observations.
+    try:
+        if (not isinstance(value, dict) or value.get("source") != "isolated_worker"
+                or value.get("executed") is not False or value.get("verification_kind") != "not_run"):
+            raise ValueError()
+        baseline = value["baseline"]
+        if (not isinstance(baseline, dict) or baseline.get("source") != "isolated_worker"
+                or baseline.get("verification_kind") != "pytest" or baseline.get("executed") is not True
+                or any(type(baseline.get(k)) is not int or not 0 <= baseline[k] <= 1000000
+                       for k in ("passed", "failed", "skipped", "duration_ms"))):
+            raise ValueError()
+        return {"source": "isolated_worker", "executed": False, "verification_kind": "not_run",
+                "baseline": {k: baseline[k] for k in ("executed", "passed", "failed", "skipped", "duration_ms")}}
+    except (KeyError, TypeError, ValueError):
+        raise RepairError("invalid_patch") from None
+
+
 def checked_result(value):
     if value.get("status") != "completed":
         code = value.get("error_code")
         if code not in {"run_timeout", "invalid_patch", "empty_patch", "catalog_changed", "run_failed"}:
             code = "run_failed"
-        raise RepairError(code, not_sent=value.get("dispatched") is False)
+        raise RepairError(code, not_sent=value.get("dispatched") is False,
+                          test_summary=checked_failure_tests(value.get("test_summary")))
     try:
         patch = base64.b64decode(value["patch"], validate=True)
         if not 1 <= len(patch) <= MAX_PATCH or b"\x00" in patch:
@@ -282,6 +304,8 @@ def work_one():
         with DB.begin() as db:
             row = db.scalar(select(OperatorRepairRequest).where(OperatorRepairRequest.id == identifier).with_for_update())
             if row and row.status == "running":
+                if failure.test_summary is not None:
+                    row.test_summary = failure.test_summary
                 # Only broker proof of zero dispatch refunds; late reauth failure
                 # does not turn an already spent request into a free operation.
                 finish(db, row, code=failure.code, not_sent=(result is not None and result.get("dispatched") is False))

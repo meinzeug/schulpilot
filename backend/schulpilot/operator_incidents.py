@@ -291,24 +291,29 @@ def incident(db, identifier):
 def public_test_summary(value):
     if not isinstance(value, dict) or value.get("source") != "isolated_worker":
         return {"source": "not_run", "executed": False}
+
+    def counts(selected):
+        if not isinstance(selected, dict) or selected.get("executed") is not True:
+            return {"executed": False}
+        result = {"executed": True}
+        for field in ("passed", "failed", "skipped", "duration_ms"):
+            number = selected.get(field)
+            if type(number) is int and 0 <= number <= 10_000_000:
+                result[field] = number
+        return result
+
+    before = counts(value.get("baseline"))
+    baseline = {"baseline": before} if before["executed"] else {}
     if value.get("verification_kind") == "syntax_only":
         return {
             "source": "not_run",
             "executed": False,
             "verification_kind": "syntax_only",
             "syntax_checked": value.get("syntax_checked") is True,
+            **baseline,
         }
     if value.get("verification_kind") != "pytest" or value.get("executed") is not True:
-        return {"source": "not_run", "executed": False}
-
-    def counts(selected):
-        result = {"executed": selected.get("executed") is True}
-        if result["executed"]:
-            for field in ("passed", "failed", "skipped", "duration_ms"):
-                number = selected.get(field)
-                if type(number) is int and 0 <= number <= 10_000_000:
-                    result[field] = number
-        return result
+        return {"source": "not_run", "executed": False, **baseline}
 
     result = {"source": "isolated_worker", "verification_kind": "pytest", **counts(value)}
     if isinstance(value.get("baseline"), dict):

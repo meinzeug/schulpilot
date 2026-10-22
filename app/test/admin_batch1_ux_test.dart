@@ -1011,7 +1011,7 @@ void main() {
         field('Modell-ID für Lerneinheiten (laut Anbieter)'),
         'keep-this-draft',
       );
-      await press(t, find.widgetWithText(OutlinedButton, 'Aktualisieren'));
+      await press(t, find.byTooltip('Aktualisieren'));
       expect(find.text('Entwurf beim Neuladen verwerfen?'), findsOneWidget);
       await press(t, find.text('Abbrechen'));
       expect(

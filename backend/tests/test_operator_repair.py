@@ -523,3 +523,128 @@ def test_agent_rejects_missing_runtime_boundary_before_cli_or_source_copy(monkey
     monkeypatch.setattr(agent.subprocess, "run", lambda *_a, **_k: pytest.fail("No CLI before guard"))
     with pytest.raises(ValueError, match="outer_container_guard"):
         agent.main()
+
+
+@pytest.fixture
+def unchanged_repair_broker(tmp_path, monkeypatch):
+    """Complete empty-archive-diff path, no real process/socket/model call."""
+    import os
+    import threading
+    from types import SimpleNamespace
+
+    sys.modules["catalog"] = module("catalog")
+    sys.modules["policy"] = policy
+    broker = module("broker")
+    root, home = tmp_path / "root", tmp_path / "home"
+    root.mkdir()
+    (home / "jobs").mkdir(parents=True)
+    (root / "image-id").write_text("sha256:" + "a" * 64)
+    monkeypatch.setattr(broker, "ROOT", root)
+    monkeypatch.setattr(broker, "HOME", home)
+    monkeypatch.setattr(broker, "catalog", lambda **kwargs: dict(CATALOG))
+    name = "backend/schulpilot/instructional_decisions.py"
+    files = {name: (Path(__file__).resolve().parents[1] / "schulpilot/instructional_decisions.py").read_bytes()}
+    original = repair_source.archive_bytes(files, COMMIT)
+    unchanged = repair_source.archive_bytes(policy.synthetic_fault(files, "decision-closed-v1"), COMMIT)
+    incident = {"code": "synthetic_repair", "function": "instructional_decisions.process"}
+    body = {"id": "d" * 32, "source_commit": COMMIT, "model": repair.MODEL, "reasoning_effort": repair.EFFORT,
+            "incident": incident, "incident_digest": digest(incident), "catalog_fingerprint": CATALOG["catalog_fingerprint"],
+            "source": base64.b64encode(original).decode(), "source_sha256": __import__("hashlib").sha256(original).hexdigest(),
+            "synthetic_fixture": "decision-closed-v1"}
+    baseline = {"source": "isolated_worker", "executed": True, "verification_kind": "pytest",
+                "passed": 5, "failed": 1, "skipped": 0, "duration_ms": 7}
+    checks, commands = [], []
+
+    def verify(*args):
+        checks.append(args[-1])
+        return dict(baseline)
+
+    monkeypatch.setattr(broker, "verification", verify)
+
+    class Proxy:
+        def __init__(self, path, *args):
+            Path(path).touch(mode=0o600)
+        def serve_forever(self):
+            pass
+        def close_connections(self):
+            pass
+        def shutdown(self):
+            pass
+        def server_close(self):
+            pass
+
+    class Process:
+        returncode = 0
+        def __init__(self, command, **kwargs):
+            commands.append(command)
+            read, write = os.pipe()
+            self.stdout = os.fdopen(read, "rb")
+
+            def write_archive():
+                with os.fdopen(write, "wb") as output:
+                    output.write(unchanged)
+
+            self.writer = threading.Thread(target=write_archive, daemon=True)
+            self.writer.start()
+        def wait(self, **kwargs):
+            self.writer.join(timeout=2)
+            assert not self.writer.is_alive()
+            return 0
+        def poll(self):
+            return 0
+
+    monkeypatch.setattr(broker, "JobHTTP", Proxy)
+    monkeypatch.setattr(broker.subprocess, "Popen", Process)
+    monkeypatch.setattr(broker.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=0))
+    return broker, body, baseline, checks, commands
+
+
+def test_empty_patch_keeps_actual_baseline_without_running_or_claiming_after_checks(unchanged_repair_broker):
+    broker, body, baseline, checks, commands = unchanged_repair_broker
+    result = broker.run(body)
+    assert result["status"] == "failed" and result["error_code"] == "empty_patch"
+    assert result["dispatched"] is False  # This test never invokes a provider.
+    assert result["test_summary"] == {"source": "isolated_worker", "executed": False,
+                                      "verification_kind": "not_run", "baseline": baseline}
+    assert checks == ["before"] and len(commands) == 1
+    assert "--network=none" in commands[0] and "--cap-drop=ALL" in commands[0]
+
+
+@pytest.mark.parametrize("passed,failed", [(6, 0), (0, 6)])
+def test_fixed_probe_requires_observed_expected_failure_before_any_model_container(unchanged_repair_broker, passed, failed):
+    broker, body, baseline, checks, commands = unchanged_repair_broker
+    baseline.update(passed=passed, failed=failed)
+    result = broker.run(body)
+    assert result["status"] == "failed" and result["error_code"] == "run_failed" and not result["dispatched"]
+    assert result["test_summary"]["baseline"]["passed"] == passed
+    assert checks == ["before"] and not commands
+
+
+def test_failed_dispatch_retains_validated_before_tests_and_unknown_cost_hold(queued, monkeypatch):
+    from schulpilot.operator_incidents import public_repair
+
+    summary = {"source": "isolated_worker", "executed": False, "verification_kind": "not_run",
+               "baseline": {"source": "isolated_worker", "executed": True, "verification_kind": "pytest",
+                            "passed": 5, "failed": 1, "skipped": 0, "duration_ms": 7, "stdout": "PRIVATE"}}
+    monkeypatch.setattr(repair, "worker_request", lambda *args: {"status": "failed", "error_code": "empty_patch",
+                                                               "dispatched": True, "test_summary": summary})
+    assert repair.work_one()
+    with DB() as db:
+        row = db.get(OperatorRepairRequest, queued[0])
+        value = public_repair(row)
+        assert row.status == "failed" and row.error_code == "empty_patch" and not row.artifact_path
+        assert row.cost_micros is None and row.reserved_micros == 1200 and row.settlement_version == 1
+        assert value["test_summary"] == {"source": "not_run", "executed": False,
+            "baseline": {"executed": True, "passed": 5, "failed": 1, "skipped": 0, "duration_ms": 7}}
+        assert "PRIVATE" not in json.dumps(value)
+        assert not row.active_slot and not row.execution_slot
+
+
+@pytest.mark.parametrize("field,value", [("source", "model_report"), ("executed", False), ("passed", True), ("failed", -1)])
+def test_failure_baseline_rejects_untrusted_or_malformed_counts(field, value):
+    summary = {"source": "isolated_worker", "executed": False, "verification_kind": "not_run",
+               "baseline": {"source": "isolated_worker", "executed": True, "verification_kind": "pytest",
+                            "passed": 5, "failed": 1, "skipped": 0, "duration_ms": 7}}
+    summary["baseline"][field] = value
+    with pytest.raises(repair.RepairError, match="invalid_patch"):
+        repair.checked_result({"status": "failed", "error_code": "empty_patch", "dispatched": True, "test_summary": summary})

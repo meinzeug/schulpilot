@@ -31,9 +31,16 @@ class RepairAgentWorkspaceTest(unittest.TestCase):
         self.assertIn("Only edit backend/schulpilot/instructional_decisions.py.", prompt)
         self.assertIn("Do not add or change tests or any other file.", prompt)
         self.assertNotIn("add matching tests", prompt)
+        self.assertIn("with closed=true is incorrectly accepted", prompt)
+        self.assertIn("decision_closed validation code", prompt)
+        self.assertIn("Open practice must remain accepted", prompt)
+        self.assertIn("using local file tools", prompt)
+        self.assertIn("not a child's answer or learning record", prompt)
 
     def test_regular_incident_can_still_add_a_regression_test(self):
-        self.assertIn("add matching tests", agent.repair_prompt('{"code":"decision_closed"}'))
+        prompt = agent.repair_prompt('{"code":"decision_closed"}')
+        self.assertIn("add matching tests", prompt)
+        self.assertNotIn("closed=true is incorrectly accepted", prompt)
 
     def test_unknown_trusted_fixture_is_rejected_before_cli(self):
         with self.assertRaisesRegex(ValueError, "synthetic_fixture"):

@@ -93,8 +93,61 @@ grün; überlappende Tests werden nicht addiert.
 Die ausdrücklich bestätigte persönliche Reparaturanmeldung ist abgeschlossen.
 Der eigene echte CLI-Katalog meldet `gpt-6.1-sol` mit `max` und CLI0.162.1;
 die vorhandene Lernanmeldung wurde nicht verändert. Der echte künstliche
-Sol/max-Reparaturauftrag folgt erst nach dem passenden Deployment. Weder der
-reine Katalog noch die Shellprobe werden als erfolgreiche KI-Reparatur ausgegeben.
+Sol/max-Reparaturauftrag wurde nach dem passenden91-Deployment durchgeführt;
+sein Ergebnis ist nachfolgend ausdrücklich als fehlgeschlagen dokumentiert.
+Weder Katalog, Shellprobe noch dieser fehlgeschlagene Auftrag gelten als
+erfolgreiche KI-Reparatur.
+
+### Echte91-Probe und begrenzte92-Korrektur
+
+Release `20261022T204523Z-b42447c`, Quelle
+`b42447cb61a53d2249a0eddd09cd31f51e67b50a`, Schema0029 und privates Quellpaket
+wurden vorab tatsächlich geprüft. Nach gesicherter Konfiguration wurde nur der
+getrennte Broker aus diesem Release installiert und sein echter Sol/max-Katalog
+bestätigt. Reparatur- und Lernanmeldung blieben beim Installieren erhalten. Der
+Dispatcher wurde bewusst erst danach gestartet.
+
+Die erste Probe war vor Modellversand gescheitert und mit Kosten0 auditiert.
+Nach dem belegten Workspacefix wurde einmalig der zweite bewusste Auftrag mit
+derselben künstlichen Adminidentität und Sitzung ausgelöst. Er endete nach
+45 Sekunden mit `empty_patch`: Der Toolprozess lieferte Exit0 und ein gültiges
+Quellarchiv, dessen Dateien mit der injizierten Kopie übereinstimmten. Es gab
+keine Dateiänderung, kein Patchartefakt und keinen nachgewiesenen Nachherlauf.
+Die konkrete Modellantwort ist nicht rekonstruierbar: CLI-stdout und -stderr
+gingen bewusst nach DEVNULL, der isolierte Arbeitsraum wurde entfernt. Eine
+Modellmotivation oder ein erfolgreicher Providerantworttext wird daraus nicht
+behauptet.
+
+Die tatsächlichen Baselinezählungen dieses einzelnen Fehlversuchs wurden vom
+bisherigen Fehlerpfad nicht gespeichert; sie werden nicht nachträglich erfunden.
+Seine vollständigen Auditbelege und Versuchszähler bleiben erhalten. Die normale
+Reservierung von1.800.000USD-Mikroeinheiten bleibt bei unbekannten Accountkosten
+gehalten, Abschlussversion1 und freie aktive Claims sind nachgewiesen. Es wurde
+weder ein weiterer Liveversuch noch ein Reset oder eine Quotenänderung ausgeführt.
+
+Die begrenzte92-Korrektur ergänzt für genau die feste serverseitige künstliche
+Probe die überprüfbare Erwartung: Bereits geschlossene Fragen dürfen nicht
+erneut als Übung akzeptiert werden (`decision_closed`); offene Übungen und
+Erklärungen zu abgeschlossenen Fragen bleiben erlaubt. Nur wenn der unabhängige
+Baselineprüfer tatsächlich5/1 meldet, darf dieser Probeauftrag zum Modell gehen.
+Ein abweichendes Ergebnis endet vorher kontrolliert. Allgemeine Vorfälle erhalten
+keine erfundenen synthetischen Beobachtungen und keine privaten Kinderinhalte.
+
+Bereits ausgeführte Baselinezählungen bleiben künftig auch bei `empty_patch` und
+anderen späteren Fehlern als validierte neutrale Metadaten am Auftrag erhalten.
+Die Adminansicht trennt sie ausdrücklich von einem nicht ausgeführten Nachherlauf;
+kein Modellbericht ersetzt Prüfergebnisse. Keine Rohantwort, Werkzeugausgabe oder
+private Fehlermeldung wird dafür gespeichert. Modell, lokaler Werkzeugrahmen,
+Isolation,240-Sekunden-/12-Responses-Grenzen, Quoten und Kostenregeln bleiben gleich.
+
+Offline-/Mockregressionen prüfen den tatsächlichen unveränderten Archivpfad,
+Baselineerhalt, Stopp vor Modellstart bei falscher Baseline, strikte Zählervalidierung
+und die unbekannte gehaltene Reservierung. Der gezielte PostgreSQL-/Migrationsblock
+besteht mit91Fällen; sieben Offline-Agentfälle bestehen ebenfalls. Dies sind
+Codeprüfungen der92-Korrektur und ausdrücklich kein zusätzlicher echter
+Sol/max-Erfolgsnachweis. Alle13 Operator-Widgetfälle einschließlich der sichtbaren
+5/1-Baseline bei fehlendem Patch bestehen; die gezielte Dart-Analyse und Ruff
+melden keine Befunde.
 
 Vor der Socket-Ergänzung wurde die betroffene Konfiguration unter
 `/var/backups/schulpilot-config/before90-20261022T162840Z` gesichert

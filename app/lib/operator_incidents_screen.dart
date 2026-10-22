@@ -392,7 +392,7 @@ class _OperatorIncidentsScreenState extends State<OperatorIncidentsScreen> {
               )
             else
               const Text(
-                'Kein unabhängig ausgeführter Testlauf nachgewiesen. Ein Modellbericht allein bestätigt keine bestandenen Tests.',
+                'Kein unabhängig ausgeführter Prüflauf nach der Änderung nachgewiesen. Ein Modellbericht allein bestätigt keine bestandenen Tests.',
               ),
             if (r['test_summary']?['baseline']?['executed'] == true)
               Text(

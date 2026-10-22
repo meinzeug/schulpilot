@@ -692,3 +692,16 @@ Luna/high-Abnahmeaufruf90 bleibt von dieser Bedienprüfung getrennt. Technische
 Zitiermarker werden ausschließlich mit serverseitig validierten Quellenchips
 abgeglichen. Abnahmegrenzen, Erstfehler und gezielte Nachläufe stehen im
 [gemeinsamen Releasebericht](RELEASE_91_2026_10_22.md).
+
+## 22.10.2026 · Tatsächliche mobile Folgekorrrektur92
+
+- Eigener Produktionsbrowser mit320×568,390×844 und1100px: kompakter
+  Eltern-Kindkontext und Adminbereich wurden anhand tatsächlich gerenderter
+  Kopf-/Reiterhöhen nachgebessert; Vorherbilder und enge Regressionen in
+  `artifacts/ux91/`, Arbeits-/Freigabebelege in
+  `docs/RELEASE_92_2026_10_22.md`. Diese Stichprobe ist keine vollständige
+  WCAG-, Geräte- oder Fachqualitätsabnahme.
+- Bestehende gepinnte Flutter-/Dart-/GoRouter-Versionen unverändert; keine neue
+  UI-Abhängigkeit oder Providerfreigabe. Der fehlgeschlagene zweite echte
+  Sol/max-Reparaturauftrag ist ausdrücklich vom erfolgreichen einzelnen
+  Luna/high-Bedienchat und von den ausschließlich lokalen92-Prüfungen getrennt.
