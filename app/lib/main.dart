@@ -72,18 +72,14 @@ class SchulpilotApp extends StatefulWidget {
 class _SchulpilotAppState extends State<SchulpilotApp>
     with WidgetsBindingObserver {
   final messenger = GlobalKey<ScaffoldMessengerState>();
+  final navigator = GlobalKey<NavigatorState>();
+  bool _handlingCallIntent = false;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(_syncInbox);
-    widget.state.familyCalls.onNativeIntent = (id, action) {
-      if (!mounted || !(widget.state.isChild || widget.state.isParent)) return;
-      final requestedAction = ['answer', 'decline'].contains(action)
-          ? '?action=$action'
-          : '';
-      router.go('/family-call/$id$requestedAction');
-    };
+    widget.state.familyCalls.onNativeIntent = _handleCallIntent;
     _syncInbox();
     widget.state.push.onOpen = () {
       widget.state.push.openPending = false;
@@ -109,6 +105,45 @@ class _SchulpilotAppState extends State<SchulpilotApp>
     });
   }
 
+  Future<void> _handleCallIntent(String id, String action) async {
+    if (!mounted ||
+        _handlingCallIntent ||
+        !(widget.state.isChild || widget.state.isParent)) {
+      return;
+    }
+    final account = widget.state.user;
+    final calls = widget.state.familyCalls;
+    _handlingCallIntent = true;
+    try {
+      // A notification opens the global call controls, leaving the current
+      // exercise and its draft mounted. It never grants capture permission.
+      await calls.open(id);
+      if (!mounted ||
+          !identical(widget.state.user, account) ||
+          calls.callId != id) {
+        return;
+      }
+      if (action == 'decline' && calls.incoming) {
+        await calls.end(decline: true);
+      } else if (action == 'answer' && calls.incoming) {
+        final context = navigator.currentContext;
+        if (context != null && context.mounted) {
+          await confirmFamilyCallJoin(context, calls);
+        }
+      }
+    } catch (_) {
+      if (mounted && identical(widget.state.user, account)) {
+        messenger.currentState?.showSnackBar(
+          const SnackBar(
+            content: Text('Dieser Anruf ist nicht mehr verfügbar.'),
+          ),
+        );
+      }
+    } finally {
+      _handlingCallIntent = false;
+    }
+  }
+
   void _syncInbox() {
     widget.state.inbox.activate(
       (widget.state.isChild || widget.state.isParent)
@@ -125,6 +160,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
   }
 
   late final GoRouter router = GoRouter(
+    navigatorKey: navigator,
     initialLocation: widget.initialLocation,
     refreshListenable: widget.state,
     redirect: (context, route) {
@@ -493,6 +529,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         listenable: router.routeInformationProvider,
         builder: (context, _) => FamilyCallHost(
           widget.state,
+          navigatorKey: navigator,
           currentPath: router.routeInformationProvider.value.uri.path,
           openCall: (id) => router.push('/family-call/$id'),
           child: child ?? const SizedBox.shrink(),

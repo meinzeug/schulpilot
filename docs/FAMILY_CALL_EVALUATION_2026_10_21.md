@@ -1,4 +1,42 @@
-# Familienanrufe: Abnahme am 21.10.2026
+# Familienanrufe: Abnahme am 21.–22.10.2026
+
+## Aufgabenbegleitende Livehilfe83 · 22.10.2026
+
+Version1.19.4+83 ersetzt beim Kinderaufruf den automatischen Seitenwechsel durch
+einen kompakten, aufklappbaren Gesprächsdock. Kamera/Ton/Freigabe bleiben im
+kontogebundenen Service, Aufgabe und Entwurf im selben Routerzustand. Native
+Benachrichtigungsaktionen erhalten ebenfalls die laufende Aufgabenroute.
+
+98 gemeinsame Flutterfälle einschließlich zehn neuer Dock- und fünf neuer
+Main-/Navigationsfälle bestanden, vollständige Flutter-Analyse ohne Hinweise.
+36 bestehende Anruffälle erneut in isoliertem PostgreSQL bestanden. Keine
+Backend- oder Datenbankänderung außer der Produktversionsangabe, kein neuer
+KI-Auftrag oder geändertes Budget.
+
+| Ausgangspunkt → Aktion | Überprüftes Ergebnis |
+| --- | --- |
+| Aufgabe mit Entwurf/Feedback → Elternhilfe starten | Gleicher Aufgaben-State und Route, genau ein Start, Eingabe und Rückmeldung bleiben. |
+| Kompakter Dock → Teilen bestätigen → Stopp | Getrennte ausdrückliche Freigabe; direkt erreichbarer Stopp ohne Wechsel von der Aufgabe. |
+| Großansicht → Zurückanimation | Höchstens eine montierte Ansicht pro Renderer, auch mit zusätzlichem Kinderbildschirm in der Elternansicht. |
+|320×568/640×320, doppelte Schrift, Tastatur, hell/dunkel | Bedienelemente mindestens48px, keine Test-Overflows, Entwurf weiter bearbeitbar. |
+| Nativer Anrufhinweis → Ansehen/Annehmen/Ablehnen | Aufgabe bleibt; Annahme weiterhin ausdrücklich; Ablehnen öffnet keine Medien. |
+| Älterer Anruflink oder verspätete Ladeantwort → neueres Gespräch | Kein Ersetzen oder Schließen des neueren Gesprächs. |
+
+Die tatsächliche Browserprüfung der ausdrücklich synthetischen Vorschau deckte
+fehlende Dock-Semantik hinter der Router-ModalRoute auf. Die feste Semantikgrenze
+behebt sie; Mikrofon, Kamera, Teilen, Auflegen und Aufgabenformular erscheinen nun
+gemeinsam im Zugänglichkeitsbaum. Der Renderer-Übergangstest deckte außerdem
+doppelte Ansichten während der Pop-Animation auf. Die Präsentationsbelegung bis
+zum tatsächlichen Dispose behebt den Fehler. Dialogschutz und Beenden während
+einer noch offenen Freigabeabfrage sind zusätzlich geprüft.
+
+Die Vorschau verwendet ausschließlich gezeichnete Kameraplatzhalter und lokale
+Mockantworten; sie ist kein Nachweis einer realen Medienverbindung. Der neue
+öffentliche Demohaushalt enthält ausschließlich vier feste künstliche Aufgaben
+und dient der getrennten signierten Android-Liveprobe. Keine alten Testzugänge
+wurden wieder aktiviert und keine Pushfreigaben erteilt.
+
+## Historische Produktionsabnahme82
 
 Produktversion **1.19.3+82**, Commit
 `e58e6c4e98411052bda37378d158cf9d30a360b2`, Produktionsrelease

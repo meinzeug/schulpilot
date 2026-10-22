@@ -7,6 +7,40 @@ import 'api.dart';
 import 'family_call_service.dart';
 import 'ui.dart';
 
+// Route paths change before a pop animation disposes its video subtree. Keep
+// presentation ownership in memory until that subtree has actually unmounted.
+final _videoOwnership = Expando<_VideoOwnership>();
+_VideoOwnership _ownershipFor(AppState state) =>
+    _videoOwnership[state] ??= _VideoOwnership();
+
+class _VideoOwnership extends ChangeNotifier {
+  final _pages = <Object, ({Object? account, String callId})>{};
+  bool _scheduled = false;
+  bool hasPage(Object? account, String? callId) => _pages.values.any(
+    (page) => identical(page.account, account) && page.callId == callId,
+  );
+  void claim(Object token, Object? account, String callId) {
+    _pages[token] = (account: account, callId: callId);
+    _changed();
+  }
+
+  void release(Object token) {
+    _pages.remove(token);
+    _changed();
+  }
+
+  void _changed() {
+    if (_scheduled) return;
+    _scheduled = true;
+    // initState/dispose may run while the router builds or finalizes a frame.
+    // Never mark an ancestor dirty synchronously during that work.
+    scheduleMicrotask(() {
+      _scheduled = false;
+      notifyListeners();
+    });
+  }
+}
+
 /// Shared entry at every child help location. Messages remain an explicit fallback.
 Future<void> showFamilyHelp(
   BuildContext context,
@@ -91,7 +125,9 @@ Future<void> showFamilyHelp(
   );
   if (!context.mounted || !identical(state.user, expectedAccount)) return;
   if (id != null) {
-    context.push('/family-call/$id');
+    // The global conversation dock joins the existing task. Keeping this route
+    // mounted preserves its draft, feedback and learning-time lifecycle.
+    return;
   } else {
     final fallback = await showDialog<String>(
       context: context,
@@ -127,7 +163,7 @@ Future<void> showFamilyHelp(
       );
       if (!context.mounted || !identical(state.user, expectedAccount)) return;
       if (audioId != null) {
-        context.push('/family-call/$audioId');
+        return;
       } else {
         toast(
           context,
@@ -187,124 +223,538 @@ Future<void> confirmFamilyCallJoin(
   }
 }
 
-/// The small live bar is part of the layout, so it never covers task controls.
-class FamilyCallHost extends StatelessWidget {
+/// The task always occupies the same Expanded slot, including before/after a
+/// call and on the dedicated call page. The dock never covers task controls.
+class FamilyCallHost extends StatefulWidget {
   final AppState state;
   final Widget child;
   final void Function(String callId) openCall;
   final String? currentPath;
+  final GlobalKey<NavigatorState>? navigatorKey;
   const FamilyCallHost(
     this.state, {
     super.key,
     required this.child,
     required this.openCall,
     this.currentPath,
+    this.navigatorKey,
   });
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: state.familyCalls,
-    builder: (context, _) {
-      final calls = state.familyCalls;
-      if (!identical(calls.accountIdentity, state.user)) return child;
-      final ownCallPage =
-          calls.callId != null &&
-          currentPath == '/family-call/${calls.callId}' &&
-          identical(calls.accountIdentity, state.user) &&
-          calls.call?['role'] == state.user?['role'] &&
-          (state.isParent ||
-              (state.isChild &&
-                  calls.call?['child_id'] == state.user?['child_id']));
-      if (ownCallPage) return child;
-      if (!calls.live) {
-        if (!calls.busy) return child;
-        return Column(
-          children: [
-            Material(
-              color: Theme.of(context).colorScheme.surfaceContainerHigh,
-              child: const SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          'Dein Anruf wird vorbereitet. Prüfe die Freigabe für Mikrofon und Kamera.',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+  State<FamilyCallHost> createState() => _FamilyCallHostState();
+}
+
+class _FamilyCallHostState extends State<FamilyCallHost> {
+  bool _expanded = false;
+  bool _dialogOpen = false;
+  String? _shownCall;
+  Object? _shownAccount;
+  FamilyCallService get calls => widget.state.familyCalls;
+
+  BuildContext? get _dialogContext {
+    final candidate =
+        widget.navigatorKey?.currentState?.overlay?.context ??
+        widget.navigatorKey?.currentContext ??
+        context;
+    return Navigator.maybeOf(candidate) != null ? candidate : null;
+  }
+
+  void _expand() {
+    if (MediaQuery.sizeOf(context).height < 420 && calls.callId != null) {
+      widget.openCall(calls.callId!);
+      return;
+    }
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final next = !(_expanded && !keyboard);
+    if (next) FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _expanded = next);
+  }
+
+  Future<void> _join() async {
+    if (_dialogOpen) return;
+    final dialog = _dialogContext;
+    if (dialog == null) return;
+    _dialogOpen = true;
+    try {
+      await confirmFamilyCallJoin(dialog, calls);
+    } finally {
+      _dialogOpen = false;
+    }
+  }
+
+  void _screenAction() {
+    if (calls.media?.sharingScreen == true) {
+      unawaited(calls.stopScreen());
+      return;
+    }
+    if (_dialogOpen) return;
+    final dialog = _dialogContext;
+    if (dialog == null) return;
+    final expectedAccount = calls.accountIdentity;
+    final expectedCall = calls.callId;
+    _dialogOpen = true;
+    unawaited(
+      showDialog<void>(
+        context: dialog,
+        builder: (consent) => AlertDialog(
+          title: const Text('Deine Aufgabe live zeigen'),
+          content: SingleChildScrollView(
+            child: Text(
+              calls.webPlatform
+                  ? 'Teile möglichst nur den Schulpilot-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet. Auf dem Smartphone kann die Android-App nötig sein.'
+                  : 'Deine Eltern sehen den freigegebenen Bildschirm live. Wähle nur den Bereich aus, den du zeigen möchtest, und öffne dabei keine privaten Inhalte. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet.',
             ),
-            Expanded(child: child),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(consent),
+              child: const Text('Zurück'),
+            ),
+            FilledButton.icon(
+              key: const ValueKey('call-dock-share-confirm'),
+              onPressed: () {
+                Navigator.pop(consent);
+                if (identical(calls.accountIdentity, expectedAccount) &&
+                    identical(widget.state.user, expectedAccount) &&
+                    calls.callId == expectedCall &&
+                    calls.accepted) {
+                  // No awaited work before capture: retain the browser gesture.
+                  unawaited(calls.shareScreen());
+                }
+              },
+              icon: const Icon(Icons.screen_share_rounded),
+              label: const Text('Bereich auswählen und teilen'),
+            ),
+          ],
+        ),
+      ).whenComplete(() => _dialogOpen = false),
+    );
+  }
+
+  Widget _control({
+    required String name,
+    required String label,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    bool active = false,
+    bool end = false,
+    String? caption,
+  }) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      IconButton.filledTonal(
+        key: ValueKey('call-dock-$name'),
+        tooltip: label,
+        style: IconButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          backgroundColor: end
+              ? Theme.of(context).colorScheme.error
+              : active
+              ? context.palette.surfaceHigh
+              : context.palette.surfaceLow,
+          foregroundColor: end
+              ? Theme.of(context).colorScheme.onError
+              : context.palette.ink,
+          side: BorderSide(color: context.palette.controlBorder),
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon),
+      ),
+      if (caption != null)
+        ExcludeSemantics(
+          child: Text(
+            caption,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
+    ],
+  );
+
+  void _showIssue() {
+    if (_dialogOpen) return;
+    final dialog = _dialogContext;
+    final error = calls.error;
+    if (dialog == null || error == null) return;
+    _dialogOpen = true;
+    unawaited(
+      showDialog<void>(
+        context: dialog,
+        builder: (context) => AlertDialog(
+          title: const Text('Verbindung prüfen'),
+          content: SingleChildScrollView(child: Text(error)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Zurück'),
+            ),
+          ],
+        ),
+      ).whenComplete(() => _dialogOpen = false),
+    );
+  }
+
+  Widget _videos() {
+    final media = calls.media!;
+    return LayoutBuilder(
+      builder: (context, size) {
+        final tiles = [
+          if (calls.isParent && media.hasRemoteScreen)
+            _DockVideo(
+              key: const ValueKey('call-dock-screen-video'),
+              label: 'Kinderbildschirm',
+              video: media.video(remote: true, screen: true),
+              screen: true,
+            ),
+          _DockVideo(
+            key: const ValueKey('call-dock-remote-video'),
+            label: calls.isChild
+                ? 'Deine Eltern'
+                : '${calls.call?['child_name'] ?? 'Dein Kind'} · Kamera',
+            video: media.hasRemoteCamera ? media.video(remote: true) : null,
+          ),
+          _DockVideo(
+            key: const ValueKey('call-dock-local-video'),
+            label: media.cameraEnabled ? 'Du · Kamera an' : 'Du · Kamera aus',
+            video: media.cameraEnabled ? media.video(remote: false) : null,
+          ),
+        ];
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final tile in tiles)
+              SizedBox(
+                width: size.maxWidth >= 700
+                    ? (size.maxWidth - (tiles.length - 1) * 10) / tiles.length
+                    : tile.screen
+                    ? size.maxWidth
+                    : (size.maxWidth - 10) / 2,
+                child: tile,
+              ),
           ],
         );
-      }
-      return Column(
-        children: [
-          Material(
-            color: Theme.of(context).colorScheme.surfaceContainerHigh,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+      },
+    );
+  }
+
+  Widget _dock(BuildContext context, BoxConstraints size) {
+    final media = calls.media;
+    final sharing = media?.sharingScreen == true;
+    final connected = media?.connectionState == 'connected';
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final tight = size.maxHeight < 420 || keyboard;
+    final expanded = _expanded && !keyboard && size.maxHeight >= 420;
+    final status = calls.busy && !calls.live
+        ? 'Anruf wird vorbereitet …'
+        : calls.incoming
+        ? '${calls.call?['child_name'] ?? 'Dein Kind'} braucht dich.'
+        : calls.error != null && !sharing
+        ? 'Verbindung prüfen'
+        : sharing
+        ? 'Dein Bildschirm wird geteilt'
+        : calls.accepted
+        ? connected
+              ? 'Ihr seid verbunden'
+              : 'Verbindung wird aufgebaut …'
+        : 'Deine Eltern werden angerufen …';
+    return Material(
+      key: const ValueKey('family-call-dock'),
+      color: context.palette.panelSurface,
+      elevation: 4,
+      child: SafeArea(
+        bottom: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: size.maxHeight * (expanded ? .5 : .65),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   children: [
                     Icon(
-                      calls.incoming
+                      sharing
+                          ? Icons.visibility_rounded
+                          : calls.incoming
                           ? Icons.ring_volume_rounded
                           : Icons.video_call_rounded,
                       color: context.palette.cyanInk,
                     ),
-                    Text(
-                      calls.incoming
-                          ? '${calls.call?['child_name'] ?? 'Dein Kind'} braucht dich.'
-                          : calls.media?.sharingScreen == true
-                          ? 'Livehilfe · Dein Bildschirm wird geteilt'
-                          : 'Livehilfe · ${calls.accepted ? 'Gespräch geöffnet' : 'Eltern werden angerufen'}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: calls.error != null
+                          ? TextButton(
+                              onPressed: _showIssue,
+                              style: TextButton.styleFrom(
+                                alignment: Alignment.centerLeft,
+                              ),
+                              child: Text(
+                                sharing
+                                    ? 'Bildschirm geteilt · Hinweis'
+                                    : 'Verbindung prüfen',
+                                maxLines: tight ? 1 : 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            )
+                          : Text(
+                              status,
+                              key: const ValueKey('call-dock-status'),
+                              maxLines: tight ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                     ),
-                    FilledButton.icon(
-                      onPressed: calls.busy
-                          ? null
-                          : () => openCall(calls.callId!),
+                    IconButton(
+                      key: const ValueKey('call-dock-expand'),
+                      tooltip: size.maxHeight < 420
+                          ? 'Gespräch groß öffnen'
+                          : expanded
+                          ? 'Gespräch einklappen'
+                          : 'Gespräch aufklappen',
+                      onPressed: _expand,
                       icon: Icon(
-                        calls.incoming
-                            ? Icons.call_rounded
-                            : Icons.open_in_full_rounded,
+                        expanded
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
                       ),
-                      label: Text(
-                        calls.incoming ? 'Anruf ansehen' : 'Zum Gespräch',
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: calls.busy
-                          ? null
-                          : () => calls.end(decline: calls.incoming),
-                      child: Text(calls.incoming ? 'Ablehnen' : 'Beenden'),
                     ),
                   ],
                 ),
+                if (calls.live)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (media != null) ...[
+                        _control(
+                          name: 'microphone',
+                          label: media.microphoneEnabled
+                              ? 'Mikrofon ausschalten'
+                              : 'Mikrofon einschalten',
+                          icon: media.microphoneEnabled
+                              ? Icons.mic_rounded
+                              : Icons.mic_off_rounded,
+                          onPressed: calls.toggleMicrophone,
+                          active: media.microphoneEnabled,
+                        ),
+                        _control(
+                          name: 'camera',
+                          label: media.cameraEnabled
+                              ? 'Kamera ausschalten'
+                              : 'Kamera einschalten',
+                          icon: media.cameraEnabled
+                              ? Icons.videocam_rounded
+                              : Icons.videocam_off_rounded,
+                          onPressed: calls.toggleCamera,
+                          active: media.cameraEnabled,
+                        ),
+                        if (calls.isChild)
+                          _control(
+                            name: 'screen',
+                            label: sharing
+                                ? 'Bildschirmfreigabe stoppen'
+                                : 'Meinen Bildschirm teilen',
+                            icon: sharing
+                                ? Icons.stop_screen_share_rounded
+                                : Icons.screen_share_rounded,
+                            onPressed: sharing || connected
+                                ? _screenAction
+                                : null,
+                            active: sharing,
+                            caption: sharing ? 'Stopp' : 'Teilen',
+                          ),
+                      ] else
+                        FilledButton.icon(
+                          onPressed: calls.busy
+                              ? null
+                              : calls.incoming && !expanded
+                              ? _expand
+                              : _join,
+                          icon: const Icon(Icons.call_rounded),
+                          label: Text(
+                            calls.incoming && !expanded
+                                ? 'Anruf ansehen'
+                                : calls.incoming
+                                ? 'Anruf annehmen'
+                                : 'Gespräch fortsetzen',
+                          ),
+                        ),
+                      _control(
+                        name: 'end',
+                        label: calls.incoming ? 'Ablehnen' : 'Gespräch beenden',
+                        icon: Icons.call_end_rounded,
+                        onPressed: () =>
+                            unawaited(calls.end(decline: calls.incoming)),
+                        end: true,
+                      ),
+                      if (media == null && !calls.incoming)
+                        TextButton(
+                          onPressed: _expand,
+                          child: const Text('Zum Gespräch'),
+                        ),
+                    ],
+                  ),
+                if (expanded)
+                  Flexible(
+                    child: SingleChildScrollView(
+                      key: const ValueKey('call-dock-details'),
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (calls.error != null) ...[
+                            Text(
+                              calls.error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          if (media != null &&
+                              !_ownershipFor(widget.state)
+                                  .hasPage(calls.accountIdentity, calls.callId))
+                            _videos(),
+                          if (calls.isParent &&
+                              media?.hasRemoteScreen != true) ...[
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Dein Kind gibt seinen Bildschirm selbst frei. Du kannst ihn nicht fernsteuern.',
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              TextButton.icon(
+                                key: const ValueKey('call-dock-fullscreen'),
+                                onPressed: calls.callId == null
+                                    ? null
+                                    : () => widget.openCall(calls.callId!),
+                                icon: const Icon(Icons.open_in_full_rounded),
+                                label: const Text('Großansicht'),
+                              ),
+                              if (calls.isParent)
+                                const Text(
+                                  'Geräteanrufe lassen sich unter Benachrichtigungen einschalten.',
+                                ),
+                            ],
+                          ),
+                          const Text(
+                            'Livehilfe wird nicht aufgezeichnet.',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Overlay.wrap(
+    child: ListenableBuilder(
+      listenable: Listenable.merge([calls, _ownershipFor(widget.state)]),
+      builder: (context, _) => LayoutBuilder(
+        builder: (context, size) {
+          final ownAccount = identical(
+            calls.accountIdentity,
+            widget.state.user,
+          );
+          final authorized =
+              ownAccount &&
+              calls.call?['role'] == widget.state.user?['role'] &&
+              (widget.state.isParent ||
+                  (widget.state.isChild &&
+                      calls.call?['child_id'] ==
+                          widget.state.user?['child_id']));
+          if (_shownCall != calls.callId ||
+              !identical(_shownAccount, calls.accountIdentity)) {
+            _shownCall = calls.callId;
+            _shownAccount = calls.accountIdentity;
+            _expanded = false;
+          }
+          final ownCallPage =
+              authorized &&
+              calls.callId != null &&
+              widget.currentPath == '/family-call/${calls.callId}';
+          final show =
+              !ownCallPage &&
+              ownAccount &&
+              ((authorized && calls.live) || (calls.busy && !calls.live));
+          return Column(
+            children: [
+              show ? _dock(context, size) : const SizedBox.shrink(),
+              Expanded(
+                child: Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  child: widget.child,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ),
+  );
+}
+
+class _DockVideo extends StatelessWidget {
+  final String label;
+  final Widget? video;
+  final bool screen;
+  const _DockVideo({
+    super.key,
+    required this.label,
+    required this.video,
+    this.screen = false,
+  });
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: label,
+    child: Container(
+      height: screen ? 150 : 108,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xff091422),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          Expanded(child: child),
+          Expanded(
+            child:
+                video ??
+                const Icon(Icons.videocam_off_rounded, color: Colors.white),
+          ),
         ],
-      );
-    },
+      ),
+    ),
   );
 }
 
@@ -327,11 +777,22 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
   String? loadError;
   bool shareInfo = false;
   FamilyCallService get calls => widget.state.familyCalls;
+  final _videoToken = Object();
+  late final _VideoOwnership _videoOwner;
 
   @override
   void initState() {
     super.initState();
+    _videoOwner = _ownershipFor(widget.state);
+    _videoOwner.claim(_videoToken, widget.state.user, widget.callId);
     WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_open()));
+  }
+
+  @override
+  void dispose() {
+    // Flutter unmounts the video's child elements before this page's State.
+    _videoOwner.release(_videoToken);
+    super.dispose();
   }
 
   Future<void> _open() async {

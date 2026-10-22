@@ -1,12 +1,44 @@
 # Familienanrufe
 
-Implementierung 1.19.3+82. Aktueller Produktionsstand in STATUS.md, ausführliche
+Implementierung 1.19.4+83. Aktueller Produktionsstand in STATUS.md, ausführliche
 Nachweise in [FAMILY_CALL_EVALUATION_2026_10_21.md](FAMILY_CALL_EVALUATION_2026_10_21.md).
 Web und Android verwenden dieselbe Flutter-Oberfläche und den eigenen FastAPI-
 Server. Kein Videoanbieter-Konto, keine KI-Aufrufe und keine Aufzeichnung durch
 Schulpilot. Tatsächliche Kosten für Server-/Datentransfer bleiben Betriebsaufwand.
 
 ## Bedienung und Grenzen
+
+### Gespräch neben der Aufgabe
+
+Der Kinderaufruf öffnet keine Gesprächsroute mehr. Die aktuelle Aufgabe bleibt
+mit Eingabe und Rückmeldung im selben Router-/Widgetzustand. Oberhalb der
+Arbeitsfläche sitzt eine kompakte Liveleiste mit Gesprächsstatus, Mikrofon,
+Kamera, separater Bildschirmfreigabe und Auflegen. Kamerabilder lassen sich
+bei Bedarf in einem begrenzten Bereich ausklappen. Die Leiste reserviert ihren
+Platz im Layout und verdeckt keine Antwort- oder Weiter-Schaltfläche. Beim
+Tippen bleibt sie kompakt; das Eingabefeld und die Bildschirmtastatur behalten
+ihren eigenen Platz. Freigabe und Stopp erfordern keinen Wechsel weg von der
+Aufgabe. Die optionale Großansicht bietet weiterhin einen Rückweg.
+
+`FamilyCallHost` bleibt über dem Router bestehen. Seine eigene Darstellung
+schaltet nur den Dockbereich um, niemals die Identität des Routerkindes.
+Kamera, Peer und Capture gehören weiterhin zum kontogebundenen
+`FamilyCallService`. Ein Ausklappen, Einklappen oder normaler interner
+Seitenwechsel startet weder einen neuen Anruf noch eine neue Aufnahme.
+Die eigene Großansicht unterdrückt den Dock einschließlich seiner Videovorschau,
+damit ein Renderer nicht gleichzeitig an zwei Videoansichten gebunden wird.
+Eine kontogebundene Präsentationsbelegung bleibt bis zum tatsächlichen Unmount
+der Großansicht bestehen, auch wenn die Routeradresse schon während der
+Zurückanimation umspringt. Eine eigene Overlay-Ebene ermöglicht Tooltips; die
+feste Semantikgrenze des Routerkindes erhält die Gesprächsbuttons für TalkBack
+und die Web-Zugänglichkeit. Mehrfaches Tippen öffnet nicht mehrere Freigabedialoge.
+
+Native Anrufaktionen laden nur den berechtigten Anruf und öffnen gegebenenfalls
+die ausdrückliche Annahmeabfrage im vorhandenen Navigator. Sie ersetzen keine
+laufende Aufgabenroute. Ein alter Benachrichtigungslink darf ein neueres aktives
+Gespräch nicht schließen oder ersetzen. Kontowechsel und serverseitige
+Anrufberechtigungen bleiben maßgeblich. Nach Reload werden Kamera und Bildschirm
+weiterhin ausschließlich nach bewusster erneuter Teilnahme freigegeben.
 
 Die Kinderzugänge bei Heute, Nachrichten, Lernhilfe und Rückblick bieten
 Eltern live dazuholen sowie eine ausdrückliche Nachricht als Alternative.

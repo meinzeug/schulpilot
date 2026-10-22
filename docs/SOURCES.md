@@ -1,3 +1,10 @@
+Livehilfe22.10.2026, Version1.19.4+83: eigene gemeinsame Flutter-Oberfläche,
+vorhandener kontogebundener WebRTC-Service und feste Gestaltungspalette.
+Aufgabenbegleitende Liveleiste ersetzt den automatischen Wechsel auf eine
+Gesprächsseite; keine neuen Pakete, Dienste, Provider oder Berechtigungen.
+Darstellung und Grenzen in [FAMILY_CALLS.md](FAMILY_CALLS.md), tatsächliche
+Abnahme und Bereitstellung in STATUS.md. Lokale Vorschau ausdrücklich synthetisch.
+
 Nachmittagsbereinigung21.10.2026: nach ausdrücklicher Betreiberfreigabe genau
 den künstlichen Testhaushalt mit dem vorhandenen authentifizierten DELETE /account
 entfernt. Umfang vorab begrenzt, globale Kostenstände erhalten, zwei signierte
