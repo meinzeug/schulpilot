@@ -229,6 +229,29 @@ void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
   testWidgets(
+    'RR042 saved screen consent cannot capture after family change before rebuild',
+    (tester) async {
+      final fixture = _Fixture();
+      await fixture.open(tester);
+      await fixture.connect(tester);
+      await tester.tap(find.byKey(const ValueKey('call-dock-screen')));
+      await tester.pumpAndSettle();
+      final saved = tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('call-dock-share-confirm')),
+          )
+          .onPressed!;
+      fixture.state.familyId = 'another-family';
+      saved();
+      await tester.pumpAndSettle();
+      expect(fixture.media.sharingScreen, isFalse);
+      expect(fixture.router.routeInformationProvider.value.uri.path, '/task');
+      expect(tester.takeException(), isNull);
+      await fixture.close(tester);
+    },
+  );
+
+  testWidgets(
     'Navigator semantics keep dock actions and dialog consent visible',
     (tester) async {
       final semantics = tester.ensureSemantics();
@@ -266,9 +289,18 @@ void main() {
         expect(tree(), contains('Gespräch beenden'));
         expect(tree(), isNot(contains('Künstliche Aufgabe')));
         expect(fixture.media.sharingScreen, isFalse);
+        final staleConfirm = tester
+            .widget<FilledButton>(
+              find.byKey(const ValueKey('call-dock-share-confirm')),
+            )
+            .onPressed!;
         await tester.tap(find.byKey(const ValueKey('call-dock-end')));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const ValueKey('call-dock-share-confirm')));
+        expect(
+          find.byKey(const ValueKey('call-dock-share-confirm')),
+          findsNothing,
+        );
+        staleConfirm();
         await tester.pumpAndSettle();
         expect(fixture.media.sharingScreen, isFalse);
         expect(fixture.router.routeInformationProvider.value.uri.path, '/task');

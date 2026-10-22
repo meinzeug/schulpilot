@@ -348,7 +348,10 @@ void main() {
         expect(find.text('Bezug zur Nachricht'), findsOneWidget);
         expect(requests, isEmpty);
         await t.enterText(
-          find.byType(TextField),
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          ),
           'Kannst du das genauer erklären?',
         );
         await tap(t, find.text('Um Hilfe bitten'));

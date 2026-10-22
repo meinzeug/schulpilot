@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -11,12 +13,26 @@ import 'ui.dart';
 class InstallationScreen extends StatefulWidget {
   final AppState state;
   final bool initial;
-  const InstallationScreen(this.state, {super.key, this.initial = true});
+  final String? initialSection;
+  const InstallationScreen(
+    this.state, {
+    super.key,
+    this.initial = true,
+    this.initialSection,
+  });
   @override
   State<InstallationScreen> createState() => _InstallationScreenState();
 }
 
 class _InstallationScreenState extends State<InstallationScreen> {
+  static const sections = {
+    'operation': 0,
+    'email': 1,
+    'ai': 2,
+    'tariff': 3,
+    'push': 4,
+    'status': 5,
+  };
   Json? config;
   Object? error;
   bool unlocked = false, loading = true, providerVisited = false;
@@ -31,6 +47,53 @@ class _InstallationScreenState extends State<InstallationScreen> {
   bool busy = false, adminPasswordVisible = false;
   final visibleSecrets = <String>{};
   final fieldErrors = <String, String>{};
+  final focuses = <String, FocusNode>{};
+  late final owner = widget.state.user;
+  bool get own => mounted && identical(widget.state.user, owner);
+  int loadGeneration = 0;
+  String? mailResult;
+  FocusNode inputFocus(String key) =>
+      focuses.putIfAbsent(key, () => FocusNode());
+  List<String> get inputOrder {
+    if (widget.initial && step == 0) return ['username', 'password', 'confirm'];
+    return switch (step - (widget.initial ? 1 : 0)) {
+      0 => [
+        ...groups[0].map((f) => f.$1),
+        if (flags['real_data_approved'] == true) 'privacy_evidence',
+        if (flags['synthetic_ai_enabled'] == true) 'synthetic_ai_daily_limit',
+      ],
+      1 => [...groups[1].map((f) => f.$1), 'test_recipient'],
+      3 => groups[2].map((f) => f.$1).toList(),
+      4 => groups[3].map((f) => f.$1).toList(),
+      _ => [],
+    };
+  }
+
+  void nextInput(String key) {
+    final order = inputOrder, index = inputOrder.indexOf(key);
+    if (index >= 0 && index + 1 < order.length) {
+      inputFocus(order[index + 1]).requestFocus();
+    } else {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+  }
+
+  static const textLimits = {
+    'operator_name': 160,
+    'operator_address': 1000,
+    'operator_support_email': 254,
+    'smtp_host': 253,
+    'smtp_user': 254,
+    'smtp_password': 1024,
+    'smtp_from': 254,
+    'default_plan': 40,
+    'privacy_evidence': 500,
+    'fcm_public_config': 10000,
+    'fcm_service_account_json': 16000,
+    'google_oauth_client_json': 16000,
+    'push_privacy_evidence': 500,
+    'fcm_config_verification': 1000,
+  };
   static const ranges = <String, (int, int)>{
     'smtp_port': (1, 65535),
     'default_child_limit': (1, 20),
@@ -39,7 +102,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
     'synthetic_ai_daily_limit': (1, 100),
   };
   Future<void> runAction(Future<void> Function() action) async {
-    if (busy || !mounted) return;
+    if (busy || !own) return;
     final owner = widget.state.user;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -108,15 +171,47 @@ class _InstallationScreenState extends State<InstallationScreen> {
   @override
   void initState() {
     super.initState();
+    widget.state.addListener(accountChanged);
+    if (!widget.initial) {
+      step = sections[widget.initialSection] ?? 0;
+      providerVisited = step == 2;
+    }
     load();
   }
 
+  void accountChanged() {
+    if (own || !mounted) return;
+    loadGeneration++;
+    code.clear();
+    password.clear();
+    confirm.clear();
+    for (final field in fields.values) {
+      field.clear();
+    }
+    setState(() {
+      config = null;
+      visibleSecrets.clear();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant InstallationScreen old) {
+    super.didUpdateWidget(old);
+    if (!widget.initial &&
+        old.initialSection != widget.initialSection &&
+        !busy) {
+      selectStep(sections[widget.initialSection] ?? 0);
+    }
+  }
+
   Future<void> load() async {
+    if (!own) return;
+    final generation = ++loadGeneration;
     try {
       final value = await widget.state.api.get(
         widget.initial ? '/setup/config' : '/admin/installation',
       );
-      if (!mounted) return;
+      if (!own || generation != loadGeneration) return;
       final site = value['site'] as Map;
       for (final key in [
         ...groups.expand((g) => g.map((f) => f.$1)),
@@ -142,17 +237,22 @@ class _InstallationScreenState extends State<InstallationScreen> {
         error = null;
       });
     } catch (e) {
-      if (mounted) {
+      if (own && generation == loadGeneration) {
         setState(() {
           error = e is ApiError && e.status == 401 && widget.initial ? null : e;
         });
       }
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (own && generation == loadGeneration) setState(() => loading = false);
     }
   }
 
   Future<void> save() async {
+    if (!own) {
+      throw ApiError(
+        'Die Sitzung hat sich geändert. Öffne die Einstellungen neu.',
+      );
+    }
     fieldErrors.clear();
     for (final entry in ranges.entries) {
       final number = int.tryParse(fields[entry.key]?.text.trim() ?? '');
@@ -163,12 +263,55 @@ class _InstallationScreenState extends State<InstallationScreen> {
             'Ganze Zahl von ${entry.value.$1} bis ${entry.value.$2} eingeben.';
       }
     }
+    for (final entry in textLimits.entries) {
+      final raw = fields[entry.key]?.text ?? '';
+      if ((secretInput(entry.key) ? raw : raw.trim()).runes.length >
+          entry.value) {
+        fieldErrors[entry.key] = 'Nutze höchstens ${entry.value} Zeichen.';
+      }
+    }
+    if ((fields['default_plan']?.text.trim() ?? '').isEmpty) {
+      fieldErrors['default_plan'] = 'Einen Tarifnamen eingeben.';
+    }
+    if (!RegExp(r'^[A-Za-z0-9.-]*$')
+        .hasMatch(fields['smtp_host']?.text.trim() ?? '')) {
+      fieldErrors['smtp_host'] = 'Nur den SMTP-Hostnamen eingeben, ohne https://, Leerzeichen oder Port.';
+    }
+    for (final key in [
+      'fcm_public_config',
+      'fcm_service_account_json',
+      'google_oauth_client_json',
+    ]) {
+      final text = fields[key]?.text ?? '';
+      if (text.trim().isEmpty) continue;
+      try {
+        if (jsonDecode(text) is! Map) {
+          fieldErrors[key] =
+              'Eine JSON-Objektstruktur mit geschweiften Klammern eingeben.';
+        }
+      } catch (_) {
+        fieldErrors[key] = 'Ungültiges JSON. Die Eingabe bleibt erhalten; zuerst die Klammern und Anführungszeichen prüfen.';
+      }
+    }
+    if (flags['real_data_approved'] == true &&
+        (fields['privacy_evidence']?.text.trim().runes.length ?? 0) < 20) {
+      fieldErrors['privacy_evidence'] = 'Die Freigabe mit mindestens 20 Zeichen nachvollziehbar dokumentieren.';
+    }
+    if (flags['push_approved'] == true) {
+      for (final key in ['push_privacy_evidence', 'fcm_config_verification']) {
+        if ((fields[key]?.text.trim().runes.length ?? 0) < 20) {
+          fieldErrors[key] =
+              'Vor der Push-Freigabe mindestens 20 Zeichen Nachweis eintragen.';
+        }
+      }
+    }
     if (fieldErrors.isNotEmpty) {
       setState(() {});
       final key = fieldErrors.keys.first;
       final label = [
         ...groups.expand((g) => g),
         ('synthetic_ai_daily_limit', 'Beispiel-KI-Aufrufe'),
+        ('privacy_evidence', 'Datenschutzfreigabe'),
       ].firstWhere((e) => e.$1 == key).$2;
       throw ApiError('$label: ${fieldErrors[key]}');
     }
@@ -178,12 +321,19 @@ class _InstallationScreenState extends State<InstallationScreen> {
           ? int.tryParse(entry.value.text)
           : entry.value.text;
     }
-    config = await widget.state.api.put('$base/site', data);
-    if (mounted) setState(() {});
+    final saved = await widget.state.api.put('$base/site', data);
+    if (!own) throw ApiError('Die Sitzung hat sich geändert.');
+    loadGeneration++;
+    config = saved;
+    setState(() {});
   }
 
   @override
   void dispose() {
+    widget.state.removeListener(accountChanged);
+    for (final focus in focuses.values) {
+      focus.dispose();
+    }
     for (final c in [
       code,
       username,
@@ -197,13 +347,26 @@ class _InstallationScreenState extends State<InstallationScreen> {
     super.dispose();
   }
 
+  bool secretInput(String key) => const {
+    'smtp_password',
+    'fcm_service_account_json',
+    'google_oauth_client_json',
+  }.contains(key);
   Widget input(String key, String label) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: TextField(
+      focusNode: inputFocus(key),
+      textInputAction: inputOrder.isNotEmpty && key == inputOrder.last
+          ? TextInputAction.done
+          : TextInputAction.next,
+      onSubmitted: (_) => nextInput(key),
       controller: fields[key],
       enabled: !busy,
       autocorrect: false,
       enableSuggestions: false,
+      smartDashesType: secretInput(key) ? SmartDashesType.disabled : null,
+      smartQuotesType: secretInput(key) ? SmartQuotesType.disabled : null,
+      enableIMEPersonalizedLearning: !secretInput(key),
       obscureText:
           [
             'smtp_password',
@@ -318,7 +481,24 @@ class _InstallationScreenState extends State<InstallationScreen> {
       ? 1
       : key.startsWith('default_')
       ? 3
+      : key.startsWith('fcm_') ||
+            key.startsWith('google_') ||
+            key.startsWith('push_')
+      ? 4
       : 0;
+
+  void showFieldError(int section) {
+    selectStep(section + (widget.initial ? 1 : 0));
+    final key = fieldErrors.keys.firstWhere(
+      (key) => _fieldSection(key) == section,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!own) return;
+      inputFocus(key).requestFocus();
+      final field = inputFocus(key).context;
+      if (field != null) Scrollable.ensureVisible(field, alignment: .2);
+    });
+  }
 
   Widget content() {
     if (widget.initial && !kIsWeb) {
@@ -374,6 +554,11 @@ class _InstallationScreenState extends State<InstallationScreen> {
             TextField(
               controller: code,
               obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              smartDashesType: SmartDashesType.disabled,
+              smartQuotesType: SmartQuotesType.disabled,
+              enableIMEPersonalizedLearning: false,
               decoration: const InputDecoration(labelText: 'Installationscode'),
             ),
             const SizedBox(height: 20),
@@ -410,15 +595,24 @@ class _InstallationScreenState extends State<InstallationScreen> {
           heading('Dein Administratorkonto'),
           TextField(
             controller: username,
+            focusNode: inputFocus('username'),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => nextInput('username'),
             decoration: const InputDecoration(labelText: 'Admin-Benutzername'),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: password,
+            focusNode: inputFocus('password'),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => nextInput('password'),
             enabled: !busy,
             autocorrect: false,
             enableSuggestions: false,
             obscureText: !adminPasswordVisible,
+            smartDashesType: SmartDashesType.disabled,
+            smartQuotesType: SmartQuotesType.disabled,
+            enableIMEPersonalizedLearning: false,
             decoration: InputDecoration(
               suffixIcon: IconButton(
                 tooltip: adminPasswordVisible
@@ -442,10 +636,16 @@ class _InstallationScreenState extends State<InstallationScreen> {
           const SizedBox(height: 16),
           TextField(
             controller: confirm,
+            focusNode: inputFocus('confirm'),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => nextInput('confirm'),
             enabled: !busy,
             autocorrect: false,
             enableSuggestions: false,
             obscureText: !adminPasswordVisible,
+            smartDashesType: SmartDashesType.disabled,
+            smartQuotesType: SmartQuotesType.disabled,
+            enableIMEPersonalizedLearning: false,
             decoration: const InputDecoration(
               labelText: 'Admin-Passwort wiederholen',
             ),
@@ -499,17 +699,26 @@ class _InstallationScreenState extends State<InstallationScreen> {
           const SizedBox(height: 24),
           TextField(
             controller: recipient,
+            focusNode: inputFocus('test_recipient'),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => nextInput('test_recipient'),
+            onChanged: (_) {
+              if (mailResult != null) setState(() => mailResult = null);
+            },
             enabled: !busy,
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             decoration: const InputDecoration(labelText: 'Testnachricht an'),
           ),
           const SizedBox(height: 16),
+          if (mailResult != null)
+            Semantics(liveRegion: true, child: Notice(mailResult!)),
           ActionButton(
             label: 'Speichern & Testmail senden',
             secondary: true,
             enabled: !busy,
             onPressed: () => runAction(() async {
+              setState(() => mailResult = null);
               if (recipient.text.trim().isEmpty) {
                 throw ApiError(
                   'Gib zuerst eine E-Mail-Adresse für die Testnachricht ein.',
@@ -519,7 +728,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
               final result = await widget.state.api.post('$base/mail-test', {
                 'email': recipient.text.trim(),
               });
-              if (mounted) toast(context, result['message']);
+              if (own) setState(() => mailResult = '${result['message']}');
             }),
           ),
         ],
@@ -590,33 +799,47 @@ class _InstallationScreenState extends State<InstallationScreen> {
             'data_approved': 'Datenschutzfreigabe',
             'push_available': 'Push (optional)',
           }.entries)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                checks[item.key] == true
-                    ? Icons.check_circle_rounded
-                    : Icons.pending_outlined,
-                color: checks[item.key] == true ? teal : muted,
-              ),
-              title: Text(item.value),
-              trailing:
-                  checks[item.key] == true || _checkSection(item.key) == null
-                  ? null
-                  : TextButton(
-                      onPressed: busy
-                          ? null
-                          : () => selectStep(
-                              _checkSection(item.key)! +
-                                  (widget.initial ? 1 : 0),
-                            ),
-                      child: const Text('Prüfen'),
-                    ),
-              subtitle: Text(
-                checks[item.key] == true
-                    ? 'Erfüllt'
-                    : checks[item.key] == false
-                    ? 'Noch offen'
-                    : 'Noch nicht gemeldet',
+            Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  checks[item.key] == true
+                      ? Icons.check_circle_rounded
+                      : Icons.pending_outlined,
+                  color: checks[item.key] == true ? teal : muted,
+                ),
+                title: Text(item.value),
+                onTap:
+                    checks[item.key] == true &&
+                        _checkSection(item.key) != null &&
+                        !busy
+                    ? () => selectStep(
+                        _checkSection(item.key)! + (widget.initial ? 1 : 0),
+                      )
+                    : null,
+                trailing:
+                    checks[item.key] == true || _checkSection(item.key) == null
+                    ? (checks[item.key] == true &&
+                              _checkSection(item.key) != null
+                          ? const Icon(Icons.arrow_forward_rounded)
+                          : null)
+                    : TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => selectStep(
+                                _checkSection(item.key)! +
+                                    (widget.initial ? 1 : 0),
+                              ),
+                        child: const Text('Prüfen'),
+                      ),
+                subtitle: Text(
+                  checks[item.key] == true
+                      ? 'Erfüllt'
+                      : checks[item.key] == false
+                      ? 'Noch offen'
+                      : 'Noch nicht gemeldet',
+                ),
               ),
             ),
           const SizedBox(height: 16),
@@ -781,6 +1004,26 @@ class _InstallationScreenState extends State<InstallationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!own) {
+      if (!widget.initial && widget.state.user == null) {
+        return Panel(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Deine Betriebssitzung ist beendet. Bitte melde dich erneut an.',
+              ),
+              TextButton(
+                onPressed: () => context.go('/login'),
+                child: const Text('Erneut anmelden'),
+              ),
+            ],
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
     final child = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -794,12 +1037,10 @@ class _InstallationScreenState extends State<InstallationScreen> {
               for (final section in fieldErrors.keys.map(_fieldSection).toSet())
                 if (!widget.initial || section + 1 <= step)
                   TextButton.icon(
-                    onPressed: busy
-                        ? null
-                        : () => selectStep(section + (widget.initial ? 1 : 0)),
+                    onPressed: busy ? null : () => showFieldError(section),
                     icon: const Icon(Icons.edit_outlined),
                     label: Text(
-                      'Fehler in ${const ['Betrieb', 'E-Mail', 'KI', 'Tarif'][section]} anzeigen',
+                      'Fehler in ${const ['Betrieb', 'E-Mail', 'KI', 'Tarif', 'Push', 'Status'][section]} anzeigen',
                     ),
                   ),
             ],

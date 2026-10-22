@@ -344,7 +344,7 @@ void main() {
     expect(filters, ['all', 'worked']);
     router.go('/insights');
     await tester.pumpAndSettle();
-    await tap(tester, 'Übungsbelege ansehen');
+    await tap(tester, 'Übungsbelege zu Bruchaddition ansehen');
     expect(find.text('Belege Mathematik Bruchaddition'), findsOneWidget);
   });
 

@@ -1767,6 +1767,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
+              if (q['type'] == 'match') ...[
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    '${matches.length} von ${(q['options'] as List).length} Paaren zugeordnet',
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                ),
+                SizedBox(height: 12),
+              ],
               if (q['type'] == 'match')
                 for (final pair in q['options'] as List)
                   Padding(
@@ -2185,6 +2195,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final id = u['id'];
     final requestedOwner = ownerAccount;
     if (!requestIsCurrent(id, requestedOwner)) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     hintRequestKey ??= vocabularyKey();
     final data = await state.api.post(
       '/units/$id/questions/${q['id']}/hint',

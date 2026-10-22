@@ -353,7 +353,16 @@ void main() {
       expect(f.requests.single.body, isNot(contains('artificial-1.pdf')));
       final key = f.requests.single.headers['Idempotency-Key'];
       await reveal(tester, find.text('Andere PDF auswählen'));
-      await click(tester, find.text('Andere PDF auswählen'));
+      // Explicit replacement confirmation is now required before the picker.
+      await tester.ensureVisible(find.text('Andere PDF auswählen'));
+      await tester.tap(find.text('Andere PDF auswählen'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Andere PDF auswählen?'), findsOneWidget);
+      expect(f.requests, hasLength(1));
+      expect(files, 1);
+      await tester.tap(find.widgetWithText(FilledButton, 'Neue PDF auswählen'));
+      await tester.pumpAndSettle();
       await reveal(
         tester,
         find.text('Gewählte Datei: artificial-2.pdf · 1 KB'),
@@ -371,10 +380,16 @@ void main() {
       final f = _Fixture((_) async => fixture.response(preview()));
       await f.mount(tester);
       await click(tester, find.text('PDF auswählen'));
+      await reveal(tester, find.text('1 offene Zuordnungen anzeigen'));
       await click(tester, find.text('1 offene Zuordnungen anzeigen'));
+      await reveal(tester, find.text('Biologie · Note 3'));
       expect(find.text('Mathematik · Note 4'), findsNothing);
       expect(find.text('Biologie · Note 3'), findsOneWidget);
       await choose(tester, 'c-null', 'Schon erfasst · 10.10.2026 · Zellen');
+      await reveal(
+        tester,
+        find.textContaining('Alle Zuordnungen sind geklärt'),
+      );
       expect(
         find.textContaining('Alle Zuordnungen sind geklärt'),
         findsOneWidget,
@@ -445,6 +460,7 @@ void main() {
         final f = _Fixture((_) async => fixture.response(p));
         await f.mount(tester, width: 320);
         await click(tester, find.text('PDF auswählen'));
+        await reveal(tester, find.text('Mathematik · Note 2,5'));
         expect(find.text('Mathematik · Note 2,5'), findsOneWidget);
         expect(find.text('Neue Note'), findsOneWidget);
         await reveal(tester, find.byKey(const ValueKey('c-null')));

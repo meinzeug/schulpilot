@@ -643,7 +643,9 @@ void main() {
       expect(find.text('Zur ausgewählten Lernrunde'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await tester.enterText(
-        find.byType(TextField),
+        find.byWidgetPredicate(
+          (w) => w is TextField && w.decoration?.labelText == 'Deine Nachricht',
+        ),
         'Schau auf die gleich großen Teile.',
       );
       await tap(tester, 'Senden');
@@ -657,7 +659,7 @@ void main() {
     },
   );
   testWidgets(
-    'P98 removed source contexts have no invalid read or reply route',
+    'P98 removed sources allow a contextless reply without an invalid learning route',
     (tester) async {
       final f = _Fixture();
       f.data['messages'] = [
@@ -676,9 +678,22 @@ void main() {
         find.text('Der zugehörige Lernstoff ist nicht mehr verfügbar.'),
         findsOneWidget,
       );
-      expect(find.text('Dazu antworten'), findsNothing);
       expect(find.text('Lernrunde ansehen'), findsNothing);
       expect(f.requests.every((r) => r.method == 'GET'), true);
+      await tap(tester, 'Dazu antworten');
+      expect(find.textContaining('Künstliche alte Frage'), findsWidgets);
+      expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
+      final input = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.labelText == 'Deine Nachricht',
+      );
+      expect(tester.widget<TextField>(input).controller!.text, isEmpty);
+      await tester.enterText(input, 'Wir schauen gemeinsam darauf.');
+      await tap(tester, 'Senden');
+      final sent = f.requests.singleWhere((r) => r.method == 'POST');
+      expect(jsonDecode(sent.body), {
+        'kind': 'reply',
+        'body': 'Wir schauen gemeinsam darauf.',
+      });
       await tester.pumpWidget(const SizedBox());
     },
   );

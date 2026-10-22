@@ -119,7 +119,13 @@ void main() {
           await tester.tap(find.byKey(const ValueKey('notification-bell')));
           await tester.pumpAndSettle();
         } else {
-          expect(find.textContaining('Ungelesen'), findsOneWidget);
+          expect(
+            find.descendant(
+              of: find.byType(ListTile),
+              matching: find.textContaining('Ungelesen'),
+            ),
+            findsOneWidget,
+          );
         }
         await tester.tap(find.text('Künstliche Nachricht'));
         await tester.pumpAndSettle();

@@ -1,6 +1,7 @@
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'admin_workspace_ui.dart';
@@ -16,7 +17,8 @@ import 'google_login.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState state;
-  const SettingsScreen(this.state, {super.key});
+  final String? initialSection;
+  const SettingsScreen(this.state, {super.key, this.initialSection});
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -32,8 +34,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     account = state.user;
     family = state.familyId;
+    parentSection = allowedSection(widget.initialSection);
     state.addListener(contextChanged);
   }
+
+  String allowedSection(String? value) =>
+      state.isParent &&
+          state.familyId != null &&
+          ['family', 'data'].contains(value)
+      ? value!
+      : 'account';
 
   void contextChanged() {
     if (identical(account, state.user) && family == state.familyId) return;
@@ -53,8 +63,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       state.addListener(contextChanged);
       account = state.user;
       family = state.familyId;
-      parentSection = 'account';
+      parentSection = allowedSection(widget.initialSection);
       version++;
+    } else if (oldWidget.initialSection != widget.initialSection) {
+      parentSection = allowedSection(widget.initialSection);
     }
   }
 
@@ -67,6 +79,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void refresh() {
     if (mounted) setState(() => version++);
   }
+
+  String deviceDates(Json session) {
+    String? at(dynamic seconds) => seconds is num
+        ? DateFormat('dd.MM.yyyy · HH:mm').format(
+            DateTime.fromMillisecondsSinceEpoch((seconds * 1000).round()),
+          )
+        : null;
+    return [
+      if (at(session['created']) case final date?) 'Angemeldet: $date',
+      if (at(session['seen']) case final date?) 'Zuletzt aktiv: $date',
+    ].join('\n');
+  }
+
+  Future<bool> confirmAction(
+    _SettingsContext scope,
+    String title,
+    String body,
+    String label,
+    Future<void> Function() submit,
+  ) => _settingsDialog(
+    context,
+    scope,
+    title: title,
+    confirmLabel: label,
+    fields: (_) => Text(body),
+    submit: submit,
+    destructive: true,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -247,9 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               title: Text(s['device']),
                               subtitle: Text(
-                                s['current']
-                                    ? 'Dieses Gerät'
-                                    : 'Weiteres angemeldetes Gerät',
+                                '${s['current'] == true ? 'Dieses Gerät' : 'Weiteres angemeldetes Gerät'}${deviceDates(Json.from(s)).isEmpty ? '' : '\n${deviceDates(Json.from(s))}'}',
                               ),
                             ),
                             Align(
@@ -261,9 +299,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 secondary: true,
                                 onPressed: () async {
                                   if (!scope.current) return;
-                                  await state.api.delete(
-                                    '/auth/sessions/${s['id']}',
-                                  );
+                                  if (s['current'] == true) {
+                                    await state.api.delete(
+                                      '/auth/sessions/${s['id']}',
+                                    );
+                                  } else {
+                                    final changed = await confirmAction(
+                                      scope,
+                                      'Dieses Gerät abmelden?',
+                                      '${s['device']}\n${deviceDates(Json.from(s))}\nDer Zugang auf diesem Gerät wird beendet.',
+                                      'Gerät abmelden',
+                                      () => state.api.delete(
+                                        '/auth/sessions/${s['id']}',
+                                      ),
+                                    );
+                                    if (!changed) return;
+                                  }
                                   if (!scope.current) return;
                                   if (s['current']) {
                                     await state.clear(
@@ -326,7 +377,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Icons.person_outline,
                           color: context.palette.teal,
                         ),
-                        title: Text(m['display_name']),
+                        title: Text(
+                          '${m['display_name']}${m['self'] == true ? ' · Dein Zugang' : ''}',
+                        ),
                         subtitle: Text(switch (m['permission']) {
                           'owner' =>
                             'Familieninhaber · Einladungen und Verwaltung',
@@ -376,36 +429,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 key: ValueKey('invites-${state.familyId}-$version'),
                 load: () =>
                     state.api.list('/families/${state.familyId}/invitations'),
-                builder: (invites, _) => invites.isEmpty
-                    ? const SizedBox.shrink()
-                    : Panel(
-                        child: Column(
-                          children: [
-                            for (final i in invites)
-                              ParentManagementRow(
-                                leading: Icon(
-                                  Icons.mark_email_unread_outlined,
-                                  color: context.palette.cyanInk,
+                builder: (invites, _) => Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      heading('Offene Einladungen'),
+                      if (invites.isEmpty)
+                        const Text('Zurzeit ist keine Einladung offen.'),
+                      for (final i in invites)
+                        ParentManagementRow(
+                          leading: Icon(
+                            Icons.mark_email_unread_outlined,
+                            color: context.palette.cyanInk,
+                          ),
+                          title: Text(i['email']),
+                          subtitle: Text(
+                            'Offene Einladung · ${i['permission'] == 'view' ? 'Leserechte' : 'Verwaltung'}${i['expires'] is num ? '\nGültig bis ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((i['expires'] * 1000).round()))}' : ''}',
+                          ),
+                          action: ActionButton(
+                            label: 'Einladung widerrufen',
+                            secondary: true,
+                            onPressed: () async {
+                              if (!scope.current) return;
+                              final changed = await confirmAction(
+                                scope,
+                                'Einladung widerrufen?',
+                                'Die Einladung an ${i['email']} mit ${i['permission'] == 'view' ? 'Leserechten' : 'Verwaltungsrechten'} wird ungültig.',
+                                'Einladung widerrufen',
+                                () => state.api.delete(
+                                  '/families/${scope.familyId}/invitations/${i['id']}',
                                 ),
-                                title: Text(i['email']),
-                                subtitle: Text(
-                                  'Offene Einladung · ${i['permission'] == 'view' ? 'Leserechte' : 'Verwaltung'}',
-                                ),
-                                action: ActionButton(
-                                  label: 'Einladung widerrufen',
-                                  secondary: true,
-                                  onPressed: () async {
-                                    if (!scope.current) return;
-                                    await state.api.delete(
-                                      '/families/${scope.familyId}/invitations/${i['id']}',
-                                    );
-                                    if (scope.current) refresh();
-                                  },
-                                ),
-                              ),
-                          ],
+                              );
+                              if (changed && scope.current) {
+                                refresh();
+                                if (context.mounted) {
+                                  toast(context, 'Einladung widerrufen.');
+                                }
+                              }
+                            },
+                          ),
                         ),
-                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
             const SizedBox(height: 28),
@@ -419,6 +485,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               load: () => state.api.get('/families/${state.familyId}'),
               builder: (family, _) => Column(
                 children: [
+                  if ((family['children'] as List).isEmpty) ...[
+                    const Notice('Noch kein Kinderzugang in dieser Familie.'),
+                    TextButton.icon(
+                      onPressed: () {
+                        if (scope.current) openRoute(context, '/app');
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Zur Familienübersicht'),
+                    ),
+                  ],
                   for (final child in family['children'] as List)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
@@ -426,16 +502,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              child['display_name'],
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
+                            ActionPanel(
+                              actionLabel:
+                                  'Lernüberblick von ${child['display_name']} ansehen',
+                              onPressed: () {
+                                if (scope.current) {
+                                  openRoute(context, '/child/${child['id']}');
+                                }
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    child['display_name'],
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Benutzername: ${child['username']}',
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                    ),
+                                  ),
+                                  if (child['grade'] is num)
+                                    Text('Klasse ${child['grade']}'),
+                                  if ((child['school_type'] ?? '')
+                                      .toString()
+                                      .trim()
+                                      .isNotEmpty)
+                                    Text(child['school_type']),
+                                ],
                               ),
-                            ),
-                            Text(
-                              'Benutzername: ${child['username']}',
-                              style: TextStyle(color: context.palette.muted),
                             ),
                             const SizedBox(height: 16),
                             if (state.canManage)
@@ -466,6 +565,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                         state,
                                         child['id'],
+                                        childName: child['display_name'],
                                       );
                                       if (scope.current) refresh();
                                     },
@@ -479,7 +579,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       final password = await passwordDialog(
                                         context,
                                         'Kinderkonto wirklich löschen?',
-                                        'Materialien, Antworten und Sitzungen dieses Kindes werden gelöscht. Backups verfallen nach höchstens 14 Tagen.',
+                                        '${child['display_name']} · Benutzername: ${child['username']}\nMaterialien, Antworten und Sitzungen dieses Kindes werden gelöscht. Backups verfallen nach höchstens 14 Tagen.',
                                         state: state,
                                         confirmLabel: 'Kinderkonto löschen',
                                         destructive: true,
@@ -513,18 +613,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                       title: Text(s['device']),
                                       subtitle: Text(
-                                        'Angemeldetes Kindergerät',
+                                        'Angemeldetes Kindergerät${deviceDates(Json.from(s)).isEmpty ? '' : '\n${deviceDates(Json.from(s))}'}',
                                       ),
                                       action: state.canManage
                                           ? ActionButton(
-                                              label: 'Widerrufen',
+                                              label: 'Kindergerät abmelden',
                                               secondary: true,
                                               onPressed: () async {
                                                 if (!scope.current) return;
-                                                await state.api.delete(
-                                                  '/children/${child['id']}/sessions/${s['id']}',
+                                                final changed = await confirmAction(
+                                                  scope,
+                                                  'Kindergerät abmelden?',
+                                                  '${child['display_name']} · ${s['device']}\n${deviceDates(Json.from(s))}\nDer Kinderzugang auf diesem Gerät wird beendet.',
+                                                  'Kindergerät abmelden',
+                                                  () => state.api.delete(
+                                                    '/children/${child['id']}/sessions/${s['id']}',
+                                                  ),
                                                 );
-                                                if (scope.current) refresh();
+                                                if (changed && scope.current) {
+                                                  refresh();
+                                                }
                                               },
                                             )
                                           : null,
@@ -758,7 +866,13 @@ class _SettingsFormDialogState extends State<_SettingsFormDialog> {
   }
 
   Future<void> submit() async {
-    if (busy || closing || !widget.scope.current) return;
+    if (!mounted ||
+        busy ||
+        closing ||
+        !widget.scope.current ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
     final invalid = form.currentState!.validateGranularly();
     if (invalid.isNotEmpty) {
       reveal(() => invalid.first.context);
@@ -772,7 +886,12 @@ class _SettingsFormDialogState extends State<_SettingsFormDialog> {
     try {
       await widget.submit();
       if (!mounted || !widget.scope.current || closing) return;
-      Navigator.pop(context, true);
+      final route = ModalRoute.of(context);
+      if (route?.isCurrent == true) {
+        Navigator.pop(context, true);
+      } else if (route?.isActive == true) {
+        route!.navigator?.removeRoute(route, true);
+      }
     } catch (e) {
       if (!mounted || !widget.scope.current || closing) return;
       setState(() {
@@ -830,7 +949,15 @@ class _SettingsFormDialogState extends State<_SettingsFormDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: busy ? null : () => Navigator.pop(context, false),
+          onPressed: busy
+              ? null
+              : () {
+                  if (mounted &&
+                      widget.scope.current &&
+                      ModalRoute.of(context)?.isCurrent == true) {
+                    Navigator.pop(context, false);
+                  }
+                },
           child: const Text('Abbrechen'),
         ),
         FilledButton(
@@ -898,16 +1025,15 @@ Future<String?> passwordDialog(
       children: [
         Text(body),
         const SizedBox(height: 20),
-        TextFormField(
+        _SettingsPasswordField(
           controller: controller,
           enabled: !busy,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          autofillHints: const [AutofillHints.password],
-          decoration: const InputDecoration(labelText: 'Dein Elternpasswort'),
-          validator: (v) =>
-              v == null || v.isEmpty ? 'Gib dein Elternpasswort ein.' : null,
+          label: 'Dein Elternpasswort',
+          validator: (v) => v == null || v.isEmpty
+              ? 'Gib dein Elternpasswort ein.'
+              : v.runes.length > 128
+              ? 'Nutze höchstens 128 Zeichen.'
+              : null,
         ),
       ],
     ),
@@ -920,14 +1046,72 @@ Future<String?> passwordDialog(
   return result;
 }
 
+class _SettingsPasswordField extends StatefulWidget {
+  final TextEditingController controller;
+  final bool enabled;
+  final String label;
+  final String? helper;
+  final FormFieldValidator<String>? validator;
+  final TextInputAction textInputAction;
+  const _SettingsPasswordField({
+    required this.controller,
+    required this.enabled,
+    required this.label,
+    this.helper,
+    this.validator,
+    this.textInputAction = TextInputAction.done,
+  });
+  @override
+  State<_SettingsPasswordField> createState() => _SettingsPasswordFieldState();
+}
+
+class _SettingsPasswordFieldState extends State<_SettingsPasswordField> {
+  bool hidden = true;
+  @override
+  Widget build(BuildContext context) => TextFormField(
+    controller: widget.controller,
+    enabled: widget.enabled,
+    obscureText: hidden,
+    autocorrect: false,
+    enableSuggestions: false,
+    smartDashesType: SmartDashesType.disabled,
+    smartQuotesType: SmartQuotesType.disabled,
+    enableIMEPersonalizedLearning: false,
+    autofillHints: const [AutofillHints.password],
+    textInputAction: widget.textInputAction,
+    validator: widget.validator,
+    onFieldSubmitted: widget.textInputAction == TextInputAction.done
+        ? (_) => context
+              .findAncestorStateOfType<_SettingsFormDialogState>()
+              ?.submit()
+        : null,
+    decoration: InputDecoration(
+      labelText: widget.label,
+      helperText: widget.helper,
+      suffixIcon: IconButton(
+        tooltip: '${widget.label} ${hidden ? 'anzeigen' : 'verbergen'}',
+        onPressed: widget.enabled
+            ? () => setState(() => hidden = !hidden)
+            : null,
+        icon: Icon(
+          hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        ),
+      ),
+    ),
+  );
+}
+
 Future<void> resetChildDialog(
   BuildContext context,
   AppState state,
-  String childId,
-) async {
-  final parent = TextEditingController(), password = TextEditingController();
+  String childId, {
+  String? childName,
+}) async {
+  final parent = TextEditingController(),
+      password = TextEditingController(),
+      repeated = TextEditingController();
   final scope = _SettingsContext(state);
-  await _settingsDialog(
+  final changed = await _settingsDialog(
     context,
     scope,
     title: 'Kinderzugang sicher zurücksetzen',
@@ -935,34 +1119,42 @@ Future<void> resetChildDialog(
     fields: (busy) => Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (childName != null) Text('Kinderzugang: $childName'),
         const Notice(
           'Das bisherige Passwort kann niemand auslesen. Ein neues Passwort beendet alle bestehenden Kindersitzungen.',
         ),
         const SizedBox(height: 16),
-        TextFormField(
+        _SettingsPasswordField(
           controller: parent,
           enabled: !busy,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          decoration: const InputDecoration(labelText: 'Dein Elternpasswort'),
-          validator: (v) =>
-              v == null || v.isEmpty ? 'Gib dein Elternpasswort ein.' : null,
+          label: 'Dein Elternpasswort',
+          validator: (v) => v == null || v.isEmpty
+              ? 'Gib dein Elternpasswort ein.'
+              : v.runes.length > 128
+              ? 'Nutze höchstens 128 Zeichen.'
+              : null,
           textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: 16),
-        TextFormField(
+        _SettingsPasswordField(
           controller: password,
           enabled: !busy,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          decoration: const InputDecoration(
-            labelText: 'Neues Kinderpasswort',
-            helperText: 'Mindestens 12 Zeichen.',
-          ),
+          label: 'Neues Kinderpasswort',
+          helper: '12 bis 128 Zeichen.',
+          textInputAction: TextInputAction.next,
           validator: (v) => (v ?? '').runes.length < 12
               ? 'Nutze mindestens 12 Zeichen.'
+              : (v ?? '').runes.length > 128
+              ? 'Nutze höchstens 128 Zeichen.'
+              : null,
+        ),
+        const SizedBox(height: 16),
+        _SettingsPasswordField(
+          controller: repeated,
+          enabled: !busy,
+          label: 'Neues Kinderpasswort wiederholen',
+          validator: (v) => v != password.text
+              ? 'Die neuen Passwörter müssen übereinstimmen.'
               : null,
         ),
       ],
@@ -974,8 +1166,15 @@ Future<void> resetChildDialog(
       });
     },
   );
+  if (changed && scope.current && context.mounted) {
+    toast(
+      context,
+      'Kinderpasswort erneuert. Das Kind kann sich mit dem neuen Passwort anmelden.',
+    );
+  }
   parent.dispose();
   password.dispose();
+  repeated.dispose();
 }
 
 Future<void> editChildDialog(
@@ -990,9 +1189,10 @@ Future<void> editChildDialog(
       ),
       school = TextEditingController(text: child['school_type']),
       region = TextEditingController(text: child['region']);
-  await _settingsDialog(
+  final scope = _SettingsContext(state);
+  final changed = await _settingsDialog(
     context,
-    _SettingsContext(state),
+    scope,
     title: 'Notwendige Lernangaben',
     confirmLabel: 'Speichern',
     fields: (busy) => Column(
@@ -1018,6 +1218,18 @@ Future<void> editChildDialog(
               validator: (v) {
                 if (identical(item.$1, name) && (v ?? '').trim().isEmpty) {
                   return 'Gib einen Anzeigenamen ein.';
+                }
+                if ([name, school, region].contains(item.$1) &&
+                    (v ?? '').trim().runes.length > 80) {
+                  return 'Nutze für ${item.$2} höchstens 80 Zeichen.';
+                }
+                if (identical(item.$1, subjects) &&
+                    (v ?? '')
+                            .split(',')
+                            .where((s) => s.trim().isNotEmpty)
+                            .length >
+                        20) {
+                  return 'Du kannst höchstens 20 Fächer angeben.';
                 }
                 if (identical(item.$1, grade)) {
                   final value = int.tryParse(v ?? '');
@@ -1045,6 +1257,9 @@ Future<void> editChildDialog(
       });
     },
   );
+  if (changed && scope.current && context.mounted) {
+    toast(context, 'Lernangaben gespeichert.');
+  }
   for (final c in [name, grade, subjects, school, region]) {
     c.dispose();
   }
@@ -1054,7 +1269,7 @@ Future<void> inviteDialog(BuildContext context, AppState state) async {
   final email = TextEditingController();
   final scope = _SettingsContext(state);
   String permission = 'view';
-  await _settingsDialog(
+  final changed = await _settingsDialog(
     context,
     scope,
     title: 'Berechtigtes Elternteil einladen',
@@ -1073,6 +1288,9 @@ Future<void> inviteDialog(BuildContext context, AppState state) async {
           ),
           validator: (v) => (v ?? '').trim().isEmpty
               ? 'Gib die E-Mail-Adresse des Elternteils ein.'
+              : !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+                    .hasMatch((v ?? '').trim())
+              ? 'Prüfe die E-Mail-Adresse, zum Beispiel name@anbieter.de.'
               : null,
         ),
         const SizedBox(height: 18),
@@ -1091,6 +1309,10 @@ Future<void> inviteDialog(BuildContext context, AppState state) async {
           decoration: const InputDecoration(labelText: 'Berechtigung'),
         ),
         const SizedBox(height: 16),
+        const Text(
+          'Nur lesen: Lernstand, Pläne und Nachrichten ansehen. Verwalten: zusätzlich Kinderangaben, Lernpläne, Noten und Nachrichten ändern. Der Familieninhaber verwaltet die Elternzugänge.',
+        ),
+        const SizedBox(height: 16),
         const Notice(
           'Nur der Familieninhaber kann weitere Eltern einladen oder deren Rechte entziehen. Einladungen gelten zwei Tage und können widerrufen werden.',
         ),
@@ -1103,6 +1325,9 @@ Future<void> inviteDialog(BuildContext context, AppState state) async {
       });
     },
   );
+  if (changed && scope.current && context.mounted) {
+    toast(context, 'Einladung gesendet. Sie bleibt zwei Tage gültig.');
+  }
   email.dispose();
 }
 
@@ -1114,12 +1339,33 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  int version = 0, section = 0, familyVersion = 0;
+  int version = 0, section = 0, familyVersion = 0, familyLocateVersion = 0;
+  String? familyLookup;
   DateTime? operationsChecked;
+  late final owner = widget.state.user;
+  bool get own =>
+      mounted && widget.state.isAdmin && identical(owner, widget.state.user);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.state.addListener(accountChanged);
+  }
+
+  void accountChanged() {
+    if (!own && mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(accountChanged);
+    super.dispose();
+  }
 
   final providerForm = GlobalKey<_ProviderFormState>();
   String? emergencyMessage;
   Future<void> refresh() async {
+    if (!own) return;
     if (providerForm.currentState?.dirty == true &&
         !await confirmDialog(
           context,
@@ -1128,22 +1374,24 @@ class _AdminScreenState extends State<AdminScreen> {
         )) {
       return;
     }
-    if (mounted) setState(() => version++);
+    if (own) setState(() => version++);
   }
 
   void selectSection(int value) {
+    if (!own) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => section = value);
   }
 
   Future<void> editFamily(dynamic family) async {
+    if (!own) return;
     FocusManager.instance.primaryFocus?.unfocus();
     final changed = await entitlementDialog(
       context,
       widget.state,
       Map<String, dynamic>.from(family),
     );
-    if (mounted && changed) setState(() => familyVersion++);
+    if (own && changed) setState(() => familyVersion++);
   }
 
   Widget familyTable(List<dynamic> families) => AdminWorkSurface(
@@ -1219,323 +1467,353 @@ class _AdminScreenState extends State<AdminScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => PageFrame(
-    state: widget.state,
-    title: 'Kontrollzentrum',
-    showTitle: false,
-    actions: [
-      OutlinedButton.icon(
-        onPressed: refresh,
-        icon: Icon(Icons.refresh_rounded, size: 18),
-        label: const Text('Aktualisieren'),
-      ),
-      PopupMenuButton<String>(
-        tooltip: 'Schnellzugriff',
-        icon: Icon(Icons.more_horiz_rounded),
-        onSelected: (route) => openRoute(context, route),
-        itemBuilder: (_) => const [
-          PopupMenuItem(
-            value: '/admin/settings',
-            child: Text('Betriebseinstellungen'),
-          ),
-          PopupMenuItem(
-            value: '/admin/verkauf',
-            child: Text('Zahlungen prüfen'),
-          ),
-          PopupMenuItem(value: '/admin/push', child: Text('Push prüfen')),
-        ],
-      ),
-      Theme(
-        data: Theme.of(context).copyWith(
-          outlinedButtonTheme: OutlinedButtonThemeData(
-            style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
-              foregroundColor: WidgetStatePropertyAll(
-                context.palette.dangerInk,
-              ),
-              backgroundColor: WidgetStatePropertyAll(
-                context.palette.dangerSurface,
-              ),
-              side: WidgetStateProperty.resolveWith(
-                (states) => BorderSide(
-                  color: context.palette.dangerInk,
-                  width: states.contains(WidgetState.focused) ? 2.5 : 1.25,
-                ),
-              ),
+  Widget build(BuildContext context) => !own
+      ? const SizedBox.shrink()
+      : PageFrame(
+          state: widget.state,
+          title: 'Kontrollzentrum',
+          showTitle: false,
+          actions: [
+            OutlinedButton.icon(
+              onPressed: refresh,
+              icon: Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Aktualisieren'),
             ),
-          ),
-        ),
-        child: ActionButton(
-          label: 'KI-Aufrufe sofort stoppen',
-          secondary: true,
-          icon: Icons.stop_circle_outlined,
-          onPressed: () async {
-            await widget.state.api.post('/admin/emergency-stop');
-            if (mounted) {
-              setState(
-                () => emergencyMessage =
-                    'Notfallstopp gespeichert. Neue KI-Aufrufe sind gesperrt.',
-              );
-              refresh();
-            }
-          },
-        ),
-      ),
-    ],
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const AdminWorkspaceHeader(
-          title: 'Deine Plattform im Blick',
-          subtitle: 'Aufträge prüfen, Kosten verstehen und den Betrieb sicher steuern.',
-          currentPath: '/admin',
-        ),
-        if (emergencyMessage != null)
-          Semantics(liveRegion: true, child: Notice(emergencyMessage!)),
-        const SizedBox(height: 24),
-        AdminContextTabs(
-          selected: section,
-          onSelected: selectSection,
-          items: const [
-            (Icons.grid_view_rounded, 'Übersicht'),
-            (Icons.auto_awesome_rounded, 'KI-Konfiguration'),
-            (Icons.family_restroom_rounded, 'Familientarife'),
-            (Icons.history_rounded, 'Protokoll'),
-            (Icons.savings_outlined, 'KI-Kosten'),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _AdminSection(
-          offstage: section != 0,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const AdminSectionHeading(
-                title: 'Betriebsübersicht',
-                subtitle: 'Wichtige Signale zuerst. Details und Eingriffe bleiben bewusst steuerbar.',
-                icon: Icons.monitor_heart_outlined,
-              ),
-              if (operationsChecked != null)
-                Text(
-                  'Betriebsdaten zuletzt erfolgreich geladen: ${_adminEventDate(operationsChecked!.millisecondsSinceEpoch ~/ 1000)} (Gerätezeit)',
+            PopupMenuButton<String>(
+              tooltip: 'Schnellzugriff',
+              icon: Icon(Icons.more_horiz_rounded),
+              onSelected: (route) => openRoute(context, route),
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: '/admin/settings',
+                  child: Text('Betriebseinstellungen'),
                 ),
-              LoadView<Json>(
-                key: ValueKey('operations-$version'),
-                load: () async {
-                  final owner = widget.state.user;
-                  final requestedVersion = version;
-                  final data = await widget.state.api.get('/admin/operations');
-                  if (mounted &&
-                      identical(widget.state.user, owner) &&
-                      requestedVersion == version) {
-                    setState(() => operationsChecked = DateTime.now());
-                  }
-                  return data;
-                },
-                builder: (data, _) => AdminOperationCards(
-                  data,
-                  onOpenProtocol: () => selectSection(3),
-                  onOpenPush: () => openRoute(context, '/admin/push'),
+                PopupMenuItem(
+                  value: '/admin/verkauf',
+                  child: Text('Zahlungen prüfen'),
                 ),
-              ),
-              const SizedBox(height: 28),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final provider = LoadView<Json>(
-                    key: ValueKey('provider-status-$version'),
-                    load: () => widget.state.api.get('/admin/provider'),
-                    builder: (config, _) => AdminWorkSurface(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const AdminSectionHeading(
-                            title: 'KI-Steuerung',
-                            subtitle: 'Gespeicherte Konfiguration und aktueller Freigabestatus.',
-                            icon: Icons.tune_rounded,
-                          ),
-                          AdminStatusLine(
-                            label: config['emergency_stop'] == true
-                                ? 'KI-Aufrufe sind gestoppt'
-                                : 'Aktiver KI-Anbieter',
-                            value: _providerName(config['provider']),
-                            ready: config['emergency_stop'] == true
-                                ? false
-                                : null,
-                          ),
-                          const SizedBox(height: 8),
-                          SelectableText(
-                            '${config['model'] ?? 'Kein Modell'}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${config['status'] ?? 'Status nicht gemeldet'}',
-                            style: TextStyle(color: context.palette.muted),
-                          ),
-                          const SizedBox(height: 22),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: FilledButton.tonalIcon(
-                              onPressed: () => selectSection(1),
-                              icon: Icon(Icons.arrow_forward_rounded),
-                              label: const Text('KI-Konfiguration öffnen'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                  final tools = AdminWorkSurface(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const AdminSectionHeading(
-                          title: 'Direkt erledigen',
-                          subtitle: 'Der passende Arbeitsbereich für den nächsten Schritt.',
-                          icon: Icons.dashboard_customize_outlined,
-                        ),
-                        AdminActionRow(
-                          title: 'Betriebseinstellungen',
-                          subtitle:
-                              'Dienste, Zugänge und dokumentierte Freigaben',
-                          icon: Icons.tune_rounded,
-                          onPressed: () =>
-                              openRoute(context, '/admin/settings'),
-                        ),
-                        Divider(
-                          color: context.palette.surfaceBorder,
-                          height: 1,
-                        ),
-                        AdminActionRow(
-                          title: 'Zahlungen prüfen',
-                          subtitle: 'Bankabgleich und Freischaltung',
-                          icon: Icons.account_balance_outlined,
-                          onPressed: () => openRoute(context, '/admin/verkauf'),
-                        ),
-                        Divider(
-                          color: context.palette.surfaceBorder,
-                          height: 1,
-                        ),
-                        AdminActionRow(
-                          title: 'Push prüfen',
-                          subtitle: 'Geräte, Annahme und ausstehender Versand',
-                          icon: Icons.notifications_outlined,
-                          onPressed: () => openRoute(context, '/admin/push'),
-                        ),
-                        Divider(
-                          color: context.palette.surfaceBorder,
-                          height: 1,
-                        ),
-                        AdminActionRow(
-                          title: 'Familientarife verwalten',
-                          subtitle: 'Berechtigungen und Kontingente',
-                          icon: Icons.family_restroom_rounded,
-                          onPressed: () => selectSection(2),
-                        ),
-                      ],
-                    ),
-                  );
-                  return constraints.maxWidth >= 920
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 5, child: provider),
-                            const SizedBox(width: 22),
-                            Expanded(flex: 6, child: tools),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            provider,
-                            const SizedBox(height: 20),
-                            tools,
-                          ],
-                        );
-                },
-              ),
-            ],
-          ),
-        ),
-        _AdminSection(
-          offstage: section != 1,
-          child: LoadView<Json>(
-            key: ValueKey('provider-form-$version'),
-            load: () => widget.state.api.get('/admin/provider'),
-            builder: (config, _) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const AdminSectionHeading(
-                  title: 'KI-Konfiguration',
-                  subtitle: 'Entwürfe bleiben beim Wechsel dieser Reiter erhalten. Änderungen erst ausdrücklich speichern.',
-                  icon: Icons.auto_awesome_rounded,
-                ),
-                ProviderForm(
-                  widget.state,
-                  config,
-                  key: providerForm,
-                  onRefresh: refresh,
-                ),
-                const SizedBox(height: 20),
-                AiRoutingPanel(widget.state),
+                PopupMenuItem(value: '/admin/push', child: Text('Push prüfen')),
               ],
             ),
-          ),
-        ),
-        _AdminSection(
-          offstage: section != 2,
-          child: AdminFamilyList(
-            widget.state,
-            revision: (version, familyVersion),
-            onEdit: editFamily,
-            tableBuilder: familyTable,
-          ),
-        ),
-        _AdminSection(
-          offstage: section != 3,
+            Theme(
+              data: Theme.of(context).copyWith(
+                outlinedButtonTheme: OutlinedButtonThemeData(
+                  style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
+                    foregroundColor: WidgetStatePropertyAll(
+                      context.palette.dangerInk,
+                    ),
+                    backgroundColor: WidgetStatePropertyAll(
+                      context.palette.dangerSurface,
+                    ),
+                    side: WidgetStateProperty.resolveWith(
+                      (states) => BorderSide(
+                        color: context.palette.dangerInk,
+                        width: states.contains(WidgetState.focused)
+                            ? 2.5
+                            : 1.25,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              child: ActionButton(
+                label: 'KI-Aufrufe sofort stoppen',
+                secondary: true,
+                icon: Icons.stop_circle_outlined,
+                onPressed: () async {
+                  if (!own) return;
+                  await widget.state.api.post('/admin/emergency-stop');
+                  if (own) {
+                    setState(
+                      () => emergencyMessage = 'Notfallstopp gespeichert. Neue KI-Aufrufe sind gesperrt.',
+                    );
+                    refresh();
+                  }
+                },
+              ),
+            ),
+          ],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const AdminSectionHeading(
-                title: 'Administratives Protokoll',
-                subtitle: 'Betriebsereignisse nachvollziehen. Keine privaten Lernantworten.',
-                icon: Icons.history_rounded,
+              const AdminWorkspaceHeader(
+                title: 'Deine Plattform im Blick',
+                subtitle: 'Aufträge prüfen, Kosten verstehen und den Betrieb sicher steuern.',
+                currentPath: '/admin',
               ),
-              LoadView<List<dynamic>>(
-                key: ValueKey('audit-$version'),
-                load: () => widget.state.api.list('/admin/audit'),
-                builder: (events, _) => AdminAuditList(events),
+              if (emergencyMessage != null)
+                Semantics(liveRegion: true, child: Notice(emergencyMessage!)),
+              const SizedBox(height: 24),
+              AdminContextTabs(
+                selected: section,
+                onSelected: selectSection,
+                items: const [
+                  (Icons.grid_view_rounded, 'Übersicht'),
+                  (Icons.auto_awesome_rounded, 'KI-Konfiguration'),
+                  (Icons.family_restroom_rounded, 'Familientarife'),
+                  (Icons.history_rounded, 'Protokoll'),
+                  (Icons.savings_outlined, 'KI-Kosten'),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _AdminSection(
+                offstage: section != 0,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const AdminSectionHeading(
+                      title: 'Betriebsübersicht',
+                      subtitle: 'Wichtige Signale zuerst. Details und Eingriffe bleiben bewusst steuerbar.',
+                      icon: Icons.monitor_heart_outlined,
+                    ),
+                    if (operationsChecked != null)
+                      Text(
+                        'Betriebsdaten zuletzt erfolgreich geladen: ${_adminEventDate(operationsChecked!.millisecondsSinceEpoch ~/ 1000)} (Gerätezeit)',
+                      ),
+                    LoadView<Json>(
+                      key: ValueKey('operations-$version'),
+                      load: () async {
+                        final owner = widget.state.user;
+                        final requestedVersion = version;
+                        final data = await widget.state.api.get(
+                          '/admin/operations',
+                        );
+                        if (mounted &&
+                            identical(widget.state.user, owner) &&
+                            requestedVersion == version) {
+                          setState(() => operationsChecked = DateTime.now());
+                        }
+                        return data;
+                      },
+                      builder: (data, _) => AdminOperationCards(
+                        data,
+                        state: widget.state,
+                        onOpenProtocol: () => selectSection(3),
+                        onOpenPush: () => openRoute(context, '/admin/push'),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final provider = LoadView<Json>(
+                          key: ValueKey('provider-status-$version'),
+                          load: () => widget.state.api.get('/admin/provider'),
+                          builder: (config, _) => ActionPanel(
+                            actionLabel: 'KI-Konfiguration öffnen',
+                            onPressed: () {
+                              if (own) selectSection(1);
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const AdminSectionHeading(
+                                  title: 'KI-Steuerung',
+                                  subtitle: 'Gespeicherte Konfiguration und aktueller Freigabestatus.',
+                                  icon: Icons.tune_rounded,
+                                ),
+                                AdminStatusLine(
+                                  label: config['emergency_stop'] == true
+                                      ? 'KI-Aufrufe sind gestoppt'
+                                      : 'Aktiver KI-Anbieter',
+                                  value: _providerName(config['provider']),
+                                  ready: config['emergency_stop'] == true
+                                      ? false
+                                      : null,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${config['model'] ?? 'Kein Modell'}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '${config['status'] ?? 'Status nicht gemeldet'}',
+                                  style: TextStyle(
+                                    color: context.palette.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                        final tools = AdminWorkSurface(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const AdminSectionHeading(
+                                title: 'Direkt erledigen',
+                                subtitle: 'Der passende Arbeitsbereich für den nächsten Schritt.',
+                                icon: Icons.dashboard_customize_outlined,
+                              ),
+                              AdminActionRow(
+                                title: 'Betriebseinstellungen',
+                                subtitle: 'Dienste, Zugänge und dokumentierte Freigaben',
+                                icon: Icons.tune_rounded,
+                                onPressed: () =>
+                                    openRoute(context, '/admin/settings'),
+                              ),
+                              Divider(
+                                color: context.palette.surfaceBorder,
+                                height: 1,
+                              ),
+                              AdminActionRow(
+                                title: 'Zahlungen prüfen',
+                                subtitle: 'Bankabgleich und Freischaltung',
+                                icon: Icons.account_balance_outlined,
+                                onPressed: () =>
+                                    openRoute(context, '/admin/verkauf'),
+                              ),
+                              Divider(
+                                color: context.palette.surfaceBorder,
+                                height: 1,
+                              ),
+                              AdminActionRow(
+                                title: 'Push prüfen',
+                                subtitle:
+                                    'Geräte, Annahme und ausstehender Versand',
+                                icon: Icons.notifications_outlined,
+                                onPressed: () =>
+                                    openRoute(context, '/admin/push'),
+                              ),
+                              Divider(
+                                color: context.palette.surfaceBorder,
+                                height: 1,
+                              ),
+                              AdminActionRow(
+                                title: 'Familientarife verwalten',
+                                subtitle: 'Berechtigungen und Kontingente',
+                                icon: Icons.family_restroom_rounded,
+                                onPressed: () => selectSection(2),
+                              ),
+                            ],
+                          ),
+                        );
+                        return constraints.maxWidth >= 920
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(flex: 5, child: provider),
+                                  const SizedBox(width: 22),
+                                  Expanded(flex: 6, child: tools),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  provider,
+                                  const SizedBox(height: 20),
+                                  tools,
+                                ],
+                              );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              _AdminSection(
+                offstage: section != 1,
+                child: LoadView<Json>(
+                  key: ValueKey('provider-form-$version'),
+                  load: () => widget.state.api.get('/admin/provider'),
+                  builder: (config, _) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const AdminSectionHeading(
+                        title: 'KI-Konfiguration',
+                        subtitle: 'Entwürfe bleiben beim Wechsel dieser Reiter erhalten. Änderungen erst ausdrücklich speichern.',
+                        icon: Icons.auto_awesome_rounded,
+                      ),
+                      ProviderForm(
+                        widget.state,
+                        config,
+                        key: providerForm,
+                        onRefresh: refresh,
+                      ),
+                      const SizedBox(height: 20),
+                      AiRoutingPanel(widget.state),
+                    ],
+                  ),
+                ),
+              ),
+              _AdminSection(
+                offstage: section != 2,
+                child: AdminFamilyList(
+                  key: ValueKey('family-location-$familyLocateVersion'),
+                  widget.state,
+                  initialSearch: familyLookup,
+                  revision: (version, familyVersion),
+                  onEdit: editFamily,
+                  tableBuilder: familyTable,
+                ),
+              ),
+              _AdminSection(
+                offstage: section != 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const AdminSectionHeading(
+                      title: 'Administratives Protokoll',
+                      subtitle: 'Betriebsereignisse nachvollziehen. Keine privaten Lernantworten.',
+                      icon: Icons.history_rounded,
+                    ),
+                    LoadView<List<dynamic>>(
+                      key: ValueKey('audit-$version'),
+                      load: () => widget.state.api.list('/admin/audit'),
+                      builder: (events, _) => AdminAuditList(
+                        events,
+                        state: widget.state,
+                        onOpenProvider: () => selectSection(1),
+                        onOpenCosts: () => selectSection(4),
+                        onOpenFamily: (id) {
+                          if (!own) return;
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(() {
+                            familyLookup = id;
+                            familyLocateVersion++;
+                            section = 2;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _AdminSection(
+                offstage: section != 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const AdminSectionHeading(
+                      title: 'KI-Kosten & Qualität',
+                      subtitle: 'Verbrauch, offene Abrechnungen und Reservierungen gemeinsam betrachten.',
+                      icon: Icons.savings_outlined,
+                    ),
+                    AiCostPanel(
+                      widget.state,
+                      key: ValueKey('costs-$version'),
+                      onOpenRouting: () => selectSection(1),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-        _AdminSection(
-          offstage: section != 4,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const AdminSectionHeading(
-                title: 'KI-Kosten & Qualität',
-                subtitle: 'Verbrauch, offene Abrechnungen und Reservierungen gemeinsam betrachten.',
-                icon: Icons.savings_outlined,
-              ),
-              AiCostPanel(widget.state, key: ValueKey('costs-$version')),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
+        );
 }
 
 /// Metadata-only operations list; the API applies the admin role and filters.
 class AdminFamilyList extends StatefulWidget {
   final AppState state;
+  final String? initialSearch;
   final Object revision;
   final Future<void> Function(Json family) onEdit;
   final Widget Function(List<dynamic> families)? tableBuilder;
   const AdminFamilyList(
     this.state, {
     super.key,
+    this.initialSearch,
     required this.revision,
     required this.onEdit,
     this.tableBuilder,
@@ -1550,13 +1828,15 @@ class _AdminFamilyListState extends State<AdminFamilyList> {
   int page = 1, generation = 0;
   String appliedSearch = '', kind = 'all';
   Json? data;
-  bool loading = false;
+  bool loading = false, editing = false;
   String? error;
   bool get own =>
       mounted && widget.state.isAdmin && identical(widget.state.user, owner);
   @override
   void initState() {
     super.initState();
+    appliedSearch = widget.initialSearch ?? '';
+    search.text = appliedSearch;
     widget.state.addListener(accountChanged);
     load();
   }
@@ -1649,12 +1929,19 @@ class _AdminFamilyListState extends State<AdminFamilyList> {
   }
 
   Future<void> edit(Json family) async {
-    if (!own || loading) return;
+    if (!own || loading || editing) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    await widget.onEdit(family);
+    setState(() => editing = true);
+    try {
+      await widget.onEdit(family);
+    } finally {
+      if (own) setState(() => editing = false);
+    }
   }
 
-  Widget card(Json family) => Panel(
+  Widget card(Json family) => ActionPanel(
+    actionLabel: 'Tarif bearbeiten',
+    onPressed: loading || editing ? null : () => edit(family),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1663,7 +1950,7 @@ class _AdminFamilyListState extends State<AdminFamilyList> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 6),
-        SelectableText('${family['id']}'),
+        Text('${family['id']}'),
         const SizedBox(height: 8),
         Tag(
           family['synthetic'] == true
@@ -1677,17 +1964,6 @@ class _AdminFamilyListState extends State<AdminFamilyList> {
           '${family['child_limit']} Kinderplätze · ${family['call_limit']} KI-Aufrufe / Monat',
         ),
         Text('Kostenlimit: ${_adminUsd(family['budget_micros'])} / Monat'),
-        const SizedBox(height: 16),
-        Semantics(
-          label: 'Tarif für Familie ${family['id']} bearbeiten',
-          button: true,
-          excludeSemantics: true,
-          child: OutlinedButton.icon(
-            onPressed: loading ? null : () => edit(family),
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Tarif bearbeiten'),
-          ),
-        ),
       ],
     ),
   );
@@ -1879,12 +2155,12 @@ String _adminUsd(dynamic value) => value is num
     ? '${(value / 1000000).toStringAsFixed(6).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')} USD'
     : 'nicht gemeldet';
 
-String _adminEventDate(dynamic value) {
-  if (value is! num) return 'Zeitpunkt nicht gemeldet';
+String _adminEventDate(dynamic value, {bool seconds = false}) {
+  if (value is! num || !value.isFinite) return 'Zeitpunkt nicht gemeldet';
   final date = DateTime.fromMillisecondsSinceEpoch(value.toInt() * 1000)
       .toLocal();
   String pair(int n) => n.toString().padLeft(2, '0');
-  return '${pair(date.day)}.${pair(date.month)}.${date.year} · ${pair(date.hour)}:${pair(date.minute)}';
+  return '${pair(date.day)}.${pair(date.month)}.${date.year} · ${pair(date.hour)}:${pair(date.minute)}${seconds ? ':${pair(date.second)}' : ''}';
 }
 
 String _providerName(dynamic provider) => switch (provider) {
@@ -1904,13 +2180,81 @@ String _adminSignalAge(num seconds) {
 /// Searches only the bounded, already-authorized operational event metadata.
 class AdminAuditList extends StatefulWidget {
   final List<dynamic> events;
-  const AdminAuditList(this.events, {super.key});
+  final AppState? state;
+  final VoidCallback? onOpenProvider, onOpenCosts;
+  final ValueChanged<String>? onOpenFamily;
+  const AdminAuditList(
+    this.events, {
+    super.key,
+    this.state,
+    this.onOpenProvider,
+    this.onOpenCosts,
+    this.onOpenFamily,
+  });
   @override
   State<AdminAuditList> createState() => _AdminAuditListState();
 }
 
 class _AdminAuditListState extends State<AdminAuditList> {
-  String query = '', actor = '', period = 'all';
+  String query = '', actor = '', period = 'all', actionKind = 'all';
+  final search = TextEditingController();
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  void details(Json event) {
+    if (widget.state == null) return;
+    final action = event['action']?.toString() ?? '';
+    final target = event['target']?.toString() ?? '';
+    VoidCallback? next;
+    String? label;
+    if (const {
+      'admin.provider_read',
+      'admin.provider_update',
+      'admin.provider_check',
+      'admin.emergency_stop',
+      'admin.codex_models_read',
+    }.contains(action)) {
+      next = widget.onOpenProvider;
+      label = 'KI-Konfiguration öffnen';
+    } else if (action == 'admin.entitlements_update' &&
+        RegExp(r'^[a-f0-9]{32}$').hasMatch(target)) {
+      if (widget.onOpenFamily != null) {
+        next = () => widget.onOpenFamily!(target);
+      }
+      label = 'Genannte Familie suchen';
+    } else if (const {
+      'admin.ai_routing_update',
+      'admin.ai_credit_receipt',
+    }.contains(action)) {
+      next = action == 'admin.ai_routing_update'
+          ? widget.onOpenProvider
+          : widget.onOpenCosts;
+      label = action == 'admin.ai_routing_update'
+          ? 'Routingregeln öffnen'
+          : 'KI-Kosten öffnen';
+    }
+    showAdminDetails(
+      context,
+      widget.state!,
+      title: names[action] ?? 'Betriebsereignis',
+      notice: 'Gespeichertes Ereignis aus dem geladenen Ausschnitt. Eine Anzeige führt keine damalige Aktion erneut aus.',
+      rows: [
+        ('Aktion', action),
+        ('Ziel', target.isEmpty ? 'Allgemeiner Betrieb' : target),
+        ('Akteur', '${event['actor'] ?? 'nicht gemeldet'}'),
+        (
+          'Zeitpunkt (Gerätezeit)',
+          _adminEventDate(event['created'], seconds: true),
+        ),
+      ],
+      continueLabel: next == null ? null : label,
+      onContinue: next,
+    );
+  }
+
   static const names = {
     'admin.provider_read': 'KI-Konfiguration gelesen',
     'admin.provider_update': 'KI-Konfiguration gespeichert',
@@ -1941,11 +2285,25 @@ class _AdminAuditListState extends State<AdminAuditList> {
         : null;
     final rows = widget.events.where((event) {
       final code = event['action'].toString();
+      final changes = const {
+        'admin.provider_update',
+        'admin.emergency_stop',
+        'admin.entitlements_update',
+        'admin.ai_routing_update',
+        'admin.ai_credit_receipt',
+      }.contains(code);
+      final checks = code == 'admin.provider_check';
+      final matchesKind =
+          actionKind == 'all' ||
+          actionKind == 'changes' && changes ||
+          actionKind == 'checks' && checks ||
+          actionKind == 'reads' && code.endsWith('_read');
       final text =
           '$code ${names[code] ?? ''} ${event['target']} ${event['actor']}'
               .toLowerCase();
       final timestamp = event['created'];
-      return text.contains(query) &&
+      return matchesKind &&
+          text.contains(query) &&
           (actor.isEmpty || event['actor'] == actor) &&
           (since == null ||
               timestamp is num &&
@@ -1959,6 +2317,7 @@ class _AdminAuditListState extends State<AdminAuditList> {
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: search,
           onChanged: (v) => setState(() => query = v.trim().toLowerCase()),
           decoration: const InputDecoration(
             labelText: 'Protokoll durchsuchen',
@@ -1968,6 +2327,7 @@ class _AdminAuditListState extends State<AdminAuditList> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          key: ValueKey('audit-actor-$actor'),
           initialValue: actor,
           isExpanded: true,
           decoration: const InputDecoration(
@@ -1985,6 +2345,7 @@ class _AdminAuditListState extends State<AdminAuditList> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          key: ValueKey('audit-period-$period'),
           initialValue: period,
           isExpanded: true,
           decoration: const InputDecoration(
@@ -2003,6 +2364,43 @@ class _AdminAuditListState extends State<AdminAuditList> {
           ],
           onChanged: (v) => setState(() => period = v ?? 'all'),
         ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final item in const [
+              ('all', 'Alle Ereignisse'),
+              ('changes', 'Änderungen'),
+              ('checks', 'Prüfungen'),
+              ('reads', 'Lesezugriffe'),
+            ])
+              ChoiceChip(
+                label: Text(item.$2),
+                selected: actionKind == item.$1,
+                onSelected: (_) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() => actionKind = item.$1);
+                },
+              ),
+          ],
+        ),
+        if (query.isNotEmpty ||
+            actor.isNotEmpty ||
+            period != 'all' ||
+            actionKind != 'all')
+          TextButton.icon(
+            onPressed: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+              setState(() {
+                search.clear();
+                query = actor = '';
+                period = actionKind = 'all';
+              });
+            },
+            icon: const Icon(Icons.filter_alt_off_outlined),
+            label: const Text('Alle Protokollfilter zurücksetzen'),
+          ),
         const SizedBox(height: 16),
         Panel(
           child: Column(
@@ -2018,16 +2416,43 @@ class _AdminAuditListState extends State<AdminAuditList> {
                 ),
               for (final event in rows) ...[
                 const Divider(height: 28),
-                Text(
-                  names[event['action']] ?? 'Betriebsereignis',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                SelectableText('Aktion: ${event['action']}'),
-                SelectableText(
-                  'Ziel: ${event['target'] ?? 'Allgemeiner Betrieb'}',
-                ),
-                SelectableText('Akteur: ${event['actor'] ?? 'nicht gemeldet'}'),
-                Text(_adminEventDate(event['created'])),
+                if (widget.state != null)
+                  ActionPanel(
+                    padding: const EdgeInsets.all(16),
+                    actionLabel: 'Ereignisdetails ansehen',
+                    onPressed: () => details(Json.from(event)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          names[event['action']] ?? 'Betriebsereignis',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text('Aktion: ${event['action']}'),
+                        Text(
+                          'Ziel: ${event['target'] ?? 'Allgemeiner Betrieb'}',
+                        ),
+                        Text('Akteur: ${event['actor'] ?? 'nicht gemeldet'}'),
+                        Text(
+                          '${_adminEventDate(event['created'], seconds: true)} (Gerätezeit)',
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  Text(
+                    names[event['action']] ?? 'Betriebsereignis',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  SelectableText('Aktion: ${event['action']}'),
+                  SelectableText(
+                    'Ziel: ${event['target'] ?? 'Allgemeiner Betrieb'}',
+                  ),
+                  SelectableText(
+                    'Akteur: ${event['actor'] ?? 'nicht gemeldet'}',
+                  ),
+                  Text(_adminEventDate(event['created'], seconds: true)),
+                ],
               ],
             ],
           ),
@@ -2039,10 +2464,12 @@ class _AdminAuditListState extends State<AdminAuditList> {
 
 class AdminOperationCards extends StatelessWidget {
   final Json data;
+  final AppState? state;
   final VoidCallback? onOpenProtocol, onOpenPush;
   const AdminOperationCards(
     this.data, {
     super.key,
+    this.state,
     this.onOpenProtocol,
     this.onOpenPush,
   });
@@ -2083,36 +2510,71 @@ class AdminOperationCards extends StatelessWidget {
       if (workerUnknown) 'Vom Hintergrunddienst liegt noch kein Signal vor. Der Dienststatus ist unbekannt.',
       if (incomplete) 'Einige Betriebszahlen wurden nicht gemeldet. Unbekannte Werte sind keine gemessene Null.',
     ];
+    void jobDetails(String title) {
+      if (state == null) return;
+      showAdminDetails(
+        context,
+        state!,
+        title: title,
+        notice: 'Gespeicherter Betriebsstand. Öffnen startet keine Aufträge und reserviert kein Kontingent.',
+        rows: [
+          ('Wartende Aufträge', '${queued ?? 'nicht gemeldet'}'),
+          ('In Bearbeitung', '${running ?? 'nicht gemeldet'}'),
+          ('Überfällig wartend', '${stalledQueued ?? 'nicht gemeldet'}'),
+          ('Überfällig laufend', '${stalledRunning ?? 'nicht gemeldet'}'),
+        ],
+        continueLabel: onOpenProtocol == null
+            ? null
+            : 'Administratives Protokoll ansehen',
+        onContinue: onOpenProtocol,
+      );
+    }
+
+    Widget metricContent(
+      String label,
+      num? value,
+      IconData icon,
+      bool warning,
+    ) => Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: warning ? p.warningInk : p.cyanInk, size: 23),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(color: p.muted, fontSize: 14)),
+              const SizedBox(height: 4),
+              Text(
+                value?.toString() ?? 'Unbekannt',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: warning ? p.warningInk : p.ink,
+                  fontSize: value == null ? 16 : 31,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
     Widget metric(
       String label,
       num? value,
       IconData icon, {
       bool warning = false,
+      VoidCallback? onOpen,
+      String? actionLabel,
     }) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 17),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: warning ? p.warningInk : p.cyanInk, size: 23),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(color: p.muted, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text(
-                  value?.toString() ?? 'Unbekannt',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: warning ? p.warningInk : p.ink,
-                    fontSize: value == null ? 16 : 31,
-                  ),
-                ),
-              ],
+      child: onOpen == null
+          ? metricContent(label, value, icon, warning)
+          : ActionPanel(
+              padding: const EdgeInsets.all(16),
+              actionLabel: actionLabel ?? '$label prüfen',
+              onPressed: onOpen,
+              child: metricContent(label, value, icon, warning),
             ),
-          ),
-        ],
-      ),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2211,8 +2673,12 @@ class AdminOperationCards extends StatelessWidget {
         const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, constraints) {
-            final queue = AdminWorkSurface(
+            final queue = ActionPanel(
               color: p.mint,
+              actionLabel: 'Auftragsstand prüfen',
+              onPressed: state == null
+                  ? null
+                  : () => jobDetails('Wartende und laufende Aufträge'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2268,6 +2734,9 @@ class AdminOperationCards extends StatelessWidget {
                     'In Bearbeitung',
                     running,
                     Icons.play_circle_outline_rounded,
+                    onOpen: state == null
+                        ? null
+                        : () => jobDetails('Laufende Aufträge prüfen'),
                   ),
                   Divider(color: p.surfaceBorder, height: 1),
                   metric(
@@ -2275,6 +2744,9 @@ class AdminOperationCards extends StatelessWidget {
                     stalled,
                     Icons.schedule_rounded,
                     warning: (stalled ?? 0) > 0,
+                    onOpen: state == null
+                        ? null
+                        : () => jobDetails('Überfällige Aufträge prüfen'),
                   ),
                   Text(
                     'Davon wartend: ${stalledQueued ?? 'unbekannt'} · laufend: ${stalledRunning ?? 'unbekannt'}',
@@ -2286,6 +2758,8 @@ class AdminOperationCards extends StatelessWidget {
                     pushErrors,
                     Icons.notifications_outlined,
                     warning: (pushErrors ?? 0) > 0,
+                    onOpen: onOpenPush,
+                    actionLabel: 'Push-Status öffnen',
                   ),
                 ],
               ),
@@ -2310,12 +2784,42 @@ class AdminOperationCards extends StatelessWidget {
           spacing: 20,
           runSpacing: 10,
           children: [
-            Text(
-              workerUnknown
-                  ? 'Worker · noch kein Signal'
-                  : 'Worker · letztes Signal vor ${_adminSignalAge(workerAge)}',
-              style: TextStyle(color: p.muted, fontSize: 13),
-            ),
+            if (state == null)
+              Text(
+                workerUnknown
+                    ? 'Worker · noch kein Signal'
+                    : 'Worker · letztes Signal vor ${_adminSignalAge(workerAge)}',
+                style: TextStyle(color: p.muted, fontSize: 13),
+              )
+            else
+              TextButton.icon(
+                onPressed: () => showAdminDetails(
+                  context,
+                  state!,
+                  title: 'Signal des Hintergrunddienstes',
+                  notice: 'Der letzte gespeicherte Kontakt beweist keine vollständige Bearbeitung aller Aufträge. Fehlende Werte sind unbekannt.',
+                  rows: [
+                    (
+                      'Letztes Signal',
+                      workerUnknown
+                          ? 'Noch nicht gemeldet'
+                          : 'Vor ${_adminSignalAge(workerAge)}',
+                    ),
+                    ('Wartende Aufträge', '${queued ?? 'nicht gemeldet'}'),
+                    ('Laufende Aufträge', '${running ?? 'nicht gemeldet'}'),
+                  ],
+                  continueLabel: onOpenProtocol == null
+                      ? null
+                      : 'Betriebsprotokoll öffnen',
+                  onContinue: onOpenProtocol,
+                ),
+                icon: const Icon(Icons.info_outline_rounded),
+                label: Text(
+                  workerUnknown
+                      ? 'Worker · noch kein Signal'
+                      : 'Worker · letztes Signal vor ${_adminSignalAge(workerAge)}',
+                ),
+              ),
             Text(
               '${erasures ?? 'Unbekannt viele'} offene Löschprotokolle',
               style: TextStyle(color: p.muted, fontSize: 13),
@@ -2360,7 +2864,52 @@ class _ProviderFormState extends State<ProviderForm> {
   final codexPicker = GlobalKey<CodexModelPickerState>();
   final keyField = TextEditingController();
   final form = GlobalKey<FormState>();
-  bool busy = false;
+  bool busy = false, keyVisible = false;
+  final validationKeys = <String, GlobalKey<FormFieldState<String>>>{};
+  final fieldFocus = <String, FocusNode>{};
+  GlobalKey<FormFieldState<String>> validationKey(String key) => validationKeys
+      .putIfAbsent(key, () => GlobalKey<FormFieldState<String>>());
+  FocusNode inputFocus(String key) =>
+      fieldFocus.putIfAbsent(key, () => FocusNode());
+  List<String> get inputOrder => [
+    if (values['provider'] != 'codex') ...['model', 'api_key'],
+    for (final key in [
+      'extraction_model',
+      'extraction_capability_evidence',
+      'capability_evidence',
+      'privacy_evidence',
+      'reserve_micros',
+      'input_per_million_micros',
+      'output_per_million_micros',
+      'pricing_evidence',
+      'max_output_tokens',
+      'global_limit_micros',
+    ])
+      if (values['provider'] != 'codex' || key != 'extraction_model') key,
+  ];
+  void nextInput(String key) {
+    final order = inputOrder;
+    final index = order.indexOf(key);
+    if (index >= 0 && index + 1 < order.length) {
+      inputFocus(order[index + 1]).requestFocus();
+    } else {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+  }
+
+  void revealInvalid() {
+    for (final key in inputOrder) {
+      if (validationKeys[key]?.currentState?.hasError != true) continue;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!own) return;
+        inputFocus(key).requestFocus();
+        final field = validationKeys[key]?.currentContext;
+        if (field != null) Scrollable.ensureVisible(field, alignment: .2);
+      });
+      break;
+    }
+  }
+
   String? error, message;
   late final Object? owner = widget.state.user;
   String? baseline;
@@ -2399,6 +2948,9 @@ class _ProviderFormState extends State<ProviderForm> {
     final text = (raw ?? '').trim();
     final range = ranges[key];
     if (range == null) {
+      if (key == 'extraction_model' && text.runes.length > 160) {
+        return 'Nutze höchstens 160 Zeichen für die Modell-ID.';
+      }
       return text.runes.length > 500 ? 'Nutze höchstens 500 Zeichen.' : null;
     }
     final optional =
@@ -2419,7 +2971,10 @@ class _ProviderFormState extends State<ProviderForm> {
 
   Future<void> saveConfiguration() async {
     if (!own || busy) return;
-    if (!form.currentState!.validate()) return;
+    if (!form.currentState!.validate()) {
+      revealInvalid();
+      return;
+    }
     try {
       if (values['provider'] == 'codex') {
         final picker = codexPicker.currentState;
@@ -2581,6 +3136,9 @@ class _ProviderFormState extends State<ProviderForm> {
   void dispose() {
     model.dispose();
     keyField.dispose();
+    for (final focus in fieldFocus.values) {
+      focus.dispose();
+    }
     for (final c in fields.values) {
       c.dispose();
     }
@@ -2653,6 +3211,14 @@ class _ProviderFormState extends State<ProviderForm> {
             )
           else
             TextFormField(
+              key: validationKey('model'),
+              focusNode: inputFocus('model'),
+              autocorrect: false,
+              enableSuggestions: false,
+              smartDashesType: SmartDashesType.disabled,
+              smartQuotesType: SmartQuotesType.disabled,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => nextInput('model'),
               controller: model,
               enabled: !busy,
               validator: (v) {
@@ -2672,14 +3238,38 @@ class _ProviderFormState extends State<ProviderForm> {
             ),
           const SizedBox(height: 16),
           if (values['provider'] != 'codex')
-            TextField(
+            TextFormField(
+              key: validationKey('api_key'),
+              focusNode: inputFocus('api_key'),
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => nextInput('api_key'),
               controller: keyField,
               enabled: !busy,
-              obscureText: true,
+              obscureText: !keyVisible,
+              validator: (value) => (value ?? '').runes.length > 1024
+                  ? 'Der Schlüssel darf höchstens 1024 Zeichen haben.'
+                  : null,
+              smartDashesType: SmartDashesType.disabled,
+              smartQuotesType: SmartQuotesType.disabled,
+              enableIMEPersonalizedLearning: false,
               enableSuggestions: false,
               autocorrect: false,
               decoration: InputDecoration(
                 labelText: 'Neuer API-Schlüssel (optional)',
+                errorMaxLines: 3,
+                suffixIcon: IconButton(
+                  tooltip: keyVisible
+                      ? 'API-Schlüssel verbergen'
+                      : 'API-Schlüssel anzeigen',
+                  onPressed: busy
+                      ? null
+                      : () => setState(() => keyVisible = !keyVisible),
+                  icon: Icon(
+                    keyVisible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
                 helperText: values['has_key']
                     ? 'Schlüssel vorhanden; wird nicht angezeigt.'
                     : 'Noch kein Schlüssel hinterlegt.',
@@ -2795,6 +3385,20 @@ class _ProviderFormState extends State<ProviderForm> {
                               (constraints.maxWidth - (columns - 1) * 16) /
                               columns,
                           child: TextFormField(
+                            key: validationKey(field.$1),
+                            focusNode: inputFocus(field.$1),
+                            textInputAction: field.$1 == inputOrder.last
+                                ? TextInputAction.done
+                                : TextInputAction.next,
+                            onFieldSubmitted: (_) => nextInput(field.$1),
+                            autocorrect: field.$1 != 'extraction_model',
+                            enableSuggestions: field.$1 != 'extraction_model',
+                            smartDashesType: field.$1 == 'extraction_model'
+                                ? SmartDashesType.disabled
+                                : null,
+                            smartQuotesType: field.$1 == 'extraction_model'
+                                ? SmartQuotesType.disabled
+                                : null,
                             controller: fields[field.$1],
                             enabled: !busy,
                             validator: (v) => validateField(field.$1, v),
@@ -2814,6 +3418,8 @@ class _ProviderFormState extends State<ProviderForm> {
                               helperMaxLines: 3,
                               helperText: ranges.containsKey(field.$1)
                                   ? '${ranges[field.$1]!.$1}–${ranges[field.$1]!.$2}${field.$1.contains('micros') ? ' Mikro-USD' : ''}'
+                                  : field.$1 == 'extraction_model'
+                                  ? 'Höchstens 160 Zeichen.'
                                   : 'Höchstens 500 Zeichen.',
                             ),
                           ),
@@ -2896,61 +3502,202 @@ Future<bool> entitlementDialog(
   AppState state,
   Json family,
 ) async {
-  final fields = {
-    for (final key in ['plan', 'child_limit', 'call_limit', 'budget_micros'])
-      key: TextEditingController(text: '${family[key]}'),
-  };
-  final saved = await showDialog<bool>(
+  final owner = state.user;
+  if (!state.isAdmin || owner == null) return false;
+  late final DialogRoute<bool> route;
+  void accountChanged() {
+    if (!identical(owner, state.user) && route.isActive) {
+      route.navigator?.removeRoute(route);
+    }
+  }
+
+  route = DialogRoute<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
+    builder: (_) => _EntitlementEditor(state, family, owner: owner),
+  );
+  state.addListener(accountChanged);
+  try {
+    return await Navigator.of(context, rootNavigator: true).push(route) == true;
+  } finally {
+    await route.completed;
+    state.removeListener(accountChanged);
+  }
+}
+
+class _EntitlementEditor extends StatefulWidget {
+  final AppState state;
+  final Json family, owner;
+  const _EntitlementEditor(this.state, this.family, {required this.owner});
+  @override
+  State<_EntitlementEditor> createState() => _EntitlementEditorState();
+}
+
+class _EntitlementEditorState extends State<_EntitlementEditor> {
+  final form = GlobalKey<FormState>();
+  late final fields = {
+    for (final key in ['plan', 'child_limit', 'call_limit', 'budget_micros'])
+      key: TextEditingController(text: '${widget.family[key]}'),
+  };
+  final focuses = List.generate(4, (_) => FocusNode());
+  bool busy = false;
+  String? error;
+  bool get own =>
+      mounted &&
+      widget.state.isAdmin &&
+      identical(widget.owner, widget.state.user);
+  static const ranges = {
+    'child_limit': (1, 20),
+    'call_limit': (0, 10000),
+    'budget_micros': (0, 100000000),
+  };
+
+  Future<void> save() async {
+    if (!own || busy) return;
+    final invalid = form.currentState!.validateGranularly();
+    if (invalid.isNotEmpty) {
+      final target = invalid.first;
+      target.context.findRenderObject()?.showOnScreen();
+      return;
+    }
+    final body = <String, dynamic>{
+      for (final entry in fields.entries)
+        entry.key: entry.key == 'plan'
+            ? entry.value.text
+            : int.parse(entry.value.text.trim()),
+    };
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.state.api.put(
+        '/admin/families/${widget.family['id']}/entitlements',
+        body,
+      );
+      if (mounted && own && ModalRoute.of(context)?.isCurrent == true) {
+        Navigator.pop(context, true);
+      }
+    } catch (failure) {
+      if (own) {
+        setState(
+          () => error = failure is ApiError ? failure.message : 'Der Tarif konnte nicht gespeichert werden. Die Eingaben bleiben erhalten.',
+        );
+      }
+    } finally {
+      if (own) setState(() => busy = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final field in fields.values) {
+      field.dispose();
+    }
+    for (final focus in focuses) {
+      focus.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy,
+    child: AlertDialog(
       title: const Text('Tarifberechtigungen'),
       scrollable: true,
       content: SizedBox(
         width: 440,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final entry in [
-              ('plan', 'Tarifname'),
-              ('child_limit', 'Kinderanzahl'),
-              ('call_limit', 'KI-Aufrufe / Monat'),
-              ('budget_micros', 'Kostenlimit / Monat (Mikro-USD)'),
-            ])
-              Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: TextField(
-                  controller: fields[entry.$1],
-                  decoration: InputDecoration(labelText: entry.$2),
+        child: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SelectableText('Familie: ${widget.family['id']}'),
+              Text('Bisheriger Tarif: ${widget.family['plan']}'),
+              const Text(
+                'Diese Änderung betrifft die gespeicherten Berechtigungen dieser Familie.',
+              ),
+              const SizedBox(height: 16),
+              for (final (index, entry) in const [
+                ('plan', 'Tarifname'),
+                ('child_limit', 'Kinderanzahl'),
+                ('call_limit', 'KI-Aufrufe / Monat'),
+                ('budget_micros', 'Kostenlimit / Monat (Mikro-USD)'),
+              ].indexed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: TextFormField(
+                    controller: fields[entry.$1],
+                    focusNode: focuses[index],
+                    enabled: !busy,
+                    autofocus: index == 0,
+                    keyboardType: index == 0
+                        ? TextInputType.text
+                        : TextInputType.number,
+                    textInputAction: index == 3
+                        ? TextInputAction.done
+                        : TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      if (index == 3) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                      } else {
+                        focuses[index + 1].requestFocus();
+                      }
+                    },
+                    validator: (value) {
+                      final raw = value ?? '';
+                      if (entry.$1 == 'plan') {
+                        return raw.trim().isEmpty || raw.runes.length > 40
+                            ? 'Einen Tarifnamen mit 1 bis 40 Zeichen eintragen.'
+                            : null;
+                      }
+                      final number = int.tryParse(raw.trim());
+                      final range = ranges[entry.$1]!;
+                      return number == null ||
+                              number < range.$1 ||
+                              number > range.$2
+                          ? 'Ganze Zahl von ${range.$1} bis ${range.$2} eingeben.'
+                          : null;
+                    },
+                    decoration: InputDecoration(
+                      labelText: entry.$2,
+                      errorMaxLines: 3,
+                      helperMaxLines: 3,
+                      helperText: entry.$1 == 'plan'
+                          ? '1 bis 40 Zeichen.'
+                          : '${ranges[entry.$1]!.$1}–${ranges[entry.$1]!.$2}',
+                    ),
+                  ),
+                ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: fields['budget_micros']!,
+                builder: (_, value, _) => Text(
+                  'Monatliches Kostenlimit: ${int.tryParse(value.text.trim()) == null ? 'noch keine ganze Zahl' : _adminUsd(int.parse(value.text.trim()))}',
                 ),
               ),
-          ],
+              if (busy)
+                Semantics(
+                  liveRegion: true,
+                  child: const Text('Tarif wird gespeichert …'),
+                ),
+              if (error != null)
+                Semantics(
+                  liveRegion: true,
+                  child: Notice(error!, warning: true),
+                ),
+            ],
+          ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx),
+          onPressed: busy ? null : () => Navigator.pop(context, false),
           child: const Text('Abbrechen'),
         ),
-        ActionButton(
-          label: 'Speichern',
-          onPressed: () async {
-            await state.api.put(
-              '/admin/families/${family['id']}/entitlements',
-              {
-                for (final entry in fields.entries)
-                  entry.key: entry.key == 'plan'
-                      ? entry.value.text
-                      : int.tryParse(entry.value.text) ?? -1,
-              },
-            );
-            if (ctx.mounted) Navigator.pop(ctx, true);
-          },
-        ),
+        ActionButton(label: 'Speichern', enabled: !busy, onPressed: save),
       ],
     ),
   );
-  for (final field in fields.values) {
-    field.dispose();
-  }
-  return saved == true;
 }

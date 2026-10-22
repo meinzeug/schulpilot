@@ -273,7 +273,7 @@ void main() {
     await tester.ensureVisible(find.text('Mehr zu diesem Tag'));
     await tester.tap(find.text('Mehr zu diesem Tag'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('13.10.2026'), findsOneWidget);
+    expect(find.text('Schultag · 13.10.2026'), findsOneWidget);
     expect(find.text('Erste Seite fotografieren'), findsNothing);
 
     await tester.tap(find.text('Heute'));
@@ -284,7 +284,7 @@ void main() {
     await tester.ensureVisible(details);
     await tester.tap(details);
     await tester.pumpAndSettle();
-    expect(find.textContaining('14.10.2026'), findsOneWidget);
+    expect(find.text('Schultag · 14.10.2026'), findsOneWidget);
     expect(find.textContaining('13.10.2026'), findsNothing);
     expect(find.text('Erste Seite fotografieren'), findsOneWidget);
     expect(paths, contains('/api/children/child/school-day/today'));

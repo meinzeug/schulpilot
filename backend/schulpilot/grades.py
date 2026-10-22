@@ -142,6 +142,10 @@ def valid_date(child, value):
 
 @router.get("/children/{child_id}/grades")
 def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
+                q: str = Query("", max_length=160),
+                kind: Literal["all", "classwork", "test", "oral", "homework", "other"] = "all",
+                scale: Literal["all", "grade_1_6", "points_0_15"] = "all",
+                date_precision: Literal["all", "day", "semester"] = "all",
                 page: int = Query(1, ge=1, le=1000000), page_size: int = Query(20, ge=1, le=50),
                 p=Depends(parent), db=Depends(get_db)):
     from .learning import local_day
@@ -157,6 +161,17 @@ def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
     query = select(SchoolGrade).where(SchoolGrade.child_id == child.id)
     if subject:
         query = query.where(SchoolGrade.subject.in_([name for name in names if subject_key(name) == subject_key(subject)]))
+    search = q.strip()
+    if search:
+        query = query.where(or_(*(func.lower(column).contains(search.lower(), autoescape=True)
+                                  for column in (SchoolGrade.subject, SchoolGrade.topic, SchoolGrade.note))))
+    if kind != "all":
+        query = query.where(SchoolGrade.kind == kind)
+    if scale != "all":
+        query = query.where(SchoolGrade.scale == scale)
+    if date_precision != "all":
+        query = query.where(SchoolGrade.assessed_on.is_not(None) if date_precision == "day"
+                            else SchoolGrade.assessed_on.is_(None))
     count = db.scalar(select(func.count()).select_from(query.subquery()))
     pagination = bounds(count, page, page_size)
     rows = db.scalars(query.order_by(SchoolGrade.assessed_on.desc(), SchoolGrade.created.desc(), SchoolGrade.id.desc())
@@ -171,6 +186,7 @@ def list_grades(child_id: str, subject: str | None = Query(None, max_length=80),
             "planning_enabled": child.grade_planning_enabled,
             "subjects": sorted(options, key=lambda name: (name.casefold(), name)),
             "focus": focus_summary(db, child),
+            "filters": {"q": search, "kind": kind, "scale": scale, "date_precision": date_precision},
             "notice": "Der Schnitt gilt nur für diese Einträge, nicht als Zeugnisnote. Im Plan zählen bis zu fünf datierte Noten je Fach aus 90 Tagen sowie undatierte PDF-Noten des aktuellen Schuljahres. Ohne Einzeldaten wird kein zeitlicher Trend behauptet. Zeitziele und Elternaufträge bleiben erhalten."}
 
 

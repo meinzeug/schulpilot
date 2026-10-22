@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
 import 'package:schulpilot/ai_cost_panel.dart';
-import 'package:schulpilot/admin_workspace_ui.dart';
 import 'package:schulpilot/notification_panel.dart';
 import 'package:schulpilot/settings_screen.dart';
 import 'package:schulpilot/store_screens.dart';
@@ -196,7 +195,7 @@ void main() {
         );
         expect(
           find.byWidgetPredicate(
-            (widget) => widget is AdminWorkSurface && widget.color == p.mint,
+            (widget) => widget is ActionPanel && widget.color == p.mint,
           ),
           findsOneWidget,
         );
@@ -320,7 +319,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Kostengrenze erreicht'), findsOneWidget);
       expect(
-        find.text('Ø 0.01250 USD zugeordnete Auftragskosten je Runde.'),
+        find.text('Ø 0.012500 USD zugeordnete Auftragskosten je Runde.'),
         findsOneWidget,
       );
       expect(

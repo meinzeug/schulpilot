@@ -35,10 +35,12 @@ class _StudyPathPanelState extends State<StudyPathPanel>
   final renewedFailedKeys = <String>{};
   final keys = <String, String>{};
   int generation = 0;
-  late String? actor = widget.state.user?['id'];
+  late Json? actor = widget.state.user;
+  late String? family = widget.state.familyId;
   AppState get state => widget.state;
   String get endpoint => '/school-days/${widget.dayId}/study-path';
-  bool get ownerMatches => actor != null && state.user?['id'] == actor;
+  bool get ownerMatches =>
+      actor != null && identical(state.user, actor) && state.familyId == family;
   bool get active => mounted && ownerMatches && foreground && routeVisible;
   List<Json> get blocks => (path?['blocks'] as List? ?? [])
       .map((block) => Json.from(block as Map))
@@ -95,7 +97,8 @@ class _StudyPathPanelState extends State<StudyPathPanel>
       failedJobs.clear();
       renewedFailedKeys.clear();
       keys.clear();
-      actor = state.user?['id'];
+      actor = state.user;
+      family = state.familyId;
       unawaited(load());
     }
   }
@@ -383,16 +386,53 @@ class _StudyPathPanelState extends State<StudyPathPanel>
               ),
               SizedBox(height: 20),
               if (current != null) ...[
-                Text(
-                  current['title'] ?? _phaseLabel(current['phase']),
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  current['label'] ?? _phaseLabel(current['phase']),
-                  style: TextStyle(color: context.palette.muted),
-                ),
-                SizedBox(height: 16),
+                if (current['unit_id'] != null &&
+                    !waiting &&
+                    !posting &&
+                    editable &&
+                    data?['can_continue'] == true)
+                  ActionPanel(
+                    actionLabel: 'Etappe öffnen',
+                    onPressed: () {
+                      if (active &&
+                          blocks.any(
+                            (block) =>
+                                block['id'] == current['id'] &&
+                                block['unit_id'] == current['unit_id'],
+                          )) {
+                        openRoute(context, '/unit/${current['unit_id']}');
+                      }
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          current['title'] ?? _phaseLabel(current['phase']),
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          current['label'] ?? _phaseLabel(current['phase']),
+                          style: TextStyle(color: context.palette.muted),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  Text(
+                    current['title'] ?? _phaseLabel(current['phase']),
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    current['label'] ?? _phaseLabel(current['phase']),
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                  SizedBox(height: 16),
+                ],
                 if (waiting || posting) ...[
                   LinearProgressIndicator(),
                   SizedBox(height: 10),
@@ -405,7 +445,9 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                       fontSize: 12,
                     ),
                   ),
-                ] else if (editable && data?['can_continue'] == true)
+                ] else if (editable &&
+                    data?['can_continue'] == true &&
+                    current['unit_id'] == null)
                   FilledButton.icon(
                     onPressed: () => continueBlock(current),
                     icon: Icon(Icons.play_arrow_rounded),
@@ -479,8 +521,16 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                           : null,
                       onTap: block['unit_id'] == null
                           ? null
-                          : () =>
-                                openRoute(context, '/unit/${block['unit_id']}'),
+                          : () {
+                              if (active &&
+                                  blocks.any(
+                                    (row) =>
+                                        row['id'] == block['id'] &&
+                                        row['unit_id'] == block['unit_id'],
+                                  )) {
+                                openRoute(context, '/unit/${block['unit_id']}');
+                              }
+                            },
                     ),
                 ],
               ),

@@ -1278,45 +1278,79 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
 Future<Json?> pickLibraryMaterial(
   BuildContext context,
   AppState state,
-  String childId,
-) => showDialog<Json>(
-  context: context,
-  builder: (ctx) => Dialog(
-    insetPadding: const EdgeInsets.all(12),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 650, maxHeight: 680),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Bestätigte Heftseite wählen',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+  String childId, {
+  void Function(ModalRoute<Json> route)? onRoute,
+}) async {
+  final owner = state.user, family = state.familyId;
+  bool current() =>
+      context.mounted &&
+      identical(state.user, owner) &&
+      state.familyId == family;
+  if (!current()) return null;
+  final navigator = Navigator.of(context, rootNavigator: true);
+  late DialogRoute<Json> route;
+  route = DialogRoute<Json>(
+    context: context,
+    builder: (ctx) => Dialog(
+      insetPadding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 650, maxHeight: 680),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Bestätigte Heftseite wählen',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Schließen',
+                    onPressed: () {
+                      if (ctx.mounted && current() && route.isCurrent) {
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: PagedCollection(
+                    state,
+                    childId: childId,
+                    onSelect: (item) {
+                      if (ctx.mounted && current() && route.isCurrent) {
+                        Navigator.pop(ctx, item);
+                      }
+                    },
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Schließen',
-                  onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: SingleChildScrollView(
-                child: PagedCollection(
-                  state,
-                  childId: childId,
-                  onSelect: (item) => Navigator.pop(ctx, item),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     ),
-  ),
-);
+  );
+  void identityChanged() {
+    if (!current() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  onRoute?.call(route);
+  if (!current()) return null;
+  state.addListener(identityChanged);
+  try {
+    return await navigator.push(route);
+  } finally {
+    state.removeListener(identityChanged);
+  }
+}

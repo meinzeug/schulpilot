@@ -167,15 +167,24 @@ void main() {
     (tester) async {
       small(tester);
       final posts = <http.Request>[];
-      final state = AppState(
-        api: Api(
-          base: 'https://example.invalid/api',
-          client: MockClient((r) async {
-            posts.add(r);
-            return jsonReply({});
-          }),
-        ),
-      )..user = {'id': 'parent', 'role': 'parent'};
+      final state =
+          AppState(
+              api: Api(
+                base: 'https://example.invalid/api',
+                client: MockClient((r) async {
+                  posts.add(r);
+                  return jsonReply({});
+                }),
+              ),
+            )
+            ..user = {
+              'id': 'parent',
+              'role': 'parent',
+              'families': [
+                {'id': 'synthetic-family', 'permission': 'owner'},
+              ],
+            }
+            ..familyId = 'synthetic-family';
       await tester.pumpWidget(
         MaterialApp(
           theme: appTheme(),
@@ -183,8 +192,11 @@ void main() {
             body: Builder(
               builder: (context) => FilledButton(
                 child: const Text('Auftrag'),
-                onPressed: () =>
-                    assignmentDialog(context, state, {'id': 'child'}, []),
+                onPressed: () => assignmentDialog(context, state, {
+                  'id': 'child',
+                  'display_name': 'Künstliches Kind',
+                  'subjects': ['Mathematik'],
+                }, []),
               ),
             ),
           ),

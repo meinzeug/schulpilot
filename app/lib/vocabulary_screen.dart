@@ -132,34 +132,45 @@ class _VocabularyBody extends StatefulWidget {
   State<_VocabularyBody> createState() => _VocabularyScreenState();
 }
 
-class _VocabularyScreenState extends State<_VocabularyBody> {
+class _VocabularyScreenState extends State<_VocabularyBody>
+    with WidgetsBindingObserver {
   final search = TextEditingController();
   Json? data;
   List<Json> imports = [];
   List<Json> collections = [];
-  String? error, collection, loadedQuery;
+  String? error, collection, loadedQuery, readingQuery;
   String locale = 'en-GB';
   String section = 'words';
   int page = 1, generation = 0, collectionsRevision = 0;
   bool busy = false, due = false, loading = true;
   bool sourceOffered = false;
   late Json? owner;
+  late final family = widget.state.familyId;
   final ownedDialogs = <ModalRoute<dynamic>>{};
   Timer? poll;
   String? importRequestBody,
       importRequestKey,
       roundRequestBody,
       roundRequestKey;
-  final revealed = <String>{};
+  final revealed = <String, int?>{};
+  bool foreground = true, routeVisible = true;
+  bool get pollingAllowed => current && foreground && routeVisible;
+  bool isRevealed(Map item) =>
+      revealed.containsKey(item['id']) &&
+      revealed[item['id']] == item['revision'];
   String get base => '/children/${widget.childId}/vocabulary';
   String get memoryKey =>
       'vocabulary:${widget.childId}:${widget.materialId ?? 'all'}:${widget.initialLocale}';
   bool get current =>
-      mounted && owner != null && identical(owner, widget.state.user);
+      mounted &&
+      owner != null &&
+      identical(owner, widget.state.user) &&
+      family == widget.state.familyId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     owner = widget.state.user;
     locale = learningLocales.containsKey(widget.initialLocale)
         ? widget.initialLocale
@@ -198,11 +209,28 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
   @override
   void dispose() {
     closeOwnedDialogs();
+    WidgetsBinding.instance.removeObserver(this);
     poll?.cancel();
     generation++;
     widget.state.removeListener(accountChanged);
     search.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final wasVisible = routeVisible;
+    routeVisible = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!routeVisible) poll?.cancel();
+    if (!wasVisible && routeVisible && current) load();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState value) {
+    foreground = value == AppLifecycleState.resumed;
+    poll?.cancel();
+    if (pollingAllowed) load();
   }
 
   void closeOwnedDialogs() {
@@ -237,7 +265,6 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
 
   Future<void> load() async {
     if (!current) return;
-    final request = ++generation;
     final query = jsonEncode([
       locale,
       collection,
@@ -245,6 +272,9 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
       search.text.trim(),
       page,
     ]);
+    if (loading && readingQuery == query) return;
+    final request = ++generation;
+    readingQuery = query;
     poll?.cancel();
     rememberView();
     setState(() {
@@ -274,6 +304,12 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
       if (!current || request != generation) return;
       setState(() {
         data = responses[0];
+        for (final item in data!['items'] as List? ?? []) {
+          if (revealed.containsKey(item['id']) &&
+              revealed[item['id']] != item['revision']) {
+            revealed.remove(item['id']);
+          }
+        }
         collections = (responses[0]['collections'] as List? ?? [])
             .map((row) => Json.from(row))
             .toList();
@@ -286,8 +322,11 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
         loading = false;
       });
       poll?.cancel();
-      if (imports.any((row) => ['queued', 'running'].contains(row['status']))) {
-        poll = Timer(const Duration(seconds: 3), load);
+      if (pollingAllowed &&
+          imports.any((row) => ['queued', 'running'].contains(row['status']))) {
+        poll = Timer(const Duration(seconds: 3), () {
+          if (pollingAllowed) load();
+        });
       }
       if (!sourceOffered &&
           widget.materialId != null &&
@@ -310,6 +349,8 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
           loading = false;
         });
       }
+    } finally {
+      if (request == generation) readingQuery = null;
     }
   }
 
@@ -591,6 +632,63 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
         (originRoute?.isCurrent ?? true)) {
       await reviewDialog(prepared!);
     }
+  }
+
+  Future<void> importDetails(Json row) async {
+    if (!current || busy) return;
+    final origin = ModalRoute.of(context);
+    Json? latest;
+    await run(() async {
+      latest = await widget.state.api.get('$base/imports/${row['id']}');
+    });
+    if (latest == null) return;
+    final details = latest!;
+    if (!current || !(origin?.isCurrent ?? true)) return;
+    if (details['status'] == 'review' &&
+        (widget.state.isChild || widget.state.canManage)) {
+      await reviewDialog(details);
+      return;
+    }
+    await scopedDialog<void>(
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(details['title'] ?? 'Deine Wörter'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              details['status'] == 'failed'
+                  ? 'Die Wörter konnten nicht vorbereitet werden.'
+                  : 'Deine Wörter werden noch vorbereitet.',
+            ),
+            SizedBox(height: 12),
+            Text(
+              details['status'] == 'failed'
+                  ? 'Dein vorhandener Wortschatz bleibt erhalten. Du kannst Wörter auch selbst eintragen oder das Foto in deinen Heften prüfen.'
+                  : 'Du kannst dieses Fenster schließen und später unter Prüfen wieder nachsehen.',
+            ),
+            if (details['status'] == 'failed' &&
+                details['error'] is String) ...[
+              SizedBox(height: 12),
+              Notice(details['error'], warning: true),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (current &&
+                  ctx.mounted &&
+                  ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx);
+              }
+            },
+            child: Text('Zurück zu Wörter'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> reviewDialog(Json row) async {
@@ -1305,12 +1403,26 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                   subtitle: 'Deine bestätigten Wörter bleiben im Wortschatz. Hier prüfst du neue Vorschläge.',
                 ),
                 if (imports.every((row) => row['status'] == 'confirmed'))
-                  const Panel(
-                    tone: PanelTone.subtle,
-                    child: Text(
-                      'Alles geprüft. Neue Wortpaare kannst du im Wortschatz hinzufügen.',
-                    ),
-                  ),
+                  widget.state.isChild
+                      ? ActionPanel(
+                          tone: PanelTone.subtle,
+                          actionLabel: 'Zum Wortschatz',
+                          onPressed: () {
+                            if (!current) return;
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            setState(() => section = 'words');
+                            rememberView();
+                          },
+                          child: Text(
+                            'Alles geprüft. Deine bestätigten Wörter findest du im Wortschatz.',
+                          ),
+                        )
+                      : const Panel(
+                          tone: PanelTone.subtle,
+                          child: Text(
+                            'Alles geprüft. Neue Wortpaare kannst du im Wortschatz hinzufügen.',
+                          ),
+                        ),
                 for (final row in imports.where(
                   (row) => row['status'] != 'confirmed',
                 ))
@@ -1326,12 +1438,12 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                       icon: row['status'] == 'failed'
                           ? Icons.error_outline_rounded
                           : Icons.menu_book_rounded,
-                      onTap:
-                          row['status'] == 'review' &&
-                              !busy &&
-                              (widget.state.isChild || widget.state.canManage)
+                      onTap: busy
+                          ? null
+                          : row['status'] == 'review' &&
+                                (widget.state.isChild || widget.state.canManage)
                           ? () => reviewDialog(row)
-                          : null,
+                          : () => importDetails(row),
                       trailing:
                           row['status'] == 'review' &&
                               (widget.state.isChild || widget.state.canManage)
@@ -1505,7 +1617,7 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                         children: [
                           if (widget.state.isChild) ...[
                             Text(
-                              revealed.contains(item['id'])
+                              isRevealed(item)
                                   ? 'Wort und Bedeutung'
                                   : 'Welches Wort passt?',
                               textAlign: TextAlign.center,
@@ -1521,8 +1633,7 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  widget.state.isChild &&
-                                          !revealed.contains(item['id'])
+                                  widget.state.isChild && !isRevealed(item)
                                       ? item['meaning']
                                       : item['word'],
                                   textAlign: widget.state.isChild
@@ -1549,8 +1660,7 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                                 ),
                             ],
                           ),
-                          if (!widget.state.isChild ||
-                              revealed.contains(item['id']))
+                          if (!widget.state.isChild || isRevealed(item))
                             Text(
                               item['meaning'],
                               style: const TextStyle(fontSize: 18),
@@ -1564,16 +1674,28 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                                         '$base/${item['id']}/reveal',
                                       );
                                       if (current) {
-                                        setState(
-                                          () => revealed.add(item['id']),
-                                        );
+                                        setState(() {
+                                          final live =
+                                              (data?['items'] as List? ?? [])
+                                                  .where(
+                                                    (row) =>
+                                                        row['id'] ==
+                                                            item['id'] &&
+                                                        row['revision'] ==
+                                                            item['revision'],
+                                                  );
+                                          if (live.isNotEmpty) {
+                                            revealed[item['id']] =
+                                                item['revision'] as int?;
+                                          }
+                                        });
                                       }
                                     }),
                               child: const Text('Wort aufdecken'),
                             ),
                           if ((item['context'] ?? '').toString().isNotEmpty)
                             Text(
-                              'Kontext: ${widget.state.isChild && !revealed.contains(item['id']) ? item['cue_context'] ?? '' : item['context']}',
+                              'Kontext: ${widget.state.isChild && !isRevealed(item) ? item['cue_context'] ?? '' : item['context']}',
                             ),
                           if (item['source_changed'] == true)
                             const Notice(
@@ -1589,6 +1711,28 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                               color: context.palette.muted,
                             ),
                           ),
+                          if (item['origin'] == 'material')
+                            for (final source
+                                in item['source_revisions'] as List? ?? [])
+                              if (source is Map &&
+                                  source['id'] is String &&
+                                  RegExp(r'^[0-9a-f]{32}$')
+                                      .hasMatch(source['id']))
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: () {
+                                      if (current) {
+                                        openRoute(
+                                          context,
+                                          '/material/${source['id']}',
+                                        );
+                                      }
+                                    },
+                                    icon: Icon(Icons.menu_book_outlined),
+                                    label: Text('Heftseite zum Wort ansehen'),
+                                  ),
+                                ),
                           if ((item['reviews'] as List).isNotEmpty)
                             ExpansionTile(
                               tilePadding: EdgeInsets.zero,
@@ -1604,8 +1748,7 @@ class _VocabularyScreenState extends State<_VocabularyBody> {
                                   ),
                               ],
                             ),
-                          if (!widget.state.isChild ||
-                              revealed.contains(item['id']))
+                          if (!widget.state.isChild || isRevealed(item))
                             Wrap(
                               children: [
                                 ReadAloudButton(

@@ -26,17 +26,22 @@ Future<bool> _confirmAccountAction(
   BuildContext context,
   AppState state,
   Json owner,
+  String? family,
   String title,
   String text,
 ) async {
-  if (!context.mounted || !identical(state.user, owner)) return false;
+  bool current() =>
+      context.mounted &&
+      identical(state.user, owner) &&
+      state.familyId == family;
+  if (!current() || ModalRoute.of(context)?.isCurrent == false) return false;
   ModalRoute<dynamic>? confirmationRoute;
   void accountChanged() {
-    if (identical(state.user, owner)) return;
+    if (current()) return;
     final route = confirmationRoute;
     if (route == null) return;
     Future<void>.microtask(() {
-      if (!identical(state.user, owner) && route.isActive) {
+      if (!current() && route.isActive) {
         route.navigator?.removeRoute(route);
       }
     });
@@ -51,7 +56,7 @@ Future<bool> _confirmAccountAction(
             accountChanged();
             void finish(bool accepted) {
               if (!dialogContext.mounted ||
-                  !identical(state.user, owner) ||
+                  !current() ||
                   confirmationRoute?.isCurrent != true) {
                 return;
               }
@@ -92,6 +97,13 @@ Future<bool> deleteNotebookPages(
   VoidCallback? onDeleted,
 }) async {
   final owner = state.user;
+  final family = state.familyId;
+  final route = ModalRoute.of(context);
+  bool current() =>
+      context.mounted &&
+      identical(owner, state.user) &&
+      state.familyId == family &&
+      route?.isCurrent != false;
   if (owner == null || (ids != null && ids.isEmpty)) return false;
   final preview = await state.api.post(
     '/children/$childId/materials/delete-preview',
@@ -99,7 +111,7 @@ Future<bool> deleteNotebookPages(
         ? {'all_matching': true, 'filters': filters ?? <String, dynamic>{}}
         : {'ids': ids},
   );
-  if (!context.mounted || !identical(owner, state.user)) return false;
+  if (!context.mounted || !current()) return false;
   final count = (preview['count'] as num? ?? 0).toInt();
   final units = (preview['unit_count'] as num? ?? 0).toInt();
   final answers = (preview['answer_count'] as num? ?? 0).toInt();
@@ -110,13 +122,14 @@ Future<bool> deleteNotebookPages(
     context,
     state,
     owner,
+    family,
     count == 1 ? 'Heftseite löschen?' : '$count Heftseiten löschen?',
     '${counted(count, 'ausgewählte Seite wird', 'ausgewählte Seiten werden')} gelöscht${ids == null ? ' – auch auf weiteren Listenseiten' : ''}. '
     'Foto und erkannter Text werden entfernt. '
     '${units > 0 ? '${counted(units, 'verknüpfte Lernrunde', 'verknüpfte Lernrunden')} mit ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} werden ebenfalls gelöscht, auch Runden mit mehreren Heftseiten. ' : ''}'
     'Das kannst du nicht rückgängig machen.',
   );
-  if (!accepted || !context.mounted || !identical(owner, state.user)) {
+  if (!context.mounted || !accepted || !current()) {
     return false;
   }
   final result = await state.api.post(
@@ -126,7 +139,7 @@ Future<bool> deleteNotebookPages(
       'delete_linked_units': true,
     },
   );
-  if (!context.mounted || !identical(owner, state.user)) return false;
+  if (!context.mounted || !current()) return false;
   final deleted = (result['deleted_count'] as num? ?? 0).toInt();
   toast(context, '${counted(deleted, 'Heftseite', 'Heftseiten')} gelöscht.');
   onDeleted?.call();
@@ -140,10 +153,17 @@ Future<bool> deleteLearningRound(
   Json item,
 ) async {
   final owner = state.user;
+  final family = state.familyId;
+  final route = ModalRoute.of(context);
+  bool current() =>
+      context.mounted &&
+      identical(owner, state.user) &&
+      state.familyId == family &&
+      route?.isCurrent != false;
   if (owner == null) return false;
   final id = item['id'];
   final preview = await state.api.post('/units/$id/delete-preview', {});
-  if (!context.mounted || !identical(owner, state.user)) return false;
+  if (!context.mounted || !current()) return false;
   final answers = (preview['answer_count'] as num? ?? 0).toInt();
   if (preview['selection_token'] is! String) {
     throw ApiError('Lade die Liste neu und wähle die Runde erneut aus.');
@@ -152,17 +172,18 @@ Future<bool> deleteLearningRound(
     context,
     state,
     owner,
+    family,
     'Lernrunde löschen?',
     'Diese Runde mit ihren Aufgaben, Rückmeldungen und ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} wird gelöscht. '
         'Die Heftseiten und andere Runden bleiben erhalten. Das kannst du nicht rückgängig machen.',
   );
-  if (!accepted || !context.mounted || !identical(owner, state.user)) {
+  if (!context.mounted || !accepted || !current()) {
     return false;
   }
   await state.api.post('/units/$id/delete', {
     'selection_token': preview['selection_token'],
   });
-  if (!context.mounted || !identical(owner, state.user)) return false;
+  if (!context.mounted || !current()) return false;
   toast(context, 'Lernrunde gelöscht.');
   state.refreshState();
   return true;
@@ -176,18 +197,26 @@ Future<bool> reprocessNotebookPage(
   required VoidCallback onRefresh,
 }) async {
   final owner = state.user;
+  final family = state.familyId;
+  final route = ModalRoute.of(context);
+  bool current() =>
+      context.mounted &&
+      identical(owner, state.user) &&
+      state.familyId == family &&
+      route?.isCurrent != false;
   if (owner == null || !materialCanReprocess(state, item)) return false;
   if (!await _confirmAccountAction(
     context,
     state,
     owner,
+    family,
     'Seite neu einlesen?',
     'Die KI liest dieses Foto noch einmal. Danach prüfst du den Text und kannst neue Aufgaben vorbereiten. '
         'Deine bisherige Seite und deine Antworten bleiben erhalten. Das verbraucht einen KI-Aufruf.',
   )) {
     return false;
   }
-  if (!context.mounted || !identical(owner, state.user)) return false;
+  if (!context.mounted || !current()) return false;
   final id = item['id'];
   final pendingKey = 'material-reprocess:$id';
   final previous = state.collectionViews[pendingKey];
@@ -206,7 +235,7 @@ Future<bool> reprocessNotebookPage(
     {'revision': item['revision']},
     {'Idempotency-Key': key},
   );
-  if (!context.mounted || !identical(owner, state.user)) return false;
+  if (!context.mounted || !current()) return false;
   if (job['id'] is! String || job['material_id'] is! String) {
     throw ApiError(
       'Die Vorbereitung konnte nicht geöffnet werden. Lade deine Hefte neu.',
@@ -214,7 +243,7 @@ Future<bool> reprocessNotebookPage(
   }
   state.collectionViews.remove(pendingKey);
   onRefresh();
-  if (context.mounted && identical(owner, state.user)) {
+  if (context.mounted && current()) {
     openRoute(
       context,
       '/material/${job['material_id']}/processing/${job['id']}',
@@ -240,17 +269,28 @@ class MaterialProcessingScreen extends StatefulWidget {
 
 class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
     with WidgetsBindingObserver {
-  late final String? owner = widget.state.user?['id'];
+  Json? owner;
+  String? family;
+  int generation = 0;
   Timer? timer;
   Json? job, material;
   Object? error;
   bool reading = false, foreground = true;
-  bool get current => mounted && owner == widget.state.user?['id'];
+  bool get current =>
+      mounted &&
+      owner != null &&
+      identical(owner, widget.state.user) &&
+      family == widget.state.familyId;
   bool get waiting =>
       job == null || ['queued', 'running'].contains(job?['status']);
   @override
   void initState() {
     super.initState();
+    owner = widget.state.user;
+    family = widget.state.familyId;
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(identityChanged);
     load();
@@ -266,26 +306,62 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
   }
 
   void identityChanged() {
-    if (mounted && !current) {
-      setState(() => job = material = null);
+    if (!mounted || current) return;
+    generation++;
+    setState(() {
+      owner = widget.state.user;
+      family = widget.state.familyId;
+      job = material = null;
+      error = null;
+      reading = false;
+    });
+    load();
+  }
+
+  @override
+  void didUpdateWidget(covariant MaterialProcessingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != widget.state) {
+      oldWidget.state.removeListener(identityChanged);
+      widget.state.addListener(identityChanged);
+    }
+    if (oldWidget.state != widget.state ||
+        oldWidget.materialId != widget.materialId ||
+        oldWidget.jobId != widget.jobId) {
+      generation++;
+      owner = widget.state.user;
+      family = widget.state.familyId;
+      job = material = null;
+      error = null;
+      reading = false;
+      load();
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
-    if (foreground && current && waiting) load();
+    if (foreground &&
+        current &&
+        waiting &&
+        error == null &&
+        (ModalRoute.of(context)?.isCurrent ?? true)) {
+      load();
+    }
   }
 
   Future<void> load() async {
     if (!current || reading) return;
+    final request = ++generation;
+    bool active() => current && request == generation;
     reading = true;
     try {
       final page =
           material ??
           await widget.state.api.get('/materials/${widget.materialId}');
-      if (!current) return;
+      if (!active()) return;
       final result = await widget.state.api.get('/jobs/${widget.jobId}');
+      if (!active()) return;
       if (result['kind'] != 'extract' ||
           (result['material_id'] != null &&
               result['material_id'] != widget.materialId) ||
@@ -299,7 +375,7 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
           'Diese Vorbereitung gehört zu einer anderen Seite. Öffne deine Hefte erneut.',
         );
       }
-      if (current) {
+      if (active()) {
         setState(() {
           material = page;
           job = result;
@@ -307,14 +383,15 @@ class _MaterialProcessingScreenState extends State<MaterialProcessingScreen>
         });
       }
     } catch (e) {
-      if (current) setState(() => error = e);
+      if (active()) setState(() => error = e);
     } finally {
-      reading = false;
+      if (active()) reading = false;
     }
   }
 
   @override
   void dispose() {
+    generation++;
     timer?.cancel();
     widget.state.removeListener(identityChanged);
     WidgetsBinding.instance.removeObserver(this);

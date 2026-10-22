@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -34,7 +34,39 @@ class HomeworkScreen extends StatefulWidget {
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
   final List<Json> photos = [];
+  final photoSearch = TextEditingController();
+  String photoFilter = 'all';
+  bool showPhotoSearch = false;
+  String get listMemory => 'homework_list:${widget.childId}';
+  bool get listFiltered =>
+      photoFilter != 'all' || photoSearch.text.trim().isNotEmpty;
+  List<Json> get visiblePhotos => photos.where((photo) {
+    if (photoFilter == 'review' && photo['confirmed'] == true) return false;
+    if (photoFilter == 'ready' && photo['confirmed'] != true) return false;
+    if (photoFilter == 'marked' && (photo['marked_done'] as num? ?? 0) == 0) {
+      return false;
+    }
+    final query = photoSearch.text.trim().toLowerCase();
+    return query.isEmpty ||
+        [
+          photo['subject'],
+          photo['topic'],
+          photo['title'],
+        ].whereType<String>().join(' ').toLowerCase().contains(query);
+  }).toList();
+
+  void rememberList() {
+    if (own) {
+      widget.state.collectionViews[listMemory] = {
+        'account': actor,
+        'q': photoSearch.text,
+        'filter': photoFilter,
+      };
+    }
+  }
+
   late final actor = widget.state.user;
+  late final actorFamily = widget.state.familyId;
   bool loading = true, busy = false, choosing = false;
   int photoOperation = 0;
   ModalRoute<dynamic>? photoChoice;
@@ -56,7 +88,26 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   String? error, cursor;
   Uint8List? pending;
   String? uploadKey;
-  bool get own => actor != null && identical(actor, widget.state.user);
+  bool get own =>
+      actor != null &&
+      identical(actor, widget.state.user) &&
+      actorFamily == widget.state.familyId;
+  VoidCallback openPhotoAction(Json photo) {
+    final child = widget.childId, id = photo['id'];
+    final route = ModalRoute.of(context);
+    return () {
+      if (!mounted ||
+          !own ||
+          widget.childId != child ||
+          id is! String ||
+          route?.isCurrent == false ||
+          !photos.any((item) => item['id'] == id)) {
+        return;
+      }
+      context.go('/homework/$child/$id');
+    };
+  }
+
   bool get photoBusy => busy || choosing;
   bool photoCurrent(int operation, String child) =>
       mounted && own && operation == photoOperation && child == widget.childId;
@@ -65,7 +116,19 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   void initState() {
     super.initState();
     widget.state.addListener(identity);
+    restoreList();
     unawaited(load());
+  }
+
+  void restoreList() {
+    final saved = widget.state.collectionViews[listMemory];
+    final memory = identical(saved?['account'], actor) ? saved : null;
+    photoSearch.text = memory?['q'] as String? ?? '';
+    photoFilter =
+        ['all', 'review', 'ready', 'marked'].contains(memory?['filter'])
+        ? memory!['filter']
+        : 'all';
+    showPhotoSearch = photoSearch.text.isNotEmpty;
   }
 
   void identity() {
@@ -75,6 +138,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       closePhotoChoice();
       setState(() {
         photos.clear();
+        photoSearch.clear();
+        photoFilter = 'all';
         pending = null;
       });
     }
@@ -93,6 +158,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       pending = null;
       uploadKey = null;
       cursor = null;
+      restoreList();
       unawaited(load());
     }
   }
@@ -101,6 +167,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   void dispose() {
     closePhotoChoice();
     pending = null;
+    photoSearch.dispose();
     widget.state.removeListener(identity);
     super.dispose();
   }
@@ -418,6 +485,101 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         SizedBox(height: 22),
         heading('Deine Aufgabenfotos'),
         SizedBox(height: 12),
+        if (widget.state.isChild && photos.isNotEmpty) ...[
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              for (final filter in [
+                ('all', 'Alle Fotos'),
+                ('review', 'Foto noch prüfen'),
+                ('ready', 'Text geprüft'),
+                ('marked', 'Mit Häkchen'),
+              ])
+                ChoiceChip(
+                  label: Text(filter.$2),
+                  selected: photoFilter == filter.$1,
+                  onSelected: (_) {
+                    if (!own) return;
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => photoFilter = filter.$1);
+                    rememberList();
+                  },
+                ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  if (!own) return;
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() => showPhotoSearch = !showPhotoSearch);
+                },
+                icon: Icon(Icons.search_rounded),
+                label: Text(
+                  showPhotoSearch ? 'Suchfeld einklappen' : 'Foto suchen',
+                ),
+              ),
+            ],
+          ),
+          if (showPhotoSearch) ...[
+            SizedBox(height: 12),
+            TextField(
+              controller: photoSearch,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: 'In geladenen Fotos suchen',
+                hintText: 'Fach, Thema oder Titel',
+                suffixIcon: photoSearch.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Fotosuche leeren',
+                        onPressed: () {
+                          if (!own) return;
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(photoSearch.clear);
+                          rememberList();
+                        },
+                        icon: Icon(Icons.clear_rounded),
+                      ),
+              ),
+              onChanged: (_) {
+                if (own) {
+                  setState(() {});
+                  rememberList();
+                }
+              },
+              onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+            ),
+          ],
+          SizedBox(height: 10),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              '${visiblePhotos.length} von ${photos.length} geladenen Fotos${cursor == null ? '' : ' · Weitere Fotos unten laden'}',
+              style: TextStyle(color: context.palette.muted),
+            ),
+          ),
+          if (photoFilter == 'marked')
+            Text(
+              'Häkchen sind deine Checkliste. Sie zeigen nicht, ob eine Antwort richtig ist.',
+              style: TextStyle(color: context.palette.muted),
+            ),
+          SizedBox(height: 12),
+          if (!loading && visiblePhotos.isEmpty && listFiltered)
+            ActionPanel(
+              actionLabel: 'Alle geladenen Fotos zeigen',
+              onPressed: () {
+                if (!own) return;
+                FocusManager.instance.primaryFocus?.unfocus();
+                setState(() {
+                  photoFilter = 'all';
+                  photoSearch.clear();
+                });
+                rememberList();
+              },
+              child: Text(
+                'Zu dieser Auswahl passt gerade kein geladenes Aufgabenfoto.',
+              ),
+            ),
+        ],
         if (loading)
           Semantics(
             liveRegion: true,
@@ -440,12 +602,21 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
             ),
           ),
         if (!loading && photos.isEmpty && error == null)
-          Panel(
-            child: Text(
-              'Hier warten deine Hausaufgaben auf dich, sobald du ein Foto abgibst.',
-            ),
-          ),
-        for (final photo in photos)
+          widget.state.isChild && pending == null
+              ? ActionPanel(
+                  actionLabel: 'Erstes Hausaufgabenfoto aufnehmen',
+                  enabled: !photoBusy,
+                  onPressed: capture,
+                  child: Text(
+                    'Hier warten deine Hausaufgaben auf dich, sobald du ein Foto abgibst.',
+                  ),
+                )
+              : Panel(
+                  child: Text(
+                    'Hier warten deine Hausaufgaben auf dich, sobald du ein Foto abgibst.',
+                  ),
+                ),
+        for (final photo in widget.state.isChild ? visiblePhotos : photos)
           Padding(
             padding: EdgeInsets.only(bottom: 10),
             child: widget.state.isChild
@@ -459,9 +630,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     icon: photo['confirmed'] == true
                         ? Icons.assignment_outlined
                         : Icons.document_scanner_outlined,
-                    onTap: () => context.go(
-                      '/homework/${widget.childId}/${photo['id']}',
-                    ),
+                    onTap: openPhotoAction(photo),
                   )
                 : Panel(
                     child: ListTile(
@@ -482,9 +651,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                             : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}',
                       ),
                       trailing: Icon(Icons.arrow_forward_rounded),
-                      onTap: () => context.go(
-                        '/homework/${widget.childId}/${photo['id']}',
-                      ),
+                      onTap: openPhotoAction(photo),
                     ),
                   ),
           ),
@@ -538,9 +705,13 @@ class _HomeworkDetailBody extends StatefulWidget {
 class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     with WidgetsBindingObserver {
   final draft = TextEditingController(), question = TextEditingController();
-  final Map<String, String> drafts = {};
+  final Map<String, String> drafts = {}, taskQuestions = {};
+  final taskSearch = TextEditingController();
+  String taskFilter = 'all';
+  bool switchingTask = false;
   final Set<String> done = {};
   late final actor = widget.state.user;
+  late final actorFamily = widget.state.familyId;
   Json? data;
   String? error, sendError, saveError, selectedId, lastSaved, uncertainKey;
   Json? uncertainBody;
@@ -561,7 +732,10 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
       restored = false,
       foreground = true,
       applying = false;
-  bool get own => actor != null && identical(actor, widget.state.user);
+  bool get own =>
+      actor != null &&
+      identical(actor, widget.state.user) &&
+      actorFamily == widget.state.familyId;
   bool get canWrite =>
       own &&
       widget.state.isChild &&
@@ -611,6 +785,8 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
       draft.clear();
       question.clear();
       drafts.clear();
+      taskQuestions.clear();
+      taskSearch.clear();
       uncertainBody = null;
       uncertainKey = null;
       practiceKey = null;
@@ -659,6 +835,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     question.removeListener(editedQuestion);
     draft.dispose();
     question.dispose();
+    taskSearch.dispose();
     super.dispose();
   }
 
@@ -714,6 +891,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
             selectedId = tasks.firstOrNull?['id'];
           }
           drafts.clear();
+          taskQuestions.clear();
           done.clear();
           if (same && canWrite) {
             drafts.addAll(
@@ -728,6 +906,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
           applying = true;
           draft.text = drafts[selectedId] ?? '';
           question.text = same && canWrite ? (saved['question'] ?? '') : '';
+          if (selectedId != null) taskQuestions[selectedId!] = question.text;
           lastSaved = draft.text;
           applying = false;
           restored = true;
@@ -765,6 +944,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
 
   void editedQuestion() {
     if (applying || !canWrite || selectedId == null) return;
+    taskQuestions[selectedId!] = question.text;
     edits++;
     debounce?.cancel();
     debounce = Timer(Duration(milliseconds: 650), () => unawaited(persist()));
@@ -992,18 +1172,158 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   }
 
   Future<void> chooseTask(String taskId) async {
-    if (busy || saving || taskId == selectedId) return;
-    await persist();
-    if (!mounted || !own) return;
-    setState(() {
-      selectedId = taskId;
-      if (canWrite) edits++;
-      applying = true;
-      draft.text = drafts[selectedId] ?? '';
-      lastSaved = draft.text;
-      applying = false;
-    });
-    await persist();
+    if (!mounted ||
+        !own ||
+        busy ||
+        saving ||
+        switchingTask ||
+        taskId == selectedId ||
+        !tasks.any((task) => task['id'] == taskId)) {
+      return;
+    }
+    final previous = selectedId,
+        analysisId = analysis?['id'],
+        sourceRevision = photo?['revision'];
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => switchingTask = true);
+    try {
+      await persist();
+      if (!mounted ||
+          !own ||
+          analysis?['id'] != analysisId ||
+          photo?['revision'] != sourceRevision ||
+          selectedId != previous ||
+          saveError != null ||
+          conflict ||
+          unsaved) {
+        return;
+      }
+      setState(() {
+        if (previous != null && canWrite) {
+          taskQuestions[previous] = question.text;
+        }
+        selectedId = taskId;
+        if (canWrite) edits++;
+        applying = true;
+        draft.text = drafts[selectedId] ?? '';
+        question.text = taskQuestions[selectedId] ?? '';
+        lastSaved = draft.text;
+        applying = false;
+      });
+      await persist();
+    } finally {
+      if (mounted && own) setState(() => switchingTask = false);
+    }
+  }
+
+  List<Json> get visibleTasks {
+    final query = taskSearch.text.trim().toLowerCase();
+    return tasks.where((task) {
+      final matches = [
+        task['title'],
+        task['source_quote'],
+        task['instruction_quote'],
+      ].any((value) => '${value ?? ''}'.toLowerCase().contains(query));
+      return matches &&
+          switch (taskFilter) {
+            'open' => !done.contains(task['id']),
+            'done' => done.contains(task['id']),
+            'draft' => (drafts[task['id']] ?? '').trim().isNotEmpty,
+            _ => true,
+          };
+    }).toList();
+  }
+
+  Widget taskChoices() => Wrap(
+    spacing: 10,
+    runSpacing: 10,
+    children: [
+      for (final task in visibleTasks)
+        ChoiceChip(
+          label: Text(
+            '${done.contains(task['id']) ? '✓ ' : ''}${task['title']}',
+          ),
+          selected: task['id'] == selectedId,
+          onSelected: busy || saving || switchingTask
+              ? null
+              : (_) => chooseTask(task['id']),
+        ),
+    ],
+  );
+
+  Widget taskOverview() => tasks.length <= 5
+      ? taskChoices()
+      : ExpansionTile(
+          key: ValueKey(('homework-task-list', analysis?['id'])),
+          title: Text('Alle ${tasks.length} Aufgaben ansehen'),
+          subtitle: Text(
+            'Suchen, auswählen oder deine eigenen Häkchen nachsehen',
+          ),
+          children: [
+            TextField(
+              controller: taskSearch,
+              textInputAction: TextInputAction.search,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+              decoration: InputDecoration(
+                labelText: 'Auf diesem Aufgabenfoto suchen',
+                suffixIcon: taskSearch.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Aufgabensuche löschen',
+                        onPressed: () => setState(taskSearch.clear),
+                        icon: Icon(Icons.close_rounded),
+                      ),
+              ),
+            ),
+            SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey(('task-filter', taskFilter)),
+              initialValue: taskFilter,
+              isExpanded: true,
+              decoration: InputDecoration(labelText: 'Aufgaben anzeigen'),
+              items: [
+                for (final option in [
+                  ('all', 'Alle Aufgaben'),
+                  ('open', 'Noch ohne eigenes Häkchen'),
+                  ('done', 'Selbst abgehakt'),
+                  ('draft', 'Mit eigenem Versuch'),
+                ])
+                  DropdownMenuItem(value: option.$1, child: Text(option.$2)),
+              ],
+              onChanged: (value) => setState(() => taskFilter = value ?? 'all'),
+            ),
+            SizedBox(height: 12),
+            taskChoices(),
+            if (visibleTasks.isEmpty)
+              TextButton(
+                onPressed: () => setState(() {
+                  taskSearch.clear();
+                  taskFilter = 'all';
+                }),
+                child: Text('Aufgabenfilter zurücksetzen'),
+              ),
+            SizedBox(height: 12),
+          ],
+        );
+
+  Future<void> copyDraft() async {
+    if (!canWrite || draft.text.trim().isEmpty) return;
+    final ownTask = selectedId, content = draft.text;
+    try {
+      await Clipboard.setData(ClipboardData(text: content));
+    } catch (_) {
+      if (mounted && own) {
+        toast(
+          context,
+          'Kopieren klappt hier gerade nicht. Dein Versuch bleibt erhalten.',
+        );
+      }
+      return;
+    }
+    if (mounted && own && ownTask == selectedId) {
+      toast(context, 'Dein eigener Versuch liegt jetzt in der Zwischenablage.');
+    }
   }
 
   Future<void> continuePractice() async {
@@ -1178,6 +1498,33 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
               (t['homework'] as Map?)?['action'] != 'analyze',
         )
         .toList();
+    final displayedTasks = tasks;
+    final displayedTaskId = selectedId;
+    final displayedAnalysisId = analysis?['id'];
+    final displayedSourceRevision = photo?['revision'];
+    final displayedIndex = displayedTasks.indexWhere(
+      (task) => task['id'] == displayedTaskId,
+    );
+    final previousTaskId = displayedIndex > 0
+        ? displayedTasks[displayedIndex - 1]['id'] as String?
+        : null;
+    final nextTaskId =
+        displayedIndex >= 0 && displayedIndex + 1 < displayedTasks.length
+        ? displayedTasks[displayedIndex + 1]['id'] as String?
+        : null;
+    Future<void> moveTask(String? target) async {
+      if (!mounted ||
+          !own ||
+          target == null ||
+          selectedId != displayedTaskId ||
+          analysis?['id'] != displayedAnalysisId ||
+          photo?['revision'] != displayedSourceRevision ||
+          ModalRoute.of(context)?.isCurrent == false) {
+        return;
+      }
+      await chooseTask(target);
+    }
+
     final completed = tasks.where((task) => done.contains(task['id'])).length;
     final nextOpen = tasks
         .where((task) => task['id'] != selectedId && !done.contains(task['id']))
@@ -1334,22 +1681,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                 style: TextStyle(color: context.palette.muted),
               ),
               SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final task in tasks)
-                    ChoiceChip(
-                      label: Text(
-                        '${done.contains(task['id']) ? '✓ ' : ''}${task['title']}',
-                      ),
-                      selected: task['id'] == selectedId,
-                      onSelected: busy || saving
-                          ? null
-                          : (_) => chooseTask(task['id']),
-                    ),
-                ],
-              ),
+              taskOverview(),
               if ((analysis!['reply'] as Map?)?['more_tasks'] == true)
                 Notice(
                   'Auf dem Foto sind noch weitere Aufgaben. Fotografiere den übrigen Teil näher, wenn du damit weitermachen möchtest.',
@@ -1359,41 +1691,65 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                       data?['practice'] != null ||
                       practiceKey != null)) ...[
                 SizedBox(height: 16),
-                Panel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        '3 · Selbst prüfen',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        data?['practice'] != null
-                            ? 'Deine gespeicherte Lernrunde zu diesem Foto bleibt erreichbar. Deine Häkchen sind weiterhin nur eine Checkliste.'
-                            : 'Prüfe mit neuen Aufgaben zu diesem Foto, was du verstanden hast. Deine Häkchen sind weiterhin nur eine Checkliste.',
-                      ),
-                      SizedBox(height: 14),
-                      FilledButton.icon(
-                        onPressed: !busy && !saving && !pending && !extracting
-                            ? continuePractice
-                            : null,
-                        icon: Icon(Icons.psychology_alt_outlined),
-                        label: Text(
-                          practiceKey != null
-                              ? 'Vorbereitung abgleichen'
-                              : data?['practice']?['kind'] == 'unit'
-                              ? 'Lernrunde fortsetzen'
-                              : data?['practice']?['kind'] == 'job'
-                              ? 'Zur Vorbereitung'
-                              : 'Mit neuen Aufgaben prüfen',
+                if (data?['practice'] != null &&
+                    practiceKey == null &&
+                    practiceError == null)
+                  ActionPanel(
+                    enabled: !busy && !saving && !pending && !extracting,
+                    actionLabel: data?['practice']?['kind'] == 'unit'
+                        ? 'Lernrunde fortsetzen'
+                        : 'Zur Vorbereitung',
+                    onPressed: continuePractice,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '3 · Selbst prüfen',
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                      ),
-                      if (practiceError != null)
-                        Notice(practiceError!, warning: true),
-                    ],
+                        SizedBox(height: 8),
+                        Text(
+                          'Deine gespeicherte Lernrunde zu diesem Foto bleibt erreichbar. Deine Häkchen sind weiterhin nur eine Checkliste.',
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Panel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '3 · Selbst prüfen',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          data?['practice'] != null
+                              ? 'Deine gespeicherte Lernrunde zu diesem Foto bleibt erreichbar. Deine Häkchen sind weiterhin nur eine Checkliste.'
+                              : 'Prüfe mit neuen Aufgaben zu diesem Foto, was du verstanden hast. Deine Häkchen sind weiterhin nur eine Checkliste.',
+                        ),
+                        SizedBox(height: 14),
+                        FilledButton.icon(
+                          onPressed: !busy && !saving && !pending && !extracting
+                              ? continuePractice
+                              : null,
+                          icon: Icon(Icons.psychology_alt_outlined),
+                          label: Text(
+                            practiceKey != null
+                                ? 'Vorbereitung abgleichen'
+                                : data?['practice']?['kind'] == 'unit'
+                                ? 'Lernrunde fortsetzen'
+                                : data?['practice']?['kind'] == 'job'
+                                ? 'Zur Vorbereitung'
+                                : 'Mit neuen Aufgaben prüfen',
+                          ),
+                        ),
+                        if (practiceError != null)
+                          Notice(practiceError!, warning: true),
+                      ],
+                    ),
                   ),
-                ),
               ],
               SizedBox(height: 16),
               if (selected != null)
@@ -1405,6 +1761,43 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                         selected!['title'],
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
+                      if (tasks.length > 1) ...[
+                        SizedBox(height: 8),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            'Aufgabe ${tasks.indexWhere((task) => task['id'] == selectedId) + 1} von ${tasks.length}',
+                          ),
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            TextButton.icon(
+                              onPressed:
+                                  busy ||
+                                      saving ||
+                                      switchingTask ||
+                                      previousTaskId == null
+                                  ? null
+                                  : () => moveTask(previousTaskId),
+                              icon: Icon(Icons.chevron_left_rounded),
+                              label: Text('Vorherige Aufgabe'),
+                            ),
+                            TextButton.icon(
+                              onPressed:
+                                  busy ||
+                                      saving ||
+                                      switchingTask ||
+                                      nextTaskId == null
+                                  ? null
+                                  : () => moveTask(nextTaskId),
+                              icon: Icon(Icons.chevron_right_rounded),
+                              label: Text('Nächste Aufgabe'),
+                            ),
+                          ],
+                        ),
+                      ],
                       SizedBox(height: 12),
                       if ((selected!['instruction_quote'] ?? '')
                               .toString()
@@ -1460,6 +1853,13 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                                   : null,
                               icon: Icon(Icons.fact_check_outlined),
                               label: Text('Meinen Weg prüfen'),
+                            ),
+                            TextButton.icon(
+                              onPressed: draft.text.trim().isEmpty
+                                  ? null
+                                  : copyDraft,
+                              icon: Icon(Icons.copy_outlined),
+                              label: Text('Meinen Versuch kopieren'),
                             ),
                             TextButton(
                               onPressed: saving || !unsaved || conflict

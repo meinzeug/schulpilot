@@ -440,7 +440,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
     expect(requests.where((request) => request.method == 'POST'), isEmpty);
-    await tester.tap(find.byTooltip('Lernen starten'));
+    await tester.tap(
+      find
+          .descendant(of: find.byType(Dialog), matching: find.byType(ListTile))
+          .first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Lernrunde-Ziel'), findsOneWidget);
     expect(find.byType(Dialog), findsNothing);

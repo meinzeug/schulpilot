@@ -113,6 +113,11 @@ void main() {
             path: '/admin/settings',
             builder: (_, _) => InstallationScreen(state, initial: false),
           ),
+          GoRoute(
+            path: '/login',
+            builder: (_, _) =>
+                const Scaffold(body: Text('Erneuter künstlicher Adminlogin')),
+          ),
         ],
       );
       await tester.pumpWidget(
@@ -121,7 +126,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Installationscode'), findsNothing);
       expect(find.text('Einrichtung öffnen'), findsNothing);
-      expect(find.text('Erneut laden'), findsOneWidget);
+      expect(state.user, isNull);
+      expect(find.text('Erneut laden'), findsNothing);
+      expect(find.text('Erneut anmelden'), findsOneWidget);
+      await tester.tap(find.text('Erneut anmelden'));
+      await tester.pumpAndSettle();
+      expect(find.text('Erneuter künstlicher Adminlogin'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       router.dispose();

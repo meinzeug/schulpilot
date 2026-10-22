@@ -594,3 +594,30 @@ kein geöffnetes Fenster. Deshalb Vorbereitung und erneuter bewusster Öffnen-Kl
 trennen, ohne automatische Wiederholungen oder Als-gesehen-Behauptung. Die
 Abhängigkeit bleibt unverändert. Zusätzliche Eltern-Webprüfungen verwenden reine
 künstliche Daten im Flutter-Chromeharness, ohne Anmeldung, KI oder echten Versand.
+
+
+Zusätzliche Karten-/Bedienrunde88 (22.10.2026):
+[Flutter Card](https://api.flutter.dev/flutter/material/Card-class.html)
+beschreibt die ganze Karte als möglichen primären Weg zur Detailansicht;
+[InkWell](https://api.flutter.dev/flutter/material/InkWell-class.html)
+begründet Materialfläche, Clipping und sichtbaren Tastaturfokus.
+[WAI Linkzweck](https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html)
+begründet konkrete Zieltexte statt unbestimmter Klickflächen. Die
+[WAI Disclosure-Karte](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/examples/disclosure-card/)
+warnt ausdrücklich vor verschachtelten Aktionen und überlangen Namen; das
+Beispiel wird nicht als ungeprüfter Produktionscode übernommen. Deshalb
+Aktionskarten nur für einen eindeutigen Weg, Formulare und Mehrfachaktionen
+weiter mit getrennten Bedienelementen. Native Tests prüfen tatsächlich
+aktivierbare Karten, Semantikflags, Fokus, Kontrast und 200-Prozent-Schrift;
+ein vollständiger Assistenztechnik-/WCAG-Nachweis wird daraus nicht abgeleitet.
+Die Quellen wurden als Primärdokumentation geöffnet; keine neue UI-Bibliothek,
+Anbieterroute oder kostenpflichtige Generierung wurde dafür ergänzt.
+
+Release88-Nachweis: OpenJDK17.0.20.1, vorhandener bundletool1.18.3
+(mit geprüftem lokalen SHA256). Für `jarsigner -strict` gilt die offizielle
+[Oracle-Beschreibung der Exitcodes](https://docs.oracle.com/en/java/javase/17/docs/specs/man/jarsigner.html).
+Der lokale Freigabeprüfer verweigert unsignierte Archive, bindet das AAB per Hash
+an den tatsächlich kompilierten Play-Ausgang und prüft die Gültigkeitsdaten des
+festgelegten Upload-Zertifikats; die selbstsignierte Zertifikatskette wird
+ausdrücklich vom Fehler einer fehlenden Signatur unterschieden. Ein eigenes
+künstliches unsigniertes Archiv wurde als Negativprobe verworfen.

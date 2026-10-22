@@ -416,41 +416,9 @@ class _ChildCoachingPanel extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (facts.independent > 0)
-                      _RoundFact(
-                        '${facts.independent} selbstständig',
-                        Icons.check_rounded,
-                      ),
-                    if (facts.assisted > 0)
-                      _RoundFact(
-                        '${facts.assisted} unterstützt / erneut',
-                        Icons.lightbulb_outline_rounded,
-                      ),
-                    if (facts.contributions > 0)
-                      _RoundFact(
-                        '${facts.contributions} eigene Beiträge',
-                        Icons.chat_bubble_outline_rounded,
-                      ),
-                    if (facts.uncertain > 0)
-                      _RoundFact(
-                        '${facts.uncertain} noch unklar',
-                        Icons.help_outline_rounded,
-                      ),
-                    if (facts.practice > 0)
-                      _RoundFact(
-                        '${facts.practice} weiter üben',
-                        Icons.edit_outlined,
-                      ),
-                    if (facts.unclassified > 0)
-                      _RoundFact(
-                        '${facts.unclassified} richtig gelöst',
-                        Icons.check_rounded,
-                      ),
-                  ],
+                RoundAnswerExplorer(
+                  questions: questions,
+                  key: ValueKey(unit['id']),
                 ),
                 SizedBox(height: 18),
               ] else ...[
@@ -753,22 +721,36 @@ class _ChildCoachingPanel extends StatelessWidget {
                 SizedBox(height: 8),
                 if ((question['attempts'] as List? ?? []).isEmpty)
                   Text('Noch keine Antwort gespeichert.'),
-                for (final attempt in question['attempts'] as List? ?? [])
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MathText(
-                          '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
-                          '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe oder erneut' : ''}',
+                for (final entry
+                    in (question['attempts'] as List? ?? []).indexed)
+                  Builder(
+                    builder: (context) {
+                      final attempt = entry.$2;
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Versuch ${entry.$1 + 1}${entry.$1 + 1 == (question['attempts'] as List).length ? ' · zuletzt gespeichert' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: context.palette.muted,
+                              ),
+                            ),
+                            MathText(
+                              '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
+                              '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe oder erneut' : ''}',
+                            ),
+                            AnswerSupport(Json.from(attempt)),
+                            AssessmentTrail(
+                              attempt['assessment_history'] as List? ?? [],
+                            ),
+                          ],
                         ),
-                        AnswerSupport(Json.from(attempt)),
-                        AssessmentTrail(
-                          attempt['assessment_history'] as List? ?? [],
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 if ((question['attempts'] as List? ?? [])
                         .lastOrNull?['outcome'] ==
@@ -885,32 +867,110 @@ class _RoundFacts {
   }
 }
 
-class _RoundFact extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  const _RoundFact(this.label, this.icon);
+/// Local inspection of stored answers; selecting a category never grades,
+/// changes an attempt or asks a provider for a new explanation.
+class RoundAnswerExplorer extends StatefulWidget {
+  final List questions;
+  const RoundAnswerExplorer({super.key, required this.questions});
+  @override
+  State<RoundAnswerExplorer> createState() => _RoundAnswerExplorerState();
+}
+
+class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
+  String? chosen;
+
+  String category(Map question) {
+    final attempts = question['attempts'] as List? ?? [];
+    if (attempts.isEmpty) return 'none';
+    if (attempts.last['evaluation']?['method'] == 'open_learning_v1') {
+      return 'contribution';
+    }
+    final correct = attempts.where((a) => a['outcome'] == 'correct').toList();
+    if (correct.isNotEmpty) {
+      if (correct.any((a) => a['assisted'] == true)) return 'assisted';
+      if (correct.every((a) => a['assisted'] == false)) return 'independent';
+      return 'unclassified';
+    }
+    if (attempts.any((a) => a['outcome'] == 'uncertain')) return 'uncertain';
+    return 'practice';
+  }
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(
-      color: context.palette.panelSurface,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) {
+    final facts = _RoundFacts(widget.questions);
+    final groups = [
+      ('independent', facts.independent, 'selbstständig', Icons.check_rounded),
+      (
+        'assisted',
+        facts.assisted,
+        'unterstützt / erneut',
+        Icons.lightbulb_outline_rounded,
+      ),
+      (
+        'contribution',
+        facts.contributions,
+        'eigene Beiträge',
+        Icons.chat_bubble_outline_rounded,
+      ),
+      ('uncertain', facts.uncertain, 'noch unklar', Icons.help_outline_rounded),
+      ('practice', facts.practice, 'weiter üben', Icons.edit_outlined),
+      (
+        'unclassified',
+        facts.unclassified,
+        'richtig gelöst',
+        Icons.check_rounded,
+      ),
+    ];
+    final visible = [
+      for (final item in widget.questions)
+        if (chosen == category(item)) Json.from(item),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(icon, size: 16, color: context.palette.teal),
-        SizedBox(width: 6),
-        Flexible(
-          child: MathText(
-            label,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final group in groups)
+              if (group.$2 > 0)
+                ChoiceChip(
+                  selected: chosen == group.$1,
+                  avatar: Icon(group.$4, size: 18),
+                  label: Text('${group.$2} ${group.$3}'),
+                  tooltip: 'Gespeicherte Aufgaben ansehen: ${group.$3}',
+                  onSelected: (selected) =>
+                      setState(() => chosen = selected ? group.$1 : null),
+                ),
+          ],
         ),
+        if (chosen != null) ...[
+          SizedBox(height: 14),
+          SurfaceInset(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    '${visible.length} ${visible.length == 1 ? 'gespeicherte Aufgabe' : 'gespeicherte Aufgaben'} · ${groups.where((g) => g.$1 == chosen).first.$3}',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                SizedBox(height: 12),
+                for (final question in visible) _SavedQuestionResult(question),
+                TextButton.icon(
+                  onPressed: () => setState(() => chosen = null),
+                  icon: Icon(Icons.close_rounded),
+                  label: Text('Auswahl schließen'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
-    ),
-  );
+    );
+  }
 }
 
 class _SavedQuestionResult extends StatelessWidget {

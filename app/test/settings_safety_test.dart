@@ -304,6 +304,10 @@ void main() {
         field('Neues Kinderpasswort'),
         'synthetic-new-password',
       );
+      await tester.enterText(
+        field('Neues Kinderpasswort wiederholen'),
+        'synthetic-new-password',
+      );
       await tester.tap(find.text('Passwort erneuern'));
       await tester.pumpAndSettle();
       expect(requests.single.method, 'PUT');

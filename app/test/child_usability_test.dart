@@ -163,7 +163,10 @@ void main() {
       expect(find.text('An: Deine Eltern'), findsOneWidget);
       expect(f.requests.every((request) => request.method == 'GET'), isTrue);
       await tester.enterText(
-        find.byType(TextField),
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
         'Eine künstliche Frage für später.',
       );
       await _tap(tester, find.text('Um Hilfe bitten'));
@@ -406,7 +409,10 @@ void main() {
         await f.open(tester);
         await _tap(tester, find.text('Frage schreiben'));
         await tester.enterText(
-          find.byType(TextField),
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          ),
           'Alter künstlicher Entwurf.',
         );
         if (submitted) {

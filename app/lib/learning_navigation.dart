@@ -57,9 +57,10 @@ Future<void> openPlanItem(
   Json data,
   dynamic item,
 ) async {
-  final owner = state.user?['id'];
+  final owner = state.user, family = state.familyId;
   final route = ModalRoute.of(context);
-  bool currentAccount() => owner != null && state.user?['id'] == owner;
+  bool currentAccount() =>
+      owner != null && identical(state.user, owner) && state.familyId == family;
   bool currentRoute() => context.mounted && (route?.isCurrent ?? true);
   if (!currentAccount() || !currentRoute()) return;
   if (state.isChild && state.user?['child_id'] != data['child']?['id']) return;

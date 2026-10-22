@@ -1,0 +1,441 @@
+{
+  "baseline": "3df2849",
+  "previous_count_excluded": 321,
+  "scope": "Gemeinsam, Anmeldung, Lernstand, Familienanruf und private Materialansichten",
+  "tested_count": 55,
+  "items": [
+    {
+      "id": "RR001",
+      "problem_and_change": "Gemeinsame Aktionskarte mit klarer Zielzeile, ganzer Trefferfläche, Tastatur/Fokus und begrenzter Aktivierung",
+      "code": "ui.dart: ActionPanel / _ActionPanelState",
+      "test": "action_panel_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR002",
+      "problem_and_change": "Öffentliche Stoff-sammeln-Karte erklärt den tatsächlichen Foto-/Bestätigungsweg",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR003",
+      "problem_and_change": "Öffentliche Verstehen-und-üben-Karte führt zur Erklärung der betreuten Runde",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR004",
+      "problem_and_change": "Öffentliche Wiederholkarte öffnet die Erklärung belegbasierter Wiederholung",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR005",
+      "problem_and_change": "Öffentliche Tagesplankarte erklärt Vorschlag, Elternauftrag und aktive Zeit",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR006",
+      "problem_and_change": "Öffentliche Hilfekarte erklärt die gestuften Hilfen und selbstständige Anwendung",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR007",
+      "problem_and_change": "Öffentliche Elternkarte erklärt nachvollziehbare Aufgabenbelege statt unbelegter Kompetenzzahlen",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR008",
+      "problem_and_change": "Betreiber-/Kontaktangaben zeigen Laden, sichere Fehlermeldung und bewussten Lese-Retry",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR009",
+      "problem_and_change": "Darstellungswechsel lädt Betreiberangaben nicht erneut",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "coupled",
+      "coupled_with": "RR008"
+    },
+    {
+      "id": "RR010",
+      "problem_and_change": "Eltern gelangen aus Löschinformationen zuerst zur Daten-/Exportverwaltung",
+      "code": "account_deletion_screen.dart: AccountDeletionScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR011",
+      "problem_and_change": "Direkt geöffnete Löschseite besitzt einen eindeutigen Rückweg",
+      "code": "account_deletion_screen.dart: AccountDeletionScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR012",
+      "problem_and_change": "Neuigkeiten lassen sich lokal gezielt nach ungelesen filtern",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR013",
+      "problem_and_change": "Leerer Ungelesen-Filter bietet den sichtbaren Rückweg zum geladenen Verlauf",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "coupled",
+      "coupled_with": "RR012"
+    },
+    {
+      "id": "RR014",
+      "problem_and_change": "Mehrfaches Öffnen einer Neuigkeit löst nur eine aktive Lesemarkierung aus",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR015",
+      "problem_and_change": "Spät gespeicherte Lesemarkierung verdrängt keine danach geöffnete Seite",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR016",
+      "problem_and_change": "Bereits gelesene Neuigkeit schreibt dieselbe Lesemarkierung nicht nochmals",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR017",
+      "problem_and_change": "Offene Neuigkeitenaktion und Filter werden beim Kontowechsel verworfen",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "coupled",
+      "coupled_with": "RR012"
+    },
+    {
+      "id": "RR018",
+      "problem_and_change": "Glocke und Neuigkeiten benennen das tatsächliche fachliche Linkziel",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR019",
+      "problem_and_change": "Datenschutzhinweis verspricht keine veralteten kostenlosen OpenRouter-Modelle",
+      "code": "auth_screens.dart: LandingScreen / InformationScreen",
+      "test": "public_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR020",
+      "problem_and_change": "Lernstandkategorien öffnen und filtern tatsächlich passende beantwortete Aufgaben vor Aggregation",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "tested"
+    },
+    {
+      "id": "RR021",
+      "problem_and_change": "Gespeicherte alte Lernstandkarten können keine veränderte Übersicht mehr steuern",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "tested"
+    },
+    {
+      "id": "RR022",
+      "problem_and_change": "Lernstand lädt nur unter genauer aktueller Konto-/Familienbindung",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "tested"
+    },
+    {
+      "id": "RR023",
+      "problem_and_change": "Lernstand merkt sich die tatsächlich serverseitig begrenzte Listenseite",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "tested"
+    },
+    {
+      "id": "RR024",
+      "problem_and_change": "Rundendatum im Lernstand benennt den letzten Übungszeitpunkt korrekt",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "tested"
+    },
+    {
+      "id": "RR025",
+      "problem_and_change": "Alter Server ohne Kategorienunterstützung zeigt keinen ungefilterten Bestand als gefiltert",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "coupled",
+      "coupled_with": "RR020"
+    },
+    {
+      "id": "RR026",
+      "problem_and_change": "Leere Lernstandkategorie lässt sich ausdrücklich wieder verlassen",
+      "code": "progress_screen.dart: ProgressScreen; backend/schulpilot/learning_progress.py: read_ledger / learning_progress",
+      "test": "progress_cards_ux88_test.dart; backend/tests/test_practice_progress.py",
+      "status": "coupled",
+      "coupled_with": "RR020"
+    },
+    {
+      "id": "RR027",
+      "problem_and_change": "Android-Download startet durch die ganze Karte mit laufendem Aktivierungsstatus",
+      "code": "download_panel.dart: AndroidDownload",
+      "test": "workspace_download_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR028",
+      "problem_and_change": "Wechsel der API lädt die dazugehörigen Downloadmetadaten neu",
+      "code": "download_panel.dart: AndroidDownload",
+      "test": "workspace_download_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR029",
+      "problem_and_change": "Registrierung erlaubt Datenschutzlesen mit Rückkehr zum unveränderten Entwurf",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR030",
+      "problem_and_change": "Offensichtlich fehlerhafte Eltern-E-Mail wird vor unnötigem Versand korrigierbar erkannt",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR031",
+      "problem_and_change": "Geheime Zugangs-/Betriebsfelder deaktivieren Smart Quotes/Dashes und Tastatur-Personalisierung",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR032",
+      "problem_and_change": "Einmalcode lässt sich bewusst ansehen und wird bei neuem Link wieder verdeckt",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR033",
+      "problem_and_change": "Vergessener Kinderzugang führt zur passenden Hilfe über berechtigte Eltern",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR034",
+      "problem_and_change": "Wiederherstellung besitzt einen sichtbaren Weg zur manuellen Codeeingabe",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR035",
+      "problem_and_change": "Fehlender Bestätigungslink ist über den bestehenden begrenzten Versandweg erneut anforderbar",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR036",
+      "problem_and_change": "Abgelaufener Reset besitzt einen neuen Wiederherstellungsweg ohne alten Code",
+      "code": "auth_screens.dart: AuthScreen; google_login.dart; settings_screen.dart / installation_screen.dart",
+      "test": "auth_recovery_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR037",
+      "problem_and_change": "Anrufansicht und verspätete Metadaten bleiben an genaue Sitzung/Familie gebunden",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR038",
+      "problem_and_change": "Bloßes Laden eines Anruflinks lehnt keinen Anruf ab und startet keine Aufnahme",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR039",
+      "problem_and_change": "Fehlgeschlagene Anruf-Metadaten bieten einen ausdrücklich rein lesenden Retry",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR040",
+      "problem_and_change": "Alter Anruflink führt zum tatsächlich bereits geöffneten Gespräch",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR041",
+      "problem_and_change": "Nach beendetem Elternanruf führt eine Aktion zur richtigen privaten Kindernachricht",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR042",
+      "problem_and_change": "Überholte Familienhilfe-/Medienbestätigungen schließen ausschließlich ihre eigene Route",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart; family_call_dock_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR043",
+      "problem_and_change": "Gespeicherte alte Gesprächssteuerung kann kein neueres Gespräch beenden oder verändern",
+      "code": "family_call_screen.dart; family_call_service.dart: open",
+      "test": "family_call_continuity_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR044",
+      "problem_and_change": "Rollenlogo und Kopfpfad bieten einen klaren Rückweg zur jeweiligen Übersicht",
+      "code": "ui.dart: WorkspaceShell / _WorkspaceSidebar / _WorkspaceRail / _WorkspaceHeader",
+      "test": "workspace_download_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR045",
+      "problem_and_change": "Sidebar, Rail und mobile Menüaktionen verwerfen überholte Konto-/Familienklicks",
+      "code": "ui.dart: WorkspaceShell / _WorkspaceSidebar / _WorkspaceRail / _WorkspaceHeader",
+      "test": "workspace_download_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR046",
+      "problem_and_change": "Wissenschaftliche Grafikvergrößerung wurde erwogen, hier nicht implementiert",
+      "code": "nicht geändert",
+      "test": "kein Nachweis",
+      "status": "not_implemented"
+    },
+    {
+      "id": "RR047",
+      "problem_and_change": "Neuigkeiten benennen Server-Zeitfenster, Listenbegrenzung und Umfang der Glockenvorschau",
+      "code": "notification_panel.dart: NotificationsScreen; ui.dart: NotificationBell; notification_inbox.dart",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR048",
+      "problem_and_change": "Materiallösch-/OCR-Bestätigung ist zusätzlich an die ausgewählte Familie und sichtbare Ursprungsroute gebunden",
+      "code": "material_actions.dart: _confirmAccountAction / deleteNotebookPages / deleteLearningRound / reprocessNotebookPage",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR049",
+      "problem_and_change": "OCR-Status nimmt keine späte alte Sitzungsantwort in den neuen Kontext auf",
+      "code": "material_actions.dart: MaterialProcessingScreen",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR050",
+      "problem_and_change": "OCR-Status folgt beim Widgetwechsel der tatsächlich neuen Material-/Auftragsreferenz",
+      "code": "material_actions.dart: MaterialProcessingScreen",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR051",
+      "problem_and_change": "Private Fotodaten werden bei Familien-/Sitzungswechsel vor neu authentifiziertem Lesen verworfen",
+      "code": "notebook_photo.dart: NotebookPhoto / zoomNotebookPhoto",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR052",
+      "problem_and_change": "Fotoansicht übernimmt eine neue AppState/API-Instanz und entfernt alte Listener",
+      "code": "notebook_photo.dart: NotebookPhoto / zoomNotebookPhoto",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR053",
+      "problem_and_change": "Gespeicherte alte Zoom-/Retry-Aktionen verändern keine andere private Seite",
+      "code": "notebook_photo.dart: NotebookPhoto / zoomNotebookPhoto",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR054",
+      "problem_and_change": "Vollbildfoto schließt beim Kontextwechsel ausschließlich die eigene Route",
+      "code": "notebook_photo.dart: NotebookPhoto / zoomNotebookPhoto",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR055",
+      "problem_and_change": "Fachauswahl schließt bei Familienwechsel und alte Schließen-Aktion verdrängt keinen neuen Dialog",
+      "code": "subject_picker.dart: SubjectField / _SubjectChoices",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR056",
+      "problem_and_change": "Bisher gewähltes Fach steht unabhängig von der alphabetischen Position zuerst; die bestehende Auswahlsemantik bleibt erhalten",
+      "code": "subject_picker.dart: SubjectField / _SubjectChoices",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR057",
+      "problem_and_change": "Lernvorbereitung verwirft gespeicherte Ergebnisse bei Familienwechsel",
+      "code": "learning_preparation_screen.dart: LearningPreparationScreen",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR058",
+      "problem_and_change": "Überdeckte Vorbereitungsseiten pollen beim Wiederöffnen der App nicht im Hintergrund",
+      "code": "material_actions.dart / learning_preparation_screen.dart: didChangeAppLifecycleState",
+      "test": "private_context_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR059",
+      "problem_and_change": "Geladene Neuigkeiten lassen sich lokal nach Titel und Zieltext durchsuchen; Lesemarkierung betrifft nur angezeigte Treffer",
+      "code": "notification_panel.dart: NotificationsScreen",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR060",
+      "problem_and_change": "Eltern können ihre geladenen Neuigkeiten auf ein bestimmtes Kind eingrenzen",
+      "code": "notification_panel.dart: NotificationsScreen",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    },
+    {
+      "id": "RR061",
+      "problem_and_change": "Geladene Neuigkeiten lassen sich gezielt nach Anlass wie Hilfewunsch oder Live-Gespräch eingrenzen",
+      "code": "notification_panel.dart: NotificationsScreen",
+      "test": "notification_cards_ux88_test.dart",
+      "status": "tested"
+    }
+  ],
+  "verification_note": "Native Mock-Tests und isolierte PostgreSQL-Prüfung; keine echte KI, kein Geräte-/Push-/WCAG-Vollnachweis. Produktion noch nicht ausgeliefert."
+}

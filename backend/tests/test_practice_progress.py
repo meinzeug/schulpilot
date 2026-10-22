@@ -173,3 +173,71 @@ def test_progress_is_scoped_and_revoked_child_cannot_read_it(api):
         assert child.get(f"/api/children/{demo['child_id']}/learning-progress").status_code == 401
     assert api.get(f"/api/children/{demo['child_id']}/learning-progress?page_size=999").status_code == 422
     assert api.get(f"/api/children/{demo['child_id']}/learning-progress?topic=Only").status_code == 422
+
+
+@pytest.mark.parametrize('category,expected_counter', [
+    ('independent', 'independent_tasks'), ('assisted', 'assisted_tasks'),
+    ('needs_practice', 'needs_practice_tasks'), ('uncertain', 'uncertain_tasks'),
+    ('reflection', 'reflection_tasks'),
+])
+def test_rr020_category_filters_tasks_before_aggregation_without_changing_answers(api, category, expected_counter):
+    from schulpilot.db import Job
+    from sqlalchemy import func
+
+    demo, unit_id = prepared(api)
+    # Six artificial tasks in the SAME round prevent a round-only filter from
+    # accidentally passing this test. The retried success is not independent.
+    with DB.begin() as db:
+        unit = db.get(LearningUnit, unit_id)
+        for index, (outcome, assisted, evaluation) in enumerate([
+            ('correct', False, None), ('correct', True, None),
+            ('incorrect', False, None), ('uncertain', False, None),
+            ('uncertain', False, {'method': 'open_learning_v1'}),
+        ]):
+            db.add(Attempt(unit_id=unit.id, question_id=f'synthetic-{index}', answer='private synthetic answer',
+                           outcome=outcome, assisted=assisted, evaluation=evaluation, created=100 + index))
+        db.add(Attempt(unit_id=unit.id, question_id='retried', answer='synthetic old', outcome='incorrect', assisted=False, created=100))
+        db.add(Attempt(unit_id=unit.id, question_id='retried', answer='synthetic newer', outcome='correct', assisted=False, created=101))
+    with DB() as db:
+        before = list(db.execute(select(Attempt.id, Attempt.answer, Attempt.outcome, Attempt.assisted).order_by(Attempt.id)))
+        jobs = db.scalar(select(func.count()).select_from(Job))
+    path = f"/api/children/{demo['child_id']}/learning-progress"
+    response = api.get(path, params={'category': category})
+    assert response.status_code == 200
+    data = response.json()
+    expected = 2 if category == 'assisted' else 1
+    assert data['category'] == category
+    assert data['totals']['practiced_tasks'] == 6
+    assert data['selected_totals']['practiced_tasks'] == expected
+    assert data['selected_totals'][expected_counter] == expected
+    assert data['selected_totals']['attempts'] == (3 if category == 'assisted' else 1)
+    assert len(data['items']) == 1
+    assert data['items'][0][expected_counter] == expected
+    assert 'private synthetic answer' not in response.text
+    with child_client(demo) as child:
+        assert child.get(path, params={'category': category}).json() == data
+    with DB() as db:
+        assert list(db.execute(select(Attempt.id, Attempt.answer, Attempt.outcome, Attempt.assisted).order_by(Attempt.id))) == before
+        assert db.scalar(select(func.count()).select_from(Job)) == jobs
+
+
+def test_rr020_category_validation_pagination_and_family_permissions(api):
+    from conftest import HEADERS
+    from fastapi.testclient import TestClient
+    from schulpilot.main import app
+
+    demo, _ = prepared(api)
+    with DB.begin() as db:
+        for index in range(4):
+            stored_unit(db, demo['child_id'], topic=f'Synthetisches Thema {index}', outcomes=('correct', 'incorrect'))
+    path = f"/api/children/{demo['child_id']}/learning-progress"
+    result = api.get(path, params={'category': 'needs_practice', 'subject': 'Biologie', 'page_size': 2, 'page': 2}).json()
+    assert result['pagination'] == {'page': 2, 'pages': 2, 'page_size': 2, 'total': 4}
+    assert result['selected_totals']['practiced_tasks'] == 4
+    assert all(row['practiced_tasks'] == row['needs_practice_tasks'] == 1 for row in result['items'])
+    assert api.get(path, params={'category': 'invented'}).status_code == 422
+    empty = api.get(path, params={'category': 'uncertain'}).json()
+    assert empty['items'] == [] and empty['selected_totals']['practiced_tasks'] == 0
+    with TestClient(app, headers=HEADERS) as other:
+        other.post('/api/demo')
+        assert other.get(path, params={'category': 'needs_practice'}).status_code == 404

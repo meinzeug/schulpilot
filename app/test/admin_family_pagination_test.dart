@@ -200,12 +200,13 @@ void main() {
         ),
         findsOneWidget,
       );
-      final label = find.byWidgetPredicate(
-        (w) =>
-            w is Semantics &&
-            w.properties.label == 'Tarif für Familie synthetic-row bearbeiten',
-      );
+      final label = find.widgetWithText(ActionPanel, 'Tarif bearbeiten');
       expect(label, findsOneWidget);
+      final semantics = t.ensureSemantics();
+      final description = t.getSemantics(label).getSemanticsData();
+      expect(description.label, contains('synthetic-row'));
+      expect(description.label, contains('Tarif bearbeiten'));
+      semantics.dispose();
       await clean(t, s);
     },
   );

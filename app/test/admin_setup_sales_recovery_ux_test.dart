@@ -529,11 +529,14 @@ void main() {
       expect(find.text('Beendet (1)'), findsOneWidget);
       expect(find.textContaining('höchstens den 200'), findsOneWidget);
       await tester.enterText(
-        fixtures.field('Bank-Verwendungszweck suchen'),
+        fixtures.field('Verwendungszweck, Bestell-ID oder Tarif suchen'),
         'SCH-B',
       );
       await tester.pump();
-      expect(find.widgetWithText(SelectableText, 'SCH-B'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == 'SCH-B'),
+        findsOneWidget,
+      );
       expect(find.text('SCH-A'), findsNothing);
       await helper.tap(tester, find.byTooltip('Bestellsuche leeren'));
       final sort = find.byWidgetPredicate(

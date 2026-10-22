@@ -1,0 +1,885 @@
+{
+  "baseline": "3df2849",
+  "previous_count_excluded": 321,
+  "scope": "Admin und nachträglich ausdrücklich übertragener öffentlicher/Eltern-Bestellbereich; keine frühere A/R/P/K-Kennung erneut zählen",
+  "tested_count": 89,
+  "implemented_unverified_count": 0,
+  "items": [
+    {
+      "id": "AA001",
+      "problem_and_change": "Familientarifkarte öffnet über ihren Inhalt den zugehörigen Tarifeditor",
+      "code": "settings_screen.dart: AdminFamilyList.card",
+      "test": "admin_round2_tariffs_test.dart: AA001",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA002",
+      "problem_and_change": "Tarifeditor benennt die konkrete Familie und den bisherigen Tarif",
+      "code": "settings_screen.dart: _EntitlementEditor",
+      "test": "admin_round2_tariffs_test.dart: AA002",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA003",
+      "problem_and_change": "Leere und überlange Tarifnamen vor dem PUT korrigierbar abweisen",
+      "code": "settings_screen.dart: _EntitlementEditorState.validator",
+      "test": "admin_round2_tariffs_test.dart: AA003",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA004",
+      "problem_and_change": "Numerische Tarifgrenzen lokal wie im Backend prüfen",
+      "code": "settings_screen.dart: _EntitlementEditorState.ranges",
+      "test": "admin_round2_tariffs_test.dart: AA004",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA005",
+      "problem_and_change": "Tariffelder per Next/Done ohne unbeabsichtigten Commit bedienen",
+      "code": "settings_screen.dart: _EntitlementEditorState.focuses",
+      "test": "admin_round2_tariffs_test.dart: AA005",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA006",
+      "problem_and_change": "Sichtbare Tarifeingaben während des PUT auf den gesendeten Snapshot sperren",
+      "code": "settings_screen.dart: _EntitlementEditorState.busy",
+      "test": "admin_round2_tariffs_test.dart: AA006",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA007",
+      "problem_and_change": "Tarifdialog während ausstehendem PUT gegen Zurück-Verlust des Ergebnisses schützen",
+      "code": "settings_screen.dart: _EntitlementEditorState.PopScope",
+      "test": "admin_round2_tariffs_test.dart: AA007",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA008",
+      "problem_and_change": "Fehlgeschlagene Tarifänderung mit dauerhaftem Fehler und erhaltenem Entwurf korrigieren",
+      "code": "settings_screen.dart: _EntitlementEditorState.save",
+      "test": "admin_round2_tariffs_test.dart: AA008",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA009",
+      "problem_and_change": "Frische Adminsitzung darf keinen alten privaten Tarifdialog oder Callback übernehmen",
+      "code": "settings_screen.dart: entitlementDialog, _EntitlementEditorState.own",
+      "test": "admin_round2_tariffs_test.dart: AA009",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA010",
+      "problem_and_change": "Mikro-USD-Tariflimit als exakten USD-Entwurf sichtbar machen",
+      "code": "settings_screen.dart: _EntitlementEditorState.build",
+      "test": "admin_round2_tariffs_test.dart: AA010",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA011",
+      "problem_and_change": "Familien-Editabsicht über die ganze offene Editorlebenszeit einmalig halten",
+      "code": "settings_screen.dart: AdminFamilyList.edit",
+      "test": "admin_round2_tariffs_test.dart: AA011",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA012",
+      "problem_and_change": "KI-Steuerungskarte führt als ganze Zusammenfassung in die KI-Konfiguration",
+      "code": "settings_screen.dart: AdminScreen",
+      "test": "admin_round2_cost_routes_test.dart: AA012",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA013",
+      "problem_and_change": "AdminScreen ist weiterer Aufrufer der exakten Sitzungsbindung aus AA009",
+      "code": "settings_screen.dart: AdminScreen.own",
+      "test": null,
+      "status": "coupled",
+      "coupled_to": "AA009",
+      "counted": false,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA014",
+      "problem_and_change": "Modellverbrauchskarte öffnet zugehörige geladene Betriebsdetails",
+      "code": "ai_cost_panel.dart: AiCostPanel",
+      "test": "admin_round2_cost_routes_test.dart: AA014",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA015",
+      "problem_and_change": "Kleine erfasste Kosten auf Mikro-USD genau anzeigen statt zur Null zu runden",
+      "code": "ai_cost_panel.dart: usd",
+      "test": "admin_round2_cost_routes_test.dart: AA015",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA016",
+      "problem_and_change": "Fehlende Kostenkennzahlen ausdrücklich unbekannt statt Null oder Absturz darstellen",
+      "code": "ai_cost_panel.dart: number/usd/eur",
+      "test": "admin_round2_cost_routes_test.dart: AA016",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA017",
+      "problem_and_change": "Kindbudget-Kostenstelle öffnet ihre vorhandenen anonymen Budgetdetails",
+      "code": "ai_cost_panel.dart: child_budgets",
+      "test": "admin_round2_cost_routes_test.dart: AA017",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA018",
+      "problem_and_change": "Kostenstellenliste öffnet die zugehörigen aggregierten Auftragskosten",
+      "code": "ai_cost_panel.dart: cost_centres",
+      "test": "admin_round2_cost_routes_test.dart: AA018",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA019",
+      "problem_and_change": "Gespeicherte Routingkarte erklärt die konkrete Route und führt bewusst in ihren Entwurf",
+      "code": "ai_cost_panel.dart: AiRoutingPanel",
+      "test": "admin_round2_cost_routes_test.dart: AA019",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA020",
+      "problem_and_change": "Routingregeln bewusst neu lesen und davor eigenen Entwurf bewahren können",
+      "code": "ai_cost_panel.dart: AiRoutingPanel reload",
+      "test": "admin_round2_cost_routes_test.dart: AA020",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA021",
+      "problem_and_change": "Guthabenbeleg zeigt Guthaben, Gebühr und Gesamtzahlung als klaren Entwurf",
+      "code": "ai_cost_panel.dart: CreditReceiptForm",
+      "test": "admin_round2_workflows_test.dart: AA021",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA022",
+      "problem_and_change": "Guthabenbeleg bietet Next/Done-Tastaturführung ohne automatisches Speichern",
+      "code": "ai_cost_panel.dart: CreditReceiptForm",
+      "test": "admin_round2_workflows_test.dart: AA022",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA023",
+      "problem_and_change": "Erfolgreich gespeicherter Beleg leert nur die bestätigten Eingaben statt erneutes versehentliches Senden nahezulegen",
+      "code": "ai_cost_panel.dart: CreditReceiptForm",
+      "test": "admin_round2_workflows_test.dart: AA023",
+      "status": "excluded",
+      "counted": false,
+      "reason": "Defensive Formularleerung; der vorhandene LoadView-Neuaufbau kann die Eingaben bereits zurücksetzen. Kein zusätzlich sicher belegter Baselinefehler.",
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA024",
+      "problem_and_change": "Ungültiges Belegfeld wird nach Speichern sichtbar und fokussiert",
+      "code": "ai_cost_panel.dart: CreditReceiptForm",
+      "test": "admin_round2_workflows_test.dart: AA024",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA025",
+      "problem_and_change": "Auftragskarten öffnen ihren tatsächlichen wartenden/laufenden/überfälligen Betriebsstand",
+      "code": "settings_screen.dart: AdminOperationCards",
+      "test": "admin_round2_workflows_test.dart: AA025",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA026",
+      "problem_and_change": "Pushfehler-Metrik führt unmittelbar in die vorhandene Push-Prüfung",
+      "code": "settings_screen.dart: AdminOperationCards.metric",
+      "test": "admin_round2_workflows_test.dart: AA026",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA027",
+      "problem_and_change": "Worker-Signal öffnet gespeicherte Fakten und deren Nachweisgrenzen",
+      "code": "settings_screen.dart: AdminOperationCards",
+      "test": "admin_round2_workflows_test.dart: AA027",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA028",
+      "problem_and_change": "Protokollkarte öffnet vollständig lesbare und kopierbare eigene Ereignisdetails",
+      "code": "settings_screen.dart: AdminAuditList.details",
+      "test": "admin_round2_workflows_test.dart: AA028",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA029",
+      "problem_and_change": "Bekannte Protokollobjekte führen bewusst in ihren passenden erlaubten Arbeitsbereich",
+      "code": "settings_screen.dart: AdminAuditList.details, AdminScreen",
+      "test": "admin_round2_workflows_test.dart: AA029",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA030",
+      "problem_and_change": "Kombinierte Protokollfilter lassen sich sichtbar und vollständig zurücksetzen",
+      "code": "settings_screen.dart: AdminAuditList",
+      "test": "admin_round2_workflows_test.dart: AA030",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA031",
+      "problem_and_change": "Änderungen und Prüfungen lassen sich von zahlreichen reinen Leseereignissen trennen",
+      "code": "settings_screen.dart: AdminAuditList.actionKind",
+      "test": "admin_round2_workflows_test.dart: AA031",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA032",
+      "problem_and_change": "Protokollereignisse derselben Minute durch tatsächliche Sekunden unterscheiden",
+      "code": "settings_screen.dart: _adminEventDate",
+      "test": "admin_round2_workflows_test.dart: AA032",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA033",
+      "problem_and_change": "Geräte-/Versandkarte öffnet die bereits geladenen aggregierten technischen Fakten",
+      "code": "notification_panel.dart: PushAdminScreen",
+      "test": "admin_round2_push_test.dart: AA033",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA034",
+      "problem_and_change": "Konfigurationskarte öffnet gespeicherte Push-Nachweise mit bewusstem Weg zu Einstellungen",
+      "code": "notification_panel.dart: PushAdminScreen",
+      "test": "admin_round2_push_test.dart: AA034",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA035",
+      "problem_and_change": "Betreiberfreigaben und technische Nachweise als reine Statusprüfung öffnen",
+      "code": "notification_panel.dart: PushAdminScreen",
+      "test": "admin_round2_push_test.dart: AA035",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA036",
+      "problem_and_change": "Fehlender Push-Gesamtstand bleibt unbekannt; gültiges dünn besetztes Histogramm behält echte Nullen",
+      "code": "notification_panel.dart: PushAdminScreen.deliveries",
+      "test": "admin_round2_push_test.dart: AA036",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA037",
+      "problem_and_change": "Push-Einstellungslink öffnet tatsächlich den Push-Abschnitt statt Betreiberangaben",
+      "code": "installation_screen.dart: initialSection; main.dart: settings builder",
+      "test": "admin_round2_push_test.dart: AA037",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA038",
+      "problem_and_change": "Ausstehende Zustellungen ausdrücklich als tatsächlichen 24-Stunden-Ausschnitt benennen",
+      "code": "notification_panel.dart: PushAdminScreen",
+      "test": "admin_round2_push_test.dart: AA038",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA039",
+      "problem_and_change": "Gespeicherte Betreiberfreigabe getrennt von technischer Produktionsverfügbarkeit anzeigen",
+      "code": "notification_panel.dart: PushAdminScreen",
+      "test": "admin_round2_push_test.dart: AA039",
+      "status": "coupled",
+      "coupled_to": "AA035",
+      "counted": false,
+      "reason": "Weiteres notwendiges Feld derselben neuen Freigabenachweis-Ansicht, kein unabhängiger Zusatzpunkt.",
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA040",
+      "problem_and_change": "Bestellkarte öffnet die eigenen gespeicherten Tarif-/Laufzeit-/Zahlungsmetadaten",
+      "code": "store_screens.dart: StoreAdminScreen.orderDetails",
+      "test": "admin_round2_sales_test.dart: AA040",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA041",
+      "problem_and_change": "Bestellungen auch nach exakter Bestellkennung und gespeichertem Tarif finden",
+      "code": "store_screens.dart: StoreAdminScreen.matches",
+      "test": "admin_round2_sales_test.dart: AA041",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA042",
+      "problem_and_change": "Kombinierte Bestellsuche, Status und Sortierung gemeinsam sichtbar zurücksetzen",
+      "code": "store_screens.dart: StoreAdminScreen",
+      "test": "admin_round2_sales_test.dart: AA042",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA043",
+      "problem_and_change": "Tarifvorschau öffnet vollständigen Entwurf und führt bewusst zum vorhandenen Editor",
+      "code": "store_screens.dart: StoreAdminForm",
+      "test": "admin_round2_sales_test.dart: AA043",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA044",
+      "problem_and_change": "Verdeckter ungültiger Tarifentwurf wird automatisch aufgeklappt, gezeigt und fokussiert",
+      "code": "store_screens.dart: StoreAdminForm.invalidPlans",
+      "test": "admin_round2_sales_test.dart: AA044",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA045",
+      "problem_and_change": "Bankstammdaten mit Next/Done ohne Veröffentlichung bedienen",
+      "code": "store_screens.dart: StoreAdminForm",
+      "test": "admin_round2_sales_test.dart: AA045",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA046",
+      "problem_and_change": "Zahlungsprüffelder mit Next/Done ohne Zahlungsfreigabe bedienen",
+      "code": "store_screens.dart: PaymentCheckForm",
+      "test": "admin_round2_sales_test.dart: AA046",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA047",
+      "problem_and_change": "Zukünftigen Buchungstag vor Bestätigung entsprechend Backendgrenze abweisen",
+      "code": "store_screens.dart: PaymentCheckForm.dateError",
+      "test": "admin_round2_sales_test.dart: AA047",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA048",
+      "problem_and_change": "Bankbetrag lokal gegen gespeicherten Bestellpreis prüfen, keine automatische Bestätigung",
+      "code": "store_screens.dart: PaymentCheckForm",
+      "test": "admin_round2_sales_test.dart: AA048",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA049",
+      "problem_and_change": "Bestellwechsel beendet nur eigene Bestätigungsroute und übernimmt keinen alten Bankentwurf",
+      "code": "store_screens.dart: PaymentCheckForm.didUpdateWidget",
+      "test": "admin_round2_sales_test.dart: AA049",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA050",
+      "problem_and_change": "Ungültiges Zahlungsfeld bei kleiner Ansicht sichtbar fokussieren",
+      "code": "store_screens.dart: PaymentCheckForm.revealInvalid",
+      "test": "admin_round2_sales_test.dart: AA050",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA051",
+      "problem_and_change": "Überlange neue Provider-Schlüssel lokal mit der tatsächlichen 1024-Zeichen-Grenze korrigieren",
+      "code": "settings_screen.dart: ProviderForm.keyField",
+      "test": "admin_round2_provider_test.dart: AA051",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA052",
+      "problem_and_change": "Neuen Provider-Schlüssel bewusst sichtbar prüfen und seinen exakten Inhalt erhalten",
+      "code": "settings_screen.dart: ProviderForm.keyVisible",
+      "test": "admin_round2_provider_test.dart: AA052",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA053",
+      "problem_and_change": "Erstes ungültiges Providerfeld sichtbar fokussieren statt nur am weit entfernten Feld markieren",
+      "code": "settings_screen.dart: ProviderForm.revealInvalid",
+      "test": "admin_round2_provider_test.dart: AA053",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA054",
+      "problem_and_change": "Providerfelder per Next/Done in sichtbarer Reihenfolge bedienen ohne automatische Speicherung",
+      "code": "settings_screen.dart: ProviderForm.nextInput",
+      "test": "admin_round2_provider_test.dart: AA054",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA055",
+      "problem_and_change": "Abweichende Bildmodell-ID an der tatsächlichen Backendgrenze160 statt500 prüfen",
+      "code": "settings_screen.dart: ProviderForm.validateField",
+      "test": "admin_round2_provider_test.dart: AA055",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA056",
+      "problem_and_change": "Modellkennungen vor automatischer Tastaturkorrektur und typografischer Umschreibung schützen",
+      "code": "settings_screen.dart: ProviderForm model/extraction_model",
+      "test": "admin_round2_provider_test.dart: AA056",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA057",
+      "problem_and_change": "Auch erfüllte konfigurierbare Statuszeilen öffnen ihren richtigen Einstellungsabschnitt",
+      "code": "installation_screen.dart: status ListTile",
+      "test": "admin_round2_setup_test.dart: AA057",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA058",
+      "problem_and_change": "Lange Betriebseingaben und leeren Standardtarif lokal mit den bestehenden Schemagrößen prüfen",
+      "code": "installation_screen.dart: textLimits/save",
+      "test": "admin_round2_setup_test.dart: AA058",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA059",
+      "problem_and_change": "SMTP-URL oder Host-Port-Kombination vor PUT als konkreten Hostnamenfehler kennzeichnen",
+      "code": "installation_screen.dart: save smtp_host",
+      "test": "admin_round2_setup_test.dart: AA059",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA060",
+      "problem_and_change": "Fehlerhafte oder nicht objektförmige Konfigurations-JSONs lokal und ohne Geheimniswiedergabe korrigieren",
+      "code": "installation_screen.dart: save JSON preflight",
+      "test": "admin_round2_setup_test.dart: AA060",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA061",
+      "problem_and_change": "Fehlende dokumentierte Freigaben mit vorhandener20-Zeichen-Bedingung feldbezogen korrigieren",
+      "code": "installation_screen.dart: save evidence",
+      "test": "admin_round2_setup_test.dart: AA061",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA062",
+      "problem_and_change": "Überholten Einstellungs-GET nach neuerem Abruf oder Speichern verwerfen",
+      "code": "installation_screen.dart: loadGeneration",
+      "test": "admin_round2_setup_test.dart: AA062",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA063",
+      "problem_and_change": "Verdecktes Setupfehlerfeld über den richtigen Abschnitt sichtbar fokussieren",
+      "code": "installation_screen.dart: showFieldError",
+      "test": "admin_round2_setup_test.dart: AA063",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA064",
+      "problem_and_change": "Setupfelder per Next/Done innerhalb des sichtbaren Abschnitts bedienen ohne Versand oder Speichern",
+      "code": "installation_screen.dart: inputOrder",
+      "test": "admin_round2_setup_test.dart: AA064",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA065",
+      "problem_and_change": "Testmailergebnis dauerhaft beim Empfänger zeigen und bei neuer Adresse zurücksetzen",
+      "code": "installation_screen.dart: mailResult",
+      "test": "admin_round2_setup_test.dart: AA065",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/admin-public-native-exclusive.log"
+    },
+    {
+      "id": "AA066",
+      "problem_and_change": "Gesamte öffentliche Tarifkarte öffnet den zugehörigen Checkout ohne Bestellung",
+      "code": "store_screens.dart: StoreSection ActionPanel",
+      "test": "store_round2_ux88_test.dart: AA066",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA067",
+      "problem_and_change": "Sekundäre Tariftexte verwenden die tatsächliche Theme-Palette mit geprüftem Dunkelkontrast",
+      "code": "store_screens.dart: StoreSection muted labels",
+      "test": "store_round2_ux88_test.dart: AA067",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA068",
+      "problem_and_change": "Kaufkarten und direkter Checkout bleiben im synthetischen Testraum gesperrt",
+      "code": "store_screens.dart: StoreSection/CheckoutScreen isDemo",
+      "test": "store_round2_ux88_test.dart: AA068",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA069",
+      "problem_and_change": "Vertragsseite bietet einen konkreten Rückweg zu den verfügbaren Tarifen",
+      "code": "store_screens.dart: OffersScreen terms return",
+      "test": "store_round2_ux88_test.dart: AA069",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA070",
+      "problem_and_change": "Nicht mehr vorhandener Tarif bietet nutzbare Wege zu aktuellen Tarifen und gespeicherten Bestellungen",
+      "code": "store_screens.dart: CheckoutScreen missing plan",
+      "test": "store_round2_ux88_test.dart: AA070",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA071",
+      "problem_and_change": "Checkout-Tarifkarte öffnet ihre konkreten Vertragsbedingungen ohne Einwilligung zu setzen",
+      "code": "store_screens.dart: CheckoutScreen showTerms",
+      "test": "store_round2_ux88_test.dart: AA071",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA072",
+      "problem_and_change": "Checkout bietet vor Bestellung ausdrückliche Vergleichs-/Bestellverlaufwege",
+      "code": "store_screens.dart: CheckoutScreen navigation",
+      "test": "store_round2_ux88_test.dart: AA072",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA073",
+      "problem_and_change": "Unbestätigtes Bestellergebnis führt ausdrücklich zur GET-Prüfung gespeicherter Bestellungen",
+      "code": "store_screens.dart: CheckoutScreen error recovery",
+      "test": "store_round2_ux88_test.dart: AA073",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA074",
+      "problem_and_change": "Tarifkonflikt lässt aktuellen Preis bewusst neu laden und verlangt neue Einwilligung bei gleichem Wiederholungsschlüssel",
+      "code": "store_screens.dart: CheckoutScreen catalogVersion",
+      "test": "store_round2_ux88_test.dart: AA074",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA075",
+      "problem_and_change": "Bewusst gewählter anderer Tarif erhält eigene Bestellabsicht ohne alte Zustimmung oder Schlüsselübernahme",
+      "code": "store_screens.dart: CheckoutScreen.didUpdateWidget",
+      "test": "store_round2_ux88_test.dart: AA075",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA076",
+      "problem_and_change": "Laufzeitbeginn und gewählten vorzeitigen Start am Bestellabschluss zutreffend erklären",
+      "code": "store_screens.dart: CheckoutScreen start preference",
+      "test": "store_round2_ux88_test.dart: AA076",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA077",
+      "problem_and_change": "Eltern-Bestellverlauf benennt seinen tatsächlichen100er-Ausschnitt",
+      "code": "store_screens.dart: OrdersScreen bounded source",
+      "test": "store_round2_ux88_test.dart: AA077",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA078",
+      "problem_and_change": "Eltern filtern tatsächliche gespeicherte Bestellstatus mit echten Ausschnittszahlen",
+      "code": "store_screens.dart: OrdersScreen matchStatus",
+      "test": "store_round2_ux88_test.dart: AA078",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA079",
+      "problem_and_change": "Eltern finden geladene Bestellungen per Zweck/Tarif/Kennung und setzen kombinierte Filter zurück",
+      "code": "store_screens.dart: OrdersScreen query/reset",
+      "test": "store_round2_ux88_test.dart: AA079",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA080",
+      "problem_and_change": "Eltern sortieren den vorhandenen Bestellverlauf stabil nach wirklicher Bestellzeit",
+      "code": "store_screens.dart: OrdersScreen sort",
+      "test": "store_round2_ux88_test.dart: AA080",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA081",
+      "problem_and_change": "Gesamte bestehende Zugangskarte öffnet die Tarifübersicht",
+      "code": "store_screens.dart: OrdersScreen access ActionPanel",
+      "test": "store_round2_ux88_test.dart: AA081",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA082",
+      "problem_and_change": "Bestellkarte öffnet ausschließlich ihren unveränderlichen Vertrag-/Tarif-/Bank-/Anbieter-Snapshot",
+      "code": "store_screens.dart: OrdersScreen.details",
+      "test": "store_round2_ux88_test.dart: AA082",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA083",
+      "problem_and_change": "Gespeicherte Mailserverannahme ausdrücklich von beobachtetem E-Mail-Eingang unterscheiden",
+      "code": "store_screens.dart: OrdersScreen mail_status",
+      "test": "store_round2_ux88_test.dart: AA083",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA084",
+      "problem_and_change": "Laufende Bestellaktion sperrt konkurrierende Aktionen derselben Bestellung und Statusreload",
+      "code": "store_screens.dart: OrdersScreen.operate",
+      "test": "store_round2_ux88_test.dart: AA084",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA085",
+      "problem_and_change": "Bestellaktionsfehler bleiben korrigierbar an ihrer richtigen Karte sichtbar",
+      "code": "store_screens.dart: OrdersScreen.errors",
+      "test": "store_round2_ux88_test.dart: AA085",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA086",
+      "problem_and_change": "Stornierung klar benennen und mit Abbrechen im Fokus ausdrücklich bestätigen",
+      "code": "store_screens.dart: _storeOrderDialog cancellation",
+      "test": "store_round2_ux88_test.dart: AA086",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA087",
+      "problem_and_change": "Gespeichertes Stornierungsergebnis samt Hinweis bei schon erfolgter Überweisung nach Reload erhalten",
+      "code": "store_screens.dart: OrdersScreen.notes cancel",
+      "test": "store_round2_ux88_test.dart: AA087",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA088",
+      "problem_and_change": "Ergebnis des ausdrücklich ausgelösten Mailwiederholens bleibt bei seiner Bestellung sichtbar",
+      "code": "store_screens.dart: OrdersScreen.notes resend",
+      "test": "store_round2_ux88_test.dart: AA088",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA090",
+      "problem_and_change": "Leeren öffentlichen Tarifkatalog ausdrücklich anzeigen ohne Ersatzangebote zu erfinden",
+      "code": "store_screens.dart: StoreSection empty catalog",
+      "test": "store_round2_ux88_test.dart: AA090",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA091",
+      "problem_and_change": "Gesperrter Verkauf behauptet keinen unbelegten baldigen Start",
+      "code": "store_screens.dart: StoreSection disabled label",
+      "test": "store_round2_ux88_test.dart: AA091",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA093",
+      "problem_and_change": "Unbekannter Bestellstatus bleibt offen statt erfundenem Zustand In Prüfung",
+      "code": "store_screens.dart: orderStatus fallback",
+      "test": "store_round2_ux88_test.dart: AA093",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    },
+    {
+      "id": "AA094",
+      "problem_and_change": "Gemeinsamer Angebots-/Vertragskopf bewahrt die Kontonavigation bei320px und200Prozent Schrift ohne72px-Überlauf",
+      "code": "store_screens.dart: OffersScreen header",
+      "test": "store_round2_ux88_test.dart: AA094",
+      "status": "tested",
+      "counted": true,
+      "verification_log": "artifacts/ux88/store-round2-chrome-clean.log"
+    }
+  ],
+  "sources": [
+    "https://www.w3.org/WAI/ARIA/apg/patterns/link/",
+    "https://www.w3.org/WAI/ARIA/apg/patterns/button/",
+    "https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html",
+    "https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html",
+    "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html",
+    "https://docs.flutter.dev/ui/interactivity/focus",
+    "https://api.flutter.dev/flutter/material/InkWell-class.html",
+    "https://www.w3.org/WAI/tutorials/forms/notifications/",
+    "https://design-system.service.gov.uk/patterns/check-answers/",
+    "https://www.w3.org/WAI/WCAG22/Understanding/error-identification.html"
+  ],
+  "verification": [
+    "artifacts/ux88/admin-public-native-exclusive.log:211 grün,5 ausschließlich webrelevante Fälle übersprungen; abschließender exklusiver Lauf ohne parallelen Webbuild",
+    "artifacts/ux88/admin-workflows-push-verified.log:75 grün (inklusive Regressionen, keine addierte Zahl)",
+    "artifacts/ux88/admin-public-native-final.log:204 grün,5 Webfälle übersprungen;1 fremder Compilezwischenstand in grades_screen/installation_test, im Folgeblock korrigiert",
+    "artifacts/ux88/store-installation-native-clean.log:42 grün,5 ausschließlich webrelevante Fälle übersprungen",
+    "artifacts/ux88/store-round2-chrome-clean.log:33 grün, echter isolierter Chrome-Widgetrunner mit MockClient",
+    "artifacts/ux88/admin-analyze-clean.log:16 Dateien, No issues found!",
+    "artifacts/ux88/store-small-header-repro.log:belegter vorheriger72px-Überlauf; final native und Chrome bei320px/200Prozent grün"
+  ],
+  "unused_ids": [
+    "AA089",
+    "AA092"
+  ],
+  "excluded_shared": [
+    "RR031: ausschließlich Root; SmartQuotes/SmartDashes/IME-Lernen in Geheimnisfeldern nicht zusätzlich zählen"
+  ],
+  "coupled_count": 2,
+  "excluded_count": 1,
+  "expected_eligible_count_after_verification": 89,
+  "open_opportunities_not_counted": [
+    "Ältere Adminbestellungen außerhalb der vorhandenen200er-Grenze benötigen eine spätere berechtigte API-Pagination; die neue lokale Suche behauptet keine vollständige Historie.",
+    "Ältere Elternbestellungen außerhalb der vorhandenen100er-Grenze benötigen spätere serverseitige Pagination; keine künstliche Gesamtzahl.",
+    "Widget-/Chrome-Prüfungen ersetzen keine vollständige TalkBack-/NVDA-Abnahme oder reale Produktionszustellung."
+  ],
+  "counting_notes": [
+    "89 eigenständige Maßnahmen, nicht89 Sicherheitslücken. Tests, Themes, einzelne Zahlen-/Textfelder und Aufrufer desselben Guards sind keine Zusatzpunkte.",
+    "AA013 ist weiterer Aufrufer von AA009; AA039 ist notwendiges Feld der neuen AA035-Ansicht; AA023 wird trotz defensiver Implementierung/Test konservativ ausgeschlossen.",
+    "AA089 und AA092 wurden nicht vergeben. Fehlversuche, Reparaturen der neuen Tests und reine Formatter-/Lintänderungen zählen nicht.",
+    "RR031 wird ausschließlich bei Root gezählt. Setup-/API-Schlüssel-Tests prüfen zusätzlich exakt erhaltene künstliche Zeichen, keine echten Zugangsdaten.",
+    "Alle Backendgrenzen aus vorhandenen schemas.py/installation.py/commerce.py/admin.py gelesen; keine Rechte-, Budget-, Provider-, Vertrags- oder Kostenlockerung."
+  ],
+  "verification_notes": "211 native und33 Chrome sind überlappende Nachweisgruppen und werden nicht addiert. 42er/75er-Frühgruppen bleiben nur Verlauf. Keine vollständige App-/Geräte-/WCAG- oder Produktionsabnahme."
+}

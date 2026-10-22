@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'parent_workspace_ui.dart';
 import 'vocabulary_screen.dart' show vocabularyKey;
 
 /// Private local PDF preview; no grade is written before explicit confirmation.
@@ -35,6 +36,20 @@ class _GradePdfImportState extends State<GradePdfImport> {
   int? fileSize;
   List<Json> rows = [];
   final choices = <String, String>{};
+  final search = TextEditingController();
+  String query = '',
+      subjectFilter = 'all',
+      semesterFilter = 'all',
+      kindFilter = 'all',
+      statusFilter = 'all';
+  ModalRoute<bool>? ownDialog;
+  bool get filtered =>
+      query.isNotEmpty ||
+      subjectFilter != 'all' ||
+      semesterFilter != 'all' ||
+      kindFilter != 'all' ||
+      statusFilter != 'all';
+
   bool busy = false, closing = false, unresolvedOnly = false;
   int classworkWeight = 1, otherWeight = 1;
   bool get current =>
@@ -59,6 +74,10 @@ class _GradePdfImportState extends State<GradePdfImport> {
     if (mounted && !current && !closing) {
       closing = true;
       final route = ModalRoute.of(context);
+      final extra = ownDialog;
+      Future<void>.microtask(() {
+        if (extra?.isActive == true) extra!.navigator?.removeRoute(extra);
+      });
       setState(() {
         bytes = null;
         preview = result = null;
@@ -79,6 +98,13 @@ class _GradePdfImportState extends State<GradePdfImport> {
   @override
   void dispose() {
     bytes = null;
+    search.dispose();
+    final extra = ownDialog;
+    if (extra?.isActive == true) {
+      Future<void>.microtask(() {
+        if (extra!.isActive) extra.navigator?.removeRoute(extra);
+      });
+    }
     widget.state.removeListener(identityChanged);
     super.dispose();
   }
@@ -141,6 +167,65 @@ class _GradePdfImportState extends State<GradePdfImport> {
         .replaceAll('.', ',');
   }
 
+  Future<bool> question({
+    required String title,
+    required Widget content,
+    String accept = 'Weiter',
+  }) async {
+    if (!current ||
+        ownDialog?.isActive == true ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return false;
+    }
+    final route = DialogRoute<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(title),
+        content: content,
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  current &&
+                  ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx, false);
+              }
+            },
+            child: const Text('Zurück'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  current &&
+                  ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: Text(accept),
+          ),
+        ],
+      ),
+    );
+    ownDialog = route;
+    final answer = await Navigator.of(context, rootNavigator: true).push(route);
+    await route.completed;
+    if (identical(ownDialog, route)) ownDialog = null;
+    return current && answer == true;
+  }
+
+  void changeView(VoidCallback apply) {
+    if (!current || busy) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(apply);
+  }
+
+  void resetFilters() {
+    query = '';
+    search.clear();
+    subjectFilter = semesterFilter = kindFilter = statusFilter = 'all';
+  }
+
   Future<void> selectFile() async {
     if (!current || busy) return;
     var selectedNew = false;
@@ -149,6 +234,18 @@ class _GradePdfImportState extends State<GradePdfImport> {
       error = null;
     });
     try {
+      if (preview != null &&
+          result == null &&
+          !await question(
+            title: 'Andere PDF auswählen?',
+            content: Text(
+              'Die bisherige Auswahl für ${fileName ?? 'diese Vorschau'} wird erst ersetzt, wenn du eine neue gültige PDF auswählst. Noch nicht übernommene Zuordnungen werden dann verworfen. Gespeicherte Noten bleiben erhalten.',
+            ),
+            accept: 'Neue PDF auswählen',
+          )) {
+        return;
+      }
+      if (!current) return;
       final file =
           await (widget.pickPdf?.call() ??
               openFile(
@@ -179,6 +276,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
       rows = [];
       choices.clear();
       unresolvedOnly = false;
+      resetFilters();
       requestKey = vocabularyKey();
       selectedNew = true;
     } catch (e) {
@@ -249,7 +347,13 @@ class _GradePdfImportState extends State<GradePdfImport> {
   }
 
   Future<void> save() async {
-    if (!current || busy || !complete || preview == null) return;
+    if (!current ||
+        busy ||
+        !complete ||
+        preview == null ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -301,9 +405,23 @@ class _GradePdfImportState extends State<GradePdfImport> {
     final unresolved = rows
         .where((row) => choices[row['slot_key']] == null)
         .length;
-    final visible = unresolvedOnly
-        ? rows.where((row) => choices[row['slot_key']] == null).toList()
-        : rows;
+    final visible = rows
+        .where(
+          (row) =>
+              (!unresolvedOnly || choices[row['slot_key']] == null) &&
+              (subjectFilter == 'all' || row['subject'] == subjectFilter) &&
+              (semesterFilter == 'all' ||
+                  '${row['semester']}' == semesterFilter) &&
+              (kindFilter == 'all' || row['kind'] == kindFilter) &&
+              (statusFilter == 'all' || row['status'] == statusFilter) &&
+              (query.isEmpty ||
+                  '${row['subject']} ${row['matches']}'.toLowerCase().contains(
+                    query.toLowerCase(),
+                  )),
+        )
+        .toList();
+    final subjects = rows.map((r) => r['subject'].toString()).toSet().toList()
+      ..sort();
     final actionCounts = <String, int>{};
     for (final choice in choices.values) {
       final action = choice.startsWith('link:') ? 'link' : choice;
@@ -347,7 +465,13 @@ class _GradePdfImportState extends State<GradePdfImport> {
                             tooltip: 'Schließen',
                             onPressed: busy
                                 ? null
-                                : () => Navigator.pop(context, result != null),
+                                : () {
+                                    if (current &&
+                                        ModalRoute.of(context)?.isCurrent ==
+                                            true) {
+                                      Navigator.pop(context, result != null);
+                                    }
+                                  },
                             icon: const Icon(Icons.close),
                           ),
                         ],
@@ -476,6 +600,113 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                           fontSize: 13,
                                         ),
                                       ),
+                                      const SizedBox(height: 12),
+                                      ParentCollectionSearch(
+                                        controller: search,
+                                        label: 'PDF-Vorschau durchsuchen',
+                                        appliedQuery: query,
+                                        helperText: 'Sucht in den gelesenen Fächern und vorhandenen Vergleichseinträgen. Deine Übernahmeauswahl bleibt bei Filtern erhalten.',
+                                        enabled: !busy,
+                                        onSearch: () => changeView(
+                                          () => query = search.text.trim(),
+                                        ),
+                                        onClear: () => changeView(() {
+                                          query = '';
+                                          search.clear();
+                                        }),
+                                      ),
+                                      ExpansionTile(
+                                        title: const Text(
+                                          'PDF-Einträge gezielt prüfen',
+                                        ),
+                                        children: [
+                                          ParentChoiceFilter(
+                                            label: 'Fach in der PDF',
+                                            value: subjectFilter,
+                                            enabled: !busy,
+                                            choices: [
+                                              ('all', 'Alle Fächer'),
+                                              ...subjects.map((s) => (s, s)),
+                                            ],
+                                            onChanged: (v) => changeView(
+                                              () => subjectFilter = v,
+                                            ),
+                                          ),
+                                          ParentChoiceFilter(
+                                            label: 'Schulhalbjahr der PDF',
+                                            value: semesterFilter,
+                                            enabled: !busy,
+                                            choices: const [
+                                              ('all', 'Beide Halbjahre'),
+                                              ('1', '1. Halbjahr'),
+                                              ('2', '2. Halbjahr'),
+                                            ],
+                                            onChanged: (v) => changeView(
+                                              () => semesterFilter = v,
+                                            ),
+                                          ),
+                                          ParentChoiceFilter(
+                                            label: 'Leistungsart in der PDF',
+                                            value: kindFilter,
+                                            enabled: !busy,
+                                            choices: const [
+                                              ('all', 'Alle Leistungsarten'),
+                                              ('classwork', 'Klassenarbeiten'),
+                                              ('other', 'Sonstige Leistungen'),
+                                            ],
+                                            onChanged: (v) => changeView(
+                                              () => kindFilter = v,
+                                            ),
+                                          ),
+                                          ParentChoiceFilter(
+                                            label: 'Prüfstatus',
+                                            value: statusFilter,
+                                            enabled: !busy,
+                                            choices: const [
+                                              ('all', 'Alle Prüfzustände'),
+                                              ('new', 'Neue Einträge'),
+                                              (
+                                                'possible_match',
+                                                'Mögliche Doppelungen',
+                                              ),
+                                              (
+                                                'changed',
+                                                'Geänderte PDF-Werte',
+                                              ),
+                                              (
+                                                'existing',
+                                                'Bereits übernommen',
+                                              ),
+                                              ('ignored', 'Zuvor ausgelassen'),
+                                            ],
+                                            onChanged: (v) => changeView(
+                                              () => statusFilter = v,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (filtered)
+                                        TextButton.icon(
+                                          onPressed: busy
+                                              ? null
+                                              : () => changeView(resetFilters),
+                                          icon: const Icon(
+                                            Icons.filter_alt_off_outlined,
+                                          ),
+                                          label: const Text(
+                                            'PDF-Filter zurücksetzen',
+                                          ),
+                                        ),
+                                      Semantics(
+                                        liveRegion: true,
+                                        child: Text(
+                                          '${visible.length} von ${rows.length} PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
+                                        ),
+                                      ),
+                                      if (visible.isEmpty && filtered)
+                                        const Notice(
+                                          'Keine PDF-Einträge passen zu diesen Filtern. Deine bisherigen Zuordnungen bleiben erhalten.',
+                                        ),
                                       if (unresolved > 0 || unresolvedOnly)
                                         TextButton.icon(
                                           onPressed: busy
@@ -609,7 +840,12 @@ class _GradePdfImportState extends State<GradePdfImport> {
                       const SizedBox(height: 12),
                       if (result != null)
                         FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () {
+                            if (current &&
+                                ModalRoute.of(context)?.isCurrent == true) {
+                              Navigator.pop(context, true);
+                            }
+                          },
                           child: const Text('Fertig'),
                         )
                       else if (preview == null) ...[
@@ -681,6 +917,42 @@ class _GradePdfImportState extends State<GradePdfImport> {
               Text(
                 'Zuvor ausgelassen oder entfernt',
                 style: TextStyle(color: context.palette.muted),
+              ),
+            if ((row['matches'] as List? ?? []).isNotEmpty)
+              TextButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => question(
+                        title: 'Vorhandene Noten vergleichen',
+                        accept: 'Vergleich schließen',
+                        content: SizedBox(
+                          width: 480,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'PDF: ${row['subject']} · Note ${number(row['value'])} · ${row['semester']}. Halbjahr',
+                              ),
+                              const Text(
+                                'Diese Ansicht ändert keine Zuordnung. Entscheide danach im Feld Übernahme.',
+                              ),
+                              for (final match in row['matches']) ...[
+                                const Divider(height: 24),
+                                Text(
+                                  '${match['assessed_on'] == null ? 'Kein Einzeldatum gespeichert' : friendlyDate(match['assessed_on'])} · Note ${number(match['value'])} · ${match['weight'] ?? 1}-fach',
+                                ),
+                                if (match['topic'] is String)
+                                  SelectableText(match['topic']),
+                                if ((match['note'] ?? '').toString().isNotEmpty)
+                                  SelectableText(match['note']),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                icon: const Icon(Icons.compare_arrows_rounded),
+                label: const Text('Vorhandene Noten vergleichen'),
               ),
             if (status == 'changed') ...[
               const Text('Geänderter PDF-Wert'),

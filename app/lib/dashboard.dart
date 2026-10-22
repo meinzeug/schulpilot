@@ -8,13 +8,13 @@ import 'api.dart';
 import 'child_messages.dart';
 import 'collection_screen.dart';
 import 'daily_plan_panel.dart';
-import 'learning_tips.dart';
 import 'child_today_widgets.dart';
 import 'learning_navigation.dart';
-import 'homework_screen.dart' show homeworkKey;
 import 'family_call_screen.dart';
 import 'parent_child_navigation.dart';
 import 'parent_overview.dart';
+import 'parent_assignment_dialog.dart';
+import 'parent_activity_timeline.dart';
 import 'parent_workspace_ui.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
@@ -485,11 +485,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
     'verlauf' => 3,
     _ => 0,
   };
-  bool showCompletedAssignments = false;
   int version = 0;
   Timer? preparationPoll;
   GoRouter? observedRouter;
-  String? observingUser;
+  Json? observingAccount;
+  String? observingFamily;
   Duration? pollInterval;
   bool foreground = true,
       preparing = false,
@@ -497,8 +497,13 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
       reading = false;
   AppState get state => widget.state;
   bool get sameAccount =>
-      state.user != null && state.user?['id'] == observingUser;
-  void refresh() => setState(() => version++);
+      state.user != null &&
+      identical(state.user, observingAccount) &&
+      state.familyId == observingFamily;
+  void refresh() {
+    if (mounted && sameAccount) setState(() => version++);
+  }
+
   bool get visible {
     final path = observedRouter?.routeInformationProvider.value.uri.path;
     return path == '/app' || path == '/child/${widget.childId}';
@@ -507,7 +512,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   @override
   void initState() {
     super.initState();
-    observingUser = state.user?['id'];
+    observingAccount = state.user;
+    observingFamily = state.familyId;
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -595,7 +601,11 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                 : 'Lernüberblick',
             showTitle: false,
             child: LoadView<Json>(
-              key: ValueKey('${widget.childId}-${state.user?['id']}'),
+              key: ValueKey((
+                widget.childId,
+                ObjectKey(observingAccount),
+                observingFamily,
+              )),
               revision: '$version-${state.revision}',
               load: () async {
                 reading = true;
@@ -723,141 +733,35 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         ),
                       ),
                       SizedBox(height: 26),
-                      ParentSectionHeading(
-                        title: 'Lernaufträge & Klassenarbeiten',
-                        icon: Icons.assignment_outlined,
-                      ),
-                      if (state.canManage)
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 20),
-                          child: ActionButton(
-                            label: 'Auftrag oder Klassenarbeit anlegen',
-                            icon: Icons.add_rounded,
-                            onPressed: () async {
-                              await assignmentDialog(
-                                context,
-                                state,
-                                child,
-                                data['materials'],
-                              );
-                              refresh();
-                            },
-                          ),
-                        ),
-                      if ((data['assignments'] as List)
-                          .where((a) => a['done'] != true)
-                          .isEmpty)
-                        Notice(
-                          'Keine offenen Lernaufträge oder Klassenarbeiten.',
-                        ),
-                      if ((data['assignments'] as List).any(
-                        (a) => a['done'] == true,
-                      ))
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Erledigte Aufträge anzeigen'),
-                          value: showCompletedAssignments,
-                          onChanged: (value) =>
-                              setState(() => showCompletedAssignments = value),
-                        ),
-                      for (final a in (data['assignments'] as List).where(
-                        (a) => showCompletedAssignments || a['done'] != true,
-                      ))
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: Panel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    Tag(
-                                      a['kind'] == 'exam'
-                                          ? 'Klassenarbeit'
-                                          : (a['origin_kind'] ?? a['kind']) ==
-                                                'homework'
-                                          ? 'Notierte Hausaufgabe'
-                                          : 'Elternauftrag',
-                                    ),
-                                    Tag(
-                                      a['mandatory']
-                                          ? 'Verbindlich'
-                                          : 'Freiwillig',
-                                    ),
-                                    if (a['done']) Tag('Bearbeitet'),
-                                    if (a['source_status'] == 'needs_review')
-                                      Tag('Quelle geändert · Auftrag prüfen'),
-                                  ],
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  '${a['subject']} · ${a['topic']}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (a['due'] != null)
-                                  Text('Termin: ${friendlyDate(a['due'])}'),
-                                Text(a['note'] ?? ''),
-                                LearningTips(
-                                  state,
-                                  childId: child['id'],
-                                  kind: 'assignment',
-                                  resourceId: a['id'],
-                                ),
-                                if (state.canManage)
-                                  Wrap(
-                                    spacing: 12,
-                                    children: [
-                                      TextButton(
-                                        onPressed: () async {
-                                          await assignmentDialog(
-                                            context,
-                                            state,
-                                            child,
-                                            data['materials'],
-                                            existing: Map<String, dynamic>.from(
-                                              a,
-                                            ),
-                                          );
-                                          refresh();
-                                        },
-                                        child: Text('Ändern / neu planen'),
-                                      ),
-                                      ActionButton(
-                                        label: 'Ziel als erledigt markieren',
-                                        secondary: true,
-                                        onPressed: () async {
-                                          await state.api.post(
-                                            '/children/${child['id']}/assignments/${a['id']}/complete',
-                                          );
-                                          refresh();
-                                        },
-                                      ),
-                                      ActionButton(
-                                        label: 'Entfernen',
-                                        secondary: true,
-                                        onPressed: () async {
-                                          if (await confirmDialog(
-                                            context,
-                                            'Auftrag entfernen?',
-                                            'Das Ziel wird aus dem Plan entfernt. Bisherige Antworten bleiben gespeichert.',
-                                          )) {
-                                            await state.api.delete(
-                                              '/children/${child['id']}/assignments/${a['id']}',
-                                            );
-                                            refresh();
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                              ],
+                      ActionPanel(
+                        actionLabel: 'Lernaufträge und Klassenarbeiten im Lernplan ansehen',
+                        onPressed: () {
+                          if (sameAccount) {
+                            openRoute(
+                              context,
+                              '/parent-plan/${child['id']}?ansicht=topics',
+                            );
+                          }
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Lernaufträge & Klassenarbeiten',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                          ),
+                            Text(
+                              '${(data['assignments'] as List).where((a) => a['done'] != true).length} offene Aufträge',
+                            ),
+                            const Text(
+                              'Themen, Termine, Quellen und gespeicherte Runden an einem Ort prüfen. Hier wird keine neue Übung erzeugt.',
+                            ),
+                          ],
                         ),
+                      ),
                     ],
                     if (tab == 3) ...[
                       ParentWorkspaceHero(
@@ -880,75 +784,12 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         revision: (state.revision, data),
                         load: () =>
                             state.api.list('/children/${child['id']}/activity'),
-                        builder: (activities, _) => Panel(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ParentSectionHeading(
-                                title: 'Zeitlicher Verlauf',
-                                icon: Icons.timeline_rounded,
-                              ),
-                              if (!activities.any((a) => !technicalActivity(a['kind'])))
-                                Notice('Hier sind noch keine fachlichen Lernaktivitäten gespeichert. Technische Ereignisse zählen nicht als bearbeitete Aufgaben.'),
-                              for (final a in activities.where(
-                                (a) => !technicalActivity(a['kind']),
-                              ))
-                                Padding(
-                                  padding: EdgeInsets.only(bottom: 14),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${DateFormat('dd.MM. HH:mm').format(DateTime.fromMillisecondsSinceEpoch((a['created'] * 1000).toInt()).toLocal())} · ${activityLabel(a['kind'])}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      if (a['detail']['text'] != null)
-                                        Text(
-                                          a['detail']['text'],
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: context.palette.muted,
-                                          ),
-                                        ),
-                                      if (a['detail']['topic'] != null)
-                                        Text(
-                                          a['detail']['topic'],
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: context.palette.muted,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              if (activities.any(
-                                (a) => technicalActivity(a['kind']),
-                              ))
-                                ExpansionTile(
-                                  title: Text('Technische Ereignisse'),
-                                  children: [
-                                    for (final a in activities.where(
-                                      (a) => technicalActivity(a['kind']),
-                                    ))
-                                      ListTile(
-                                        dense: true,
-                                        title: Text(a['kind']),
-                                        subtitle: Text(
-                                          DateFormat('dd.MM. HH:mm').format(
-                                            DateTime.fromMillisecondsSinceEpoch(
-                                              (a['created'] * 1000).toInt(),
-                                            ).toLocal(),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                            ],
-                          ),
+                        builder: (activities, _) => ParentActivityTimeline(
+                          state,
+                          childId: child['id'],
+                          activities: activities,
+                          label: activityLabel,
+                          technical: technicalActivity,
                         ),
                       ),
                     ],
@@ -960,7 +801,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
   );
 }
 
-class _ChildHomeContent extends StatelessWidget {
+class _ChildHomeContent extends StatefulWidget {
   final AppState state;
   final Json data;
   final VoidCallback refresh;
@@ -971,18 +812,47 @@ class _ChildHomeContent extends StatelessWidget {
   });
 
   @override
+  State<_ChildHomeContent> createState() => _ChildHomeContentState();
+}
+
+class _ChildHomeContentState extends State<_ChildHomeContent> {
+  bool checkingIn = false;
+  AppState get state => widget.state;
+  Json get data => widget.data;
+  VoidCallback get refresh => widget.refresh;
+
+  @override
   Widget build(BuildContext context) {
-    final child = data['child'] as Json;
+    final renderedData = widget.data;
+    final child = renderedData['child'] as Json;
+    final account = state.user, family = state.familyId;
+    bool ownContext() =>
+        mounted &&
+        identical(state.user, account) &&
+        state.familyId == family &&
+        widget.data['child']?['id'] == child['id'];
+    bool current() =>
+        ownContext() &&
+        identical(widget.data, renderedData) &&
+        ModalRoute.of(context)?.isCurrent != false;
+    void openSaved(String path) {
+      if (current()) openRoute(context, path);
+    }
+
     final plan = data['plan'] as Json;
     final capture = data['daily_capture'] as Json? ?? {};
     final needsCapture = (capture['status'] ?? 'empty') == 'empty';
     final pending = _pendingMaterials(data);
     final preparations = <Json>[];
     final seenDays = <dynamic>{};
-    final current = capture['preparation'];
+    final capturePreparation = capture['preparation'];
     for (final raw in [
-      if (current is Map)
-        {...current, 'day_id': capture['day_id'], 'date': capture['date']},
+      if (capturePreparation is Map)
+        {
+          ...capturePreparation,
+          'day_id': capture['day_id'],
+          'date': capture['date'],
+        },
       ...data['pending_preparations'] as List? ?? [],
     ]) {
       if (raw is Map &&
@@ -1095,30 +965,34 @@ class _ChildHomeContent extends StatelessWidget {
         : 'Heutige Heftseiten';
 
     void openPhotos() {
+      if (!current()) return;
       if (pending.isNotEmpty && pending.first['school_day_id'] == null) {
-        openRoute(context, '/material/${pending.first['id']}');
+        openSaved('/material/${pending.first['id']}');
       } else {
-        openRoute(
-          context,
+        openSaved(
           '/after-school/${child['id']}${photosWaiting ? '' : '?capture=1'}',
         );
       }
     }
 
     Future<void> noNewPages() async {
+      if (!current() || checkingIn) return;
+      setState(() => checkingIn = true);
       try {
         await state.api.post('/children/${child['id']}/day-check-in');
-        refresh();
+        if (ownContext()) refresh();
       } catch (error) {
-        if (context.mounted) showError(context, error);
+        if (context.mounted && current()) showError(context, error);
+      } finally {
+        if (ownContext()) setState(() => checkingIn = false);
       }
     }
 
     final noPagesButton = Align(
       alignment: Alignment.centerLeft,
       child: TextButton(
-        onPressed: noNewPages,
-        child: Text('Heute keine neuen Seiten'),
+        onPressed: checkingIn ? null : noNewPages,
+        child: Text(checkingIn ? 'Wird notiert …' : 'Heute keine neuen Seiten'),
       ),
     );
     Widget hero;
@@ -1136,8 +1010,9 @@ class _ChildHomeContent extends StatelessWidget {
               ? Icons.chat_bubble_outline_rounded
               : Icons.play_arrow_rounded,
           onPressed: () async {
+            if (!current()) return;
             if (feedbackWaiting) {
-              openRoute(context, '/unit/${next['id']}');
+              openSaved('/unit/${next['id']}');
             } else {
               await openPlanItem(context, state, data, next);
             }
@@ -1153,8 +1028,7 @@ class _ChildHomeContent extends StatelessWidget {
         action: ActionButton(
           label: 'Vorbereitung ansehen',
           icon: Icons.hourglass_top_rounded,
-          onPressed: () async => openRoute(
-            context,
+          onPressed: () async => openSaved(
             '/learning-preparation/${child['id']}/${learningJob['id']}',
           ),
         ),
@@ -1168,8 +1042,7 @@ class _ChildHomeContent extends StatelessWidget {
         action: ActionButton(
           label: 'Rückblick ansehen',
           icon: Icons.fact_check_outlined,
-          onPressed: () async =>
-              openRoute(context, '/unit/${pendingReview['id']}'),
+          onPressed: () async => openSaved('/unit/${pendingReview['id']}'),
         ),
       );
     } else if (firstPreparation != null) {
@@ -1198,8 +1071,7 @@ class _ChildHomeContent extends StatelessWidget {
           icon: status == 'processing'
               ? Icons.hourglass_top_rounded
               : Icons.fact_check_outlined,
-          onPressed: () async => openRoute(
-            context,
+          onPressed: () async => openSaved(
             '/after-school/${child['id']}?day=${firstPreparation['day_id']}',
           ),
         ),
@@ -1279,7 +1151,7 @@ class _ChildHomeContent extends StatelessWidget {
             title: 'Dein Hausaufgabenfoto ist wieder da',
             subtitle: 'Prüfe es, bevor du es abgibst.',
             icon: Icons.restore_rounded,
-            onTap: () => openRoute(context, '/homework/${child['id']}'),
+            onTap: () => openSaved('/homework/${child['id']}'),
           ),
         ],
         if (!photoPrimary) ...[
@@ -1295,8 +1167,7 @@ class _ChildHomeContent extends StatelessWidget {
                 : 'Neue Fotos aus der Schule hinzufügen.',
             icon: Icons.add_a_photo_outlined,
             accent: context.palette.cyanInk,
-            onTap: () =>
-                openRoute(context, '/after-school/${child['id']}?capture=1'),
+            onTap: () => openSaved('/after-school/${child['id']}?capture=1'),
             footer: needsCapture && !photosWaiting ? noPagesButton : null,
           ),
         ] else if (needsCapture && !photosWaiting)
@@ -1305,7 +1176,7 @@ class _ChildHomeContent extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-              onPressed: () => openRoute(context, '/learn/${child['id']}'),
+              onPressed: () => openSaved('/learn/${child['id']}'),
               icon: Icon(Icons.explore_outlined, size: 20),
               label: Text('Anderes Thema'),
             ),
@@ -1316,8 +1187,7 @@ class _ChildHomeContent extends StatelessWidget {
             title: 'Runde wird vorbereitet',
             subtitle: 'Du kannst später zurückkommen.',
             icon: Icons.hourglass_top_rounded,
-            onTap: () => openRoute(
-              context,
+            onTap: () => openSaved(
               '/learning-preparation/${child['id']}/${learningJob['id']}',
             ),
           ),
@@ -1328,19 +1198,22 @@ class _ChildHomeContent extends StatelessWidget {
             title: 'Rückblick ansehen',
             subtitle: 'Deine Antworten sind gespeichert.',
             icon: Icons.fact_check_outlined,
-            onTap: () => openRoute(context, '/unit/${pendingReview['id']}'),
+            onTap: () => openSaved('/unit/${pendingReview['id']}'),
           ),
         ],
         for (final preparation in remainingPreparations)
-          _ChildPreparationLink(childId: child['id'], preparation: preparation),
+          _ChildPreparationLink(
+            childId: child['id'],
+            preparation: preparation,
+            canOpen: current,
+          ),
         if (!photoPrimary &&
             pending.isNotEmpty &&
             pending.first['school_day_id'] == null)
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () =>
-                  openRoute(context, '/material/${pending.first['id']}'),
+              onPressed: () => openSaved('/material/${pending.first['id']}'),
               icon: Icon(Icons.fact_check_outlined, size: 20),
               label: Text('Heftseite prüfen'),
             ),
@@ -1353,6 +1226,9 @@ class _ChildHomeContent extends StatelessWidget {
             goalRequired: goalRequired,
             goalMet: goalMet,
             completed: completed,
+            onOpen: () {
+              if (current()) _showChildLearningTime(context, state, plan);
+            },
             description: goalRequired
                 ? '${goalMet ? 'Tagesziel geschafft' : 'Tagesziel offen'} · Heute ca. ${learningMinutes(activeMinutes)} von ${learningMinutes(dailyGoal)} Min. aktiv'
                 : 'Heute ca. ${learningMinutes(activeMinutes)} Min. aktiv · ohne festes Lernziel',
@@ -1374,12 +1250,16 @@ class _ChildHomeContent extends StatelessWidget {
           runSpacing: 10,
           children: [
             OutlinedButton.icon(
-              onPressed: () => _showChildPlan(context, state, data),
+              onPressed: () {
+                if (current()) {
+                  _showChildPlan(context, state, data);
+                }
+              },
               icon: Icon(Icons.route_rounded),
               label: Text('Mein Plan'),
             ),
             OutlinedButton.icon(
-              onPressed: () => openRoute(context, '/messages/${child['id']}'),
+              onPressed: () => openSaved('/messages/${child['id']}'),
               icon: Icon(Icons.forum_rounded),
               label: Text('Nachrichten & Wünsche'),
             ),
@@ -1391,20 +1271,23 @@ class _ChildHomeContent extends StatelessWidget {
           runSpacing: 4,
           children: [
             TextButton.icon(
-              onPressed: () => showHomeHelp(
-                context,
-                state,
-                childId: child['id'],
-                unitId: next != null && next['kind'] == 'unit'
-                    ? next['id']
-                    : null,
-                refresh: refresh,
-              ),
+              onPressed: () {
+                if (!current()) return;
+                showHomeHelp(
+                  context,
+                  state,
+                  childId: child['id'],
+                  unitId: next != null && next['kind'] == 'unit'
+                      ? next['id']
+                      : null,
+                  refresh: refresh,
+                );
+              },
               icon: Icon(Icons.volunteer_activism_outlined, size: 21),
               label: Text('Ich brauche Hilfe'),
             ),
             TextButton.icon(
-              onPressed: () => openRoute(context, '/library/${child['id']}'),
+              onPressed: () => openSaved('/library/${child['id']}'),
               icon: Icon(Icons.folder_open_rounded, size: 21),
               label: Text('Meine Heftseiten'),
             ),
@@ -1443,16 +1326,77 @@ class _ChildHomeContent extends StatelessWidget {
   }
 }
 
+Future<void> _showChildLearningTime(
+  BuildContext context,
+  AppState state,
+  Json plan,
+) async {
+  final account = state.user, family = state.familyId;
+  bool current() =>
+      context.mounted &&
+      identical(state.user, account) &&
+      state.familyId == family;
+  final navigator = Navigator.of(context, rootNavigator: true);
+  late DialogRoute<void> route;
+  route = DialogRoute<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('Deine Lernzeit'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LearningGoalPanel(plan: plan),
+            SizedBox(height: 14),
+            Text(
+              'Die Zeiten kommen aus deinen gespeicherten Lernaktivitäten. Pausen und Zeit im Hintergrund zählen nicht dazu.',
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Ein erreichtes Zeitziel sagt noch nicht, ob ein Thema schon sicher sitzt. Du darfst danach freiwillig weiterlernen.',
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            if (current() && route.isCurrent) Navigator.pop(ctx);
+          },
+          child: Text('Zurück zu Heute'),
+        ),
+      ],
+    ),
+  );
+  void identityChanged() {
+    if (!current() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  state.addListener(identityChanged);
+  try {
+    await navigator.push(route);
+  } finally {
+    state.removeListener(identityChanged);
+  }
+}
+
 Future<void> _showChildPlan(
   BuildContext context,
   AppState state,
   Json data,
 ) async {
-  final owner = state.user?['id'];
+  final owner = state.user, family = state.familyId;
+  bool current() =>
+      context.mounted &&
+      identical(state.user, owner) &&
+      state.familyId == family;
   final child = data['child'] as Json;
   final plan = data['plan'] as Json;
   final today = plan['today'] as List? ?? [];
-  final chosen = await showDialog<dynamic>(
+  final navigator = Navigator.of(context, rootNavigator: true);
+  late DialogRoute<dynamic> ownRoute;
+  ownRoute = DialogRoute<dynamic>(
     context: context,
     builder: (dialogContext) => Dialog(
       child: ConstrainedBox(
@@ -1480,7 +1424,11 @@ Future<void> _showChildPlan(
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.pop(dialogContext),
+                    onPressed: () {
+                      if (current() && ownRoute.isCurrent) {
+                        Navigator.pop(dialogContext);
+                      }
+                    },
                     tooltip: 'Schließen',
                     icon: Icon(Icons.close_rounded),
                   ),
@@ -1512,7 +1460,11 @@ Future<void> _showChildPlan(
                         state: state,
                         data: data,
                         item: item,
-                        onOpen: () => Navigator.pop(dialogContext, item),
+                        onOpen: () {
+                          if (current() && ownRoute.isCurrent) {
+                            Navigator.pop(dialogContext, item);
+                          }
+                        },
                       ),
                     if ((plan['week'] as List? ?? []).isNotEmpty) ...[
                       SizedBox(height: 16),
@@ -1545,11 +1497,24 @@ Future<void> _showChildPlan(
       ),
     ),
   );
-  if (chosen != null && context.mounted && state.user?['id'] == owner) {
+  void identityChanged() {
+    if (!current() && ownRoute.isActive) {
+      ownRoute.navigator?.removeRoute(ownRoute);
+    }
+  }
+
+  state.addListener(identityChanged);
+  dynamic chosen;
+  try {
+    chosen = await navigator.push(ownRoute);
+  } finally {
+    state.removeListener(identityChanged);
+  }
+  if (chosen != null && context.mounted && current()) {
     try {
       await openPlanItem(context, state, data, chosen);
     } catch (error) {
-      if (context.mounted) showError(context, error);
+      if (context.mounted && current()) showError(context, error);
     }
   }
 }
@@ -1557,9 +1522,11 @@ Future<void> _showChildPlan(
 class _ChildPreparationLink extends StatelessWidget {
   final String childId;
   final Json preparation;
+  final bool Function() canOpen;
   const _ChildPreparationLink({
     required this.childId,
     required this.preparation,
+    required this.canOpen,
   });
 
   @override
@@ -1591,10 +1558,14 @@ class _ChildPreparationLink extends StatelessWidget {
                 : _shortDate(preparation['date']),
           ),
           trailing: Icon(Icons.chevron_right_rounded),
-          onTap: () => openRoute(
-            context,
-            '/after-school/$childId?day=${preparation['day_id']}',
-          ),
+          onTap: () {
+            if (canOpen()) {
+              openRoute(
+                context,
+                '/after-school/$childId?day=${preparation['day_id']}',
+              );
+            }
+          },
         ),
       ),
     );
@@ -1623,30 +1594,52 @@ class _ChildPlanRow extends StatelessWidget {
         : item['mandatory'] == true
         ? 'Elternauftrag'
         : 'Übung';
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(item['topic'], style: TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(
-        '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}',
+    final account = state.user, family = state.familyId;
+    Future<void> open() async {
+      if (!context.mounted ||
+          !identical(state.user, account) ||
+          state.familyId != family ||
+          !available ||
+          ModalRoute.of(context)?.isCurrent == false) {
+        return;
+      }
+      if (onOpen != null) {
+        onOpen!();
+        return;
+      }
+      try {
+        await openPlanItem(context, state, data, item);
+      } catch (error) {
+        if (context.mounted &&
+            identical(state.user, account) &&
+            state.familyId == family) {
+          showError(context, error);
+        }
+      }
+    }
+
+    return Semantics(
+      button: available,
+      child: ListTile(
+        onTap: available ? open : null,
+        contentPadding: EdgeInsets.symmetric(horizontal: 4),
+        title: Text(
+          item['topic'],
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}',
+        ),
+        isThreeLine: true,
+        trailing: available
+            ? ExcludeSemantics(
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: context.palette.teal,
+                ),
+              )
+            : null,
       ),
-      isThreeLine: true,
-      trailing: available
-          ? IconButton(
-              tooltip: 'Lernen starten',
-              icon: Icon(Icons.play_arrow_rounded, color: context.palette.teal),
-              onPressed: () async {
-                if (onOpen != null) {
-                  onOpen!();
-                  return;
-                }
-                try {
-                  await openPlanItem(context, state, data, item);
-                } catch (e) {
-                  if (context.mounted) showError(context, e);
-                }
-              },
-            )
-          : null,
     );
   }
 }
@@ -1871,19 +1864,136 @@ class _ParentMessages extends StatefulWidget {
 }
 
 class _ParentMessagesState extends State<_ParentMessages> {
-  late final Json? account = widget.state.user;
-  late final String? family = widget.state.familyId;
-  bool openOnly = false;
+  late final Json? account;
+  late final String? family;
+  final search = TextEditingController();
+  String query = '', kindFilter = 'all';
+  bool openOnly = false, oldestFirst = false;
+  ModalRoute<String>? detailRoute;
   bool get current =>
       mounted &&
       identical(account, widget.state.user) &&
       family == widget.state.familyId &&
       widget.state.isParent;
   String get childId => widget.data['child']['id'];
+  String get memoryKey => 'parent-message-view:$childId';
+  @override
+  void initState() {
+    super.initState();
+    account = widget.state.user;
+    family = widget.state.familyId;
+    final saved = widget.state.collectionViews[memoryKey];
+    query = saved?['q'] is String && (saved!['q'] as String).length <= 160
+        ? saved['q']
+        : '';
+    kindFilter =
+        [
+          'all',
+          'help',
+          'interest',
+          'plan_change',
+          'reply',
+          'system',
+        ].contains(saved?['kind'])
+        ? saved!['kind']
+        : 'all';
+    openOnly = saved?['open'] == true;
+    oldestFirst = saved?['oldest'] == true;
+    search.text = query;
+    widget.state.addListener(contextChanged);
+  }
+
+  void closeDetail() {
+    final route = detailRoute;
+    Future<void>.microtask(() {
+      if (route?.isActive == true) route!.navigator?.removeRoute(route);
+    });
+  }
+
+  void contextChanged() {
+    if (!current) closeDetail();
+  }
+
+  @override
+  void dispose() {
+    closeDetail();
+    widget.state.removeListener(contextChanged);
+    search.dispose();
+    super.dispose();
+  }
+
+  void remember() {
+    if (current) {
+      widget.state.collectionViews[memoryKey] = {
+        'q': query,
+        'kind': kindFilter,
+        'open': openOnly,
+        'oldest': oldestFirst,
+      };
+    }
+  }
+
+  void changeView(VoidCallback change) {
+    if (!current) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(change);
+    remember();
+  }
+
+  void applySearch({bool clear = false}) => changeView(() {
+    query = clear ? '' : search.text.trim();
+    if (clear) search.clear();
+  });
+  void reset() => changeView(() {
+    query = '';
+    search.clear();
+    openOnly = oldestFirst = false;
+    kindFilter = 'all';
+  });
+  String kindLabel(Json m) => switch (m['kind']) {
+    'help' => 'Hilfewunsch',
+    'interest' => 'Interesse',
+    'plan_change' => 'Planvorschlag',
+    'reply' => 'Antwort',
+    'preparation' => 'Heftvorbereitung',
+    'reminder' => 'Lernerinnerung',
+    _ => 'Nachricht',
+  };
+  String sender(Json m) => m['sender_role'] == 'system'
+      ? 'Von Schulpilot'
+      : m['sender_role'] == 'child'
+      ? 'Von deinem Kind'
+      : 'Von einem Elternteil';
+  String stamp(Json m) => m['created'] is num
+      ? DateFormat('dd.MM.yyyy · HH:mm').format(
+          DateTime.fromMillisecondsSinceEpoch(
+            ((m['created'] as num) * 1000).toInt(),
+          ),
+        )
+      : 'Zeitpunkt nicht gespeichert';
+  String? contextPath(Json m) {
+    if (m['context_unavailable'] == true || m['context'] is! Map) return null;
+    final scope = m['context'] as Map;
+    if (scope['unit_id'] is String) return '/unit/${scope['unit_id']}';
+    if (scope['material_id'] is String) {
+      return '/material/${scope['material_id']}';
+    }
+    if (scope['day_id'] is String) {
+      return '/after-school/$childId?day=${scope['day_id']}';
+    }
+    return null;
+  }
+
+  String contextLabel(Json m) => (m['context'] as Map?)?['unit_id'] != null
+      ? 'Lernrunde ansehen'
+      : (m['context'] as Map?)?['material_id'] != null
+      ? 'Heftseite ansehen'
+      : 'Schultag ansehen';
   Future<void> compose([Json? scope]) async {
     if (!current || !widget.state.canManage) return;
     final child = childId;
-    final contextMap = scope?['context'] is Map
+    final contextMap =
+        scope?['context_unavailable'] != true && scope?['context'] is Map
         ? Json.from(scope!['context'])
         : null;
     try {
@@ -1894,8 +2004,10 @@ class _ParentMessagesState extends State<_ParentMessages> {
         kind: 'reply',
         title: scope == null ? 'Kurze Nachricht senden' : 'Dazu antworten',
         messageContext: contextMap,
-        referenceText: contextMap == null
+        referenceText: scope == null
             ? null
+            : contextMap == null
+            ? '${kindLabel(scope)} · ${stamp(scope)}\n${scope['body']}'
             : contextMap['unit_id'] != null
             ? 'Zur ausgewählten Lernrunde'
             : contextMap['material_id'] != null
@@ -1910,25 +2022,141 @@ class _ParentMessagesState extends State<_ParentMessages> {
     }
   }
 
-  String kindLabel(Json m) => switch (m['kind']) {
-    'help' => 'Hilfewunsch',
-    'interest' => 'Interesse',
-    'plan_change' => 'Planvorschlag',
-    'reply' => 'Antwort',
-    'preparation' => 'Heftvorbereitung',
-    'reminder' => 'Lernerinnerung',
-    _ => 'Nachricht',
-  };
+  Future<void> showMessage(Json message, {bool resolve = false}) async {
+    if (!current ||
+        detailRoute?.isActive == true ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    final child = childId;
+    bool valid() => current && child == childId;
+    final route = DialogRoute<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(resolve ? 'Hilfewunsch besprochen?' : kindLabel(message)),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('${sender(message)} · ${stamp(message)}'),
+              const SizedBox(height: 12),
+              SelectableText(message['body'].toString()),
+              if (resolve) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Damit markierst du nur dieses Anliegen als besprochen. Die Nachricht bleibt gespeichert und der Lernstand unverändert.',
+                ),
+              ],
+              if (message['context_unavailable'] == true)
+                const Text(
+                  'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  valid() &&
+                  ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx);
+              }
+            },
+            child: Text(resolve ? 'Abbrechen' : 'Schließen'),
+          ),
+          if (!resolve && contextPath(message) != null)
+            TextButton(
+              onPressed: () {
+                if (ctx.mounted &&
+                    valid() &&
+                    ModalRoute.of(ctx)?.isCurrent == true) {
+                  Navigator.pop(ctx, 'context');
+                }
+              },
+              child: Text(contextLabel(message)),
+            ),
+          if (!resolve &&
+              widget.state.canManage &&
+              message['sender_role'] == 'child')
+            TextButton(
+              onPressed: () {
+                if (ctx.mounted &&
+                    valid() &&
+                    ModalRoute.of(ctx)?.isCurrent == true) {
+                  Navigator.pop(ctx, 'reply');
+                }
+              },
+              child: const Text('Antwort entwerfen'),
+            ),
+          if (resolve && widget.state.canManage)
+            FilledButton(
+              onPressed: () {
+                if (ctx.mounted &&
+                    valid() &&
+                    ModalRoute.of(ctx)?.isCurrent == true) {
+                  Navigator.pop(ctx, 'resolve');
+                }
+              },
+              child: const Text('Als besprochen markieren'),
+            ),
+        ],
+      ),
+    );
+    detailRoute = route;
+    final result = await Navigator.of(context, rootNavigator: true).push(route);
+    await route.completed;
+    if (identical(detailRoute, route)) detailRoute = null;
+    if (!mounted || !valid()) return;
+    if (result == 'context') {
+      final path = contextPath(message);
+      if (path != null) openRoute(context, path);
+    } else if (result == 'reply') {
+      await compose(message);
+    } else if (result == 'resolve' && widget.state.canManage) {
+      await widget.state.api.post(
+        '/children/$child/messages/${message['id']}/resolve',
+      );
+      if (valid()) widget.refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!current) return const SizedBox.shrink();
     final all = (widget.data['messages'] as List)
         .map((m) => Json.from(m))
         .toList();
+    if (oldestFirst) {
+      all.sort((a, b) {
+        final byDate = (a['created'] as num? ?? 0).compareTo(
+          b['created'] as num? ?? 0,
+        );
+        return byDate != 0 ? byDate : '${a['id']}'.compareTo('${b['id']}');
+      });
+    }
     final open = all
         .where((m) => m['kind'] == 'help' && m['resolved'] != true)
         .toList();
-    final visible = openOnly ? open : all;
+    final visible = all
+        .where(
+          (m) =>
+              (!openOnly || (m['kind'] == 'help' && m['resolved'] != true)) &&
+              (kindFilter == 'all' ||
+                  (kindFilter == 'system'
+                      ? m['sender_role'] == 'system'
+                      : m['kind'] == kindFilter)) &&
+              (query.isEmpty ||
+                  '${m['body']} ${kindLabel(m)} ${sender(m)}'
+                      .toLowerCase()
+                      .contains(query.toLowerCase())),
+        )
+        .toList();
+    final filtered =
+        openOnly || kindFilter != 'all' || query.isNotEmpty || oldestFirst;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1956,23 +2184,56 @@ class _ParentMessagesState extends State<_ParentMessages> {
           'Bis zu 100 neueste Nachrichten · ${all.length} geladen',
           style: TextStyle(color: context.palette.muted),
         ),
-        const SizedBox(height: 8),
+        ParentCollectionSearch(
+          controller: search,
+          label: 'Geladene Nachrichten durchsuchen',
+          appliedQuery: query,
+          helperText: 'Mit Suchen bestätigen. Durchsucht nur diese höchstens 100 geladenen Nachrichten.',
+          onSearch: applySearch,
+          onClear: () => applySearch(clear: true),
+        ),
+        ParentChoiceFilter(
+          label: 'Anliegenart',
+          value: kindFilter,
+          choices: const [
+            ('all', 'Alle Anliegenarten'),
+            ('help', 'Hilfewünsche'),
+            ('interest', 'Interessen'),
+            ('plan_change', 'Planvorschläge'),
+            ('reply', 'Antworten'),
+            ('system', 'Von Schulpilot'),
+          ],
+          onChanged: (value) => changeView(() {
+            kindFilter = value;
+            if (value != 'help' && value != 'all') openOnly = false;
+          }),
+        ),
+        ParentChoiceFilter(
+          label: 'Reihenfolge der geladenen Nachrichten',
+          value: oldestFirst ? 'oldest' : 'newest',
+          choices: const [
+            ('newest', 'Neueste zuerst'),
+            ('oldest', 'Älteste der geladenen zuerst'),
+          ],
+          onChanged: (value) =>
+              changeView(() => oldestFirst = value == 'oldest'),
+        ),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: [
             ChoiceChip(
               label: const Text('Alle geladenen'),
               selected: !openOnly,
-              onSelected: (_) {
-                if (current) setState(() => openOnly = false);
-              },
+              onSelected: (_) => changeView(() => openOnly = false),
             ),
             ChoiceChip(
               label: Text('Offene Hilfe (${open.length})'),
               selected: openOnly,
-              onSelected: (_) {
-                if (current) setState(() => openOnly = true);
-              },
+              onSelected: (_) => changeView(() {
+                openOnly = true;
+                if (kindFilter != 'help') kindFilter = 'all';
+              }),
             ),
           ],
         ),
@@ -1983,43 +2244,67 @@ class _ParentMessagesState extends State<_ParentMessages> {
               'Offene Hilfewünsche innerhalb der geladenen Vorschau. Ältere Nachrichten können außerhalb dieser Vorschau liegen.',
             ),
           ),
+        if (filtered)
+          TextButton.icon(
+            onPressed: reset,
+            icon: const Icon(Icons.filter_alt_off_outlined),
+            label: const Text('Nachrichtenansicht zurücksetzen'),
+          ),
         const SizedBox(height: 16),
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            '${visible.length} von ${all.length} geladenen Nachrichten angezeigt',
+          ),
+        ),
         if (visible.isEmpty)
           Notice(
-            openOnly
-                ? 'In der geladenen Vorschau gibt es keine offenen Hilfewünsche.'
+            filtered
+                ? 'In der geladenen Vorschau passt keine Nachricht zu dieser Ansicht.'
                 : 'Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.',
           ),
         for (final m in visible)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    m['sender_role'] == 'system'
-                        ? 'Von Schulpilot'
-                        : m['sender_role'] == 'child'
-                        ? 'Von deinem Kind'
-                        : 'Von einem Elternteil',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ActionPanel(
+                  actionLabel: 'Ganze Nachricht ansehen',
+                  onPressed: () => showMessage(m),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Tag(kindLabel(m)),
-                      if (m['resolved'] == true) Tag('Besprochen'),
-                      if (m['created'] is num)
-                        Text(
-                          DateFormat('dd.MM.yyyy · HH:mm').format(
-                            DateTime.fromMillisecondsSinceEpoch(
-                              ((m['created'] as num) * 1000).toInt(),
-                            ).toLocal(),
+                      Text(
+                        sender(m),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Tag(kindLabel(m)),
+                          if (m['resolved'] == true) const Tag('Besprochen'),
+                          Text(
+                            stamp(m),
+                            style: TextStyle(
+                              color: context.palette.muted,
+                              fontSize: 13,
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        m['body'],
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (m['context_unavailable'] == true)
+                        Text(
+                          'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
                           style: TextStyle(
                             color: context.palette.muted,
                             fontSize: 13,
@@ -2027,67 +2312,36 @@ class _ParentMessagesState extends State<_ParentMessages> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(m['body']),
-                  if (m['context_unavailable'] == true)
-                    Text(
-                      'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
-                      style: TextStyle(
-                        color: context.palette.muted,
-                        fontSize: 13,
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (contextPath(m) != null)
+                      TextButton.icon(
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        label: Text(contextLabel(m)),
+                        onPressed: () {
+                          if (current) openRoute(context, contextPath(m)!);
+                        },
                       ),
-                    ),
-                  if (m['context'] is Map &&
-                      (m['context'] as Map).isNotEmpty) ...[
-                    TextButton.icon(
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      label: Text(
-                        (m['context'] as Map)['unit_id'] != null
-                            ? 'Lernrunde ansehen'
-                            : (m['context'] as Map)['material_id'] != null
-                            ? 'Heftseite ansehen'
-                            : 'Schultag ansehen',
-                      ),
-                      onPressed: () {
-                        if (!current) return;
-                        final scope = m['context'] as Map;
-                        openRoute(
-                          context,
-                          scope['unit_id'] != null
-                              ? '/unit/${scope['unit_id']}'
-                              : scope['material_id'] != null
-                              ? '/material/${scope['material_id']}'
-                              : '/after-school/$childId?day=${scope['day_id']}',
-                        );
-                      },
-                    ),
                     if (widget.state.canManage && m['sender_role'] == 'child')
                       TextButton.icon(
                         onPressed: () => compose(m),
                         icon: const Icon(Icons.reply_rounded),
                         label: const Text('Dazu antworten'),
                       ),
-                  ],
-                  if (widget.state.canManage &&
-                      m['kind'] == 'help' &&
-                      m['resolved'] != true)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ActionButton(
+                    if (widget.state.canManage &&
+                        m['kind'] == 'help' &&
+                        m['resolved'] != true)
+                      ActionButton(
                         label: 'Als besprochen markieren',
                         secondary: true,
-                        onPressed: () async {
-                          if (!current) return;
-                          final child = childId;
-                          await widget.state.api.post(
-                            '/children/$child/messages/${m['id']}/resolve',
-                          );
-                          if (current && childId == child) widget.refresh();
-                        },
+                        onPressed: () => showMessage(m, resolve: true),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
       ],
@@ -2568,291 +2822,21 @@ Future<void> assignmentDialog(
   Json? source,
   Json? sourceUnit,
   String? plannedFor,
-}) async {
-  final account = state.user;
-  final childId = child['id'];
-  bool currentAccount() =>
-      account != null &&
-      identical(state.user, account) &&
-      state.isParent &&
-      childId is String &&
-      childId.isNotEmpty &&
-      child['id'] == childId;
-  if (!context.mounted || !currentAccount()) return;
-  final subject = TextEditingController(
-        text:
-            existing?['subject'] ??
-            source?['subject'] ??
-            sourceUnit?['subject'] ??
-            'Mathematik',
-      ),
-      topic = TextEditingController(
-        text:
-            existing?['topic'] ??
-            source?['topic'] ??
-            sourceUnit?['topic'] ??
-            '',
-      ),
-      note = TextEditingController(text: existing?['note'] ?? ''),
-      due = TextEditingController(
-        text: existing?['due'] == null ? '' : friendlyDate(existing!['due']),
-      ),
-      scheduled = TextEditingController(
-        text: (existing?['scheduled_for'] ?? plannedFor) == null
-            ? ''
-            : friendlyDate(existing?['scheduled_for'] ?? plannedFor),
-      );
-  final form = GlobalKey<FormState>();
-  String kind = existing?['kind'] == 'exam' ? 'exam' : 'parent';
-  String? materialId = existing?['material_id'] ?? source?['id'];
-  String? sourceUnitId = existing?['source_unit_id'] ?? sourceUnit?['id'];
-  final requestKey = homeworkKey();
-  bool mandatory = existing?['mandatory'] ?? true;
-  String? selectedMaterialTitle =
-      source?['title'] ??
-      materials
-          .where((m) => m['id'] == materialId)
-          .map((m) => m['title'] as String)
-          .firstOrNull;
-  ModalRoute<dynamic>? draftRoute;
-  void accountChanged() {
-    if (currentAccount()) return;
-    final route = draftRoute;
-    if (route == null) return;
-    Future<void>.microtask(() {
-      if (!currentAccount() && route.isActive) {
-        route.navigator?.removeRoute(route);
-      }
-    });
-  }
-
-  state.addListener(accountChanged);
-  try {
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        draftRoute ??= ModalRoute.of(ctx);
-        accountChanged();
-        return DialogControllerScope(
-          controllers: [subject, topic, note, due, scheduled],
-          child: StatefulBuilder(
-            builder: (ctx, set) => AlertDialog(
-              title: Text(
-                existing == null
-                    ? 'Ein Lernziel vorgeben'
-                    : 'Lernauftrag neu planen',
-              ),
-              content: SizedBox(
-                width: 480,
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: form,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: kind,
-                          isExpanded: true,
-                          decoration: InputDecoration(labelText: 'Art'),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'parent',
-                              child: Text('Lernauftrag'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'exam',
-                              child: Text('Klassenarbeit / Test'),
-                            ),
-                          ],
-                          onChanged: (v) => set(() => kind = v!),
-                        ),
-                        SizedBox(height: 14),
-                        for (final item in [
-                          (subject, 'Fach'),
-                          (topic, 'Thema / Lernziel'),
-                          (note, 'Was soll geübt werden?'),
-                        ])
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 14),
-                            child: TextFormField(
-                              controller: item.$1,
-                              maxLength: item.$1 == subject
-                                  ? 80
-                                  : item.$1 == topic
-                                  ? 160
-                                  : 2000,
-                              maxLines: item.$1 == note ? 3 : 1,
-                              validator: (v) =>
-                                  item.$1 == note ||
-                                      (v?.trim().isNotEmpty ?? false)
-                                  ? null
-                                  : 'Bitte ${item.$2.toLowerCase()} eintragen.',
-                              decoration: InputDecoration(labelText: item.$2),
-                            ),
-                          ),
-                        for (final item in [
-                          (due, 'Termin'),
-                          (scheduled, 'Frühester Lernbeginn'),
-                        ])
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 14),
-                            child: TextFormField(
-                              controller: item.$1,
-                              keyboardType: TextInputType.datetime,
-                              validator: (v) =>
-                                  v == null ||
-                                      v.trim().isEmpty ||
-                                      planningDate(v) != null
-                                  ? null
-                                  : 'Bitte ein gültiges Datum wie 24.10.2026 auswählen.',
-                              decoration: InputDecoration(
-                                labelText: '${item.$2} (optional)',
-                                hintText: 'TT.MM.JJJJ',
-                                suffixIcon: IconButton(
-                                  tooltip: '${item.$2} im Kalender auswählen',
-                                  icon: Icon(Icons.calendar_month_outlined),
-                                  onPressed: () async {
-                                    if (!currentAccount()) return;
-                                    final picked = await showDatePicker(
-                                      context: ctx,
-                                      initialDate:
-                                          planningDate(item.$1.text) ??
-                                          DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime(2100),
-                                    );
-                                    if (picked != null &&
-                                        ctx.mounted &&
-                                        currentAccount()) {
-                                      set(
-                                        () => item.$1.text = DateFormat(
-                                          'dd.MM.yyyy',
-                                        ).format(picked),
-                                      );
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            if (!currentAccount()) return;
-                            final selected = await pickLibraryMaterial(
-                              ctx,
-                              state,
-                              childId,
-                            );
-                            if (selected != null &&
-                                ctx.mounted &&
-                                currentAccount()) {
-                              set(() {
-                                materialId = selected['id'];
-                                sourceUnitId = null;
-                                selectedMaterialTitle =
-                                    selected['topic']?.toString().isNotEmpty ==
-                                        true
-                                    ? selected['topic']
-                                    : selected['title'];
-                              });
-                            }
-                          },
-                          icon: Icon(Icons.folder_open_rounded),
-                          label: Text(
-                            materialId == null
-                                ? 'Heftseite auswählen (optional)'
-                                : selectedMaterialTitle ??
-                                      'Verknüpfte Heftseite ändern',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (materialId != null)
-                          TextButton(
-                            onPressed: () => set(() {
-                              materialId = null;
-                              sourceUnitId = null;
-                              selectedMaterialTitle = null;
-                            }),
-                            child: Text('Ohne Heftseite fortfahren'),
-                          ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Verbindlich einplanen'),
-                          value: mandatory,
-                          onChanged: (v) => set(() => mandatory = v),
-                        ),
-                        Notice(
-                          'Du gibst Ziel und Stoff vor. Die passenden Übungen entstehen daraus; ein Termin erzeugt keinen unbegrenzten Tagesplan.',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text('Abbrechen'),
-                ),
-                ActionButton(
-                  label: 'Speichern',
-                  onPressed: () async {
-                    if (!currentAccount() || !ctx.mounted) return;
-                    if (!(form.currentState?.validate() ?? false)) return;
-                    final body = {
-                      'kind': kind,
-                      'subject': subject.text,
-                      'topic': topic.text,
-                      'note': note.text,
-                      'due': due.text.trim().isEmpty
-                          ? null
-                          : DateFormat('yyyy-MM-dd')
-                                .format(planningDate(due.text)!),
-                      'scheduled_for': scheduled.text.trim().isEmpty
-                          ? null
-                          : DateFormat('yyyy-MM-dd')
-                                .format(planningDate(scheduled.text)!),
-                      'material_id': materialId,
-                      'source_unit_id': sourceUnitId,
-                      if (existing != null && existing['revision'] != null)
-                        'revision': existing['revision'],
-                      'mandatory': mandatory,
-                    };
-                    if (existing == null) {
-                      await state.api.post(
-                        '/children/$childId/assignments',
-                        body,
-                        {'Idempotency-Key': requestKey},
-                      );
-                    } else {
-                      await state.api.put(
-                        '/children/$childId/assignments/${existing['id']}',
-                        body,
-                      );
-                    }
-                    if (!currentAccount()) return;
-                    final route = draftRoute;
-                    if (route != null && route.isActive) {
-                      if (route.isCurrent) {
-                        route.navigator?.pop();
-                      } else {
-                        route.navigator?.removeRoute(route);
-                      }
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  } finally {
-    state.removeListener(accountChanged);
-    if (draftRoute != null) await draftRoute!.completed;
-  }
-}
+  bool Function()? isCurrent,
+  ValueChanged<ModalRoute<bool>>? onRoute,
+}) => showParentAssignmentDialog(
+  context,
+  state,
+  child,
+  materials,
+  parseDate: planningDate,
+  existing: existing,
+  source: source,
+  sourceUnit: sourceUnit,
+  plannedFor: plannedFor,
+  isCurrent: isCurrent,
+  onRoute: onRoute,
+);
 
 Future<void> preferencesDialog(
   BuildContext context,

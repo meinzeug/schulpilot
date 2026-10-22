@@ -11,6 +11,17 @@ import 'package:schulpilot/parent_overview.dart';
 import 'parent_insights_test.dart' as fixture;
 import 'parent_learning_overview_test.dart' as overview;
 
+AppState editableAccount(MockClient client) => fixture.account(client)
+  ..user = {
+    'id': 'parent',
+    'role': 'parent',
+    'display_name': 'Künstlicher Elternzugang',
+    'families': [
+      {'id': 'synthetic-family', 'permission': 'owner'},
+    ],
+  }
+  ..familyId = 'synthetic-family';
+
 Json planPage(int page, {bool completed = false}) {
   final result = fixture.plan();
   result['pagination'] = {'page': page, 'pages': 2};
@@ -27,7 +38,7 @@ void main() {
       tester,
     ) async {
       final requests = <http.Request>[];
-      final state = fixture.account(
+      final state = editableAccount(
         MockClient((request) async {
           requests.add(request);
           expect(request.method, 'GET');
@@ -37,13 +48,14 @@ void main() {
           final plan = fixture.plan();
           plan['child']['id'] = 'child';
           plan['topics'][0]['topic'] = 'Privates künstliches Lernziel';
+          plan['topics'][0]['revision'] = 3;
           return fixture.response(plan);
         }),
       );
       final router = await fixture.open(tester, state, 'plan');
       await fixture.tap(tester, 'Meine Themen');
       await fixture.tap(tester, action);
-      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.byType(Dialog), findsOneWidget);
       expect(
         find.textContaining('Privates künstliches Lernziel'),
         findsWidgets,
@@ -79,7 +91,7 @@ void main() {
   ) async {
     final save = Completer<http.Response>();
     final requests = <http.Request>[];
-    final state = fixture.account(
+    final state = editableAccount(
       MockClient((request) async {
         requests.add(request);
         if (request.method == 'PUT') {
@@ -96,6 +108,7 @@ void main() {
         final plan = fixture.plan();
         plan['child']['id'] = 'child';
         plan['topics'][0]['topic'] = 'Privater künstlicher Entwurf';
+        plan['topics'][0]['revision'] = 3;
         return fixture.response(plan);
       }),
     );

@@ -2,8 +2,102 @@ import 'package:flutter/material.dart';
 
 import 'ui.dart';
 
+/// Explicit local view controls. Submitting performs a read only; typing never
+/// silently changes which saved collection the results claim to represent.
+class ParentCollectionSearch extends StatelessWidget {
+  final TextEditingController controller;
+  final String label, appliedQuery;
+  final String helperText;
+  final VoidCallback onSearch, onClear;
+  final bool enabled;
+  const ParentCollectionSearch({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.appliedQuery,
+    required this.onSearch,
+    required this.onClear,
+    this.enabled = true,
+    this.helperText =
+        'Mit Suchen bestätigen. Sucht auch auf weiteren Listenseiten.',
+  });
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TextField(
+        controller: controller,
+        enabled: enabled,
+        textInputAction: TextInputAction.search,
+        maxLength: 160,
+        onSubmitted: enabled ? (_) => onSearch() : null,
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helperText,
+          helperMaxLines: 3,
+          suffixIcon: IconButton(
+            tooltip: 'Suche leeren',
+            onPressed: enabled ? onClear : null,
+            icon: const Icon(Icons.clear_rounded),
+          ),
+        ),
+      ),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: enabled ? onSearch : null,
+          icon: const Icon(Icons.search_rounded),
+          label: const Text('Suchen'),
+        ),
+      ),
+      if (appliedQuery.isNotEmpty)
+        Text(
+          'Angezeigte Suche: „$appliedQuery“',
+          style: TextStyle(color: context.palette.muted),
+        ),
+    ],
+  );
+}
+
 /// An open page header shared by parent workspaces in both visual variants.
 /// The local emblem is decorative and never represents measured progress.
+class ParentChoiceFilter extends StatelessWidget {
+  final String label, value;
+  final List<(String, String)> choices;
+  final ValueChanged<String> onChanged;
+  final bool enabled;
+  const ParentChoiceFilter({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.choices,
+    required this.onChanged,
+    this.enabled = true,
+  });
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: DropdownButtonFormField<String>(
+      key: ValueKey((label, value)),
+      initialValue: value,
+      isExpanded: true,
+      itemHeight: null,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        if (!choices.any((item) => item.$1 == value))
+          DropdownMenuItem(value: value, child: Text('Auswahl: $value')),
+        for (final item in choices)
+          DropdownMenuItem(value: item.$1, child: Text(item.$2)),
+      ],
+      onChanged: enabled
+          ? (next) {
+              if (next != null && next != value) onChanged(next);
+            }
+          : null,
+    ),
+  );
+}
+
 class ParentWorkspaceHero extends StatelessWidget {
   final String eyebrow, title, subtitle;
   final IconData icon;

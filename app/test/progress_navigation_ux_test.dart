@@ -52,7 +52,7 @@ class _Fixture {
       base: 'https://example.invalid/api',
       client: MockClient((request) async {
         requests.add(request);
-        expect(request.method, 'GET');
+        expectSync(request.method, 'GET');
         if (request.url.path.endsWith('/parent-insights')) {
           return fixture.reply({
             'settings': {'enabled': false, 'revision': 0},
@@ -251,9 +251,14 @@ void main() {
     'A same-parent new session cannot inherit an in-flight progress response',
     (tester) async {
       final pending = Completer<http.Response>();
+      final fresh = Completer<http.Response>();
       var reads = 0;
       final f = _Fixture(
-        (_) async => ++reads == 1 ? fixture.reply(progress()) : pending.future,
+        (_) async => switch (++reads) {
+          1 => fixture.reply(progress()),
+          2 => pending.future,
+          _ => fresh.future,
+        },
       );
       await f.open(tester);
       await tester.ensureVisible(find.byTooltip('Aktualisieren'));
@@ -269,9 +274,21 @@ void main() {
           'child_name': 'Veraltete private Identität',
         }),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
       expect(find.text('Veraltete private Identität'), findsNothing);
       expect(find.byType(ParentPracticeSummary), findsNothing);
+      expect(reads, 3);
+      fresh.complete(
+        fixture.reply({
+          ...progress(),
+          'child_name': 'Neu berechtigte Identität',
+        }),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Veraltete private Identität'), findsNothing);
+      expect(find.text('Neu berechtigte Identität'), findsOneWidget);
+      expect(find.byType(ParentPracticeSummary), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -303,7 +320,20 @@ void main() {
   testWidgets(
     'A stale evidence-card callback cannot navigate in a new session',
     (tester) async {
-      final f = _Fixture((_) async => fixture.reply(progress()));
+      var fresh = false;
+      final f = _Fixture((_) async {
+        final data = progress();
+        if (fresh) {
+          data['child_name'] = 'Frisch berechtigtes Testkind';
+          data['items'] = [
+            {
+              ...Json.from((data['items'] as List).single),
+              'subject': 'Aktuelles Fach',
+            },
+          ];
+        }
+        return fixture.reply(data);
+      });
       final router = await f.open(tester);
       final link = find.ancestor(
         of: find.text('Mathematik'),
@@ -311,6 +341,7 @@ void main() {
       );
       final oldTap = tester.widget<InkWell>(link).onTap!;
       final before = f.requests.length;
+      fresh = true;
       f.state.user = {...f.state.user!};
       f.state.refreshState();
       // A callback queued before the next frame must still check its account.
@@ -320,8 +351,15 @@ void main() {
         router.routeInformationProvider.value.uri.toString(),
         '/progress/kid',
       );
-      expect(f.requests.length, before);
+      expect(f.requests.length, before + 1);
+      expect(
+        f.requests.last.url.queryParameters.containsKey('subject'),
+        isFalse,
+      );
+      expect(f.requests.last.url.queryParameters.containsKey('topic'), isFalse);
       expect(find.text('Mathematik'), findsNothing);
+      expect(find.text('Aktuelles Fach'), findsOneWidget);
+      expect(find.text('Frisch berechtigtes Testkind'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

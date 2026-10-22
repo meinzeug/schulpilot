@@ -60,6 +60,36 @@ void openRoute(BuildContext context, String path) {
   }
 }
 
+VoidCallback _workspaceLink(BuildContext context, AppState state, String path) {
+  final owner = state.user;
+  final family = state.familyId;
+  final route = ModalRoute.of(context);
+  return () {
+    if (!context.mounted ||
+        owner == null ||
+        !identical(state.user, owner) ||
+        state.familyId != family ||
+        route?.isCurrent == false) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    context.go(path);
+  };
+}
+
+ValueChanged<int> _workspaceSelection(
+  BuildContext context,
+  AppState state,
+  List<(IconData, String, String)> entries,
+) {
+  final actions = [
+    for (final entry in entries) _workspaceLink(context, state, entry.$3),
+  ];
+  return (index) {
+    if (index >= 0 && index < actions.length) actions[index]();
+  };
+}
+
 ThemeData appTheme({Brightness brightness = Brightness.light}) {
   final p = AppPalette(isDark: brightness == Brightness.dark);
   final ink = p.ink,
@@ -491,6 +521,155 @@ class Panel extends StatelessWidget {
   );
 }
 
+/// A summary with one clear destination. Keep editable fields, selectable text
+/// and secondary controls outside this card; they need their own focus targets.
+class ActionPanel extends StatefulWidget {
+  final Widget child;
+  final String actionLabel;
+  final FutureOr<void> Function()? onPressed;
+  final PanelTone tone;
+  final Color? color;
+  final EdgeInsets padding;
+  final bool enabled;
+
+  const ActionPanel({
+    super.key,
+    required this.child,
+    required this.actionLabel,
+    required this.onPressed,
+    this.tone = PanelTone.neutral,
+    this.color,
+    this.padding = const EdgeInsets.all(24),
+    this.enabled = true,
+  });
+
+  @override
+  State<ActionPanel> createState() => _ActionPanelState();
+}
+
+class _ActionPanelState extends State<ActionPanel> {
+  bool focused = false;
+  bool activationQueued = false;
+  bool busy = false;
+  bool get enabled => widget.enabled && widget.onPressed != null && !busy;
+
+  Future<void> activateCard() async {
+    if (!mounted ||
+        !enabled ||
+        activationQueued ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    activationQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      activationQueued = false;
+    });
+    final action = widget.onPressed!;
+    final route = ModalRoute.of(context);
+    setState(() => busy = true);
+    try {
+      await Future<void>.sync(action);
+    } catch (error) {
+      if (mounted &&
+          route?.isCurrent != false &&
+          identical(widget.onPressed, action)) {
+        showError(context, error);
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final padding =
+        MediaQuery.sizeOf(context).width < 600 &&
+            widget.padding == const EdgeInsets.all(24)
+        ? const EdgeInsets.all(20)
+        : widget.padding;
+    return MergeSemantics(
+      child: Semantics(
+        container: true,
+        button: true,
+        enabled: enabled,
+        liveRegion: busy,
+        onTap: enabled ? activateCard : null,
+        child: Card(
+          semanticContainer: false,
+          color: p.surface(widget.color ?? panelColor(widget.tone)),
+          clipBehavior: Clip.antiAlias,
+          elevation: widget.tone == PanelTone.subtle ? 0 : null,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: focused ? p.teal : p.resolve(panelAccent(widget.tone)),
+              width: focused ? 2.5 : 1,
+            ),
+          ),
+          child: InkWell(
+            excludeFromSemantics: true,
+            onTap: enabled ? activateCard : null,
+            onFocusChange: (value) {
+              if (mounted && focused != value) setState(() => focused = value);
+            },
+            child: Padding(
+              padding: padding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  widget.child,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          busy
+                              ? '${widget.actionLabel}: Bitte warten …'
+                              : widget.actionLabel,
+                          style: TextStyle(
+                            color: enabled ? p.teal : p.muted,
+                            fontWeight: FontWeight.w800,
+                            decoration: enabled
+                                ? TextDecoration.underline
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ExcludeSemantics(
+                        child: busy
+                            ? TickerMode(
+                                enabled:
+                                    ModalRoute.of(context)?.isCurrent != false,
+                                child: const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                enabled
+                                    ? Icons.arrow_forward_rounded
+                                    : Icons.lock_outline_rounded,
+                                color: enabled ? p.teal : p.muted,
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// An inset group inside a card, without another raised white card.
 class SurfaceInset extends StatelessWidget {
   final Widget child;
@@ -913,13 +1092,15 @@ class WorkspaceShell extends StatelessWidget {
     String path,
   ) async {
     final account = state.user;
+    final family = state.familyId;
     if (account == null) return null;
     ModalRoute<dynamic>? ownRoute;
     void closeOldMenu() {
-      if (identical(state.user, account)) return;
+      if (identical(state.user, account) && state.familyId == family) return;
       final route = ownRoute;
       scheduleMicrotask(() {
-        if (!identical(state.user, account) && route?.isActive == true) {
+        if ((!identical(state.user, account) || state.familyId != family) &&
+            route?.isActive == true) {
           route!.navigator?.removeRoute(route);
         }
       });
@@ -954,6 +1135,7 @@ class WorkspaceShell extends StatelessWidget {
                       onTap: () {
                         if (ctx.mounted &&
                             identical(state.user, account) &&
+                            state.familyId == family &&
                             ownRoute?.isCurrent == true) {
                           Navigator.pop(ctx, entry.$3);
                         }
@@ -965,7 +1147,9 @@ class WorkspaceShell extends StatelessWidget {
           );
         },
       );
-      return identical(state.user, account) ? selected : null;
+      return identical(state.user, account) && state.familyId == family
+          ? selected
+          : null;
     } finally {
       state.removeListener(closeOldMenu);
     }
@@ -1064,6 +1248,8 @@ class WorkspaceShell extends StatelessWidget {
         : 1360.0;
     final name = (state.user?['display_name'] as String?)?.trim();
     final displayName = name == null || name.isEmpty ? 'Konto' : name;
+    final owner = state.user;
+    final family = state.familyId;
 
     return Scaffold(
       appBar: desktop
@@ -1097,12 +1283,23 @@ class WorkspaceShell extends StatelessWidget {
               child: NavigationBar(
                 selectedIndex: compactChild && selected >= 3 ? 3 : selected,
                 onDestinationSelected: (i) async {
+                  if (owner == null ||
+                      !identical(state.user, owner) ||
+                      state.familyId != family ||
+                      ModalRoute.of(context)?.isCurrent == false) {
+                    return;
+                  }
                   FocusManager.instance.primaryFocus?.unfocus();
                   if (compactChild && i == 3) {
                     final route = await _moreMenu(context, entries, path);
-                    if (route != null && context.mounted) context.go(route);
+                    if (route != null &&
+                        context.mounted &&
+                        identical(state.user, owner) &&
+                        state.familyId == family) {
+                      _workspaceLink(context, state, route)();
+                    }
                   } else {
-                    context.go(mobileEntries[i].$3);
+                    _workspaceLink(context, state, mobileEntries[i].$3)();
                   }
                 },
                 destinations: [
@@ -1125,11 +1322,13 @@ class WorkspaceShell extends StatelessWidget {
         children: [
           if (sidebar)
             _WorkspaceSidebar(
+              state: state,
               entries: entries,
               selected: selected,
               roleLabel: _roleLabel,
             ),
-          if (rail) _WorkspaceRail(entries: entries, selected: selected),
+          if (rail)
+            _WorkspaceRail(state: state, entries: entries, selected: selected),
           Expanded(
             child: Column(
               children: [
@@ -1238,11 +1437,13 @@ class WorkspaceShell extends StatelessWidget {
 }
 
 class _WorkspaceSidebar extends StatelessWidget {
+  final AppState state;
   final List<(IconData, String, String)> entries;
   final int selected;
   final String roleLabel;
 
   const _WorkspaceSidebar({
+    required this.state,
     required this.entries,
     required this.selected,
     required this.roleLabel,
@@ -1262,7 +1463,18 @@ class _WorkspaceSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: EdgeInsets.fromLTRB(24, 26, 24, 28), child: brand()),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+            child: TextButton(
+              key: const ValueKey('workspace-brand-home'),
+              onPressed: _workspaceLink(
+                context,
+                state,
+                state.isAdmin ? '/admin' : '/app',
+              ),
+              child: brand(),
+            ),
+          ),
           Padding(
             padding: EdgeInsets.fromLTRB(28, 0, 20, 16),
             child: Text(
@@ -1310,7 +1522,7 @@ class _WorkspaceSidebar extends StatelessWidget {
                                 : FontWeight.w500,
                           ),
                         ),
-                        onTap: () => context.go(entries[i].$3),
+                        onTap: _workspaceLink(context, state, entries[i].$3),
                       ),
                     ),
                   ),
@@ -1358,9 +1570,14 @@ class _NavigationSurfaceState extends State<_NavigationSurface> {
 }
 
 class _WorkspaceRail extends StatelessWidget {
+  final AppState state;
   final List<(IconData, String, String)> entries;
   final int selected;
-  const _WorkspaceRail({required this.entries, required this.selected});
+  const _WorkspaceRail({
+    required this.state,
+    required this.entries,
+    required this.selected,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1372,16 +1589,25 @@ class _WorkspaceRail extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Container(
-              padding: EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: context.palette.cyanSurface,
-                borderRadius: BorderRadius.circular(14),
+            child: IconButton(
+              key: const ValueKey('workspace-brand-home'),
+              tooltip: 'Zur Übersicht',
+              onPressed: _workspaceLink(
+                context,
+                state,
+                state.isAdmin ? '/admin' : '/app',
               ),
-              child: Image.asset(
-                'assets/brand/schulpilot-mark.png',
-                width: 34,
-                excludeFromSemantics: true,
+              icon: Container(
+                padding: EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: context.palette.cyanSurface,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Image.asset(
+                  'assets/brand/schulpilot-mark.png',
+                  width: 34,
+                  excludeFromSemantics: true,
+                ),
               ),
             ),
           ),
@@ -1404,7 +1630,11 @@ class _WorkspaceRail extends StatelessWidget {
               ),
               labelType: NavigationRailLabelType.all,
               selectedIndex: selected,
-              onDestinationSelected: (i) => context.go(entries[i].$3),
+              onDestinationSelected: _workspaceSelection(
+                context,
+                state,
+                entries,
+              ),
               destinations: [
                 for (final entry in entries)
                   NavigationRailDestination(
@@ -1451,11 +1681,23 @@ class _WorkspaceHeader extends StatelessWidget {
           child: Row(
             children: [
               Flexible(
-                child: Text(
-                  roleLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: context.palette.muted, fontSize: 13),
+                child: TextButton(
+                  key: const ValueKey('workspace-home-breadcrumb'),
+                  onPressed: _workspaceLink(
+                    context,
+                    state,
+                    state.isAdmin ? '/admin' : '/app',
+                  ),
+                  child: Text(
+                    roleLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
                 ),
               ),
               Padding(
@@ -1490,6 +1732,21 @@ class _WorkspaceHeader extends StatelessWidget {
 
 bool _sameHeaderAccount(AppState state, Json? snapshot) =>
     snapshot != null && identical(state.user, snapshot);
+
+String notificationActionLabel(Json item) {
+  final path = Uri.tryParse('${item['route'] ?? ''}')?.path ?? '';
+  if (path.startsWith('/messages/')) return 'Nachricht ansehen';
+  if (path.startsWith('/homework/') || path.startsWith('/parent-homework/')) {
+    return 'Hausaufgabe ansehen';
+  }
+  if (path.startsWith('/unit/')) return 'Lernrunde ansehen';
+  if (path.startsWith('/material/')) return 'Heftseite ansehen';
+  if (path.startsWith('/after-school/')) return 'Schultag ansehen';
+  if (path.startsWith('/family-call/')) return 'Live-Hilfe öffnen';
+  if (path.startsWith('/parent-plan/')) return 'Lernplan ansehen';
+  if (path.startsWith('/progress/')) return 'Lernstand ansehen';
+  return 'Neuigkeit öffnen';
+}
 
 MenuStyle _headerMenuStyle(BuildContext context, {double width = 352}) =>
     MenuStyle(
@@ -1674,6 +1931,8 @@ class NotificationBell extends StatefulWidget {
 class _NotificationBellState extends State<NotificationBell> {
   final _menu = MenuController();
   Json? _snapshot;
+  bool _opening = false;
+  int _openRevision = 0;
 
   @override
   void initState() {
@@ -1686,6 +1945,9 @@ class _NotificationBellState extends State<NotificationBell> {
   void didUpdateWidget(covariant NotificationBell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.state != widget.state) {
+      _menu.close();
+      _opening = false;
+      _openRevision++;
       oldWidget.state.removeListener(_changed);
       widget.state.addListener(_changed);
       _changed();
@@ -1693,7 +1955,11 @@ class _NotificationBellState extends State<NotificationBell> {
   }
 
   void _changed() {
-    if (!_sameHeaderAccount(widget.state, _snapshot)) _menu.close();
+    if (!_sameHeaderAccount(widget.state, _snapshot)) {
+      _menu.close();
+      _opening = false;
+      _openRevision++;
+    }
     if (mounted) {
       setState(() {
         _snapshot = widget.state.user;
@@ -1709,19 +1975,36 @@ class _NotificationBellState extends State<NotificationBell> {
 
   Future<void> _openItem(Json item, Json? snapshot) async {
     final state = widget.state;
-    if (!_sameHeaderAccount(state, snapshot)) return;
+    final route = ModalRoute.of(context);
+    if (_opening ||
+        !_sameHeaderAccount(state, snapshot) ||
+        route?.isCurrent == false) {
+      return;
+    }
+    final revision = ++_openRevision;
+    setState(() => _opening = true);
     try {
-      await state.inbox.markRead([item['id'] as String]);
+      if (item['read'] != true) {
+        await state.inbox.markRead([item['id'] as String]);
+      }
     } catch (_) {
-      if (mounted && _sameHeaderAccount(state, snapshot)) {
+      if (mounted &&
+          revision == _openRevision &&
+          identical(widget.state, state) &&
+          _sameHeaderAccount(state, snapshot) &&
+          route?.isCurrent != false) {
         toast(
           context,
           'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
         );
       }
     }
-    if (mounted && _sameHeaderAccount(state, snapshot)) {
-      context.go(item['route'] as String);
+    if (mounted &&
+        identical(widget.state, state) &&
+        revision == _openRevision &&
+        _sameHeaderAccount(state, snapshot)) {
+      setState(() => _opening = false);
+      if (route?.isCurrent != false) context.go(item['route'] as String);
     }
   }
 
@@ -1806,7 +2089,7 @@ class _NotificationBellState extends State<NotificationBell> {
                       ? context.palette.muted
                       : context.palette.teal,
                 ),
-                onPressed: () => _openItem(item, snapshot),
+                onPressed: _opening ? null : () => _openItem(item, snapshot),
                 child: SizedBox(
                   width: (width - 64).clamp(0, 256).toDouble(),
                   child: Padding(
@@ -1832,9 +2115,26 @@ class _NotificationBellState extends State<NotificationBell> {
                             color: context.palette.muted,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          notificationActionLabel(item),
+                          style: TextStyle(
+                            color: context.palette.teal,
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                ),
+              ),
+            if (inbox.items.length > 4)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Text(
+                  '4 von ${inbox.items.length} geladenen Neuigkeiten. Die übrigen findest du unter „Alle anzeigen“.',
+                  style: TextStyle(color: context.palette.muted, fontSize: 12),
                 ),
               ),
           ],

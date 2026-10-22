@@ -52,11 +52,12 @@ class LearningRoom extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(4, 2, 8, 0),
             child: Row(
               children: [
-                IconButton(
-                  tooltip: 'Lernrunde verlassen',
-                  onPressed: onLeave,
-                  icon: Icon(Icons.arrow_back_rounded),
-                ),
+                if (!enlarged)
+                  IconButton(
+                    tooltip: 'Lernrunde verlassen',
+                    onPressed: onLeave,
+                    icon: Icon(Icons.arrow_back_rounded),
+                  ),
                 Expanded(
                   child: Text(
                     keyboard
@@ -67,7 +68,7 @@ class LearningRoom extends StatelessWidget {
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                   ),
                 ),
-                if (onPause != null)
+                if (onPause != null && !enlarged)
                   TextButton.icon(
                     onPressed: onPause,
                     icon: Icon(Icons.pause_rounded, size: 20),
@@ -195,7 +196,33 @@ class LearningRoom extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!enlarged) header,
+                if (!enlarged)
+                  header
+                else
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Lernrunde verlassen',
+                          onPressed: onLeave,
+                          icon: Icon(Icons.arrow_back_rounded),
+                        ),
+                        Expanded(
+                          child: Text(
+                            phases[phase],
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        if (onPause != null)
+                          IconButton(
+                            tooltip: 'Pause machen',
+                            onPressed: onPause,
+                            icon: Icon(Icons.pause_rounded),
+                          ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: SingleChildScrollView(
                     key: ValueKey('learning-room-scroll'),

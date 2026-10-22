@@ -1,0 +1,1536 @@
+{
+  "scope": "Additional child UX after release87 / commit3df2849",
+  "date": "2026-10-22",
+  "counts": {
+    "checked": 88,
+    "coupled": 3,
+    "open": 2
+  },
+  "counted_ids": [
+    "KK001",
+    "KK002",
+    "KK003",
+    "KK004",
+    "KK005",
+    "KK006",
+    "KK007",
+    "KK008",
+    "KK009",
+    "KK010",
+    "KK011",
+    "KK012",
+    "KK013",
+    "KK014",
+    "KK015",
+    "KK016",
+    "KK017",
+    "KK018",
+    "KK019",
+    "KK020",
+    "KK021",
+    "KK023",
+    "KK024",
+    "KK025",
+    "KK026",
+    "KK027",
+    "KK028",
+    "KK029",
+    "KK030",
+    "KK031",
+    "KK032",
+    "KK033",
+    "KK034",
+    "KK035",
+    "KK036",
+    "KK037",
+    "KK039",
+    "KK040",
+    "KK041",
+    "KK042",
+    "KK043",
+    "KK044",
+    "KK045",
+    "KK046",
+    "KK047",
+    "KK048",
+    "KK049",
+    "KK050",
+    "KK051",
+    "KK052",
+    "KK053",
+    "KK054",
+    "KK055",
+    "KK056",
+    "KK058",
+    "KK060",
+    "KK061",
+    "KK062",
+    "KK063",
+    "KK064",
+    "KK065",
+    "KK066",
+    "KK067",
+    "KK068",
+    "KK069",
+    "KK070",
+    "KK071",
+    "KK072",
+    "KK073",
+    "KK074",
+    "KK075",
+    "KK076",
+    "KK077",
+    "KK078",
+    "KK079",
+    "KK080",
+    "KK081",
+    "KK082",
+    "KK083",
+    "KK084",
+    "KK085",
+    "KK086",
+    "KK087",
+    "KK088",
+    "KK089",
+    "KK090",
+    "KK091",
+    "KK093"
+  ],
+  "limits": [
+    "No real child data modified.",
+    "Only synthetic MockClient tests; no AI, push or server writes.",
+    "Targeted regression runs recorded; full integration run and browser/native visual acceptance remain Root tasks.",
+    "No full WCAG conformity claim.",
+    "Old K081 tutor-history page retention remains open and is not counted here."
+  ],
+  "sources": [
+    "https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html",
+    "https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html",
+    "https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html"
+  ],
+  "items": [
+    {
+      "id": "KK001",
+      "problem": "Planzeile öffnet nur über kleines Play-Icon, obwohl Thema/Zeile wie ein Ziel wirken.",
+      "location": "app/lib/dashboard.dart`, `_ChildPlanRow",
+      "change": "Ganze fällige Zeile öffnet denselben gespeicherten Schritt; zukünftige bleiben inert.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 99,
+          "case": "KK001 entire due plan row opens chosen saved feedback; future item remains inert"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK002",
+      "problem": "Lernzeit-Zusammenfassung lässt gespeicherte Tages-/Wochenwerte und Bedeutung nicht direkt nachsehen.",
+      "location": "app/lib/child_today_widgets.dart` + `dashboard.dart`, `ChildTodayProgress",
+      "change": "Klarer Details-Einstieg in vorhandene gespeicherte Zeitwerte, ohne Lernstand mit Minuten gleichzusetzen.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 132,
+          "case": "KK002 learning time opens saved daily and weekly values with honest distinction"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK003",
+      "problem": "Große Hauptstationsüberschrift reagiert nicht auf Öffnen; nur der untere Button ist bedienbar.",
+      "location": "app/lib/child_today_widgets.dart`, `ChildTodayHero",
+      "change": "Nichtinteraktive Zusammenfassung löst dieselbe benannte Hauptaktion aus; gemeinsamer Sperrzustand. Alle Herozustände EIN Punkt.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 147,
+          "case": "KK003 hero summary uses the same explicit action and blocks double start"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK004",
+      "problem": "„Heute keine neuen Seiten“ lässt während offenem POST denselben Vorgang mehrfach starten.",
+      "location": "app/lib/dashboard.dart`, `noNewPages",
+      "change": "Frühe Sperre und ehrlicher laufender Status, exakt kontogebundener Abschluss.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 180,
+          "case": "KK004 no-new-pages is one explicit action while save is pending"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK005",
+      "problem": "Eigenständige Aktion „keine neuen Seiten“ liegt innerhalb der Foto-Kartenaktion/Semantik.",
+      "location": "app/lib/child_today_widgets.dart`, `ChildTodayTile",
+      "change": "Sekundäraktion außerhalb des primären InkWell/Buttons; Fotoziel und Notiz bleiben getrennt.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 203,
+          "case": "KK005 tile secondary footer is outside its primary semantic/button target"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK006",
+      "problem": "Listenfoto selbst ist keine Öffnungsfläche, nur Textbereich reagiert.",
+      "location": "app/lib/notebook_screen.dart`, `overviewCard",
+      "change": "Foto, Titel und Übersicht öffnen gemeinsam dieselbe vorhandene Albumseite; Verwaltung separat.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 19,
+          "case": "KK006 photo and summary share the list page action; management remains separate"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK007",
+      "problem": "Hefterkacheln haben feste Zweispaltigkeit/294px bei 200%-Schrift auf schmalen Geräten.",
+      "location": "app/lib/notebook_screen.dart`, `overview",
+      "change": "Einspaltige größere Kacheln abhängig von Schriftbreite; keine abgeschnittenen Kontrollen.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 31,
+          "case": "testWidgets('KK007 large text uses a readable single-column page overview', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK008",
+      "problem": "Suchfeld schließen verwirft ungefragt den Begriff und setzt Quelle zurück.",
+      "location": "app/lib/notebook_screen.dart`, `toggleSearch",
+      "change": "Einklappen erhält Suche, sichtbarer Suchchip mit ausdrücklichem Entfernen.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 44,
+          "case": "KK008 search collapse retains query, explicit clear removes only query"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK009",
+      "problem": "Status-/Datumsfilter sind nach dem Dialog nur verkürzt benannt und nicht einzeln rücksetzbar.",
+      "location": "app/lib/notebook_screen.dart`, Filterübersicht",
+      "change": "Benannte aktive Filterchips mit getrenntem Rücksetzen; andere Filter bleiben.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 66,
+          "case": "testWidgets('KK009 active status is named and independently removable', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK010",
+      "problem": "Seitensprung nimmt 0/zu große Nummer an und begrenzt still auf erste/letzte Seite.",
+      "location": "app/lib/notebook_screen.dart`, `jump",
+      "change": "Eingabefehler am Feld, zulässiger Bereich, Öffnen erst bei gültiger Nummer.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 94,
+          "case": "KK010 page zero and out-of-range number are explained without moving"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK011",
+      "problem": "Heftersuche benennt Zweck nur mit verschwindendem Hint.",
+      "location": "app/lib/notebook_screen.dart`, Suchfeld",
+      "change": "Dauerhaftes Label „In diesem Hefter suchen“.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 125,
+          "case": "testWidgets('KK011 notebook search retains a persistent field label', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK012",
+      "problem": "Bisher unberührte Notebook-/Lernweg-/NextStep-Komponenten vergleichen nur Benutzer-ID und lassen bei erneuter Anmeldung derselben ID alte Inhalte/Callbacks zu.",
+      "location": "app/lib/notebook_screen.dart, app/lib/study_path_panel.dart, app/lib/learning_next_step.dart, app/lib/homework_screen.dart, app/lib/child_account.dart, app/lib/dashboard.dart / Today, Plan und Zeitdialog",
+      "change": "Exakte Konto-/Familienbindung und Abbruch eigener privater Dialoge/Callbacks. Ein zusammenhängender Kontextschutz, nicht je Datei gezählt.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 603,
+          "case": "KK012 delayed saved-round start cannot navigate after same-ID new login"
+        },
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 632,
+          "case": "KK012 delayed assignment lookup cannot POST after family changes"
+        },
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 180,
+          "case": "KK012 pending preview closes with same-ID new session and old close cannot pop a newer route"
+        },
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 212,
+          "case": "KK012 delayed today data cannot populate a different child context"
+        },
+        {
+          "file": "app/test/child_week_plan_ux88_test.dart",
+          "line": 128,
+          "case": "KK012 week-plan private details disappear on a new session of the same account"
+        },
+        {
+          "file": "app/test/child_tutor_tools_ux88_test.dart",
+          "line": 81,
+          "case": "KK012 tutor private history is cleared after a family switch of the same account map"
+        },
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 137,
+          "case": "KK012 fresh same-ID session removes old notebook $dialog dialog and ignores saved callback"
+        },
+        {
+          "file": "app/test/child_source_tools_ux88_test.dart",
+          "line": 148,
+          "case": "KK012 private source reader closes after ${familyChange ? 'family switch' : 'same-ID fresh session'} and old close is harmless"
+        },
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 215,
+          "case": "KK012 old homework task callbacks cannot save or expose the old source after family switch"
+        },
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 167,
+          "case": "KK012 source-word transfer private dialog closes on same-ID new login without a transfer"
+        },
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 244,
+          "case": "KK012 private plan removes exact old session and stale row cannot navigate"
+        },
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 312,
+          "case": "KK012 next-step hides results and callbacks on new same-ID session"
+        },
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 235,
+          "case": "KK012 current $role homework photo card opens only its own stored photo"
+        },
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 284,
+          "case": "KK012 old $role homework photo card rejects $invalidation navigation"
+        },
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 343,
+          "case": "KK012 old homework photo card cannot reuse its source after switching the selected child"
+        },
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 376,
+          "case": "KK012 rendered $kind Today hero rejects $invalidation before any navigation or POST"
+        },
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 678,
+          "case": "KK012 old account message shortcut rejects $invalidation without reading a new child or crashing"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK013",
+      "problem": "Hefterzustand besitzt kein direktes Kind-/Fach-Update; Wiederverwendung desselben Widgetslots kann alte Seiten unter neuem Kontext zeigen.",
+      "location": "app/lib/notebook_screen.dart`, Kontextaufbau",
+      "change": "Innerer Zustand an Kind/Fach/Familie gebunden; neuer Kontext lädt berechtigt neu.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 166,
+          "case": "KK013 changing subject in the same widget slot resets the private page context"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK014",
+      "problem": "Filterformular berücksichtigt Bildschirmtastatur nicht ausdrücklich.",
+      "location": "app/lib/notebook_screen.dart`, `filters",
+      "change": "Begrenzte scrollbare Dialogfläche mit Insets; Schaltflächen erreichbar.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 184,
+          "case": "KK014 KK015 filter is scrollable above keyboard and can be cancelled without GET"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK015",
+      "problem": "Filter hat keinen sichtbaren Abbrechen-Rückweg, nur System-/Außenklick.",
+      "location": "app/lib/notebook_screen.dart`, `filters",
+      "change": "Benannter Abbrechen-Button, verwirft ausschließlich lokale Filterauswahl ohne GET.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 184,
+          "case": "KK014 KK015 filter is scrollable above keyboard and can be cancelled without GET"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK016",
+      "problem": "Titel/Datum der Albumseite sind statische Fläche; nur kleiner Detailbutton öffnet eigentliche Quelle.",
+      "location": "app/lib/notebook_screen.dart`, `album",
+      "change": "Eindeutige Metadaten-Aktionskarte zum vorhandenen Text/Prüfen; Fotozoom separat.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 203,
+          "case": "testWidgets('KK016 metadata body opens the exact source detail without KI', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK017",
+      "problem": "Gefilterte Leerliste bezeichnet Hinzufügen fälschlich als erstes Foto.",
+      "location": "app/lib/notebook_screen.dart`, Leerzustand",
+      "change": "„Heftfoto hinzufügen“ bei aktiven Filtern, „erstes“ ausschließlich im ungefilterten Leerzustand.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 213,
+          "case": "KK017 filtered empty result does not claim first photo is missing"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK018",
+      "problem": "Numerischer Seitenzähler-Button hat keinen erkennbaren zugänglichen Aktionszweck.",
+      "location": "app/lib/notebook_screen.dart`, `pageControls",
+      "change": "Name „Seite auswählen“ statt bloßer Zahlen.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 246,
+          "case": "KK018 KK019 page chooser has a purpose and changed position is a live status"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK019",
+      "problem": "Beim Blättern ändert sich Seitenposition ohne eigenen knappen zugänglichen Status.",
+      "location": "app/lib/notebook_screen.dart`, `album",
+      "change": "Nur Positionsleiste als Live-Region, keine vollständige Seite automatisch vorlesen.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 246,
+          "case": "KK018 KK019 page chooser has a purpose and changed position is a live status"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK020",
+      "problem": "Unerwartete Fehler beim Interpretieren alter Hefterlisten werden als technischer Exceptiontext gezeigt.",
+      "location": "app/lib/notebook_screen.dart`, `load/loadSubject",
+      "change": "Neutrale konkrete Laden-/Retrymeldung; reguläre ApiError-Nachrichten erhalten.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 264,
+          "case": "KK020 unexpected notebook errors show a readable retry without internals"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK021",
+      "problem": "Historische Metadaten ohne Titel/Thema erscheinen als „null“.",
+      "location": "app/lib/notebook_screen.dart`, `pageTitle",
+      "change": "Neutraler sichtbarer Titel „Heftseite“, nichts fachlich erfinden.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 286,
+          "case": "KK021 KK022 missing legacy title and date have honest placeholders"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK022",
+      "problem": "Fehlendes/ungültiges Datum kann Hefteranzeige werfen statt die Quelle weiter zugänglich zu halten.",
+      "location": "app/lib/notebook_screen.dart`, `pageDate",
+      "change": "Geliefertes Datum/Erfassungszeit prüfen, sonst ehrlich „Datum nicht angegeben“.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 286,
+          "case": "KK021 KK022 missing legacy title and date have honest placeholders"
+        }
+      ],
+      "status": "coupled",
+      "counted_with": "KK021"
+    },
+    {
+      "id": "KK023",
+      "problem": "Derselbe Hefter-Refresh kann vor erneutem Frame mehrfach parallel laufen.",
+      "location": "app/lib/notebook_screen.dart`, `load",
+      "change": "Gleiche laufende Leseanfrage zusammenfassen, aktualisieren währenddessen sichtbar inaktiv.",
+      "tests": [
+        {
+          "file": "app/test/child_notebook_actions_ux88_test.dart",
+          "line": 309,
+          "case": "testWidgets('KK023 repeated refresh callbacks are disabled while loading', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK024",
+      "problem": "NextStep-Retry lässt Fehlermeldung/Button aktiv und startet wiederholt identische GETs.",
+      "location": "app/lib/learning_next_step.dart`, `load",
+      "change": "Begrenzter beschrifteter Ladestatus und Single-Flight, kein neuer KI-Auftrag.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 267,
+          "case": "KK024 next-step retry announces loading and serializes pending GET"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK025",
+      "problem": "NextStep zeigt vorhandenen nächsten Stoff als statischen Text neben Button statt als klare Zielkarte.",
+      "location": "app/lib/learning_next_step.dart`, `build",
+      "change": "Zielkarte mit eindeutigem Weg zur gespeicherten Runde, Vorbereitung oder Sammlung; Generierung bleibt nur bewusste Handlung.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 295,
+          "case": "KK025 next-step saved card opens correct existing round without generation"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK026",
+      "problem": "Aktuell vorbereitete Lernetappe ist statische Zusammenfassung plus kleine Öffnen-Aktion.",
+      "location": "app/lib/study_path_panel.dart`, aktueller Schritt",
+      "change": "Bereits vorhandene kindliche Etappe als Zielkarte öffnen; geplante Schritte behalten ausdrücklichen Generierungsbutton.",
+      "tests": [
+        {
+          "file": "app/test/child_today_actions_ux88_test.dart",
+          "line": 335,
+          "case": "KK026 stored study stage summary opens only that round without generation"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK027",
+      "problem": "Nachrichten lassen sich im begrenzten Kinderpostfach nicht nach Inhalt finden.",
+      "location": "child_messages.dart / Suchfeld",
+      "change": "Lokale Suche, sichtbare Trefferzahl, leerer Filter mit klarem Rücksetzen, keine Lese-/Versandmutation.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 126,
+          "case": "KK027 message search finds real text, resets an empty result, and makes no request"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK028",
+      "problem": "Eigene Hilfewünsche und Elternhinweise stehen gemeinsam ohne Absenderauswahl.",
+      "location": "child_messages.dart / Absender",
+      "change": "Benannte lokale Absenderfilter, keine Auflösung oder Lesemarkierung.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 146,
+          "case": "KK028 sender filter separates parent advice from own requests without resolving"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK029",
+      "problem": "Ein längerer Nachrichtenaustausch lässt sich nur in einer festen Richtung lesen.",
+      "location": "child_messages.dart / Reihenfolge",
+      "change": "Älteste/Neueste anhand vorhandener Zeitstempel wählen; RAM-Ansicht erhalten.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 157,
+          "case": "testWidgets('KK029 oldest-first order uses real message timestamps', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK030",
+      "problem": "Eine sehr lange Nachricht belegt als volle Karte das ganze Postfach.",
+      "location": "child_messages.dart / readMessage",
+      "change": "Begrenzte ausdrücklich öffnende Einzel-Leseansicht, eigener privater Dialog an Konto gebunden.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 169,
+          "case": "KK030 long message opens a bounded reading view and disappears on account change"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK031",
+      "problem": "Noch laufende Wörter-/Sprachprojekte werden auch unter einer anderen Route abgefragt; spätere GETs können unterbrochenes Lesen stören.",
+      "location": "vocabulary_screen.dart + language_workshop.dart / Poll-Lifecycle",
+      "change": "Poll unter überdeckten Routen/Hintergrund stoppen; Rückkehr revalidiert per GET. Ein Lifecyclebefund für beide.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 286,
+          "case": "KK031 import polling stops below a covering route and resumes with a GET"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK032",
+      "problem": "Fehlgeschlagene oder laufende Importkarten zeigen ein Info-Icon ohne öffnendes Ziel.",
+      "location": "vocabulary_screen.dart / importDetails",
+      "change": "Berechtigtes aktuelles GET-Detail, sinnvolle nächste Handlung; weder Retry noch KI-Start.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 193,
+          "case": "KK032 word import state card opens authenticated GET details without retrying"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK033",
+      "problem": "Ein Wort nennt seine Heft-Herkunft, führt aber nicht zum belegten Foto.",
+      "location": "vocabulary_screen.dart / Wortkarte",
+      "change": "Nur vorhandene gültige Source-IDs als ausdrücklich beschriftete Materiallinks.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 227,
+          "case": "KK033 word source link names and opens only a supplied source ID"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK034",
+      "problem": "Leerer Prüfbereich sagt nur, man solle in Wortschatz wechseln.",
+      "location": "vocabulary_screen.dart / Prüf-Leerkarte",
+      "change": "Ganze Karte öffnet denselben lokalen Wortschatz ohne neue Anforderung.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 245,
+          "case": "KK034 reviewed-empty card returns to the same word collection with GET only"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK035",
+      "problem": "Aufgedeckte Wörter bleiben über eine revidierte Wortfassung hinweg sichtbar, obwohl nur die frühere Version aufgedeckt wurde.",
+      "location": "vocabulary_screen.dart / revealed",
+      "change": "Offengelegten Zustand an Wort-ID und Revision binden; neue Fassung erst nach ausdrücklicher Aktion zeigen.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 262,
+          "case": "KK035 changed word revision is hidden again until a new explicit reveal"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK036",
+      "problem": "Bei vielen Hausaufgabenfotos kann das Kind kein Fach/Thema wiederfinden.",
+      "location": "homework_screen.dart / photoSearch",
+      "change": "Fach/Thema/Titel der geladenen Fotos lokal suchen; begrenzten Umfang ehrlich benennen.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 315,
+          "case": "KK036 KK037 homework search/status inspect only loaded photos, never infer correctness"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK037",
+      "problem": "Ungeprüfte Aufgabenfotos gehen zwischen geprüften und abgehakten Fotos unter.",
+      "location": "homework_screen.dart / photoFilter",
+      "change": "Nach Foto-Prüfung/Textprüfung/eigenen Häkchen auswählen; Häkchen ausdrücklich kein Richtigkeitsbeleg.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 315,
+          "case": "KK036 KK037 homework search/status inspect only loaded photos, never infer correctness"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK038",
+      "problem": "Die neue persönliche Auswahl der Aufgabenfotos würde beim kurzen Detailausflug verloren gehen.",
+      "location": "homework_screen.dart / listMemory",
+      "change": "Ansicht im konto-/kindgebundenen AppState-RAM wiederaufnehmen, keine persistente Suchhistorie.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 362,
+          "case": "KK038 homework list remembers local view only in its account RAM"
+        }
+      ],
+      "status": "coupled",
+      "counted_with": "KK036"
+    },
+    {
+      "id": "KK039",
+      "problem": "Leere Hausaufgabenfläche ist statisch und verweist nur allgemein auf das Abgeben eines Fotos.",
+      "location": "homework_screen.dart / Leerkarte",
+      "change": "Benannte ganze Karte öffnet lokalen Fotoauswahlschritt; kein automatischer Upload.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 390,
+          "case": "KK039 empty homework card opens only explicit local photo choice"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK040",
+      "problem": "Vorhandene Hausaufgaben-Lernrunde ist nur über kleinen Button erreichbar.",
+      "location": "homework_screen.dart / gespeicherte practice",
+      "change": "Reine Zusammenfassung öffnet exakte vorhandene Runde/Vorbereitung; neue KI-Übung bleibt getrennte bewusste Aktion.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 409,
+          "case": "KK040 saved homework practice card opens its exact existing round"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK041",
+      "problem": "Gleichartige Sprachprojekte sind in der Projektliste nicht nach tatsächlicher Lernsprache unterscheidbar.",
+      "location": "language_workshop.dart / Projektmetadaten",
+      "change": "Bestätigte vorhandene Locale in Liste und Projektkopf benennen, keine Ableitung aus Klasse.",
+      "tests": [
+        {
+          "file": "app/test/child_project_tools_ux88_test.dart",
+          "line": 64,
+          "case": "testWidgets('KK041 saved project displays its actual confirmed locale', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK042",
+      "problem": "Ausgewählte/als Beleg zitierte Projektquelle ist nur ein Titel/Zitat ohne Weg zum Original.",
+      "location": "language_workshop.dart / gewählte Quelle + source_excerpt",
+      "change": "Vorhandene berechtigte Heft-ID öffnet Original; Auswahl/Entwurf bleiben, keine Generierung. Ein zusammenhängender Quellenweg.",
+      "tests": [
+        {
+          "file": "app/test/child_project_tools_ux88_test.dart",
+          "line": 80,
+          "case": "KK042 stored project excerpt opens only its real source without another generation"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK043",
+      "problem": "Vorbereitete Sprachprojektaufgaben sind nur ein Button zwischen Hilfetext und Vorlesen.",
+      "location": "language_workshop.dart / unit_id",
+      "change": "Deutlich beschriftete reine Zielkarte zu gespeicherten Aufgaben; keine Ersatzaufgabe.",
+      "tests": [
+        {
+          "file": "app/test/child_project_tools_ux88_test.dart",
+          "line": 98,
+          "case": "KK043 prepared project summary opens exactly its existing practice round"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK044",
+      "problem": "Große primäre Foto-Vorbereitungsfläche reagiert nur auf unteren Button.",
+      "location": "preparation_card.dart / primary",
+      "change": "Ganze nichtinteraktive Statuskarte führt zum exakt gespeicherten Schultag.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 435,
+          "case": "KK044 entire primary preparation card opens existing day without request"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK045",
+      "problem": "Kinderkonto springt nach kurzem Mitteilungs-/Informationsausflug wieder zu Geräte.",
+      "location": "child_account.dart / section",
+      "change": "Gewählten Kontobereich ausschließlich im Sitzungs-RAM wiederaufnehmen.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 454,
+          "case": "KK045 account section resumes locally after reading notifications"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK046",
+      "problem": "Kinder finden im Konto keinen klaren Weg zur bestehenden Datenschutzinformation.",
+      "location": "child_account.dart / Über die App",
+      "change": "Lesende Datenschutz-Zielkarte, kein Kauf-/Elternrecht und kein externer Dienst.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 466,
+          "case": "KK046 child privacy card opens the real local privacy route without POST"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK047",
+      "problem": "Ergebniszahlen nennen Kategorien, lassen aber nicht die konkreten gespeicherten Antworten dazu sehen.",
+      "location": "coaching_panel.dart / RoundAnswerExplorer",
+      "change": "Benannte Kategorien öffnen lokale passende Aufgaben/Antworten, keinerlei Neubewertung oder Provider.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 476,
+          "case": "KK047 outcome cards reveal stored matching answers without assessment or HTTP"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK048",
+      "problem": "Eine geöffnete Antworttastatur bleibt beim bewussten Hinweisabruf im Weg.",
+      "location": "unit_screen.dart / requestHint",
+      "change": "Tastatur beim Abruf schließen, eigene Eingabe unverändert lassen.",
+      "tests": [
+        {
+          "file": "app/test/child_round_controls_ux88_test.dart",
+          "line": 10,
+          "case": "KK048 requesting a real saved hint closes the keyboard without changing the own answer"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK049",
+      "problem": "Zuordnungsaufgaben zeigen nicht knapp, wie viele Paare im eigenen Entwurf noch fehlen.",
+      "location": "unit_screen.dart / match-Übung",
+      "change": "Reine 0/N-Positionsinformation als Live-Status, keine Richtigkeitsbehauptung.",
+      "tests": [
+        {
+          "file": "app/test/child_round_controls_ux88_test.dart",
+          "line": 29,
+          "case": "KK049 matching task reports only selected-pair progress and does not grade it"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK050",
+      "problem": "Mehrere gespeicherte Antwortversuche werden ohne Nummer und Kennzeichnung des jüngsten Versuches aneinandergereiht.",
+      "location": "coaching_panel.dart / Deine Antworten",
+      "change": "Versuchnummern und zuletzt gespeicherten Versuch aus vorhandener Reihenfolge kennzeichnen.",
+      "tests": [
+        {
+          "file": "app/test/child_round_controls_ux88_test.dart",
+          "line": 50,
+          "case": "KK050 stored attempts identify the last attempt without rewriting any answer"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK051",
+      "problem": "Bei großer Schrift verschwindet der Lernrunden-Rückweg mit dem scrollenden Kopf.",
+      "location": "learning_room.dart / enlarged header",
+      "change": "Kompakte immer erreichbare Verlassen-/Pausekontrollen, Aufgabe bleibt scrollbar.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 511,
+          "case": "KK051 large text keeps leave/pause controls visible after long task scroll"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK052",
+      "problem": "Gerätekarten haben nur die destruktive Abmeldeaktion, keine lesende Prüfung weiterer vorhandener Sitzungsdaten.",
+      "location": "child_account.dart / deviceDetails",
+      "change": "Nichtdestruktive Geräteinfos über Zusammenfassung, exakte vorhandene Anmelde-/Aktivzeit; Abmelden separat.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 556,
+          "case": "KK052 device card opens real session info and never signs out on card tap"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK053",
+      "problem": "Eine normale Geräteliste bietet keinen unmittelbaren bewussten Abgleich nach einem neuen Login auf anderem Gerät.",
+      "location": "child_account.dart / Geräte aktualisieren",
+      "change": "Expliziter aktueller GET über vorhandenen LoadView-Rückweg, alte Zeilen nicht als frische Daten ausgeben.",
+      "tests": [
+        {
+          "file": "app/test/child_local_tools_ux88_test.dart",
+          "line": 582,
+          "case": "testWidgets('KK053 device refresh loads actual updated sessions', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK054",
+      "problem": "Der Foto-Rückweg eines zurückgestellten Tages öffnet wieder denselben zurückgestellten Zustand.",
+      "location": "app/lib/school_day_screen.dart / childPostponed",
+      "change": "Bewusster Rückweg mit capture=1 erreicht den heutigen Fotoeinstieg; bestehende Seiten bleiben.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 115,
+          "case": "KK054 postponed day photo action reaches collection instead of reopening postponed state"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK055",
+      "problem": "Große Schultag-Statuskarten reagieren nur auf ihren kleinen unteren Button.",
+      "location": "app/lib/school_day_screen.dart / dayStatusCard",
+      "change": "Nichtinteraktive gesamte Zusammenfassung öffnet dieselbe explizit beschriftete Aktion; Zustand und Eigentümer bleiben geprüft.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 281,
+          "case": "KK055 preparing card itself opens its clearly labelled home destination without creating work"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK056",
+      "problem": "Die sichtbaren lokalen Uploadreste lassen sich nur pauschal löschen, obwohl andere Tage noch Fotos enthalten.",
+      "location": "app/lib/school_day_screen.dart / discardLocalPhotos",
+      "change": "Bestätigtes Entfernen ausschließlich der sichtbaren vorgemerkten Fotos; andere Tage und Serverquellen bleiben.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 131,
+          "case": "KK056 local discard removes only displayed day photos and keeps other days"
+        },
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 162,
+          "case": "testWidgets('KK056 cancelling local discard retains every pending photo', ("
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK057",
+      "problem": "Beim bewussten Ersetzen eines unlesbaren Fotos könnte die neue Aufnahme vor dem ausdrücklichen Entfernen der alten Seite gewählt werden.",
+      "location": "app/lib/school_day_screen.dart / replacePage",
+      "change": "Offene Ablaufverbesserung, nicht umgesetzt oder gezählt. Der bestehende Ablauf verlangt vor dem Entfernen die normale ausdrückliche Löschbestätigung; kein stilles Löschen. Nicht mit altem K063 gleichsetzen.",
+      "tests": [],
+      "status": "open"
+    },
+    {
+      "id": "KK058",
+      "problem": "Fertiges Lernpaket wird als ganzer fertiger Tag bezeichnet, obwohl Zeit-/Elternziele davon getrennt sind.",
+      "location": "app/lib/school_day_screen.dart / childPackage",
+      "change": "Nur das tatsächlich bearbeitete Paket als abgeschlossen benennen.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 233,
+          "case": "KK058 completed package does not claim the time minimum or whole day is finished"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK059",
+      "problem": "In einem großen Schultag können Quellen und Runden nicht lokal gesucht werden.",
+      "location": "app/lib/school_day_screen.dart / Paketübersicht",
+      "change": "Neue offene Idee, noch keine Umsetzung und keine Zählung.",
+      "tests": [],
+      "status": "open"
+    },
+    {
+      "id": "KK060",
+      "problem": "Schultag-Quelllinks nennen nur die Seitennummer ohne verständlichen Stoffbezug.",
+      "location": "app/lib/school_day_screen.dart / Quell-ListTiles",
+      "change": "Vorhandenes Fach und Thema am tatsächlichen Quellenziel nennen.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 253,
+          "case": "KK060 day source destinations name subject and topic from stored metadata"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK061",
+      "problem": "Bloßes Öffnen eines noch leeren heutigen Tages legt bereits Serverzustand an.",
+      "location": "app/lib/school_day_screen.dart / load, beginToday",
+      "change": "GET bleibt lesend; benannter Start oder ausdrücklicher Fotoeinstieg legt den Tag genau einmal an.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 65,
+          "case": "KK061 plain empty day visits and refresh stay GET-only until an explicit start"
+        },
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 94,
+          "case": "KK061 explicit capture creates normalized today once and later reopens read-only"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK062",
+      "problem": "Leerer Prüfzustand bietet keinen klaren nächsten Schritt zum Hinzufügen einer Seite.",
+      "location": "app/lib/school_day_screen.dart / childChecking",
+      "change": "Explizite passende Fotoaktion bzw. bei archivierten Tagen der vorhandene Hefterweg; keine KI.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 267,
+          "case": "KK062 empty checking has an explicit guarded route back to adding pages"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK063",
+      "problem": "Wochenplankarten lassen reine Wortschatzziele nicht öffnen und zeigen dann keinen eigentlichen Tagesinhalt.",
+      "location": "app/lib/daily_plan_panel.dart / openTips",
+      "change": "Auch Wortschatztage öffnen die tatsächlichen gespeicherten Themen und lesenden Ressourcenwege.",
+      "tests": [
+        {
+          "file": "app/test/child_week_plan_ux88_test.dart",
+          "line": 46,
+          "case": "KK063 vocabulary-only future plan card opens actual topics without starting a round"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK064",
+      "problem": "Zukünftige kleine Datumslabels erklären nicht, welcher Tag morgen ist.",
+      "location": "app/lib/daily_plan_panel.dart / label",
+      "change": "Morgen/Heute aus dem gespeicherten Planungsdatum ergänzen, nicht aus der abweichenden Geräteuhr.",
+      "tests": [
+        {
+          "file": "app/test/child_week_plan_ux88_test.dart",
+          "line": 68,
+          "case": "KK064 day labels use the persisted planning date instead of the client clock"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK065",
+      "problem": "Unbeschriftete Minuten einer geplanten Portion können als verbindliches Zeitminimum gelesen werden.",
+      "location": "app/lib/daily_plan_panel.dart / portion",
+      "change": "Schätzung ausdrücklich als vorgeschlagene Portion bezeichnen und von aktiver Mindestzeit trennen.",
+      "tests": [
+        {
+          "file": "app/test/child_week_plan_ux88_test.dart",
+          "line": 81,
+          "case": "KK065 a future portion is clearly an estimate rather than a time minimum at 200 percent"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK066",
+      "problem": "Ein leerer Ausblick lässt offen, wo bestehende Aufgaben weiter erreichbar sind.",
+      "location": "app/lib/daily_plan_panel.dart / Leerzustand",
+      "change": "Konkreter lesender Weg Mein Lernen öffnen; kein falscher Abschluss.",
+      "tests": [
+        {
+          "file": "app/test/child_week_plan_ux88_test.dart",
+          "line": 94,
+          "case": "KK066 an empty future plan offers existing learning rather than claiming completion"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK067",
+      "problem": "Ein echter Elternauftrag verschwindet aus der Kinder-Wochenansicht, wenn der Tag kein allgemeines Zeitminimum hat.",
+      "location": "app/lib/daily_plan_panel.dart / hasObligation",
+      "change": "Vorhandene verbindliche Aufträge auch an freien/pausierten Tagen sichtbar halten, Planung unverändert.",
+      "tests": [
+        {
+          "file": "app/test/child_week_plan_ux88_test.dart",
+          "line": 109,
+          "case": "KK067 a real parent obligation remains visible on a day without a general time goal"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK068",
+      "problem": "Ein Wort auf einer längeren erkannten Paarliste ist nur durch Durchblättern auffindbar.",
+      "location": "app/lib/material_words.dart / Suchfeld",
+      "change": "Lokale Suche über die vorhandenen Wörter/Bedeutungen; Auswahl erhalten, keine Ergänzung aus Wörterbuch.",
+      "tests": [
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 42,
+          "case": "KK068 word proposal search locates a later pair, clears an empty result and preserves prior approvals"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK069",
+      "problem": "Offene, unklare und bereits gewählte Paare können in langen Listen nicht gezielt geprüft werden.",
+      "location": "app/lib/material_words.dart / matches",
+      "change": "Benannte Statusauswahl nach tatsächlichen lokalen Entscheidungen; keine automatische Freigabe.",
+      "tests": [
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 69,
+          "case": "KK069 selection and unclear filters expose actual decisions without selecting any new pair"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK070",
+      "problem": "Nicht übernehmen und Für später ergeben in der Karte kaum erkennbare unterschiedliche Zustände.",
+      "location": "app/lib/material_words.dart / pair",
+      "change": "Explizite benannte Entscheidung; bearbeitete Paare müssen erneut bestätigt werden.",
+      "tests": [
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 86,
+          "case": "KK070 explicit skip and later decisions remain visibly distinguishable"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK071",
+      "problem": "Eine versehentliche Wortkorrektur lässt sich nicht auf das Original zurücksetzen.",
+      "location": "app/lib/material_words.dart / pair, edits",
+      "change": "Eigene Korrektur zurücknehmen, Original wiederherstellen und ausdrücklich ungeprüft lassen.",
+      "tests": [
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 100,
+          "case": "KK071 a mistaken correction can be reverted but never restores an approval"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK072",
+      "problem": "Eine erkannte Lernsprache und eine alte Locale können einen Dropdown-Absturz auslösen.",
+      "location": "app/lib/material_words.dart / Locale-Auswahl",
+      "change": "Gültige Auswahl verlangen statt Crash oder stiller Sprachänderung; Freigabe bis dahin gesperrt.",
+      "tests": [
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 120,
+          "case": "KK072 mismatching stored locale shows a real choice rather than asserting or silently changing language"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK073",
+      "problem": "Eine offene Wortkorrektur kann nach neuen OCR-Vorschlägen auf eine andere Vorschaufassung übernommen werden.",
+      "location": "app/lib/material_words.dart / correct, didUpdateWidget",
+      "change": "Eigene Dialogroute an Vorschau/Locale/Richtung binden; alte Abschlüsse verwerfen.",
+      "tests": [
+        {
+          "file": "app/test/child_word_review_ux88_test.dart",
+          "line": 137,
+          "case": "KK073 replacing OCR proposals closes only their old correction dialog and rejects the old finish callback"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK074",
+      "problem": "Ein gespeichertes Sprachprojekt lässt sich in der geladenen Liste nicht anhand seines Ziels wiederfinden.",
+      "location": "app/lib/language_workshop.dart / visibleProjects",
+      "change": "Begrenzte lokale Projekttextsuche, geladene Seiten ehrlich benennen.",
+      "tests": [
+        {
+          "file": "app/test/child_project_tools_ux88_test.dart",
+          "line": 118,
+          "case": "KK074 saved project search finds loaded goals and languages without server traffic"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK075",
+      "problem": "Fehlgeschlagene und fertige Sprachprojekte stehen ohne gezielte Statusauswahl zusammen.",
+      "location": "app/lib/language_workshop.dart / projectFilter",
+      "change": "Tatsächlichen Projektstand filtern; kein Retry oder KI durch Auswahl.",
+      "tests": [
+        {
+          "file": "app/test/child_project_tools_ux88_test.dart",
+          "line": 137,
+          "case": "KK075 actual project state filter separates failed preparation without retrying it"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK076",
+      "problem": "Für ein neues Sprachprojekt sind passende bestätigte Wörter in einer langen Auswahl schwer auffindbar.",
+      "location": "app/lib/language_workshop.dart / visibleWords",
+      "change": "Geladene Schulwörter lokal suchen, bestehende explizite Auswahl bewahren.",
+      "tests": [
+        {
+          "file": "app/test/child_project_tools_ux88_test.dart",
+          "line": 162,
+          "case": "KK076 selecting loaded workshop words supports local search without losing already selected pairs"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK077",
+      "problem": "Nach einem gescheiterten Entwurfsspeichern kann die Hausaufgabenauswahl trotzdem weiterspringen.",
+      "location": "app/lib/homework_screen.dart / chooseTask",
+      "change": "Aufgabenwechsel erst bei sicherem unverändertem Speicherstand; Fehler, Konflikt und neue Eingaben erhalten.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 54,
+          "case": "KK077 failed draft save keeps the original homework task selected and its question intact"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK078",
+      "problem": "Die offene eigene Frage wird beim Wechsel zur nächsten Hausaufgabe der falschen Aufgabe zugeordnet.",
+      "location": "app/lib/homework_screen.dart / taskQuestions, chooseTask",
+      "change": "Eigene ungesendete Fragen im gebundenen Arbeitsspeicher je Aufgabe halten und korrekt wiederaufnehmen.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 84,
+          "case": "KK078 own unsent questions remain bound to their homework task and return without any model call"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK079",
+      "problem": "Viele Aufgabenchips nehmen sofort den ganzen Aufgabenraum ein.",
+      "location": "app/lib/homework_screen.dart / taskOverview",
+      "change": "Ab sechs Aufgaben eine ausdrücklich aufklappbare Übersicht statt sofort aller Chips.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 108,
+          "case": "KK079 a long homework list stays compact until explicitly opened"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK080",
+      "problem": "Eine bestimmte Teilaufgabe auf einem großen Aufgabenfoto kann nicht nach ihrem Wortlaut gefunden werden.",
+      "location": "app/lib/homework_screen.dart / visibleTasks",
+      "change": "Nur vorhandenen Titel und belegten Auftrag lokal durchsuchen, sichtbares Rücksetzen.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 118,
+          "case": "KK080 the photo task search matches verified instruction text and resets an empty result"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK081",
+      "problem": "Eigene Häkchen und angefangene Versuche sind in der Aufgabenübersicht nicht auswählbar.",
+      "location": "app/lib/homework_screen.dart / taskFilter",
+      "change": "Benannte eigene Arbeitsstatusfilter; kein Häkchen als Richtigkeitsbeleg ausgeben.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 141,
+          "case": "KK081 task overview filters actual own checkmarks without calling them learning success"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK082",
+      "problem": "Aufeinander folgende Aufgaben müssen über die obere Chipliste wiedergefunden werden.",
+      "location": "app/lib/homework_screen.dart / Aufgabennavigation",
+      "change": "Vorherige/Nächste und tatsächliche Position direkt an der Aufgabe; an den Enden inaktiv.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 159,
+          "case": "KK082 sequential homework navigation names position and stops at the actual list ends"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK083",
+      "problem": "Ein eigener Hausaufgabenversuch kann nicht bewusst für eine Zwischenablage außerhalb des Formulars übernommen werden.",
+      "location": "app/lib/homework_screen.dart / copyDraft",
+      "change": "Ausdrückliches Kopieren nur des eigenen aktuellen Versuchs, keine automatische Weitergabe.",
+      "tests": [
+        {
+          "file": "app/test/child_homework_details_ux88_test.dart",
+          "line": 185,
+          "case": "KK083 only a deliberate copy puts the own draft in the clipboard"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK084",
+      "problem": "Eine ältere Tutor-Erklärung kann im bereits geladenen Verlauf nicht nach ihrem Inhalt gefunden werden.",
+      "location": "app/lib/tutor_sheet.dart / historySearch",
+      "change": "Lokale Suche innerhalb früherer geladener Fragen/Antworten; aktuelle Rückmeldung bleibt sichtbar.",
+      "tests": [
+        {
+          "file": "app/test/child_tutor_tools_ux88_test.dart",
+          "line": 52,
+          "case": "KK084 loaded tutor history can be searched while the latest answer stays visible"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK085",
+      "problem": "Fehlgeschlagene oder durch Quellenänderung veraltete frühere Tutorfragen sind schwer gezielt auffindbar.",
+      "location": "app/lib/tutor_sheet.dart / historyFilter",
+      "change": "Vorhandenen Fragenstand auswählen; kein erneuter Auftrag und keine Kosten aus GET.",
+      "tests": [
+        {
+          "file": "app/test/child_tutor_tools_ux88_test.dart",
+          "line": 68,
+          "case": "KK085 tutor history filters failed and changed-source questions without creating retries"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK086",
+      "problem": "Vom gelesenen Material führt kein direkter Weg zum passenden vorhandenen Fachhefter.",
+      "location": "app/lib/material_screen.dart / sourceReadingTools",
+      "change": "Nur echte gültige Fach-ID als benannten Zielweg verwenden, keine Vermutung anhand des Labels.",
+      "tests": [
+        {
+          "file": "app/test/child_source_tools_ux88_test.dart",
+          "line": 44,
+          "case": "KK086 page offers the existing subject notebook by its real subject ID"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK087",
+      "problem": "Eigene unbestätigte OCR-Korrekturen können nicht bewusst auf den gespeicherten Ausgangstext zurückgesetzt werden.",
+      "location": "app/lib/material_screen.dart / discardCorrection",
+      "change": "Geschützte Rückfrage; exakt unveränderte eigene Korrektur zurücknehmen, Serverquelle erhalten.",
+      "tests": [
+        {
+          "file": "app/test/child_source_tools_ux88_test.dart",
+          "line": 57,
+          "case": "KK087 own source correction can be cancelled or reverted without changing stored content"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK088",
+      "problem": "Lange erkannte Mitschriften lassen sich nicht nach einer bestimmten Textstelle durchsuchen.",
+      "location": "app/lib/material_screen.dart / _SourceTextReader",
+      "change": "Begrenzte lokale Lese-/Suchansicht mit ganzen Formelzeilen, Nulltreffer und sicherem Rückweg.",
+      "tests": [
+        {
+          "file": "app/test/child_source_tools_ux88_test.dart",
+          "line": 94,
+          "case": "KK088 source lookup finds whole verified lines and has a clear zero result at 200 percent"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK089",
+      "problem": "Der aktuell gezeigte Seitentext lässt sich nicht bewusst zum eigenen Weiterverwenden kopieren.",
+      "location": "app/lib/material_screen.dart / copySourceText",
+      "change": "Ausschließlich bewusster Clipboard-Auftrag für den aktuell angezeigten Text, keine automatische Weitergabe.",
+      "tests": [
+        {
+          "file": "app/test/child_source_tools_ux88_test.dart",
+          "line": 111,
+          "case": "KK089 copying source text is explicit and includes only the current displayed text"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK090",
+      "problem": "Der wirkliche Schultag ist im Kinderablauf nur in zugeklappten Details sichtbar.",
+      "location": "app/lib/school_day_screen.dart / childFrame",
+      "change": "Gespeichertes Datum sofort zeigen; alte Tage ausdrücklich von neuen heutigen Fotos trennen.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 316,
+          "case": "KK090 actual stored school date is visible before expanding day details"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK091",
+      "problem": "Eine Fachzusammenfassung im Paket nennt Themen, führt aber nicht zu ihren tatsächlichen Heftseiten.",
+      "location": "app/lib/school_day_screen.dart / openSourceGroup",
+      "change": "Lokale Quellenliste nur aus material_ids geschnitten mit berechtigten Seiten dieses Tages; kein erfundenes Ziel.",
+      "tests": [
+        {
+          "file": "app/test/child_school_day_actions_ux88_test.dart",
+          "line": 325,
+          "case": "KK091 subject packet opens only the pages actually referenced by that group"
+        }
+      ],
+      "status": "checked"
+    },
+    {
+      "id": "KK092",
+      "problem": "Unerwartete Schultag-Aktionsfehler können technische Exceptiontexte zeigen.",
+      "location": "app/lib/school_day_screen.dart / run",
+      "change": "Neutraler Fehler mit erhaltenem Stand; dieselbe allgemeine Fehlerverständlichkeit wie KK020, nicht zusätzlich zählen.",
+      "tests": [],
+      "status": "coupled",
+      "counted_with": "KK020"
+    },
+    {
+      "id": "KK093",
+      "problem": "Explizit bildlose Materialien versuchen trotzdem ein Originalfoto zu laden und erscheinen dadurch fehlerhaft.",
+      "location": "app/lib/material_screen.dart / Bildanzeige",
+      "change": "Bei has_image=false keinen kaputten Bildabruf erzeugen; erkannter Text und Leseaktionen bleiben zugänglich.",
+      "tests": [
+        {
+          "file": "app/test/child_source_tools_ux88_test.dart",
+          "line": 136,
+          "case": "KK093 a page explicitly without an original image remains readable without requesting a broken photo"
+        }
+      ],
+      "status": "checked"
+    }
+  ],
+  "pending_integration_cases": [
+    "Root complete Flutter integration after the verified final child guard block is running separately; no final full-suite result recorded here yet. Browser/native visual acceptance remains a separate Root task."
+  ],
+  "test_source_sha256": {
+    "app/test/child_homework_details_ux88_test.dart": "a6adf70f05bc04878bccafb0d601b70da7123d2e3914cdc61781010b74eb58a1",
+    "app/test/child_local_tools_ux88_test.dart": "98febed21b4bbe39df437514dccc6f89c41680403b01019a77eb5c25d1178c58",
+    "app/test/child_notebook_actions_ux88_test.dart": "4899606814702a53763df15dac14a9fb0e7ad1e0955c82f3fe46d2178ad8a8a2",
+    "app/test/child_project_tools_ux88_test.dart": "ea52c766f191f8b2b19b43f45400bfaed7a7158a6545bdf2a4603edc06439156",
+    "app/test/child_round_controls_ux88_test.dart": "7b992f918bb8b516e763a87f8fba414916739d8030f1580dcfbe6c4ee1162c40",
+    "app/test/child_school_day_actions_ux88_test.dart": "162f5d46d45219d829c68ec8696ea5aa797cfa1c35d5dd55d3b52765612e1c4c",
+    "app/test/child_source_tools_ux88_test.dart": "b9092d64c8244ed24ff7b1793b5b1925fae0dc26a8d7578ecf7ab069e27ef944",
+    "app/test/child_today_actions_ux88_test.dart": "3049d33e5a892a2655812ae739a600ccd595e1b54532f4e18431b0ef12c4fbff",
+    "app/test/child_tutor_tools_ux88_test.dart": "4cea7a17836f6cfedb08e3ded2503695e472ade15fc5a7c51553bb82aeb1d68b",
+    "app/test/child_week_plan_ux88_test.dart": "261b9fe780c217c9a72e3dd9d32847d29fb1dff607a60de1bd640395dceed224",
+    "app/test/child_word_review_ux88_test.dart": "6650e0888940bbad08c41fc8e31bd5d9f97f5b4775c5d8ebb1d1469b7071e59b"
+  },
+  "known_limitations": [
+    {
+      "id": "K081",
+      "scope": "Only additionally opened older tutor preview cards after a fresh authorized GET.",
+      "effect": "The extra older cards must be loaded again using the read-only older-questions action. Persisted questions, answers and sources are unchanged.",
+      "reason": "Do not retain old private source citations across refresh without fresh authorization. No cursor/cache redesign in this round.",
+      "counted": false
+    }
+  ],
+  "integration_corrections": [
+    "KK055 assertion now validates merged SemanticsData with exact full label and button/focus/tap flags instead of raw wrapper.label.",
+    "mobile_regression_test checks the actual visible school-date heading; opening details remains checked and all GET-only/route assertions are retained.",
+    "KK012 follow-up: photo cards bind rendered child/photo/route and exact account/family; stored callbacks cannot reopen a previous context.",
+    "KK012 follow-up: Today actions bind exact rendered data plus account/family/child/route before navigation or a learning POST. Existing asynchronous no-pages cleanup remains account-bound to avoid a stuck busy state.",
+    "KK012 follow-up: account message shortcut uses the rendered owner child ID and refuses null/new/covered contexts."
+  ],
+  "verified_integration_runs": [
+    {
+      "log": "artifacts/ux88/child-final-guards-verified.log",
+      "executor": "Root",
+      "passed": 64,
+      "failed": 0,
+      "scope": [
+        "app/test/child_homework_details_ux88_test.dart",
+        "app/test/child_today_actions_ux88_test.dart",
+        "app/test/child_local_tools_ux88_test.dart"
+      ],
+      "includes": "All 24 additional synthetic KK012 cases for final photo, Today and account callback guards."
+    }
+  ]
+}

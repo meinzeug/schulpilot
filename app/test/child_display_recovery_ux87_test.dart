@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -146,14 +147,18 @@ void main() {
   testWidgets('K094 photo bytes and zoom disappear on a same-ID new login', (
     t,
   ) async {
+    final fresh = Completer<http.Response>();
+    var reads = 0;
     final s = AppState(
       api: Api(
         base: 'https://example.invalid/api',
         client: MockClient(
-          (_) async => http.Response.bytes(
-            image.encodePng(image.Image(width: 2, height: 2)),
-            200,
-          ),
+          (_) async => ++reads == 1
+              ? http.Response.bytes(
+                  image.encodePng(image.Image(width: 2, height: 2)),
+                  200,
+                )
+              : fresh.future,
         ),
       ),
     )..user = {'id': 'own', 'role': 'child'};
@@ -164,8 +169,17 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     s.user = {...s.user!};
     s.refreshState();
-    await t.pumpAndSettle();
+    await t.pump();
     expect(find.byType(Image), findsNothing);
+    expect(reads, 2);
+    fresh.complete(
+      http.Response.bytes(
+        image.encodePng(image.Image(width: 3, height: 3)),
+        200,
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.byType(Image), findsOneWidget);
     await t.pumpWidget(const SizedBox());
   });
   testWidgets(

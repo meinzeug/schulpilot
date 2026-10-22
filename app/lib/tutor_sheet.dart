@@ -44,6 +44,7 @@ final _tutorDrafts = Expando<_TutorDraftMemory>();
 class _TutorDraftMemory {
   final AppState state;
   Json? account;
+  String? family;
   final drafts =
       <
         String,
@@ -54,13 +55,16 @@ class _TutorDraftMemory {
           _TutorSubmission? submission,
         })
       >{};
-  _TutorDraftMemory(this.state) : account = state.user {
+  _TutorDraftMemory(this.state)
+    : account = state.user,
+      family = state.familyId {
     state.addListener(changed);
   }
   void changed() {
-    if (!identical(account, state.user)) {
+    if (!identical(account, state.user) || family != state.familyId) {
       drafts.clear();
       account = state.user;
+      family = state.familyId;
     }
   }
 
@@ -111,6 +115,8 @@ class _TutorSheet extends StatefulWidget {
 
 class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   final question = TextEditingController();
+  final historySearch = TextEditingController();
+  String historyFilter = 'all';
   final questionFocus = FocusNode();
   // Keep the input subtree when the keyboard switches the sheet layout.
   final composerKey = GlobalKey();
@@ -133,6 +139,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   Timer? poll;
   String? cursor, replyTo, readError, sendError;
   late final Json? actor = widget.state.user;
+  late final family = widget.state.familyId;
   bool loading = true, reading = false, sending = false;
   bool sourceUnavailable = false;
   ({String text, String? replyTo, bool newQuestion})? replacedDraft;
@@ -155,7 +162,8 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   int generation = 0;
   _TutorSubmission? unconfirmed;
   AppState get state => widget.state;
-  bool get ownerMatches => actor != null && identical(state.user, actor);
+  bool get ownerMatches =>
+      actor != null && identical(state.user, actor) && family == state.familyId;
   bool get active => mounted && ownerMatches && foreground && routeVisible;
   bool get hasPending =>
       turns.any((turn) => ['queued', 'running'].contains(turn['status']));
@@ -209,6 +217,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
       poll = null;
       generation++;
       question.clear();
+      historySearch.clear();
       replyTo = null;
       replacedDraft = null;
       unconfirmed = null;
@@ -231,6 +240,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     state.removeListener(identityChanged);
     question.removeListener(draftChanged);
     question.dispose();
+    historySearch.dispose();
     questionFocus.dispose();
     super.dispose();
   }
@@ -403,6 +413,69 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     });
   }
 
+  bool matchesHistory(Json turn) {
+    final query = historySearch.text.trim().toLowerCase();
+    final reply = turn['reply'] as Map?;
+    final textMatches = [
+      turn['question'],
+      reply?['answer'],
+      reply?['next_question'],
+    ].any((value) => '${value ?? ''}'.toLowerCase().contains(query));
+    return textMatches &&
+        switch (historyFilter) {
+          'ready' =>
+            turn['status'] == 'ready' && turn['source_changed'] != true,
+          'failed' => turn['status'] == 'failed',
+          'changed' => turn['source_changed'] == true,
+          _ => true,
+        };
+  }
+
+  Widget historyTools() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TextField(
+        controller: historySearch,
+        textInputAction: TextInputAction.search,
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        decoration: InputDecoration(
+          labelText: 'Geladene frühere Fragen durchsuchen',
+          suffixIcon: historySearch.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Fragensuche löschen',
+                  onPressed: () => setState(historySearch.clear),
+                  icon: Icon(Icons.close_rounded),
+                ),
+        ),
+      ),
+      SizedBox(height: 12),
+      DropdownButtonFormField<String>(
+        key: ValueKey(('tutor-history-filter', historyFilter)),
+        initialValue: historyFilter,
+        isExpanded: true,
+        decoration: InputDecoration(labelText: 'Fragenstand'),
+        items: [
+          for (final option in [
+            ('all', 'Alle früheren Fragen'),
+            ('ready', 'Gespeicherte Erklärungen'),
+            ('failed', 'Fehlgeschlagene Fragen'),
+            ('changed', 'Heftquelle geändert'),
+          ])
+            DropdownMenuItem(value: option.$1, child: Text(option.$2)),
+        ],
+        onChanged: (value) => setState(() => historyFilter = value ?? 'all'),
+      ),
+      Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          'Die Suche prüft nur den geladenen Verlauf. Deine aktuelle Frage und Antwort bleiben oben sichtbar.',
+        ),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final editable = ownerMatches && state.isChild;
@@ -448,7 +521,13 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                   ),
                   IconButton(
                     tooltip: 'Schließen',
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      if (mounted &&
+                          ownerMatches &&
+                          ModalRoute.of(context)?.isCurrent == true) {
+                        Navigator.of(context).pop();
+                      }
+                    },
                     icon: Icon(Icons.close_rounded),
                   ),
                 ],
@@ -496,11 +575,27 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                           'Frühere Fragen (${turns.length - (parentTurn == null ? 1 : 2)})',
                         ),
                         children: [
+                          historyTools(),
+                          if (!turns
+                              .take(turns.length - 1)
+                              .where((turn) => turn['id'] != parentTurn?['id'])
+                              .any(matchesHistory))
+                            TextButton(
+                              onPressed: () => setState(() {
+                                historySearch.clear();
+                                historyFilter = 'all';
+                              }),
+                              child: Text(
+                                'Fragensuche und Filter zurücksetzen',
+                              ),
+                            ),
                           for (final turn
                               in turns
                                   .take(turns.length - 1)
                                   .where(
-                                    (turn) => turn['id'] != parentTurn?['id'],
+                                    (turn) =>
+                                        turn['id'] != parentTurn?['id'] &&
+                                        matchesHistory(turn),
                                   )
                                   .toList()
                                   .reversed)

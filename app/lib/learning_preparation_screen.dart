@@ -22,7 +22,13 @@ class LearningPreparationScreen extends StatelessWidget {
     state,
     childId: childId,
     jobId: jobId,
-    key: ValueKey((state, ObjectKey(state.user), childId, jobId)),
+    key: ValueKey((
+      state,
+      ObjectKey(state.user),
+      state.familyId,
+      childId,
+      jobId,
+    )),
   );
 }
 
@@ -47,9 +53,13 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
   Object? error;
   String? readingJob;
   late final Json? owner;
+  late final String? family;
   bool foreground = true;
   bool get sameOwner =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      widget.state.familyId == family;
   bool get waiting =>
       job == null || ['queued', 'running'].contains(job?['status']);
 
@@ -57,6 +67,7 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
   void initState() {
     super.initState();
     owner = widget.state.user;
+    family = widget.state.familyId;
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
@@ -89,7 +100,13 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     foreground = lifecycle == AppLifecycleState.resumed;
-    if (foreground && sameOwner && waiting) load();
+    if (foreground &&
+        sameOwner &&
+        waiting &&
+        error == null &&
+        (ModalRoute.of(context)?.isCurrent ?? true)) {
+      load();
+    }
   }
 
   @override

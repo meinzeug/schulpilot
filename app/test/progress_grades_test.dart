@@ -219,8 +219,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(reads.last.url.queryParameters['topic'], 'Brüche');
       expect(find.text('KI-Lernkompass'), findsNothing);
-      await tester.ensureVisible(find.textContaining('Runde vom'));
-      await tester.tap(find.textContaining('Runde vom'));
+      await tester.ensureVisible(find.textContaining('Zuletzt geübt am'));
+      await tester.tap(find.textContaining('Zuletzt geübt am'));
       await tester.pumpAndSettle();
       expect(
         find.text('Eigene gespeicherte Runde owned-round'),

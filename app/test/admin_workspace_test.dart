@@ -301,7 +301,7 @@ void main() {
         await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
         await tap(
           tester,
-          find.widgetWithText(OutlinedButton, 'Tarif bearbeiten').first,
+          find.widgetWithText(ActionPanel, 'Tarif bearbeiten').first,
         );
         expect(
           tester.widget<AlertDialog>(find.byType(AlertDialog)).scrollable,

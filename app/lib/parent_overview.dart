@@ -72,8 +72,19 @@ class ParentOverview extends StatelessWidget {
           )),
         )
         .toList();
+    final account = state?.user;
+    final family = state?.familyId;
+    bool current() =>
+        state == null ||
+        (account != null &&
+            identical(account, state!.user) &&
+            family == state!.familyId);
+    void visit(String path) {
+      if (current()) openRoute(context, path);
+    }
+
     void section(String value) =>
-        openRoute(context, ParentChildNavigation.location(childId, value));
+        visit(ParentChildNavigation.location(childId, value));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -101,7 +112,15 @@ class ParentOverview extends StatelessWidget {
             ),
           ],
         ),
-        ParentPracticeSummary(evidence),
+        ParentPracticeSummary(
+          evidence,
+          onCategorySelected: (category) => visit(
+            Uri(
+              path: '/progress/$childId',
+              queryParameters: {'ergebnis': category},
+            ).toString(),
+          ),
+        ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -163,7 +182,7 @@ class ParentOverview extends StatelessWidget {
                       '${counted(voluntaryAssignments, 'freiwilliger Auftrag', 'freiwillige Aufträge')} im Plan.',
                   ].join(' '),
                   action: 'Plan ansehen',
-                  onTap: () => section('plan'),
+                  onTap: () => visit('/parent-plan/$childId?ansicht=topics'),
                 ),
                 if (changedAssignments > 0)
                   _OverviewAction(
@@ -172,7 +191,7 @@ class ParentOverview extends StatelessWidget {
                         '${counted(changedAssignments, 'Auftragsquelle', 'Auftragsquellen')} prüfen',
                     detail: 'Der Heftstoff hat sich geändert. Diese Aufträge zählen erst nach der Prüfung wieder zu den bestätigten offenen Zielen.',
                     action: 'Aufträge im Lernplan prüfen',
-                    onTap: () => section('plan'),
+                    onTap: () => visit('/parent-plan/$childId?ansicht=topics'),
                     highlighted: true,
                   ),
                 if (guidance != null &&
@@ -184,7 +203,7 @@ class ParentOverview extends StatelessWidget {
                     detail:
                         '${guidance['topic']}\n${guidance['reason'] ?? guidance['title']}',
                     action: 'Gespeicherte Runde ansehen',
-                    onTap: () => openRoute(context, '/unit/$guidanceUnitId'),
+                    onTap: () => visit('/unit/$guidanceUnitId'),
                   ),
                 if (plan['goal_required'] == true &&
                     plan['daily_goal_met'] != true)
@@ -207,7 +226,13 @@ class ParentOverview extends StatelessWidget {
                 if (plan.isEmpty)
                   const Notice('Noch keine Zeitdaten verfügbar.')
                 else
-                  LearningGoalPanel(plan: plan),
+                  ActionPanel(
+                    actionLabel: 'Zeitrahmen und Wochenvorschlag ansehen',
+                    onPressed: () =>
+                        visit('/parent-plan/$childId?ansicht=week'),
+                    padding: const EdgeInsets.all(16),
+                    child: LearningGoalPanel(plan: plan),
+                  ),
               ],
             );
             if (size.maxWidth >= 850 &&
@@ -262,7 +287,9 @@ class ParentOverview extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 24),
-        SurfaceInset(
+        ActionPanel(
+          actionLabel: 'Verlauf der letzten sieben Tage ansehen',
+          onPressed: () => section('history'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -289,14 +316,6 @@ class ParentOverview extends StatelessWidget {
               Text(
                 data['week_summary']?['support'] ?? 'Noch keine Rückmeldung.',
                 style: TextStyle(color: context.palette.muted),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => section('history'),
-                  icon: const Icon(Icons.history_rounded),
-                  label: const Text('Verlauf ansehen'),
-                ),
               ),
             ],
           ),
@@ -365,6 +384,17 @@ class ParentOverview extends StatelessWidget {
           ),
           childrenPadding: const EdgeInsets.only(top: 12, bottom: 12),
           children: [
+            ActionPanel(
+              actionLabel: 'Gespeicherte Heftseiten ansehen',
+              onPressed: () => visit('/library/$childId'),
+              child: Text(
+                counted(
+                  data['material_count'] as num? ?? 0,
+                  'gespeicherte Heftseite',
+                  'gespeicherte Heftseiten',
+                ),
+              ),
+            ),
             for (final preparation
                 in (data['pending_preparations'] as List? ?? [])
                     .whereType<Map>()
@@ -384,7 +414,12 @@ class ParentOverview extends StatelessWidget {
 
 class ParentPracticeSummary extends StatelessWidget {
   final Json evidence;
-  const ParentPracticeSummary(this.evidence, {super.key});
+  final ValueChanged<String>? onCategorySelected;
+  const ParentPracticeSummary(
+    this.evidence, {
+    super.key,
+    this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -519,40 +554,44 @@ class ParentPracticeSummary extends StatelessWidget {
                 for (final item in items)
                   SizedBox(
                     width: width,
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: colors[item.$5]!.$1,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colors[item.$5]!.$2,
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(item.$4, color: colors[item.$5]!.$2, size: 25),
-                          const SizedBox(height: 14),
-                          Text(
-                            '${count(item.$1)} ${item.$2}',
-                            style: TextStyle(
-                              color: palette.ink,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
+                    child: onCategorySelected == null
+                        ? Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: colors[item.$5]!.$1,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colors[item.$5]!.$2,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: categoryContent(
+                              context,
+                              item,
+                              count(item.$1),
+                              colors[item.$5]!.$2,
+                            ),
+                          )
+                        : ActionPanel(
+                            tone: item.$5,
+                            padding: const EdgeInsets.all(18),
+                            enabled: count(item.$1) > 0,
+                            actionLabel: 'Passende Aufgaben ansehen',
+                            onPressed: () =>
+                                onCategorySelected!(switch (item.$1) {
+                                  'independent_tasks' => 'independent',
+                                  'assisted_tasks' => 'assisted',
+                                  'needs_practice_tasks' => 'needs_practice',
+                                  'uncertain_tasks' => 'uncertain',
+                                  _ => 'reflection',
+                                }),
+                            child: categoryContent(
+                              context,
+                              item,
+                              count(item.$1),
+                              colors[item.$5]!.$2,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            item.$3,
-                            style: TextStyle(
-                              color: palette.muted,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
               ],
             );
@@ -568,6 +607,32 @@ class ParentPracticeSummary extends StatelessWidget {
       ],
     );
   }
+
+  Widget categoryContent(
+    BuildContext context,
+    (String, String, String, IconData, PanelTone) item,
+    int count,
+    Color iconColor,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(item.$4, color: iconColor, size: 25),
+      const SizedBox(height: 14),
+      Text(
+        '$count ${item.$2}',
+        style: TextStyle(
+          color: context.palette.ink,
+          fontSize: 19,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        item.$3,
+        style: TextStyle(color: context.palette.muted, fontSize: 13),
+      ),
+    ],
+  );
 }
 
 class _OverviewAction extends StatelessWidget {
@@ -584,11 +649,10 @@ class _OverviewAction extends StatelessWidget {
     this.highlighted = false,
   });
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    decoration: BoxDecoration(
-      border: Border(bottom: BorderSide(color: context.palette.surfaceBorder)),
-    ),
+  Widget build(BuildContext context) => ActionPanel(
+    actionLabel: action,
+    onPressed: onTap,
+    tone: highlighted ? PanelTone.warning : PanelTone.neutral,
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -616,12 +680,6 @@ class _OverviewAction extends StatelessWidget {
               DefaultTextStyle.merge(
                 style: TextStyle(color: context.palette.muted, fontSize: 14),
                 child: LearningContent(detail),
-              ),
-              const SizedBox(height: 5),
-              TextButton.icon(
-                onPressed: onTap,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: Text(action),
               ),
             ],
           ),

@@ -94,6 +94,9 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
     text: 'Meine Schulwörter in passenden Sätzen anwenden',
   );
   final draft = TextEditingController();
+  final projectSearch = TextEditingController(),
+      wordSearch = TextEditingController();
+  String projectFilter = 'all';
   String locale = 'en-GB', mode = 'context_gap', grammar = 'simple_present';
   String? material, error;
   final selected = <String>{};
@@ -112,10 +115,14 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
       'workshop_form:${widget.childId}:${widget.materialId ?? "none"}:${widget.projectId ?? "new"}';
   bool more = false;
   late final Json? owner;
-  bool foreground = true;
+  late final family = widget.state.familyId;
+  bool foreground = true, routeVisible = true;
   String get base => '/children/${widget.childId}';
   bool get current =>
-      mounted && owner != null && identical(owner, widget.state.user);
+      mounted &&
+      owner != null &&
+      identical(owner, widget.state.user) &&
+      family == widget.state.familyId;
 
   @override
   void initState() {
@@ -141,6 +148,8 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
     }
     goal.addListener(formChanged);
     draft.addListener(formChanged);
+    projectSearch.addListener(formChanged);
+    wordSearch.addListener(formChanged);
     widget.state.addListener(accountChanged);
     load();
   }
@@ -150,10 +159,21 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final wasVisible = routeVisible;
+    routeVisible = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!routeVisible) poll?.cancel();
+    if (!wasVisible && routeVisible && current && widget.projectId != null) {
+      load();
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     foreground = lifecycle == AppLifecycleState.resumed;
     poll?.cancel();
-    if (foreground && current) load();
+    if (foreground && routeVisible && current) load();
   }
 
   void accountChanged() {
@@ -168,6 +188,8 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
         goal.clear();
         projects = [];
         project = null;
+        projectSearch.clear();
+        wordSearch.clear();
         draft.clear();
       });
     }
@@ -212,6 +234,8 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
     draft.removeListener(formChanged);
     goal.dispose();
     draft.dispose();
+    projectSearch.dispose();
+    wordSearch.dispose();
     super.dispose();
   }
 
@@ -234,7 +258,9 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
           error = null;
         });
         poll?.cancel();
-        if (foreground && ['queued', 'running'].contains(result['status'])) {
+        if (foreground &&
+            routeVisible &&
+            ['queued', 'running'].contains(result['status'])) {
           poll = Timer(Duration(seconds: 3), load);
         }
       } else {
@@ -424,6 +450,36 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
     }
   }
 
+  List<Json> get visibleProjects {
+    final query = projectSearch.text.trim().toLowerCase();
+    return projects.where((row) {
+      final stateMatches = switch (projectFilter) {
+        'ready' => row['status'] == 'ready',
+        'pending' => ['queued', 'running'].contains(row['status']),
+        'failed' => row['status'] == 'failed',
+        _ => true,
+      };
+      return stateMatches &&
+          [
+            row['goal'],
+            workshopModes[row['mode']],
+            learningLocales[row['target_locale']],
+          ].any((value) => '$value'.toLowerCase().contains(query));
+    }).toList();
+  }
+
+  List<Json> get visibleWords {
+    final query = wordSearch.text.trim().toLowerCase();
+    return words
+        .where(
+          (word) => [
+            word['word'],
+            word['meaning'],
+          ].any((value) => '$value'.toLowerCase().contains(query)),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
@@ -568,6 +624,20 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                                 }),
                         ),
                         SizedBox(height: 16),
+                        if (chosenSource != null &&
+                            material == chosenSource!['id'] &&
+                            !loading)
+                          ActionPanel(
+                            actionLabel: 'Ausgewählte Heftseite ansehen',
+                            onPressed: () {
+                              if (current && material == chosenSource?['id']) {
+                                openRoute(context, '/material/$material');
+                              }
+                            },
+                            child: Text(
+                              '${chosenSource!['subject']} · ${chosenSource!['topic']}',
+                            ),
+                          ),
                         if (sourceTotal > 50)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -631,11 +701,36 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                                 ),
                             ],
                           ),
+                        if (words.length > 5) ...[
+                          TextField(
+                            controller: wordSearch,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) =>
+                                FocusManager.instance.primaryFocus?.unfocus(),
+                            decoration: InputDecoration(
+                              labelText: 'Geladene Schulwörter finden',
+                              helperText:
+                                  'Suche in den ${words.length} Wörtern dieser Seite.',
+                              suffixIcon: wordSearch.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip: 'Schulwortsuche löschen',
+                                      onPressed: wordSearch.clear,
+                                      icon: Icon(Icons.close_rounded),
+                                    ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          if (visibleWords.isEmpty)
+                            Text(
+                              'Kein geladenes Wort passt. Deine bereits gewählten Wörter bleiben erhalten.',
+                            ),
+                        ],
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            for (final word in words)
+                            for (final word in visibleWords)
                               FilterChip(
                                 label: Text(word['word']),
                                 selected: selected.contains(word['id']),
@@ -791,11 +886,63 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                   ),
                 SizedBox(height: 24),
                 heading('Deine gespeicherten Lernprojekte'),
+                if (projects.isNotEmpty ||
+                    projectSearch.text.isNotEmpty ||
+                    projectFilter != 'all') ...[
+                  TextField(
+                    controller: projectSearch,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                    decoration: InputDecoration(
+                      labelText: 'Geladene Projekte durchsuchen',
+                      helperText:
+                          'Suche in ${projects.length} Projekten auf dieser Seite.',
+                      suffixIcon: projectSearch.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Projektsuche löschen',
+                              onPressed: projectSearch.clear,
+                              icon: Icon(Icons.close_rounded),
+                            ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: projectFilter,
+                    isExpanded: true,
+                    decoration: InputDecoration(labelText: 'Projektstand'),
+                    items: [
+                      for (final option in [
+                        ('all', 'Alle Projektstände'),
+                        ('ready', 'Bereit zum Üben'),
+                        ('pending', 'Wird vorbereitet'),
+                        ('failed', 'Vorbereitung fehlgeschlagen'),
+                      ])
+                        DropdownMenuItem(
+                          value: option.$1,
+                          child: Text(option.$2),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (current) {
+                        setState(() => projectFilter = value ?? 'all');
+                      }
+                    },
+                  ),
+                  if (!loading && visibleProjects.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'Kein geladenes Projekt passt. Setze die Suche oder den Projektstand zurück; weitere Projekte stehen auf den nächsten Seiten.',
+                      ),
+                    ),
+                ],
                 if (projects.isEmpty && !loading)
                   Text(
                     'Hier findest du später deine vorbereiteten Projekte und eigenen Entwürfe.',
                   ),
-                for (final row in loading ? <Json>[] : projects)
+                for (final row in loading ? <Json>[] : visibleProjects)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(
@@ -804,14 +951,18 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                     ),
                     title: Text(workshopModes[row['mode']] ?? row['mode']),
                     subtitle: Text(
-                      '${row['goal']}\n${statusLabel(row['status'])}',
+                      '${learningLocales[row['target_locale']] ?? row['target_locale'] ?? 'Lernsprache nicht angegeben'} · ${statusLabel(row['status'])}\n${row['goal']}',
                     ),
                     isThreeLine: true,
                     trailing: Icon(Icons.chevron_right_rounded),
-                    onTap: () => openRoute(
-                      context,
-                      '/language-projects/${widget.childId}?project=${row['id']}',
-                    ),
+                    onTap: () {
+                      if (current && !loading) {
+                        openRoute(
+                          context,
+                          '/language-projects/${widget.childId}?project=${row['id']}',
+                        );
+                      }
+                    },
                   ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -861,6 +1012,13 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
               ),
               SizedBox(height: 10),
               Text(row['goal']),
+              SizedBox(height: 8),
+              Text(
+                learningLocales[row['target_locale']] ??
+                    row['target_locale'] ??
+                    'Lernsprache nicht angegeben',
+                style: TextStyle(color: context.palette.muted),
+              ),
               if (row['mode'] == 'dialog')
                 Text('Schritt ${row['step']} von höchstens 4'),
               SizedBox(height: 12),
@@ -925,17 +1083,36 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                 if (result['source_excerpt'] != null)
                   ExpansionTile(
                     title: Text('Beleg im bestätigten Stoff'),
-                    children: [Text(result['source_excerpt'])],
+                    children: [
+                      Text(result['source_excerpt']),
+                      for (final source
+                          in row['source_revisions'] as List? ?? [])
+                        if (source is Map &&
+                            source['id'] is String &&
+                            RegExp(r'^[0-9a-f]{32}$').hasMatch(source['id']))
+                          TextButton.icon(
+                            onPressed: () {
+                              if (current) {
+                                openRoute(context, '/material/${source['id']}');
+                              }
+                            },
+                            icon: Icon(Icons.menu_book_outlined),
+                            label: Text('Bestätigte Heftseite ansehen'),
+                          ),
+                    ],
                   ),
                 if (row['unit_id'] != null)
-                  FilledButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/unit/${row['unit_id']}'),
-                    icon: Icon(Icons.play_arrow_rounded),
-                    label: Text(
-                      widget.state.isChild
-                          ? 'Mit den Aufgaben üben'
-                          : 'Aufgaben & Antworten ansehen',
+                  ActionPanel(
+                    actionLabel: widget.state.isChild
+                        ? 'Mit den Aufgaben üben'
+                        : 'Aufgaben & Antworten ansehen',
+                    onPressed: () {
+                      if (current) {
+                        openRoute(context, '/unit/${row['unit_id']}');
+                      }
+                    },
+                    child: Text(
+                      'Deine gespeicherten Aufgaben zu diesem Lernprojekt',
                     ),
                   ),
               ],

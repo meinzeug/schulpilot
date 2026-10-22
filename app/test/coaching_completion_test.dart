@@ -424,7 +424,7 @@ void main() {
         expect(find.text('Für heute geschafft.'), findsNothing);
         expect(find.text('Jetzt ist Pause.'), findsNothing);
         expect(find.text('Weiterlernen'), findsOneWidget);
-        expect(find.byType(ActionButton), findsOneWidget);
+        expect(find.byType(ActionPanel), findsOneWidget);
         expect(fixture.requests, hasLength(1));
         expect(fixture.requests.single.method, 'GET');
         expect(tester.takeException(), isNull);

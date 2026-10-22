@@ -607,8 +607,12 @@ class MaterialScreen extends StatefulWidget {
 class _MaterialScreenState extends State<MaterialScreen> {
   int version = 0;
   late final account = widget.state.user;
+  late final family = widget.state.familyId;
   bool get current =>
-      mounted && account != null && identical(account, widget.state.user);
+      mounted &&
+      account != null &&
+      identical(account, widget.state.user) &&
+      family == widget.state.familyId;
   @override
   void initState() {
     super.initState();
@@ -682,6 +686,160 @@ class _MaterialReviewState extends State<MaterialReview> {
   String get correctionKey =>
       'source_correction:${widget.data['child_id']}:${widget.data['id']}';
   DialogRoute<List<Json>>? taskPreviewRoute;
+  final sourceToolRoutes = <DialogRoute<dynamic>>{};
+  void closeSourceTools() {
+    final routes = sourceToolRoutes.toList();
+    sourceToolRoutes.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
+  Future<T?> showSourceTool<T>(
+    Widget Function(BuildContext, DialogRoute<T>) builder,
+  ) async {
+    if (!current) return null;
+    late DialogRoute<T> route;
+    route = DialogRoute<T>(
+      context: context,
+      builder: (ctx) => builder(ctx, route),
+    );
+    sourceToolRoutes.add(route);
+    try {
+      return await Navigator.of(context, rootNavigator: true).push(route);
+    } finally {
+      sourceToolRoutes.remove(route);
+    }
+  }
+
+  Future<void> discardCorrection() async {
+    if (!current || changing || !dirty) return;
+    final data = widget.data,
+        draftSnapshot = jsonEncode([
+          subject.text,
+          topic.text,
+          content.text,
+          homework.text,
+        ]);
+    final accepted = await showSourceTool<bool>(
+      (ctx, route) => AlertDialog(
+        scrollable: true,
+        title: Text('Eigene Korrektur zurücknehmen?'),
+        content: Text(
+          'Nur deine noch nicht bestätigten Änderungen auf diesem Gerät werden durch den gespeicherten Seitentext ersetzt. Die gespeicherte Heftseite bleibt erhalten.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted && current && route.isCurrent) {
+                Navigator.pop(ctx, false);
+              }
+            },
+            child: Text('Weiter verbessern'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (ctx.mounted && current && route.isCurrent) {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: Text('Gespeicherten Text wiederherstellen'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true ||
+        !sourceCurrent(data) ||
+        draftSnapshot !=
+            jsonEncode([
+              subject.text,
+              topic.text,
+              content.text,
+              homework.text,
+            ])) {
+      return;
+    }
+    setState(() {
+      resetSource();
+      restoredCorrection = false;
+    });
+    widget.state.collectionViews.remove(correctionKey);
+  }
+
+  Future<void> copySourceText() async {
+    if (!current || content.text.trim().isEmpty) return;
+    final data = widget.data, text = content.text;
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (mounted && sourceCurrent(data)) {
+        toast(
+          context,
+          'Der aktuelle Seitentext liegt jetzt in der Zwischenablage.',
+        );
+      }
+    } catch (_) {
+      if (mounted && sourceCurrent(data)) {
+        toast(
+          context,
+          'Kopieren klappt hier gerade nicht. Dein Text bleibt erhalten.',
+        );
+      }
+    }
+  }
+
+  Widget sourceReadingTools() {
+    final data = widget.data;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        if (content.text.trim().isNotEmpty)
+          TextButton.icon(
+            onPressed: () {
+              if (!sourceCurrent(data)) return;
+              final text = content.text;
+              showSourceTool<void>(
+                (ctx, route) => _SourceTextReader(
+                  text: text,
+                  onClose: () {
+                    if (ctx.mounted && sourceCurrent(data) && route.isCurrent) {
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              );
+            },
+            icon: Icon(Icons.find_in_page_outlined),
+            label: Text('Im Seitentext nachsehen'),
+          ),
+        if (content.text.trim().isNotEmpty)
+          TextButton.icon(
+            onPressed: () {
+              if (sourceCurrent(data)) copySourceText();
+            },
+            icon: Icon(Icons.copy_outlined),
+            label: Text('Aktuellen Seitentext kopieren'),
+          ),
+        if (data['subject_id'] is String &&
+            RegExp(r'^[a-f0-9]{32}$').hasMatch(data['subject_id']))
+          TextButton.icon(
+            onPressed: () {
+              if (sourceCurrent(data)) {
+                openRoute(
+                  context,
+                  '/library/${data['child_id']}/subject/${data['subject_id']}',
+                );
+              }
+            },
+            icon: Icon(Icons.folder_open_outlined),
+            label: Text('Zugehörigen Fachhefter öffnen'),
+          ),
+      ],
+    );
+  }
+
   bool get dirty =>
       subject.text != widget.data['subject'] ||
       topic.text != widget.data['topic'] ||
@@ -736,8 +894,12 @@ class _MaterialReviewState extends State<MaterialReview> {
   }
 
   late final account = widget.state.user;
+  late final family = widget.state.familyId;
   bool get current =>
-      mounted && account != null && identical(account, widget.state.user);
+      mounted &&
+      account != null &&
+      identical(account, widget.state.user) &&
+      family == widget.state.familyId;
   @override
   void initState() {
     super.initState();
@@ -760,6 +922,7 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   void accountChanged() {
     if (!current && mounted) {
+      closeSourceTools();
       widget.state.collectionViews.remove(correctionKey);
       final old = taskPreviewRoute;
       if (old != null) {
@@ -796,6 +959,7 @@ class _MaterialReviewState extends State<MaterialReview> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.data['id'] != widget.data['id'] ||
         oldWidget.data['revision'] != widget.data['revision']) {
+      closeSourceTools();
       final route = taskPreviewRoute;
       taskPreviewRoute = null;
       if (route != null) {
@@ -1059,6 +1223,7 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   @override
   void dispose() {
+    closeSourceTools();
     retainCorrection();
     final old = taskPreviewRoute;
     if (old != null) {
@@ -1148,7 +1313,7 @@ class _MaterialReviewState extends State<MaterialReview> {
             'Vorbereitete Beispielseite · ohne KI-Erkennung.',
             icon: Icons.science_outlined,
           ),
-        if (!synthetic || liveFixture)
+        if ((!synthetic || liveFixture) && d['has_image'] != false)
           Panel(
             child: LoadView<Uint8List>(
               revision: (d['id'], d['revision'], ObjectKey(account)),
@@ -1196,6 +1361,7 @@ class _MaterialReviewState extends State<MaterialReview> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               heading('Was steht in diesem Material?'),
+              sourceReadingTools(),
               if (!editing) ...[
                 LearningContent(
                   content.text,
@@ -1261,6 +1427,12 @@ class _MaterialReviewState extends State<MaterialReview> {
                 Text(
                   'Hier wurden keine Aufgabenangaben erkannt.',
                   style: TextStyle(color: context.palette.muted, fontSize: 13),
+                ),
+              if (canConfirm && dirty && !synthetic)
+                TextButton.icon(
+                  onPressed: changing ? null : discardCorrection,
+                  icon: Icon(Icons.undo_rounded),
+                  label: Text('Eigene Korrektur zurücknehmen'),
                 ),
               if (canConfirm) ...[
                 if (wordPreview != null) ...[
@@ -1488,7 +1660,8 @@ class _MaterialReviewState extends State<MaterialReview> {
             ),
           ),
         SizedBox(height: 10),
-        if (!synthetic || d['fixture_id'] != null) ...[
+        if ((!synthetic || d['fixture_id'] != null) &&
+            d['has_image'] != false) ...[
           Panel(
             padding: EdgeInsets.all(12),
             child: LoadView<Uint8List>(
@@ -1567,6 +1740,7 @@ class _MaterialReviewState extends State<MaterialReview> {
                   ),
                 ],
                 SizedBox(height: 14),
+                sourceReadingTools(),
                 LearningContent(
                   content.text,
                   figureBuilder: !longText && d['has_image'] == true
@@ -1677,6 +1851,12 @@ class _MaterialReviewState extends State<MaterialReview> {
             ),
           ),
         if (d['confirmed'] == true && wordPreview != null) savedWordPanel(),
+        if (canConfirm && dirty && !synthetic)
+          TextButton.icon(
+            onPressed: changing ? null : discardCorrection,
+            icon: Icon(Icons.undo_rounded),
+            label: Text('Eigene Korrektur zurücknehmen'),
+          ),
         if (confirmed && widget.showUnitAction) ...[
           SizedBox(height: 20),
           ActionButton(
@@ -1733,6 +1913,90 @@ class _MaterialReviewState extends State<MaterialReview> {
             resourceId: d['id'],
           ),
       ],
+    );
+  }
+}
+
+class _SourceTextReader extends StatefulWidget {
+  final String text;
+  final VoidCallback onClose;
+  const _SourceTextReader({required this.text, required this.onClose});
+  @override
+  State<_SourceTextReader> createState() => _SourceTextReaderState();
+}
+
+class _SourceTextReaderState extends State<_SourceTextReader> {
+  final search = TextEditingController();
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = search.text.trim().toLowerCase();
+    final lines = widget.text
+        .split('\n')
+        .where((line) => line.toLowerCase().contains(query))
+        .toList();
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 720,
+          maxHeight: MediaQuery.sizeOf(context).height * .85,
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'In deinem Seitentext nachsehen',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: search,
+                textInputAction: TextInputAction.search,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                decoration: InputDecoration(
+                  labelText: 'Wort oder Textstelle finden',
+                  suffixIcon: search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Textsuche löschen',
+                          onPressed: () => setState(search.clear),
+                          icon: Icon(Icons.close_rounded),
+                        ),
+                ),
+              ),
+              SizedBox(height: 12),
+              if (query.isNotEmpty)
+                Text(
+                  lines.isEmpty
+                      ? 'Keine passende Textzeile gefunden.'
+                      : '${lines.length} passende Textzeilen im aktuellen Seitentext. Formeln werden als ganze Zeile gezeigt.',
+                ),
+              SizedBox(height: 12),
+              LearningContent(
+                query.isEmpty ? widget.text : lines.take(20).join('\n'),
+              ),
+              if (query.isNotEmpty && lines.length > 20)
+                Text(
+                  'Die ersten 20 passenden Zeilen sind sichtbar. Grenze die Suche weiter ein.',
+                ),
+              TextButton(
+                onPressed: widget.onClose,
+                child: Text('Zurück zur Heftseite'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

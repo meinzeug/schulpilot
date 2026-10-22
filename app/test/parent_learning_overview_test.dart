@@ -686,12 +686,12 @@ void main() {
         ],
       );
       await tapText(tester, 'Verlauf');
-      expect(find.text('active_time'), findsNothing);
-      expect(find.text('feedback_pending'), findsNothing);
+      expect(find.textContaining(' · active_time'), findsNothing);
+      expect(find.textContaining(' · feedback_pending'), findsNothing);
       expect(find.textContaining('Antwort gespeichert'), findsOneWidget);
       await tapText(tester, 'Technische Ereignisse');
-      expect(find.text('active_time'), findsOneWidget);
-      expect(find.text('feedback_pending'), findsOneWidget);
+      expect(find.textContaining(' · active_time'), findsOneWidget);
+      expect(find.textContaining(' · feedback_pending'), findsOneWidget);
       expect(requests.every((r) => r.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
     },

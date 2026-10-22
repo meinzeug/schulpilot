@@ -25,6 +25,94 @@ class _ChildAccountState extends State<ChildAccount> {
   String? get owner => ownerAccount?['id'];
   AppState get state => widget.state;
 
+  @override
+  void initState() {
+    super.initState();
+    final memory = state.collectionViews['child_account'];
+    final saved = identical(memory?['account'], ownerAccount)
+        ? (memory?['section'])
+        : null;
+    if (['devices', 'notifications', 'about'].contains(saved)) section = saved;
+  }
+
+  Future<void> deviceDetails(Json session) async {
+    final account = ownerAccount;
+    if (account == null || !identical(state.user, account)) return;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    late DialogRoute<void> route;
+    String date(dynamic stamp) =>
+        stamp is num &&
+            stamp.isFinite &&
+            stamp >= 946684800 &&
+            stamp <= 4133980800
+        ? DateFormat('dd.MM.yyyy · HH:mm').format(
+            DateTime.fromMillisecondsSinceEpoch((stamp * 1000).toInt())
+                .toLocal(),
+          )
+        : 'Nicht angegeben';
+    route = DialogRoute<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(session['device'] ?? 'Angemeldetes Gerät'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              session['current'] == true
+                  ? 'Auf diesem Gerät lernst du gerade.'
+                  : 'Ein weiteres Gerät mit deinem Zugang.',
+            ),
+            SizedBox(height: 14),
+            Text('Angemeldet seit: ${date(session['created'])}'),
+            SizedBox(height: 10),
+            Text('Zuletzt aktiv: ${date(session['seen'])}'),
+            SizedBox(height: 14),
+            Text(
+              'Erkennst du dieses Gerät nicht? Schließe diese Infos und wähle bei genau diesem Gerät „Gerät abmelden“.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  identical(state.user, account) &&
+                  route.isCurrent) {
+                Navigator.pop(ctx);
+              }
+            },
+            child: Text('Zurück zu Geräte'),
+          ),
+        ],
+      ),
+    );
+    void changed() {
+      if (!identical(state.user, account) && route.isActive) {
+        route.navigator?.removeRoute(route);
+      }
+    }
+
+    state.addListener(changed);
+    try {
+      await navigator.push(route);
+    } finally {
+      state.removeListener(changed);
+    }
+  }
+
+  void openMessages() {
+    final child = ownerAccount?['child_id'];
+    if (!mounted ||
+        !identical(state.user, ownerAccount) ||
+        child is! String ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    openRoute(context, '/messages/$child');
+  }
+
   Future<void> revokeSession(Json session) async {
     final account = state.user;
     if (!identical(account, ownerAccount) ||
@@ -168,7 +256,15 @@ class _ChildAccountState extends State<ChildAccount> {
                     ),
                   ],
                   selected: section,
-                  onSelected: (value) => setState(() => section = value),
+                  onSelected: (value) {
+                    if (!identical(state.user, ownerAccount)) return;
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => section = value);
+                    state.collectionViews['child_account'] = {
+                      'account': ownerAccount,
+                      'section': value,
+                    };
+                  },
                 ),
                 const SizedBox(height: 20),
                 if (section == 'devices') ...[
@@ -179,7 +275,7 @@ class _ChildAccountState extends State<ChildAccount> {
                   LoadView<List<dynamic>>(
                     key: ValueKey('child-devices:$owner:$version'),
                     load: () => state.api.list('/auth/sessions'),
-                    builder: (values, _) {
+                    builder: (values, reload) {
                       final sessions =
                           values.map((value) => Json.from(value)).toList()
                             ..sort((a, b) {
@@ -196,6 +292,19 @@ class _ChildAccountState extends State<ChildAccount> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                if (identical(state.user, ownerAccount)) {
+                                  reload();
+                                }
+                              },
+                              icon: Icon(Icons.refresh_rounded),
+                              label: Text('Geräte aktualisieren'),
+                            ),
+                          ),
+                          SizedBox(height: 12),
                           if (sessions.isEmpty)
                             Panel(
                               tone: PanelTone.subtle,
@@ -226,58 +335,87 @@ class _ChildAccountState extends State<ChildAccount> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: EdgeInsets.only(top: 4),
-                                          child: Icon(
-                                            Icons.devices_rounded,
-                                            color: context.palette.teal,
-                                            size: 28,
+                                    Semantics(
+                                      button: true,
+                                      label: 'Geräteinfos ansehen',
+                                      child: InkWell(
+                                        onTap: () =>
+                                            deviceDetails(Json.from(session)),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 8,
                                           ),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Column(
+                                          child: Row(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                session['device'],
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 17,
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                  top: 4,
+                                                ),
+                                                child: Icon(
+                                                  Icons.devices_rounded,
+                                                  color: context.palette.teal,
+                                                  size: 28,
                                                 ),
                                               ),
-                                              if (session['seen'] is num &&
-                                                  (session['seen'] as num)
-                                                      .isFinite &&
-                                                  (session['seen'] as num) >=
-                                                      946684800 &&
-                                                  (session['seen'] as num) <=
-                                                      4133980800)
-                                                Text(
-                                                  'Zuletzt aktiv: ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch(((session['seen'] as num) * 1000).toInt()).toLocal())}',
-                                                  style: TextStyle(
-                                                    color:
-                                                        context.palette.muted,
-                                                  ),
-                                                ),
-                                              const SizedBox(height: 5),
-                                              Text(
-                                                session['current'] == true
-                                                    ? 'Dieses Gerät'
-                                                    : 'Weiteres angemeldetes Gerät',
-                                                style: TextStyle(
-                                                  color: context.palette.muted,
+                                              const SizedBox(width: 14),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      session['device'],
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 17,
+                                                      ),
+                                                    ),
+                                                    if (session['seen']
+                                                            is num &&
+                                                        (session['seen'] as num)
+                                                            .isFinite &&
+                                                        (session['seen']
+                                                                as num) >=
+                                                            946684800 &&
+                                                        (session['seen']
+                                                                as num) <=
+                                                            4133980800)
+                                                      Text(
+                                                        'Zuletzt aktiv: ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch(((session['seen'] as num) * 1000).toInt()).toLocal())}',
+                                                        style: TextStyle(
+                                                          color: context
+                                                              .palette
+                                                              .muted,
+                                                        ),
+                                                      ),
+                                                    const SizedBox(height: 5),
+                                                    Text(
+                                                      session['current'] == true
+                                                          ? 'Dieses Gerät'
+                                                          : 'Weiteres angemeldetes Gerät',
+                                                      style: TextStyle(
+                                                        color: context
+                                                            .palette
+                                                            .muted,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ],
+                                      ),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          deviceDetails(Json.from(session)),
+                                      icon: Icon(Icons.info_outline_rounded),
+                                      label: Text('Geräteinfos ansehen'),
                                     ),
                                     if (session['current'] == true) ...[
                                       const SizedBox(height: 12),
@@ -324,6 +462,33 @@ class _ChildAccountState extends State<ChildAccount> {
                     },
                   ),
                 ],
+                if (section == 'about') ...[
+                  ActionPanel(
+                    actionLabel: 'Datenschutz ansehen',
+                    onPressed: () {
+                      if (identical(state.user, ownerAccount)) {
+                        openRoute(context, '/privacy');
+                      }
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Wer sieht meine Daten?',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Lies nach, wie Schulpilot mit deinen Daten umgeht. Deine Lerninhalte werden nicht öffentlich geteilt.',
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                ],
                 if (section == 'notifications') ...[
                   ChildActionTile(
                     title: 'Deine Neuigkeiten',
@@ -346,10 +511,7 @@ class _ChildAccountState extends State<ChildAccount> {
                         ),
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
-                          onPressed: () => openRoute(
-                            context,
-                            '/messages/${state.user!['child_id']}',
-                          ),
+                          onPressed: openMessages,
                           icon: const Icon(Icons.forum_outlined),
                           label: const Text('Nachrichten & Wünsche'),
                         ),

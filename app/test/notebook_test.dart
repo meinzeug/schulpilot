@@ -772,7 +772,7 @@ void main() {
             .queryParameters['q'],
         'Brüche',
       );
-      await tap(tester, find.byTooltip('Suche schließen'));
+      await tap(tester, find.byTooltip('Suchfeld einklappen'));
       expect(find.byType(TextField), findsNothing);
       expect(
         requests
@@ -780,7 +780,7 @@ void main() {
             .last
             .url
             .queryParameters['q'],
-        '',
+        'Brüche',
       );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

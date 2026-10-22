@@ -250,11 +250,11 @@ void main() {
     expect(find.text('Apfel'), findsNothing);
     expect(
       find.text(
-        'Alles geprüft. Neue Wortpaare kannst du im Wortschatz hinzufügen.',
+        'Alles geprüft. Deine bestätigten Wörter findest du im Wortschatz.',
       ),
       findsOneWidget,
     );
-    await words.tap(tester, find.text('Wortschatz'));
+    await words.tap(tester, find.text('Zum Wortschatz'));
     expect(find.text('Apfel'), findsOneWidget);
     expect(find.text('apple'), findsNothing);
     expect(requests.every((request) => request.method == 'GET'), isTrue);

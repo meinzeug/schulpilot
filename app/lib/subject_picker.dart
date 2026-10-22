@@ -22,13 +22,17 @@ class SubjectField extends StatelessWidget {
   Future<void> choose(BuildContext context) async {
     if (!enabled) return;
     final account = state.user;
+    final family = state.familyId;
     if (account == null) return;
     FocusManager.instance.primaryFocus?.unfocus();
     final navigator = Navigator.of(context);
     late ModalBottomSheetRoute<Json> route;
-    bool current() => context.mounted && identical(account, state.user);
+    bool current() =>
+        context.mounted &&
+        identical(account, state.user) &&
+        family == state.familyId;
     void accountChanged() {
-      if (!identical(account, state.user) && route.isActive) {
+      if (!current() && route.isActive) {
         navigator.removeRoute(route);
       }
     }
@@ -148,7 +152,12 @@ class _SubjectChoicesState extends State<_SubjectChoices> {
                 ),
                 IconButton(
                   tooltip: 'Schließen',
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    if (widget.current() &&
+                        ModalRoute.of(context)?.isCurrent == true) {
+                      Navigator.pop(context);
+                    }
+                  },
                   icon: const Icon(Icons.close),
                 ),
               ],
@@ -193,6 +202,14 @@ class _SubjectChoicesState extends State<_SubjectChoices> {
                         ),
                       )
                       .toList();
+                  rows.sort((a, b) {
+                    final selectedA = a['title'] == widget.selected;
+                    final selectedB = b['title'] == widget.selected;
+                    if (selectedA != selectedB) return selectedA ? -1 : 1;
+                    return a['title'].toString().compareTo(
+                      b['title'].toString(),
+                    );
+                  });
                   if (all.isEmpty) {
                     return const Notice(
                       'Hier sind gerade keine Fächer verfügbar. Schließe die Auswahl und versuche es später erneut.',
@@ -220,6 +237,9 @@ class _SubjectChoicesState extends State<_SubjectChoices> {
                         ListTile(
                           selected: widget.selected == row['title'],
                           title: Text(row['title']),
+                          subtitle: widget.selected == row['title']
+                              ? const Text('Aktuell ausgewählt')
+                              : null,
                           leading: const Icon(Icons.folder_outlined),
                           trailing: widget.selected == row['title']
                               ? Icon(Icons.check, color: context.palette.teal)

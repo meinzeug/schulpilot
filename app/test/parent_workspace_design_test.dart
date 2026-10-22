@@ -166,7 +166,7 @@ void main() {
         expect(find.text('Kinderzugänge verwalten'), findsOneWidget);
         expect(find.text('Rechte entziehen'), findsOneWidget);
         expect(find.text('Einladung widerrufen'), findsOneWidget);
-        expect(find.text('Widerrufen'), findsOneWidget);
+        expect(find.text('Kindergerät abmelden'), findsOneWidget);
         expect(find.text('Deine Familiendaten'), findsNothing);
         expect(tester.takeException(), isNull);
 

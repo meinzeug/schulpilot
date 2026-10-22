@@ -25,19 +25,24 @@ class NotebookPhoto extends StatefulWidget {
 }
 
 class _NotebookPhotoState extends State<NotebookPhoto> {
-  late final Json? owner;
+  Json? owner;
+  String? family;
   ImageProvider? image;
   String? error;
   int generation = 0;
   final zoom = TransformationController();
   Size photoViewport = Size.zero;
   bool get current =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      widget.state.familyId == family;
 
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
+    family = widget.state.familyId;
     widget.state.addListener(identityChanged);
     load();
   }
@@ -50,13 +55,27 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
   }
 
   void identityChanged() {
-    if (mounted && !current) setState(discard);
+    if (!mounted || current) return;
+    setState(() {
+      discard();
+      owner = widget.state.user;
+      family = widget.state.familyId;
+      error = null;
+    });
+    load();
   }
 
   @override
   void didUpdateWidget(covariant NotebookPhoto oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.materialId != widget.materialId ||
+    if (oldWidget.state != widget.state) {
+      oldWidget.state.removeListener(identityChanged);
+      widget.state.addListener(identityChanged);
+      owner = widget.state.user;
+      family = widget.state.familyId;
+    }
+    if (oldWidget.state != widget.state ||
+        oldWidget.materialId != widget.materialId ||
         oldWidget.thumbnail != widget.thumbnail ||
         oldWidget.figureIndex != widget.figureIndex ||
         oldWidget.revision != widget.revision) {
@@ -125,7 +144,7 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
               const SizedBox(height: 10),
               Text(message, textAlign: TextAlign.center),
               TextButton(
-                onPressed: retry,
+                onPressed: guarded(retry),
                 child: const Text('Foto erneut laden'),
               ),
             ],
@@ -134,6 +153,17 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
       ),
     ),
   );
+
+  VoidCallback guarded(VoidCallback action) {
+    final request = generation;
+    return () {
+      if (current &&
+          request == generation &&
+          ModalRoute.of(context)?.isCurrent != false) {
+        action();
+      }
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +248,9 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
                   children: [
                     IconButton(
                       tooltip: 'Foto verkleinern',
-                      onPressed: scale > 1.01 ? () => change(scale / 2) : null,
+                      onPressed: scale > 1.01
+                          ? guarded(() => change(scale / 2))
+                          : null,
                       icon: const Icon(Icons.zoom_out),
                     ),
                     Semantics(
@@ -227,14 +259,16 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
                     ),
                     IconButton(
                       tooltip: 'Foto vergrößern',
-                      onPressed: scale < 7.99 ? () => change(scale * 2) : null,
+                      onPressed: scale < 7.99
+                          ? guarded(() => change(scale * 2))
+                          : null,
                       icon: const Icon(Icons.zoom_in),
                     ),
                     IconButton(
                       tooltip: 'Fotoansicht zurücksetzen',
                       onPressed:
                           scale > 1.01 || matrix.getTranslation().length > 0.1
-                          ? () => change(1)
+                          ? guarded(() => change(1))
                           : null,
                       icon: const Icon(Icons.fit_screen_rounded),
                     ),
@@ -255,33 +289,76 @@ Future<void> zoomNotebookPhoto(
   Json page, {
   int? figureIndex,
   int? revision,
-}) => showDialog<void>(
-  context: context,
-  useSafeArea: false,
-  builder: (_) => Dialog.fullscreen(
-    child: Scaffold(
-      backgroundColor: surfaceLow,
-      appBar: AppBar(
-        title: Text(figureIndex == null ? 'Heftfoto' : 'Abbildung im Heftfoto'),
-        leading: IconButton(
-          tooltip: 'Schließen',
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: NotebookPhoto(
-          state,
-          materialId: page['id'],
-          figureIndex: figureIndex,
-          revision: revision,
-          key: ValueKey('zoom:${state.user?['id']}:${page['id']}'),
-          zoomable: true,
-        ),
-      ),
-    ),
-  ),
-);
+}) async {
+  final owner = state.user;
+  final family = state.familyId;
+  if (owner == null ||
+      !context.mounted ||
+      ModalRoute.of(context)?.isCurrent == false) {
+    return;
+  }
+  ModalRoute<void>? ownRoute;
+  bool current() =>
+      context.mounted &&
+      identical(state.user, owner) &&
+      state.familyId == family;
+  void changed() {
+    final route = ownRoute;
+    if (current() || route == null) return;
+    Future<void>.microtask(() {
+      if (!current() && route.isActive) route.navigator?.removeRoute(route);
+    });
+  }
+
+  state.addListener(changed);
+  try {
+    await showDialog<void>(
+      context: context,
+      useSafeArea: false,
+      builder: (dialogContext) {
+        ownRoute ??= ModalRoute.of(dialogContext);
+        changed();
+        return current()
+            ? Dialog.fullscreen(
+                child: Scaffold(
+                  backgroundColor: dialogContext.palette.surfaceLow,
+                  appBar: AppBar(
+                    title: Text(
+                      figureIndex == null
+                          ? 'Heftfoto'
+                          : 'Abbildung im Heftfoto',
+                    ),
+                    leading: IconButton(
+                      tooltip: 'Schließen',
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        if (current() && ownRoute?.isCurrent == true) {
+                          Navigator.pop(dialogContext);
+                        }
+                      },
+                    ),
+                  ),
+                  body: SafeArea(
+                    child: NotebookPhoto(
+                      state,
+                      materialId: page['id'],
+                      figureIndex: figureIndex,
+                      revision: revision,
+                      key: ValueKey(
+                        'zoom:${identityHashCode(owner)}:${page['id']}',
+                      ),
+                      zoomable: true,
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink();
+      },
+    );
+  } finally {
+    state.removeListener(changed);
+  }
+}
 
 /// Only source-reading views use original-pixel crops. No lesson disclosure.
 class NotebookFigure extends StatelessWidget {

@@ -42,16 +42,28 @@ class PreparationCard extends StatelessWidget {
       '/after-school/$childId?day=${preparation['day_id']}',
     );
     if (primary) {
-      return FocusCard(
-        eyebrow: 'Nach der Schule',
-        title: title,
-        subtitle: subtitle,
-        icon: processing
-            ? Icons.auto_awesome_outlined
-            : Icons.fact_check_outlined,
-        action: SizedBox(
-          width: double.infinity,
-          child: ActionButton(label: action, onPressed: () async => open()),
+      return ActionPanel(
+        tone: PanelTone.info,
+        actionLabel: action,
+        onPressed: open,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Nach der Schule',
+              style: TextStyle(
+                color: context.palette.teal,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              title,
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+            ),
+            SizedBox(height: 10),
+            Text(subtitle),
+          ],
         ),
       );
     }

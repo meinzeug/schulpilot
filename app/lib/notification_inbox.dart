@@ -16,6 +16,7 @@ class NotificationInbox extends ChangeNotifier {
   Timer? _timer;
   List<Json> items = [];
   int unread = 0;
+  int retentionDays = 30, itemLimit = 50;
   String? error;
   bool hasLoaded = false;
   bool get loading => _loading;
@@ -26,6 +27,8 @@ class NotificationInbox extends ChangeNotifier {
     _account = account;
     items = [];
     unread = 0;
+    retentionDays = 30;
+    itemLimit = 50;
     error = null;
     hasLoaded = false;
     _loading = false;
@@ -61,6 +64,12 @@ class NotificationInbox extends ChangeNotifier {
           .map((row) => Map<String, dynamic>.from(row))
           .toList();
       unread = data['unread'] as int? ?? 0;
+      final retention = data['retention_days'];
+      final limit = data['limit'];
+      retentionDays = retention is int && retention >= 1 && retention <= 365
+          ? retention
+          : 30;
+      itemLimit = limit is int && limit >= 1 && limit <= 500 ? limit : 50;
       error = null;
       hasLoaded = true;
     } catch (_) {

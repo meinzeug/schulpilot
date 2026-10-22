@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.orm import aliased, defer, load_only
 
@@ -1089,12 +1089,15 @@ def edit_assignment(child_id: str, assignment_id: str, data: s.AssignmentCreate,
 
 
 @router.delete("/children/{child_id}/assignments/{assignment_id}")
-def delete_assignment(child_id: str, assignment_id: str, p=Depends(parent), db=Depends(get_db)):
+def delete_assignment(child_id: str, assignment_id: str, revision: int | None = Query(None, ge=1),
+                      p=Depends(parent), db=Depends(get_db)):
     child_access(db, p, child_id, write=True)
     db.execute(update(Child).where(Child.id == child_id).values(grade=Child.grade))
     a = db.get(Assignment, assignment_id)
     if not a or a.child_id != child_id:
         raise HTTPException(404, "Lernauftrag nicht gefunden.")
+    if revision is not None and revision != a.revision:
+        raise HTTPException(409, "Dieser Auftrag wurde inzwischen geändert. Lade den Lernplan neu, bevor du ihn entfernst.")
     db.delete(a)
     record(db, child_id, "assignment_removed", {"topic": a.topic})
     db.commit()

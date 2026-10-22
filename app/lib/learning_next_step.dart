@@ -28,13 +28,21 @@ class _LearningNextStepState extends State<LearningNextStep> {
   Json? data;
   bool loading = true;
   bool failed = false;
-  late String? owner;
+  late final Json? owner;
+  late final String? family;
+  bool reading = false, opening = false;
+  bool get current =>
+      mounted &&
+      identical(widget.state.user, owner) &&
+      widget.state.familyId == family;
   int version = 0;
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
+    family = widget.state.familyId;
+    widget.state.addListener(accountChanged);
     load();
   }
 
@@ -43,8 +51,9 @@ class _LearningNextStepState extends State<LearningNextStep> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.childId != widget.childId ||
         oldWidget.currentUnitId != widget.currentUnitId ||
-        owner != widget.state.user?['id']) {
-      owner = widget.state.user?['id'];
+        oldWidget.state != widget.state) {
+      version++;
+      reading = false;
       data = null;
       loading = true;
       failed = false;
@@ -52,28 +61,45 @@ class _LearningNextStepState extends State<LearningNextStep> {
     }
   }
 
+  void accountChanged() {
+    if (!current && mounted) {
+      version++;
+      setState(() {
+        data = null;
+        reading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    version++;
+    widget.state.removeListener(accountChanged);
+    super.dispose();
+  }
+
   Future<void> load() async {
-    if (owner == null || widget.state.user?['id'] != owner) return;
+    if (!current || reading) return;
     final requested = ++version;
+    setState(() {
+      loading = reading = true;
+      failed = false;
+    });
     try {
       final result = await widget.state.api.get(
         '/children/${widget.childId}/overview?compact=true',
       );
-      if (mounted &&
-          requested == version &&
-          widget.state.user?['id'] == owner) {
+      if (current && requested == version) {
         setState(() {
           data = result;
-          loading = false;
+          loading = reading = false;
           failed = false;
         });
       }
     } catch (_) {
-      if (mounted &&
-          requested == version &&
-          widget.state.user?['id'] == owner) {
+      if (current && requested == version) {
         setState(() {
-          loading = false;
+          loading = reading = false;
           failed = true;
         });
       }
@@ -82,11 +108,15 @@ class _LearningNextStepState extends State<LearningNextStep> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.state.user?['id'] != owner) return SizedBox.shrink();
+    if (!current) return SizedBox.shrink();
     if (loading) {
       return Padding(
         padding: EdgeInsets.all(16),
-        child: LinearProgressIndicator(),
+        child: Semantics(
+          liveRegion: true,
+          label: 'Nächster Schritt wird geladen',
+          child: LinearProgressIndicator(),
+        ),
       );
     }
     if (failed) {
@@ -128,57 +158,70 @@ class _LearningNextStepState extends State<LearningNextStep> {
           ),
           SizedBox(height: 10),
         ],
-        if (available) ...[
-          if (mandatory)
-            Text(
-              'Elternauftrag',
-              style: TextStyle(
-                color: context.palette.muted,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          Text(
-            '${next['subject']} · ${next['topic']}',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 14),
-          ActionButton(
-            label: unreadFeedback
+        if (available)
+          ActionPanel(
+            enabled: !opening,
+            actionLabel: opening
+                ? 'Schritt wird geöffnet …'
+                : unreadFeedback
                 ? 'Rückmeldung ansehen'
                 : mandatory || minimumOpen
                 ? 'Weiterlernen'
                 : 'Noch eine Runde',
-            icon: Icons.arrow_forward_rounded,
             onPressed: () async {
-              if (widget.state.user?['id'] != owner) return;
-              await openPlanItem(context, widget.state, data!, next);
+              if (!current || data == null || opening) return;
+              setState(() => opening = true);
+              try {
+                await openPlanItem(context, widget.state, data!, next);
+              } catch (error) {
+                if (context.mounted && current) showError(context, error);
+              } finally {
+                if (current) setState(() => opening = false);
+              }
             },
-          ),
-        ] else if (pending) ...[
-          Text('Deine nächste Runde wird vorbereitet.'),
-          SizedBox(height: 12),
-          ActionButton(
-            label: 'Vorbereitung ansehen',
-            icon: Icons.hourglass_top_rounded,
-            onPressed: () async => openRoute(
-              context,
-              '/learning-preparation/${widget.childId}/${preparing['id']}',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (mandatory)
+                  Text(
+                    'Elternauftrag',
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                Text(
+                  '${next['subject']} · ${next['topic']}',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )
+        else if (pending)
+          ActionPanel(
+            actionLabel: 'Vorbereitung ansehen',
+            onPressed: () {
+              if (current) {
+                openRoute(
+                  context,
+                  '/learning-preparation/${widget.childId}/${preparing['id']}',
+                );
+              }
+            },
+            child: Text('Deine nächste Runde wird vorbereitet.'),
+          )
+        else
+          ActionPanel(
+            actionLabel: 'Mein Lernen öffnen',
+            onPressed: () {
+              if (current) openRoute(context, '/learn/${widget.childId}');
+            },
+            child: Text(
+              minimumOpen
+                  ? 'Für den nächsten Schritt brauchen wir passenden Lernstoff.'
+                  : 'Diese Runde ist gespeichert. Deinen weiteren Stoff findest du unter Lernen.',
             ),
           ),
-        ] else ...[
-          Text(
-            minimumOpen
-                ? 'Für den nächsten Schritt brauchen wir passenden Lernstoff.'
-                : 'Diese Runde ist gespeichert. Deinen weiteren Stoff findest du unter Lernen.',
-          ),
-          SizedBox(height: 12),
-          ActionButton(
-            label: 'Mein Lernen öffnen',
-            icon: Icons.auto_stories_outlined,
-            onPressed: () async =>
-                openRoute(context, '/learn/${widget.childId}'),
-          ),
-        ],
       ],
     );
   }

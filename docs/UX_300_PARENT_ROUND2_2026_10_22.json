@@ -1,0 +1,1058 @@
+{
+  "baseline": "3df2849",
+  "previous_count_excluded": 321,
+  "scope": "Eltern; gemeinsame Helfer und Routerverdrahtung nur benutzt, nicht zusätzlich gezählt",
+  "tested_count": 85,
+  "implemented_unverified_count": 0,
+  "integration_status": "Quellen eingefroren; Root-Gesamtlauf ausstehend",
+  "sources": {
+    "S1": "https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html",
+    "S2": "https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html",
+    "S3": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html",
+    "S4": "https://design-system.service.gov.uk/components/summary-list/",
+    "S5": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html",
+    "S6": "https://www.w3.org/WAI/WCAG22/Understanding/error-prevention-legal-financial-data.html"
+  },
+  "items": [
+    {
+      "id": "PP001",
+      "problem_and_change": "parent_overview._OverviewAction: Handlungsbedarf steht in einer großen Zeile; nur ein kleiner Textbutton öffnet das zugehörige Anliegen/den Plan/die Runde. Vollständige, semantische Aktionskarte, genau ein vorhandenes Ziel; keine verschachtelten Buttons. S1–S4",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP001",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP002",
+      "problem_and_change": "ParentOverview Wochenrückblick: statistischer Kartenkörper bleibt ohne Aktion, der Verlauf nur am unteren Textlink erreichbar. Gesamten Rückblick mit eindeutigem Verlaufsziel bedienen. S1–S4",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP002",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP003",
+      "problem_and_change": "ParentHomeworkScreen Fotokarten: Klick auf Thema/Aufgabenübersicht bewirkt nichts; Detailzugang nur unten. Ein Foto, eine große Detailaktion; Häkchen bleiben reine Beobachtung. S1–S4",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP003",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP004",
+      "problem_and_change": "ParentInsights._FindingCard: KI-Einschätzung und Beobachtung lassen sich nur über kleinen inneren Belegbutton prüfen. Karte öffnet genau deren vorhandenes Fach/Thema, kurz bezeichnet. S1–S4",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP004",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP005",
+      "problem_and_change": "ParentInsights vorgeschlagener Lernweg: Schrittfläche ist passiv, obwohl eine bekannte Belegreferenz vorliegt. Eine lesende Kartenaktion je bekanntem Schritt; fehlende Referenz nicht ausführbar. S1–S5",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP005",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP006",
+      "problem_and_change": "ParentPlan gespeicherter Kurzplan: lange Schrittfolge verdeckt einzigen Rundenlink unterhalb. Vollständiger Kurzplan öffnet die bereits gespeicherte Runde, ohne Erzeugung. S1–S5",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP006",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP007",
+      "problem_and_change": "GradesScreen Schwerpunktkarte: Eltern müssen das angezeigte Fach erneut im Dropdown suchen. Schwerpunkt öffnet vorhandene Notenliste mit diesem Fach und setzt Seitennummer zurück. S1,S4",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP007",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP008",
+      "problem_and_change": "GradesScreen._gradeCard: bestehende Gewichtung ist im Lesemodus unsichtbar, obwohl sie den angezeigten Schnitt beeinflusst. Gewicht jeder gespeicherten Note auch ohne Änderungsrechte anzeigen. S4",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP008",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP009",
+      "problem_and_change": "SettingsScreen: /settings?section=data oder family öffnet ungeachtet beabsichtigten Ziels stets Konto. Erlaubten initialSection-Parameter mit Update und sicherer Normalisierung unterstützen. S1",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP009",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP010",
+      "problem_and_change": "Settings Geräte: zwei gleich benannte Browser sind anhand vorhandener created/seen-Daten nicht zu unterscheiden. Lesbare Anmeldung/letzte Aktivität für Eltern- und Kindergeräte. S4",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP010",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP011",
+      "problem_and_change": "Settings fremdes Elterngerät: Abmelden wird sofort ausgeführt, ohne Zielbestätigung. Gezielte Bestätigung mit Gerät/Zeit; eigenes Hier-Abmelden bleibt eindeutig. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP011",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP012",
+      "problem_and_change": "Settings Kindergerät: „Widerrufen“ ist technisch und beendet sofort eine Kindersitzung. Verständliche Abmeldeaktion und gezielter Kind/Gerät-Dialog. S1,S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP012",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP013",
+      "problem_and_change": "Settings offene Einladungen: vorhandener expires-Wert ist verborgen. Konkretes Ablaufdatum nennen; keine automatische Verlängerung. S4",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP013",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP014",
+      "problem_and_change": "Settings Einladung widerrufen: sofortige Aktion ohne Adress-/Rechtebestätigung. Zielbezogen bestätigen, exakt diese Einladung widerrufen. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP014",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP015",
+      "problem_and_change": "Elternmitgliedschaften kennzeichnen den eigenen Zugang anhand des authentifizierten self-Feldes, auch bei gleichen Anzeigenamen.",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP015",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP016",
+      "problem_and_change": "Settings Kinderzugänge: ohne Kinder bleibt nur Überschrift/Leerfläche. Ehrlicher Leerzustand mit vorhandenem Familieneinstieg für Berechtigte. S5",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP016",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP017",
+      "problem_and_change": "Settings Kinderprofil: verwaltetes Kind hat keinen direkten Weg zum Lernüberblick. Große reine Profilzusammenfassung öffnet dessen Lernstand; Verwaltung separat. S1–S4",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP017",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP018",
+      "problem_and_change": "Settings Kinderprofil: Klassenstufe/Schulform sind außerhalb des Editors verborgen. Bestehende Lernangaben in Profilzusammenfassung zeigen, fehlende Angaben offen lassen. S4",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP018",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP019",
+      "problem_and_change": "Settings Kinderpasswort: Rücksetzdialog nennt nur generischen Titel ohne betroffenes Kind. Vorhandenen Anzeigenamen als explizites Ziel im Dialog nennen. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP019",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP020",
+      "problem_and_change": "Settings Kinderlöschung: irreversibler Passwortdialog benennt betroffenes Kind nicht. Namen und Benutzernamen vor Bestätigung zeigen. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP020",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP021",
+      "problem_and_change": "Settings neues Kinderpasswort: Tippfehler werden ohne Wiederholung verbindlich gespeichert. Bestätigung des neuen Passwortes mit lokaler Übereinstimmungsprüfung. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP021",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP022",
+      "problem_and_change": "Settings Passwortfelder: verdeckte Eingabe kann vor Bestätigung nicht bewusst geprüft werden. Expliziter Anzeigen/Verbergen-Schalter, Standard weiter verdeckt. S2",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP022",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP023",
+      "problem_and_change": "Settings Passwortvalidierung: oberhalb bestehender 128-Zeichen-Grenze erfolgt erst Serverfehler. Eine gemeinsame lokale Grenzprüfung für vorhandene und neue Passwortfelder. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP023",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP024",
+      "problem_and_change": "Settings Einladung: nur leere, nicht offensichtlich fehlerhafte E-Mail wird vor Versand erkannt. Begrenzte verständliche lokale Formatprüfung, Backend bleibt maßgeblich. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP024",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP025",
+      "problem_and_change": "Settings Einladungsrechte: „Verwalten“ erklärt Änderungen an Kinderprofil/Plan/Nachrichten nicht. Statische direkte Erklärung beider vorhandener Rollen an Auswahl. S4",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP025",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP026",
+      "problem_and_change": "Settings Kinderangaben: Name/Schulform/Bundesland über 80 Zeichen scheitern erst serverseitig. Einheitliche feldbezogene 80-Zeichen-Prüfung mit Erhalt der Eingabe. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP026",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP027",
+      "problem_and_change": "Settings Kinderfächer: mehr als 20 Kommaeinträge werden erst nach PUT abgelehnt. Tatsächliche Listenlänge lokal prüfen und bestehende Grenze erklären. S6",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP027",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP028",
+      "problem_and_change": "Settings Bestätigung: erfolgreiche Änderung/Einladung/Passwortrücksetzung schließt kommentarlos. Kurze kontextgebundene Erfolgsrückmeldung aus abgeschlossenem Request.",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP028",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP029",
+      "problem_and_change": "Settings Einladungen: leere Liste verschwindet vollständig, unklar ob Abruf erfolgreich war. Eigener Leerzustand unter benannter Einladungsüberschrift. S5",
+      "code": "settings_screen.dart: Eltern-/Kontobereich vor AdminScreen",
+      "test": "parent_settings_ux88_test.dart: PP029",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP030",
+      "problem_and_change": "Die Kategorien der Übungsbelege öffnen tatsächlich nach Ergebnis gefilterte Aufgaben; leere Kategorien sind deaktiviert.",
+      "code": "parent_overview.dart; parent_homework_screen.dart; parent_insights_panel.dart; parent_plan_screen.dart; grades_screen.dart",
+      "test": "parent_cards_ux88_test.dart: PP030",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP031",
+      "problem_and_change": "Die bisher nur an eine User-ID gebundene Elternübersicht und ihre Auftragsdialoge erhalten exakte Konto-/Familienbindung. Alte Kalender, Quellen- und eigene Dialogrouten verschwinden gezielt; fremde neue Overlays bleiben erhalten.",
+      "code": "dashboard.dart: ChildDetailScreen; parent_assignment_dialog.dart; settings_screen.dart: eigener Dialog",
+      "test": "parent_assignment_ux88_test.dart; parent_timeline_ux88_test.dart; parent_settings_ux88_test.dart: PP031",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP032",
+      "problem_and_change": "Hausaufgabenfotos können ausdrücklich per begrenzter Serversuche in Fach, Thema und Titel auch jenseits der ersten Seite gefunden werden.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP032",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP033",
+      "problem_and_change": "Ein eigener serverseitiger Fachfilter für Hausaufgaben setzt alte Fotocursor zurück und hat einen ausdrücklichen Rückweg zu allen Fotos.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP033",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP034",
+      "problem_and_change": "Die Elternauftragsliste durchsucht Fach, Thema und Elternhinweis über alle Seiten; Tippen allein sendet nichts.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP034",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP035",
+      "problem_and_change": "Die Elternauftragsliste kann vorhandene Fächer über alle Seiten gezielt eingrenzen und den Filter wieder aufheben.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP035",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP036",
+      "problem_and_change": "Aufträge lassen sich nach Heftquelle, manuellem Thema und prüfbedürftig geänderter Quelle eingrenzen.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP036",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP037",
+      "problem_and_change": "Verbindliche und freiwillige Aufträge besitzen eine echte serverseitige Auswahl, ohne ihre Verbindlichkeit zu verändern.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP037",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP038",
+      "problem_and_change": "Auftragstermine lassen sich nach heute, zurückliegend, künftig und undatiert anhand des Kinder-Serverdatums ansehen.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP038",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP039",
+      "problem_and_change": "Die begrenzte Rundenvorschau eines Auftrags nennt die tatsächliche Gesamtzahl statt höchstens zehn Einträge als vollständig auszugeben.",
+      "code": "parent_homework_screen.dart; parent_plan_screen.dart; parent_plans.py",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP039",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP040",
+      "problem_and_change": "Der Auftragseditor speichert einen stabilen vollständigen Snapshot und sperrt währenddessen veränderbare Eingaben.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP040",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP041",
+      "problem_and_change": "Ein laufendes Speichern des Auftrags lässt sich nicht durch Zurück, Barriere oder Abbrechen unbemerkt verlassen.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP041",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP042",
+      "problem_and_change": "Lernbeginn nach Auftragstermin wird lokal erklärt; gültige Termine werden weiter unverändert im ISO-Format übertragen.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP042",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP043",
+      "problem_and_change": "Der lange Auftragseditor bringt ungültige Felder und serverseitige Fehlerrückmeldung in Sicht, ohne den Entwurf zu verlieren.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP043",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP044",
+      "problem_and_change": "Der Auftragseditor benennt das ausgewählte Kind vor der ersten Eingabe.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP044",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP045",
+      "problem_and_change": "Ein neues Thema setzt nicht mehr ungeachtet der Kinderfächer Mathematik voraus; bekannte Fächer können bewusst gewählt werden.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP045",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP046",
+      "problem_and_change": "Ein abweichendes Fach zwischen gewählter Heftquelle und Entwurf wird sichtbar. Fach und Thema der Quelle werden nur ausdrücklich übernommen.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP046",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP047",
+      "problem_and_change": "Auch eine verknüpfte manuelle Runde ohne Heftfoto kann im Auftragseditor bewusst als Quelle entfernt werden.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP047",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP048",
+      "problem_and_change": "Nach unbestätigtem Speichern bleibt der exakte Auftragssnapshot mit demselben Idempotenzschlüssel erhalten. Abgleichen ist eine ausdrückliche Aktion.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP048",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP049",
+      "problem_and_change": "Der Auftragseditor erklärt unmittelbar, dass das Speichern eines Lernziels noch keine KI-Übungen erzeugt.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP049",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP050",
+      "problem_and_change": "Ein abgeschlossener Auftrag wird ausdrücklich wieder geöffnet statt durch einen unauffälligen Speichernbutton seinen erledigten Status zu verlieren.",
+      "code": "parent_assignment_dialog.dart",
+      "test": "parent_assignment_ux88_test.dart: PP050",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP051",
+      "problem_and_change": "Ein versehentlicher Auftrag kann nach zielbezogener Bestätigung revisionsgebunden entfernt werden. Vorhandene Runden und Antworten bleiben bestehen.",
+      "code": "parent_plan_screen.dart: complete; learning.py: delete_assignment",
+      "test": "parent_filters_ux88_test.dart; backend/tests/test_parent_filters_ux88.py: PP051",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP052",
+      "problem_and_change": "Eine Elternnachrichtenkarte öffnet die vollständige auswählbare Nachricht in einer lesenden Detailansicht; Verwaltungsaktionen bleiben getrennt.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP052",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP053",
+      "problem_and_change": "Die eigene Nachrichtenansicht behält ihre lokalen Filter bei einem Refresh oder ihrer erneuten Öffnung im Sitzungs-RAM.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP053",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP054",
+      "problem_and_change": "Die geladene Nachrichtenansicht besitzt eine ausdrückliche lokale Textsuche und benennt ehrlich ihre Grenze von höchstens hundert Nachrichten.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP054",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP055",
+      "problem_and_change": "Eltern können Hilfewünsche, Interessen, Planvorschläge, Antworten und Systemnachrichten nach ihrer gespeicherten Art ansehen.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP055",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP056",
+      "problem_and_change": "Der geladene Austausch kann chronologisch gelesen werden, ohne Backend- oder Ursprungsreihenfolge zu ändern.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP056",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP057",
+      "problem_and_change": "Auch zu einem Hilfewunsch ohne gespeicherte Lernreferenz lässt sich ein leerer Antwortentwurf mit sichtbarem Nachrichtenbezug öffnen.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP057",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP058",
+      "problem_and_change": "Eine Meldung wird erst nach Ansicht und ausdrücklicher Bestätigung als besprochen markiert; Nachricht und Lernstand bleiben erhalten.",
+      "code": "dashboard.dart: _ParentMessages",
+      "test": "parent_messages_ux88_test.dart: PP058",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP059",
+      "problem_and_change": "Noten lassen sich über alle eigenen Einträge nach Fach, Thema und Notiz durchsuchen, ausdrücklich und mit klarer Grenze von160 Zeichen.",
+      "code": "grades_screen.dart: GradesScreen.load; grades.py: list_grades",
+      "test": "parent_grade_filters_ux88_test.dart; backend/tests/test_parent_grade_filters_ux88.py: PP059",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP060",
+      "problem_and_change": "Ein serverseitiger Leistungsartfilter trennt Klassenarbeiten, Tests, Mündliches, Hausaufgaben und Sonstiges.",
+      "code": "grades_screen.dart: GradesScreen; grades.py: list_grades",
+      "test": "parent_grade_filters_ux88_test.dart; backend/tests/test_parent_grade_filters_ux88.py: PP060",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP061",
+      "problem_and_change": "Ein serverseitiger Notensystemfilter trennt Punkte und Noten, ohne einen gemischten Schnitt zu erfinden.",
+      "code": "grades_screen.dart: GradesScreen; grades.py: list_grades",
+      "test": "parent_grade_filters_ux88_test.dart; backend/tests/test_parent_grade_filters_ux88.py: PP061",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP062",
+      "problem_and_change": "Die Notenansicht kann genaue Datumsangaben und nur belegte Schulhalbjahre unterscheiden, ohne Einzeldaten zu erfinden.",
+      "code": "grades_screen.dart: GradesScreen; grades.py: list_grades",
+      "test": "parent_grade_filters_ux88_test.dart; backend/tests/test_parent_grade_filters_ux88.py: PP062",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP063",
+      "problem_and_change": "Noten behalten die eigene kinderspezifische Such-/Filter-/Seitensicht im bestehenden Sitzungs-RAM.",
+      "code": "grades_screen.dart: restoreView/remember",
+      "test": "parent_grade_filters_ux88_test.dart: PP063",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP064",
+      "problem_and_change": "Die Notenzusammenfassung öffnet vollständige auswählbare Angaben, tatsächliche Speicherzeitpunkte und das verwendete Notensystem.",
+      "code": "grades_screen.dart: details/_gradeCard",
+      "test": "parent_grade_filters_ux88_test.dart: PP064",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP065",
+      "problem_and_change": "Die alte zweite Auftragsverwaltung im Kinder-Lerndetail wurde zu einem klaren lesenden Einstieg in den einen Elternlernplan konsolidiert.",
+      "code": "dashboard.dart: ChildDetailScreen Planabschnitt",
+      "test": "parent_timeline_ux88_test.dart: PP065",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP066",
+      "problem_and_change": "Ein gespeichertes Verlaufsereignis mit unit_id öffnet über seine ganze Karte genau diese bereits vorhandene Runde.",
+      "code": "parent_activity_timeline.dart: activity",
+      "test": "parent_timeline_ux88_test.dart: PP066",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP067",
+      "problem_and_change": "Verlaufsdaten nennen das Jahr, damit Ereignisse aus verschiedenen Schuljahren unterscheidbar bleiben.",
+      "code": "parent_activity_timeline.dart: activity",
+      "test": "parent_timeline_ux88_test.dart: PP067",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP068",
+      "problem_and_change": "Die Verlaufsvorschau benennt ausdrücklich ihre Grenze von200 neuesten Ereignissen und verweist für vollständige Aufgabenbelege auf den Lernstand.",
+      "code": "parent_activity_timeline.dart: build",
+      "test": "parent_timeline_ux88_test.dart: PP068",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP069",
+      "problem_and_change": "Die geladene Verlaufsvorschau kann gezielt Antworten, Hilfen, Runden oder Stoff/Planung anzeigen; technische Ereignisse bleiben getrennt.",
+      "code": "parent_activity_timeline.dart: categoryOf/build",
+      "test": "parent_timeline_ux88_test.dart: PP069",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP070",
+      "problem_and_change": "Eine ausdrückliche lokale Suche findet konkrete Themen und Rückmeldungen in der geladenen Verlaufsvorschau, ohne weitere Lernereignisse.",
+      "code": "parent_activity_timeline.dart: change/build",
+      "test": "parent_timeline_ux88_test.dart: PP070",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP071",
+      "problem_and_change": "Die lokale PDF-Vorschau lässt sich nach tatsächlich gelesenen Fächern prüfen, ohne eine Übernahmeentscheidung zu verlieren.",
+      "code": "grade_import_screen.dart: build",
+      "test": "parent_pdf_filters_ux88_test.dart: PP071",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP072",
+      "problem_and_change": "Die lokale PDF-Vorschau trennt erstes und zweites Schulhalbjahr für eine gezielte Prüfung.",
+      "code": "grade_import_screen.dart: build",
+      "test": "parent_pdf_filters_ux88_test.dart: PP072",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP073",
+      "problem_and_change": "Die lokale PDF-Vorschau kann Klassenarbeiten und sonstige Leistungen getrennt zeigen.",
+      "code": "grade_import_screen.dart: build",
+      "test": "parent_pdf_filters_ux88_test.dart: PP073",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP074",
+      "problem_and_change": "Eine ausdrückliche lokale PDF-Suche findet Fachnamen und bereits vorhandene Vergleichseinträge, ohne erneuten Upload.",
+      "code": "grade_import_screen.dart: build/changeView",
+      "test": "parent_pdf_filters_ux88_test.dart: PP074",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP075",
+      "problem_and_change": "Die PDF-Prüfung besitzt tatsächliche Statusfilter für neue, mögliche doppelte, geänderte, übernommene und ausgelassene Einträge.",
+      "code": "grade_import_screen.dart: build",
+      "test": "parent_pdf_filters_ux88_test.dart: PP075",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP076",
+      "problem_and_change": "Der Wechsel zu einer anderen PDF kündigt den Verlust noch nicht übernommener Zuordnungen vorher an; Abbrechen erhält die bisherige Vorschau.",
+      "code": "grade_import_screen.dart: selectFile/question",
+      "test": "parent_pdf_filters_ux88_test.dart: PP076",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP077",
+      "problem_and_change": "Vorhandene mögliche Notenzuordnungen lassen sich mit vollständiger eigener Notiz und Gewichtung lesend vergleichen, ohne automatisch eine Wahl zu setzen.",
+      "code": "grade_import_screen.dart: entry/question",
+      "test": "parent_pdf_filters_ux88_test.dart: PP077",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP078",
+      "problem_and_change": "Die Anzahl gespeicherter Seiten öffnet über eine eigene klare Karte die tatsächliche Heftsammlung.",
+      "code": "parent_overview.dart: gespeicherte Seiten",
+      "test": "parent_orientation_ux88_test.dart: PP078",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP079",
+      "problem_and_change": "Die Lernzeitkarte führt direkt zum gespeicherten Wochenvorschlag und dessen Zeitrahmen statt passiv zu bleiben.",
+      "code": "parent_overview.dart: Zeit und Mindestziele",
+      "test": "parent_orientation_ux88_test.dart: PP079",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP080",
+      "problem_and_change": "Auftragsbezogene Elternlinks öffnen den tatsächlichen Themenreiter des Lernplans. Erlaubte initialSection-Ziele sind begrenzt und werden beim Routewechsel berücksichtigt.",
+      "code": "parent_plan_screen.dart: initialSection/applyInitialSection; parent_overview.dart; grades_screen.dart",
+      "test": "parent_orientation_ux88_test.dart: PP080",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP081",
+      "problem_and_change": "Wortschatzvorschläge im Elternwochenplan öffnen die schon vorhandene Wortübersicht mit ihrer tatsächlichen Zielsprache.",
+      "code": "parent_plan_screen.dart: Wochenliste",
+      "test": "parent_orientation_ux88_test.dart: PP081",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP082",
+      "problem_and_change": "Einträge im Elternwochenplan unterscheiden gespeicherte Runden samt Status von Heftgrundlagen und geplanten Elternaufträgen.",
+      "code": "parent_plan_screen.dart: Wochenliste",
+      "test": "parent_orientation_ux88_test.dart: PP082",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP083",
+      "problem_and_change": "Ein angezeigter Terminkonflikt führt lesend zu den passenden gespeicherten Aufträgen; der Themenfilter ist sichtbar und setzt die Seitennummer zurück.",
+      "code": "parent_plan_screen.dart: showTopic/Konfliktkarte",
+      "test": "parent_orientation_ux88_test.dart: PP083",
+      "sources": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP084",
+      "problem_and_change": "Während der Lernkompass geladen wird, können keine Einstellungen aus dem alten Stand und keine zweite Auswertung gesendet werden.",
+      "code": "parent_insights_panel.dart: load/enable/prepare/build",
+      "test": "parent_orientation_ux88_test.dart: PP084",
+      "sources": [
+        "S5",
+        "S6"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    },
+    {
+      "id": "PP085",
+      "problem_and_change": "Eine inzwischen entfernte historische Auswertung erklärt ihren GET-only-Rückweg zum neuesten gespeicherten Bericht ausdrücklich.",
+      "code": "parent_insights_panel.dart: load/historyNotice",
+      "test": "parent_orientation_ux88_test.dart: PP085",
+      "sources": [
+        "S4",
+        "S5"
+      ],
+      "status": "targeted_passed",
+      "counted": true
+    }
+  ],
+  "chrome_targeted_passed": 7,
+  "chrome_log": "artifacts/ux88/parent-chrome-verified.log"
+}

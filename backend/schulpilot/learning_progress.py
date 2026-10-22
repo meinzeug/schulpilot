@@ -5,6 +5,8 @@ Retried tasks count once as tasks and separately as attempts. Historic records
 are included immediately, without backfilling or changing their assessments.
 """
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, case, func, select
 
@@ -14,6 +16,7 @@ from .security import authenticated, child_access
 
 router = APIRouter(tags=["Lernstand nach Fächern"])
 COUNTERS = ("practiced_tasks", "attempts", "independent_tasks", "assisted_tasks", "needs_practice_tasks", "uncertain_tasks", "reflection_tasks")
+EvidenceCategory = Literal["independent", "assisted", "needs_practice", "uncertain", "reflection"]
 
 
 def _latest_attempts(child_id, unit_ids=None):
@@ -55,13 +58,23 @@ def read_task_ledger(db, child_id, unit_ids=None):
     return [dict(row) for row in db.execute(select(latest).where(latest.c.position == 1)).mappings()]
 
 
-def read_ledger(db, child_id, unit_ids=None):
+def read_ledger(db, child_id, unit_ids=None, *, category: EvidenceCategory | None = None):
     latest = _latest_attempts(child_id, unit_ids)
     if latest is None:
         return []
     reflection = latest.c.evaluation_method == "open_learning_v1"
     correct = latest.c.outcome == "correct"
     independent = and_(correct, latest.c.assisted.is_(False), latest.c.attempts == 1)
+    categories = {
+        "independent": independent,
+        "assisted": and_(correct, ~independent),
+        "needs_practice": latest.c.outcome == "incorrect",
+        "uncertain": and_(latest.c.outcome.not_in(("correct", "incorrect")), ~reflection),
+        "reflection": reflection,
+    }
+    conditions = [latest.c.position == 1]
+    if category is not None:
+        conditions.append(categories[category])
     fields = [LearningUnit.id, LearningUnit.subject, LearningUnit.topic, LearningUnit.status,
               LearningUnit.completed, LearningUnit.active_seconds, LearningUnit.round_kind]
     rows = db.execute(
@@ -77,7 +90,7 @@ def read_ledger(db, child_id, unit_ids=None):
             func.max(latest.c.created).label("last_activity"),
         )
         .join(latest, latest.c.unit_id == LearningUnit.id)
-        .where(latest.c.position == 1)
+        .where(*conditions)
         .group_by(*fields)
         .order_by(func.max(latest.c.created).desc(), LearningUnit.id.desc())
     ).mappings()
@@ -123,6 +136,7 @@ def learning_progress(
     child_id: str,
     subject: str | None = Query(None, max_length=80),
     topic: str | None = Query(None, max_length=160),
+    category: EvidenceCategory | None = Query(None),
     page: int = Query(1, ge=1, le=1000000),
     page_size: int = Query(20, ge=1, le=50),
     p=Depends(authenticated),
@@ -132,7 +146,8 @@ def learning_progress(
     if topic is not None and subject is None:
         raise HTTPException(422, "Bitte zuerst das Fach auswählen.")
     ledger = read_ledger(db, child.id)
-    selected = [r for r in ledger if (subject is None or subject_key(r["subject"]) == subject_key(subject))
+    filtered = ledger if category is None else read_ledger(db, child.id, category=category)
+    selected = [r for r in filtered if (subject is None or subject_key(r["subject"]) == subject_key(subject))
                 and (topic is None or r["topic"].strip().casefold() == topic.strip().casefold())]
     if topic is not None:
         items = [{**r, "active_seconds_approx": r["active_seconds"]} for r in selected]
@@ -150,6 +165,7 @@ def learning_progress(
     return {
         "child_id": child.id, "child_name": db.get(User, child.user_id).display_name,
         "level": level, "subject": subject, "topic": topic,
+        "category": category,
         "totals": totals(ledger), "selected_totals": totals(selected),
         "items": items[(actual - 1) * page_size:actual * page_size],
         "pagination": {"page": actual, "pages": pages, "page_size": page_size, "total": count},

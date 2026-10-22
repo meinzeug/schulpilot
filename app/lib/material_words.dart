@@ -11,7 +11,13 @@ Future<Json?> transferPageWords(
   AppState state,
   Json material,
 ) async {
-  final owner = state.user?['id'];
+  final owner = state.user, family = state.familyId;
+  bool current() =>
+      context.mounted &&
+      owner != null &&
+      identical(owner, state.user) &&
+      family == state.familyId;
+  if (!current()) return null;
   final preview = Json.from(material['vocabulary_preview']);
   if (preview['requires_pair_confirmation'] != true) {
     throw ApiError(
@@ -26,7 +32,9 @@ Future<Json?> transferPageWords(
   };
   var reverse = false;
   var selections = <Json>[];
-  return showDialog<Json>(
+  final navigator = Navigator.of(context, rootNavigator: true);
+  late DialogRoute<Json> route;
+  route = DialogRoute<Json>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, update) => AlertDialog(
@@ -39,30 +47,44 @@ Future<Json?> transferPageWords(
               locale: locale,
               reverse: reverse,
               actionLabel: 'Ausgewählte Wörter übernehmen',
-              onLocale: (value) => update(() {
-                locale = value;
-                selections = [];
-              }),
-              onReverse: () => update(() {
-                reverse = !reverse;
-                selections = [];
-              }),
-              onSelections: (value) => update(() => selections = value),
+              onLocale: (value) {
+                if (ctx.mounted && current() && route.isCurrent) {
+                  update(() {
+                    locale = value;
+                    selections = [];
+                  });
+                }
+              },
+              onReverse: () {
+                if (ctx.mounted && current() && route.isCurrent) {
+                  update(() {
+                    reverse = !reverse;
+                    selections = [];
+                  });
+                }
+              },
+              onSelections: (value) {
+                if (ctx.mounted && current() && route.isCurrent) {
+                  update(() => selections = value);
+                }
+              },
             ),
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              if (ctx.mounted && current() && route.isCurrent) {
+                Navigator.pop(ctx);
+              }
+            },
             child: Text('Später'),
           ),
           ActionButton(
             label: 'Ausgewählte Wörter übernehmen',
             enabled: selections.isNotEmpty,
             onPressed: () async {
-              if (owner != state.user?['id']) {
-                throw ApiError('Bitte melde dich erneut an.');
-              }
+              if (!current() || !route.isCurrent) return;
               final result = await state.api.post(
                 '/materials/${material['id']}/vocabulary',
                 {
@@ -73,7 +95,7 @@ Future<Json?> transferPageWords(
                   'selections': selections,
                 },
               );
-              if (ctx.mounted && owner == state.user?['id']) {
+              if (ctx.mounted && current() && route.isCurrent) {
                 Navigator.pop(ctx, result);
               }
             },
@@ -82,6 +104,16 @@ Future<Json?> transferPageWords(
       ),
     ),
   );
+  void changed() {
+    if (!current() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  state.addListener(changed);
+  try {
+    return await navigator.push(route);
+  } finally {
+    state.removeListener(changed);
+  }
 }
 
 /// Every checked row is a deliberate approval, separate from saving the photo.
@@ -112,6 +144,26 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
   final selected = <String>{};
   final edits = <String, Json>{};
   final decisions = <String, String>{};
+  final search = TextEditingController();
+  String filter = 'all';
+  DialogRoute<Json>? correctionRoute;
+  String get previewVersion =>
+      jsonEncode([widget.preview, widget.locale, widget.reverse]);
+  void closeCorrection() {
+    final route = correctionRoute;
+    correctionRoute = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route?.isActive == true) route!.navigator?.removeRoute(route);
+    });
+  }
+
+  @override
+  void dispose() {
+    closeCorrection();
+    search.dispose();
+    super.dispose();
+  }
+
   List<Json> get pairs =>
       (widget.preview['pairs'] as List).map((p) => Json.from(p)).toList();
   @override
@@ -120,9 +172,14 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
     if (jsonEncode(oldWidget.preview) != jsonEncode(widget.preview) ||
         oldWidget.locale != widget.locale ||
         oldWidget.reverse != widget.reverse) {
+      closeCorrection();
       selected.clear();
       edits.clear();
       decisions.clear();
+      final version = previewVersion;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && version == previewVersion) emit();
+      });
     }
   }
 
@@ -168,22 +225,63 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
         },
   ]);
   Future<void> correct(Json original) async {
-    final value = await showDialog<Json>(
+    if (!widget.enabled || correctionRoute != null) return;
+    final version = previewVersion;
+    late DialogRoute<Json> route;
+    route = DialogRoute<Json>(
       context: context,
-      builder: (_) => _WordCorrectionDialog(row: effective(original)),
+      builder: (_) => _WordCorrectionDialog(
+        row: effective(original),
+        meaningLabel: widget.reverse
+            ? '${learningLocales[widget.locale] ?? 'Lernsprache'}: Bedeutung'
+            : 'Deutsche Bedeutung',
+      ),
     );
-    if (value == null || !mounted) return;
+    correctionRoute = route;
+    final value = await Navigator.of(context, rootNavigator: true).push(route);
+    if (identical(correctionRoute, route)) correctionRoute = null;
+    if (value == null ||
+        !mounted ||
+        !widget.enabled ||
+        version != previewVersion) {
+      return;
+    }
     setState(() {
       edits[keyOf(original)] = value;
       selected.remove(keyOf(original));
+      decisions.remove(keyOf(original));
     });
     emit();
+  }
+
+  bool matches(Json original) {
+    final row = effective(original), key = keyOf(original);
+    final query = search.text.trim().toLowerCase();
+    if (query.isNotEmpty &&
+        ![
+          'word',
+          'meaning',
+          'context',
+        ].any((field) => '${row[field] ?? ''}'.toLowerCase().contains(query))) {
+      return false;
+    }
+    return switch (filter) {
+      'unreviewed' => !decisions.containsKey(key),
+      'unclear' => !valid(row) || decisions[key] == 'later',
+      'selected' => selected.contains(key),
+      _ => true,
+    };
   }
 
   Widget pair(Json original) {
     final row = effective(original), key = keyOf(original);
     final checked = selected.contains(key),
-        canSelect = widget.enabled && valid(row) && original['key'] != null;
+        canSelect =
+            widget.enabled &&
+            valid(row) &&
+            original['key'] != null &&
+            (widget.preview['language'] == null ||
+                widget.locale.split('-').first == widget.preview['language']);
     return Padding(
       padding: EdgeInsets.only(bottom: 10),
       child: SurfaceInset(
@@ -259,6 +357,36 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                 ),
               ],
             ),
+            Text(
+              switch (decisions[key]) {
+                'confirmed' => 'Geprüft und ausgewählt',
+                'skip' => 'Wird nicht übernommen',
+                'later' => 'Für später offen',
+                _ =>
+                  edits.containsKey(key)
+                      ? 'Korrigiert · bitte erneut prüfen'
+                      : 'Noch nicht geprüft',
+              },
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: context.palette.muted,
+              ),
+            ),
+            if (edits.containsKey(key))
+              TextButton.icon(
+                onPressed: !widget.enabled
+                    ? null
+                    : () {
+                        setState(() {
+                          edits.remove(key);
+                          selected.remove(key);
+                          decisions.remove(key);
+                        });
+                        emit();
+                      },
+                icon: Icon(Icons.undo_rounded),
+                label: Text('Eigene Korrektur zurücknehmen'),
+              ),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -321,6 +449,14 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
   @override
   Widget build(BuildContext context) {
     final language = widget.preview['language'] as String?;
+    final locales = learningLocales.entries
+        .where(
+          (item) => language == null || item.key.split('-').first == language,
+        )
+        .toList();
+    final localeValid = locales.any((item) => item.key == widget.locale);
+    final visible = pairs.where(matches).toList();
+    final filtering = search.text.trim().isNotEmpty || filter != 'all';
     return SurfaceInset(
       tone: PanelTone.info,
       child: Column(
@@ -334,22 +470,80 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
           SizedBox(height: 12),
           DropdownButtonFormField<String>(
             key: ValueKey(widget.locale),
-            initialValue: widget.locale,
+            initialValue: localeValid ? widget.locale : null,
             isExpanded: true,
             decoration: InputDecoration(labelText: 'Lernsprache bestätigen'),
             items: [
               for (final item in learningLocales.entries)
-                if (language == null || item.key.split('-').first == language)
+                if (locales.any((locale) => locale.key == item.key))
                   DropdownMenuItem(value: item.key, child: Text(item.value)),
             ],
             onChanged: widget.enabled ? (v) => widget.onLocale(v!) : null,
           ),
+          if (!localeValid)
+            Notice(
+              'Bitte wähle die passende Lernsprache für diese Vorschläge. Es wurde keine andere Sprache automatisch ausgewählt.',
+              warning: true,
+            ),
+          if (pairs.length > 4) ...[
+            SizedBox(height: 12),
+            TextField(
+              controller: search,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'In den Wortvorschlägen suchen',
+                prefixIcon: Icon(Icons.search_rounded),
+                suffixIcon: search.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Wortsuche löschen',
+                        onPressed: () => setState(() => search.clear()),
+                        icon: Icon(Icons.close_rounded),
+                      ),
+              ),
+            ),
+            SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: filter,
+              key: ValueKey(('word-filter', filter)),
+              isExpanded: true,
+              decoration: InputDecoration(labelText: 'Vorschläge anzeigen'),
+              items: [
+                for (final option in [
+                  ('all', 'Alle Vorschläge'),
+                  ('unreviewed', 'Noch nicht geprüft'),
+                  ('unclear', 'Unklar oder für später'),
+                  ('selected', 'Ausgewählt'),
+                ])
+                  DropdownMenuItem(value: option.$1, child: Text(option.$2)),
+              ],
+              onChanged: (value) => setState(() => filter = value ?? 'all'),
+            ),
+            if (filtering)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  '${visible.length} von ${pairs.length} Vorschlägen passen. Deine Auswahl bleibt erhalten.',
+                ),
+              ),
+            if (visible.isEmpty)
+              TextButton(
+                onPressed: () => setState(() {
+                  search.clear();
+                  filter = 'all';
+                }),
+                child: Text('Wortsuche und Auswahlfilter zurücksetzen'),
+              ),
+          ],
           SizedBox(height: 12),
-          for (final row in pairs.take(4)) pair(row),
-          if (pairs.length > 4)
+          for (final row in visible.take(filtering ? visible.length : 4))
+            pair(row),
+          if (!filtering && visible.length > 4)
             ExpansionTile(
               title: Text('Alle ${pairs.length} Vorschläge prüfen'),
-              children: [for (final row in pairs.skip(4)) pair(row)],
+              children: [for (final row in visible.skip(4)) pair(row)],
             ),
           if ((widget.preview['unpaired_lines'] as num? ?? 0) > 0)
             Text(
@@ -372,7 +566,8 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
 
 class _WordCorrectionDialog extends StatefulWidget {
   final Json row;
-  const _WordCorrectionDialog({required this.row});
+  final String meaningLabel;
+  const _WordCorrectionDialog({required this.row, required this.meaningLabel});
   @override
   State<_WordCorrectionDialog> createState() => _WordCorrectionDialogState();
 }
@@ -417,7 +612,7 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
               },
               maxLength: 200,
               decoration: InputDecoration(
-                labelText: 'Deutsche Bedeutung',
+                labelText: widget.meaningLabel,
                 errorText: error,
               ),
             ),
@@ -437,11 +632,16 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+            Navigator.pop(context);
+          }
+        },
         child: Text('Abbrechen'),
       ),
       FilledButton(
         onPressed: () {
+          if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
           if (word.text.trim().isEmpty || meaning.text.trim().isEmpty) {
             setState(
               () => error = 'Bitte Wort und deutsche Bedeutung ergänzen.',

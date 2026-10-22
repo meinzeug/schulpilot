@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'child_section_ui.dart';
 import 'ui.dart';
 
 /// The current, real learning station. No decorative levels or game scores.
-class ChildTodayHero extends StatelessWidget {
+class ChildTodayHero extends StatefulWidget {
   final String eyebrow, title, subtitle;
   final Widget action;
   final bool learning;
@@ -18,8 +20,38 @@ class ChildTodayHero extends StatelessWidget {
   });
 
   @override
+  State<ChildTodayHero> createState() => _ChildTodayHeroState();
+}
+
+class _ChildTodayHeroState extends State<ChildTodayHero> {
+  bool opening = false;
+  Future<void> openHero() async {
+    final action = widget.action;
+    if (opening ||
+        action is! ActionButton ||
+        !action.enabled ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    setState(() => opening = true);
+    try {
+      await action.onPressed();
+    } catch (error) {
+      if (mounted) showError(context, error);
+    } finally {
+      if (mounted) setState(() => opening = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final action = widget.action;
+    final actionLabel = action is ActionButton ? action.label : null;
+    final title = widget.title,
+        subtitle = widget.subtitle,
+        eyebrow = widget.eyebrow;
+    final learning = widget.learning;
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 650;
@@ -77,59 +109,80 @@ class ChildTodayHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      color: palette.cyanInk,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      eyebrow,
-                                      style: TextStyle(
-                                        color: palette.cyanInk,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: actionLabel == null || opening
+                            ? null
+                            : () => unawaited(openHero()),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Semantics(
+                          button: actionLabel != null,
+                          label: actionLabel == null
+                              ? null
+                              : 'Öffnen: $actionLabel',
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 6),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                              color: palette.cyanInk,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              eyebrow,
+                                              style: TextStyle(
+                                                color: palette.cyanInk,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        title,
+                                        style: TextStyle(
+                                          fontFamily: 'SpaceGrotesk',
+                                          color: palette.ink,
+                                          fontSize: wide
+                                              ? 35
+                                              : compact
+                                              ? 23
+                                              : 28,
+                                          height: 1.12,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: -.6,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (!largeText) ...[
+                                  SizedBox(width: wide ? 28 : 10),
+                                  LearningCompanionIllustration(
+                                    size: companionSize,
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                title,
-                                style: TextStyle(
-                                  fontFamily: 'SpaceGrotesk',
-                                  color: palette.ink,
-                                  fontSize: wide
-                                      ? 35
-                                      : compact
-                                      ? 23
-                                      : 28,
-                                  height: 1.12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -.6,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                        if (!largeText) ...[
-                          SizedBox(width: wide ? 28 : 10),
-                          LearningCompanionIllustration(size: companionSize),
-                        ],
-                      ],
+                      ),
                     ),
                     if (subtitle.isNotEmpty) ...[
                       const SizedBox(height: 12),
@@ -168,7 +221,15 @@ class ChildTodayHero extends StatelessWidget {
                               ),
                             ),
                       ),
-                      child: action,
+                      child: action is ActionButton
+                          ? ActionButton(
+                              label: action.label,
+                              icon: action.icon,
+                              secondary: action.secondary,
+                              enabled: action.enabled && !opening,
+                              onPressed: openHero,
+                            )
+                          : action,
                     ),
                     if (learning) ...[
                       const SizedBox(height: 12),
@@ -244,24 +305,23 @@ class ChildTodayTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final color = accent ?? palette.teal;
-    return Semantics(
-      button: true,
-      child: Material(
-        color: palette.panelSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: palette.surfaceBorder),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+    return Material(
+      color: palette.panelSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: palette.surfaceBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            button: true,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: EdgeInsets.all(14),
+                child: Row(
                   children: [
                     Container(
                       width: 44,
@@ -274,7 +334,7 @@ class ChildTodayTile extends StatelessWidget {
                       ),
                       child: Icon(icon, color: color, size: 25),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,7 +348,7 @@ class ChildTodayTile extends StatelessWidget {
                             ),
                           ),
                           if (subtitle.isNotEmpty) ...[
-                            const SizedBox(height: 3),
+                            SizedBox(height: 3),
                             Text(
                               subtitle,
                               style: TextStyle(
@@ -301,15 +361,25 @@ class ChildTodayTile extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.arrow_forward_rounded, color: color, size: 20),
+                    SizedBox(width: 8),
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: color,
+                        size: 20,
+                      ),
+                    ),
                   ],
                 ),
-                ?footer,
-              ],
+              ),
             ),
           ),
-        ),
+          if (footer != null)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: footer!,
+            ),
+        ],
       ),
     );
   }
@@ -320,6 +390,7 @@ class ChildTodayProgress extends StatelessWidget {
   final bool goalRequired, goalMet;
   final int completed;
   final String description;
+  final VoidCallback? onOpen;
   const ChildTodayProgress({
     super.key,
     required this.activeMinutes,
@@ -328,6 +399,7 @@ class ChildTodayProgress extends StatelessWidget {
     required this.goalMet,
     required this.completed,
     required this.description,
+    this.onOpen,
   });
 
   @override
@@ -336,82 +408,94 @@ class ChildTodayProgress extends StatelessWidget {
     final progress = goalRequired && goalMinutes > 0
         ? (activeMinutes / goalMinutes).clamp(0.0, 1.0)
         : 0.0;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 2),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: palette.surfaceBorder)),
-      ),
-      child: Row(
-        children: [
-          ExcludeSemantics(
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      color: goalMet && goalRequired
-                          ? palette.successInk
-                          : palette.cyanInk,
-                      backgroundColor: palette.surfaceLow,
-                      strokeWidth: 4,
-                      strokeCap: StrokeCap.round,
-                    ),
-                  ),
-                  Icon(
-                    goalMet && goalRequired
-                        ? Icons.done_rounded
-                        : Icons.schedule_rounded,
-                    color: goalMet && goalRequired
-                        ? palette.successInk
-                        : palette.cyanInk,
-                    size: 22,
-                  ),
-                ],
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Semantics(
+          button: onOpen != null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 2),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: palette.surfaceBorder)),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  'Deine Lernzeit',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: palette.ink,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-                if (completed > 0) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    '${completed == 1 ? 'Eine Runde' : '$completed Runden'} heute geschafft.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: palette.successInk,
+                ExcludeSemantics(
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 42,
+                          height: 42,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            color: goalMet && goalRequired
+                                ? palette.successInk
+                                : palette.cyanInk,
+                            backgroundColor: palette.surfaceLow,
+                            strokeWidth: 4,
+                            strokeCap: StrokeCap.round,
+                          ),
+                        ),
+                        Icon(
+                          goalMet && goalRequired
+                              ? Icons.done_rounded
+                              : Icons.schedule_rounded,
+                          color: goalMet && goalRequired
+                              ? palette.successInk
+                              : palette.cyanInk,
+                          size: 22,
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        onOpen == null
+                            ? 'Deine Lernzeit'
+                            : 'Deine Lernzeit · Details',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: palette.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                      if (completed > 0) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          '${completed == 1 ? 'Eine Runde' : '$completed Runden'} heute geschafft.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: palette.successInk,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

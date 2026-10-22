@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'grade_import_screen.dart';
@@ -39,6 +40,18 @@ class _GradesScreenState extends State<GradesScreen> {
   Json? data;
   Object? error;
   String? subject;
+  final search = TextEditingController();
+  String query = '',
+      kindFilter = 'all',
+      scaleFilter = 'all',
+      precisionFilter = 'all';
+  String get viewKey => 'parent-grades:${widget.childId}';
+  bool get filtered =>
+      subject != null ||
+      query.isNotEmpty ||
+      kindFilter != 'all' ||
+      scaleFilter != 'all' ||
+      precisionFilter != 'all';
   int page = 1, generation = 0;
   bool loading = true, saving = false;
   late Json? owner;
@@ -46,6 +59,7 @@ class _GradesScreenState extends State<GradesScreen> {
   String? childName;
   bool sourceRecovery = false;
   DialogRoute<dynamic>? dialogRoute;
+  final entriesKey = GlobalKey();
   bool get current =>
       mounted &&
       owner != null &&
@@ -60,6 +74,7 @@ class _GradesScreenState extends State<GradesScreen> {
     owner = widget.state.user;
     family = widget.state.familyId;
     widget.state.addListener(identityChanged);
+    restoreView();
     load();
   }
 
@@ -81,8 +96,7 @@ class _GradesScreenState extends State<GradesScreen> {
     if (oldWidget.childId != widget.childId) {
       closeDialog();
       generation++;
-      subject = null;
-      page = 1;
+      restoreView();
       data = null;
       childName = null;
       saving = false;
@@ -93,8 +107,57 @@ class _GradesScreenState extends State<GradesScreen> {
   @override
   void dispose() {
     widget.state.removeListener(identityChanged);
+    closeDialog();
+    search.dispose();
     super.dispose();
   }
+
+  void restoreView() {
+    final saved = widget.state.collectionViews[viewKey];
+    subject = saved?['subject'] is String ? saved!['subject'] : null;
+    query = saved?['q'] is String && (saved!['q'] as String).length <= 160
+        ? saved['q']
+        : '';
+    search.text = query;
+    kindFilter = ['all', ...gradeKinds.keys].contains(saved?['kind'])
+        ? saved!['kind']
+        : 'all';
+    scaleFilter = ['all', 'grade_1_6', 'points_0_15'].contains(saved?['scale'])
+        ? saved!['scale']
+        : 'all';
+    precisionFilter =
+        ['all', 'day', 'semester'].contains(saved?['date_precision'])
+        ? saved!['date_precision']
+        : 'all';
+    page = saved?['page'] is int && saved!['page'] > 0 ? saved['page'] : 1;
+  }
+
+  void remember() {
+    if (!current) return;
+    widget.state.collectionViews[viewKey] = {
+      'subject': subject,
+      'q': query,
+      'kind': kindFilter,
+      'scale': scaleFilter,
+      'date_precision': precisionFilter,
+      'page': page,
+    };
+  }
+
+  void filter(VoidCallback change) {
+    if (!current || loading || saving) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    change();
+    page = 1;
+    load();
+  }
+
+  void clearFilters() => filter(() {
+    subject = null;
+    query = '';
+    search.clear();
+    kindFilter = scaleFilter = precisionFilter = 'all';
+  });
 
   void closeDialog() {
     final route = dialogRoute;
@@ -126,6 +189,7 @@ class _GradesScreenState extends State<GradesScreen> {
 
   Future<void> load() async {
     if (!current) return;
+    remember();
     final request = ++generation;
     final child = widget.childId;
     setState(() {
@@ -137,16 +201,34 @@ class _GradesScreenState extends State<GradesScreen> {
       final result = await widget.state.api.get(
         Uri(
           path: '/children/${widget.childId}/grades',
-          queryParameters: {'page': '$page', 'subject': ?subject},
+          queryParameters: {
+            'page': '$page',
+            'subject': ?subject,
+            if (query.isNotEmpty) 'q': query,
+            if (kindFilter != 'all') 'kind': kindFilter,
+            if (scaleFilter != 'all') 'scale': scaleFilter,
+            if (precisionFilter != 'all') 'date_precision': precisionFilter,
+          },
         ).toString(),
       );
       if (current && child == widget.childId && request == generation) {
+        if ((query.isNotEmpty ||
+                kindFilter != 'all' ||
+                scaleFilter != 'all' ||
+                precisionFilter != 'all') &&
+            result['filters'] is! Map) {
+          throw ApiError(
+            'Diese Notenfilter sind auf dem Server noch nicht verfügbar. Bitte Filter zurücksetzen und die App aktualisieren.',
+            409,
+          );
+        }
         setState(() {
           data = result;
           childName = result['child_name'];
           page = result['pagination']['page'];
           loading = false;
         });
+        remember();
       }
     } catch (e) {
       if (current && child == widget.childId && request == generation) {
@@ -160,6 +242,38 @@ class _GradesScreenState extends State<GradesScreen> {
         });
       }
     }
+  }
+
+  Future<void> showSubject(
+    String? value, {
+    bool resetOtherFilters = false,
+  }) async {
+    if (!current || loading || saving) return;
+    final child = widget.childId;
+    FocusManager.instance.primaryFocus?.unfocus();
+    subject = value;
+    if (resetOtherFilters) {
+      query = '';
+      search.clear();
+      kindFilter = scaleFilter = precisionFilter = 'all';
+    }
+    page = 1;
+    await load();
+    if (!current || child != widget.childId || subject != value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = entriesKey.currentContext;
+      if (!current ||
+          child != widget.childId ||
+          subject != value ||
+          target == null) {
+        return;
+      }
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0,
+        duration: const Duration(milliseconds: 180),
+      );
+    });
   }
 
   Future<void> change(
@@ -311,250 +425,348 @@ class _GradesScreenState extends State<GradesScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PageFrame(
-    state: widget.state,
-    title: 'Noten & Lernschwerpunkte',
-    showTitle: false,
-    actions: [
-      if (manage)
-        OutlinedButton.icon(
-          onPressed: saving ? null : importPdf,
-          icon: Icon(Icons.picture_as_pdf_outlined),
-          label: Text('PDF importieren'),
-        ),
-      if (manage)
-        FilledButton.icon(
-          onPressed: saving ? null : () => edit(),
-          icon: Icon(Icons.add_rounded),
-          label: Text('Note eintragen'),
-        ),
-    ],
-    child: !current
-        ? const SizedBox()
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ParentChildNavigation(
-                childId: widget.childId,
-                selected: 'grades',
-                childName: childName,
-                subtitle: 'Schulnoten · getrennt vom Übungsstand',
-                onRefresh: load,
-                refreshing: loading || saving,
-              ),
-              const ParentWorkspaceHero(
-                eyebrow: 'SCHULE IM BLICK',
-                title: 'Noten & Lernschwerpunkte',
-                subtitle: 'Eingetragene Schulnoten ordnen und Lernschwerpunkte bewusst begleiten. Der Übungsstand bleibt ein eigener Blick auf das Lernen.',
-                icon: Icons.school_outlined,
-              ),
-              const SizedBox(height: 24),
-              if (loading || saving) const LinearProgressIndicator(),
-              if (error != null) ...[
-                Semantics(
-                  liveRegion: true,
-                  child: Notice(
-                    error is ApiError ? (error as ApiError).message : 'Das hat gerade nicht geklappt. Bitte erneut versuchen.',
-                    warning: true,
+  Widget build(BuildContext context) {
+    final viewChild = widget.childId;
+    return PageFrame(
+      state: widget.state,
+      title: 'Noten & Lernschwerpunkte',
+      showTitle: false,
+      actions: [
+        if (manage)
+          OutlinedButton.icon(
+            onPressed: saving ? null : importPdf,
+            icon: Icon(Icons.picture_as_pdf_outlined),
+            label: Text('PDF importieren'),
+          ),
+        if (manage)
+          FilledButton.icon(
+            onPressed: saving ? null : () => edit(),
+            icon: Icon(Icons.add_rounded),
+            label: Text('Note eintragen'),
+          ),
+      ],
+      child: !current
+          ? const SizedBox()
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ParentChildNavigation(
+                  childId: widget.childId,
+                  selected: 'grades',
+                  childName: childName,
+                  subtitle: 'Schulnoten · getrennt vom Übungsstand',
+                  onRefresh: load,
+                  refreshing: loading || saving,
+                ),
+                const ParentWorkspaceHero(
+                  eyebrow: 'SCHULE IM BLICK',
+                  title: 'Noten & Lernschwerpunkte',
+                  subtitle: 'Eingetragene Schulnoten ordnen und Lernschwerpunkte bewusst begleiten. Der Übungsstand bleibt ein eigener Blick auf das Lernen.',
+                  icon: Icons.school_outlined,
+                ),
+                const SizedBox(height: 24),
+                if (loading || saving) const LinearProgressIndicator(),
+                if (error != null) ...[
+                  Semantics(
+                    liveRegion: true,
+                    child: Notice(
+                      error is ApiError ? (error as ApiError).message : 'Das hat gerade nicht geklappt. Bitte erneut versuchen.',
+                      warning: true,
+                    ),
                   ),
-                ),
-                TextButton(
-                  onPressed: loading || saving ? null : load,
-                  child: Text('Neu laden'),
-                ),
-                if (sourceRecovery)
+                  TextButton(
+                    onPressed: loading || saving ? null : load,
+                    child: Text('Neu laden'),
+                  ),
+                  if (sourceRecovery)
+                    TextButton.icon(
+                      onPressed: () =>
+                          openRoute(context, '/library/${widget.childId}'),
+                      icon: const Icon(Icons.auto_stories_outlined),
+                      label: const Text('Passende Heftseite ansehen'),
+                    ),
+                ],
+                if (filtered)
                   TextButton.icon(
-                    onPressed: () =>
-                        openRoute(context, '/library/${widget.childId}'),
-                    icon: const Icon(Icons.auto_stories_outlined),
-                    label: const Text('Passende Heftseite ansehen'),
+                    onPressed: loading || saving ? null : clearFilters,
+                    icon: const Icon(Icons.filter_alt_off_outlined),
+                    label: const Text('Alle Notenfilter zurücksetzen'),
                   ),
-              ],
-              if (data != null) ...[
-                if (!manage)
-                  const Notice(
-                    'Du kannst diese Noten ansehen. Änderungen sind Eltern mit Verwaltungsrechten vorbehalten.',
+                if (data != null) ...[
+                  if (!manage)
+                    const Notice(
+                      'Du kannst diese Noten ansehen. Änderungen sind Eltern mit Verwaltungsrechten vorbehalten.',
+                    ),
+                  const ParentSectionHeading(
+                    title: 'Schwerpunkte über alle Fächer',
+                    icon: Icons.assignment_outlined,
                   ),
-                const ParentSectionHeading(
-                  title: 'Schwerpunkte über alle Fächer',
-                  icon: Icons.assignment_outlined,
-                ),
-                for (final focus in data!['focus'] as List)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Panel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+                  for (final focus in data!['focus'] as List)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: ActionPanel(
+                        actionLabel:
+                            'Einzelne Noten in ${focus['subject']} ansehen',
+                        enabled: !loading && !saving,
+                        onPressed: () {
+                          if (viewChild != widget.childId) return;
+                          showSubject(
                             focus['subject'],
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            focus['average'] == null
-                                ? 'Unterschiedliche Notensysteme'
-                                : '${focus['scale'] == 'points_0_15' ? 'Punkteschnitt' : 'Notenschnitt'}: ${gradeNumber(focus['average'])}',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const Text(
-                            'Basis: bis zu fünf datierte Noten aus 90 Tagen und undatierte PDF-Noten dieses Schuljahres. Keine Zeugnisnote.',
-                          ),
-                          Text(
-                            '${focus['observations']} aktuelle Einträge',
-                            style: TextStyle(
-                              color: context.palette.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                          if ((focus['undated_observations'] ?? 0) > 0)
+                            resetOtherFilters: true,
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              '${focus['undated_observations']} davon ohne Einzeldatum · aktuelles Schuljahr',
+                              focus['subject'],
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              focus['average'] == null
+                                  ? 'Unterschiedliche Notensysteme'
+                                  : '${focus['scale'] == 'points_0_15' ? 'Punkteschnitt' : 'Notenschnitt'}: ${gradeNumber(focus['average'])}',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            const Text(
+                              'Basis: bis zu fünf datierte Noten aus 90 Tagen und undatierte PDF-Noten dieses Schuljahres. Keine Zeugnisnote.',
+                            ),
+                            Text(
+                              '${focus['observations']} aktuelle Einträge',
                               style: TextStyle(
                                 color: context.palette.muted,
                                 fontSize: 12,
                               ),
                             ),
-                          const SizedBox(height: 8),
-                          Text(
-                            data!['planning_enabled'] == true
-                                ? focus['reason']
-                                : 'Automatische Gewichtung ausgeschaltet',
-                          ),
-                          if (focus['trend'] != 'not_enough_data')
+                            if ((focus['undated_observations'] ?? 0) > 0)
+                              Text(
+                                '${focus['undated_observations']} davon ohne Einzeldatum · aktuelles Schuljahr',
+                                style: TextStyle(
+                                  color: context.palette.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            const SizedBox(height: 8),
                             Text(
-                              switch (focus['trend']) {
-                                'improving' => 'Zuletzt verbessert',
-                                'declining' => 'Zuletzt schwächer',
-                                _ => 'Zuletzt ähnlich',
+                              data!['planning_enabled'] == true
+                                  ? focus['reason']
+                                  : 'Automatische Gewichtung ausgeschaltet',
+                            ),
+                            if (focus['trend'] != 'not_enough_data')
+                              Text(
+                                switch (focus['trend']) {
+                                  'improving' => 'Zuletzt verbessert',
+                                  'declining' => 'Zuletzt schwächer',
+                                  _ => 'Zuletzt ähnlich',
+                                },
+                                style: TextStyle(
+                                  color: context.palette.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  ParentSectionHeading(
+                    key: entriesKey,
+                    title: 'Einzelne Noten ansehen',
+                    subtitle: 'Der Fachfilter gilt für diese Liste. Die Schwerpunkte oben zeigen weiterhin alle Fächer.',
+                    icon: Icons.filter_list_rounded,
+                  ),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('grade-subject-$subject'),
+                    initialValue: subject,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Fach'),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('Alle Fächer'),
+                      ),
+                      for (final value in data!['subjects'] as List)
+                        DropdownMenuItem(
+                          value: value as String,
+                          child: Text(value),
+                        ),
+                    ],
+                    onChanged: loading || saving ? null : showSubject,
+                  ),
+                  const SizedBox(height: 12),
+                  ParentCollectionSearch(
+                    controller: search,
+                    label: 'Noten suchen',
+                    appliedQuery: query,
+                    enabled: !loading && !saving,
+                    onSearch: () => filter(() => query = search.text.trim()),
+                    onClear: () => filter(() {
+                      query = '';
+                      search.clear();
+                    }),
+                  ),
+                  ExpansionTile(
+                    title: const Text('Noten gezielt filtern'),
+                    children: [
+                      ParentChoiceFilter(
+                        label: 'Art der Leistung',
+                        value: kindFilter,
+                        choices: [
+                          ('all', 'Alle Leistungsarten'),
+                          ...gradeKinds.entries.map((e) => (e.key, e.value)),
+                        ],
+                        enabled: !loading && !saving,
+                        onChanged: (v) => filter(() => kindFilter = v),
+                      ),
+                      const SizedBox(height: 12),
+                      ParentChoiceFilter(
+                        label: 'Notensystem',
+                        value: scaleFilter,
+                        choices: const [
+                          ('all', 'Beide Notensysteme'),
+                          ('grade_1_6', 'Noten von 1 bis 6'),
+                          ('points_0_15', 'Punkte von 0 bis 15'),
+                        ],
+                        enabled: !loading && !saving,
+                        onChanged: (v) => filter(() => scaleFilter = v),
+                      ),
+                      const SizedBox(height: 12),
+                      ParentChoiceFilter(
+                        label: 'Datumsangabe',
+                        value: precisionFilter,
+                        choices: const [
+                          ('all', 'Alle Datumsangaben'),
+                          ('day', 'Mit genauem Datum'),
+                          ('semester', 'Nur Schulhalbjahr bekannt'),
+                        ],
+                        enabled: !loading && !saving,
+                        onChanged: (v) => filter(() => precisionFilter = v),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      data!['pagination']['total'] is num
+                          ? '${(data!['items'] as List).length} von ${data!['pagination']['total']} ${data!['pagination']['total'] == 1 ? 'Eintrag' : 'Einträgen'}${subject == null ? '' : ' · $subject'}'
+                          : '${(data!['items'] as List).length} Einträge auf dieser Seite${subject == null ? '' : ' · $subject'}',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  for (final raw in data!['items'] as List)
+                    _gradeCard(Json.from(raw)),
+                  if ((data!['items'] as List).isEmpty)
+                    Notice(
+                      (query.isNotEmpty ||
+                              kindFilter != 'all' ||
+                              scaleFilter != 'all' ||
+                              precisionFilter != 'all')
+                          ? 'Keine Noten passen zu diesen Filtern. Du kannst die Filter zurücksetzen.'
+                          : subject == null
+                          ? 'Noch keine Noten eingetragen. Der Lernplan funktioniert auch ohne Noten.'
+                          : 'Für „$subject“ sind noch keine Noten eingetragen.',
+                    ),
+                  if ((data!['items'] as List).isEmpty && subject != null)
+                    TextButton.icon(
+                      onPressed: () {
+                        if (!current || loading || saving) return;
+                        subject = null;
+                        page = 1;
+                        load();
+                      },
+                      icon: const Icon(Icons.filter_alt_off_outlined),
+                      label: const Text('Alle Fächer anzeigen'),
+                    ),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      IconButton(
+                        tooltip: 'Vorherige Seite',
+                        onPressed: loading || page <= 1
+                            ? null
+                            : () {
+                                page--;
+                                load();
                               },
+                        icon: Icon(Icons.chevron_left_rounded),
+                      ),
+                      Text(
+                        'Seite ${data!['pagination']['page']} von ${data!['pagination']['pages']}',
+                      ),
+                      IconButton(
+                        tooltip: 'Nächste Seite',
+                        onPressed:
+                            loading || page >= data!['pagination']['pages']
+                            ? null
+                            : () {
+                                page++;
+                                load();
+                              },
+                        icon: Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  ExpansionTile(
+                    title: Text('Einfluss auf den Lernplan'),
+                    children: [
+                      Panel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SwitchListTile.adaptive(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('Noten im Lernplan berücksichtigen'),
+                              subtitle: Text(
+                                'Mehr Gewicht für Fächer, die gerade Unterstützung brauchen.',
+                              ),
+                              value: data!['planning_enabled'] == true,
+                              onChanged: !manage || saving
+                                  ? null
+                                  : (value) => change(() async {
+                                      await widget.state.api.put(
+                                        '/children/${widget.childId}/grade-settings',
+                                        {'enabled': value},
+                                      );
+                                    }),
+                            ),
+                            Text(
+                              'Die Mindestlernziele bleiben gleich. Andere Fächer und feste Elternaufträge bleiben im Plan.',
                               style: TextStyle(
                                 color: context.palette.muted,
                                 fontSize: 13,
                               ),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                const ParentSectionHeading(
-                  title: 'Einzelne Noten ansehen',
-                  subtitle: 'Der Fachfilter gilt für diese Liste. Die Schwerpunkte oben zeigen weiterhin alle Fächer.',
-                  icon: Icons.filter_list_rounded,
-                ),
-                DropdownButtonFormField<String>(
-                  key: ValueKey('grade-subject-$subject'),
-                  initialValue: subject,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Fach'),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('Alle Fächer'),
-                    ),
-                    for (final value in data!['subjects'] as List)
-                      DropdownMenuItem(
-                        value: value as String,
-                        child: Text(value),
-                      ),
-                  ],
-                  onChanged: loading || saving
-                      ? null
-                      : (value) {
-                          subject = value;
-                          page = 1;
-                          load();
-                        },
-                ),
-                const SizedBox(height: 20),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    data!['pagination']['total'] is num
-                        ? '${(data!['items'] as List).length} von ${data!['pagination']['total']} ${data!['pagination']['total'] == 1 ? 'Eintrag' : 'Einträgen'}${subject == null ? '' : ' · $subject'}'
-                        : '${(data!['items'] as List).length} Einträge auf dieser Seite${subject == null ? '' : ' · $subject'}',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                for (final raw in data!['items'] as List)
-                  _gradeCard(Json.from(raw)),
-                if ((data!['items'] as List).isEmpty)
-                  Notice(
-                    subject == null
-                        ? 'Noch keine Noten eingetragen. Der Lernplan funktioniert auch ohne Noten.'
-                        : 'Für „$subject“ sind noch keine Noten eingetragen.',
-                  ),
-                if ((data!['items'] as List).isEmpty && subject != null)
-                  TextButton.icon(
-                    onPressed: () {
-                      if (!current || loading || saving) return;
-                      subject = null;
-                      page = 1;
-                      load();
-                    },
-                    icon: const Icon(Icons.filter_alt_off_outlined),
-                    label: const Text('Alle Fächer anzeigen'),
-                  ),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 12,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    IconButton(
-                      tooltip: 'Vorherige Seite',
-                      onPressed: loading || page <= 1
-                          ? null
-                          : () {
-                              page--;
-                              load();
-                            },
-                      icon: Icon(Icons.chevron_left_rounded),
-                    ),
-                    Text(
-                      'Seite ${data!['pagination']['page']} von ${data!['pagination']['pages']}',
-                    ),
-                    IconButton(
-                      tooltip: 'Nächste Seite',
-                      onPressed: loading || page >= data!['pagination']['pages']
-                          ? null
-                          : () {
-                              page++;
-                              load();
-                            },
-                      icon: Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                ExpansionTile(
-                  title: Text('Einfluss auf den Lernplan'),
-                  children: [
-                    Panel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 20),
+                      ExpansionTile(
+                        title: Text('Wie wird das berücksichtigt?'),
+                        childrenPadding: const EdgeInsets.fromLTRB(
+                          16,
+                          4,
+                          16,
+                          16,
+                        ),
                         children: [
-                          SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('Noten im Lernplan berücksichtigen'),
-                            subtitle: Text(
-                              'Mehr Gewicht für Fächer, die gerade Unterstützung brauchen.',
-                            ),
-                            value: data!['planning_enabled'] == true,
-                            onChanged: !manage || saving
-                                ? null
-                                : (value) => change(() async {
-                                    await widget.state.api.put(
-                                      '/children/${widget.childId}/grade-settings',
-                                      {'enabled': value},
-                                    );
-                                  }),
-                          ),
                           Text(
-                            'Die Mindestlernziele bleiben gleich. Andere Fächer und feste Elternaufträge bleiben im Plan.',
+                            data!['notice'],
+                            style: TextStyle(
+                              color: context.palette.muted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Ein gewichteter Schnitt ab 3 bzw. bis 9 Punkte erhöht das Gewicht etwas; ab 4 bzw. bis 6 Punkte stärker. Ein schwächerer Verlauf zählt zusätzlich. Die Gewichtung lässt sich hier ausschalten.',
                             style: TextStyle(
                               color: context.palette.muted,
                               fontSize: 13,
@@ -562,35 +774,74 @@ class _GradesScreenState extends State<GradesScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    ExpansionTile(
-                      title: Text('Wie wird das berücksichtigt?'),
-                      childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                      children: [
-                        Text(
-                          data!['notice'],
-                          style: TextStyle(
-                            color: context.palette.muted,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Ein gewichteter Schnitt ab 3 bzw. bis 9 Punkte erhöht das Gewicht etwas; ab 4 bzw. bis 6 Punkte stärker. Ein schwächerer Verlauf zählt zusätzlich. Die Gewichtung lässt sich hier ausschalten.',
-                          style: TextStyle(
-                            color: context.palette.muted,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
+            ),
+    );
+  }
+
+  Future<void> details(Json grade) async {
+    if (!current || loading || saving) return;
+    final child = widget.childId;
+    await showGradeDialog<void>(
+      (ctx) => AlertDialog(
+        scrollable: true,
+        title: Text(
+          '${grade['subject']} · ${gradeKinds[grade['kind']] ?? 'Schulnote'}',
+        ),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                grade['scale'] == 'points_0_15'
+                    ? '${gradeNumber(grade['value'])} von 15 Punkten'
+                    : 'Note ${gradeNumber(grade['value'])} · Notensystem 1 bis 6',
+              ),
+              Text(gradeDate(grade)),
+              if ((grade['topic'] ?? '').toString().isNotEmpty)
+                SelectableText(grade['topic']),
+              Text('Gewichtung: ${grade['weight'] ?? 1}-fach'),
+              if ((grade['note'] ?? '').toString().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Eigene Notiz'),
+                SelectableText(grade['note']),
+              ],
+              for (final field in [
+                ('created', 'Eingetragen'),
+                ('updated', 'Zuletzt gespeichert'),
+              ])
+                if (grade[field.$1] is num)
+                  Text(
+                    '${field.$2}: ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch(((grade[field.$1] as num) * 1000).toInt()))}',
+                  ),
+              const SizedBox(height: 12),
+              const Text(
+                'Eine Schulnote ist kein Nachweis dafür, dass ein Thema schon selbstständig und dauerhaft gelingt.',
+              ),
             ],
           ),
-  );
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (ctx.mounted &&
+                  current &&
+                  child == widget.childId &&
+                  ModalRoute.of(ctx)?.isCurrent == true) {
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Schließen'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _gradeCard(Json grade) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -598,71 +849,84 @@ class _GradesScreenState extends State<GradesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: context.palette.mint,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  '${gradeNumber(grade['value'])}${grade['scale'] == 'points_0_15' ? ' P.' : ''}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 23,
-                    color: context.palette.teal,
+          ActionPanel(
+            enabled: !loading && !saving,
+            actionLabel: 'Noteneintrag vollständig ansehen',
+            onPressed: () => details(grade),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: context.palette.mint,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    '${gradeNumber(grade['value'])}${grade['scale'] == 'points_0_15' ? ' P.' : ''}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 23,
+                      color: context.palette.teal,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      grade['subject'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        grade['subject'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${gradeKinds[grade['kind']]} · ${gradeDate(grade)}',
-                      style: TextStyle(
-                        color: context.palette.muted,
-                        fontSize: 13,
+                      Text(
+                        '${gradeKinds[grade['kind']]} · ${gradeDate(grade)}',
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                    if (grade['topic'] != '') Text(grade['topic']),
-                  ],
+                      if (grade['topic'] != '') Text(grade['topic']),
+                    ],
+                  ),
                 ),
-              ),
-              if (manage)
-                PopupMenuButton<String>(
-                  tooltip: 'Note verwalten',
-                  onSelected: (value) {
-                    if (value == 'edit') edit(grade);
-                    if (value == 'delete') remove(grade);
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Bearbeiten'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Entfernen'),
-                    ),
-                  ],
-                ),
-            ],
+              ],
+            ),
           ),
           if (grade['note'] != '')
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(grade['note']),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              'Gewichtung: ${grade['weight'] ?? 1}-fach',
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
+            ),
+          ),
+          if (manage)
+            Align(
+              alignment: Alignment.centerRight,
+              child: PopupMenuButton<String>(
+                tooltip: 'Note verwalten',
+                onSelected: (value) {
+                  if (value == 'edit') edit(grade);
+                  if (value == 'delete') remove(grade);
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Entfernen'),
+                  ),
+                ],
+              ),
             ),
           if (manage)
             Padding(
@@ -673,7 +937,10 @@ class _GradesScreenState extends State<GradesScreen> {
                     : () {
                         if (!current) return;
                         if (grade['assignment_id'] != null) {
-                          openRoute(context, '/parent-plan/${widget.childId}');
+                          openRoute(
+                            context,
+                            '/parent-plan/${widget.childId}?ansicht=topics',
+                          );
                         } else {
                           goal(grade);
                         }

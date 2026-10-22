@@ -692,6 +692,9 @@ void main() {
       final secret = t.widget<TextField>(field('SMTP-Passwort'));
       expect(secret.autocorrect, isFalse);
       expect(secret.enableSuggestions, isFalse);
+      expect(secret.smartDashesType, SmartDashesType.disabled);
+      expect(secret.smartQuotesType, SmartQuotesType.disabled);
+      expect(secret.enableIMEPersonalizedLearning, isFalse);
       await t.enterText(field('Port'), 'not-a-number');
       await press(t, find.text('Einstellungen speichern'));
       expect(requests.where((r) => r.method != 'GET'), isEmpty);
@@ -944,6 +947,12 @@ void main() {
       expect(t.widget<TextField>(field('Admin-Passwort')).obscureText, isTrue);
       await press(t, find.byTooltip('Passwort anzeigen'));
       expect(t.widget<TextField>(field('Admin-Passwort')).obscureText, isFalse);
+      for (final label in ['Admin-Passwort', 'Admin-Passwort wiederholen']) {
+        final input = t.widget<TextField>(field(label));
+        expect(input.smartDashesType, SmartDashesType.disabled);
+        expect(input.smartQuotesType, SmartQuotesType.disabled);
+        expect(input.enableIMEPersonalizedLearning, isFalse);
+      }
       expect(
         t
             .widget<TextField>(field('Admin-Passwort wiederholen'))

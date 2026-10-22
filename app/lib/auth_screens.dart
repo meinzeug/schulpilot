@@ -103,33 +103,30 @@ class LandingScreen extends StatelessWidget {
                     '01',
                     'Stoff sammeln',
                     'Die Heftseiten von heute.',
+                    'fotos',
                   ),
                   (
                     Icons.lightbulb_outline_rounded,
                     '02',
                     'Verstehen & üben',
                     'Mit Hilfe, wenn es hakt.',
+                    'lernen',
                   ),
                   (
                     Icons.check_circle_outline_rounded,
                     '03',
                     'Wissen festigen',
                     'Neue Aufgaben. Später wiederholen.',
+                    'wiederholen',
                   ),
                 ])
-                  Container(
-                    margin: EdgeInsets.only(bottom: 12),
+                  ActionPanel(
                     padding: EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: .09),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: .08),
-                      ),
-                    ),
+                    actionLabel: '${item.$3}: Ablauf ansehen',
+                    onPressed: () => context.go('/about?section=${item.$5}'),
                     child: Row(
                       children: [
-                        Icon(item.$1, color: Colors.white, size: 24),
+                        Icon(item.$1, color: context.palette.teal, size: 24),
                         SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -138,7 +135,7 @@ class LandingScreen extends StatelessWidget {
                               Text(
                                 item.$3,
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: context.palette.ink,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -146,7 +143,7 @@ class LandingScreen extends StatelessWidget {
                               Text(
                                 item.$4,
                                 style: TextStyle(
-                                  color: Color(0xFFC7CBED),
+                                  color: context.palette.muted,
                                   fontSize: 12,
                                 ),
                               ),
@@ -156,7 +153,7 @@ class LandingScreen extends StatelessWidget {
                         Text(
                           item.$2,
                           style: TextStyle(
-                            color: Colors.white38,
+                            color: context.palette.muted,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -222,16 +219,19 @@ class LandingScreen extends StatelessWidget {
                               Icons.today_rounded,
                               'Ein Plan für heute',
                               'Überschaubare Einheiten statt Aufgabenberge.',
+                              'plan',
                             ),
                             (
                               Icons.support_agent_rounded,
                               'Hilfe im richtigen Moment',
                               'Verständliche Erklärungen und passende Hinweise.',
+                              'hilfe',
                             ),
                             (
                               Icons.family_restroom_rounded,
                               'Eltern bleiben im Bild',
                               'Was lief gut? Wo braucht dein Kind Unterstützung?',
+                              'eltern',
                             ),
                           ])
                             SizedBox(
@@ -240,7 +240,10 @@ class LandingScreen extends StatelessWidget {
                                             128) /
                                         3
                                   : double.infinity,
-                              child: Panel(
+                              child: ActionPanel(
+                                actionLabel: '${item.$2}: Mehr erfahren',
+                                onPressed: () =>
+                                    context.go('/about?section=${item.$4}'),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -333,7 +336,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final Map<String, String> fieldErrors = {};
   bool submitting = false, googleBusy = false;
   int formRevision = 0;
-  bool consent = false, passwordVisible = false;
+  bool consent = false, passwordVisible = false, tokenVisible = false;
   String? _identifierFromPreviousForm;
   bool _identifierEdited = false;
   String? result;
@@ -361,6 +364,7 @@ class _AuthScreenState extends State<AuthScreen> {
           oldWidget.linkUri.fragment != widget.linkUri.fragment) {
         password.clear();
         passwordVisible = false;
+        tokenVisible = false;
       }
       _readLink();
       result = null;
@@ -375,7 +379,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _identifierEdited = false;
     username.text =
         widget.mode == 'login' ||
-            (['register', 'recovery'].contains(widget.mode) &&
+            (['register', 'recovery', 'resend'].contains(widget.mode) &&
                 identifier?.contains('@') == true)
         ? identifier ?? ''
         : '';
@@ -431,7 +435,9 @@ class _AuthScreenState extends State<AuthScreen> {
         ? username.text.trim()
         : _identifierFromPreviousForm ?? '';
     widget.state.rememberAuthIdentifier(
-      ['/login', '/register', '/recovery'].contains(target) ? identifier : '',
+      ['/login', '/register', '/recovery', '/resend'].contains(target)
+          ? identifier
+          : '',
     );
     context.go(location);
   }
@@ -450,13 +456,17 @@ class _AuthScreenState extends State<AuthScreen> {
   bool validateFields() {
     final mode = widget.mode;
     final invalid = <String, String>{};
-    if (['login', 'register', 'recovery'].contains(mode) &&
+    if (['login', 'register', 'recovery', 'resend'].contains(mode) &&
         username.text.trim().isEmpty) {
       invalid['username'] = mode == 'login'
           ? 'Gib deine E-Mail oder deinen Benutzernamen ein.'
           : 'Gib deine E-Mail-Adresse ein.';
     } else if (username.text.trim().runes.length > 254) {
       invalid['username'] = 'Nutze höchstens 254 Zeichen.';
+    } else if (['register', 'recovery', 'resend'].contains(mode) &&
+        !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(username.text.trim())) {
+      invalid['username'] =
+          'Prüfe die E-Mail-Adresse, zum Beispiel name@beispiel.de.';
     }
     if (mode == 'register' && name.text.trim().isEmpty) {
       invalid['name'] = 'Gib deinen Anzeigenamen ein.';
@@ -533,6 +543,7 @@ class _AuthScreenState extends State<AuthScreen> {
         switch (mode) {
           'register' => '/auth/register',
           'recovery' => '/auth/recovery',
+          'resend' => '/auth/resend-verification',
           'reset' => '/auth/reset',
           'verify' => '/auth/verify',
           _ => '/invitations/accept',
@@ -546,6 +557,7 @@ class _AuthScreenState extends State<AuthScreen> {
             'adult_consent': consent,
           },
           'recovery' => {'email': username.text.trim()},
+          'resend' => {'email': username.text.trim()},
           'reset' => {'token': token.text.trim(), 'password': password.text},
           'verify' => {'token': token.text.trim()},
           _ => {
@@ -581,6 +593,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final title = switch (mode) {
       'register' => 'Euer Start mit Schulpilot',
       'recovery' => 'Passwort vergessen?',
+      'resend' => 'Bestätigungslink fehlt?',
       'reset' => 'Neues Elternpasswort',
       'verify' => 'E-Mail bestätigen',
       'invite' => 'Zur Familie dazukommen',
@@ -616,6 +629,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
                       'register' => 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.',
                       'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
+                      'resend' => 'Für ein noch unbestätigtes Elternkonto: Fordere bewusst einen neuen E-Mail-Link an. Prüfe auch deinen Spamordner. Die Rückmeldung verrät nicht, ob ein Konto existiert.',
                       'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
                       'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
                       _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
@@ -634,18 +648,23 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                     ),
-                    if (['login', 'register', 'recovery'].contains(mode)) ...[
+                    if ([
+                      'login',
+                      'register',
+                      'recovery',
+                      'resend',
+                    ].contains(mode)) ...[
                       TextField(
                         controller: username,
                         onChanged: (_) => fieldEdited('username'),
                         focusNode: usernameFocus,
                         enabled: !submitting && !googleBusy,
                         autocorrect: false,
-                        textInputAction: mode == 'recovery'
+                        textInputAction: ['recovery', 'resend'].contains(mode)
                             ? TextInputAction.done
                             : TextInputAction.next,
                         onSubmitted: (_) async {
-                          if (mode == 'recovery') {
+                          if (['recovery', 'resend'].contains(mode)) {
                             await submit();
                           } else {
                             (mode == 'register' ? nameFocus : passwordFocus)
@@ -739,6 +758,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         obscureText: !passwordVisible,
                         enableSuggestions: false,
                         autocorrect: false,
+                        smartDashesType: SmartDashesType.disabled,
+                        smartQuotesType: SmartQuotesType.disabled,
+                        enableIMEPersonalizedLearning: false,
                         autofillHints: ['login', 'invite'].contains(mode)
                             ? [AutofillHints.password]
                             : [AutofillHints.newPassword],
@@ -785,8 +807,26 @@ class _AuthScreenState extends State<AuthScreen> {
                         enableSuggestions: false,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => submit(),
-                        obscureText: true,
+                        obscureText: !tokenVisible,
+                        smartDashesType: SmartDashesType.disabled,
+                        smartQuotesType: SmartQuotesType.disabled,
+                        enableIMEPersonalizedLearning: false,
                         decoration: InputDecoration(
+                          suffixIcon: IconButton(
+                            tooltip: tokenVisible
+                                ? 'Code verbergen'
+                                : 'Code anzeigen',
+                            onPressed: submitting || googleBusy
+                                ? null
+                                : () => setState(
+                                    () => tokenVisible = !tokenVisible,
+                                  ),
+                            icon: Icon(
+                              tokenVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
                           labelText: 'Sicherer Link-Code',
                           helperText: 'Wird aus dem E-Mail-Link übernommen.',
                           helperMaxLines: 3,
@@ -797,6 +837,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       SizedBox(height: 16),
                     ],
                     if (mode == 'register') ...[
+                      TextButton.icon(
+                        onPressed: submitting || googleBusy
+                            ? null
+                            : () => context.push('/privacy'),
+                        icon: const Icon(Icons.privacy_tip_outlined),
+                        label: const Text('Datenschutz vor dem Anlegen lesen'),
+                      ),
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: consent,
@@ -829,6 +876,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           : switch (mode) {
                               'register' => 'Elternkonto anlegen',
                               'recovery' => 'Wiederherstellungslink anfordern',
+                              'resend' => 'Bestätigungslink anfordern',
                               'verify' => 'E-Mail bestätigen',
                               'reset' => 'Passwort erneuern',
                               'invite' => 'Einladung annehmen',
@@ -848,6 +896,52 @@ class _AuthScreenState extends State<AuthScreen> {
                             setState(() => googleBusy = busy);
                           }
                         },
+                      ),
+                    if (mode == 'login')
+                      TextButton.icon(
+                        onPressed: submitting || googleBusy
+                            ? null
+                            : () => showDialog<void>(
+                                context: context,
+                                builder: (dialog) => AlertDialog(
+                                  scrollable: true,
+                                  title: const Text(
+                                    'Deinen Kinderzugang wiederfinden',
+                                  ),
+                                  content: const Text(
+                                    'Frage deine Eltern nach deinem eigenen Benutzernamen. Sie können in ihrem Elternkonto auch ein neues Passwort für dich setzen. Die E-Mail-Wiederherstellung ist für Elternkonten gedacht.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dialog),
+                                      child: const Text('Verstanden'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                        icon: const Icon(Icons.child_care_rounded),
+                        label: const Text('Kinderzugang vergessen?'),
+                      ),
+                    if (['login', 'register', 'verify'].contains(mode))
+                      TextButton(
+                        onPressed: submitting || googleBusy
+                            ? null
+                            : () => goToAuth('/resend'),
+                        child: const Text('Bestätigungslink erneut anfordern'),
+                      ),
+                    if (mode == 'recovery')
+                      TextButton(
+                        onPressed: submitting ? null : () => goToAuth('/reset'),
+                        child: const Text('Link-Code aus E-Mail eingeben'),
+                      ),
+                    if (mode == 'reset')
+                      TextButton(
+                        onPressed: submitting
+                            ? null
+                            : () => goToAuth('/recovery'),
+                        child: const Text(
+                          'Neuen Wiederherstellungslink anfordern',
+                        ),
                       ),
                     if (mode == 'login')
                       Wrap(
@@ -899,14 +993,56 @@ class _AuthScreenState extends State<AuthScreen> {
 
 class InformationScreen extends StatelessWidget {
   final String kind;
-  const InformationScreen(this.kind, {super.key});
+  final String? section;
+  final Api? api;
+  const InformationScreen(this.kind, {super.key, this.section, this.api});
+
+  static const features = <String, (String, String)>{
+    'fotos': (
+      'Heftseiten fotografieren',
+      'Fotografiere normale handschriftliche Heftseiten oder Arbeitsblätter. Drehe und beschneide das Bild und gib die Fotos bewusst ab. Prüfe danach den erkannten Text. Erst „Stimmt, weiter“ bestätigt deine Quelle; unlesbare Stellen bleiben offen.',
+    ),
+    'lernen': (
+      'Verstehen und selbst üben',
+      'Lies die Erklärung zum bestätigten Unterrichtsstoff und bearbeite eine passende Aufgabe. Deine Antwort und die Rückmeldung bleiben zusammen sichtbar, bis du weitergehst. Hinweise helfen schrittweise; eine unterstützte Lösung wird von einer selbstständigen Lösung unterschieden.',
+    ),
+    'wiederholen': (
+      'Wissen später erneut abrufen',
+      'Eine einzelne richtige Antwort beweist noch keine sichere Beherrschung. Neue Aufgaben an späteren Tagen helfen, Wissen erneut abzurufen. Weitere Runden startest du bewusst; verpasste Tage erzeugen keinen Pflicht-Aufgabenberg.',
+    ),
+    'plan': (
+      'Ein überschaubarer Plan für heute',
+      'Heute zeigt den nächsten sinnvollen Schritt und deinen gespeicherten Lernstand. Eltern können Themen und Mindestziele setzen. Kleine Runden und Pausen strukturieren den Nachmittag; freiwilliges Weiterlernen bleibt möglich.',
+    ),
+    'hilfe': (
+      'Passende Hilfe, ohne sofort vorzusagen',
+      'Fordere einen kleinen Hinweis, ein Beispiel oder eine Erklärung an. Bei Hausaufgaben kannst du Fragen zu deinem Foto stellen. Wenn du festhängst, kannst du berechtigte Eltern um Hilfe bitten. Sprache, Kamera und Bildschirmfreigabe starten nur nach deiner ausdrücklichen Aktion.',
+    ),
+    'eltern': (
+      'Nachvollziehbarer Lernstand für Eltern',
+      'Berechtigte Eltern sehen Aufgaben, Antworten und genutzte Hilfe in ihrer Familie. Selbstständig gelöst, mit Unterstützung gelöst, weiter üben und unklar bleiben getrennt. Eine KI-Einschätzung ergänzt diese Belege; sie ersetzt sie nicht und stellt keine pädagogische Diagnose.',
+    ),
+  };
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: brand(),
       leading: IconButton(
+        tooltip: GoRouter.maybeOf(context)?.canPop() == true
+            ? 'Zurück'
+            : 'Zur Startseite',
         icon: Icon(Icons.arrow_back),
-        onPressed: () => context.go('/'),
+        onPressed: () {
+          final router = GoRouter.maybeOf(context);
+          if (router == null) {
+            Navigator.maybePop(context);
+          } else if (router.canPop()) {
+            router.pop();
+          } else {
+            router.go('/');
+          }
+        },
       ),
     ),
     body: SelectionArea(
@@ -925,11 +1061,10 @@ class InformationScreen extends StatelessWidget {
                         : 'Über Schulpilot',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  FutureBuilder<Json>(
-                    future: Api().get('/legal'),
-                    builder: (context, result) {
-                      if (!result.hasData) return SizedBox.shrink();
-                      final data = result.data!;
+                  LoadView<Json>(
+                    revision: api,
+                    load: () => (api ?? Api()).get('/legal'),
+                    builder: (data, _) {
                       return Padding(
                         padding: EdgeInsets.symmetric(vertical: 18),
                         child: Column(
@@ -946,13 +1081,45 @@ class InformationScreen extends StatelessWidget {
                     },
                   ),
                   SizedBox(height: 24),
+                  if (kind != 'privacy' && features.containsKey(section)) ...[
+                    SurfaceInset(
+                      tone: PanelTone.info,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          heading(features[section]!.$1),
+                          Text(features[section]!.$2),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () => context.go('/about'),
+                      icon: const Icon(Icons.view_list_outlined),
+                      label: const Text('Alle Abläufe ansehen'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (kind != 'privacy' && !features.containsKey(section))
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final feature in features.entries)
+                          OutlinedButton(
+                            onPressed: () =>
+                                context.go('/about?section=${feature.key}'),
+                            child: Text(feature.value.$1),
+                          ),
+                      ],
+                    ),
                   Text(
                     kind == 'privacy'
                         ? '''Eltern und Kinder haben eigene Zugänge. Eltern sehen innerhalb ihrer berechtigten Familie Materialien, Lernaufträge, gestellte Aufgaben, Antworten, Hinweise, Erklärungen, Hilfewünsche und eine ungefähre aktive Lernzeit. Andere Apps, Webseiten außerhalb von SCHULPILOT und das übrige Gerät werden nicht überwacht.
 
-Im öffentlichen Testraum werden ausschließlich synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die feste Demo benötigt keine KI. Der ausdrücklich gekennzeichnete KI-Test sendet ausschließlich ein vom Server erzeugtes künstliches Testblatt bzw. festen Beispielstoff an die konfigurierten kostenlosen OpenRouter-Modelle. Freie Kontoeingaben werden dabei nicht übertragen.
+Im öffentlichen Testraum werden ausschließlich synthetische Inhalte verarbeitet. Bitte dort keine echten Namen, Fotos oder Kinderantworten eingeben. Jeder Testraum ist getrennt und wird nach 24 Stunden gelöscht. Die feste Demo benötigt keine KI. Der ausdrücklich gekennzeichnete KI-Test sendet ausschließlich ein vom Server erzeugtes künstliches Testblatt bzw. festen Beispielstoff an den dafür freigegebenen Lernanbieter. Freie Kontoeingaben werden dabei nicht übertragen.
 
-Echte Lerninhalte werden nur über ausdrücklich freigegebene und technisch geeignete Anbieter verarbeitet. Ist kein passender geschützter Endpunkt verfügbar, wird die Verarbeitung mit einer verständlichen Meldung angehalten. Die aktuelle Betreiberfreigabe steht oben. Nach einer abgeschlossenen Einheit wertet der freigegebene KI-Dienst auch die gespeicherten Aufgaben, Antworten, Fehlversuche und genutzten Hinweise aus und erstellt passende Anschlussübungen. Namen, Zugangsdaten und Familienkennungen werden dafür nicht benötigt. Die Gesamtbewertung und Wiederholungsplanung werden aus den gespeicherten Aktivitäten berechnet.
+Echte Lerninhalte werden nur über ausdrücklich freigegebene und technisch geeignete Anbieter verarbeitet. Ist kein passender geschützter Endpunkt verfügbar, wird die Verarbeitung mit einer verständlichen Meldung angehalten. Nach einer abgeschlossenen Einheit wertet der freigegebene KI-Dienst auch die gespeicherten Aufgaben, Antworten, Fehlversuche und genutzten Hinweise aus und erstellt passende Anschlussübungen. Namen, Zugangsdaten und Familienkennungen werden dafür nicht benötigt. Die Gesamtbewertung und Wiederholungsplanung werden aus den gespeicherten Aktivitäten berechnet.
 
 Fragen zum Heft und ihre Antworten gehören zum privaten Lernverlauf und sind für berechtigte Eltern sichtbar. Die freigegebene Lern-KI erhält dafür die Frage und die bestätigten Hefttexte sowie bei Nachfragen wenige vorherige Antworten. Spracheingabe und Vorlesen sind freiwillig. Der Sprachdienst des Geräts oder Browsers kann Sprache online verarbeiten; vor einer Aufnahme erscheint ein Hinweis. SCHULPILOT speichert keine Audiodateien und lädt selbst keine hoch. Der erkannte Text bleibt vor dem Senden bearbeitbar. Auch Vorlesestimmen können einen Gerätedienst verwenden. Tippen und Lesen bleiben möglich.
 

@@ -255,8 +255,11 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/admin/settings',
-        builder: (context, s) =>
-            InstallationScreen(widget.state, initial: false),
+        builder: (context, s) => InstallationScreen(
+          widget.state,
+          initial: false,
+          initialSection: s.uri.queryParameters['section'],
+        ),
       ),
       GoRoute(path: '/', builder: (context, s) => LandingScreen(widget.state)),
       GoRoute(
@@ -288,6 +291,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         'login',
         'register',
         'recovery',
+        'resend',
         'reset',
         'verify',
         'invite',
@@ -352,6 +356,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
         builder: (context, s) => ParentPlanScreen(
           widget.state,
           childId: s.pathParameters['childId']!,
+          initialSection: s.uri.queryParameters['ansicht'],
         ),
       ),
       GoRoute(
@@ -412,6 +417,7 @@ class _SchulpilotAppState extends State<SchulpilotApp>
           childId: s.pathParameters['id']!,
           initialSubject: s.uri.queryParameters['fach'],
           initialTopic: s.uri.queryParameters['thema'],
+          initialCategory: s.uri.queryParameters['ergebnis'],
         ),
       ),
       GoRoute(
@@ -467,7 +473,10 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, s) => SettingsScreen(widget.state),
+        builder: (context, s) => SettingsScreen(
+          widget.state,
+          initialSection: s.uri.queryParameters['section'],
+        ),
       ),
       GoRoute(
         path: '/family-call/:id',
@@ -477,7 +486,6 @@ class _SchulpilotAppState extends State<SchulpilotApp>
             'call:${s.pathParameters['id']}:${widget.state.user?['id']}',
           ),
           callId: s.pathParameters['id']!,
-          action: s.uri.queryParameters['action'],
         ),
       ),
       GoRoute(
@@ -490,11 +498,16 @@ class _SchulpilotAppState extends State<SchulpilotApp>
       ),
       GoRoute(
         path: '/privacy',
-        builder: (context, s) => const InformationScreen('privacy'),
+        builder: (context, s) =>
+            InformationScreen('privacy', api: widget.state.api),
       ),
       GoRoute(
         path: '/about',
-        builder: (context, s) => const InformationScreen('about'),
+        builder: (context, s) => InformationScreen(
+          'about',
+          api: widget.state.api,
+          section: s.uri.queryParameters['section'],
+        ),
       ),
       GoRoute(
         path: '/account-deletion',

@@ -1,6 +1,97 @@
 import 'package:flutter/material.dart';
 
+import 'api.dart';
 import 'ui.dart';
+
+/// A local, authorized view of explicitly selected operator metadata.
+/// Opening this dialog never fetches data or starts an operation.
+void showAdminDetails(
+  BuildContext context,
+  AppState state, {
+  required String title,
+  required List<(String, String)> rows,
+  String? notice,
+  String? continueLabel,
+  VoidCallback? onContinue,
+}) {
+  _showAdminDetails(
+    context,
+    state,
+    title: title,
+    rows: rows,
+    notice: notice,
+    continueLabel: continueLabel,
+    onContinue: onContinue,
+  );
+}
+
+Future<void> _showAdminDetails(
+  BuildContext context,
+  AppState state, {
+  required String title,
+  required List<(String, String)> rows,
+  String? notice,
+  String? continueLabel,
+  VoidCallback? onContinue,
+}) async {
+  final owner = state.user;
+  if (!state.isAdmin || owner == null || !context.mounted) return;
+  late final DialogRoute<bool> route;
+  bool own() => context.mounted && identical(state.user, owner);
+  void changed() {
+    if (!own() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  route = DialogRoute<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: Text(title),
+      scrollable: true,
+      content: SizedBox(
+        width: 580,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (notice != null) ...[Text(notice), const SizedBox(height: 16)],
+            for (final row in rows) ...[
+              Text(row.$1, style: const TextStyle(fontWeight: FontWeight.w700)),
+              SelectableText(row.$2),
+              const SizedBox(height: 14),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            if (own() && route.isCurrent) Navigator.pop(dialog, false);
+          },
+          child: const Text('Schließen'),
+        ),
+        if (continueLabel != null && onContinue != null)
+          FilledButton.icon(
+            onPressed: () {
+              if (own() && route.isCurrent) Navigator.pop(dialog, true);
+            },
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: Text(continueLabel),
+          ),
+      ],
+    ),
+  );
+  state.addListener(changed);
+  try {
+    final proceed = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(route);
+    if (proceed == true && own()) onContinue?.call();
+  } finally {
+    await route.completed;
+    state.removeListener(changed);
+  }
+}
 
 /// The same open operator header in both themes. Global navigation belongs to
 /// WorkspaceShell; detail pages only need one contextual return path.

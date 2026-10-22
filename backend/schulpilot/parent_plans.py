@@ -3,7 +3,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import load_only
 
 from .db import Assignment, Job, LearningMemory, LearningUnit, Material, Membership, TutorTurn, UnitSource, User, get_db
@@ -13,13 +13,30 @@ from .security import child_access, parent
 router = APIRouter(tags=["Eltern-Lernplan"])
 
 
+def text_filter(query, text, *columns):
+    """Bounded literal search: percent/underscore are school text, not SQL wildcards."""
+    text = text.strip()
+    return query.where(or_(*(func.lower(column).contains(text.lower(), autoescape=True)
+                            for column in columns))) if text else query
+
+
+def subject_options(db, model, child_id, *conditions):
+    return list(db.scalars(select(model.subject).where(model.child_id == child_id, *conditions,
+        model.subject != "").distinct().order_by(model.subject).limit(200)))
+
+
 @router.get("/children/{child_id}/homework-review")
 def homework_review(child_id: str, state: Literal["all", "worked", "open", "review"] = "all",
-                    cursor: str | None = Query(None, max_length=32), p=Depends(parent), db=Depends(get_db)):
+                    cursor: str | None = Query(None, max_length=32), q: str = Query("", max_length=160),
+                    subject: str | None = Query(None, max_length=160),
+                    p=Depends(parent), db=Depends(get_db)):
     child = child_access(db, p, child_id)
     query = select(Material).options(load_only(Material.id, Material.child_id, Material.subject, Material.topic,
         Material.title, Material.confirmed, Material.created, Material.revision, Material.homework_state)).where(
             Material.child_id == child.id, Material.purpose == "homework")
+    query = text_filter(query, q, Material.subject, Material.topic, Material.title)
+    if subject is not None:
+        query = query.where(Material.subject == subject)
     marked = (Material.homework_state["source_revision"].as_integer() == Material.revision) & (
         func.coalesce(func.json_array_length(Material.homework_state["done"]), 0) > 0)
     if state == "worked":
@@ -51,6 +68,8 @@ def homework_review(child_id: str, state: Literal["all", "worked", "open", "revi
             "more_tasks": bool(analysis and analysis.reply.get("more_tasks")), "completion_source": "child_checklist",
             "tasks": [{"title": t["title"], "marked": t["id"] in done} for t in tasks]})
     return {"child_name": db.get(User, child.user_id).display_name, "photos": cards, "total": count,
+            "subjects": subject_options(db, Material, child.id, Material.purpose == "homework"),
+            "filters": {"q": q.strip(), "subject": subject, "state": state},
             "next_cursor": rows[19].id if len(rows) > 20 else None,
             "notice": "Häkchen zeigen, was dein Kind als bearbeitet markiert hat. Sie beweisen keine richtige Lösung. Gespeicherte Fragen und Hilfen kannst du im Detail ansehen."}
 
@@ -110,12 +129,38 @@ def assignment_values(db, child, data, existing=None):
 
 @router.get("/children/{child_id}/learning-plan")
 def view(child_id: str, page: int = Query(1, ge=1, le=1000000), include_completed: bool = False,
+         q: str = Query("", max_length=160), subject: str | None = Query(None, max_length=160),
+         source: Literal["all", "notebook", "manual", "changed"] = "all",
+         obligation: Literal["all", "mandatory", "voluntary"] = "all",
+         timing: Literal["all", "today", "past", "future", "undated"] = "all",
          p=Depends(parent), db=Depends(get_db)):
     from .families import child_data
     from .learning import assignment_data, plan
 
     child = child_access(db, p, child_id)
     query = select(Assignment).where(Assignment.child_id == child.id)
+    query = text_filter(query, q, Assignment.subject, Assignment.topic, Assignment.note)
+    if subject is not None:
+        query = query.where(Assignment.subject == subject)
+    if source == "notebook":
+        query = query.where(Assignment.material_id.is_not(None))
+    elif source == "manual":
+        query = query.where(Assignment.material_id.is_(None))
+    elif source == "changed":
+        query = query.where(Assignment.source_status == "needs_review")
+    if obligation != "all":
+        query = query.where(Assignment.mandatory.is_(obligation == "mandatory"))
+    from .learning import local_day
+
+    today = local_day(child).isoformat()
+    if timing == "today":
+        query = query.where(Assignment.due == today)
+    elif timing == "past":
+        query = query.where(Assignment.due < today)
+    elif timing == "future":
+        query = query.where(Assignment.due > today)
+    elif timing == "undated":
+        query = query.where(Assignment.due.is_(None))
     if not include_completed:
         query = query.where(Assignment.done.is_(False))
     count = db.scalar(select(func.count()).select_from(query.subquery()))
@@ -124,6 +169,9 @@ def view(child_id: str, page: int = Query(1, ge=1, le=1000000), include_complete
     assignments = list(db.scalars(query.order_by(Assignment.mandatory.desc(), Assignment.created.desc(), Assignment.id)
         .offset((page - 1) * 20).limit(20)))
     rows = []
+    round_counts = dict(db.execute(select(LearningUnit.assignment_id, func.count()).where(
+        LearningUnit.child_id == child.id, LearningUnit.assignment_id.in_([a.id for a in assignments]))
+        .group_by(LearningUnit.assignment_id)).all()) if assignments else {}
     for a in assignments:
         units = list(db.scalars(select(LearningUnit).where(LearningUnit.child_id == child.id,
             LearningUnit.assignment_id == a.id).order_by(LearningUnit.created.desc(), LearningUnit.id).limit(10)))
@@ -137,6 +185,7 @@ def view(child_id: str, page: int = Query(1, ge=1, le=1000000), include_complete
             Job.payload["assignment_id"].as_string() == a.id, Job.status.in_(["queued", "running"]))
             .order_by(Job.created.desc()).limit(1))
         rows.append({**assignment_data(a), "source_kind": "notebook" if a.material_id else "parent_topic",
+            "recent_unit_count": round_counts.get(a.id, 0),
             "available_unit": {"id": active.id, "status": active.status} if active else None,
             "preparation": {"id": pending.id, "status": pending.status} if pending else None,
             "recent_units": [{"id": u.id, "status": u.status, "topic": u.topic, "revision": u.goal_revision} for u in units]})
@@ -155,6 +204,8 @@ def view(child_id: str, page: int = Query(1, ge=1, le=1000000), include_complete
     from .parent_insights import apply_guidance
 
     return {"child": child_data(db, child), "plan": plan(db, child), "topics": rows,
+        "subjects": subject_options(db, Assignment, child.id),
+        "filters": {"q": q.strip(), "subject": subject, "source": source, "obligation": obligation, "timing": timing},
         "ai_guidance": apply_guidance(db, child, []),
         "pagination": {"page": page, "pages": pages, "total": count}, "instructional_plans": plans,
         "recent_round_topics": [{"id": u.id, "subject": u.subject, "topic": u.topic, "material_id": u.material_id}

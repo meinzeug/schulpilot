@@ -250,20 +250,22 @@ class FamilyCallService extends ChangeNotifier {
     }
   }
 
-  Future<void> open(String id) async {
+  Future<void> open(String id, {bool Function()? isCurrent}) async {
     final owner = _owner, generation = _generation;
-    if (owner == null) return;
+    if (owner == null || isCurrent?.call() == false) return;
     // Old notification links must not replace or close a newer live call.
     if (live && callId != id) {
       throw ApiError('Ein anderes Gespräch ist bereits geöffnet.');
     }
     final previousCall = callId;
     final response = await state.api.get('/family-calls/$id');
-    if (!_current(owner, generation)) return;
+    if (!_current(owner, generation) || isCurrent?.call() == false) return;
     if (callId != previousCall && callId != id) return;
     if (live && callId != id) return;
     if (callId != id) {
       await _closeMedia();
+      if (!_current(owner, generation) || isCurrent?.call() == false) return;
+      if (callId != previousCall && callId != id) return;
       _cursor = 0;
       _connected = false;
       _connecting = false;

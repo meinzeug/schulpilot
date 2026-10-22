@@ -321,11 +321,11 @@ void main() {
       expect(request.url.queryParameters, containsPair('page', '2'));
       expect(
         find.text(
-          'Alles geprüft. Neue Wortpaare kannst du im Wortschatz hinzufügen.',
+          'Alles geprüft. Deine bestätigten Wörter findest du im Wortschatz.',
         ),
         findsOneWidget,
       );
-      await _tap(tester, find.text('Wortschatz'));
+      await _tap(tester, find.text('Zum Wortschatz'));
       expect(find.text('Wort child'), findsNothing);
       expect(find.text('Bedeutung child'), findsOneWidget);
       expect(tester.testTextInput.isVisible, isFalse);

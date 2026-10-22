@@ -50,10 +50,10 @@ class _ChildMessagesBody extends StatefulWidget {
   State<_ChildMessagesBody> createState() => _ChildMessagesHubState();
 }
 
-final _mailboxAccount = Expando<Json>();
-
 class _ChildMessagesHubState extends State<_ChildMessagesBody> {
-  String section = 'inbox';
+  String section = 'inbox', sender = 'all', order = 'newest';
+  final search = TextEditingController();
+  final privateRoutes = <Route<dynamic>>{};
   late final account = widget.state.user;
   String get cacheKey => 'child_mailbox:${widget.data['child']['id']}';
   bool get current =>
@@ -61,25 +61,103 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
   @override
   void initState() {
     super.initState();
-    if (!identical(_mailboxAccount[widget.state], account)) {
-      widget.state.collectionViews.removeWhere(
-        (key, _) => key.startsWith('child_mailbox:'),
-      );
-      _mailboxAccount[widget.state] = account;
+    if (!identical(
+      widget.state.collectionViews[cacheKey]?['account'],
+      account,
+    )) {
+      widget.state.collectionViews.remove(cacheKey);
     }
-    final saved = widget.state.collectionViews[cacheKey]?['section'];
+    final memory = widget.state.collectionViews[cacheKey];
+    sender = ['all', 'parent', 'child', 'system'].contains(memory?['sender'])
+        ? memory!['sender']
+        : 'all';
+    order = memory?['order'] == 'oldest' ? 'oldest' : 'newest';
+    search.text = memory?['q'] as String? ?? '';
+    final saved = memory?['section'];
     if (['inbox', 'wishes', 'done'].contains(saved)) section = saved;
     widget.state.addListener(accountChanged);
   }
 
   void accountChanged() {
-    if (!current && mounted) setState(() {});
+    if (!current && mounted) {
+      closePrivateRoutes();
+      search.clear();
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
     widget.state.removeListener(accountChanged);
+    closePrivateRoutes();
+    search.dispose();
     super.dispose();
+  }
+
+  void remember() {
+    if (current) {
+      widget.state.collectionViews[cacheKey] = {
+        'account': account,
+        'section': section,
+        'sender': sender,
+        'order': order,
+        'q': search.text,
+      };
+    }
+  }
+
+  void closePrivateRoutes() {
+    final routes = privateRoutes.toList();
+    privateRoutes.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
+  Future<void> readMessage(Json message) async {
+    if (!current) return;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    late DialogRoute<void> route;
+    route = DialogRoute<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          message['sender_role'] == 'child'
+              ? 'Deine Nachricht'
+              : message['sender_role'] == 'parent'
+              ? 'Nachricht von deinen Eltern'
+              : 'Nachricht von Schulpilot',
+        ),
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (sentAt(message) case final date?) ...[
+              Text(date, style: TextStyle(color: ctx.palette.muted)),
+              SizedBox(height: 14),
+            ],
+            SelectableText(message['body'] ?? ''),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (current && ctx.mounted && route.isCurrent) Navigator.pop(ctx);
+            },
+            child: Text('Zurück zum Postfach'),
+          ),
+        ],
+      ),
+    );
+    privateRoutes.add(route);
+    try {
+      await navigator.push(route);
+    } finally {
+      privateRoutes.remove(route);
+    }
   }
 
   bool composing = false;
@@ -143,15 +221,30 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
     final messages = (widget.data['messages'] as List? ?? [])
         .map((row) => Json.from(row))
         .toList();
-    final rows = messages
-        .where(
-          (row) => switch (section) {
-            'done' => row['resolved'] == true,
-            'wishes' => row['resolved'] != true && wish(row),
-            _ => row['resolved'] != true && !wish(row),
-          },
-        )
-        .toList();
+    final rows =
+        messages
+            .where(
+              (row) => switch (section) {
+                'done' => row['resolved'] == true,
+                'wishes' => row['resolved'] != true && wish(row),
+                _ => row['resolved'] != true && !wish(row),
+              },
+            )
+            .where((row) => sender == 'all' || row['sender_role'] == sender)
+            .where(
+              (row) =>
+                  search.text.trim().isEmpty ||
+                  (row['body'] ?? '').toString().toLowerCase().contains(
+                    search.text.trim().toLowerCase(),
+                  ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final result = (a['created'] as num? ?? 0).compareTo(
+              b['created'] as num? ?? 0,
+            );
+            return order == 'oldest' ? result : -result;
+          });
     final openHelp = messages
         .where((row) => row['kind'] == 'help' && row['resolved'] != true)
         .length;
@@ -215,7 +308,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
           onSelected: (value) {
             if (!current) return;
             setState(() => section = value);
-            widget.state.collectionViews[cacheKey] = {'section': value};
+            remember();
           },
         ),
         const SizedBox(height: 20),
@@ -245,6 +338,99 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
           'done' => 'Schon besprochen',
           _ => 'Nachrichten für dich und von dir',
         }),
+        const SizedBox(height: 12),
+        TextField(
+          controller: search,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            labelText: 'Nachrichten durchsuchen',
+            prefixIcon: Icon(Icons.search_rounded),
+            suffixIcon: search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Nachrichtensuche leeren',
+                    onPressed: () {
+                      if (!current) return;
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      setState(search.clear);
+                      remember();
+                    },
+                    icon: Icon(Icons.clear_rounded),
+                  ),
+          ),
+          onChanged: (_) {
+            if (current) {
+              setState(() {});
+              remember();
+            }
+          },
+          onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: 230,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey(('sender', sender)),
+                initialValue: sender,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: 'Absender'),
+                items: [
+                  for (final item in [
+                    ('all', 'Alle Nachrichten'),
+                    ('parent', 'Von meinen Eltern'),
+                    ('child', 'Von mir'),
+                    ('system', 'Von Schulpilot'),
+                  ])
+                    DropdownMenuItem(value: item.$1, child: Text(item.$2)),
+                ],
+                onChanged: (value) {
+                  if (!current || value == null) return;
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() => sender = value);
+                  remember();
+                },
+              ),
+            ),
+            SizedBox(
+              width: 230,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey(('order', order)),
+                initialValue: order,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: 'Reihenfolge'),
+                items: [
+                  DropdownMenuItem(
+                    value: 'newest',
+                    child: Text('Neueste zuerst'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'oldest',
+                    child: Text('Älteste zuerst'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (!current || value == null) return;
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() => order = value);
+                  remember();
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            '${rows.length} ${rows.length == 1 ? 'Nachricht in dieser Ansicht' : 'Nachrichten in dieser Ansicht'}',
+            style: TextStyle(color: context.palette.muted),
+          ),
+        ),
+        const SizedBox(height: 12),
         if (messages.length >= 100)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
@@ -253,7 +439,23 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
               style: TextStyle(color: context.palette.muted),
             ),
           ),
-        if (rows.isEmpty)
+        if (rows.isEmpty && (search.text.isNotEmpty || sender != 'all'))
+          ActionPanel(
+            actionLabel: 'Suche und Absender zurücksetzen',
+            onPressed: () {
+              if (!current) return;
+              FocusManager.instance.primaryFocus?.unfocus();
+              setState(() {
+                search.clear();
+                sender = 'all';
+              });
+              remember();
+            },
+            child: Text(
+              'Hier passt gerade keine Nachricht zu deiner Suche und Absenderwahl.',
+            ),
+          )
+        else if (rows.isEmpty)
           Panel(
             tone: PanelTone.subtle,
             child: Column(
@@ -338,6 +540,15 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
                       ),
                       const SizedBox(height: 14),
                       SelectableText(message['body'] ?? ''),
+                      if ((message['body'] ?? '').toString().length > 450)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => readMessage(message),
+                            icon: Icon(Icons.open_in_full_rounded),
+                            label: Text('Nachricht in Ruhe lesen'),
+                          ),
+                        ),
                       if (message['sender_role'] == 'parent' &&
                           widget.onReply != null)
                         Align(

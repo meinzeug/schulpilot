@@ -41,6 +41,73 @@ class _VideoOwnership extends ChangeNotifier {
   }
 }
 
+bool _closeFamilyModal<T>(BuildContext context, [T? value]) {
+  if (!context.mounted || ModalRoute.of(context)?.isCurrent != true) {
+    return false;
+  }
+  Navigator.of(context).pop<T>(value);
+  return true;
+}
+
+/// Consent belongs to the exact login and conversation that opened it. Remove
+/// only this route when access changes, even if another dialog covers it.
+class _FamilyModalGuard extends StatelessWidget {
+  final Listenable changes;
+  final bool Function() current;
+  final Widget child;
+  const _FamilyModalGuard({
+    required this.changes,
+    required this.current,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: changes,
+    builder: (context, _) {
+      if (current()) return child;
+      final route = ModalRoute.of(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route != null && route.isActive) {
+          route.navigator?.removeRoute(route);
+        }
+      });
+      return const SizedBox.shrink();
+    },
+  );
+}
+
+VoidCallback _boundCallControl(
+  BuildContext context,
+  FamilyCallService service,
+  FutureOr<void> Function() action, {
+  required bool Function() current,
+}) {
+  final owner = service.accountIdentity;
+  final family = service.state.familyId;
+  final id = service.callId;
+  final status = service.call?['status'];
+  bool allowed() =>
+      context.mounted &&
+      current() &&
+      owner != null &&
+      id != null &&
+      identical(service.state.user, owner) &&
+      identical(service.accountIdentity, owner) &&
+      service.state.familyId == family &&
+      service.callId == id &&
+      service.live &&
+      service.call?['status'] == status;
+  return () {
+    if (!allowed()) return;
+    unawaited(
+      Future<void>.sync(action).catchError((Object error) {
+        if (context.mounted && allowed()) showError(context, error);
+      }),
+    );
+  };
+}
+
 /// Shared entry at every child help location. Messages remain an explicit fallback.
 Future<void> showFamilyHelp(
   BuildContext context,
@@ -50,6 +117,7 @@ Future<void> showFamilyHelp(
   String? contextId,
 }) async {
   final expectedAccount = state.user;
+  final expectedFamily = state.familyId;
   if (!state.isChild) {
     await sendMessage();
     return;
@@ -59,59 +127,71 @@ Future<void> showFamilyHelp(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheet) => StatefulBuilder(
-      builder: (sheet, update) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(Icons.video_call_rounded, size: 40),
-              const SizedBox(height: 12),
-              Text(
-                'Gemeinsam geht’s weiter.',
-                style: Theme.of(sheet).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Rufe deine Eltern an und frage direkt nach. Mikrofon und Kamera werden erst beim Start geöffnet. Deinen Bildschirm teilst du danach selbst.',
-              ),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Mit Kamera starten'),
-                subtitle: const Text(
-                  'Du kannst die Kamera jederzeit ausschalten.',
+    builder: (sheet) => _FamilyModalGuard(
+      changes: state,
+      current: () =>
+          identical(state.user, expectedAccount) &&
+          state.familyId == expectedFamily,
+      child: StatefulBuilder(
+        builder: (sheet, update) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(Icons.video_call_rounded, size: 40),
+                const SizedBox(height: 12),
+                Text(
+                  'Gemeinsam geht’s weiter.',
+                  style: Theme.of(sheet).textTheme.headlineSmall,
                 ),
-                value: camera,
-                onChanged: (value) => update(() => camera = value),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(minimumSize: const Size(0, 54)),
-                icon: const Icon(Icons.videocam_rounded),
-                label: const Text('Eltern live dazuholen'),
-                onPressed: () => Navigator.pop(sheet, 'call'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 50)),
-                icon: const Icon(Icons.mail_outline_rounded),
-                label: const Text('Lieber eine Nachricht senden'),
-                onPressed: () => Navigator.pop(sheet, 'message'),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Nur deine berechtigten Eltern können annehmen. Es wird nichts aufgezeichnet. Wenn niemand Zeit hat, kannst du eine Nachricht senden und weiterlernen.',
-                style: TextStyle(fontSize: 13),
-              ),
-            ],
+                const SizedBox(height: 12),
+                const Text(
+                  'Rufe deine Eltern an und frage direkt nach. Mikrofon und Kamera werden erst beim Start geöffnet. Deinen Bildschirm teilst du danach selbst.',
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Mit Kamera starten'),
+                  subtitle: const Text(
+                    'Du kannst die Kamera jederzeit ausschalten.',
+                  ),
+                  value: camera,
+                  onChanged: (value) => update(() => camera = value),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 54)),
+                  icon: const Icon(Icons.videocam_rounded),
+                  label: const Text('Eltern live dazuholen'),
+                  onPressed: () => _closeFamilyModal(sheet, 'call'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 50),
+                  ),
+                  icon: const Icon(Icons.mail_outline_rounded),
+                  label: const Text('Lieber eine Nachricht senden'),
+                  onPressed: () => _closeFamilyModal(sheet, 'message'),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Nur deine berechtigten Eltern können annehmen. Es wird nichts aufgezeichnet. Wenn niemand Zeit hat, kannst du eine Nachricht senden und weiterlernen.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     ),
   );
-  if (!context.mounted || !identical(state.user, expectedAccount)) return;
+  if (!context.mounted ||
+      !identical(state.user, expectedAccount) ||
+      state.familyId != expectedFamily) {
+    return;
+  }
   if (choice == 'message') {
     await sendMessage();
     return;
@@ -123,7 +203,11 @@ Future<void> showFamilyHelp(
     contextId: contextId,
     camera: camera,
   );
-  if (!context.mounted || !identical(state.user, expectedAccount)) return;
+  if (!context.mounted ||
+      !identical(state.user, expectedAccount) ||
+      state.familyId != expectedFamily) {
+    return;
+  }
   if (id != null) {
     // The global conversation dock joins the existing task. Keeping this route
     // mounted preserves its draft, feedback and learning-time lifecycle.
@@ -131,29 +215,40 @@ Future<void> showFamilyHelp(
   } else {
     final fallback = await showDialog<String>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Gerade nicht verbunden'),
-        content: Text(
-          state.familyCalls.error ?? 'Der Anruf konnte nicht gestartet werden.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: const Text('Zurück'),
+      builder: (dialog) => _FamilyModalGuard(
+        changes: state,
+        current: () =>
+            identical(state.user, expectedAccount) &&
+            state.familyId == expectedFamily,
+        child: AlertDialog(
+          title: const Text('Gerade nicht verbunden'),
+          content: Text(
+            state.familyCalls.error ??
+                'Der Anruf konnte nicht gestartet werden.',
           ),
-          if (camera)
-            OutlinedButton(
-              onPressed: () => Navigator.pop(dialog, 'audio'),
-              child: const Text('Ohne Kamera versuchen'),
+          actions: [
+            TextButton(
+              onPressed: () => _closeFamilyModal(dialog),
+              child: const Text('Zurück'),
             ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialog, 'message'),
-            child: const Text('Nachricht senden'),
-          ),
-        ],
+            if (camera)
+              OutlinedButton(
+                onPressed: () => _closeFamilyModal(dialog, 'audio'),
+                child: const Text('Ohne Kamera versuchen'),
+              ),
+            FilledButton(
+              onPressed: () => _closeFamilyModal(dialog, 'message'),
+              child: const Text('Nachricht senden'),
+            ),
+          ],
+        ),
       ),
     );
-    if (!context.mounted || !identical(state.user, expectedAccount)) return;
+    if (!context.mounted ||
+        !identical(state.user, expectedAccount) ||
+        state.familyId != expectedFamily) {
+      return;
+    }
     if (fallback == 'message') await sendMessage();
     if (fallback == 'audio') {
       final audioId = await state.familyCalls.start(
@@ -161,7 +256,11 @@ Future<void> showFamilyHelp(
         contextId: contextId,
         camera: false,
       );
-      if (!context.mounted || !identical(state.user, expectedAccount)) return;
+      if (!context.mounted ||
+          !identical(state.user, expectedAccount) ||
+          state.familyId != expectedFamily) {
+        return;
+      }
       if (audioId != null) {
         return;
       } else {
@@ -180,45 +279,58 @@ Future<void> confirmFamilyCallJoin(
 ) async {
   final expectedAccount = calls.accountIdentity;
   final expectedCall = calls.callId;
+  final expectedFamily = calls.state.familyId;
   var camera = true;
   final accepted = await showDialog<bool>(
     context: context,
-    builder: (dialog) => StatefulBuilder(
-      builder: (dialog, update) => AlertDialog(
-        title: const Text('Gemeinsam helfen'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Mikrofon und optional die Kamera werden für dieses Gespräch geöffnet. Den Kinderbildschirm siehst du erst nach ausdrücklicher Freigabe des Kindes. Es wird nichts aufgezeichnet.',
-              ),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Mit Kamera'),
-                value: camera,
-                onChanged: (value) => update(() => camera = value),
-              ),
-            ],
+    builder: (dialog) => _FamilyModalGuard(
+      changes: Listenable.merge([calls, calls.state]),
+      current: () =>
+          identical(calls.accountIdentity, expectedAccount) &&
+          identical(calls.state.user, expectedAccount) &&
+          calls.state.familyId == expectedFamily &&
+          calls.callId == expectedCall &&
+          calls.live,
+      child: StatefulBuilder(
+        builder: (dialog, update) => AlertDialog(
+          title: const Text('Gemeinsam helfen'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Mikrofon und optional die Kamera werden für dieses Gespräch geöffnet. Den Kinderbildschirm siehst du erst nach ausdrücklicher Freigabe des Kindes. Es wird nichts aufgezeichnet.',
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Mit Kamera'),
+                  value: camera,
+                  onChanged: (value) => update(() => camera = value),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => _closeFamilyModal(dialog, false),
+              child: const Text('Zurück'),
+            ),
+            FilledButton.icon(
+              onPressed: () => _closeFamilyModal(dialog, true),
+              icon: const Icon(Icons.call_rounded),
+              label: const Text('Annehmen'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Zurück'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(dialog, true),
-            icon: const Icon(Icons.call_rounded),
-            label: const Text('Annehmen'),
-          ),
-        ],
       ),
     ),
   );
   if (accepted == true &&
       identical(calls.accountIdentity, expectedAccount) &&
-      calls.callId == expectedCall) {
+      identical(calls.state.user, expectedAccount) &&
+      calls.state.familyId == expectedFamily &&
+      calls.callId == expectedCall &&
+      calls.live) {
     await calls.join(camera: camera);
   }
 }
@@ -291,40 +403,51 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
     if (dialog == null) return;
     final expectedAccount = calls.accountIdentity;
     final expectedCall = calls.callId;
+    final expectedFamily = widget.state.familyId;
     _dialogOpen = true;
     unawaited(
       showDialog<void>(
         context: dialog,
-        builder: (consent) => AlertDialog(
-          title: const Text('Deine Aufgabe live zeigen'),
-          content: SingleChildScrollView(
-            child: Text(
-              calls.webPlatform
-                  ? 'Teile möglichst nur den Schulpilot-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet. Auf dem Smartphone kann die Android-App nötig sein.'
-                  : 'Deine Eltern sehen den freigegebenen Bildschirm live. Wähle nur den Bereich aus, den du zeigen möchtest, und öffne dabei keine privaten Inhalte. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet.',
+        builder: (consent) => _FamilyModalGuard(
+          changes: Listenable.merge([widget.state, calls]),
+          current: () =>
+              identical(widget.state.user, expectedAccount) &&
+              identical(calls.accountIdentity, expectedAccount) &&
+              widget.state.familyId == expectedFamily &&
+              calls.callId == expectedCall &&
+              calls.accepted,
+          child: AlertDialog(
+            title: const Text('Deine Aufgabe live zeigen'),
+            content: SingleChildScrollView(
+              child: Text(
+                calls.webPlatform
+                    ? 'Teile möglichst nur den Schulpilot-Tab. Deine Eltern sehen alles im ausgewählten Bereich. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet. Auf dem Smartphone kann die Android-App nötig sein.'
+                    : 'Deine Eltern sehen den freigegebenen Bildschirm live. Wähle nur den Bereich aus, den du zeigen möchtest, und öffne dabei keine privaten Inhalte. Du kannst die Freigabe hier jederzeit stoppen. Es wird nichts aufgezeichnet.',
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => _closeFamilyModal(consent),
+                child: const Text('Zurück'),
+              ),
+              FilledButton.icon(
+                key: const ValueKey('call-dock-share-confirm'),
+                onPressed: () {
+                  if (!_closeFamilyModal(consent)) return;
+                  if (identical(calls.accountIdentity, expectedAccount) &&
+                      identical(widget.state.user, expectedAccount) &&
+                      widget.state.familyId == expectedFamily &&
+                      calls.callId == expectedCall &&
+                      calls.accepted) {
+                    // No awaited work before capture: retain the browser gesture.
+                    unawaited(calls.shareScreen());
+                  }
+                },
+                icon: const Icon(Icons.screen_share_rounded),
+                label: const Text('Bereich auswählen und teilen'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(consent),
-              child: const Text('Zurück'),
-            ),
-            FilledButton.icon(
-              key: const ValueKey('call-dock-share-confirm'),
-              onPressed: () {
-                Navigator.pop(consent);
-                if (identical(calls.accountIdentity, expectedAccount) &&
-                    identical(widget.state.user, expectedAccount) &&
-                    calls.callId == expectedCall &&
-                    calls.accepted) {
-                  // No awaited work before capture: retain the browser gesture.
-                  unawaited(calls.shareScreen());
-                }
-              },
-              icon: const Icon(Icons.screen_share_rounded),
-              label: const Text('Bereich auswählen und teilen'),
-            ),
-          ],
         ),
       ).whenComplete(() => _dialogOpen = false),
     );
@@ -375,18 +498,28 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
     final error = calls.error;
     if (dialog == null || error == null) return;
     _dialogOpen = true;
+    final expectedAccount = widget.state.user;
+    final expectedFamily = widget.state.familyId;
+    final expectedCall = calls.callId;
     unawaited(
       showDialog<void>(
         context: dialog,
-        builder: (context) => AlertDialog(
-          title: const Text('Verbindung prüfen'),
-          content: SingleChildScrollView(child: Text(error)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Zurück'),
-            ),
-          ],
+        builder: (context) => _FamilyModalGuard(
+          changes: Listenable.merge([widget.state, calls]),
+          current: () =>
+              identical(widget.state.user, expectedAccount) &&
+              widget.state.familyId == expectedFamily &&
+              calls.callId == expectedCall,
+          child: AlertDialog(
+            title: const Text('Verbindung prüfen'),
+            content: SingleChildScrollView(child: Text(error)),
+            actions: [
+              TextButton(
+                onPressed: () => _closeFamilyModal(context),
+                child: const Text('Zurück'),
+              ),
+            ],
+          ),
         ),
       ).whenComplete(() => _dialogOpen = false),
     );
@@ -437,6 +570,13 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
   }
 
   Widget _dock(BuildContext context, BoxConstraints size) {
+    final service = calls;
+    VoidCallback control(FutureOr<void> Function() action) => _boundCallControl(
+      context,
+      service,
+      action,
+      current: () => identical(widget.state, service.state),
+    );
     final media = calls.media;
     final sharing = media?.sharingScreen == true;
     final connected = media?.connectionState == 'connected';
@@ -539,7 +679,7 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
                           icon: media.microphoneEnabled
                               ? Icons.mic_rounded
                               : Icons.mic_off_rounded,
-                          onPressed: calls.toggleMicrophone,
+                          onPressed: control(calls.toggleMicrophone),
                           active: media.microphoneEnabled,
                         ),
                         _control(
@@ -550,7 +690,7 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
                           icon: media.cameraEnabled
                               ? Icons.videocam_rounded
                               : Icons.videocam_off_rounded,
-                          onPressed: calls.toggleCamera,
+                          onPressed: control(calls.toggleCamera),
                           active: media.cameraEnabled,
                         ),
                         if (calls.isChild)
@@ -563,7 +703,7 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
                                 ? Icons.stop_screen_share_rounded
                                 : Icons.screen_share_rounded,
                             onPressed: sharing || connected
-                                ? _screenAction
+                                ? control(_screenAction)
                                 : null,
                             active: sharing,
                             caption: sharing ? 'Stopp' : 'Teilen',
@@ -574,7 +714,7 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
                               ? null
                               : calls.incoming && !expanded
                               ? _expand
-                              : _join,
+                              : control(_join),
                           icon: const Icon(Icons.call_rounded),
                           label: Text(
                             calls.incoming && !expanded
@@ -588,8 +728,9 @@ class _FamilyCallHostState extends State<FamilyCallHost> {
                         name: 'end',
                         label: calls.incoming ? 'Ablehnen' : 'Gespräch beenden',
                         icon: Icons.call_end_rounded,
-                        onPressed: () =>
-                            unawaited(calls.end(decline: calls.incoming)),
+                        onPressed: control(
+                          () => service.end(decline: service.incoming),
+                        ),
                         end: true,
                       ),
                       if (media == null && !calls.incoming)
@@ -761,13 +902,7 @@ class _DockVideo extends StatelessWidget {
 class FamilyCallScreen extends StatefulWidget {
   final AppState state;
   final String callId;
-  final String? action;
-  const FamilyCallScreen(
-    this.state, {
-    super.key,
-    required this.callId,
-    this.action,
-  });
+  const FamilyCallScreen(this.state, {super.key, required this.callId});
   @override
   State<FamilyCallScreen> createState() => _FamilyCallScreenState();
 }
@@ -778,38 +913,92 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
   bool shareInfo = false;
   FamilyCallService get calls => widget.state.familyCalls;
   final _videoToken = Object();
-  late final _VideoOwnership _videoOwner;
+  late _VideoOwnership _videoOwner;
+  Json? _owner;
+  String? _family;
+  int _generation = 0;
 
   @override
   void initState() {
     super.initState();
     _videoOwner = _ownershipFor(widget.state);
-    _videoOwner.claim(_videoToken, widget.state.user, widget.callId);
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_open()));
+    widget.state.addListener(_contextChanged);
+    _restart();
+  }
+
+  void _restart() {
+    _generation++;
+    _videoOwner.release(_videoToken);
+    _owner = widget.state.user;
+    _family = widget.state.familyId;
+    if (_owner != null) _videoOwner.claim(_videoToken, _owner, widget.callId);
+    loading = _owner != null;
+    loadError = _owner == null
+        ? 'Melde dich erneut an, um diesen Anruf zu öffnen.'
+        : null;
+    shareInfo = false;
+    final request = _generation;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_current(request)) unawaited(_open(request));
+    });
+  }
+
+  bool _current(int request) =>
+      mounted &&
+      request == _generation &&
+      _owner != null &&
+      identical(widget.state.user, _owner) &&
+      widget.state.familyId == _family;
+
+  void _contextChanged() {
+    if (!mounted ||
+        (identical(widget.state.user, _owner) &&
+            _family == widget.state.familyId)) {
+      return;
+    }
+    setState(_restart);
+  }
+
+  @override
+  void didUpdateWidget(covariant FamilyCallScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.state, oldWidget.state)) {
+      oldWidget.state.removeListener(_contextChanged);
+      _videoOwner.release(_videoToken);
+      _videoOwner = _ownershipFor(widget.state);
+      widget.state.addListener(_contextChanged);
+      _restart();
+    } else if (oldWidget.callId != widget.callId) {
+      _restart();
+    }
   }
 
   @override
   void dispose() {
+    _generation++;
+    widget.state.removeListener(_contextChanged);
     // Flutter unmounts the video's child elements before this page's State.
     _videoOwner.release(_videoToken);
     super.dispose();
   }
 
-  Future<void> _open() async {
+  Future<void> _open(int request) async {
+    if (!_current(request)) return;
+    final service = calls;
+    final id = widget.callId;
     try {
-      calls.activate(widget.state.user);
-      await calls.open(widget.callId);
-      if (!mounted) return;
-      if (widget.action == 'decline' && calls.incoming) {
-        await calls.end(decline: true);
-      }
-      if (widget.action == 'answer' && calls.incoming && mounted) {
-        await confirmFamilyCallJoin(context, calls);
-      }
+      service.activate(_owner);
+      await service.open(
+        id,
+        isCurrent: () =>
+            _current(request) &&
+            identical(service, calls) &&
+            widget.callId == id,
+      );
     } catch (_) {
-      if (mounted) loadError = 'Dieser Anruf konnte nicht geöffnet werden. Prüfe deine Anmeldung und lade den Stand neu.';
+      if (_current(request)) loadError = 'Dieser Anruf konnte nicht geöffnet werden. Prüfe deine Anmeldung und lade den Stand neu.';
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (_current(request)) setState(() => loading = false);
     }
   }
 
@@ -861,7 +1050,20 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: calls,
     builder: (context, _) {
-      final sameCall = calls.callId == widget.callId;
+      final service = calls;
+      final request = _generation;
+      VoidCallback control(FutureOr<void> Function() action) =>
+          _boundCallControl(
+            context,
+            service,
+            action,
+            current: () => _current(request),
+          );
+      final sameCall =
+          calls.callId == widget.callId &&
+          identical(calls.accountIdentity, _owner) &&
+          identical(widget.state.user, _owner) &&
+          widget.state.familyId == _family;
       final live = sameCall && calls.live;
       final media = sameCall ? calls.media : null;
       final sharing = media?.sharingScreen == true;
@@ -882,7 +1084,11 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                   onPressed: () =>
                       context.canPop() ? context.pop() : context.go('/app'),
                   icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('Zurück zum Lernen'),
+                  label: Text(
+                    widget.state.isParent
+                        ? 'Zurück zur Elternübersicht'
+                        : 'Zurück zum Lernen',
+                  ),
                 ),
                 if (live)
                   OutlinedButton.icon(
@@ -891,7 +1097,9 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                       foregroundColor: Theme.of(context).colorScheme.error,
                       minimumSize: const Size(0, 48),
                     ),
-                    onPressed: () => calls.end(decline: calls.incoming),
+                    onPressed: control(
+                      () => service.end(decline: service.incoming),
+                    ),
                     icon: const Icon(Icons.call_end_rounded),
                     label: Text(calls.incoming ? 'Ablehnen' : 'Beenden'),
                   ),
@@ -901,7 +1109,37 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
             if (loading)
               const Center(child: CircularProgressIndicator())
             else if (loadError != null)
-              Panel(child: Text(loadError!))
+              Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Notice(loadError!, warning: true),
+                    ActionButton(
+                      label: 'Anrufstatus erneut laden',
+                      secondary: true,
+                      onPressed: () async {
+                        if (!mounted || loading) return;
+                        setState(_restart);
+                      },
+                    ),
+                    if (calls.live && calls.callId != widget.callId) ...[
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: () {
+                          if (!_current(_generation) ||
+                              !calls.live ||
+                              calls.callId == null) {
+                            return;
+                          }
+                          context.go('/family-call/${calls.callId}');
+                        },
+                        icon: const Icon(Icons.video_call_outlined),
+                        label: const Text('Zum bereits geöffneten Gespräch'),
+                      ),
+                    ],
+                  ],
+                ),
+              )
             else ...[
               Panel(
                 child: Column(
@@ -953,7 +1191,9 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                       FilledButton.icon(
                         onPressed: calls.busy
                             ? null
-                            : () => confirmFamilyCallJoin(context, calls),
+                            : control(
+                                () => confirmFamilyCallJoin(context, service),
+                              ),
                         icon: const Icon(Icons.call_rounded),
                         label: Text(
                           calls.busy
@@ -972,6 +1212,24 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                         ),
                         icon: const Icon(Icons.mail_outline_rounded),
                         label: const Text('Zu meinen Nachrichten'),
+                      ),
+                    ],
+                    if (!live &&
+                        sameCall &&
+                        calls.isParent &&
+                        calls.call?['child_id'] is String) ...[
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: () {
+                          if (!_current(_generation) ||
+                              calls.callId != widget.callId ||
+                              calls.live) {
+                            return;
+                          }
+                          context.push('/messages/${calls.call!['child_id']}');
+                        },
+                        icon: const Icon(Icons.mail_outline_rounded),
+                        label: const Text('Dem Kind eine Nachricht schreiben'),
                       ),
                     ],
                   ],
@@ -1032,7 +1290,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                   runSpacing: 10,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: calls.toggleMicrophone,
+                      onPressed: control(calls.toggleMicrophone),
                       icon: Icon(
                         media?.microphoneEnabled == true
                             ? Icons.mic_rounded
@@ -1045,7 +1303,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: calls.toggleCamera,
+                      onPressed: control(calls.toggleCamera),
                       icon: Icon(
                         media?.cameraEnabled == true
                             ? Icons.videocam_rounded
@@ -1060,15 +1318,15 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                     if (calls.isChild)
                       FilledButton.icon(
                         onPressed: sharing
-                            ? calls.stopScreen
+                            ? control(calls.stopScreen)
                             : connected
-                            ? () async {
+                            ? control(() async {
                                 if (!shareInfo) {
                                   setState(() => shareInfo = true);
                                   return;
                                 }
                                 await calls.shareScreen();
-                              }
+                              })
                             : null,
                         icon: Icon(
                           sharing
@@ -1094,7 +1352,9 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                         ),
                         const SizedBox(height: 12),
                         FilledButton.icon(
-                          onPressed: connected ? calls.shareScreen : null,
+                          onPressed: connected
+                              ? control(calls.shareScreen)
+                              : null,
                           icon: const Icon(Icons.screen_share_rounded),
                           label: const Text('Bereich auswählen und teilen'),
                         ),
@@ -1134,7 +1394,9 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                     foregroundColor: Theme.of(context).colorScheme.onError,
                     minimumSize: const Size(0, 54),
                   ),
-                  onPressed: () => calls.end(decline: calls.incoming),
+                  onPressed: control(
+                    () => service.end(decline: service.incoming),
+                  ),
                   icon: const Icon(Icons.call_end_rounded),
                   label: Text(
                     calls.incoming

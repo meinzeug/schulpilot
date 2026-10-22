@@ -17,7 +17,7 @@ import 'ui.dart';
 import 'parent_child_navigation.dart';
 
 /// A bounded window of real pages from one stable school subject.
-class NotebookScreen extends StatefulWidget {
+class NotebookScreen extends StatelessWidget {
   final AppState state;
   final String childId, subjectId;
   const NotebookScreen(
@@ -27,27 +27,62 @@ class NotebookScreen extends StatefulWidget {
     required this.subjectId,
   });
   @override
-  State<NotebookScreen> createState() => _NotebookScreenState();
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: state,
+    builder: (_, _) =>
+        state.user == null ||
+            (state.isChild && state.user?['child_id'] != childId)
+        ? SizedBox.shrink()
+        : KeyedSubtree(
+            key: ObjectKey(state.user),
+            child: _NotebookContext(
+              state,
+              key: ValueKey((childId, subjectId, state.familyId)),
+              childId: childId,
+              subjectId: subjectId,
+            ),
+          ),
+  );
 }
 
-class _NotebookScreenState extends State<NotebookScreen> {
+class _NotebookContext extends StatefulWidget {
+  final AppState state;
+  final String childId, subjectId;
+  const _NotebookContext(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.subjectId,
+  });
+  @override
+  State<_NotebookContext> createState() => _NotebookScreenState();
+}
+
+class _NotebookScreenState extends State<_NotebookContext> {
   final search = TextEditingController();
   final searchFocus = FocusNode();
   Timer? debounce;
-  late final String? owner;
+  late final Json? owner;
+  late final String? family;
+  final privateRoutes = <Route<dynamic>>{};
   Json? subject, data;
   String? error;
   String view = 'album', sort = 'newest', status = 'all';
   DateTimeRange? dates;
   int index = 0, generation = 0;
   int stateRevision = 0;
+  String? activeQuery;
   double swipeDistance = 0;
   bool loading = true, showSearch = false;
   bool deleting = false, selecting = false, allMatching = false;
   final selectedIds = <String>{};
   bool canManage = false;
   static const pageSize = 20;
-  bool get current => mounted && widget.state.user?['id'] == owner;
+  bool get current =>
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      widget.state.familyId == family;
   String get memoryKey => 'notebook:${widget.childId}:${widget.subjectId}';
   List<Json> get items => [
     for (final item in data?['items'] as List? ?? []) Json.from(item),
@@ -61,7 +96,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
+    family = widget.state.familyId;
     stateRevision = widget.state.revision;
     widget.state.addListener(identityChanged);
     final saved = widget.state.collectionViews[memoryKey];
@@ -81,7 +117,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   void identityChanged() {
-    if (mounted && widget.state.user?['id'] != owner) {
+    if (mounted && !current) {
+      closePrivateRoutes();
       generation++;
       debounce?.cancel();
       setState(() {
@@ -101,10 +138,36 @@ class _NotebookScreenState extends State<NotebookScreen> {
     generation++;
     debounce?.cancel();
     widget.state.removeListener(identityChanged);
+    closePrivateRoutes();
     search.dispose();
     searchFocus.dispose();
     super.dispose();
   }
+
+  void closePrivateRoutes() {
+    final routes = privateRoutes.toList();
+    privateRoutes.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final route in routes.reversed) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
+  Future<T?> privateDialog<T>(WidgetBuilder builder) async {
+    if (!current) return null;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<T>(context: context, builder: builder);
+    privateRoutes.add(route);
+    try {
+      return await navigator.push(route);
+    } finally {
+      privateRoutes.remove(route);
+    }
+  }
+
+  bool validDialog(BuildContext ctx) =>
+      current && ctx.mounted && ModalRoute.of(ctx)?.isCurrent == true;
 
   void remember() {
     if (current) {
@@ -152,7 +215,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     } catch (e) {
       if (current && request == generation) {
         setState(() {
-          error = '$e';
+          error = e is ApiError ? e.message : 'Die Heftseiten konnten nicht geladen werden. Bitte versuche es erneut.';
           loading = false;
         });
       }
@@ -161,6 +224,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   Future<void> load() async {
     if (!current) return;
+    final signature = (
+      widget.childId,
+      widget.subjectId,
+      sort,
+      status,
+      index ~/ pageSize,
+      search.text.trim(),
+      dates?.start,
+      dates?.end,
+    ).toString();
+    if (activeQuery == signature) return;
+    activeQuery = signature;
     final request = ++generation;
     debounce?.cancel();
     setState(() {
@@ -216,10 +291,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
     } catch (e) {
       if (current && request == generation) {
         setState(() {
-          error = '$e';
+          error = e is ApiError ? e.message : 'Die Heftseiten konnten nicht geladen werden. Bitte versuche es erneut.';
           loading = false;
         });
       }
+    } finally {
+      if (request == generation && activeQuery == signature) activeQuery = null;
     }
   }
 
@@ -435,6 +512,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   );
 
   void change(VoidCallback action, {bool delayed = false}) {
+    if (!current) return;
     debounce?.cancel();
     generation++;
     setState(() {
@@ -454,125 +532,183 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   Future<void> jump() async {
+    if (!current || loading || total == 0) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     final input = TextEditingController(text: '${index + 1}');
-    final target = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Zu welcher Seite?'),
-        content: TextField(
-          controller: input,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(labelText: 'Seite 1 bis $total'),
-          onSubmitted: (value) => Navigator.pop(ctx, int.tryParse(value)),
+    String? problem;
+    Route<dynamic>? ownRoute;
+    final target = await privateDialog<int>((ctx) {
+      ownRoute = ModalRoute.of(ctx);
+      return DialogControllerScope(
+        controllers: [input],
+        child: StatefulBuilder(
+          builder: (ctx, set) {
+            void submit() {
+              if (!validDialog(ctx)) return;
+              final number = int.tryParse(input.text);
+              if (number == null || number < 1 || number > total) {
+                set(
+                  () => problem = 'Gib eine Seite zwischen 1 und $total ein.',
+                );
+                return;
+              }
+              Navigator.pop(ctx, number);
+            }
+
+            return AlertDialog(
+              title: Text('Zu welcher Seite?'),
+              content: SingleChildScrollView(
+                child: TextField(
+                  controller: input,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.go,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'Seite 1 bis $total',
+                    errorText: problem,
+                  ),
+                  onChanged: (_) {
+                    if (problem != null) set(() => problem = null);
+                  },
+                  onSubmitted: (_) => submit(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    if (validDialog(ctx)) Navigator.pop(ctx);
+                  },
+                  child: Text('Abbrechen'),
+                ),
+                FilledButton(onPressed: submit, child: Text('Seite öffnen')),
+              ],
+            );
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, int.tryParse(input.text)),
-            child: Text('Seite öffnen'),
-          ),
-        ],
-      ),
-    );
-    // The closing route still reads its controller during the exit transition.
-    await Future<void>.delayed(Duration(milliseconds: 250));
-    input.dispose();
+      );
+    });
     if (current && target != null) move(target - 1);
+    // The controller belongs to DialogControllerScope through route disposal.
+    if (ownRoute == null) input.dispose();
   }
 
   Future<void> filters() async {
+    if (!current) return;
     FocusManager.instance.primaryFocus?.unfocus();
     var draftStatus = status, draftSort = sort;
     var draftDates = dates;
-    final accepted = await showModalBottomSheet<bool>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, set) => SingleChildScrollView(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Seiten auswählen',
-                style: Theme.of(ctx).textTheme.titleLarge,
-              ),
-              SizedBox(height: 18),
-              DropdownButtonFormField<String>(
-                initialValue: draftSort,
-                isExpanded: true,
-                itemHeight: null,
-                decoration: InputDecoration(labelText: 'Reihenfolge'),
-                items: [
-                  DropdownMenuItem(
-                    value: 'newest',
-                    child: Text('Neueste zuerst'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'oldest',
-                    child: Text('Älteste zuerst'),
-                  ),
-                ],
-                onChanged: (v) {
-                  if (v != null) set(() => draftSort = v);
-                },
-              ),
-              SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: draftStatus,
-                isExpanded: true,
-                itemHeight: null,
-                decoration: InputDecoration(labelText: 'Seitenstatus'),
-                items: [
-                  DropdownMenuItem(value: 'all', child: Text('Alle Seiten')),
-                  DropdownMenuItem(
-                    value: 'confirmed',
-                    child: Text('Geprüfte Seiten'),
-                  ),
-                  DropdownMenuItem(value: 'review', child: Text('Noch prüfen')),
-                ],
-                onChanged: (v) {
-                  if (v != null) set(() => draftStatus = v);
-                },
-              ),
-              SizedBox(height: 14),
-              OutlinedButton.icon(
-                icon: Icon(Icons.date_range_outlined),
-                label: Text(
-                  draftDates == null
-                      ? 'Zeitraum wählen'
-                      : '${DateFormat('dd.MM.yy').format(draftDates!.start)} – ${DateFormat('dd.MM.yy').format(draftDates!.end)}',
+    final accepted = await privateDialog<bool>(
+      (ctx) => Dialog(
+        child: StatefulBuilder(
+          builder: (ctx, set) => SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              20 + MediaQuery.viewInsetsOf(ctx).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Seiten auswählen',
+                  style: Theme.of(ctx).textTheme.titleLarge,
                 ),
-                onPressed: () async {
-                  final result = await showDateRangePicker(
-                    context: ctx,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2200),
-                    initialDateRange: draftDates,
-                  );
-                  if (ctx.mounted && result != null) {
-                    set(() => draftDates = result);
-                  }
-                },
-              ),
-              if (draftDates != null)
+                SizedBox(height: 18),
+                DropdownButtonFormField<String>(
+                  initialValue: draftSort,
+                  isExpanded: true,
+                  itemHeight: null,
+                  decoration: InputDecoration(labelText: 'Reihenfolge'),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'newest',
+                      child: Text('Neueste zuerst'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'oldest',
+                      child: Text('Älteste zuerst'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (validDialog(ctx) && v != null) set(() => draftSort = v);
+                  },
+                ),
+                SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: draftStatus,
+                  isExpanded: true,
+                  itemHeight: null,
+                  decoration: InputDecoration(labelText: 'Seitenstatus'),
+                  items: [
+                    DropdownMenuItem(value: 'all', child: Text('Alle Seiten')),
+                    DropdownMenuItem(
+                      value: 'confirmed',
+                      child: Text('Geprüfte Seiten'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'review',
+                      child: Text('Noch prüfen'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (validDialog(ctx) && v != null) {
+                      set(() => draftStatus = v);
+                    }
+                  },
+                ),
+                SizedBox(height: 14),
+                OutlinedButton.icon(
+                  icon: Icon(Icons.date_range_outlined),
+                  label: Text(
+                    draftDates == null
+                        ? 'Zeitraum wählen'
+                        : '${DateFormat('dd.MM.yy').format(draftDates!.start)} – ${DateFormat('dd.MM.yy').format(draftDates!.end)}',
+                  ),
+                  onPressed: () async {
+                    if (!validDialog(ctx)) return;
+                    Route<dynamic>? dateRoute;
+                    final result = await showDateRangePicker(
+                      context: ctx,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2200),
+                      initialDateRange: draftDates,
+                      builder: (dateContext, child) {
+                        final route = ModalRoute.of(dateContext);
+                        if (route != null) privateRoutes.add(route);
+                        return child!;
+                      },
+                    );
+                    privateRoutes.remove(dateRoute);
+                    if (ctx.mounted && validDialog(ctx) && result != null) {
+                      set(() => draftDates = result);
+                    }
+                  },
+                ),
+                if (draftDates != null)
+                  TextButton(
+                    onPressed: () {
+                      if (validDialog(ctx)) set(() => draftDates = null);
+                    },
+                    child: Text('Zeitraum aufheben'),
+                  ),
+                SizedBox(height: 14),
+                FilledButton(
+                  onPressed: () {
+                    if (validDialog(ctx)) Navigator.pop(ctx, true);
+                  },
+                  child: Text('Anzeigen'),
+                ),
                 TextButton(
-                  onPressed: () => set(() => draftDates = null),
-                  child: Text('Zeitraum aufheben'),
+                  onPressed: () {
+                    if (validDialog(ctx)) Navigator.pop(ctx);
+                  },
+                  child: Text('Abbrechen'),
                 ),
-              SizedBox(height: 14),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text('Anzeigen'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -588,6 +724,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   Future<void> addPhoto() async {
+    if (!current) return;
     if (widget.state.isChild) {
       openRoute(
         context,
@@ -602,23 +739,20 @@ class _NotebookScreenState extends State<NotebookScreen> {
     }
   }
 
-  void detail(Json item) => openRoute(context, '/material/${item['id']}');
+  void detail(Json item) {
+    if (!current || loading || !items.any((row) => row['id'] == item['id'])) {
+      return;
+    }
+    openRoute(context, '/material/${item['id']}');
+  }
 
   void toggleSearch() {
+    if (!current) return;
+    searchFocus.unfocus();
+    setState(() => showSearch = !showSearch);
     if (showSearch) {
-      searchFocus.unfocus();
-      if (search.text.isNotEmpty) {
-        change(() {
-          search.clear();
-          showSearch = false;
-        });
-      } else {
-        setState(() => showSearch = false);
-      }
-    } else {
-      setState(() => showSearch = true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (current) searchFocus.requestFocus();
+        if (current && showSearch) searchFocus.requestFocus();
       });
     }
   }
@@ -756,10 +890,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
                     focusNode: searchFocus,
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'In diesem Hefter suchen',
+                      labelText: 'In diesem Hefter suchen',
                       prefixIcon: Icon(Icons.search_rounded),
                       suffixIcon: IconButton(
-                        tooltip: 'Suche schließen',
+                        tooltip: 'Suchfeld einklappen',
                         onPressed: toggleSearch,
                         icon: Icon(Icons.close),
                       ),
@@ -769,6 +903,42 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       FocusManager.instance.primaryFocus?.unfocus();
                       load();
                     },
+                  ),
+                  SizedBox(height: 10),
+                ],
+                if (!showSearch && search.text.trim().isNotEmpty) ...[
+                  InputChip(
+                    label: Text('Suche: ${search.text.trim()}'),
+                    onPressed: toggleSearch,
+                    onDeleted: () => change(search.clear),
+                    deleteButtonTooltipMessage: 'Suchbegriff entfernen',
+                  ),
+                  SizedBox(height: 10),
+                ],
+                if (status != 'all' || dates != null) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (status != 'all')
+                        InputChip(
+                          label: Text(
+                            status == 'review'
+                                ? 'Noch prüfen'
+                                : 'Geprüfte Seiten',
+                          ),
+                          onDeleted: () => change(() => status = 'all'),
+                          deleteButtonTooltipMessage: 'Seitenstatus aufheben',
+                        ),
+                      if (dates != null)
+                        InputChip(
+                          label: Text(
+                            '${DateFormat('dd.MM.yy').format(dates!.start)} – ${DateFormat('dd.MM.yy').format(dates!.end)}',
+                          ),
+                          onDeleted: () => change(() => dates = null),
+                          deleteButtonTooltipMessage: 'Zeitraum aufheben',
+                        ),
+                    ],
                   ),
                   SizedBox(height: 10),
                 ],
@@ -818,7 +988,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       ),
                       IconButton(
                         tooltip: 'Seiten aktualisieren',
-                        onPressed: subject == null ? loadSubject : load,
+                        onPressed: loading
+                            ? null
+                            : (subject == null ? loadSubject : load),
                         icon: const Icon(Icons.refresh_rounded),
                       ),
                     ],
@@ -848,7 +1020,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       ),
                       IconButton(
                         tooltip: 'Seiten aktualisieren',
-                        onPressed: subject == null ? loadSubject : load,
+                        onPressed: loading
+                            ? null
+                            : (subject == null ? loadSubject : load),
                         icon: Icon(Icons.refresh_rounded),
                       ),
                     ],
@@ -867,7 +1041,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton(
-                onPressed: subject == null ? loadSubject : load,
+                onPressed: loading
+                    ? null
+                    : (subject == null ? loadSubject : load),
                 child: Text('Erneut laden'),
               ),
             ),
@@ -905,7 +1081,13 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       FilledButton.icon(
                         onPressed: addPhoto,
                         icon: Icon(Icons.add_a_photo_outlined),
-                        label: Text('Erstes Heftfoto hinzufügen'),
+                        label: Text(
+                          search.text.isEmpty &&
+                                  status == 'all' &&
+                                  dates == null
+                              ? 'Erstes Heftfoto hinzufügen'
+                              : 'Heftfoto hinzufügen',
+                        ),
                       ),
                   ],
                 ),
@@ -932,12 +1114,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
       ),
       Flexible(
         child: TextButton(
-          onPressed: jump,
-          child: Text(
-            overview
-                ? '${batch * pageSize + 1}–${math.min((batch + 1) * pageSize, total)} von $total'
-                : '${index + 1} von $total',
-            textAlign: TextAlign.center,
+          onPressed: loading ? null : jump,
+          child: Semantics(
+            label: 'Seite auswählen',
+            child: Text(
+              overview
+                  ? '${batch * pageSize + 1}–${math.min((batch + 1) * pageSize, total)} von $total'
+                  : '${index + 1} von $total',
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ),
@@ -970,7 +1155,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: pageControls()),
+            Expanded(child: Semantics(liveRegion: true, child: pageControls())),
             pageActions(item),
           ],
         ),
@@ -1028,17 +1213,21 @@ class _NotebookScreenState extends State<NotebookScreen> {
                         ),
                       ),
                       child: SizedBox.expand(
-                        key: ValueKey('$owner:${item['id']}'),
+                        key: ValueKey(item['id']),
                         child: item['has_image'] == true
-                            ? InkWell(
-                                onTap: () => zoomNotebookPhoto(
-                                  context,
-                                  widget.state,
-                                  item,
-                                ),
-                                child: NotebookPhoto(
-                                  widget.state,
-                                  materialId: item['id'],
+                            ? Semantics(
+                                button: true,
+                                label: 'Heftfoto vergrößern',
+                                child: InkWell(
+                                  onTap: () => zoomNotebookPhoto(
+                                    context,
+                                    widget.state,
+                                    item,
+                                  ),
+                                  child: NotebookPhoto(
+                                    widget.state,
+                                    materialId: item['id'],
+                                  ),
                                 ),
                               )
                             : Center(
@@ -1072,7 +1261,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
           ),
         ),
         SizedBox(height: 14),
-        Panel(
+        ActionPanel(
+          actionLabel: item['confirmed'] == true
+              ? 'Text & Lernen'
+              : 'Seite prüfen',
+          onPressed: () => detail(item),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1085,42 +1278,20 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 pageDate(item),
                 style: TextStyle(color: context.palette.muted),
               ),
-              SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => detail(item),
-                    icon: Icon(
-                      item['confirmed'] == true
-                          ? Icons.menu_book_outlined
-                          : Icons.fact_check_outlined,
-                    ),
-                    label: Text(
-                      item['confirmed'] == true
-                          ? 'Text & Lernen'
-                          : 'Seite prüfen',
-                    ),
-                  ),
-                  if (item['has_image'] == true)
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          zoomNotebookPhoto(context, widget.state, item),
-                      icon: Icon(Icons.zoom_in_rounded),
-                      label: Text('Vergrößern'),
-                    ),
-                  if (deleting)
-                    SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                ],
-              ),
             ],
           ),
         ),
+        if (item['has_image'] == true)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                if (current) zoomNotebookPhoto(context, widget.state, item);
+              },
+              icon: Icon(Icons.zoom_in_rounded),
+              label: Text('Vergrößern'),
+            ),
+          ),
         SizedBox(height: 8),
         pageControls(),
         LearningTips(
@@ -1134,16 +1305,22 @@ class _NotebookScreenState extends State<NotebookScreen> {
     );
   }
 
-  String pageTitle(Json item) => '${item['topic'] ?? ''}'.trim().isNotEmpty
-      ? '${item['topic']}'
-      : '${item['title']}';
+  String pageTitle(Json item) =>
+      [item['topic'], item['title']]
+          .whereType<String>()
+          .where((text) => text.trim().isNotEmpty)
+          .firstOrNull ??
+      'Heftseite';
   String pageDate(Json item) {
-    final date = item['school_date'] == null
-        ? DateTime.fromMillisecondsSinceEpoch(
-            (item['created'] as num).toInt() * 1000,
-          )
-        : DateTime.parse(item['school_date']);
-    return '${DateFormat('dd.MM.yyyy').format(date)} · ${item['confirmed'] == true ? 'Geprüft' : 'Noch prüfen'}';
+    final schoolDate = DateTime.tryParse('${item['school_date'] ?? ''}');
+    final created = item['created'];
+    final date =
+        schoolDate ??
+        (created is num && created.isFinite
+            ? DateTime.fromMillisecondsSinceEpoch(created.toInt() * 1000)
+                  .toLocal()
+            : null);
+    return '${date == null ? 'Datum nicht angegeben' : DateFormat('dd.MM.yyyy').format(date)} · ${item['confirmed'] == true ? 'Geprüft' : 'Noch prüfen'}';
   }
 
   Widget overview() => Column(
@@ -1170,12 +1347,22 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 builder: (_, constraints) => GridView.builder(
                   scrollCacheExtent: ScrollCacheExtent.pixels(0),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: constraints.maxWidth < 500
+                    crossAxisCount:
+                        MediaQuery.textScalerOf(context).scale(16) > 24 ||
+                            constraints.maxWidth < 340
+                        ? 1
+                        : constraints.maxWidth < 500
                         ? 2
                         : constraints.maxWidth < 800
                         ? 3
                         : 4,
-                    mainAxisExtent: 294,
+                    mainAxisExtent:
+                        294 +
+                        (MediaQuery.textScalerOf(context).scale(16) - 16).clamp(
+                              0,
+                              48,
+                            ) *
+                            5,
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
                   ),
@@ -1191,6 +1378,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   Widget overviewCard(Json item, int position, {bool list = false}) {
     void select() {
+      if (!current || loading || !items.any((row) => row['id'] == item['id'])) {
+        return;
+      }
+      FocusManager.instance.primaryFocus?.unfocus();
       setState(() {
         index = batch * pageSize + position;
         view = 'album';
@@ -1201,7 +1392,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     final photo = item['has_image'] == true
         ? NotebookPhoto(
             widget.state,
-            key: ValueKey('thumb:$owner:${item['id']}'),
+            key: ValueKey('thumb:${item['id']}'),
             materialId: item['id'],
             thumbnail: true,
           )
@@ -1213,7 +1404,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
           );
     return Material(
-      color: Colors.white,
+      color: context.palette.panelSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: context.palette.surfaceBorder),
@@ -1223,32 +1414,31 @@ class _NotebookScreenState extends State<NotebookScreen> {
           ? LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 600;
-                final summary = Row(
-                  children: [
-                    if (selecting)
-                      Checkbox(
-                        value: allMatching || selectedIds.contains(item['id']),
-                        semanticLabel:
-                            'Seite ${batch * pageSize + position + 1} ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}',
-                        onChanged: canDelete(item)
-                            ? (_) => togglePageSelection(item)
-                            : null,
-                      ),
-                    SizedBox(width: wide ? 70 : 56, height: 86, child: photo),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Semantics(
-                        button: true,
-                        label: selecting
-                            ? 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}'
-                            : 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, öffnen',
-                        child: InkWell(
-                          onTap: selecting
+                final summary = Semantics(
+                  button: true,
+                  enabled: !selecting || canDelete(item),
+                  label: selecting
+                      ? 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}'
+                      : 'Seite ${batch * pageSize + position + 1}, ${pageTitle(item)}, im Hefter öffnen',
+                  child: InkWell(
+                    excludeFromSemantics: true,
+                    onTap: selecting
+                        ? (canDelete(item)
                               ? () => togglePageSelection(item)
-                              : select,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 10),
+                              : null)
+                        : select,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: wide ? 70 : 56,
+                            height: 86,
+                            child: photo,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1267,26 +1457,55 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                     color: context.palette.muted,
                                   ),
                                 ),
+                                SizedBox(height: 6),
+                                Text(
+                                  selecting
+                                      ? 'Zur Auswahl'
+                                      : 'Im Hefter öffnen',
+                                  style: TextStyle(
+                                    color: context.palette.teal,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        ),
+                          ExcludeSemantics(
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              color: context.palette.teal,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (wide) pageActions(item),
-                  ],
+                  ),
                 );
                 return Padding(
                   padding: EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      summary,
-                      if (!wide)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: pageActions(item),
-                        ),
+                      Row(
+                        children: [
+                          if (selecting)
+                            Checkbox(
+                              value:
+                                  allMatching ||
+                                  selectedIds.contains(item['id']),
+                              semanticLabel:
+                                  'Seite ${batch * pageSize + position + 1} ${allMatching || selectedIds.contains(item['id']) ? 'abwählen' : 'auswählen'}',
+                              onChanged: canDelete(item)
+                                  ? (_) => togglePageSelection(item)
+                                  : null,
+                            ),
+                          Expanded(child: summary),
+                        ],
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: pageActions(item),
+                      ),
                     ],
                   ),
                 );

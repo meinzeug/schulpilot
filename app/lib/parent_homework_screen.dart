@@ -18,6 +18,10 @@ class ParentHomeworkScreen extends StatefulWidget {
 class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   final List<Json> photos = [];
   String filter = 'all';
+  final search = TextEditingController();
+  String query = '';
+  String? subject;
+  List<String> subjects = [];
   String? cursor, error, childName;
   int generation = 0, total = 0;
   bool loading = false;
@@ -48,6 +52,10 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
         childName = null;
         cursor = null;
         error = null;
+        search.clear();
+        query = '';
+        subject = null;
+        subjects = [];
       });
     }
   }
@@ -67,16 +75,44 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   }
 
   void restoreView() {
-    final saved = widget.state.collectionViews[cacheKey]?['filter'];
+    final view = widget.state.collectionViews[cacheKey];
+    final saved = view?['filter'];
     filter =
         saved is String && ['all', 'worked', 'open', 'review'].contains(saved)
         ? saved
         : 'all';
+    query = view?['q'] is String && (view!['q'] as String).length <= 160
+        ? view['q']
+        : '';
+    subject = view?['subject'] is String ? view!['subject'] : null;
+    search.text = query;
+    subjects = [];
+  }
+
+  void applySearch({bool clear = false}) {
+    if (!own || loading) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    final next = clear ? '' : search.text.trim();
+    if (clear) search.clear();
+    if (next == query) return;
+    query = next;
+    load();
+  }
+
+  void clearFilters() {
+    if (!own || loading) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    search.clear();
+    query = '';
+    subject = null;
+    filter = 'all';
+    load();
   }
 
   @override
   void dispose() {
     widget.state.removeListener(identityChanged);
+    search.dispose();
     super.dispose();
   }
 
@@ -95,16 +131,33 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
         total = 0;
       }
     });
-    widget.state.collectionViews[cacheKey] = {'filter': filter};
+    widget.state.collectionViews[cacheKey] = {
+      'filter': filter,
+      'q': query,
+      'subject': subject,
+    };
     try {
       final value = await widget.state.api.get(
         Uri(
           path: '/children/$child/homework-review',
-          queryParameters: {'state': filter, 'cursor': ?next},
+          queryParameters: {
+            'state': filter,
+            'cursor': ?next,
+            if (query.isNotEmpty) 'q': query,
+            'subject': ?subject,
+          },
         ).toString(),
       );
       if (!own || child != widget.childId || stamp != generation) return;
+      if ((query.isNotEmpty || subject != null) && value['filters'] is! Map) {
+        throw ApiError(
+          'Die Suche ist auf diesem Server noch nicht verfügbar. Setze die Filter zurück, um alle Fotos zu sehen.',
+        );
+      }
       setState(() {
+        subjects = (value['subjects'] as List? ?? [])
+            .whereType<String>()
+            .toList();
         final known = photos.map((p) => p['id']).toSet();
         photos.addAll(
           (value['photos'] as List)
@@ -137,225 +190,264 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PageFrame(
-    state: widget.state,
-    title: 'Hausaufgaben',
-    showTitle: false,
-    child: !own
-        ? const SizedBox.shrink()
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ParentChildNavigation(
-                childId: widget.childId,
-                childName: childName,
-                selected: 'homework',
-                onRefresh: load,
-                refreshing: loading,
-              ),
-              const ParentWorkspaceHero(
-                eyebrow: 'SELBSTSTÄNDIG ARBEITEN',
-                title: 'Hausaufgaben im Blick',
-                subtitle: 'Aufgabenfotos, abgehakte Aufgaben und die gespeicherte KI-Begleitung.',
-                icon: Icons.edit_note_rounded,
-              ),
-              const SizedBox(height: 20),
-              const Notice(
-                '„Bearbeitet“ ist eine Angabe deines Kindes. Häkchen beweisen keine richtige Lösung. In den Details siehst du Fragen, eigene abgeschickte Versuche und erhaltene Hilfen.',
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final item in const [
-                    ('all', 'Alle Fotos'),
-                    ('worked', 'Mit Häkchen'),
-                    ('open', 'Ohne Häkchen'),
-                    ('review', 'Foto noch prüfen'),
-                  ])
-                    ChoiceChip(
-                      label: Text(item.$2),
-                      selected: filter == item.$1,
-                      onSelected: loading
-                          ? null
-                          : (_) {
-                              if (!own || filter == item.$1) return;
-                              setState(() => filter = item.$1);
-                              load();
-                            },
+  Widget build(BuildContext context) {
+    final viewChild = widget.childId;
+    return PageFrame(
+      state: widget.state,
+      title: 'Hausaufgaben',
+      showTitle: false,
+      child: !own
+          ? const SizedBox.shrink()
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ParentChildNavigation(
+                  childId: widget.childId,
+                  childName: childName,
+                  selected: 'homework',
+                  onRefresh: load,
+                  refreshing: loading,
+                ),
+                const ParentWorkspaceHero(
+                  eyebrow: 'SELBSTSTÄNDIG ARBEITEN',
+                  title: 'Hausaufgaben im Blick',
+                  subtitle: 'Aufgabenfotos, abgehakte Aufgaben und die gespeicherte KI-Begleitung.',
+                  icon: Icons.edit_note_rounded,
+                ),
+                const SizedBox(height: 20),
+                const Notice(
+                  '„Bearbeitet“ ist eine Angabe deines Kindes. Häkchen beweisen keine richtige Lösung. In den Details siehst du Fragen, eigene abgeschickte Versuche und erhaltene Hilfen.',
+                ),
+                const SizedBox(height: 16),
+                ParentCollectionSearch(
+                  controller: search,
+                  label: 'Hausaufgaben suchen',
+                  appliedQuery: query,
+                  enabled: !loading,
+                  onSearch: applySearch,
+                  onClear: () => applySearch(clear: true),
+                ),
+                if (subjects.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(('homework-subject', subject)),
+                    initialValue: subjects.contains(subject) ? subject : null,
+                    isExpanded: true,
+                    itemHeight: null,
+                    decoration: const InputDecoration(
+                      labelText: 'Fach der Hausaufgaben',
                     ),
-                ],
-              ),
-              Text(switch (filter) {
-                'worked' => 'Mindestens eine Aufgabe ist vom Kind abgehakt. Das Foto muss noch nicht vollständig bearbeitet sein.',
-                'open' => 'Für diese Fotos ist noch keine Aufgabe abgehakt.',
-                'review' =>
-                  'Diese Fotos sind noch nicht als geprüfte Quelle bestätigt.',
-                _ => 'Alle gespeicherten Hausaufgabenfotos.',
-              }, style: TextStyle(color: context.palette.muted)),
-              const SizedBox(height: 8),
-              const Text('Neueste Fotos zuerst'),
-              const SizedBox(height: 16),
-              if (loading)
-                Semantics(
-                  liveRegion: true,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        photos.isEmpty
-                            ? 'Hausaufgabenfotos werden geladen …'
-                            : 'Weitere Fotos werden geladen …',
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('Alle Fächer'),
                       ),
-                      const SizedBox(height: 8),
-                      const LinearProgressIndicator(),
+                      for (final value in subjects)
+                        DropdownMenuItem(value: value, child: Text(value)),
                     ],
+                    onChanged: loading
+                        ? null
+                        : (value) {
+                            if (!own || subject == value) return;
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            subject = value;
+                            load();
+                          },
                   ),
+                ],
+                if (query.isNotEmpty || subject != null)
+                  TextButton.icon(
+                    onPressed: loading ? null : clearFilters,
+                    icon: const Icon(Icons.filter_alt_off_outlined),
+                    label: const Text('Suche und Fach zurücksetzen'),
+                  ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final item in const [
+                      ('all', 'Alle Fotos'),
+                      ('worked', 'Mit Häkchen'),
+                      ('open', 'Ohne Häkchen'),
+                      ('review', 'Foto noch prüfen'),
+                    ])
+                      ChoiceChip(
+                        label: Text(item.$2),
+                        selected: filter == item.$1,
+                        onSelected: loading
+                            ? null
+                            : (_) {
+                                if (!own || filter == item.$1) return;
+                                setState(() => filter = item.$1);
+                                load();
+                              },
+                      ),
+                  ],
                 ),
-              if (photos.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Semantics(
+                Text(switch (filter) {
+                  'worked' => 'Mindestens eine Aufgabe ist vom Kind abgehakt. Das Foto muss noch nicht vollständig bearbeitet sein.',
+                  'open' => 'Für diese Fotos ist noch keine Aufgabe abgehakt.',
+                  'review' => 'Diese Fotos sind noch nicht als geprüfte Quelle bestätigt.',
+                  _ => 'Alle gespeicherten Hausaufgabenfotos.',
+                }, style: TextStyle(color: context.palette.muted)),
+                const SizedBox(height: 8),
+                const Text('Neueste Fotos zuerst'),
+                const SizedBox(height: 16),
+                if (loading)
+                  Semantics(
                     liveRegion: true,
-                    child: Text('${photos.length} von $total Fotos'),
-                  ),
-                ),
-              if (error != null) ...[
-                Semantics(
-                  liveRegion: true,
-                  child: Notice(error!, warning: true),
-                ),
-                TextButton(
-                  onPressed: loading ? null : () => load(more: retryMore),
-                  child: Text(
-                    retryMore
-                        ? 'Weitere Fotos erneut laden'
-                        : 'Noch einmal laden',
-                  ),
-                ),
-              ],
-              if (!loading && error == null && photos.isEmpty) ...[
-                Semantics(
-                  liveRegion: true,
-                  child: Notice(
-                    filter == 'all'
-                        ? 'Noch keine Hausaufgabenfotos. Dein Kind kann sie im eigenen Bereich „Hausaufgaben“ fotografieren.'
-                        : 'Für diesen Filter sind noch keine Fotos vorhanden.',
-                  ),
-                ),
-                if (filter != 'all')
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        setState(() => filter = 'all');
-                        load();
-                      },
-                      icon: const Icon(Icons.filter_alt_off_outlined),
-                      label: const Text('Alle Fotos anzeigen'),
-                    ),
-                  ),
-              ],
-              for (final photo in photos)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Panel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.auto_stories_outlined),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                photoHeading(photo),
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          photos.isEmpty
+                              ? 'Hausaufgabenfotos werden geladen …'
+                              : 'Weitere Fotos werden geladen …',
                         ),
-                        if ((photo['title'] ?? '')
-                                .toString()
-                                .trim()
-                                .isNotEmpty &&
-                            photo['title'] != photo['topic'])
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              photo['title'],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
                         const SizedBox(height: 8),
-                        Text(reviewDate(photo['created'])),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            Tag(
-                              photo['confirmed'] != true
-                                  ? 'Foto noch prüfen'
-                                  : photo['task_count'] == 0
-                                  ? 'Aufgaben noch nicht gegliedert'
-                                  : '${photo['marked_done']} von ${photo['task_count']} abgehakt',
-                            ),
-                            if (photo['more_tasks'] == true)
-                              const Tag('Weitere Aufgaben im Foto möglich'),
-                          ],
-                        ),
-                        for (final task in (photo['tasks'] as List? ?? []).take(
-                          3,
-                        ))
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                            leading: Icon(
-                              task['marked'] == true
-                                  ? Icons.check_circle_outline
-                                  : Icons.radio_button_unchecked,
-                            ),
-                            title: LearningContent(task['title']),
-                            subtitle: task['marked'] == true
-                                ? const Text('Vom Kind abgehakt')
-                                : const Text('Noch nicht abgehakt'),
-                          ),
-                        if ((photo['tasks'] as List? ?? []).length > 3)
-                          Text(
-                            '${(photo['tasks'] as List).length - 3} weitere Aufgaben in den Details',
-                          ),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            onPressed: () => openRoute(
-                              context,
-                              '/homework/${widget.childId}/${photo['id']}',
-                            ),
-                            icon: const Icon(Icons.visibility_outlined),
-                            label: const Text('Foto & Begleitung ansehen'),
-                          ),
-                        ),
+                        const LinearProgressIndicator(),
                       ],
                     ),
                   ),
-                ),
-              if (cursor != null && !(error != null && retryMore))
-                TextButton(
-                  onPressed: loading ? null : () => load(more: true),
-                  child: const Text('Weitere Fotos laden'),
-                ),
-            ],
-          ),
-  );
+                if (photos.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text('${photos.length} von $total Fotos'),
+                    ),
+                  ),
+                if (error != null) ...[
+                  Semantics(
+                    liveRegion: true,
+                    child: Notice(error!, warning: true),
+                  ),
+                  TextButton(
+                    onPressed: loading ? null : () => load(more: retryMore),
+                    child: Text(
+                      retryMore
+                          ? 'Weitere Fotos erneut laden'
+                          : 'Noch einmal laden',
+                    ),
+                  ),
+                ],
+                if (!loading && error == null && photos.isEmpty) ...[
+                  Semantics(
+                    liveRegion: true,
+                    child: Notice(
+                      filter == 'all' && query.isEmpty && subject == null
+                          ? 'Noch keine Hausaufgabenfotos. Dein Kind kann sie im eigenen Bereich „Hausaufgaben“ fotografieren.'
+                          : 'Für diesen Filter sind noch keine Fotos vorhanden.',
+                    ),
+                  ),
+                  if (filter != 'all' || query.isNotEmpty || subject != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: clearFilters,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Alle Fotos anzeigen'),
+                      ),
+                    ),
+                ],
+                for (final photo in photos)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: ActionPanel(
+                      actionLabel: 'Foto & Begleitung ansehen',
+                      onPressed: () {
+                        if (!own || loading || viewChild != widget.childId) {
+                          return;
+                        }
+                        openRoute(
+                          context,
+                          '/homework/$viewChild/${photo['id']}',
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.auto_stories_outlined),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  photoHeading(photo),
+                                  style: const TextStyle(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if ((photo['title'] ?? '')
+                                  .toString()
+                                  .trim()
+                                  .isNotEmpty &&
+                              photo['title'] != photo['topic'])
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                photo['title'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Text(reviewDate(photo['created'])),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              Tag(
+                                photo['confirmed'] != true
+                                    ? 'Foto noch prüfen'
+                                    : photo['task_count'] == 0
+                                    ? 'Aufgaben noch nicht gegliedert'
+                                    : '${photo['marked_done']} von ${photo['task_count']} abgehakt',
+                              ),
+                              if (photo['more_tasks'] == true)
+                                const Tag('Weitere Aufgaben im Foto möglich'),
+                            ],
+                          ),
+                          for (final task
+                              in (photo['tasks'] as List? ?? []).take(3))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              leading: Icon(
+                                task['marked'] == true
+                                    ? Icons.check_circle_outline
+                                    : Icons.radio_button_unchecked,
+                              ),
+                              title: LearningContent(task['title']),
+                              subtitle: task['marked'] == true
+                                  ? const Text('Vom Kind abgehakt')
+                                  : const Text('Noch nicht abgehakt'),
+                            ),
+                          if ((photo['tasks'] as List? ?? []).length > 3)
+                            Text(
+                              '${(photo['tasks'] as List).length - 3} weitere Aufgaben in den Details',
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (cursor != null && !(error != null && retryMore))
+                  TextButton(
+                    onPressed: loading ? null : () => load(more: true),
+                    child: const Text('Weitere Fotos laden'),
+                  ),
+              ],
+            ),
+    );
+  }
 
   String photoHeading(Json photo) {
     final labels = [photo['subject'], photo['topic']]

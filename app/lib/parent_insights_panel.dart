@@ -48,7 +48,7 @@ class ParentInsightsPanel extends StatefulWidget {
 class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     with WidgetsBindingObserver {
   Json? data;
-  String? error, requestKey, selectedReview, operationLabel;
+  String? error, requestKey, selectedReview, operationLabel, historyNotice;
   bool loading = false, busy = false, foreground = true, routeVisible = true;
   int generation = 0, operation = 0;
   Timer? poll;
@@ -95,6 +95,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
       data = null;
       requestKey = null;
       selectedReview = null;
+      historyNotice = null;
       busy = false;
       operationLabel = null;
       load();
@@ -178,6 +179,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
       if (own && child == widget.childId && stamp == generation) {
         if (e is ApiError && e.status == 404 && selectedReview != null) {
           selectedReview = null;
+          historyNotice = 'Diese ältere Auswertung ist nicht mehr verfügbar. Hier siehst du den neuesten gespeicherten Stand.';
           await load();
           return;
         }
@@ -193,7 +195,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   }
 
   Future<void> prepare() async {
-    if (!own || busy) return;
+    if (!own || busy || loading) return;
     final child = widget.childId;
     final action = ++operation;
     requestKey ??= homeworkKey();
@@ -230,7 +232,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   }
 
   Future<void> enable(bool enabled) async {
-    if (!own || busy || data == null) return;
+    if (!own || busy || loading || data == null) return;
     final child = widget.childId;
     final action = ++operation;
     setState(() {
@@ -340,6 +342,8 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                   ),
                 ),
               ),
+            if (historyNotice != null)
+              Semantics(liveRegion: true, child: Notice(historyNotice!)),
             if (error != null) ...[
               Semantics(liveRegion: true, child: Notice(error!, warning: true)),
               TextButton(
@@ -403,7 +407,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                     'Bei neuen Übungsbelegen höchstens täglich, innerhalb deines KI-Kontingents. Du kannst das jederzeit abschalten.',
                   ),
                   value: data!['settings']['enabled'] == true,
-                  onChanged: busy ? null : enable,
+                  onChanged: busy || loading ? null : enable,
                 ),
               if (pending)
                 const Text(
@@ -445,6 +449,8 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                     finding: finding,
                     topic: topics[finding['topic_ref']],
                     childId: widget.childId,
+                    enabled: own && !loading,
+                    isCurrent: () => own && child == widget.childId,
                   ),
                 if (findings.length > visibleFindings.length)
                   Text(
@@ -463,39 +469,38 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
                   for (final (index, step) in plan.indexed)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(child: Text('${index + 1}')),
-                      title: Text(
-                        '${reviewAction(step['action'])} · ${topics[step['topic_ref']]?['topic'] ?? 'Thema'}',
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          LearningContent(step['purpose'].toString()),
-                          Text('Danach prüfen: ${step['expected_result']}'),
-                          if (topics[step['topic_ref']] != null)
-                            TextButton.icon(
-                              onPressed: () {
-                                if (!own || child != widget.childId) return;
-                                final target = topics[step['topic_ref']]!;
-                                openRoute(
-                                  context,
-                                  Uri(
-                                    path: '/progress/$child',
-                                    queryParameters: {
-                                      'fach': target['subject'],
-                                      'thema': target['topic'],
-                                    },
-                                  ).toString(),
-                                );
-                              },
-                              icon: const Icon(Icons.fact_check_outlined),
-                              label: const Text(
-                                'Belege zu diesem Schritt ansehen',
-                              ),
-                            ),
-                        ],
+                    ActionPanel(
+                      enabled:
+                          topics[step['topic_ref']] != null && own && !loading,
+                      actionLabel: 'Belege zu diesem Schritt ansehen',
+                      onPressed: () {
+                        if (!own || child != widget.childId) return;
+                        final target = topics[step['topic_ref']];
+                        if (target == null) return;
+                        openRoute(
+                          context,
+                          Uri(
+                            path: '/progress/$child',
+                            queryParameters: {
+                              'fach': target['subject'],
+                              'thema': target['topic'],
+                            },
+                          ).toString(),
+                        );
+                      },
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(child: Text('${index + 1}')),
+                        title: Text(
+                          '${reviewAction(step['action'])} · ${topics[step['topic_ref']]?['topic'] ?? 'Thema'}',
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            LearningContent(step['purpose'].toString()),
+                            Text('Danach prüfen: ${step['expected_result']}'),
+                          ],
+                        ),
                       ),
                     ),
                   const Text(
@@ -518,7 +523,11 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                 children: [
                   if (data!['can_manage'] == true)
                     FilledButton.icon(
-                      onPressed: busy || pending || data!['eligible'] != true
+                      onPressed:
+                          busy ||
+                              loading ||
+                              pending ||
+                              data!['eligible'] != true
                           ? null
                           : prepare,
                       icon: const Icon(Icons.auto_awesome_outlined),
@@ -565,6 +574,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                           if (!own || value == selectedReview) return;
                           setState(() {
                             selectedReview = value;
+                            historyNotice = null;
                             data = null;
                           });
                           load();
@@ -578,6 +588,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                             if (!own) return;
                             setState(() {
                               selectedReview = null;
+                              historyNotice = null;
                               data = null;
                             });
                             load();
@@ -600,10 +611,14 @@ class _FindingCard extends StatelessWidget {
   final Map finding;
   final Map? topic;
   final String childId;
+  final bool enabled;
+  final bool Function() isCurrent;
   const _FindingCard({
     required this.finding,
     required this.topic,
     required this.childId,
+    required this.enabled,
+    required this.isCurrent,
   });
   @override
   Widget build(BuildContext context) {
@@ -614,46 +629,43 @@ class _FindingCard extends StatelessWidget {
       'assessment_open' => 'Bewertung offen',
       _ => 'Alleine gelungen',
     };
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.palette.surfaceHigh,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.palette.surfaceBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Tag(label),
-          const SizedBox(height: 8),
-          Text(
-            '${topic!['subject']} · ${topic!['topic']}',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Beobachtung: ${topic!['independent_tasks']} alleine · ${topic!['assisted_tasks']} unterstützt/erneut · ${topic!['needs_practice_tasks']} noch üben · ${topic!['uncertain_tasks']} offen',
-          ),
-          const SizedBox(height: 10),
-          LearningContent('Einschätzung: ${finding['interpretation']}'),
-          const SizedBox(height: 8),
-          LearningContent('Nächste Überprüfung: ${finding['next_check']}'),
-          TextButton.icon(
-            onPressed: () => openRoute(
-              context,
-              Uri(
-                path: '/progress/$childId',
-                queryParameters: {
-                  'fach': topic!['subject'],
-                  'thema': topic!['topic'],
-                },
-              ).toString(),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: ActionPanel(
+        enabled: enabled,
+        actionLabel: 'Übungsbelege zu ${topic!['topic']} ansehen',
+        onPressed: () {
+          if (!isCurrent()) return;
+          openRoute(
+            context,
+            Uri(
+              path: '/progress/$childId',
+              queryParameters: {
+                'fach': topic!['subject'],
+                'thema': topic!['topic'],
+              },
+            ).toString(),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Tag(label),
+            const SizedBox(height: 8),
+            Text(
+              '${topic!['subject']} · ${topic!['topic']}',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
-            icon: const Icon(Icons.fact_check_outlined),
-            label: const Text('Übungsbelege ansehen'),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Beobachtung: ${topic!['independent_tasks']} alleine · ${topic!['assisted_tasks']} unterstützt/erneut · ${topic!['needs_practice_tasks']} noch üben · ${topic!['uncertain_tasks']} offen',
+            ),
+            const SizedBox(height: 10),
+            LearningContent('Einschätzung: ${finding['interpretation']}'),
+            const SizedBox(height: 8),
+            LearningContent('Nächste Überprüfung: ${finding['next_check']}'),
+          ],
+        ),
       ),
     );
   }

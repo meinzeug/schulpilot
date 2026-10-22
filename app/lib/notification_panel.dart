@@ -9,6 +9,20 @@ import 'admin_workspace_ui.dart';
 import 'push_client.dart' show PushPermissionCancelled;
 import 'ui.dart';
 
+String noticeKindLabel(String kind) => switch (kind) {
+  'family_call' => 'Live-Gespräche',
+  'help' => 'Hilfewünsche',
+  'reply' => 'Antworten der Eltern',
+  'interest' => 'Lernwünsche',
+  'plan_change' => 'Wünsche zum Lernplan',
+  'preparation' => 'Heftvorbereitung',
+  'reminder' => 'Lernplan bereit',
+  'language_ready' => 'Sprachübungen bereit',
+  'words_ready' => 'Wörter zum Prüfen',
+  'failed' => 'Vorbereitung noch offen',
+  _ => 'Weitere Neuigkeiten',
+};
+
 class NotificationsScreen extends StatefulWidget {
   final AppState state;
   const NotificationsScreen(this.state, {super.key});
@@ -18,11 +32,86 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _devicePanel = GlobalKey();
+  final search = TextEditingController();
+  String? selectedChild, selectedKind;
+  Json? account;
+  bool onlyUnread = false;
+  String? opening;
+  int openRevision = 0;
+
   @override
   void initState() {
     super.initState();
+    account = widget.state.user;
+    widget.state.addListener(accountChanged);
     widget.state.inbox.activate(widget.state.user?['id']);
     widget.state.inbox.refresh();
+  }
+
+  void accountChanged() {
+    if (identical(account, widget.state.user)) return;
+    setState(() {
+      account = widget.state.user;
+      onlyUnread = false;
+      search.clear();
+      selectedChild = selectedKind = null;
+      opening = null;
+      openRevision++;
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.state, oldWidget.state)) {
+      oldWidget.state.removeListener(accountChanged);
+      widget.state.addListener(accountChanged);
+      account = widget.state.user;
+      onlyUnread = false;
+      search.clear();
+      selectedChild = selectedKind = null;
+      opening = null;
+      openRevision++;
+      widget.state.inbox.activate(widget.state.user?['id']);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(accountChanged);
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> openItem(Json item, Json? owner) async {
+    final state = widget.state;
+    final route = ModalRoute.of(context);
+    if (opening != null ||
+        !identical(state.user, owner) ||
+        route?.isCurrent == false) {
+      return;
+    }
+    final revision = ++openRevision;
+    setState(() => opening = item['id']);
+    try {
+      if (item['read'] != true) await state.inbox.markRead([item['id']]);
+    } catch (_) {
+      if (mounted &&
+          revision == openRevision &&
+          identical(widget.state, state) &&
+          identical(state.user, owner) &&
+          route?.isCurrent != false) {
+        toast(
+          context,
+          'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
+        );
+      }
+    }
+    if (!mounted || revision != openRevision || !identical(state.user, owner)) {
+      return;
+    }
+    setState(() => opening = null);
+    if (route?.isCurrent != false) context.go(item['route']);
   }
 
   @override
@@ -36,7 +125,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           if (target != null) {
             Scrollable.ensureVisible(
               target,
-              duration: Duration(milliseconds: 300),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 300),
               alignment: .05,
             );
           }
@@ -53,6 +144,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           builder: (context, _) {
             final inbox = widget.state.inbox;
             final owner = widget.state.user;
+            final query = search.text.trim().toLowerCase();
+            final filterSnapshot = (
+              onlyUnread,
+              query,
+              selectedChild,
+              selectedKind,
+            );
+            final filtered =
+                query.isNotEmpty ||
+                selectedChild != null ||
+                selectedKind != null;
+            final children = <String, String>{
+              for (final item in inbox.items)
+                if (item['child_id'] is String)
+                  item['child_id']: '${item['child_name'] ?? 'Kind'}',
+            };
+            if (selectedChild != null && !children.containsKey(selectedChild)) {
+              children[selectedChild!] = 'Ausgewähltes Kind (keine Meldung)';
+            }
+            final kinds = <String>{
+              for (final item in inbox.items)
+                if (item['kind'] is String) item['kind'],
+              ?selectedKind,
+            }.toList()..sort();
+            final shown = inbox.items
+                .where((item) => !onlyUnread || item['read'] != true)
+                .where(
+                  (item) =>
+                      selectedChild == null ||
+                      item['child_id'] == selectedChild,
+                )
+                .where(
+                  (item) =>
+                      selectedKind == null || item['kind'] == selectedKind,
+                )
+                .where(
+                  (item) =>
+                      query.isEmpty ||
+                      '${item['title']} ${item['child_name'] ?? ''} ${notificationActionLabel(item)}'
+                          .toLowerCase()
+                          .contains(query),
+                )
+                .toList();
             return Panel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -67,6 +201,118 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ],
                   ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Alle Neuigkeiten'),
+                        selected: !onlyUnread,
+                        onSelected: (_) => setState(() => onlyUnread = false),
+                      ),
+                      ChoiceChip(
+                        label: Text('Ungelesen (${inbox.unread})'),
+                        selected: onlyUnread,
+                        onSelected: (_) => setState(() => onlyUnread = true),
+                      ),
+                    ],
+                  ),
+                  if (inbox.items.isNotEmpty || filtered) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: search,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        labelText: 'Geladene Neuigkeiten durchsuchen',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: search.text.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Neuigkeitensuche leeren',
+                                onPressed: () {
+                                  search.clear();
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() {});
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                    ),
+                    if (widget.state.isParent &&
+                        (children.length > 1 || selectedChild != null)) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(('notice-child', selectedChild)),
+                        initialValue: selectedChild ?? '',
+                        isExpanded: true,
+                        itemHeight: null,
+                        decoration: const InputDecoration(
+                          labelText: 'Neuigkeiten für ein Kind',
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: '',
+                            child: Text('Alle Kinder'),
+                          ),
+                          for (final entry in children.entries)
+                            DropdownMenuItem(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(
+                            () => selectedChild = value == '' ? null : value,
+                          );
+                        },
+                      ),
+                    ],
+                    if (kinds.length > 1 || selectedKind != null) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(('notice-kind', selectedKind)),
+                        initialValue: selectedKind ?? '',
+                        isExpanded: true,
+                        itemHeight: null,
+                        decoration: const InputDecoration(
+                          labelText: 'Art der Neuigkeit',
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: '',
+                            child: Text('Alle Arten'),
+                          ),
+                          for (final kind in kinds)
+                            DropdownMenuItem(
+                              value: kind,
+                              child: Text(noticeKindLabel(kind)),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(
+                            () => selectedKind = value == '' ? null : value,
+                          );
+                        },
+                      ),
+                    ],
+                    if (filtered)
+                      TextButton.icon(
+                        onPressed: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(() {
+                            search.clear();
+                            selectedChild = selectedKind = null;
+                          });
+                        },
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Suche und Zusatzfilter leeren'),
+                      ),
+                  ],
                   if (inbox.loading) ...[
                     const LinearProgressIndicator(),
                     Semantics(
@@ -91,15 +337,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         'Hier erscheint Neues zu deinen Lernrunden und deiner Familie.',
                       ),
                     ),
-                  if (inbox.unread > 0)
+                  if (shown.any((item) => item['read'] != true))
                     Align(
                       alignment: Alignment.centerRight,
                       child: ActionButton(
-                        label: 'Alle als gelesen markieren',
+                        key: ValueKey(('all-notices-read', ObjectKey(owner))),
+                        label: filtered
+                            ? 'Angezeigte als gelesen markieren'
+                            : 'Alle als gelesen markieren',
+                        enabled: opening == null,
                         secondary: true,
-                        onPressed: () => identical(widget.state.user, owner)
+                        onPressed: () =>
+                            identical(widget.state.user, owner) &&
+                                filterSnapshot ==
+                                    (
+                                      onlyUnread,
+                                      search.text.trim().toLowerCase(),
+                                      selectedChild,
+                                      selectedKind,
+                                    )
                             ? inbox.markRead(
-                                inbox.items
+                                shown
                                     .where((row) => row['read'] != true)
                                     .map((row) => row['id'] as String)
                                     .toList(),
@@ -107,7 +365,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             : Future<void>.value(),
                       ),
                     ),
-                  for (final item in inbox.items)
+                  if ((onlyUnread || filtered) &&
+                      inbox.hasLoaded &&
+                      shown.isEmpty &&
+                      inbox.error == null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            filtered
+                                ? 'Keine der geladenen Neuigkeiten passt zu deiner Auswahl.'
+                                : 'Alles gelesen. Deine bisherigen Neuigkeiten bleiben unter „Alle Neuigkeiten“ erreichbar.',
+                          ),
+                          if (!filtered)
+                            TextButton(
+                              onPressed: () =>
+                                  setState(() => onlyUnread = false),
+                              child: const Text(
+                                'Bisherige Neuigkeiten anzeigen',
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  for (final item in shown)
                     Padding(
                       padding: EdgeInsets.only(top: 12),
                       child: Material(
@@ -146,28 +429,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   : FontWeight.w700,
                             ),
                           ),
-                          subtitle: Text(
-                            '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                opening == item['id']
+                                    ? 'Wird geöffnet …'
+                                    : notificationActionLabel(item),
+                                style: TextStyle(
+                                  color: context.palette.teal,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
                           ),
                           trailing: Icon(Icons.chevron_right_rounded),
-                          onTap: () async {
-                            if (!identical(widget.state.user, owner)) return;
-                            try {
-                              await inbox.markRead([item['id']]);
-                            } catch (_) {
-                              if (context.mounted &&
-                                  identical(widget.state.user, owner)) {
-                                toast(
-                                  context,
-                                  'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
-                                );
-                              }
-                            }
-                            if (context.mounted &&
-                                identical(widget.state.user, owner)) {
-                              context.go(item['route']);
-                            }
-                          },
+                          onTap: opening == null
+                              ? () => openItem(item, owner)
+                              : null,
                         ),
                       ),
                     ),
@@ -175,7 +458,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Padding(
                       padding: EdgeInsets.only(top: 12),
                       child: Text(
-                        'Die letzten Neuigkeiten aus 30 Tagen.',
+                        'Bis zu ${inbox.itemLimit} der neuesten Neuigkeiten aus ${inbox.retentionDays} Tagen. Der Ungelesen-Filter gilt für diese Liste.',
                         style: TextStyle(
                           color: context.palette.muted,
                           fontSize: 12,
@@ -201,177 +484,313 @@ class NotificationPanel extends StatefulWidget {
   State<NotificationPanel> createState() => _NotificationPanelState();
 }
 
-class PushAdminScreen extends StatelessWidget {
+class PushAdminScreen extends StatefulWidget {
   final AppState state;
   const PushAdminScreen(this.state, {super.key});
+  @override
+  State<PushAdminScreen> createState() => _PushAdminScreenState();
+}
+
+class _PushAdminScreenState extends State<PushAdminScreen> {
+  AppState get state => widget.state;
+  late final owner = state.user;
+  bool get own => mounted && state.isAdmin && identical(owner, state.user);
+  String count(dynamic value) => value is num && value.isFinite && value >= 0
+      ? '$value'
+      : 'nicht gemeldet';
+  String flag(dynamic value) => value == true
+      ? 'Ja'
+      : value == false
+      ? 'Nein'
+      : 'Nicht gemeldet';
+  @override
+  void initState() {
+    super.initState();
+    state.addListener(changed);
+  }
+
+  void changed() {
+    if (!own && mounted) setState(() {});
+  }
 
   @override
-  Widget build(BuildContext context) => PageFrame(
-    state: state,
-    title: 'Push-Prüfung',
-    showTitle: false,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AdminWorkspaceHeader(
-          title: 'Benachrichtigungen im Blick',
-          subtitle: 'Freigabe, Geräte und Versandstatus getrennt prüfen.',
-          currentPath: '/admin/push',
-          icon: Icons.notifications_outlined,
-        ),
-        SizedBox(height: 28),
-        LoadView<Json>(
-          load: () => state.api.get('/notifications/admin/status'),
-          builder: (data, refresh) {
-            final p = context.palette;
-            final devices = AdminWorkSurface(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AdminSectionHeading(
-                    title: 'Geräte & Versand',
-                    subtitle: 'Technische Annahme ist kein Beleg für eine sichtbare Nachricht.',
-                    icon: Icons.send_outlined,
-                  ),
-                  AdminStatusLine(
-                    label: 'Angemeldete Geräte',
-                    value:
-                        '${data['device_counts']?['android'] ?? 0} Android · ${data['device_counts']?['web'] ?? 0} Web',
-                  ),
-                  Divider(color: p.surfaceBorder, height: 1),
-                  AdminStatusLine(
-                    label: 'Von FCM angenommen · 24 Stunden',
-                    value:
-                        '${data['delivery_counts_24h']?['accepted'] ?? 0} Nachrichten',
-                  ),
-                  Divider(color: p.surfaceBorder, height: 1),
-                  AdminStatusLine(
-                    label: 'Fehlgeschlagen · 24 Stunden',
-                    value:
-                        '${data['delivery_counts_24h']?['failed'] ?? 0} Nachrichten',
-                    ready:
-                        (data['delivery_counts_24h']?['failed'] as num? ?? 0) >
-                            0
-                        ? false
-                        : null,
-                  ),
-                  Divider(color: p.surfaceBorder, height: 1),
-                  AdminStatusLine(
-                    label: 'Ausstehend',
-                    value:
-                        '${data['delivery_counts_24h']?['queued'] ?? 0} Nachrichten',
-                  ),
-                ],
+  void dispose() {
+    state.removeListener(changed);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => !own
+      ? const SizedBox.shrink()
+      : PageFrame(
+          state: state,
+          title: 'Push-Prüfung',
+          showTitle: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AdminWorkspaceHeader(
+                title: 'Benachrichtigungen im Blick',
+                subtitle: 'Freigabe, Geräte und Versandstatus getrennt prüfen.',
+                currentPath: '/admin/push',
+                icon: Icons.notifications_outlined,
               ),
-            );
-            final config = AdminWorkSurface(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AdminSectionHeading(
-                    title: 'Konfiguration & Nachweise',
-                    subtitle: 'Nur Betriebsdaten. Private Lerninhalte gehören nicht in Push-Nachrichten.',
-                    icon: Icons.fact_check_outlined,
-                  ),
-                  SelectableText(
-                    'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
-                    style: TextStyle(color: p.muted, fontSize: 13),
-                  ),
-                  SizedBox(height: 12),
-                  AdminStatusLine(
-                    label: 'Dienstkonto konfiguriert',
-                    value: data['credential_configured'] == true
-                        ? 'Ja'
-                        : 'Nein',
-                    ready: data['credential_configured'] == true,
-                  ),
-                  AdminStatusLine(
-                    label: 'Künstliche Tests vorbereitet',
-                    value: data['test_available'] == true ? 'Ja' : 'Nein',
-                    ready: data['test_available'] == true,
-                  ),
-                  AdminStatusLine(
-                    label: 'App-/API-/Schlüsselprüfung',
-                    value: '${data['config_verification'] ?? ''}'.isEmpty
-                        ? 'Ausstehend'
-                        : '${data['config_verification']}',
-                    ready: '${data['config_verification'] ?? ''}'.isNotEmpty,
-                  ),
-                  AdminStatusLine(
-                    label: 'Datenschutzentscheidung',
-                    value: '${data['privacy_evidence'] ?? ''}'.isEmpty
-                        ? 'Ausstehend'
-                        : '${data['privacy_evidence']}',
-                    ready: '${data['privacy_evidence'] ?? ''}'.isNotEmpty,
-                  ),
-                ],
-              ),
-            );
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AdminWorkSurface(
-                  color: data['production_available'] == true
-                      ? p.successSurface
-                      : p.warningSurface,
-                  child: Column(
+              SizedBox(height: 28),
+              LoadView<Json>(
+                load: () => state.api.get('/notifications/admin/status'),
+                builder: (data, refresh) {
+                  final p = context.palette;
+                  String deliveries(String key) {
+                    final values = data['delivery_counts_24h'];
+                    if (values is! Map) return 'nicht gemeldet';
+                    return count(values.containsKey(key) ? values[key] : 0);
+                  }
+
+                  final devices = ActionPanel(
+                    actionLabel: 'Geräte- und Versanddetails ansehen',
+                    onPressed: () => showAdminDetails(
+                      context,
+                      state,
+                      title: 'Geladener Geräte- und Versandstand',
+                      notice: 'Aggregierte Betriebszahlen. Weder eine Registrierung noch FCM-Annahme beweist eine sichtbare Nachricht.',
+                      rows: [
+                        (
+                          'Android-Registrierungen',
+                          count(data['device_counts']?['android']),
+                        ),
+                        (
+                          'Web-Registrierungen',
+                          count(data['device_counts']?['web']),
+                        ),
+                        ('FCM-Annahme · 24 Stunden', deliveries('accepted')),
+                        ('Fehler · 24 Stunden', deliveries('failed')),
+                        ('Ausstehend · 24 Stunden', deliveries('queued')),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AdminSectionHeading(
+                          title: 'Geräte & Versand',
+                          subtitle: 'Technische Annahme ist kein Beleg für eine sichtbare Nachricht.',
+                          icon: Icons.send_outlined,
+                        ),
+                        AdminStatusLine(
+                          label: 'Angemeldete Geräte',
+                          value:
+                              '${count(data['device_counts']?['android'])} Android · ${count(data['device_counts']?['web'])} Web',
+                        ),
+                        Divider(color: p.surfaceBorder, height: 1),
+                        AdminStatusLine(
+                          label: 'Von FCM angenommen · 24 Stunden',
+                          value: '${deliveries('accepted')} Nachrichten',
+                        ),
+                        Divider(color: p.surfaceBorder, height: 1),
+                        AdminStatusLine(
+                          label: 'Fehlgeschlagen · 24 Stunden',
+                          value: '${deliveries('failed')} Nachrichten',
+                          ready:
+                              (data['delivery_counts_24h']?['failed'] as num? ??
+                                      0) >
+                                  0
+                              ? false
+                              : null,
+                        ),
+                        Divider(color: p.surfaceBorder, height: 1),
+                        AdminStatusLine(
+                          label: 'Ausstehend · 24 Stunden',
+                          value: '${deliveries('queued')} Nachrichten',
+                        ),
+                      ],
+                    ),
+                  );
+                  final config = ActionPanel(
+                    actionLabel: 'Push-Konfigurationsnachweise ansehen',
+                    onPressed: () => showAdminDetails(
+                      context,
+                      state,
+                      title: 'Gespeicherte Push-Nachweise',
+                      notice: 'Nur ausdrücklich gespeicherte Betriebsangaben. Öffnen erteilt keine Freigabe und sendet keinen Test.',
+                      rows: [
+                        (
+                          'Projekt',
+                          '${data['project_id'] ?? 'nicht bestätigt'}',
+                        ),
+                        (
+                          'Senderkonto',
+                          '${data['sender_identity'] ?? 'nicht eingerichtet'}',
+                        ),
+                        (
+                          'Dienstkonto konfiguriert',
+                          flag(data['credential_configured']),
+                        ),
+                        (
+                          'Künstliche Tests vorbereitet',
+                          flag(data['test_available']),
+                        ),
+                        (
+                          'App-/API-/Schlüsselprüfung',
+                          '${data['config_verification'] ?? 'nicht gemeldet'}',
+                        ),
+                        (
+                          'Datenschutzentscheidung',
+                          '${data['privacy_evidence'] ?? 'nicht gemeldet'}',
+                        ),
+                      ],
+                      continueLabel: 'Push-Einstellungen öffnen',
+                      onContinue: () {
+                        if (own) {
+                          openRoute(context, '/admin/settings?section=push');
+                        }
+                      },
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AdminSectionHeading(
+                          title: 'Konfiguration & Nachweise',
+                          subtitle: 'Nur Betriebsdaten. Private Lerninhalte gehören nicht in Push-Nachrichten.',
+                          icon: Icons.fact_check_outlined,
+                        ),
+                        Text(
+                          'Projekt: ${data['project_id'] ?? 'Noch nicht bestätigt'}\nSenderkonto: ${data['sender_identity'] ?? 'Noch nicht eingerichtet'}',
+                          style: TextStyle(color: p.muted, fontSize: 13),
+                        ),
+                        SizedBox(height: 12),
+                        AdminStatusLine(
+                          label: 'Dienstkonto konfiguriert',
+                          value: flag(data['credential_configured']),
+                          ready: data['credential_configured'] is bool
+                              ? data['credential_configured']
+                              : null,
+                        ),
+                        AdminStatusLine(
+                          label: 'Künstliche Tests vorbereitet',
+                          value: flag(data['test_available']),
+                          ready: data['test_available'] is bool
+                              ? data['test_available']
+                              : null,
+                        ),
+                        AdminStatusLine(
+                          label: 'App-/API-/Schlüsselprüfung',
+                          value: '${data['config_verification'] ?? ''}'.isEmpty
+                              ? 'Ausstehend'
+                              : '${data['config_verification']}',
+                          ready:
+                              '${data['config_verification'] ?? ''}'.isNotEmpty,
+                        ),
+                        AdminStatusLine(
+                          label: 'Datenschutzentscheidung',
+                          value: '${data['privacy_evidence'] ?? ''}'.isEmpty
+                              ? 'Ausstehend'
+                              : '${data['privacy_evidence']}',
+                          ready: '${data['privacy_evidence'] ?? ''}'.isNotEmpty,
+                        ),
+                      ],
+                    ),
+                  );
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AdminSectionHeading(
-                        title: data['production_available'] == true
-                            ? 'Push ist freigegeben'
-                            : 'Allgemeiner Push-Versand ist gesperrt',
-                        subtitle: 'Die Betreiberfreigabe ersetzt keine persönliche Geräte-Einwilligung.',
-                        icon: Icons.verified_user_outlined,
+                      AdminWorkSurface(
+                        color: data['production_available'] == true
+                            ? p.successSurface
+                            : p.warningSurface,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AdminSectionHeading(
+                              title: data['production_available'] == true
+                                  ? 'Push ist freigegeben'
+                                  : data['production_available'] == false
+                                  ? 'Allgemeiner Push-Versand ist gesperrt'
+                                  : 'Push-Freigabestatus nicht gemeldet',
+                              subtitle: 'Die Betreiberfreigabe ersetzt keine persönliche Geräte-Einwilligung.',
+                              icon: Icons.verified_user_outlined,
+                            ),
+                            Text(
+                              '${data['delivery_notice'] ?? 'FCM-Annahme und sichtbare Zustellung sind unterschiedliche Nachweise.'}',
+                              style: TextStyle(color: p.ink),
+                            ),
+                            SizedBox(height: 18),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: refresh,
+                                  icon: Icon(Icons.refresh_rounded),
+                                  label: Text('Status aktualisieren'),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => openRoute(
+                                    context,
+                                    '/admin/settings?section=push',
+                                  ),
+                                  icon: Icon(Icons.tune_rounded),
+                                  label: Text('Push-Einstellungen öffnen'),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => showAdminDetails(
+                                    context,
+                                    state,
+                                    title: 'Gespeicherter Push-Freigabestatus',
+                                    notice: 'Betreiberentscheidung, technische Voraussetzungen und persönliches Geräte-Opt-in sind getrennte Nachweise.',
+                                    rows: [
+                                      (
+                                        'Produktionsbetrieb verfügbar',
+                                        flag(data['production_available']),
+                                      ),
+                                      (
+                                        'Betreiberfreigabe gespeichert',
+                                        flag(data['production_approved']),
+                                      ),
+                                      (
+                                        'Datenschutzentscheidung',
+                                        '${data['privacy_evidence'] ?? 'nicht gemeldet'}',
+                                      ),
+                                      (
+                                        'Technische Konfiguration',
+                                        '${data['config_verification'] ?? 'nicht gemeldet'}',
+                                      ),
+                                    ],
+                                  ),
+                                  icon: const Icon(Icons.fact_check_outlined),
+                                  label: const Text('Freigabenachweise prüfen'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      Text(
-                        '${data['delivery_notice'] ?? 'FCM-Annahme und sichtbare Zustellung sind unterschiedliche Nachweise.'}',
-                        style: TextStyle(color: p.ink),
-                      ),
-                      SizedBox(height: 18),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: refresh,
-                            icon: Icon(Icons.refresh_rounded),
-                            label: Text('Status aktualisieren'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                openRoute(context, '/admin/settings'),
-                            icon: Icon(Icons.tune_rounded),
-                            label: Text('Push-Einstellungen öffnen'),
-                          ),
-                        ],
+                      SizedBox(height: 22),
+                      LayoutBuilder(
+                        builder: (context, constraints) =>
+                            constraints.maxWidth >= 880
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: devices),
+                                  SizedBox(width: 22),
+                                  Expanded(child: config),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  devices,
+                                  SizedBox(height: 20),
+                                  config,
+                                ],
+                              ),
                       ),
                     ],
-                  ),
-                ),
-                SizedBox(height: 22),
-                LayoutBuilder(
-                  builder: (context, constraints) => constraints.maxWidth >= 880
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: devices),
-                            SizedBox(width: 22),
-                            Expanded(child: config),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [devices, SizedBox(height: 20), config],
-                        ),
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    ),
-  );
+                  );
+                },
+              ),
+            ],
+          ),
+        );
 }
 
 class _NotificationPanelState extends State<NotificationPanel>
