@@ -667,3 +667,28 @@ und [ExcludeSemantics](https://api.flutter.dev/flutter/widgets/ExcludeSemantics-
 erklären den im echten Browser reproduzierten Konflikt. Ausschließlich doppelte
 dekorative Anzeigen ausblenden; genaue Zeiten, Status und Kartenaktion erhalten.
 Keine neue Flutterversion, Bibliothek oder fachliche Bewertung eingeführt.
+
+Release91 (22.10.2026): unveränderte fixierte Toolchain Flutter3.47.7,
+Dart3.13.5 und go_router18.0.2. Der tatsächlich installierte Routerquelltext
+setzt `optionURLReflectsImperativeAPIs=false`; native Push-Prüfungen kontrollieren
+deshalb den gerenderten `GoRouterState` statt die absichtlich erhaltene
+Grundseiten-URL. Webnavigation verwendet weiterhin den bestehenden `go`-Weg.
+Die mobilen gemeinsamen Köpfe verwenden die vorhandene Palette,48px-Ziele und
+explizite Zusatzinfos; Desktop- und200-Prozent-Fälle bleiben separat geprüft.
+
+Trial-Schnittstellen wurden gegen den wirklichen FastAPI-Vertrag und additive
+Migration0029 geprüft, einschließlich `trial_missing`, konkurrierender
+Mailbestätigung, SQL-NULL-Paarprüfung und bestehender Budgetreservierung.
+Öffentliche Angebote folgen allein der gespeicherten Katalogfreigabe; die
+Betreiberangaben werden laut ausdrücklicher Rückmeldung später nachgereicht.
+Die für die Commerce-Oberfläche gelesenen W3C-Primärquellen sind im
+[Launchbericht](COMMERCE_LAUNCH_30_DAY_2026_10_22.md) direkt verlinkt.
+
+Eine tatsächliche Produktionssichtprüfung belegte den Schulbuddy-Sendegrund im
+eigenen künstlichen Testraum: Backendfreigabe `available=false`. Die UI wahrt
+diese Sperre jetzt durch klare Vorschaukennzeichnung und inaktive Eingaben;
+freies Demo-KI-Chatten wurde nicht freigeschaltet. Der regulär reservierte echte
+Luna/high-Abnahmeaufruf90 bleibt von dieser Bedienprüfung getrennt. Technische
+Zitiermarker werden ausschließlich mit serverseitig validierten Quellenchips
+abgeglichen. Abnahmegrenzen, Erstfehler und gezielte Nachläufe stehen im
+[gemeinsamen Releasebericht](RELEASE_91_2026_10_22.md).

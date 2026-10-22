@@ -131,20 +131,24 @@ void main() {
               width: width,
               brightness: brightness,
             );
+            final back = width < 720
+                ? find.byTooltip('Betriebsübersicht')
+                : find.widgetWithText(TextButton, 'Betriebsübersicht');
+            if (width < 720) {
+              expect(
+                find.byKey(const ValueKey('compact-admin-heading')),
+                findsOneWidget,
+              );
+              await press(tester, find.byTooltip('Über diesen Bereich'));
+            }
             expect(find.text('SCHULPILOT · BETRIEB'), findsOneWidget);
-            expect(
-              find.widgetWithText(TextButton, 'Betriebsübersicht'),
-              findsOneWidget,
-            );
+            expect(back, findsOneWidget);
             expect(
               requests.every((request) => request.method == 'GET'),
               isTrue,
             );
             expect(tester.takeException(), isNull);
-            await press(
-              tester,
-              find.widgetWithText(TextButton, 'Betriebsübersicht'),
-            );
+            await press(tester, back);
             expect(find.text('Kontrollzentrum-Ziel'), findsOneWidget);
             expect(
               requests.every((request) => request.method == 'GET'),

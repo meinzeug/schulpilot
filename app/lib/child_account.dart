@@ -367,7 +367,9 @@ class _ChildAccountState extends State<ChildAccount> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).width < 720 ? 8 : 24,
+                ),
                 ChildSectionTabs(
                   tabs: const [
                     (
@@ -402,16 +404,20 @@ class _ChildAccountState extends State<ChildAccount> {
                     };
                   },
                 ),
-                const SizedBox(height: 20),
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).width < 720 ? 12 : 20,
+                ),
                 if (section == 'devices') ...[
-                  if (kIsWeb) ...[
+                  if (kIsWeb && MediaQuery.sizeOf(context).width >= 720) ...[
                     AndroidDownload(state.api),
                     const SizedBox(height: 20),
                   ],
-                  heading(
-                    'Angemeldete Geräte',
-                    subtitle: 'Erkennst du ein Gerät nicht? Melde es hier ab.',
-                  ),
+                  if (MediaQuery.sizeOf(context).width >= 720)
+                    heading(
+                      'Angemeldete Geräte',
+                      subtitle:
+                          'Erkennst du ein Gerät nicht? Melde es hier ab.',
+                    ),
                   LoadView<List<dynamic>>(
                     key: ValueKey('child-devices:$owner:$version'),
                     load: () => state.api.list('/auth/sessions'),
@@ -432,18 +438,45 @@ class _ChildAccountState extends State<ChildAccount> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                if (identical(state.user, ownerAccount)) {
-                                  reload();
-                                }
-                              },
-                              icon: Icon(Icons.refresh_rounded),
-                              label: Text('Geräte aktualisieren'),
+                          if (MediaQuery.sizeOf(context).width < 720)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Semantics(
+                                    header: true,
+                                    child: Text(
+                                      'Angemeldete Geräte',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Geräte aktualisieren',
+                                  onPressed: () {
+                                    if (identical(state.user, ownerAccount)) {
+                                      reload();
+                                    }
+                                  },
+                                  icon: Icon(Icons.refresh_rounded),
+                                ),
+                              ],
+                            )
+                          else
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  if (identical(state.user, ownerAccount)) {
+                                    reload();
+                                  }
+                                },
+                                icon: Icon(Icons.refresh_rounded),
+                                label: Text('Geräte aktualisieren'),
+                              ),
                             ),
-                          ),
                           if (sessions
                               .where((session) => session['current'] != true)
                               .isNotEmpty)
@@ -618,6 +651,13 @@ class _ChildAccountState extends State<ChildAccount> {
                       );
                     },
                   ),
+                  if (kIsWeb && MediaQuery.sizeOf(context).width < 720) ...[
+                    const SizedBox(height: 16),
+                    ExpansionTile(
+                      title: const Text('Android-App herunterladen'),
+                      children: [AndroidDownload(state.api)],
+                    ),
+                  ],
                 ],
                 if (section == 'photos') ...[
                   heading(

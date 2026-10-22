@@ -33,7 +33,6 @@ from .db import (
     Membership,
     PushDevice,
     Session,
-    StoreConfiguration,
     User,
     get_db,
     now,
@@ -311,6 +310,8 @@ def finish(db, flow):
 
 @router.post("/result")
 def result(data: Result, request: Request, response: Response, db=Depends(get_db)):
+    from .commerce import registration_notice
+
     client_config(db)
     rate_limit(db, "google-result:" + digest(request.client.host), 60, 60)
     flow = db.get(GoogleFlow, data.flow_id)
@@ -381,6 +382,7 @@ def result(data: Result, request: Request, response: Response, db=Depends(get_db
             raise HTTPException(409, FAILURES["link"]) from None
         response.delete_cookie(COOKIE, path=COOKIE_PATH)
         return {"status": "linked"}
+    created_parent = False
     if identity:
         user = db.get(User, identity.user_id)
         if not user or user.role != "parent" or not user.verified or user.disabled:
@@ -412,15 +414,18 @@ def result(data: Result, request: Request, response: Response, db=Depends(get_db
             call_limit=site.default_call_limit,
             budget_micros=site.default_budget_micros,
         )
-        shop = db.get(StoreConfiguration, 1)
-        if shop and shop.ever_enabled:
-            family.commerce_required, family.call_limit, family.child_limit, family.plan = True, 0, 1, "Noch kein Tarif"
+        family.commerce_required, family.call_limit, family.child_limit, family.plan = True, 0, 1, "Noch kein Tarif"
+        created_parent = True
         db.add_all([user, family])
         try:
             db.flush()
             db.add(Membership(family_id=family.id, user_id=user.id, permission="owner"))
             db.add(GoogleIdentity(subject=subject, user_id=user.id))
+            from .commerce import activate_trials, prepare_trial
+
+            prepare_trial(db, family, user, site)
             db.flush()
+            activate_trials(db, user)
         except IntegrityError:
             db.rollback()
             raise HTTPException(409, FAILURES["conflict"]) from None
@@ -436,16 +441,14 @@ def result(data: Result, request: Request, response: Response, db=Depends(get_db
         )
         db.commit()
         response.delete_cookie(COOKIE, path=COOKIE_PATH)
-        return {"status": "verification_required"}
+        return {"status": "verification_required", "access_notice": registration_notice(db)}
     revoke_previous(db, flow)
     audit(db, user.id, "account.google_login", user.id)
     response.delete_cookie(COOKIE, path=COOKIE_PATH)
-    return {
-        "status": "authenticated",
-        **auth.create_session(
-            db, user, response, request, "Android · Google" if flow.platform == "native" else "Browser · Google"
-        ),
-    }
+    login = auth.create_session(
+        db, user, response, request, "Android · Google" if flow.platform == "native" else "Browser · Google")
+    return {"status": "authenticated", **login,
+            **({"access_notice": registration_notice(db)} if created_parent else {})}
 
 
 @router.get("/identity")

@@ -266,7 +266,15 @@ void main() {
             lessThanOrEqualTo(64),
           );
         }
-        expect(find.text('Dein Stoff. Gut sortiert.'), findsOneWidget);
+        if (width < 720) {
+          expect(
+            find.byKey(const ValueKey('compact-child-heading')),
+            findsOneWidget,
+          );
+          expect(find.text('Dein Stoff. Gut sortiert.'), findsNothing);
+        } else {
+          expect(find.text('Dein Stoff. Gut sortiert.'), findsOneWidget);
+        }
         expect(find.byType(NotebookCover), findsWidgets);
         await tap(tester, find.text('Fach suchen'));
         await tester.enterText(find.byType(TextField), 'Biologie');

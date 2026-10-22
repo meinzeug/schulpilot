@@ -21,11 +21,13 @@ def sha(path):
 
 def test_identical_busy_executable_is_kept_and_login_process_survives(tmp_path):
     source, target = tmp_path / "source", tmp_path / "codex"
-    shutil.copyfile("/bin/sleep", source)
+    shutil.copyfile("/bin/cat", source)
     shutil.copyfile(source, target)
     target.chmod(0o755)
     original = target.stat().st_ino
-    process = subprocess.Popen([str(target), "10"])
+    # Popen waits for exec; the open stdin pipe then keeps cat alive until
+    # explicit cleanup, independent of wall-clock load during the installer.
+    process = subprocess.Popen([str(target)], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
     try:
         with pytest.raises(OSError) as blocked:
             with target.open("wb"):
@@ -37,15 +39,18 @@ def test_identical_busy_executable_is_kept_and_login_process_survives(tmp_path):
     finally:
         process.terminate()
         process.wait(timeout=2)
+        process.stdin.close()
 
 
 def test_changed_busy_executable_is_atomically_replaced_without_stopping_old_process(tmp_path):
     source, target = tmp_path / "source", tmp_path / "codex"
     shutil.copyfile("/bin/true", source)
-    shutil.copyfile("/bin/sleep", target)
+    shutil.copyfile("/bin/cat", target)
     target.chmod(0o755)
     previous = target.stat().st_ino
-    process = subprocess.Popen([str(target), "10"])
+    # Popen waits for exec; the open stdin pipe then keeps cat alive until
+    # explicit cleanup, independent of wall-clock load during the installer.
+    process = subprocess.Popen([str(target)], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
     try:
         assert installer.install_binary(source, target, sha(source)) is True
         assert target.stat().st_ino != previous and sha(target) == sha(source)
@@ -56,6 +61,7 @@ def test_changed_busy_executable_is_atomically_replaced_without_stopping_old_pro
     finally:
         process.terminate()
         process.wait(timeout=2)
+        process.stdin.close()
 
 
 @pytest.mark.parametrize("position,kind", [("source", "fifo"), ("target", "fifo"), ("source", "link"), ("target", "link")])

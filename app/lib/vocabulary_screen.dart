@@ -2399,6 +2399,45 @@ class _VocabularyScreenState extends State<_VocabularyBody>
               if (widget.state.isChild) ...[
                 ChildSectionHero(
                   eyebrow: 'Wörter',
+                  compactAction: PopupMenuButton<String>(
+                    tooltip: 'Weitere Wörteraktionen',
+                    enabled: !busy && !loading,
+                    onSelected: (action) {
+                      if (!current) return;
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      switch (action) {
+                        case 'add':
+                          importDialog();
+                        case 'photo':
+                          importMaterial(context, widget.state, widget.childId);
+                        case 'apply':
+                          openRoute(
+                            context,
+                            '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
+                          );
+                        case 'refresh':
+                          load();
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'add',
+                        child: Text('Wörter hinzufügen'),
+                      ),
+                      PopupMenuItem(
+                        value: 'photo',
+                        child: Text('Vokabelseite fotografieren'),
+                      ),
+                      PopupMenuItem(
+                        value: 'apply',
+                        child: Text('Wörter anwenden'),
+                      ),
+                      PopupMenuItem(
+                        value: 'refresh',
+                        child: Text('Aktualisieren'),
+                      ),
+                    ],
+                  ),
                   title: 'Wörter entdecken. Sicher anwenden.',
                   description: 'Schreiben, erkennen oder hören: Wähle deine nächste Wörterrunde.',
                   icon: Icons.translate_rounded,
@@ -2440,28 +2479,30 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => openRoute(
-                        context,
-                        '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
+                if (MediaQuery.sizeOf(context).width >= 720) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => openRoute(
+                          context,
+                          '/language-projects/${widget.childId}${widget.materialId == null ? '' : '?material=${widget.materialId}'}',
+                        ),
+                        icon: const Icon(Icons.auto_stories_rounded),
+                        label: const Text('Wörter anwenden'),
                       ),
-                      icon: const Icon(Icons.auto_stories_rounded),
-                      label: const Text('Wörter anwenden'),
-                    ),
-                    IconButton(
-                      tooltip: 'Aktualisieren',
-                      onPressed: busy || loading ? null : load,
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                      IconButton(
+                        tooltip: 'Aktualisieren',
+                        onPressed: busy || loading ? null : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ] else
                 Panel(
                   color: context.palette.mint,
@@ -2574,7 +2615,13 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                     ),
                   ),
               ],
-              const SizedBox(height: 16),
+              SizedBox(
+                height:
+                    widget.state.isChild &&
+                        MediaQuery.sizeOf(context).width < 720
+                    ? 8
+                    : 16,
+              ),
               if (widget.state.isChild) ...[
                 ChildSectionTabs(
                   tabs: const [
@@ -2596,30 +2643,33 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                     rememberView();
                   },
                 ),
-                const SizedBox(height: 20),
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).width < 720 ? 8 : 20,
+                ),
                 if (section == 'words') ...[
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: busy ? null : importDialog,
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Wörter hinzufügen'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: busy
-                            ? null
-                            : () => importMaterial(
-                                context,
-                                widget.state,
-                                widget.childId,
-                              ),
-                        icon: const Icon(Icons.add_a_photo_outlined),
-                        label: const Text('Vokabelseite fotografieren'),
-                      ),
-                    ],
-                  ),
+                  if (MediaQuery.sizeOf(context).width >= 720)
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: busy ? null : importDialog,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Wörter hinzufügen'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () => importMaterial(
+                                  context,
+                                  widget.state,
+                                  widget.childId,
+                                ),
+                          icon: const Icon(Icons.add_a_photo_outlined),
+                          label: const Text('Vokabelseite fotografieren'),
+                        ),
+                      ],
+                    ),
                   if ((pendingImports ?? 0) > 0 ||
                       imports.any((row) => row['status'] != 'confirmed'))
                     Padding(
@@ -2634,7 +2684,8 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                         },
                       ),
                     ),
-                  const SizedBox(height: 20),
+                  if (MediaQuery.sizeOf(context).width >= 720)
+                    const SizedBox(height: 20),
                 ],
               ],
               if (!widget.state.isChild || section == 'review') ...[
@@ -2726,280 +2777,305 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                   ),
               ],
               if (!widget.state.isChild || section == 'words') ...[
-                heading('Dein Wortschatz'),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    SizedBox(
-                      width: 270,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey(locale),
-                        initialValue: locale,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Sprache'),
-                        items: [
-                          for (final e in learningLocales.entries)
-                            DropdownMenuItem(
-                              value: e.key,
-                              child: Text(e.value),
-                            ),
-                        ],
-                        onChanged: busy
-                            ? null
-                            : (v) {
-                                FocusManager.instance.primaryFocus?.unfocus();
-                                setState(() {
-                                  locale = v!;
-                                  collection = null;
-                                  page = 1;
-                                });
-                                load();
-                              },
-                      ),
-                    ),
-                    SizedBox(
-                      width: 260,
-                      child: DropdownButtonFormField<String>(
-                        key: ValueKey((
-                          locale,
-                          collection,
-                          collectionsRevision,
-                        )),
-                        initialValue: collection ?? '',
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Sammlung',
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text('Alle Sammlungen'),
-                          ),
-                          for (final row in collections)
-                            if (row['target_locale'] == locale)
-                              DropdownMenuItem(
-                                value: row['id'].toString(),
-                                child: Text(
-                                  row['title'],
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                          if (collection != null &&
-                              !collections.any(
-                                (row) =>
-                                    row['id'].toString() == collection &&
-                                    row['target_locale'] == locale,
-                              ))
-                            DropdownMenuItem(
-                              value: collection,
-                              enabled: false,
-                              child: Text(
-                                data != null && !loading
-                                    ? 'Sammlung nicht mehr verfügbar'
-                                    : 'Gespeicherte Sammlung',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: busy
-                            ? null
-                            : (v) {
-                                FocusManager.instance.primaryFocus?.unfocus();
-                                setState(() {
-                                  collection = v == '' ? null : v;
-                                  page = 1;
-                                });
-                                load();
-                              },
-                      ),
-                    ),
-                    FilterChip(
-                      label: const Text('Fällig oder neu'),
-                      selected: due,
-                      onSelected: (v) {
-                        setState(() {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          due = v;
-                          page = 1;
-                        });
-                        load();
-                      },
-                    ),
-                  ],
-                ),
-                ExpansionTile(
-                  title: const Text('Sortieren & genauer auswählen'),
-                  children: [
-                    if (data?['supports_collections'] == true)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: busy || loading ? null : findCollection,
-                          icon: const Icon(Icons.folder_copy_outlined),
-                          label: const Text('Alle Sammlungen finden'),
-                        ),
-                      ),
-                    if (data?['supports_collections'] == true &&
-                        (widget.state.isChild || widget.state.canManage))
+                if (!widget.state.isChild ||
+                    MediaQuery.sizeOf(context).width >= 720)
+                  heading('Dein Wortschatz'),
+                ChildFilterTools(
+                  enabled: widget.state.isChild,
+                  summary:
+                      '${learningLocales[locale] ?? locale} · ${collection == null ? 'Alle Sammlungen' : 'Gewählte Sammlung'}',
+                  filtered: filtered,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
-                          TextButton.icon(
-                            onPressed: busy || loading
-                                ? null
-                                : () => collectionEditor(),
-                            icon: const Icon(Icons.create_new_folder_outlined),
-                            label: const Text('Neue Sammlung'),
+                          SizedBox(
+                            width: 270,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(locale),
+                              initialValue: locale,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Sprache',
+                              ),
+                              items: [
+                                for (final e in learningLocales.entries)
+                                  DropdownMenuItem(
+                                    value: e.key,
+                                    child: Text(e.value),
+                                  ),
+                              ],
+                              onChanged: busy
+                                  ? null
+                                  : (v) {
+                                      FocusManager.instance.primaryFocus
+                                          ?.unfocus();
+                                      setState(() {
+                                        locale = v!;
+                                        collection = null;
+                                        page = 1;
+                                      });
+                                      load();
+                                    },
+                            ),
                           ),
-                          for (final row in collections.where(
-                            (r) =>
-                                r['id'] == collection &&
-                                r['target_locale'] == locale,
-                          )) ...[
-                            TextButton.icon(
-                              onPressed: busy || loading
+                          SizedBox(
+                            width: 260,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey((
+                                locale,
+                                collection,
+                                collectionsRevision,
+                              )),
+                              initialValue: collection ?? '',
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Sammlung',
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: '',
+                                  child: Text('Alle Sammlungen'),
+                                ),
+                                for (final row in collections)
+                                  if (row['target_locale'] == locale)
+                                    DropdownMenuItem(
+                                      value: row['id'].toString(),
+                                      child: Text(
+                                        row['title'],
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                if (collection != null &&
+                                    !collections.any(
+                                      (row) =>
+                                          row['id'].toString() == collection &&
+                                          row['target_locale'] == locale,
+                                    ))
+                                  DropdownMenuItem(
+                                    value: collection,
+                                    enabled: false,
+                                    child: Text(
+                                      data != null && !loading
+                                          ? 'Sammlung nicht mehr verfügbar'
+                                          : 'Gespeicherte Sammlung',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                              onChanged: busy
                                   ? null
-                                  : () => collectionEditor(row),
-                              icon: const Icon(Icons.edit_outlined),
-                              label: const Text('Sammlung umbenennen'),
+                                  : (v) {
+                                      FocusManager.instance.primaryFocus
+                                          ?.unfocus();
+                                      setState(() {
+                                        collection = v == '' ? null : v;
+                                        page = 1;
+                                      });
+                                      load();
+                                    },
                             ),
-                            TextButton.icon(
-                              onPressed: busy || loading
-                                  ? null
-                                  : () => removeCollection(row),
-                              icon: const Icon(Icons.delete_outline),
-                              label: const Text('Sammlung entfernen'),
-                            ),
-                          ],
+                          ),
+                          FilterChip(
+                            label: const Text('Fällig oder neu'),
+                            selected: due,
+                            onSelected: (v) {
+                              setState(() {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                due = v;
+                                page = 1;
+                              });
+                              load();
+                            },
+                          ),
                         ],
                       ),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey('word-sort-$sort'),
-                      initialValue: sort,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Reihenfolge',
+                      ExpansionTile(
+                        title: const Text('Sortieren & genauer auswählen'),
+                        children: [
+                          if (data?['supports_collections'] == true)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: busy || loading
+                                    ? null
+                                    : findCollection,
+                                icon: const Icon(Icons.folder_copy_outlined),
+                                label: const Text('Alle Sammlungen finden'),
+                              ),
+                            ),
+                          if (data?['supports_collections'] == true &&
+                              (widget.state.isChild || widget.state.canManage))
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: busy || loading
+                                      ? null
+                                      : () => collectionEditor(),
+                                  icon: const Icon(
+                                    Icons.create_new_folder_outlined,
+                                  ),
+                                  label: const Text('Neue Sammlung'),
+                                ),
+                                for (final row in collections.where(
+                                  (r) =>
+                                      r['id'] == collection &&
+                                      r['target_locale'] == locale,
+                                )) ...[
+                                  TextButton.icon(
+                                    onPressed: busy || loading
+                                        ? null
+                                        : () => collectionEditor(row),
+                                    icon: const Icon(Icons.edit_outlined),
+                                    label: const Text('Sammlung umbenennen'),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: busy || loading
+                                        ? null
+                                        : () => removeCollection(row),
+                                    icon: const Icon(Icons.delete_outline),
+                                    label: const Text('Sammlung entfernen'),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey('word-sort-$sort'),
+                            initialValue: sort,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Reihenfolge',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'newest',
+                                child: Text('Zuletzt hinzugefügt'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'word',
+                                child: Text('Nach Lernwort A–Z'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'meaning',
+                                child: Text('Nach Bedeutung A–Z'),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (v) {
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    setState(() {
+                                      sort = v!;
+                                      page = 1;
+                                    });
+                                    load();
+                                  },
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey('word-origin-$origin'),
+                            initialValue: origin ?? '',
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Woher kommen die Wörter?',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: '',
+                                child: Text('Alle Quellen'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'material',
+                                child: Text('Aus Heftseiten'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'manual',
+                                child: Text('Selbst eingetragen'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'text',
+                                child: Text('Aus geprüftem Text'),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (v) {
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    setState(() {
+                                      origin = v == '' ? null : v;
+                                      page = 1;
+                                    });
+                                    load();
+                                  },
+                          ),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Nur Wörter mit offener Bewertung',
+                            ),
+                            value: clarification,
+                            onChanged: busy
+                                ? null
+                                : (v) {
+                                    setState(() {
+                                      clarification = v!;
+                                      page = 1;
+                                    });
+                                    load();
+                                  },
+                          ),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Im Beispielsatz suchen'),
+                            subtitle: const Text(
+                              'Durchsucht den gespeicherten Kontext statt Wort und Bedeutung.',
+                            ),
+                            value: searchContext,
+                            onChanged: busy
+                                ? null
+                                : (v) {
+                                    setState(() {
+                                      searchContext = v!;
+                                      page = 1;
+                                    });
+                                    load();
+                                  },
+                          ),
+                        ],
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'newest',
-                          child: Text('Zuletzt hinzugefügt'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'word',
-                          child: Text('Nach Lernwort A–Z'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'meaning',
-                          child: Text('Nach Bedeutung A–Z'),
-                        ),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (v) {
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: search,
+                        maxLength: 100,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          labelText: 'Wörter suchen',
+                          counterText: '',
+                          suffixIcon: IconButton(
+                            tooltip: 'Suchen',
+                            icon: const Icon(Icons.search_rounded),
+                            onPressed: () {
                               FocusManager.instance.primaryFocus?.unfocus();
-                              setState(() {
-                                sort = v!;
-                                page = 1;
-                              });
+                              page = 1;
                               load();
                             },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey('word-origin-$origin'),
-                      initialValue: origin ?? '',
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Woher kommen die Wörter?',
+                          ),
+                        ),
+                        onSubmitted: (_) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          page = 1;
+                          load();
+                        },
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: '',
-                          child: Text('Alle Quellen'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'material',
-                          child: Text('Aus Heftseiten'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'manual',
-                          child: Text('Selbst eingetragen'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'text',
-                          child: Text('Aus geprüftem Text'),
-                        ),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (v) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              setState(() {
-                                origin = v == '' ? null : v;
-                                page = 1;
-                              });
-                              load();
-                            },
-                    ),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Nur Wörter mit offener Bewertung'),
-                      value: clarification,
-                      onChanged: busy
-                          ? null
-                          : (v) {
-                              setState(() {
-                                clarification = v!;
-                                page = 1;
-                              });
-                              load();
-                            },
-                    ),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Im Beispielsatz suchen'),
-                      subtitle: const Text(
-                        'Durchsucht den gespeicherten Kontext statt Wort und Bedeutung.',
-                      ),
-                      value: searchContext,
-                      onChanged: busy
-                          ? null
-                          : (v) {
-                              setState(() {
-                                searchContext = v!;
-                                page = 1;
-                              });
-                              load();
-                            },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: search,
-                  maxLength: 100,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    labelText: 'Wörter suchen',
-                    counterText: '',
-                    suffixIcon: IconButton(
-                      tooltip: 'Suchen',
-                      icon: const Icon(Icons.search_rounded),
-                      onPressed: () {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        page = 1;
-                        load();
-                      },
-                    ),
+                    ],
                   ),
-                  onSubmitted: (_) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    page = 1;
-                    load();
-                  },
                 ),
                 if (filtered)
                   Align(
@@ -3010,7 +3086,13 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                       label: const Text('Filter zurücksetzen'),
                     ),
                   ),
-                const SizedBox(height: 16),
+                SizedBox(
+                  height:
+                      widget.state.isChild &&
+                          MediaQuery.sizeOf(context).width < 720
+                      ? 8
+                      : 16,
+                ),
                 if (loading) const Center(child: CircularProgressIndicator()),
                 if (data != null && (data!['items'] as List).isEmpty)
                   Panel(

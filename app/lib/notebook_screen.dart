@@ -803,6 +803,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
           if (widget.state.isChild) ...[
             ChildSectionHero(
               eyebrow: 'Hefte',
+              compactTitle: subject?['title'] ?? 'Dein Hefter',
               title: subject?['title'] ?? 'Dein Hefter',
               description: 'Deine Seiten an einem Ort. Blättere durch deinen Hefter oder öffne den Text zum Lernen.',
               icon: Icons.auto_stories_outlined,

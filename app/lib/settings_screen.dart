@@ -17,6 +17,7 @@ import 'parent_export_dialog.dart';
 import 'parent_operator_audit.dart';
 import 'ui.dart';
 import 'google_login.dart';
+import 'public_trial.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState state;
@@ -691,10 +692,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             LoadView<Json>(
               key: ValueKey('usage-${state.familyId}-$version'),
               load: () => state.api.get('/families/${state.familyId}/usage'),
-              builder: (usage, _) => Panel(
+              builder: (usage, refresh) => Panel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    FamilyTrialUsageNotice(usage, onRefresh: refresh),
                     Text(
                       '${usage['calls_remaining']} von ${usage['calls_limit']} KI-Schritten übrig',
                       style: TextStyle(

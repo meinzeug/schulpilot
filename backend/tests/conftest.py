@@ -19,8 +19,8 @@ os.environ["PUBLIC_URL"] = "http://testserver"
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from schulpilot import auth, families  # noqa: E402
-from schulpilot.config import settings  # noqa: E402
-from schulpilot.db import DB, Base, Installation, engine, init_db  # noqa: E402
+from schulpilot.config import runtime_settings, settings  # noqa: E402
+from schulpilot.db import DB, Base, Family, FamilyTrial, Installation, StoreConfiguration, engine, init_db  # noqa: E402
 from schulpilot.main import app  # noqa: E402
 
 HEADERS = {"X-Schulpilot-Request": "1", "X-Client-Platform": "native"}
@@ -57,7 +57,7 @@ def mailbox(monkeypatch):
     return messages
 
 
-def register(api, mailbox, email="parent@example.org"):
+def register(api, mailbox, email="parent@example.org", *, historical_pilot=True):
     response = api.post(
         "/api/auth/register",
         json={
@@ -74,6 +74,22 @@ def register(api, mailbox, email="parent@example.org"):
     login = api.post("/api/auth/login", json={"username": email, "password": "secure-parent-pass-123"})
     assert login.status_code == 200, login.text
     data = login.json()
+    if historical_pilot:
+        # Existing learning/privacy suites intentionally model pre-launch pilot
+        # families. This DB seed is NOT evidence of current public-signup access.
+        # Actual signup/commerce tests pass False or use the public route directly.
+        with DB.begin() as db:
+            shop = db.get(StoreConfiguration, 1)
+            if not shop or not (shop.ever_enabled or shop.ever_trial_enabled):
+                site = runtime_settings(db)
+                for value in data["user"]["families"]:
+                    family = db.get(Family, value["id"])
+                    if family and not db.get(FamilyTrial, family.id):
+                        family.commerce_required = False
+                        family.plan = site.default_plan
+                        family.child_limit = site.default_child_limit
+                        family.call_limit = site.default_call_limit
+                        family.budget_micros = site.default_budget_micros
     api.headers["Authorization"] = "Bearer " + data["token"]
     return data["user"]
 

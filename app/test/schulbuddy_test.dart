@@ -334,8 +334,9 @@ void main() {
         respond: (r) async => reply(contextResult('admin', available: false)),
       );
       await tap(t, find.text('Buddy öffnen'));
-      await t.enterText(field(), 'Wie funktioniert die Ansicht?');
-      await t.pump();
+      expect(t.widget<TextField>(field()).enabled, isFalse);
+      expect(find.byType(ActionChip), findsNothing);
+      expect(find.text('Chat nicht verfügbar'), findsOneWidget);
       final send = t.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'Frage senden'),
       );

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 
 def test_registration_verification_and_child_login(api, mailbox):
-    user = register(api, mailbox)
+    user = register(api, mailbox, historical_pilot=False)
     child = create_child(api, user)
     with TestClient(app, headers=HEADERS) as own:
         login = own.post("/api/auth/login", json={"username": "test-child", "password": "secure-child-pass-123"})

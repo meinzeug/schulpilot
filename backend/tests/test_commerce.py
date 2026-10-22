@@ -144,6 +144,7 @@ def test_order_price_and_terms_are_immutable_and_client_cannot_set_price(api, ho
     original = order(api, fid).json()
     config = operator.get("/api/admin/store").json()
     config.pop("missing")
+    config.pop("trial_missing")
     config["plans"][0]["price_cents"] = 1190
     config["recipient"] = "Geänderter Empfänger"
     assert operator.put("/api/admin/store", json=config).status_code == 200
@@ -248,6 +249,7 @@ def test_checked_external_refund_revokes_access_and_keeps_accounting_record(api,
 def test_pausing_checkout_does_not_create_free_commercial_accounts(api, mailbox, shop, operator):
     config = operator.get("/api/admin/store").json()
     config.pop("missing")
+    config.pop("trial_missing")
     config["enabled"] = False
     assert operator.put("/api/admin/store", json=config).status_code == 200
     user = register(api, mailbox)

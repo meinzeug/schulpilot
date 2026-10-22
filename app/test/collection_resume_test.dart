@@ -138,6 +138,12 @@ class _Fixture {
       ),
     );
     await tester.pumpAndSettle();
+    if (kind == 'words' && !parent && width < 720) {
+      final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
+      await tester.ensureVisible(filters);
+      await tester.tap(filters);
+      await tester.pumpAndSettle();
+    }
   }
 
   Future<void> close(WidgetTester tester) async {
@@ -177,13 +183,18 @@ void main() {
         expect(find.text(oldLabel), findsOneWidget);
         f.waiting = true;
         f.pending = Completer<http.Response>();
+        if (kind == 'words') {
+          await _tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+        }
         await _tap(
           tester,
-          find.byTooltip(switch (kind) {
-            'words' => 'Aktualisieren',
-            'shelf' => 'Hefter aktualisieren',
-            _ => 'Liste aktualisieren',
-          }),
+          kind == 'words'
+              ? find.text('Aktualisieren')
+              : find.byTooltip(
+                  kind == 'shelf'
+                      ? 'Hefter aktualisieren'
+                      : 'Liste aktualisieren',
+                ),
           settle: false,
         );
         final pendingRequest = f.requests.lastWhere(

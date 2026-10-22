@@ -12,6 +12,7 @@ import 'admin_workspace_ui.dart';
 import 'store_plan_editor.dart';
 import 'store_order_filters.dart';
 import 'ui.dart';
+import 'public_trial.dart';
 
 String euro(dynamic cents) =>
     '${((cents as num) / 100).toStringAsFixed(2).replaceAll('.', ',')} €';
@@ -21,6 +22,13 @@ String calendar(dynamic stamp) {
     (stamp as num).toInt() * 1000,
   ).toLocal();
   return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+}
+
+String trialDeadline(dynamic stamp) {
+  if (stamp is! num) return 'Zeitpunkt nicht gemeldet';
+  final date = DateTime.fromMillisecondsSinceEpoch(stamp.toInt() * 1000)
+      .toLocal();
+  return '${calendar(stamp)} um ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} Uhr';
 }
 
 String orderStatus(dynamic status) => switch (status) {
@@ -33,146 +41,198 @@ String orderStatus(dynamic status) => switch (status) {
 
 class StoreSection extends StatelessWidget {
   final AppState state;
-  const StoreSection(this.state, {super.key});
+  final Json? catalog;
+  final bool showTrial;
+  const StoreSection(
+    this.state, {
+    super.key,
+    this.catalog,
+    this.showTrial = true,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb || state.isChild || state.isDemo) {
       return const SizedBox.shrink();
     }
+    if (catalog != null) return content(context, catalog!);
     return LoadView<Json>(
       load: () => state.api.get('/store/catalog'),
-      builder: (catalog, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Tag('30 TAGE. EURE FAMILIE.'),
+      builder: (data, _) => content(context, data),
+    );
+  }
+
+  Widget content(BuildContext context, Json catalog) {
+    final offer = PublicTrialOffer.fromCatalog(catalog);
+    final enabled = catalog['enabled'] == true;
+    final plans = (catalog['plans'] as List? ?? const [])
+        .whereType<Map>()
+        .map((plan) => Json.from(plan))
+        .toList();
+    final duration = catalog['duration_days'] is int
+        ? catalog['duration_days'] as int
+        : 30;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showTrial) ...[
+          TrialOfferCard(
+            offer: offer,
+            onStart: () =>
+                context.go(state.user == null ? '/register' : '/app'),
+            actionLabel: state.user == null
+                ? '30 Tage kostenlos testen'
+                : 'Zu meinem Familienkonto',
+          ),
+          const SizedBox(height: 36),
+        ],
+        const Tag('IHR ENTSCHEIDET, WIE ES WEITERGEHT'),
+        const SizedBox(height: 16),
+        heading(
+          enabled
+              ? 'Ein Tarif, der zu eurer Familie passt'
+              : 'Tarife in Vorbereitung',
+        ),
+        const SizedBox(height: 8),
+        Text(
+          enabled
+              ? 'Feste Laufzeit. Einmal per Überweisung bezahlen. Keine automatische Verlängerung.'
+              : 'Diese Preise und Leistungen sind eine Vorschau. Der Verkauf ist noch nicht freigegeben; hier kann nichts bestellt werden.',
+        ),
+        if (!enabled) ...[
           const SizedBox(height: 16),
-          heading('Mehr Rückenwind für euren Alltag'),
-          const Text(
-            'Per Überweisung bezahlen. Nach geprüftem Zahlungseingang geht es los. Ohne automatische Verlängerung.',
-          ),
-          const SizedBox(height: 24),
-          if ((catalog['plans'] as List).isNotEmpty)
-            StorePlanComparison(
-              List<Json>.from(
-                (catalog['plans'] as List).map((p) => Json.from(p as Map)),
-              ),
-            ),
-          const SizedBox(height: 16),
-          if ((catalog['plans'] as List).isEmpty)
-            const Panel(child: Text('Zurzeit werden keine Tarife angeboten.')),
-          LayoutBuilder(
-            builder: (context, size) {
-              final count = (catalog['plans'] as List).length;
-              final columns = size.maxWidth >= 920
-                  ? 3
-                  : size.maxWidth >= 620
-                  ? 2
-                  : 1;
-              final width = (size.maxWidth - (columns - 1) * 16) / columns;
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  for (final plan in (catalog['plans'] as List).take(count))
-                    SizedBox(
-                      width: width,
-                      child: ActionPanel(
-                        color: plan['id'] == 'familie'
-                            ? context.palette.mint
-                            : context.palette.panelSurface,
-                        actionLabel: catalog['enabled'] == true
-                            ? 'Tarif ${plan['name']} wählen'
-                            : 'Bestellungen derzeit gesperrt',
-                        onPressed: catalog['enabled'] == true
-                            ? () => context.go('/bestellen/${plan['id']}')
-                            : null,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              plan['name'],
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              euro(plan['price_cents']),
-                              style: const TextStyle(
-                                fontSize: 38,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -1.5,
-                              ),
-                            ),
-                            Text(
-                              'einmalig für 30 Tage',
-                              style: TextStyle(color: context.palette.muted),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              '${plan['children']} ${plan['children'] == 1 ? 'Kinderzugang' : 'Kinderzugänge'}',
-                            ),
-                            Text('${plan['calls']} KI-Schritte je Laufzeit'),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Heftfotos · Lernpakete · Lernhilfe\nEigene Zugänge · Elternübersicht',
-                              style: TextStyle(
-                                height: 1.7,
-                                color: context.palette.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          Text(
-            catalog['tax_notice'],
-            style: TextStyle(fontSize: 12, color: context.palette.muted),
-          ),
-          const SizedBox(height: 24),
-          const ExpansionTile(
-            title: Text('Was ist ein KI-Schritt?'),
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: Text(
-                  'Ein KI-Schritt erkennt Material, erstellt Aufgaben oder gibt neue Lernhilfe. Auch ausdrücklich wiederholte Versuche zählen. Bei einem Fehler mit unbekanntem Verbrauch bleibt der Schritt angerechnet. Vorhandene Inhalte öffnen und Aufgaben beantworten verbraucht keine zusätzlichen KI-Schritte.',
-                ),
-              ),
-            ],
-          ),
-          const ExpansionTile(
-            title: Text('Wann kann mein Kind anfangen?'),
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: Text(
-                  'Nach deiner Bestellung erhältst du die Bankverbindung und einen eindeutigen Verwendungszweck. Wir prüfen den Zahlungseingang und schalten manuell frei. Auf ausdrücklichen Wunsch startet ihr schon vor Ablauf der 14-tägigen Widerrufsfrist. Sonst beginnt die Laufzeit frühestens danach.',
-                ),
-              ),
-            ],
-          ),
-          const ExpansionTile(
-            title: Text('Braucht mein Kind eine E-Mail-Adresse?'),
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: Text(
-                  'Nein. Du erstellst einen eigenen Kinderzugang mit Benutzername und sicherem Passwort. Dein Kind kann sich damit selbst auf seinem Gerät anmelden.',
-                ),
-              ),
-            ],
-          ),
-          TextButton(
-            onPressed: () => context.go('/bedingungen'),
-            child: const Text('Vertragsbedingungen & Widerruf'),
+          const Notice(
+            'Tarifvorschau · noch nicht bestellbar. Der kostenlose Testzugang ist davon getrennt.',
           ),
         ],
-      ),
+        const SizedBox(height: 24),
+        if (plans.isNotEmpty) StorePlanComparison(plans),
+        const SizedBox(height: 16),
+        if (plans.isEmpty)
+          const Panel(child: Text('Zurzeit werden keine Tarife angeboten.')),
+        LayoutBuilder(
+          builder: (context, size) {
+            final columns = size.maxWidth >= 920
+                ? 3
+                : size.maxWidth >= 620
+                ? 2
+                : 1;
+            final width = (size.maxWidth - (columns - 1) * 16) / columns;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                for (final plan in plans)
+                  SizedBox(
+                    width: width,
+                    child: ActionPanel(
+                      color: context.palette.panelSurface,
+                      actionLabel: enabled
+                          ? 'Tarif ${plan['name']} wählen'
+                          : 'Bestellungen derzeit gesperrt',
+                      onPressed: enabled
+                          ? () => context.go('/bestellen/${plan['id']}')
+                          : null,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '${plan['name']}',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            euro(plan['price_cents']),
+                            style: const TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.5,
+                            ),
+                          ),
+                          Text(
+                            'einmalig für $duration Tage',
+                            style: TextStyle(color: context.palette.muted),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            '${plan['children']} ${plan['children'] == 1 ? 'Kinderzugang' : 'Kinderzugänge'}',
+                          ),
+                          Text(
+                            '${plan['calls']} KI-Schritte für die gesamte Laufzeit',
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Heftfotos · Lernpakete · Lernhilfe\nEigene Zugänge · Elternübersicht',
+                            style: TextStyle(
+                              height: 1.7,
+                              color: context.palette.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        if (catalog['tax_notice'] is String)
+          Text(
+            catalog['tax_notice'] as String,
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
+          ),
+        const SizedBox(height: 24),
+        if (offer.available)
+          const ExpansionTile(
+            title: Text('Was passiert nach den 30 kostenlosen Tagen?'),
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: Text(
+                  'Die Testphase endet ohne automatische Bestellung oder Abbuchung. Gespeicherte Inhalte bleiben erreichbar. Wenn ihr weitere KI-Schritte möchtet, könnt ihr freiwillig einen verfügbaren Tarif wählen. Eine kostenpflichtige Laufzeit ist eine separate Bestellung; sie beginnt nach geprüfter Zahlung und gegebenenfalls nach der Widerrufsfrist, auch wenn eine Testphase noch läuft.',
+                ),
+              ),
+            ],
+          ),
+        const ExpansionTile(
+          title: Text('Was ist ein KI-Schritt?'),
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: Text(
+                'Ein KI-Schritt erkennt Material, erstellt Aufgaben oder gibt neue Lernhilfe. Auch ausdrücklich wiederholte Versuche zählen. Bei einem Fehler mit unbekanntem Verbrauch bleibt der Schritt angerechnet. Vorhandene Inhalte öffnen und Aufgaben beantworten verbraucht keine zusätzlichen KI-Schritte. KI kann Fehler machen; ein bestimmter Lernerfolg wird nicht zugesichert.',
+              ),
+            ),
+          ],
+        ),
+        const ExpansionTile(
+          title: Text('Wann beginnt ein bezahlter Tarif?'),
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: Text(
+                'Nach deiner Bestellung erhältst du die Bankverbindung und einen eindeutigen Verwendungszweck. Wir prüfen den Zahlungseingang und schalten manuell frei. Auf ausdrücklichen Wunsch startet ihr schon vor Ablauf der 14-tägigen Widerrufsfrist. Sonst beginnt die Laufzeit frühestens danach. Eine vorhandene Testphase wird dadurch nicht verlängert oder neu gestartet.',
+              ),
+            ),
+          ],
+        ),
+        const ExpansionTile(
+          title: Text('Braucht mein Kind eine E-Mail-Adresse?'),
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: Text(
+                'Nein. Du erstellst einen eigenen Kinderzugang mit Benutzername und sicherem Passwort. Dein Kind kann sich damit selbst auf seinem Gerät anmelden.',
+              ),
+            ),
+          ],
+        ),
+        TextButton(
+          onPressed: () => context.go('/bedingungen'),
+          child: const Text('Vertragsbedingungen & Widerruf'),
+        ),
+      ],
     );
   }
 }
@@ -480,6 +540,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         child: const Text(
                           'Vorhandene offene Bestellung ansehen',
                         ),
+                      ),
+                    ],
+                    if (PublicTrialOffer.fromCatalog(catalog).available) ...[
+                      const SizedBox(height: 16),
+                      const Notice(
+                        'Dies ist eine separate kostenpflichtige Bestellung. Ein bezahlter Tarif kann nach geprüfter Zahlung und gegebenenfalls der Widerrufsfrist bereits während einer Testphase beginnen. Die Testphase wird nicht verlängert oder neu gestartet.',
                       ),
                     ],
                     ExpansionTile(
@@ -909,10 +975,31 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   'Freigeschaltet bis ${calendar(data['access']['ends'])}',
                                 'scheduled' =>
                                   'Start am ${calendar(data['access']['starts'])}',
+                                'trial' =>
+                                  'Kostenlos testen bis ${trialDeadline(data['access']['ends'])}',
+                                'trial_expired' =>
+                                  'Kostenlose Testphase beendet am ${trialDeadline(data['access']['trial']?['ends'])}',
                                 'existing' =>
                                   'Euer bisheriger Zugang bleibt bestehen.',
                                 _ => 'Aktuell keine bezahlte Laufzeit. Gespeicherte Inhalte bleiben erreichbar.',
                               }),
+                              if (data['access']['state'] == 'trial') ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${data['access']['trial']?['children'] ?? 'Nicht gemeldete Anzahl'} Kinderzugang · bis zu ${data['access']['trial']?['calls'] ?? 'nicht gemeldete Anzahl'} KI-Schritte für die gesamte 30-tägige Testphase',
+                                ),
+                                const Text(
+                                  'Keine automatische Bestellung oder Verlängerung.',
+                                ),
+                                if (data['access']['scheduled_paid'] is Map)
+                                  Text(
+                                    'Bereits bezahlter Tarif ${data['access']['scheduled_paid']['plan']}: Start am ${calendar(data['access']['scheduled_paid']['starts'])}.',
+                                  ),
+                              ],
+                              if (data['access']['state'] == 'trial_expired')
+                                const Text(
+                                  'Es wurde keine automatische Bestellung oder Abbuchung ausgelöst. Gespeicherte Inhalte bleiben erreichbar.',
+                                ),
                             ],
                           ),
                         ),
@@ -934,15 +1021,37 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         ),
                                         (
                                           'Zugangsstatus',
-                                          '${data['access']['state'] ?? 'nicht gemeldet'}',
+                                          switch (data['access']['state']) {
+                                            'trial' => 'Kostenlose Testphase',
+                                            'trial_expired' =>
+                                              'Kostenlose Testphase beendet',
+                                            'active' => 'Bezahlter Tarif aktiv',
+                                            'scheduled' =>
+                                              'Bezahlter Tarif vorgemerkt',
+                                            'existing' => 'Bestehender Zugang',
+                                            _ =>
+                                              'Aktuell keine aktive Laufzeit',
+                                          },
                                         ),
                                         (
                                           'Laufzeitbeginn',
-                                          calendar(data['access']['starts']),
+                                          calendar(
+                                            data['access']['starts'] ??
+                                                data['access']['trial']?['starts'],
+                                          ),
                                         ),
                                         (
                                           'Laufzeitende',
-                                          calendar(data['access']['ends']),
+                                          data['access']['state'] == 'trial' ||
+                                                  data['access']['state'] ==
+                                                      'trial_expired'
+                                              ? trialDeadline(
+                                                  data['access']['ends'] ??
+                                                      data['access']['trial']?['ends'],
+                                                )
+                                              : calendar(
+                                                  data['access']['ends'],
+                                                ),
                                         ),
                                       ]) ...[
                                         Text(
@@ -1840,6 +1949,9 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
     text: const JsonEncoder.withIndent('  ').convert(baseline['plans']),
   );
   late bool enabled = baseline['enabled'];
+  late bool trialEnabled = baseline['trial_enabled'] == true;
+  bool get trialSupported =>
+      baseline['trial_enabled'] is bool && baseline['trial_missing'] is List;
   late String tax = baseline['tax_mode'];
   bool busy = false;
   final bankFocus = FocusNode(), taxFocus = FocusNode();
@@ -1873,6 +1985,7 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
       iban.text != baseline['iban'] ||
       bank.text != baseline['bank_name'] ||
       enabled != baseline['enabled'] ||
+      trialEnabled != (baseline['trial_enabled'] == true) ||
       tax != baseline['tax_mode'] ||
       plans.text !=
           const JsonEncoder.withIndent('  ').convert(baseline['plans']);
@@ -1905,6 +2018,9 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
       if (remote['revision'] is! int ||
           remote['plans'] is! List ||
           remote['enabled'] is! bool ||
+          (trialSupported &&
+              (remote['trial_enabled'] is! bool ||
+                  remote['trial_missing'] is! List)) ||
           [
             'recipient',
             'iban',
@@ -1935,7 +2051,7 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
       final confirmed = await confirmDialog(
         context,
         'Verkaufsentwurf mit Serverstand abgleichen?',
-        'Geladene Serverrevision: ${remote['revision']}\n\nServer-Tarife:\n${plansSummary(remote['plans'])}\n\nDein Tarifentwurf:\n${plansSummary(plans.text)}\n\nServer-Bankdaten: ${remote['recipient']} · ${remote['iban']} · ${remote['bank_name']}\nServer-Steuerangabe: ${remote['tax_mode']} · Bestellungen freigegeben: ${remote['enabled']}\n\nUnveränderte lokale Felder übernehmen den aktuellen Serverwert. Von dir bearbeitete Felder bleiben als Entwurf erhalten. Es wird nichts veröffentlicht; der nächste ausdrückliche Speicherversuch ist an diese Revision gebunden.',
+        'Geladene Serverrevision: ${remote['revision']}\n\nServer-Tarife:\n${plansSummary(remote['plans'])}\n\nDein Tarifentwurf:\n${plansSummary(plans.text)}\n\nServer-Bankdaten: ${remote['recipient']} · ${remote['iban']} · ${remote['bank_name']}\nServer-Steuerangabe: ${remote['tax_mode']} · Bestellungen freigegeben: ${remote['enabled']} · Kostenlose Testphase: ${remote['trial_enabled'] == true ? 'freigegeben' : 'nicht freigegeben'}\n\nUnveränderte lokale Felder übernehmen den aktuellen Serverwert. Von dir bearbeitete Felder bleiben als Entwurf erhalten. Es wird nichts veröffentlicht; der nächste ausdrückliche Speicherversuch ist an diese Revision gebunden.',
         confirmLabel: 'Serverstand übernehmen & Entwurf behalten',
       );
       if (!confirmed || !mounted || !identical(widget.state.user, owner)) {
@@ -1956,6 +2072,9 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
               .convert(remote['plans']);
         }
         if (enabled == previous['enabled']) enabled = remote['enabled'];
+        if (trialEnabled == (previous['trial_enabled'] == true)) {
+          trialEnabled = remote['trial_enabled'] == true;
+        }
         if (tax == previous['tax_mode']) tax = remote['tax_mode'];
         rebasedData = remote;
         bankErrors.clear();
@@ -2040,9 +2159,43 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         heading('Verkauf einrichten'),
+        const SizedBox(height: 16),
+        heading('Kostenlose Testphase für neue Familien'),
+        const Text(
+          'Einmalig 30 Tage nach verifizierter E-Mail. Die bestehenden begrenzten Kinder-, Aufruf- und Kostenkontingente gelten für die gesamte Testphase. Keine automatische Bestellung oder Verlängerung.',
+        ),
+        const SizedBox(height: 12),
+        if (!trialSupported)
+          const Notice(
+            'Dieser Server meldet noch keine vollständige Testphasen-Konfiguration. Eine Freigabe ist hier nicht möglich.',
+            warning: true,
+          )
+        else if ((baseline['trial_missing'] as List).isEmpty)
+          const Text(
+            'Voraussetzungen für die kostenlose Testphase sind im geladenen Stand erfüllt. Beim Speichern wird erneut geprüft.',
+          )
+        else
+          for (final item in baseline['trial_missing'] as List)
+            Text('Noch erforderlich für die kostenlose Testphase: $item'),
+        const Text(
+          'Die kostenlose Testphase benötigt vollständige Betreiberangaben und funktionierenden E-Mail-Versand. Bank- und Steuerangaben betreffen den getrennten kostenpflichtigen Verkauf.',
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('30 Tage Testphase für neue Familien freigeben'),
+          subtitle: const Text(
+            'Ändert nur den ungespeicherten Entwurf. Erst Speichern veröffentlicht die Freigabe; bestehende Familien werden nicht neu gestartet.',
+          ),
+          value: trialEnabled,
+          onChanged: busy || !trialSupported
+              ? null
+              : (value) => setState(() => trialEnabled = value),
+        ),
+        const SizedBox(height: 24),
+        heading('Kostenpflichtigen Verkauf vorbereiten'),
         if ((baseline['missing'] as List).isNotEmpty) ...[
           for (final item in baseline['missing'] as List)
-            Text('Noch erforderlich: $item'),
+            Text('Noch erforderlich für kostenpflichtige Bestellungen: $item'),
           if ((baseline['missing'] as List).contains(
             'Kontoinhaber und geprüfte IBAN',
           ))
@@ -2331,6 +2484,7 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
               await widget.state.api.put('/admin/store', {
                 'revision': baseline['revision'],
                 'enabled': enabled,
+                if (trialSupported) 'trial_enabled': trialEnabled,
                 'recipient': recipient.text,
                 'iban': iban.text,
                 'bank_name': bank.text,

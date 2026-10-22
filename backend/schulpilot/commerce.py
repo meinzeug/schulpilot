@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 
 from . import schemas as s
 from .config import runtime_settings
-from .db import BankOrder, Child, Family, StoreConfiguration, get_db, now
+from .db import BankOrder, Child, Family, FamilyTrial, Membership, StoreConfiguration, get_db, now
 from .security import admin, audit, decrypt, digest, encrypt, family_access, insert_ignore, parent, rate_limit
 
 router = APIRouter(tags=["Verkauf"])
@@ -37,6 +37,7 @@ class Plan(s.Strict):
 
 class StoreSettings(s.Strict):
     enabled: bool = False
+    trial_enabled: bool = False
     recipient: str = Field(default="", max_length=160)
     iban: str = Field(default="", max_length=40)
     bank_name: str = Field(default="", max_length=160)
@@ -78,6 +79,97 @@ def prerequisites(db, config):
     if not site.mail_ready:
         missing.append("E-Mail-Versand für Bestellbestätigungen")
     return missing
+
+
+def trial_prerequisites(db):
+    site = runtime_settings(db)
+    missing = []
+    if not all((site.operator_name, site.operator_address, site.operator_support_email)):
+        missing.append("Vollständige Betreiberangaben")
+    if not site.mail_ready:
+        missing.append("E-Mail-Versand zur Kontobestätigung")
+    return missing
+
+
+def trial_catalog(db, config):
+    site = runtime_settings(db)
+    return {"enabled": config.trial_enabled and not trial_prerequisites(db), "duration_days": 30,
+            "children": min(1, site.default_child_limit), "calls": site.default_call_limit,
+            "payment_required": False, "auto_renew": False, "starts_on": "verified_email",
+            "notice": "Einmalige kostenlose Testphase für neue Familien nach E-Mail-Bestätigung. Begrenzte KI-Nutzung; bestehende Kosten- und Systemgrenzen gelten weiter. Keine automatische Bestellung oder Verlängerung."}
+
+
+def registration_notice(db):
+    config, _ = store(db)
+    if trial_catalog(db, config)["enabled"]:
+        return "Neue Familien können nach E-Mail-Bestätigung die freigeschaltete kostenlose 30-Tage-Testphase nutzen. Keine automatische Bestellung."
+    if config.enabled and not prerequisites(db, config):
+        return "Neue KI-Aufträge benötigen nach der E-Mail-Bestätigung einen durch geprüften Zahlungseingang freigeschalteten Tarif."
+    return "Der Lernzugang für neue Familien wird noch vorbereitet. Neue KI-Aufträge sind bis zur Freigabe einer Testphase oder eines bezahlten Tarifs gesperrt."
+
+
+def prepare_trial(db, family, user, site):
+    """Only registration calls this; no backfill of any existing family."""
+    config, _ = store(db)
+    if not config.trial_enabled or trial_prerequisites(db) or family.synthetic:
+        return None
+    family.commerce_required = True
+    family.plan = "Testphase nach E-Mail-Bestätigung"
+    family.child_limit, family.call_limit, family.budget_micros = (
+        min(1, site.default_child_limit), site.default_call_limit, site.default_budget_micros)
+    row = FamilyTrial(family_id=family.id, owner_user_id=user.id, child_limit=family.child_limit,
+        call_limit=family.call_limit, budget_micros=family.budget_micros)
+    db.add(row)
+    audit(db, user.id, "trial.prepared", family.id)
+    return row
+
+
+def activate_trials(db, user):
+    """Once, after verified mail/OIDC: Family lock serializes distinct links."""
+    if user.role != "parent" or not user.verified or user.disabled:
+        return
+    candidates = list(db.scalars(select(FamilyTrial.family_id).where(
+        FamilyTrial.owner_user_id == user.id, FamilyTrial.starts.is_(None)).order_by(FamilyTrial.family_id).limit(20)))
+    for family_id in candidates:
+        if db.bind.dialect.name == "postgresql":
+            family = db.scalar(select(Family).where(Family.id == family_id).with_for_update())
+        else:
+            db.execute(update(Family).where(Family.id == family_id).values(name=Family.name))
+            family = db.get(Family, family_id, populate_existing=True)
+        row = db.get(FamilyTrial, family_id, populate_existing=True)
+        member = db.scalar(select(Membership).where(Membership.family_id == family_id,
+            Membership.user_id == user.id, Membership.permission == "owner"))
+        if not family or family.synthetic or not member or not row or row.owner_user_id != user.id or row.starts is not None:
+            continue
+        row.starts = int(now())
+        row.ends = row.starts + 30 * DAY
+        if not current_order(db, family):
+            family.plan = "Kostenlose Testphase"
+        audit(db, user.id, "trial.started", family_id)
+
+
+def trial_data(row, current=None):
+    if row is None:
+        return None
+    current = int(now()) if current is None else current
+    return {"state": "pending" if row.starts is None else "active" if row.starts <= current < row.ends else "expired",
+            "starts": row.starts, "ends": row.ends, "duration_days": 30, "children": row.child_limit,
+            "calls": row.call_limit, "budget_micros_usd": row.budget_micros, "auto_renew": False,
+            "payment_required": False}
+
+
+def current_trial(db, family, current=None):
+    current = int(now()) if current is None else current
+    row = db.get(FamilyTrial, family.id)
+    return row if row and row.starts is not None and row.starts <= current < row.ends else None
+
+
+def effective_child_limit(db, family):
+    if family.commerce_required and not current_order(db, family):
+        if trial := current_trial(db, family):
+            return trial.child_limit
+    # Existing paid/admin family limits retain their prior authority.
+    return family.child_limit
 
 
 def tax_notice(mode):
@@ -131,6 +223,7 @@ def catalog(db=Depends(get_db)):
         "plans": [p.model_dump() for p in config.plans],
         "tax_notice": tax_notice(config.tax_mode),
         "terms_version": TERMS_VERSION,
+        "trial": trial_catalog(db, config),
         "terms": contract_text(seller_data(db, config)),
     }
 
@@ -140,12 +233,17 @@ def admin_store(p=Depends(admin), db=Depends(get_db)):
     config, revision = store(db)
     audit(db, p.user.id, "store.settings_read", "store")
     db.commit()
-    return {**config.model_dump(), "revision": revision, "missing": prerequisites(db, config)}
+    return {**config.model_dump(), "revision": revision, "missing": prerequisites(db, config),
+            "trial_missing": trial_prerequisites(db)}
 
 
 @router.put("/admin/store")
 def update_store(data: StoreUpdate, p=Depends(admin), db=Depends(get_db)):
     config = StoreSettings(**data.model_dump(exclude={"revision"}))
+    if "trial_enabled" not in data.model_fields_set:
+        config.trial_enabled = store(db)[0].trial_enabled
+    if config.trial_enabled and trial_prerequisites(db):
+        raise HTTPException(422, "Kostenlose Testphase kann noch nicht starten: " + ", ".join(trial_prerequisites(db)))
     if config.enabled and prerequisites(db, config):
         raise HTTPException(422, "Verkauf kann noch nicht starten: " + ", ".join(prerequisites(db, config)))
     insert_ignore(db, StoreConfiguration, {"id": 1, "encrypted_config": encrypt("{}"), "revision": 0})
@@ -156,6 +254,7 @@ def update_store(data: StoreUpdate, p=Depends(admin), db=Depends(get_db)):
             encrypted_config=encrypt(config.model_dump_json()),
             revision=data.revision + 1,
             ever_enabled=True if config.enabled else StoreConfiguration.ever_enabled,
+            ever_trial_enabled=True if config.trial_enabled else StoreConfiguration.ever_trial_enabled,
         )
     )
     if not result.rowcount:
@@ -186,14 +285,21 @@ def access(db, family):
     order = current_order(db, family)
     if order:
         return {"state": "active", "plan": order.offer["name"], "starts": order.starts, "ends": order.ends}
+    trial = current_trial(db, family)
     future = db.scalar(
         select(BankOrder)
         .where(BankOrder.family_id == family.id, BankOrder.status == "paid", BankOrder.starts > now())
         .order_by(BankOrder.starts)
         .limit(1)
     )
+    if trial:
+        return {"state": "trial", "plan": "Kostenlose Testphase", "starts": trial.starts, "ends": trial.ends,
+                "trial": trial_data(trial), "scheduled_paid": {"starts": future.starts, "ends": future.ends,
+                    "plan": future.offer["name"]} if future else None}
+    ended_trial = db.get(FamilyTrial, family.id)
     return {
-        "state": "scheduled" if future else "inactive",
+        "trial": trial_data(ended_trial),
+        "state": "scheduled" if future else "trial_expired" if ended_trial and ended_trial.starts is not None else "inactive",
         "plan": future.offer["name"] if future else family.plan,
         "starts": future.starts if future else None,
         "ends": future.ends if future else None,
@@ -206,6 +312,9 @@ def usage_terms(db, family, *, enforce=False):
         return f"{family.id}:{period}", family.call_limit, family.budget_micros
     order = current_order(db, family)
     if not order:
+        trial = current_trial(db, family)
+        if trial:
+            return f"{family.id}:trial", trial.call_limit, trial.budget_micros
         if enforce:
             raise HTTPException(
                 403,

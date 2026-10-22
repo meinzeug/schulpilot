@@ -114,6 +114,9 @@ class ParentWorkspaceHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 720) {
+      return _CompactParentHero(this);
+    }
     final palette = context.palette;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -203,6 +206,116 @@ class ParentWorkspaceHero extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Mobile keeps the actual page title and every supplied action visible.
+class _CompactParentHero extends StatefulWidget {
+  final ParentWorkspaceHero content;
+  const _CompactParentHero(this.content);
+
+  @override
+  State<_CompactParentHero> createState() => _CompactParentHeroState();
+}
+
+class _CompactParentHeroState extends State<_CompactParentHero> {
+  bool expanded = false;
+
+  @override
+  void didUpdateWidget(covariant _CompactParentHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content.title != widget.content.title ||
+        oldWidget.content.subtitle != widget.content.subtitle) {
+      expanded = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = widget.content;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        key: const ValueKey('compact-parent-heading'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    content.title,
+                    style: TextStyle(
+                      fontFamily: 'SpaceGrotesk',
+                      fontSize: 24,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700,
+                      color: context.palette.ink,
+                    ),
+                  ),
+                ),
+              ),
+              Semantics(
+                expanded: expanded,
+                child: IconButton(
+                  tooltip: expanded
+                      ? 'Bereichsinfo schließen'
+                      : 'Über diesen Bereich',
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  onPressed: () => setState(() => expanded = !expanded),
+                  icon: Icon(
+                    expanded ? Icons.close_rounded : Icons.info_outline_rounded,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          expanded
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        content.eyebrow,
+                        style: TextStyle(
+                          color: context.palette.cyanInk,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        content.subtitle,
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 15,
+                          height: 1.5,
+                        ),
+                      ),
+                      if (content.facts.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          children: content.facts,
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+          if (content.actions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(spacing: 10, runSpacing: 10, children: content.actions),
+          ],
+        ],
+      ),
     );
   }
 }

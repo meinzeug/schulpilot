@@ -108,9 +108,13 @@ def register(data: s.Register, request: Request, db=Depends(get_db)):
     require_mail()
     rate_limit(db, "register:" + digest(request.client.host), 5, 3600)
     email = str(data.email).lower()
+    from .commerce import registration_notice
+
+    reply = {"message": "Falls diese Adresse registriert werden kann, erhältst du eine Bestätigung per E-Mail.",
+             "access_notice": registration_notice(db)}
     if db.scalar(select(User.id).where(User.username == email)):
         # Uniform reply avoids revealing existing registrations.
-        return {"message": "Falls diese Adresse registriert werden kann, erhältst du eine Bestätigung per E-Mail."}
+        return reply
     user = User(
         username=email,
         email=email,
@@ -127,17 +131,18 @@ def register(data: s.Register, request: Request, db=Depends(get_db)):
         call_limit=site.default_call_limit,
         budget_micros=site.default_budget_micros,
     )
-    from .db import StoreConfiguration
-
-    shop = db.get(StoreConfiguration, 1)
-    if shop and shop.ever_enabled:
-        family.commerce_required = True
-        family.call_limit = 0
-        family.child_limit = 1
-        family.plan = "Noch kein Tarif"
+    # New public registrations are commercial even while launch flags are off.
+    # Only the separately verified trial or a checked payment grants AI access.
+    family.commerce_required = True
+    family.call_limit = 0
+    family.child_limit = 1
+    family.plan = "Noch kein Tarif"
     db.add_all([user, family])
     db.flush()
     db.add(Membership(family_id=family.id, user_id=user.id, permission="owner"))
+    from .commerce import prepare_trial
+
+    prepare_trial(db, family, user, site)
     token = new_token(db, "verify", user.id, ttl=86400)
     send_link(
         email,
@@ -150,7 +155,7 @@ def register(data: s.Register, request: Request, db=Depends(get_db)):
         db.commit()
     except IntegrityError:
         db.rollback()
-    return {"message": "Falls diese Adresse registriert werden kann, erhältst du eine Bestätigung per E-Mail."}
+    return reply
 
 
 @router.post("/verify")
@@ -158,6 +163,9 @@ def verify(data: s.TokenRequest, db=Depends(get_db)):
     token = consume_token(db, data.token, "verify")
     user = db.get(User, token.user_id)
     user.verified = True
+    from .commerce import activate_trials
+
+    activate_trials(db, user)
     db.commit()
     return {"message": "E-Mail bestätigt. Du kannst dich jetzt anmelden."}
 

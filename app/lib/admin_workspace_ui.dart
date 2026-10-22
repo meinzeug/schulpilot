@@ -110,6 +110,9 @@ class AdminWorkspaceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 720) {
+      return _CompactAdminHeader(this);
+    }
     final p = context.palette;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -201,6 +204,103 @@ class AdminWorkspaceHeader extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _CompactAdminHeader extends StatefulWidget {
+  final AdminWorkspaceHeader content;
+  const _CompactAdminHeader(this.content);
+
+  @override
+  State<_CompactAdminHeader> createState() => _CompactAdminHeaderState();
+}
+
+class _CompactAdminHeaderState extends State<_CompactAdminHeader> {
+  bool expanded = false;
+
+  @override
+  void didUpdateWidget(covariant _CompactAdminHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content.currentPath != widget.content.currentPath ||
+        oldWidget.content.title != widget.content.title) {
+      expanded = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = widget.content;
+    return Column(
+      key: const ValueKey('compact-admin-heading'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            if (content.currentPath != '/admin')
+              IconButton(
+                tooltip: 'Betriebsübersicht',
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: () => openRoute(context, '/admin'),
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  content.title,
+                  style: TextStyle(
+                    fontFamily: 'SpaceGrotesk',
+                    fontSize: 24,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: context.palette.ink,
+                  ),
+                ),
+              ),
+            ),
+            Semantics(
+              expanded: expanded,
+              child: IconButton(
+                tooltip: expanded
+                    ? 'Bereichsinfo schließen'
+                    : 'Über diesen Bereich',
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: () => setState(() => expanded = !expanded),
+                icon: Icon(
+                  expanded ? Icons.close_rounded : Icons.info_outline_rounded,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (expanded)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'SCHULPILOT · BETRIEB',
+                  style: TextStyle(
+                    color: context.palette.cyanInk,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  content.subtitle,
+                  style: TextStyle(
+                    color: context.palette.muted,
+                    fontSize: 15,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

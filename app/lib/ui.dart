@@ -1291,8 +1291,19 @@ class WorkspaceShell extends StatelessWidget {
       appBar: desktop
           ? null
           : AppBar(
-              title: brand(),
-              toolbarHeight: 68,
+              title: width < 420
+                  ? Semantics(
+                      label: 'SCHULPILOT',
+                      child: ExcludeSemantics(
+                        child: Image.asset(
+                          'assets/brand/schulpilot-mark.png',
+                          width: 32,
+                          height: 32,
+                        ),
+                      ),
+                    )
+                  : brand(),
+              toolbarHeight: 56,
               actions: [
                 SchulbuddyButton(),
                 AppearanceToggle(state),
@@ -1391,7 +1402,7 @@ class WorkspaceShell extends StatelessWidget {
                             : width < 360
                             ? 16
                             : 20,
-                        desktop ? 32 : 24,
+                        desktop ? 32 : 12,
                         sidebar
                             ? 36
                             : desktop
@@ -1410,7 +1421,9 @@ class WorkspaceShell extends StatelessWidget {
                             children: [
                               if (state.isDemo)
                                 Padding(
-                                  padding: EdgeInsets.only(bottom: 20),
+                                  padding: EdgeInsets.only(
+                                    bottom: desktop ? 20 : 10,
+                                  ),
                                   child: Tag('Demo · nur Beispieldaten'),
                                 ),
                               if (!state.isDemo &&
@@ -1425,7 +1438,7 @@ class WorkspaceShell extends StatelessWidget {
                                   subtitle: showTitle ? subtitle : null,
                                   actions: actions,
                                 ),
-                                SizedBox(height: 26),
+                                SizedBox(height: desktop ? 26 : 16),
                               ],
                               child,
                               if (browser &&

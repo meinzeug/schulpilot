@@ -254,7 +254,9 @@ void main() {
       await show(tester, VocabularyScreen(state, childId: 'child'));
       await tap(tester, find.text('Prüfen'));
       await tap(tester, find.text('Zum Wortschatz'));
-      expect(find.text('Dein Wortschatz'), findsOneWidget);
+      expect(find.text('Apfel'), findsOneWidget);
+      expect(find.text('Wort aufdecken'), findsOneWidget);
+      expect(find.text('Zum Wortschatz'), findsNothing);
       expect(requests, hasLength(2));
     },
   );
@@ -275,7 +277,8 @@ void main() {
       words['items'][0]['word'] = 'pear';
       words['items'][0]['meaning'] = 'Birne';
       words['items'][0]['revision'] = 2;
-      await tap(tester, find.byTooltip('Aktualisieren'));
+      await tap(tester, find.byTooltip('Weitere Wörteraktionen'));
+      await tap(tester, find.text('Aktualisieren'));
       expect(find.text('pear'), findsNothing);
       expect(find.text('Birne'), findsOneWidget);
       expect(find.text('Wort aufdecken'), findsOneWidget);
@@ -370,12 +373,20 @@ void main() {
         }),
       );
       await show(tester, HomeworkScreen(state, childId: 'child'));
+      await tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       await tap(tester, find.text('Foto noch prüfen'));
       await tap(tester, find.text('Foto suchen'));
       await tester.enterText(input('In geladenen Fotos suchen'), 'Brü');
       await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox());
       await show(tester, HomeworkScreen(state, childId: 'child'));
+      await tap(
+        tester,
+        find.byKey(const ValueKey('child-mobile-filter-toggle')),
+      );
       expect(
         tester
             .widget<TextField>(input('In geladenen Fotos suchen'))
@@ -594,7 +605,7 @@ void main() {
       ]);
     });
     await show(tester, ChildAccount(state));
-    await tap(tester, find.text('Geräte aktualisieren'));
+    await tap(tester, find.byTooltip('Geräte aktualisieren'));
     expect(gets, 2);
     expect(find.text('Neues Handy'), findsOneWidget);
     expect(find.text('Tablet'), findsNothing);

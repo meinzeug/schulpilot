@@ -56,6 +56,24 @@ class StoreConfiguration(Base):
     encrypted_config = Column(Text, nullable=False)
     revision = Column(Integer, nullable=False, default=1)
     ever_enabled = Column(Boolean, nullable=False, default=False, server_default=false())
+    ever_trial_enabled = Column(Boolean, nullable=False, default=False, server_default=false())
+
+
+class FamilyTrial(Base):
+    __tablename__ = "family_trials"
+    family_id = Column(ForeignKey("families.id", ondelete="CASCADE"), primary_key=True)
+    owner_user_id = Column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    created = Column(Integer, default=lambda: int(now()), nullable=False)
+    starts = Column(Integer)
+    ends = Column(Integer)
+    child_limit = Column(Integer, nullable=False)
+    call_limit = Column(Integer, nullable=False)
+    budget_micros = Column(Integer, nullable=False)
+    version = Column(String(40), default="verified-family-trial-1", nullable=False)
+    __table_args__ = (
+        CheckConstraint("child_limit >= 1 AND call_limit >= 0 AND budget_micros >= 0", name="ck_trial_limits"),
+        CheckConstraint("(starts IS NULL AND ends IS NULL) OR (starts IS NOT NULL AND ends IS NOT NULL AND ends = starts + 2592000)", name="ck_trial_period"),
+    )
 
 
 class BankOrder(Base):

@@ -238,6 +238,7 @@ void main() {
       'new_words': 0,
     };
     await f.open(t, calls, wordListing: data);
+    await f.tap(t, find.byTooltip('Über diesen Bereich'));
     expect(find.text('2 bestätigte Wörter'), findsOneWidget);
     expect(find.textContaining('1 zum Wiederholen · 0 neu'), findsOneWidget);
   });

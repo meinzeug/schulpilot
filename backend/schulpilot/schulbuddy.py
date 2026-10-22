@@ -7,6 +7,7 @@ rebuilt before and after AI.
 """
 
 import json
+import re
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import ValidationError
@@ -390,18 +391,46 @@ def read_turn(turn_id: str, p=Depends(authenticated), db=Depends(get_db)):
     return public_turn(db, turn)
 
 
+_INLINE_CITATION = re.compile(r"\ue200cite((?:\ue202[A-Za-z0-9_-]{1,8})+)\ue201")
+_CITATION_DELIMITERS = frozenset("\ue200\ue201\ue202")
+
+
+def checked_display_text(value, verified_refs):
+    """Remove only known inline cite tokens backed by an actual checked chip.
+
+    Preserve every other character, including mathematical notation, paragraph
+    whitespace and code indentation. A provider token is never a source proof.
+    """
+    if value is None or not _CITATION_DELIMITERS.intersection(value):
+        return value
+
+    def remove(match):
+        if not all(ref in verified_refs for ref in match[1].split("\ue202")[1:]):
+            raise ProviderError("Schulbuddy konnte die Quellenmarkierung nicht prüfen. Keine Antwort übernommen.")
+        return ""
+
+    checked = _INLINE_CITATION.sub(remove, value)
+    if _CITATION_DELIMITERS.intersection(checked) or not checked.strip():
+        raise ProviderError("Schulbuddy konnte die Darstellung nicht prüfen. Keine Antwort übernommen.")
+    return checked
+
+
 def checked_reply(value, payload, refs):
     reply = BuddyOutput.model_validate(value).model_dump()
     by_ref = {s["ref"]: s for s in payload["sources"]}
     metadata = {s["ref"]: s for s in refs}
-    seen = set()
+    seen, verified_refs = set(), set()
     for citation in reply["sources"]:
         source = by_ref.get(citation["ref"])
-        if (not source or citation["quote"] not in source["content"]
+        if (not source or citation["ref"] not in metadata or citation["quote"] not in source["content"]
                 or (citation["ref"], citation["quote"]) in seen):
             raise ProviderError("Schulbuddy konnte den Quellenbeleg nicht prüfen. Keine Antwort übernommen.")
         seen.add((citation["ref"], citation["quote"]))
+        verified_refs.add(citation["ref"])
         citation.update(material_id=metadata[citation["ref"]]["id"], label=metadata[citation["ref"]]["label"])
+    reply["answer"] = checked_display_text(reply["answer"], verified_refs)
+    reply["next_question"] = checked_display_text(reply["next_question"], verified_refs)
+    reply["starters"] = [checked_display_text(text, verified_refs) for text in reply["starters"]]
     return reply
 
 

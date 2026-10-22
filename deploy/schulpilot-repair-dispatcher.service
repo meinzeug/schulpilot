@@ -6,7 +6,7 @@ Requires=schulpilot-repair.service
 [Service]
 User=schulpilot
 Group=schulpilot
-WorkingDirectory=/opt/schulpilot/current
+WorkingDirectory=/opt/schulpilot/current/backend
 EnvironmentFile=/etc/schulpilot/environment
 Environment=OPERATOR_REPAIR_SOCKET=/run/schulpilot-repair/control.sock
 ExecStart=/opt/schulpilot/current/venv/bin/python -m schulpilot.operator_repair

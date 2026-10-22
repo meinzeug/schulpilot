@@ -361,7 +361,8 @@ def test_third_party_google_email_needs_actual_mailbox_confirmation(api, mailbox
     flow, state = begin(api, google)
     callback(api, state)
     r = result(api, flow, registration=registration())
-    assert r.json() == {"status": "verification_required"}
+    assert r.json() == {"status": "verification_required", "access_notice":
+        "Der Lernzugang für neue Familien wird noch vorbereitet. Neue KI-Aufträge sind bis zur Freigabe einer Testphase oder eines bezahlten Tarifs gesperrt."}
     assert "token" not in r.json()
     assert api.get("/api/auth/me").status_code == 401
     with DB() as db:

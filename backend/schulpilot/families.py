@@ -71,6 +71,7 @@ def child_data(db, child):
 @router.get("/families/{family_id}")
 def family_detail(family_id: str, p=Depends(parent), db=Depends(get_db)):
     family, membership = family_access(db, p, family_id)
+    from .commerce import effective_child_limit
     from .learning import learning_times, summary
 
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
@@ -89,7 +90,7 @@ def family_detail(family_id: str, p=Depends(parent), db=Depends(get_db)):
         "synthetic": family.synthetic,
         "permission": membership.permission,
         "plan": family.plan,
-        "child_limit": family.child_limit,
+        "child_limit": effective_child_limit(db, family),
         "expires": family.expires,
         "children": [
             {
@@ -112,7 +113,9 @@ def create_child(family_id: str, data: s.ChildCreate, p=Depends(parent), db=Depe
     else:
         db.execute(update(Family).where(Family.id == family.id).values(name=Family.name))
     count = len(list(db.scalars(select(Child.id).where(Child.family_id == family.id))))
-    if count >= family.child_limit:
+    from .commerce import effective_child_limit
+
+    if count >= effective_child_limit(db, family):
         raise HTTPException(409, "Die enthaltene Kinderanzahl ist erreicht.")
     if any(len(x) > 80 for x in data.subjects):
         raise HTTPException(422, "Fachname zu lang.")
@@ -574,8 +577,8 @@ def export_one_child(child_id: str, include_photos: bool = True, p=Depends(paren
 
 @router.get("/families/{family_id}/export")
 def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
-    from .commerce import orders_export
-    from .db import NotificationRead, SchulbuddyTurn
+    from .commerce import orders_export, trial_data
+    from .db import FamilyTrial, NotificationRead, SchulbuddyTurn
 
     family, _ = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
@@ -602,6 +605,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                         for row in db.scalars(select(SchulbuddyTurn).where(SchulbuddyTurn.user_id == p.user.id,
                             SchulbuddyTurn.child_id.in_([c.id for c in children])))],
                     "orders": orders_export(db, family.id),
+                    "trial": trial_data(db.get(FamilyTrial, family.id)),
                     "notification_reads": [{"event_key": row.event_key, "created": row.created}
                         for row in db.scalars(select(NotificationRead).where(
                             NotificationRead.user_id == p.user.id, NotificationRead.child_id.in_([c.id for c in children])))],

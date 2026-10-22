@@ -26,15 +26,16 @@ PY
 # Preserve explicit operator activation; never auto-install/enable repair services.
 # A failed activation leaves them stopped, including after rollback. The operator
 # must verify old schema/source compatibility before an explicit restart.
-repair_state="$(ssh dorfspy python3 - <<'PY'
-import json,subprocess
+repair_state_encoded="$(ssh dorfspy python3 - <<'PY'
+import base64,json,subprocess
 from pathlib import Path
 names=('schulpilot-repair.service','schulpilot-repair-dispatcher.service')
 state={name:Path('/etc/systemd/system',name).is_file() and subprocess.run(['systemctl','is-active','--quiet',name]).returncode==0 for name in names}
 installed=[name for name in names if Path('/etc/systemd/system',name).is_file()]
 if installed:
     subprocess.run(['systemctl','stop',*reversed(installed)],check=True)
-print(json.dumps(state,separators=(',',':')))
+# ssh joins remote argv into shell text: transport only shell-safe ASCII.
+print(base64.b64encode(json.dumps(state,separators=(',',':')).encode()).decode('ascii'))
 PY
 )"
 repair_restart_done=false
@@ -42,13 +43,22 @@ trap 'if [[ "$repair_restart_done" != true ]]; then echo "Repair services remain
 ssh dorfspy "python3 /opt/schulpilot/releases/$release/deploy/activate.py $release"
 ssh dorfspy "if test -f /etc/systemd/system/schulpilot-codex.service; then python3 /opt/schulpilot/releases/$release/deploy/install_codex.py; fi"
 curl --retry 10 --retry-all-errors --retry-delay 3 --fail --silent --show-error https://schulpilot.dorfspy.de/api/health
-ssh dorfspy python3 - "$release" "$repair_state" <<'PY'
-import json,shutil,subprocess,sys
+ssh dorfspy python3 - "$release" "$repair_state_encoded" <<'PY'
+import base64,binascii,json,shutil,subprocess,sys
 from pathlib import Path
 root=Path('/opt/schulpilot/releases')/sys.argv[1]
 if Path('/opt/schulpilot/current').resolve()!=root.resolve():
     raise SystemExit('Repair restart refused: active source differs from deployed release.')
-state=json.loads(sys.argv[2])
+try:
+    encoded=sys.argv[2]
+    if len(encoded)>512:
+        raise ValueError('state size')
+    state=json.loads(base64.b64decode(encoded,validate=True))
+    names={'schulpilot-repair.service','schulpilot-repair-dispatcher.service'}
+    if not isinstance(state,dict) or set(state)!=names or any(type(value) is not bool for value in state.values()):
+        raise ValueError('state flags')
+except (IndexError,ValueError,TypeError,binascii.Error):
+    raise SystemExit('Repair restart refused: invalid service state.') from None
 name='schulpilot-repair-dispatcher.service'
 if Path('/etc/systemd/system',name).is_file():
     shutil.copy2(root/'deploy'/name,Path('/etc/systemd/system')/name)

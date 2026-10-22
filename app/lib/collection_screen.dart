@@ -75,25 +75,33 @@ class CollectionScreen extends StatelessWidget {
             selected: learning ? 'history' : 'materials',
           ),
         if (learning && state.isChild) ...[
-          const ChildSectionHero(
+          ChildSectionHero(
             eyebrow: 'Lernen',
+            compactAction: IconButton(
+              tooltip: 'Lernstand',
+              onPressed: () => openRoute(context, '/progress/$childId'),
+              icon: const Icon(Icons.insights_rounded),
+            ),
             title: 'Ein Thema. Dein nächster Schritt.',
             description: 'Hier geht es mit deinem Heftstoff weiter. Wähle eine Runde und lerne in deinem Tempo.',
             icon: Icons.auto_stories_rounded,
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              TextButton.icon(
-                onPressed: () => openRoute(context, '/progress/$childId'),
-                icon: const Icon(Icons.insights_rounded),
-                label: const Text('Lernstand'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          if (MediaQuery.sizeOf(context).width >= 720) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                TextButton.icon(
+                  onPressed: () => openRoute(context, '/progress/$childId'),
+                  icon: const Icon(Icons.insights_rounded),
+                  label: const Text('Lernstand'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ] else
+            const SizedBox(height: 8),
         ],
         if (!learning && state.isChild) ...[
           ChildSectionHero(
@@ -110,7 +118,7 @@ class CollectionScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: MediaQuery.sizeOf(context).width < 720 ? 12 : 22),
         ],
         learning
             ? PagedCollection(
@@ -761,31 +769,59 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         pages = (data?['pages'] as num? ?? 1).toInt();
     final first = total == 0 ? 0 : (page - 1) * pageSize + 1,
         last = total == 0 ? 0 : first + items.length - 1;
+    final compact = simpleLearning && MediaQuery.sizeOf(context).width < 720;
+    final resultSummary = Text(
+      total == 0
+          ? 'Keine Ergebnisse'
+          : '$first–$last von ${counted(total, widget.learning ? 'Eintrag' : 'Seite', widget.learning ? 'Einträgen' : 'Seiten')}',
+      style: TextStyle(color: context.palette.muted, fontSize: 13),
+    );
     return Column(
       key: top,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.learning) ...[
-          ChildSectionTabs(
-            tabs: const [
-              (
-                id: 'ready',
-                label: 'Offen',
-                icon: Icons.play_circle_outline_rounded,
+          Row(
+            children: [
+              Expanded(
+                child: ChildSectionTabs(
+                  tabs: const [
+                    (
+                      id: 'ready',
+                      label: 'Offen',
+                      icon: Icons.play_circle_outline_rounded,
+                    ),
+                    (id: 'later', label: 'Später', icon: Icons.event_outlined),
+                    (
+                      id: 'completed',
+                      label: 'Erledigt',
+                      icon: Icons.task_alt_rounded,
+                    ),
+                  ],
+                  selected: section,
+                  onSelected: (value) => change(() {
+                    section = value;
+                    subject = null;
+                    search.clear();
+                  }, scroll: true),
+                ),
               ),
-              (id: 'later', label: 'Später', icon: Icons.event_outlined),
-              (
-                id: 'completed',
-                label: 'Erledigt',
-                icon: Icons.task_alt_rounded,
-              ),
+              if (compact)
+                IconButton(
+                  tooltip: toolsExpanded
+                      ? 'Suche schließen'
+                      : 'Suchen & filtern',
+                  isSelected: toolsExpanded,
+                  onPressed: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() => toolsExpanded = !toolsExpanded);
+                  },
+                  icon: Badge(
+                    isLabelVisible: filtered,
+                    child: Icon(Icons.search_rounded),
+                  ),
+                ),
             ],
-            selected: section,
-            onSelected: (value) => change(() {
-              section = value;
-              subject = null;
-              search.clear();
-            }, scroll: true),
           ),
           if (data?['paused'] == true)
             const Padding(
@@ -794,9 +830,9 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                 'Heute ist Lernpause. Dein Stoff bleibt gespeichert.',
               ),
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: compact ? 8 : 16),
         ],
-        if (simpleLearning)
+        if (simpleLearning && !compact)
           Row(
             children: [
               Expanded(
@@ -915,13 +951,8 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
           Notice(error!, warning: true),
           OutlinedButton(onPressed: load, child: const Text('Erneut laden')),
         ] else ...[
-          Text(
-            total == 0
-                ? 'Keine Ergebnisse'
-                : '$first–$last von ${counted(total, widget.learning ? 'Eintrag' : 'Seite', widget.learning ? 'Einträgen' : 'Seiten')}',
-            style: TextStyle(color: context.palette.muted, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
+          resultSummary,
+          SizedBox(height: compact ? 8 : 12),
           if (items.isEmpty)
             Panel(
               child: Column(

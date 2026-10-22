@@ -188,6 +188,11 @@ Future<({AppState state, GoRouter router})> mountParent(
             ParentPlanScreen(state, childId: s.pathParameters['id']!),
       ),
       GoRoute(
+        path: '/learn/:id',
+        builder: (_, s) =>
+            Scaffold(body: Text('Lernsammlung ${s.pathParameters['id']}')),
+      ),
+      GoRoute(
         path: '/elsewhere',
         builder: (_, _) => const Scaffold(body: Text('Andere Ansicht')),
       ),

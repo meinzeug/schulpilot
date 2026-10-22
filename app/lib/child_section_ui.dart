@@ -5,8 +5,10 @@ import 'ui.dart';
 /// Shared, open section heading. The work itself stays in the foreground.
 class ChildSectionHero extends StatelessWidget {
   final String eyebrow, title, description;
+  final String? compactTitle;
   final IconData icon;
   final Widget? action;
+  final Widget? compactAction;
   final List<Widget> facts;
   const ChildSectionHero({
     super.key,
@@ -14,12 +16,17 @@ class ChildSectionHero extends StatelessWidget {
     required this.title,
     required this.description,
     required this.icon,
+    this.compactTitle,
     this.action,
+    this.compactAction,
     this.facts = const [],
   });
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 720) {
+      return _CompactChildHero(this);
+    }
     final palette = context.palette;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -118,6 +125,121 @@ class ChildSectionHero extends StatelessWidget {
   }
 }
 
+class _CompactChildHero extends StatefulWidget {
+  final ChildSectionHero content;
+  const _CompactChildHero(this.content);
+
+  @override
+  State<_CompactChildHero> createState() => _CompactChildHeroState();
+}
+
+class _CompactChildHeroState extends State<_CompactChildHero> {
+  bool expanded = false;
+
+  @override
+  void didUpdateWidget(covariant _CompactChildHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content.title != widget.content.title ||
+        oldWidget.content.eyebrow != widget.content.eyebrow) {
+      expanded = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = widget.content;
+    final palette = context.palette;
+    return Column(
+      key: const ValueKey('compact-child-heading'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  content.compactTitle ?? content.eyebrow,
+                  style: TextStyle(
+                    fontFamily: 'SpaceGrotesk',
+                    fontSize: 24,
+                    height: 1.2,
+                    color: palette.ink,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            if (content.compactAction != null) content.compactAction!,
+            Semantics(
+              expanded: expanded,
+              child: IconButton(
+                tooltip: expanded
+                    ? 'Bereichsinfo schließen'
+                    : 'Über diesen Bereich',
+                onPressed: () => setState(() => expanded = !expanded),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                icon: Icon(
+                  expanded ? Icons.close_rounded : Icons.info_outline_rounded,
+                  color: palette.muted,
+                ),
+              ),
+            ),
+          ],
+        ),
+        // Stable slots keep the explicit primary action mounted when help opens.
+        expanded
+            ? Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (content.title !=
+                        (content.compactTitle ?? content.eyebrow)) ...[
+                      Text(
+                        content.title,
+                        style: TextStyle(
+                          color: palette.ink,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      content.description,
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontSize: 15,
+                        height: 1.5,
+                      ),
+                    ),
+                    if (content.facts.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(spacing: 8, runSpacing: 8, children: content.facts),
+                    ],
+                  ],
+                ),
+              )
+            : const SizedBox.shrink(),
+        if (content.action != null) ...[
+          const SizedBox(height: 8),
+          FilledButtonTheme(
+            data: FilledButtonThemeData(
+              style: FilledButton.styleFrom(
+                backgroundColor: palette.actionPurple,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(48, 48),
+              ),
+            ),
+            child: content.action!,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class ChildHeroFact extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -152,7 +274,7 @@ class ChildHeroFact extends StatelessWidget {
 }
 
 /// The same local mode switch for words, learning, account and the mailbox.
-class ChildSectionTabs extends StatelessWidget {
+class ChildSectionTabs extends StatefulWidget {
   final List<({String id, String label, IconData icon})> tabs;
   final String selected;
   final ValueChanged<String> onSelected;
@@ -164,51 +286,124 @@ class ChildSectionTabs extends StatelessWidget {
   });
 
   @override
+  State<ChildSectionTabs> createState() => _ChildSectionTabsState();
+}
+
+class _ChildSectionTabsState extends State<ChildSectionTabs> {
+  final controller = ScrollController();
+  final viewport = GlobalKey();
+  final tabKeys = <String, GlobalKey>{};
+  List<({String id, String label, IconData icon})> get tabs => widget.tabs;
+  String get selected => widget.selected;
+  ValueChanged<String> get onSelected => widget.onSelected;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => revealSelected());
+  }
+
+  @override
+  void didUpdateWidget(covariant ChildSectionTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => revealSelected());
+    }
+  }
+
+  void revealSelected() {
+    if (!mounted ||
+        !controller.hasClients ||
+        MediaQuery.sizeOf(context).width >= 720) {
+      return;
+    }
+    final box = tabKeys[selected]?.currentContext?.findRenderObject();
+    final view = viewport.currentContext?.findRenderObject();
+    if (box is! RenderBox ||
+        view is! RenderBox ||
+        !box.hasSize ||
+        !view.hasSize) {
+      return;
+    }
+    final left =
+        box.localToGlobal(Offset.zero).dx - view.localToGlobal(Offset.zero).dx;
+    final right = left + box.size.width;
+    final delta = left < 0
+        ? left
+        : right > view.size.width
+        ? right - view.size.width
+        : 0.0;
+    if (delta != 0) {
+      controller.jumpTo(
+        (controller.offset + delta).clamp(
+          0.0,
+          controller.position.maxScrollExtent,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final compact = MediaQuery.sizeOf(context).width < 720;
+    final buttons = <Widget>[
+      for (final tab in tabs)
+        Padding(
+          key: tabKeys.putIfAbsent(tab.id, () => GlobalKey()),
+          padding: EdgeInsets.only(right: compact ? 6 : 0),
+          child: Semantics(
+            selected: selected == tab.id,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                backgroundColor: selected == tab.id
+                    ? palette.actionPurple
+                    : palette.panelSurface,
+                foregroundColor: selected == tab.id
+                    ? Colors.white
+                    : palette.ink,
+                minimumSize: Size(48, compact ? 48 : 52),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: compact ? 10 : 13,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                side: BorderSide(
+                  color: selected == tab.id
+                      ? palette.actionPurple
+                      : palette.controlBorder,
+                ),
+              ),
+              onPressed: () => onSelected(tab.id),
+              icon: Icon(tab.icon, size: 20),
+              label: Text(tab.label),
+            ),
+          ),
+        ),
+    ];
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: EdgeInsets.all(compact ? 4 : 6),
       decoration: BoxDecoration(
         color: palette.surfaceLow,
         border: Border.all(color: palette.surfaceBorder),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(compact ? 14 : 18),
       ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          for (final tab in tabs)
-            Semantics(
-              selected: selected == tab.id,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: selected == tab.id
-                      ? palette.actionPurple
-                      : palette.panelSurface,
-                  foregroundColor: selected == tab.id
-                      ? Colors.white
-                      : palette.ink,
-                  minimumSize: const Size(0, 52),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 13,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  side: BorderSide(
-                    color: selected == tab.id
-                        ? palette.actionPurple
-                        : palette.controlBorder,
-                  ),
-                ),
-                onPressed: () => onSelected(tab.id),
-                icon: Icon(tab.icon, size: 20),
-                label: Text(tab.label),
-              ),
-            ),
-        ],
-      ),
+      child: compact
+          ? SingleChildScrollView(
+              key: viewport,
+              controller: controller,
+              scrollDirection: Axis.horizontal,
+              child: Row(children: buttons),
+            )
+          : Wrap(spacing: 6, runSpacing: 6, children: buttons),
     );
   }
 }
@@ -385,4 +580,90 @@ class _CompanionFallbackPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CompanionFallbackPainter oldDelegate) => false;
+}
+
+/// The complete existing filter form stays available, without filling mobile entry.
+class ChildFilterTools extends StatefulWidget {
+  final String summary;
+  final bool filtered;
+  final bool enabled;
+  final Widget child;
+  const ChildFilterTools({
+    super.key,
+    required this.summary,
+    required this.filtered,
+    this.enabled = true,
+    required this.child,
+  });
+
+  @override
+  State<ChildFilterTools> createState() => _ChildFilterToolsState();
+}
+
+class _ChildFilterToolsState extends State<ChildFilterTools> {
+  bool expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled || MediaQuery.sizeOf(context).width >= 720) {
+      return widget.child;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          expanded: expanded,
+          child: OutlinedButton(
+            key: const ValueKey('child-mobile-filter-toggle'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(48, 48),
+            ),
+            onPressed: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+              setState(() => expanded = !expanded);
+            },
+            child: Row(
+              children: [
+                Badge(
+                  isLabelVisible: widget.filtered,
+                  child: const Icon(Icons.tune_rounded),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        expanded
+                            ? 'Suche & Filter schließen'
+                            : 'Suchen & filtern',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        '${widget.summary}${widget.filtered ? ' · Filter aktiv' : ''}',
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  expanded
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (expanded)
+          Padding(padding: const EdgeInsets.only(top: 12), child: widget.child),
+      ],
+    );
+  }
 }

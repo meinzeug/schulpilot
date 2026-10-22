@@ -685,7 +685,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           (plan['today'] as List? ?? []).length)
                         TextButton(
                           onPressed: () =>
-                              openRoute(context, '/learning/${child['id']}'),
+                              openRoute(context, '/learn/${child['id']}'),
                           child: Text('Alle gespeicherten Runden ansehen'),
                         ),
                       if ((plan['notices'] as List? ?? []).isNotEmpty)

@@ -259,7 +259,10 @@ def run(body):
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(value)
             (job / "incident/incident.json").write_bytes(encoded)
-            (job / "incident/job.json").write_text(json.dumps({"source_commit": commit}))
+            job_metadata = {"source_commit": commit}
+            if body.get("synthetic_fixture"):
+                job_metadata["synthetic_fixture"] = body["synthetic_fixture"]
+            (job / "incident/job.json").write_text(json.dumps(job_metadata))
             (job / "proxy/token").write_text(token)
             (job / "proxy/token").chmod(0o600)
 
@@ -267,8 +270,8 @@ def run(body):
             baseline_check = verification(image, job, identifier, scope, job / "baseline", deadline, "before")
             # Leave time for the fixed post-run regression; all phases share 240s.
             model_deadline = deadline - (65 if scope else 15)
-            (job / "incident/job.json").write_text(json.dumps({"source_commit": commit,
-                "seconds": max(1, min(165, int(model_deadline - time.monotonic())))}))
+            job_metadata["seconds"] = max(1, min(165, int(model_deadline - time.monotonic())))
+            (job / "incident/job.json").write_text(json.dumps(job_metadata))
 
             class Proxy(BaseHTTPRequestHandler):
                 protocol_version = "HTTP/1.0"

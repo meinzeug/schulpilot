@@ -189,7 +189,9 @@ def test_expired_setup_code_and_cookie_cannot_change_or_complete_installation(ap
     assert finish(api).status_code == 401
 
 
-def test_new_family_entitlements_and_upload_gate_follow_persisted_settings(api, mailbox):
+def test_historical_pilot_fixture_and_upload_gate_follow_persisted_settings(api, mailbox):
+    # Historical fixture only; current public signup is fail-closed and tested
+    # separately without the legacy-cohort helper in test_family_trial.py.
     from schulpilot.config import settings
     from test_school_day import image_bytes
 

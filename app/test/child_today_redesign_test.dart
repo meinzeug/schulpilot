@@ -344,11 +344,21 @@ void main() {
         kIsWeb ? findsOneWidget : findsNothing,
       );
       expect(
-        requests
-            .where((request) => request.url.path.endsWith('/app-release'))
-            .length,
-        kIsWeb ? 1 : 0,
+        requests.where((request) => request.url.path.endsWith('/app-release')),
+        isEmpty,
       );
+      if (kIsWeb) {
+        final download = find.text('Android-App herunterladen');
+        await tester.ensureVisible(download);
+        await tester.tap(download);
+        await tester.pumpAndSettle();
+        expect(
+          requests.where(
+            (request) => request.url.path.endsWith('/app-release'),
+          ),
+          hasLength(1),
+        );
+      }
       expect(requests.every((request) => request.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
     },

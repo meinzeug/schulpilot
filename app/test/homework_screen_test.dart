@@ -125,6 +125,14 @@ Future<GoRouter> open(
     ),
   );
   await tester.pumpAndSettle();
+  if (overview && width < 720) {
+    final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
+    if (filters.evaluate().isNotEmpty) {
+      await tester.ensureVisible(filters);
+      await tester.tap(filters);
+      await tester.pumpAndSettle();
+    }
+  }
   addTearDown(() async {
     await tester.pumpWidget(SizedBox());
     router.dispose();
@@ -444,13 +452,21 @@ void main() {
             scale: width == 320 ? 2 : 1,
           );
           expect(find.byType(ChildSectionHero), findsOneWidget);
-          expect(find.text('Was hast du heute auf?'), findsOneWidget);
+          if (width < 720) {
+            expect(
+              find.byKey(const ValueKey('compact-child-heading')),
+              findsOneWidget,
+            );
+            expect(find.text('Was hast du heute auf?'), findsNothing);
+          } else {
+            expect(find.text('Was hast du heute auf?'), findsOneWidget);
+          }
           final photoAction = find.widgetWithText(
             FilledButton,
             'Hausaufgaben fotografieren',
           );
           expect(photoAction, findsOneWidget);
-          expect(tester.getSize(photoAction).height, greaterThanOrEqualTo(52));
+          expect(tester.getSize(photoAction).height, greaterThanOrEqualTo(48));
           expect(find.byTooltip('Aktualisieren'), findsOneWidget);
           expect(methods.every((m) => m == 'GET'), isTrue);
           expect(tester.takeException(), isNull);

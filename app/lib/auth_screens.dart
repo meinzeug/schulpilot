@@ -11,293 +11,369 @@ import 'download_panel.dart';
 import 'ui.dart';
 import 'store_screens.dart';
 import 'google_login.dart';
+import 'public_trial.dart';
 
-class LandingScreen extends StatelessWidget {
+class LandingScreen extends StatefulWidget {
   final AppState state;
   const LandingScreen(this.state, {super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 980;
-          final hero = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Tag('LERNEN MIT RÜCKENWIND'),
-              SizedBox(height: 24),
-              Text(
-                'Nach der Schule.\nMit Plan weiter.',
-                style: TextStyle(
-                  fontSize: wide ? 64 : 42,
-                  color: context.palette.ink,
-                  height: 1.06,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -2.3,
-                ),
-              ),
-              SizedBox(height: 24),
-              Text(
-                'Heftfotos rein. Stoff verstehen. Mit passenden Übungen dranbleiben.',
-                style: TextStyle(
-                  fontSize: 19,
-                  height: 1.5,
-                  color: context.palette.muted,
-                ),
-              ),
-              SizedBox(height: 30),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  AppState get state => widget.state;
+  late Future<Json> catalog;
+  @override
+  void initState() {
+    super.initState();
+    catalog = state.api.get('/store/catalog');
+  }
+
+  @override
+  void didUpdateWidget(covariant LandingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.state.api, state.api)) {
+      catalog = state.api.get('/store/catalog');
+    }
+  }
+
+  void reloadCatalog() {
+    setState(() {
+      catalog = state.api.get('/store/catalog');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Json>(
+    future: catalog,
+    builder: (context, snapshot) {
+      final offer = PublicTrialOffer.fromCatalog(
+        snapshot.connectionState == ConnectionState.done && !snapshot.hasError
+            ? snapshot.data ?? {}
+            : {},
+      );
+      return Scaffold(
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 980;
+              final hero = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FilledButton.icon(
-                    onPressed: () =>
-                        context.go(kIsWeb ? '/angebote' : '/register'),
-                    icon: Icon(Icons.arrow_forward_rounded),
-                    label: Text(
-                      kIsWeb ? 'Tarife ansehen' : 'Elternkonto erstellen',
+                  Tag('GEMEINSAM GUT WEITERLERNEN'),
+                  SizedBox(height: 24),
+                  Text(
+                    'Lernen, das zum\nSchulalltag passt.',
+                    style: TextStyle(
+                      fontSize: wide ? 64 : 42,
+                      color: context.palette.ink,
+                      height: 1.06,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -2.3,
                     ),
                   ),
-                  _DemoEntryButton(state),
+                  SizedBox(height: 24),
+                  Text(
+                    'Aus euren Heftseiten werden verständliche Lernschritte. Dein Kind übt mit Hilfe, du behältst den Überblick.',
+                    style: TextStyle(
+                      fontSize: 19,
+                      height: 1.5,
+                      color: context.palette.muted,
+                    ),
+                  ),
+                  SizedBox(height: 30),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () => context.go(
+                          state.user == null ? '/register' : '/app',
+                        ),
+                        icon: Icon(Icons.arrow_forward_rounded),
+                        label: Text(
+                          state.user != null
+                              ? 'Mein Lernraum'
+                              : offer.available
+                              ? '30 Tage kostenlos testen'
+                              : 'Elternkonto erstellen',
+                        ),
+                      ),
+                      _DemoEntryButton(state),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  if (snapshot.connectionState != ConnectionState.done)
+                    const Text('Der aktuelle Testzugang wird geprüft …')
+                  else if (snapshot.hasError) ...[
+                    const Text(
+                      'Das aktuelle Testangebot konnte nicht geladen werden. Es wurde nichts gebucht.',
+                    ),
+                    TextButton.icon(
+                      onPressed: reloadCatalog,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Testangebot erneut prüfen'),
+                    ),
+                  ] else
+                    TrialTermsSummary(offer, compact: true),
                 ],
-              ),
-            ],
-          );
-          final flow = Container(
-            padding: EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF111C34), teal],
-              ),
-              borderRadius: BorderRadius.circular(32),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  color: context.palette.electric,
-                  size: 32,
+              );
+              final flow = Container(
+                padding: EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF111C34), teal],
+                  ),
+                  borderRadius: BorderRadius.circular(32),
                 ),
-                SizedBox(height: 20),
-                Text(
-                  'Ein klarer nächster Schritt.',
-                  style: TextStyle(
-                    fontSize: 29,
-                    height: 1.15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: context.palette.electric,
+                      size: 32,
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Ein klarer nächster Schritt.',
+                      style: TextStyle(
+                        fontSize: 29,
+                        height: 1.15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    for (final item in [
+                      (
+                        Icons.document_scanner_rounded,
+                        '01',
+                        'Stoff sammeln',
+                        'Die Heftseiten von heute.',
+                        'fotos',
+                      ),
+                      (
+                        Icons.lightbulb_outline_rounded,
+                        '02',
+                        'Verstehen & üben',
+                        'Mit Hilfe, wenn es hakt.',
+                        'lernen',
+                      ),
+                      (
+                        Icons.check_circle_outline_rounded,
+                        '03',
+                        'Wissen festigen',
+                        'Neue Aufgaben. Später wiederholen.',
+                        'wiederholen',
+                      ),
+                    ])
+                      ActionPanel(
+                        padding: EdgeInsets.all(18),
+                        actionLabel: '${item.$3}: Ablauf ansehen',
+                        onPressed: () =>
+                            context.go('/about?section=${item.$5}'),
+                        child: Row(
+                          children: [
+                            Icon(
+                              item.$1,
+                              color: context.palette.teal,
+                              size: 24,
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.$3,
+                                    style: TextStyle(
+                                      color: context.palette.ink,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    item.$4,
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              item.$2,
+                              style: TextStyle(
+                                color: context.palette.muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
-                SizedBox(height: 24),
-                for (final item in [
-                  (
-                    Icons.document_scanner_rounded,
-                    '01',
-                    'Stoff sammeln',
-                    'Die Heftseiten von heute.',
-                    'fotos',
-                  ),
-                  (
-                    Icons.lightbulb_outline_rounded,
-                    '02',
-                    'Verstehen & üben',
-                    'Mit Hilfe, wenn es hakt.',
-                    'lernen',
-                  ),
-                  (
-                    Icons.check_circle_outline_rounded,
-                    '03',
-                    'Wissen festigen',
-                    'Neue Aufgaben. Später wiederholen.',
-                    'wiederholen',
-                  ),
-                ])
-                  ActionPanel(
-                    padding: EdgeInsets.all(18),
-                    actionLabel: '${item.$3}: Ablauf ansehen',
-                    onPressed: () => context.go('/about?section=${item.$5}'),
-                    child: Row(
-                      children: [
-                        Icon(item.$1, color: context.palette.teal, size: 24),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+              );
+              return SingleChildScrollView(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 1240),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: wide ? 44 : 22,
+                        vertical: 26,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                item.$3,
-                                style: TextStyle(
-                                  color: context.palette.ink,
-                                  fontWeight: FontWeight.w700,
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: brand(),
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                item.$4,
-                                style: TextStyle(
-                                  color: context.palette.muted,
-                                  fontSize: 12,
+                              AppearanceToggle(state),
+                              TextButton(
+                                onPressed: () => context.go(
+                                  state.user == null ? '/login' : '/app',
+                                ),
+                                child: Text(
+                                  state.user == null
+                                      ? 'Anmelden'
+                                      : 'Mein Lernraum',
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Text(
-                          item.$2,
-                          style: TextStyle(
-                            color: context.palette.muted,
-                            fontWeight: FontWeight.w700,
+                          SizedBox(height: wide ? 80 : 44),
+                          if (wide)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(flex: 6, child: hero),
+                                SizedBox(width: 64),
+                                Expanded(flex: 5, child: flow),
+                              ],
+                            )
+                          else ...[
+                            hero,
+                            SizedBox(height: 36),
+                            flow,
+                          ],
+                          SizedBox(height: 42),
+                          Wrap(
+                            spacing: 20,
+                            runSpacing: 20,
+                            children: [
+                              for (final item in [
+                                (
+                                  Icons.today_rounded,
+                                  'Ein Plan für heute',
+                                  'Überschaubare Einheiten statt Aufgabenberge.',
+                                  'plan',
+                                ),
+                                (
+                                  Icons.support_agent_rounded,
+                                  'Hilfe im richtigen Moment',
+                                  'Verständliche Erklärungen und passende Hinweise.',
+                                  'hilfe',
+                                ),
+                                (
+                                  Icons.family_restroom_rounded,
+                                  'Eltern bleiben im Bild',
+                                  'Was lief gut? Wo braucht dein Kind Unterstützung?',
+                                  'eltern',
+                                ),
+                              ])
+                                SizedBox(
+                                  width: wide
+                                      ? (constraints.maxWidth.clamp(0, 1240) -
+                                                128) /
+                                            3
+                                      : double.infinity,
+                                  child: ActionPanel(
+                                    actionLabel: '${item.$2}: Mehr erfahren',
+                                    onPressed: () =>
+                                        context.go('/about?section=${item.$4}'),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(
+                                          item.$1,
+                                          color: context.palette.teal,
+                                        ),
+                                        SizedBox(height: 18),
+                                        Text(
+                                          item.$2,
+                                          style: TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          item.$3,
+                                          style: TextStyle(
+                                            color: context.palette.muted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 30),
+                          if (kIsWeb &&
+                              snapshot.connectionState ==
+                                  ConnectionState.done &&
+                              !snapshot.hasError &&
+                              snapshot.hasData) ...[
+                            StoreSection(
+                              state,
+                              catalog: snapshot.data,
+                              showTrial: false,
+                            ),
+                            SizedBox(height: 32),
+                          ],
+                          if (kIsWeb) AndroidDownload(state.api),
+                          SizedBox(height: 24),
+                          Wrap(
+                            spacing: 12,
+                            children: [
+                              TextButton(
+                                onPressed: () => openRoute(context, '/privacy'),
+                                child: Text('Datenschutz'),
+                              ),
+                              TextButton(
+                                onPressed: () => openRoute(context, '/about'),
+                                child: Text('Über SCHULPILOT'),
+                              ),
+                              if (kIsWeb)
+                                TextButton(
+                                  onPressed: () => context.go('/bedingungen'),
+                                  child: Text('Vertragsbedingungen & Widerruf'),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-              ],
-            ),
-          );
-          return SingleChildScrollView(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 1240),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: wide ? 44 : 22,
-                    vertical: 26,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: brand(),
-                            ),
-                          ),
-                          AppearanceToggle(state),
-                          TextButton(
-                            onPressed: () => context.go(
-                              state.user == null ? '/login' : '/app',
-                            ),
-                            child: Text(
-                              state.user == null ? 'Anmelden' : 'Mein Lernraum',
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: wide ? 80 : 44),
-                      if (wide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(flex: 6, child: hero),
-                            SizedBox(width: 64),
-                            Expanded(flex: 5, child: flow),
-                          ],
-                        )
-                      else ...[
-                        hero,
-                        SizedBox(height: 36),
-                        flow,
-                      ],
-                      SizedBox(height: 42),
-                      Wrap(
-                        spacing: 20,
-                        runSpacing: 20,
-                        children: [
-                          for (final item in [
-                            (
-                              Icons.today_rounded,
-                              'Ein Plan für heute',
-                              'Überschaubare Einheiten statt Aufgabenberge.',
-                              'plan',
-                            ),
-                            (
-                              Icons.support_agent_rounded,
-                              'Hilfe im richtigen Moment',
-                              'Verständliche Erklärungen und passende Hinweise.',
-                              'hilfe',
-                            ),
-                            (
-                              Icons.family_restroom_rounded,
-                              'Eltern bleiben im Bild',
-                              'Was lief gut? Wo braucht dein Kind Unterstützung?',
-                              'eltern',
-                            ),
-                          ])
-                            SizedBox(
-                              width: wide
-                                  ? (constraints.maxWidth.clamp(0, 1240) -
-                                            128) /
-                                        3
-                                  : double.infinity,
-                              child: ActionPanel(
-                                actionLabel: '${item.$2}: Mehr erfahren',
-                                onPressed: () =>
-                                    context.go('/about?section=${item.$4}'),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(item.$1, color: context.palette.teal),
-                                    SizedBox(height: 18),
-                                    Text(
-                                      item.$2,
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      item.$3,
-                                      style: TextStyle(
-                                        color: context.palette.muted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      SizedBox(height: 30),
-                      if (kIsWeb) ...[
-                        StoreSection(state),
-                        SizedBox(height: 32),
-                      ],
-                      if (kIsWeb) AndroidDownload(state.api),
-                      SizedBox(height: 24),
-                      Wrap(
-                        spacing: 12,
-                        children: [
-                          TextButton(
-                            onPressed: () => openRoute(context, '/privacy'),
-                            child: Text('Datenschutz'),
-                          ),
-                          TextButton(
-                            onPressed: () => openRoute(context, '/about'),
-                            child: Text('Über SCHULPILOT'),
-                          ),
-                          if (kIsWeb)
-                            TextButton(
-                              onPressed: () => context.go('/bedingungen'),
-                              child: Text('Vertragsbedingungen & Widerruf'),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
-    ),
+              );
+            },
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -396,6 +472,8 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   bool _identifierEdited = false;
   String? result;
   String? error;
+  String? accessNotice;
+  Future<Json>? registrationCatalog;
   int? authenticationRevision;
   AppState? authenticationState;
 
@@ -414,6 +492,9 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     passwordFocus.addListener(passwordFocusChanged);
     _restoreIdentifier();
     _readLink();
+    if (widget.mode == 'register') {
+      registrationCatalog = widget.state.api.get('/store/catalog');
+    }
   }
 
   bool keyboardChanged(KeyEvent event) {
@@ -434,6 +515,9 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
       submitting = googleBusy = false;
       completed = leaveAllowed = false;
       if (oldWidget.mode != widget.mode) {
+        registrationCatalog = widget.mode == 'register'
+            ? widget.state.api.get('/store/catalog')
+            : null;
         _restoreIdentifier();
         name.clear();
         family.clear();
@@ -448,6 +532,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
       _readLink();
       result = null;
       error = null;
+      accessNotice = null;
       fieldErrors.clear();
     }
   }
@@ -750,13 +835,21 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         result = data['message'] is String
             ? data['message']
             : 'Die Änderung wurde bestätigt.';
+        accessNotice = mode == 'register' && data['access_notice'] is String
+            ? data['access_notice'] as String
+            : null;
         completed = [
+          'register',
           'reset',
           'verify',
           'invite',
           'recovery',
           'resend',
         ].contains(mode);
+        if (mode == 'register') {
+          password.clear();
+          passwordVisible = false;
+        }
         if (['reset', 'verify', 'invite'].contains(mode)) {
           token.clear();
           password.clear();
@@ -840,13 +933,54 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                         ),
                       Text(switch (mode) {
                         'login' => 'Eltern und Kinder melden sich mit ihrem eigenen Zugang an.',
-                        'register' => 'Erstelle dein Elternkonto. Danach richtest du die Zugänge deiner Kinder ein.',
+                        'register' => 'Erstelle dein Elternkonto und bestätige deine E-Mail. Hier löst du keine kostenpflichtige Bestellung aus.',
                         'recovery' => 'Für Eltern: Gib die E-Mail deines Kontos ein. Kinder lassen ihr Passwort von ihren Eltern ändern.',
                         'resend' => 'Für ein noch unbestätigtes Elternkonto: Fordere bewusst einen neuen E-Mail-Link an. Prüfe auch deinen Spamordner. Die Rückmeldung verrät nicht, ob ein Konto existiert.',
                         'reset' => 'Wähle ein neues Elternpasswort. Der sichere Code kommt aus deinem E-Mail-Link.',
                         'invite' => 'Nimm die Einladung zu deiner Familie an. Nutze bei einem vorhandenen Elternkonto dessen Passwort.',
                         _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
                       }, style: TextStyle(color: context.palette.muted)),
+                      if (mode == 'register' && !completed) ...[
+                        const SizedBox(height: 20),
+                        FutureBuilder<Json>(
+                          future: registrationCatalog,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState !=
+                                ConnectionState.done) {
+                              return const Text(
+                                'Der aktuelle Testzugang wird geprüft …',
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Die aktuelle Testfreigabe konnte nicht geprüft werden. Ein Elternkonto kannst du trotzdem kostenlos anlegen.',
+                                  ),
+                                  TextButton(
+                                    onPressed: () => setState(() {
+                                      registrationCatalog = widget.state.api
+                                          .get('/store/catalog');
+                                    }),
+                                    child: const Text(
+                                      'Testfreigabe erneut prüfen',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                            return Panel(
+                              color: context.palette.mint,
+                              child: TrialTermsSummary(
+                                PublicTrialOffer.fromCatalog(
+                                  snapshot.data ?? {},
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                       SizedBox(height: 24),
                       SizedBox(
                         key: feedbackKey,
@@ -859,6 +993,31 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                   result!,
                                   icon: Icons.check_circle_outline,
                                 ),
+                              if (result != null && accessNotice != null)
+                                Notice(accessNotice!),
+                              if (mode == 'register' && completed) ...[
+                                const SizedBox(height: 20),
+                                const Notice(
+                                  'Nächster Schritt: Prüfe dein E-Mail-Postfach und den Spamordner. Wenn du einen Bestätigungslink erhalten hast, öffne ihn vollständig. Danach kannst du dich anmelden.',
+                                ),
+                                TextButton(
+                                  onPressed: () => goToAuth('/verify'),
+                                  child: const Text(
+                                    'Link-Code aus E-Mail eingeben',
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    completed = false;
+                                    result = null;
+                                    password.clear();
+                                    passwordVisible = false;
+                                  }),
+                                  child: const Text(
+                                    'Registrierungsangaben erneut bearbeiten',
+                                  ),
+                                ),
+                              ],
                               if (error != null) Notice(error!, warning: true),
                               if (fieldErrors.isNotEmpty) ...[
                                 Text(
@@ -1163,7 +1322,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                         ),
                       ],
                       SizedBox(height: 18),
-                      if (mode == 'login' || mode == 'register')
+                      if ((mode == 'login' || mode == 'register') && !completed)
                         GoogleLoginButton(
                           widget.state,
                           key: ValueKey(('google-auth', revision)),

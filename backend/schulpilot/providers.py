@@ -1897,8 +1897,8 @@ def usage_summary(db, family):
     entitlement = access(db, family)
     bucket = db.get(UsageBucket, bucket_id)
     return {
-        "period": period if not family.commerce_required else "bezahlte Laufzeit",
-        "plan": family.plan,
+        "period": period if not family.commerce_required else "kostenlose Testphase" if entitlement["state"] in ("trial", "trial_expired") else "bezahlte Laufzeit",
+        "plan": "Kostenlose Testphase" if entitlement["state"] == "trial" else family.plan,
         "calls_used": bucket.calls if bucket else 0,
         "calls_limit": calls_limit,
         "calls_remaining": max(0, calls_limit - (bucket.calls if bucket else 0)),

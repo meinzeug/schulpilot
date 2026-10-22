@@ -389,6 +389,7 @@ void main() {
           tester,
           (_) => SingleChildScrollView(child: ParentOverview(data: value)),
         );
+        await tap(tester, find.byTooltip('Über diesen Bereich'));
         expect(
           find.text('0 beantwortete Aufgaben'),
           available ? findsOneWidget : findsNothing,

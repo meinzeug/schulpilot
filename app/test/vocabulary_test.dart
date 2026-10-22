@@ -165,10 +165,28 @@ Future<(AppState, GoRouter)> open(
     MaterialApp.router(theme: appTheme(), routerConfig: router),
   );
   await tester.pumpAndSettle();
+  // Filter behavior tests explicitly reveal the mobile tool group first.
+  if (!parent && !workshop && width < 720) {
+    final filters = find.byKey(const ValueKey('child-mobile-filter-toggle'));
+    if (filters.evaluate().isNotEmpty) {
+      await tester.ensureVisible(filters);
+      await tester.tap(filters);
+      await tester.pumpAndSettle();
+    }
+  }
   return (state, router);
 }
 
 Future<void> tap(WidgetTester tester, Finder finder) async {
+  // Secondary vocabulary actions now live in the mobile header menu.
+  if (finder.evaluate().isEmpty) {
+    final menu = find.byTooltip('Weitere Wörteraktionen');
+    if (menu.evaluate().isNotEmpty) {
+      await tester.ensureVisible(menu);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+    }
+  }
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
   await tester.tap(finder);
@@ -234,7 +252,18 @@ void main() {
       (tester) async {
         final requests = <http.Request>[];
         await open(tester, requests, width: width);
-        expect(find.text('Wörter entdecken. Sicher anwenden.'), findsOneWidget);
+        if (width < 720) {
+          expect(
+            find.byKey(const ValueKey('compact-child-heading')),
+            findsOneWidget,
+          );
+          expect(find.text('Wörter entdecken. Sicher anwenden.'), findsNothing);
+        } else {
+          expect(
+            find.text('Wörter entdecken. Sicher anwenden.'),
+            findsOneWidget,
+          );
+        }
         expect(find.text('Apfel'), findsOneWidget);
         expect(
           find.text('apple'),

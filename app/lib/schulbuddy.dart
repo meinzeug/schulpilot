@@ -648,7 +648,14 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
   }
 
   void starter(String text) {
-    if (!current || sending || pending || pendingBody != null) return;
+    if (!current ||
+        !available ||
+        loading ||
+        sending ||
+        pending ||
+        pendingBody != null) {
+      return;
+    }
     if (input.text.isNotEmpty && input.text != text) {
       final previous = input.text;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -709,9 +716,11 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               TextButton(
-                onPressed: () {
-                  if (current) inputFocus.requestFocus();
-                },
+                onPressed: available
+                    ? () {
+                        if (current && available) inputFocus.requestFocus();
+                      }
+                    : null,
                 child: const Text('Selbst darüber nachdenken'),
               ),
             ],
@@ -760,10 +769,28 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
         children: [
           const LearningCompanionIllustration(size: 48),
           const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Schulbuddy',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Schulbuddy',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                ),
+                if (!available)
+                  Text(
+                    loading
+                        ? 'Freigabe wird geprüft'
+                        : widget.state.isDemo
+                        ? 'Testraum · Vorschau'
+                        : 'Chat nicht verfügbar',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: context.palette.muted,
+                    ),
+                  ),
+              ],
             ),
           ),
           IconButton(
@@ -799,18 +826,29 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
                   ),
           ),
           const SizedBox(height: 8),
-          Text(
-            widget.state.isChild
-                ? 'Ich helfe dir Schritt für Schritt zu verstehen. Probiere selbst mit; ich verrate nicht gleich die Lösung. KI kann Fehler machen.'
-                : 'KI-Hilfe kann Fehler machen. Prüfe wichtige Angaben. Teile nur, was für deine Frage nötig ist.',
-            style: TextStyle(color: context.palette.muted),
-          ),
+          if (available)
+            Text(
+              widget.state.isChild
+                  ? 'Ich helfe dir Schritt für Schritt zu verstehen. Probiere selbst mit; ich verrate nicht gleich die Lösung. KI kann Fehler machen.'
+                  : 'KI-Hilfe kann Fehler machen. Prüfe wichtige Angaben. Teile nur, was für deine Frage nötig ist.',
+              style: TextStyle(color: context.palette.muted),
+            )
+          else if (!loading)
+            Text(
+              'Hier kannst du den vorhandenen Verlauf ansehen. Neue Fragen sind derzeit nicht möglich.',
+              style: TextStyle(color: context.palette.muted),
+            ),
           if (loading || reading)
             const Padding(
               padding: EdgeInsets.all(12),
               child: LinearProgressIndicator(),
             ),
-          if (contextData?['notice'] is String) Notice(contextData!['notice']),
+          if (contextData?['notice'] is String)
+            Notice(contextData!['notice'])
+          else if (!loading && !available && error == null)
+            const Notice(
+              'Der Server hat den Chat in diesem Bereich nicht freigegeben. Du kannst den Status bewusst aktualisieren.',
+            ),
           if (error != null) Notice(error!, warning: true),
           if (widget.state.isParent &&
               !scope.references.containsKey('child_id') &&
@@ -833,12 +871,12 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
                 ),
           ],
           for (final turn in turns) turnCard(turn),
-          if (turns.isNotEmpty && !pending && pendingBody == null)
+          if (available && turns.isNotEmpty && !pending && pendingBody == null)
             TextButton.icon(
               onPressed: sending
                   ? null
                   : () {
-                      if (!current) return;
+                      if (!current || !available) return;
                       setState(() {
                         newQuestionMode = true;
                         replyTo = null;
@@ -853,9 +891,9 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
                     : 'Neue Frage ohne bisherigen Chat',
               ),
             ),
-          if (turns.isEmpty && !loading && suggestions.isNotEmpty)
+          if (available && turns.isEmpty && !loading && suggestions.isNotEmpty)
             const Text('Womit möchtest du anfangen?'),
-          if (!pending && pendingBody == null)
+          if (available && !pending && pendingBody == null)
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -894,7 +932,8 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
           TextField(
             controller: input,
             focusNode: inputFocus,
-            readOnly: loading || sending || pendingBody != null,
+            enabled: available && !loading,
+            readOnly: !available || loading || sending || pendingBody != null,
             minLines: 1,
             maxLines: 3,
             maxLength: 1200,

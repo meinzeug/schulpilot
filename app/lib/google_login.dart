@@ -345,6 +345,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       passwordFocus = FocusNode();
   Timer? timer;
   String? flow, verifier, ticket, email, error;
+  String? accessNotice, accessDestination;
   bool busy = false,
       consent = false,
       returnToApp = false,
@@ -371,6 +372,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     timer?.cancel();
     setState(() {
       email = null;
+      accessNotice = accessDestination = null;
       flow = verifier = ticket = null;
       name.clear();
       family.clear();
@@ -428,6 +430,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     expired = false;
     proofExpires = null;
     existingLogin = awaitingReturn = false;
+    accessNotice = accessDestination = null;
     try {
       if (widget.start) {
         if (!kIsWeb) throw ApiError('Bitte starte die Anmeldung in der App.');
@@ -477,7 +480,10 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       }
       if (!mounted || generation != current) return;
       await check();
-      if (!kIsWeb && mounted && generation == current) {
+      if (!kIsWeb &&
+          mounted &&
+          generation == current &&
+          accessDestination == null) {
         timer = Timer.periodic(Duration(seconds: 5), (_) {
           if (email == null &&
               error == null &&
@@ -504,6 +510,7 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
         busy ||
         cancelling ||
         flow == null ||
+        accessDestination != null ||
         expired ||
         ModalRoute.of(context)?.isCurrent == false) {
       return;
@@ -562,7 +569,10 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       if (result['status'] == 'verification_required') {
         timer?.cancel();
         if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
-        if (mounted && current == generation) context.go('/verify');
+        if (mounted && current == generation) {
+          if (presentAccessNotice(result, '/verify')) return;
+          context.go('/verify');
+        }
         return;
       }
       if (result['status'] == 'authenticated' || result['status'] == 'linked') {
@@ -582,6 +592,12 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
           if (register) TextInput.finishAutofillContext(shouldSave: true);
         }
         if (mounted && current == generation) {
+          if (result['status'] == 'authenticated') {
+            // The accepted account belongs to this same authentication intent.
+            // Subsequent account replacements must invalidate its receipt.
+            owner = widget.state.user;
+            if (presentAccessNotice(result, '/app')) return;
+          }
           context.go(result['status'] == 'linked' ? '/settings' : '/app');
         }
       } else {
@@ -632,6 +648,51 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     }
   }
 
+  bool presentAccessNotice(Json result, String destination) {
+    final notice = result['access_notice'];
+    if (notice is! String || notice.trim().isEmpty) return false;
+    setState(() {
+      accessNotice = notice;
+      accessDestination = destination;
+      email = null;
+      password.clear();
+      passwordVisible = false;
+    });
+    return true;
+  }
+
+  Widget accessConfirmation() {
+    final current = generation, revision = authenticationRevision;
+    final account = owner;
+    final notice = accessNotice, destination = accessDestination;
+    return FilledButton(
+      key: const ValueKey('google-access-notice-continue'),
+      onPressed: busy || cancelling
+          ? null
+          : () {
+              if (!mounted ||
+                  busy ||
+                  cancelling ||
+                  current != generation ||
+                  revision == null ||
+                  revision != authenticationRevision ||
+                  !identical(authenticationState, widget.state) ||
+                  !identical(account, widget.state.user) ||
+                  notice == null ||
+                  notice != accessNotice ||
+                  destination == null ||
+                  destination != accessDestination ||
+                  ModalRoute.of(context)?.isCurrent == false) {
+                return;
+              }
+              // One explicit local continuation. Never repeat result/login POSTs.
+              accessNotice = accessDestination = null;
+              context.go(destination);
+            },
+      child: const Text('Hinweis bestätigen und weiter'),
+    );
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed && passwordVisible) {
@@ -668,7 +729,10 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     ++generation;
     cancelOwnAuthentication();
     timer?.cancel();
-    setState(() => cancelling = true);
+    setState(() {
+      cancelling = true;
+      accessNotice = accessDestination = null;
+    });
     try {
       if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
       if (!mounted) return;
@@ -702,7 +766,9 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     heading(
-                      email != null
+                      accessNotice != null
+                          ? 'Dein Lernzugang'
+                          : email != null
                           ? 'Dein Elternkonto'
                           : 'Mit Google anmelden',
                     ),
@@ -740,7 +806,11 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
                           ],
                         ),
                       ),
-                    if (email != null) ...[
+                    if (accessNotice != null) ...[
+                      Semantics(liveRegion: true, child: Notice(accessNotice!)),
+                      const SizedBox(height: 16),
+                      accessConfirmation(),
+                    ] else if (email != null) ...[
                       SelectableText(
                         email!,
                         style: TextStyle(color: context.palette.muted),
