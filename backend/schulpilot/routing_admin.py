@@ -6,7 +6,7 @@ from sqlalchemy import select
 from . import schemas as s
 from .ai_accounting import report
 from .db import CreditPurchase, ProviderConfig, get_db, now
-from .model_routing import RoutingPolicy
+from .model_routing import ROUTING_REASONING_EFFORT, RoutingPolicy
 from .security import admin, audit
 
 router = APIRouter(tags=["KI-Routing und Kosten"])
@@ -22,6 +22,7 @@ def routing(p=Depends(admin), db=Depends(get_db)):
     config = db.get(ProviderConfig, 1)
     return {"revision": config.revision, "policy": config.routing_policy, "provider": config.provider,
         "emergency_stop": config.emergency_stop,
+        "effective_reasoning_effort": ROUTING_REASONING_EFFORT,
         "existing_global_limit_micros_usd": config.global_limit_micros,
         "existing_reservation_micros_usd": config.reserve_micros}
 

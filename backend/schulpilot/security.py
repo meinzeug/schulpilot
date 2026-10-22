@@ -25,7 +25,7 @@ def digest(value):
 
 
 def password_hash(value):
-    if len(value) < 12 or len(value) > 128:
+    if len(value.strip()) < 12 or len(value) > 128:
         raise HTTPException(422, "Passwort muss 12 bis 128 Zeichen lang sein.")
     with password_slots:
         return hasher.hash(value)

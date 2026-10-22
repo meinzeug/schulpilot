@@ -568,3 +568,19 @@ keine Metadaten. Der tatsächliche 300s-Lauf bestätigt Kamera und Bildschirm,
 spätes Angebot nach 143,36s, Bildschirmstopp und weiterlaufende Kamera/Audio.
 15 periodische Healthprüfungen während des Gesprächs erfolgreich (maximal 0,029s). Die früheren
 Prüferfehler bleiben unverändert in den Vorversuchsberichten erhalten.
+
+
+UX-Erweiterung87 (laufende Abnahme, 22.10.2026): lokale Quellinventur und
+synthetische Flutter-/PostgreSQL-Fälle. Gestaltung nach WAI
+[Formularrückmeldungen](https://www.w3.org/WAI/tutorials/forms/notifications/),
+[Statusmeldungen](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html),
+[zugänglicher Authentifizierung](https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html)
+und GOV.UK [Validierung](https://design-system.service.gov.uk/patterns/validation/)
+sowie [Pagination](https://design-system.service.gov.uk/components/pagination/).
+Die Quellen begründen einzelne Bedienregeln; sie belegen keine vollständige
+WCAG-Konformität. Passworttexte werden beim Anlegen, Zurücksetzen und Bestätigen
+unverändert gehasht/geprüft; die vorhandene Mindestlänge ohne Randauffüllung
+bleibt erhalten. Revisionsgebundene Betreiberentwürfe und reine Prüfauftrag-
+Metadaten erhalten Kosten-, Freigabe- und Rollenprüfungen. Kein Provideraufruf
+wurde durch diese synthetischen Bedienprüfungen ausgelöst. Auslieferungsstand
+und Gesamtnachweis werden erst nach der gemeinsamen Abnahme ergänzt.

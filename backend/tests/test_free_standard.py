@@ -108,7 +108,7 @@ def test_admin_preserves_omitted_policy_and_invalidates_changed_route(api, house
         db.get(User, user["id"]).role = "admin"
         config = db.get(ProviderConfig, 1)
         payload = ProviderUpdate(
-            **{c: getattr(config, c) for c in ProviderUpdate.model_fields if c != "api_key"}
+            **{c: getattr(config, c) for c in ProviderUpdate.model_fields if c not in {"api_key", "expected_revision"}}
         ).model_dump()
     payload.pop("openrouter_free_only")
     payload.pop("openrouter_require_zdr")

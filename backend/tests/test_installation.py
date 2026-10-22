@@ -421,3 +421,22 @@ def test_existing_family_clients_can_login_while_the_apk_updates(api, household)
         ).status_code
         == 422
     )
+
+
+def test_setup_probe_recovery_is_cookie_bound_read_only_and_closes_after_setup(api):
+    fresh()
+    path = "/api/setup/provider/probes"
+    assert api.get(path).status_code == 401
+    unlock(api)
+    assert api.get(path).json() == {"latest": None, "active": None}
+    with DB.begin() as db:
+        db.add(OperatorJob(id="e" * 32, actor="initial-setup", config_revision=7,
+                           status="completed", created=123))
+    data = api.get(path).json()
+    assert data == {"latest": {"id": "e" * 32, "status": "completed", "config_revision": 7, "created": 123},
+                    "active": None}
+    with DB() as db:
+        assert len(list(db.scalars(select(OperatorJob)))) == 1
+        assert len(list(db.scalars(select(UsageBucket)))) == 0
+    assert finish(api).status_code == 201
+    assert api.get(path).status_code == 409

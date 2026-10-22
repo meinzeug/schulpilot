@@ -46,7 +46,7 @@ def catalog():
 def payload():
     with DB() as db:
         config = db.get(ProviderConfig, 1)
-        return {key: getattr(config, key) for key in schemas.ProviderUpdate.model_fields if key != "api_key"}
+        return {key: getattr(config, key) for key in schemas.ProviderUpdate.model_fields if key not in {"api_key", "expected_revision"}}
 
 
 @pytest.fixture
@@ -298,7 +298,7 @@ def test_emergency_stop_during_catalog_read_cannot_be_undone_by_older_save(api, 
     with DB() as db:
         config = db.get(ProviderConfig, 1)
         assert config.emergency_stop is True
-        assert config.revision == revision and config.reasoning_effort == "medium"
+        assert config.revision == revision + 1 and config.reasoning_effort == "medium"
         assert config.model == original["model"]
 
 

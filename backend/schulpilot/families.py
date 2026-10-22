@@ -208,8 +208,8 @@ def preferences(child_id: str, data: s.Preferences, p=Depends(parent), db=Depend
 
 
 class ChildPassword(s.Strict):
-    password: str = s.Field(min_length=12, max_length=128)
-    parent_password: str = s.Field(min_length=1, max_length=128)
+    password: s.PasswordText = s.Field(min_length=12, max_length=128)
+    parent_password: s.PasswordText = s.Field(min_length=1, max_length=128)
 
 
 @router.put("/children/{child_id}/password")

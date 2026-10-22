@@ -1,6 +1,6 @@
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, or_, select, update
 
 from . import schemas as s
 from .config import runtime_settings, settings
@@ -18,7 +18,9 @@ def config_data(config):
         if c.name not in ("encrypted_key", "id")
     }
     result["has_key"] = bool(config.encrypted_key or (config.provider == "openrouter" and settings.openrouter_api_key))
-    result["key_source"] = "environment" if config.provider == "openrouter" and settings.openrouter_api_key else "encrypted_settings"
+    result["key_source"] = (
+        "environment" if config.provider == "openrouter" and settings.openrouter_api_key else "encrypted_settings"
+    )
     site = runtime_settings()
     result["real_data_gate"] = bool(site.real_data_approved and site.privacy_evidence)
     result["codex_isolated_worker"] = bool(settings.codex_socket and settings.codex_approved)
@@ -84,9 +86,14 @@ def save_provider(data, actor, db):
     config = db.scalar(
         select(ProviderConfig).where(ProviderConfig.id == 1).with_for_update().execution_options(populate_existing=True)
     )
+    if data.expected_revision is not None and data.expected_revision != config.revision:
+        raise HTTPException(
+            409,
+            "Die Konfiguration wurde inzwischen geändert. Dein Entwurf bleibt erhalten. Lade den gespeicherten Stand bewusst neu.",
+        )
     if previous_stop is False and config.emergency_stop and not data.emergency_stop:
         raise HTTPException(409, "Der Notfallstopp wurde inzwischen aktiviert. Bitte die Einstellungen neu laden.")
-    values = data.model_dump(exclude={"api_key"})
+    values = data.model_dump(exclude={"api_key", "expected_revision"})
     for field in ("openrouter_free_only", "openrouter_require_zdr", "reasoning_effort"):
         if field not in data.model_fields_set:
             values.pop(field)
@@ -139,12 +146,17 @@ def save_provider(data, actor, db):
 
 @router.post("/admin/emergency-stop")
 def emergency(p=Depends(admin), db=Depends(get_db)):
-    config = db.get(ProviderConfig, 1)
-    config.emergency_stop = True
+    config = db.scalar(
+        select(ProviderConfig).where(ProviderConfig.id == 1).with_for_update().execution_options(populate_existing=True)
+    )
+    if not config.emergency_stop:
+        config.emergency_stop = True
+        config.revision += 1
     audit(db, p.user.id, "admin.emergency_stop", "global")
     db.commit()
     return {
-        "message": "Neue kostenpflichtige Aufrufe sind gesperrt. Bereits laufende externe Verarbeitung lässt sich nicht zurückholen."
+        "message": "Neue kostenpflichtige Aufrufe sind gesperrt. Bereits laufende externe Verarbeitung lässt sich nicht zurückholen.",
+        "revision": config.revision,
     }
 
 
@@ -159,14 +171,23 @@ def provider_check(actor, db):
         from .codex_setup import worker_health
 
         status = worker_health()["status"]
-    elif config.provider in ("openai", "openrouter") and (config.encrypted_key or (config.provider == "openrouter" and settings.openrouter_api_key)):
+    elif config.provider in ("openai", "openrouter") and (
+        config.encrypted_key or (config.provider == "openrouter" and settings.openrouter_api_key)
+    ):
         url = (
             "https://api.openai.com/v1/models" if config.provider == "openai" else "https://openrouter.ai/api/v1/models"
         )
         try:
             response = httpx.get(
                 url,
-                headers={"Authorization": "Bearer " + (settings.openrouter_api_key if config.provider == "openrouter" and settings.openrouter_api_key else decrypt(config.encrypted_key))},
+                headers={
+                    "Authorization": "Bearer "
+                    + (
+                        settings.openrouter_api_key
+                        if config.provider == "openrouter" and settings.openrouter_api_key
+                        else decrypt(config.encrypted_key)
+                    )
+                },
                 timeout=10,
                 follow_redirects=False,
             )
@@ -213,11 +234,37 @@ class Entitlement(s.Strict):
 
 
 @router.get("/admin/families")
-def family_operations(p=Depends(admin), db=Depends(get_db)):
+def family_operations(
+    paginated: bool = False,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    search: str = Query(default="", max_length=80),
+    plan: str | None = Query(default=None, max_length=40),
+    synthetic: bool | None = None,
+    p=Depends(admin),
+    db=Depends(get_db),
+):
     audit(db, p.user.id, "admin.entitlements_read", "families")
     db.commit()
+    conditions = []
+    query = search.strip()
+    if query:
+        conditions.append(
+            or_(Family.id.icontains(query, autoescape=True), Family.plan.icontains(query, autoescape=True))
+        )
+    if plan is not None:
+        conditions.append(Family.plan == plan)
+    if synthetic is not None:
+        conditions.append(Family.synthetic.is_(synthetic))
+    total = db.scalar(select(func.count()).select_from(Family).where(*conditions)) if paginated else None
+    pages = max(1, (total + page_size - 1) // page_size) if paginated else 1
+    selected_page = min(page, pages)
+    statement = select(Family).where(*conditions).order_by(Family.id)
+    statement = (
+        statement.offset((selected_page - 1) * page_size).limit(page_size) if paginated else statement.limit(200)
+    )
     # Deliberately no names, children, messages, materials or learning histories.
-    return [
+    items = [
         {
             "id": f.id,
             "plan": f.plan,
@@ -226,8 +273,15 @@ def family_operations(p=Depends(admin), db=Depends(get_db)):
             "budget_micros": f.budget_micros,
             "synthetic": f.synthetic,
         }
-        for f in db.scalars(select(Family).limit(200))
+        for f in db.scalars(statement)
     ]
+    if not paginated:
+        return items
+    return {
+        "items": items,
+        "pagination": {"page": selected_page, "pages": pages, "page_size": page_size, "total": total},
+        "filters": {"search": query, "plan": plan, "synthetic": synthetic},
+    }
 
 
 @router.put("/admin/families/{family_id}/entitlements")

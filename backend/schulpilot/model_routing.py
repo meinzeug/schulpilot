@@ -13,6 +13,7 @@ from .db import Attempt, Job, LearningUnit, Material, ProviderConfig, SchoolDay,
 from .schemas import Strict
 
 ROUTING_VERSION = "school-2"
+ROUTING_REASONING_EFFORT = "medium"
 PROMPT_VERSION = "school-20261020-4"
 
 
@@ -196,7 +197,7 @@ def select_route(config, function, features=None, snapshot=None):
     }
     values.update(
         model=route.model, extraction_model="", openrouter_free_only=False, openrouter_require_zdr=True,
-        reasoning_effort="medium", image_capable=route.image_capable, structured_capable=route.evaluated,
+        reasoning_effort=ROUTING_REASONING_EFFORT, image_capable=route.image_capable, structured_capable=route.evaluated,
         capability_evidence=route.capability_evidence, pricing_evidence=route.pricing_evidence,
         input_per_million_micros=route.input_per_million_micros,
         output_per_million_micros=route.output_per_million_micros,

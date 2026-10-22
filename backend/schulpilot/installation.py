@@ -367,10 +367,36 @@ def admin_probe(p=Depends(admin), db=Depends(get_db)):
     return enqueue(p.user.id, db)
 
 
+def probe_summary(job):
+    if job is None:
+        return None
+    return {k: getattr(job, k) for k in ("id", "status", "config_revision", "created")}
+
+
+def probe_history(actor, db):
+    # Read-only recovery metadata. A different operator's active synthetic check
+    # already blocks enqueue; expose its ID rather than suggest another POST.
+    latest = db.scalar(select(OperatorJob).where(OperatorJob.actor == actor)
+                       .order_by(OperatorJob.created.desc(), OperatorJob.id.desc()).limit(1))
+    active = db.scalar(select(OperatorJob).where(OperatorJob.status.in_(["queued", "running"]))
+                       .order_by(OperatorJob.created.desc(), OperatorJob.id.desc()).limit(1))
+    return {"latest": probe_summary(latest), "active": probe_summary(active)}
+
+
+@router.get("/setup/provider/probes")
+def setup_probe_history(actor=Depends(setup_operator), db=Depends(get_db)):
+    return probe_history(actor, db)
+
+
+@router.get("/admin/provider/probes")
+def admin_probe_history(p=Depends(admin), db=Depends(get_db)):
+    return probe_history(p.user.id, db)
+
+
 def probe_data(job):
     if not job:
         raise HTTPException(404, "Prüfauftrag nicht gefunden.")
-    return {k: getattr(job, k) for k in ("id", "status", "report", "error")}
+    return {k: getattr(job, k) for k in ("id", "status", "report", "error", "config_revision", "created")}
 
 
 @router.get("/setup/provider/probes/{job_id}")

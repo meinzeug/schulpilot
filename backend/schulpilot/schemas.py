@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, 
 from .subject_content import Presentation, SourceBlock
 
 Short = Annotated[str, Field(min_length=1, max_length=160)]
+# Credential characters are exact; only identifiers and ordinary text are trimmed.
+PasswordText = Annotated[str, StringConstraints(strip_whitespace=False)]
 
 
 class Strict(BaseModel):
@@ -14,7 +16,7 @@ class Strict(BaseModel):
 
 class Register(Strict):
     email: EmailStr
-    password: str = Field(min_length=12, max_length=128)
+    password: PasswordText = Field(min_length=12, max_length=128)
     display_name: str = Field(min_length=1, max_length=80)
     family_name: str = Field(min_length=1, max_length=120)
     adult_consent: Literal[True]
@@ -22,7 +24,7 @@ class Register(Strict):
 
 class Login(Strict):
     username: str = Field(min_length=1, max_length=254)
-    password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
+    password: PasswordText = Field(min_length=1, max_length=128)
     device: str = Field(default="Browser", max_length=100)
 
     @model_validator(mode="before")
@@ -44,17 +46,17 @@ class TokenRequest(Strict):
 
 
 class ResetRequest(TokenRequest):
-    password: str = Field(min_length=12, max_length=128)
+    password: PasswordText = Field(min_length=12, max_length=128)
 
 
 class ConfirmPassword(Strict):
-    password: str = Field(min_length=1, max_length=128)
+    password: PasswordText = Field(min_length=1, max_length=128)
 
 
 class ChildCreate(Strict):
     display_name: str = Field(min_length=1, max_length=80)
     username: str = Field(min_length=5, max_length=50, pattern=r"^[a-zA-Z0-9._-]+$")
-    password: str = Field(min_length=12, max_length=128)
+    password: PasswordText = Field(min_length=12, max_length=128)
     grade: int = Field(ge=1, le=13)
     subjects: list[str] = Field(default_factory=list, max_length=20)
     school_type: str = Field(default="", max_length=80)
@@ -75,7 +77,7 @@ class InviteCreate(Strict):
 
 
 class InviteAccept(TokenRequest):
-    password: str = Field(default="", max_length=128)
+    password: PasswordText = Field(default="", max_length=128)
     display_name: str = Field(default="", max_length=80)
 
 
@@ -142,7 +144,9 @@ class AssignmentComplete(Strict):
 class MaterialVocabularyPreview(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
-    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=24000, pattern=r"\S")
+    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(
+        min_length=1, max_length=24000, pattern=r"\S"
+    )
 
 
 class MaterialWordSelection(Strict):
@@ -173,7 +177,9 @@ class MaterialTaskDecision(Strict):
 class MaterialConfirm(Strict):
     subject: str = Field(min_length=1, max_length=80)
     topic: Short
-    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=24000, pattern=r"\S")
+    content: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(
+        min_length=1, max_length=24000, pattern=r"\S"
+    )
     homework: list[Annotated[str, Field(max_length=500)]] = Field(default_factory=list, max_length=20)
     uncertainties_resolved: Literal[True]
     revision: int | None = Field(default=None, ge=1)
@@ -366,6 +372,7 @@ class MessageRequest(Strict):
 
 
 class ProviderUpdate(Strict):
+    expected_revision: int | None = Field(default=None, ge=1)
     provider: Literal["disabled", "openai", "openrouter", "codex"]
     model: str = Field(max_length=160)
     reasoning_effort: str = Field(default="medium", max_length=32, pattern=r"^[a-z][a-z0-9_-]{0,31}$")
