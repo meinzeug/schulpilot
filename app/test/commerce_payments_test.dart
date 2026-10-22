@@ -14,6 +14,7 @@ import 'package:schulpilot/payment_navigation.dart';
 import 'package:schulpilot/paypal_settings.dart';
 import 'package:schulpilot/ui.dart';
 
+import 'admin_subpages_design_test.dart' as admin;
 import 'commerce_trial_launch_test.dart' as trial;
 
 const orderId = '11111111111111111111111111111111';
@@ -166,6 +167,91 @@ void main() {
     expect(document.fragment, isEmpty);
     expect(orderWithdrawalDocumentUri('../another-order', document), isNull);
   }, skip: kIsWeb);
+  testWidgets(
+    'operator sales introduction separates manual transfers from automatically checked online receipts',
+    (tester) async {
+      final requests = await admin.mountAdminSubpage(
+        tester,
+        path: '/admin/verkauf',
+        width: 320,
+      );
+      expect(
+        find.text(
+          'Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
+        ),
+        findsOneWidget,
+      );
+      await admin.press(tester, find.byTooltip('Über diesen Bereich'));
+      expect(
+        find.text(
+          'Überweisungen manuell mit dem Bankkonto abgleichen. Online-Zahlungsbelege werden automatisch geprüft.',
+        ),
+        findsOneWidget,
+      );
+      expect(requests.every((request) => request.method == 'GET'), isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'operator readiness renders an empty configuration checklist without claiming merchant approval',
+    (tester) async {
+      final f = Fixture();
+      f.intercept = (_) async => trial.reply({...config(), 'readiness': []});
+      await f.mount(tester);
+      await tap(tester, find.text('PayPal und Google Pay einrichten'));
+      expect(
+        find.text(
+          'Gespeicherter Prüfstand: Keine fehlenden Konfigurationsangaben gemeldet. Eine Händlerfreigabe oder erfolgreiche Zahlung ist damit nicht bestätigt.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Prüfstand: []'), findsNothing);
+      expect(f.requests, hasLength(1));
+      expect(f.requests.single.method, 'GET');
+    },
+  );
+  test('operator readiness missing or malformed metadata never renders raw server collections', () {
+    expect(
+      paypalReadinessSummary(['PayPal Client-Secret', 'PayPal Händler-ID']),
+      'Gespeicherter Prüfstand – noch offen: PayPal Client-Secret; PayPal Händler-ID.',
+    );
+    for (final metadata in [
+      null,
+      {'unexpected': 'synthetic'},
+      [42],
+      [''],
+    ]) {
+      expect(
+        paypalReadinessSummary(metadata),
+        'Gespeicherter Prüfstand: Nicht verfügbar. Lade den gespeicherten Zahlungsstand erneut.',
+      );
+    }
+  });
+  testWidgets(
+    'operator identifier fields enforce the exact backend limits without changing the client ID limit',
+    (tester) async {
+      final f = Fixture();
+      await f.mount(tester);
+      await tap(tester, find.text('PayPal und Google Pay einrichten'));
+      for (final entry in <String, int>{
+        'Öffentliche PayPal-Client-ID': 300,
+        'PayPal-Händler-ID': 64,
+        'PayPal-Webhook-ID': 80,
+      }.entries) {
+        final target = field(entry.key);
+        expect(tester.widget<TextField>(target).maxLength, entry.value);
+        await tester.ensureVisible(target);
+        await tester.enterText(target, 'X' * (entry.value + 1));
+        expect(
+          tester.widget<TextField>(target).controller!.text,
+          'X' * entry.value,
+        );
+      }
+      expect(f.requests, hasLength(1));
+      expect(f.requests.single.method, 'GET');
+      expect(tester.takeException(), isNull);
+    },
+  );
   for (final scale in [1.0, 2.0]) {
     testWidgets(
       'operator setup loads only explicitly and shows no stored secret at 320/$scale',
