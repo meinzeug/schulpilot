@@ -22,6 +22,65 @@ bool materialCanReprocess(AppState state, Json item, {bool? canManage}) =>
     (item['has_image'] == true ||
         (item['has_image'] == null && item['synthetic'] == false));
 
+Future<bool> _confirmAccountAction(
+  BuildContext context,
+  AppState state,
+  Json owner,
+  String title,
+  String text,
+) async {
+  if (!context.mounted || !identical(state.user, owner)) return false;
+  ModalRoute<dynamic>? confirmationRoute;
+  void accountChanged() {
+    if (identical(state.user, owner)) return;
+    final route = confirmationRoute;
+    if (route == null) return;
+    Future<void>.microtask(() {
+      if (!identical(state.user, owner) && route.isActive) {
+        route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
+  state.addListener(accountChanged);
+  try {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            confirmationRoute ??= ModalRoute.of(dialogContext);
+            accountChanged();
+            void finish(bool accepted) {
+              if (!dialogContext.mounted ||
+                  !identical(state.user, owner) ||
+                  confirmationRoute?.isCurrent != true) {
+                return;
+              }
+              Navigator.pop(dialogContext, accepted);
+            }
+
+            return AlertDialog(
+              scrollable: true,
+              title: Text(title),
+              content: Text(text),
+              actions: [
+                TextButton(
+                  onPressed: () => finish(false),
+                  child: const Text('Abbrechen'),
+                ),
+                FilledButton(
+                  onPressed: () => finish(true),
+                  child: const Text('Bestätigen'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  } finally {
+    state.removeListener(accountChanged);
+  }
+}
+
 /// The preview freezes the complete selection, including pages beyond page1.
 /// A changed source or membership is checked again by the server at deletion.
 Future<bool> deleteNotebookPages(
@@ -32,7 +91,7 @@ Future<bool> deleteNotebookPages(
   Json? filters,
   VoidCallback? onDeleted,
 }) async {
-  final owner = state.user?['id'];
+  final owner = state.user;
   if (owner == null || (ids != null && ids.isEmpty)) return false;
   final preview = await state.api.post(
     '/children/$childId/materials/delete-preview',
@@ -40,22 +99,26 @@ Future<bool> deleteNotebookPages(
         ? {'all_matching': true, 'filters': filters ?? <String, dynamic>{}}
         : {'ids': ids},
   );
-  if (!context.mounted || owner != state.user?['id']) return false;
+  if (!context.mounted || !identical(owner, state.user)) return false;
   final count = (preview['count'] as num? ?? 0).toInt();
   final units = (preview['unit_count'] as num? ?? 0).toInt();
   final answers = (preview['answer_count'] as num? ?? 0).toInt();
   if (count < 1 || preview['selection_token'] is! String) {
     throw ApiError('Keine Seiten ausgewählt. Lade die Liste neu.');
   }
-  final accepted = await confirmDialog(
+  final accepted = await _confirmAccountAction(
     context,
+    state,
+    owner,
     count == 1 ? 'Heftseite löschen?' : '$count Heftseiten löschen?',
     '${counted(count, 'ausgewählte Seite wird', 'ausgewählte Seiten werden')} gelöscht${ids == null ? ' – auch auf weiteren Listenseiten' : ''}. '
     'Foto und erkannter Text werden entfernt. '
     '${units > 0 ? '${counted(units, 'verknüpfte Lernrunde', 'verknüpfte Lernrunden')} mit ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} werden ebenfalls gelöscht, auch Runden mit mehreren Heftseiten. ' : ''}'
     'Das kannst du nicht rückgängig machen.',
   );
-  if (!accepted || !context.mounted || owner != state.user?['id']) return false;
+  if (!accepted || !context.mounted || !identical(owner, state.user)) {
+    return false;
+  }
   final result = await state.api.post(
     '/children/$childId/materials/bulk-delete',
     {
@@ -63,7 +126,7 @@ Future<bool> deleteNotebookPages(
       'delete_linked_units': true,
     },
   );
-  if (!context.mounted || owner != state.user?['id']) return false;
+  if (!context.mounted || !identical(owner, state.user)) return false;
   final deleted = (result['deleted_count'] as num? ?? 0).toInt();
   toast(context, '${counted(deleted, 'Heftseite', 'Heftseiten')} gelöscht.');
   onDeleted?.call();
@@ -76,25 +139,30 @@ Future<bool> deleteLearningRound(
   AppState state,
   Json item,
 ) async {
-  final owner = state.user?['id'];
+  final owner = state.user;
+  if (owner == null) return false;
   final id = item['id'];
   final preview = await state.api.post('/units/$id/delete-preview', {});
-  if (!context.mounted || owner != state.user?['id']) return false;
+  if (!context.mounted || !identical(owner, state.user)) return false;
   final answers = (preview['answer_count'] as num? ?? 0).toInt();
   if (preview['selection_token'] is! String) {
     throw ApiError('Lade die Liste neu und wähle die Runde erneut aus.');
   }
-  final accepted = await confirmDialog(
+  final accepted = await _confirmAccountAction(
     context,
+    state,
+    owner,
     'Lernrunde löschen?',
     'Diese Runde mit ihren Aufgaben, Rückmeldungen und ${counted(answers, 'gespeichertem Antwortversuch', 'gespeicherten Antwortversuchen')} wird gelöscht. '
         'Die Heftseiten und andere Runden bleiben erhalten. Das kannst du nicht rückgängig machen.',
   );
-  if (!accepted || !context.mounted || owner != state.user?['id']) return false;
+  if (!accepted || !context.mounted || !identical(owner, state.user)) {
+    return false;
+  }
   await state.api.post('/units/$id/delete', {
     'selection_token': preview['selection_token'],
   });
-  if (!context.mounted || owner != state.user?['id']) return false;
+  if (!context.mounted || !identical(owner, state.user)) return false;
   toast(context, 'Lernrunde gelöscht.');
   state.refreshState();
   return true;
@@ -107,17 +175,19 @@ Future<bool> reprocessNotebookPage(
   Json item, {
   required VoidCallback onRefresh,
 }) async {
-  final owner = state.user?['id'];
+  final owner = state.user;
   if (owner == null || !materialCanReprocess(state, item)) return false;
-  if (!await confirmDialog(
+  if (!await _confirmAccountAction(
     context,
+    state,
+    owner,
     'Seite neu einlesen?',
     'Die KI liest dieses Foto noch einmal. Danach prüfst du den Text und kannst neue Aufgaben vorbereiten. '
         'Deine bisherige Seite und deine Antworten bleiben erhalten. Das verbraucht einen KI-Aufruf.',
   )) {
     return false;
   }
-  if (!context.mounted || owner != state.user?['id']) return false;
+  if (!context.mounted || !identical(owner, state.user)) return false;
   final id = item['id'];
   final pendingKey = 'material-reprocess:$id';
   final previous = state.collectionViews[pendingKey];
@@ -136,7 +206,7 @@ Future<bool> reprocessNotebookPage(
     {'revision': item['revision']},
     {'Idempotency-Key': key},
   );
-  if (!context.mounted || owner != state.user?['id']) return false;
+  if (!context.mounted || !identical(owner, state.user)) return false;
   if (job['id'] is! String || job['material_id'] is! String) {
     throw ApiError(
       'Die Vorbereitung konnte nicht geöffnet werden. Lade deine Hefte neu.',
@@ -144,7 +214,7 @@ Future<bool> reprocessNotebookPage(
   }
   state.collectionViews.remove(pendingKey);
   onRefresh();
-  if (context.mounted && owner == state.user?['id']) {
+  if (context.mounted && identical(owner, state.user)) {
     openRoute(
       context,
       '/material/${job['material_id']}/processing/${job['id']}',

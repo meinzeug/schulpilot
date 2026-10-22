@@ -163,3 +163,26 @@ nicht abgeleitet. Serverzeit/Mindestziele bleiben ein eigener Bereich. Eine
 gemeinsame Kindnavigation und kompakte mobile Bereichsauswahl verbinden die
 Detailseiten. Noteneinstellungen und Wiederholungsdetails bei Bedarf aufklappen.
 Abnahme: [PARENT_OVERVIEW_2026_10_20.md](PARENT_OVERVIEW_2026_10_20.md).
+
+
+## Fortsetzung und Formulare ab 1.19.7
+
+Sammlungen merken ausschließlich Ansichtswahl, Suche, Filter und Seite im
+Arbeitsspeicher derselben Sitzung. Neue Anmeldung, auch derselben Benutzer-ID,
+verwirft diese Merkliste. Während Filterabrufen bleibt die gewählte Sammlung
+beschriftet; alte Wörter und Aufgaben werden nicht als neue Treffer angezeigt.
+
+Die detaillierte Eltern-Lernstandseite zeigt Titel, tatsächliche Übungsbelege
+und Fachkarten vor der optionalen KI-Einschätzung. Gefilterte Leerlisten nennen
+den gewählten Bereich und bieten „Alle Fächer anzeigen“. Aktualisierung gehört
+zur gemeinsamen Kindnavigation. Lade-, Treffer- und Fehlerstatus sind beschriftet.
+
+Elternformulare scrollen auch bei Bildschirmtastatur und großer Schrift. Fehler
+bleiben im Dialog, bestehende Eingaben erhalten. Laufende Änderungen sperren
+doppeltes Absenden und Abbrechen. Löschen nennt das konkrete Ziel. Offene
+Formulare bleiben an das ursprüngliche Konto und die Familie gebunden.
+
+Beim bewussten Wechsel zwischen Anmeldung, Passwort-Hilfe und Registrierung
+kann der gerade eingegebene Benutzername bzw. die E-Mail einmalig im RAM
+weitergegeben werden. Ein Kindername wird nicht als Eltern-E-Mail ausgegeben.
+Keine Passwörter, URL-Parameter oder persistente Speicherung für diese Übergabe.

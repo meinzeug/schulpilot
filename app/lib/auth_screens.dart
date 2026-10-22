@@ -334,11 +334,14 @@ class _AuthScreenState extends State<AuthScreen> {
   bool submitting = false, googleBusy = false;
   int formRevision = 0;
   bool consent = false, passwordVisible = false;
+  String? _identifierFromPreviousForm;
+  bool _identifierEdited = false;
   String? result;
   String? error;
   @override
   void initState() {
     super.initState();
+    _restoreIdentifier();
     _readLink();
   }
 
@@ -347,11 +350,24 @@ class _AuthScreenState extends State<AuthScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.linkUri != widget.linkUri || oldWidget.mode != widget.mode) {
       formRevision++;
+      if (oldWidget.mode != widget.mode) _restoreIdentifier();
       _readLink();
       result = null;
       error = null;
       fieldErrors.clear();
     }
+  }
+
+  void _restoreIdentifier() {
+    final identifier = widget.state.takeAuthIdentifier();
+    _identifierFromPreviousForm = identifier;
+    _identifierEdited = false;
+    username.text =
+        widget.mode == 'login' ||
+            (['register', 'recovery'].contains(widget.mode) &&
+                identifier?.contains('@') == true)
+        ? identifier ?? ''
+        : '';
   }
 
   void _readLink() {
@@ -398,7 +414,26 @@ class _AuthScreenState extends State<AuthScreen> {
   });
 
   void goToAuth(String location) {
-    if (!submitting && !googleBusy) context.go(location);
+    if (submitting || googleBusy) return;
+    final target = Uri.parse(location).path;
+    final identifier = username.text.isNotEmpty || _identifierEdited
+        ? username.text.trim()
+        : _identifierFromPreviousForm ?? '';
+    widget.state.rememberAuthIdentifier(
+      ['/login', '/register', '/recovery'].contains(target) ? identifier : '',
+    );
+    context.go(location);
+  }
+
+  void fieldEdited(String name) {
+    if (name == 'username') _identifierEdited = true;
+    if (fieldErrors.containsKey(name) || error != null || result != null) {
+      setState(() {
+        fieldErrors.remove(name);
+        error = null;
+        result = null;
+      });
+    }
   }
 
   bool validateFields() {
@@ -577,6 +612,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (['login', 'register', 'recovery'].contains(mode)) ...[
                       TextField(
                         controller: username,
+                        onChanged: (_) => fieldEdited('username'),
                         focusNode: usernameFocus,
                         enabled: !submitting,
                         autocorrect: false,
@@ -614,6 +650,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (['register', 'invite'].contains(mode)) ...[
                       TextField(
                         controller: name,
+                        onChanged: (_) => fieldEdited('name'),
                         focusNode: nameFocus,
                         enabled: !submitting,
                         textCapitalization: TextCapitalization.words,
@@ -632,6 +669,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (mode == 'register') ...[
                       TextField(
                         controller: family,
+                        onChanged: (_) => fieldEdited('family'),
                         focusNode: familyFocus,
                         enabled: !submitting,
                         textCapitalization: TextCapitalization.words,
@@ -653,6 +691,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ].contains(mode)) ...[
                       TextField(
                         controller: password,
+                        onChanged: (_) => fieldEdited('password'),
                         focusNode: passwordFocus,
                         enabled: !submitting,
                         textInputAction:
@@ -708,6 +747,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (['reset', 'verify', 'invite'].contains(mode)) ...[
                       TextField(
                         controller: token,
+                        onChanged: (_) => fieldEdited('token'),
                         focusNode: tokenFocus,
                         enabled: !submitting,
                         autocorrect: false,
@@ -732,7 +772,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         focusNode: consentFocus,
                         onChanged: submitting
                             ? null
-                            : (v) => setState(() => consent = v ?? false),
+                            : (v) {
+                                setState(() => consent = v ?? false);
+                                fieldEdited('consent');
+                              },
                         title: Text(
                           'Ich bin volljährig und für die Einrichtung dieser Familie berechtigt.',
                           style: TextStyle(fontSize: 13),

@@ -25,9 +25,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int version = 0;
   String parentSection = 'account';
   AppState get state => widget.state;
-  void refresh() => setState(() => version++);
+  Json? account;
+  String? family;
+  @override
+  void initState() {
+    super.initState();
+    account = state.user;
+    family = state.familyId;
+    state.addListener(contextChanged);
+  }
+
+  void contextChanged() {
+    if (identical(account, state.user) && family == state.familyId) return;
+    setState(() {
+      account = state.user;
+      family = state.familyId;
+      parentSection = 'account';
+      version++;
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.state, state)) {
+      oldWidget.state.removeListener(contextChanged);
+      state.addListener(contextChanged);
+      account = state.user;
+      family = state.familyId;
+      parentSection = 'account';
+      version++;
+    }
+  }
+
+  @override
+  void dispose() {
+    state.removeListener(contextChanged);
+    super.dispose();
+  }
+
+  void refresh() {
+    if (mounted) setState(() => version++);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scope = _SettingsContext(state);
     if (state.isChild) {
       return ChildAccount(
         state,
@@ -102,8 +145,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     secondary: true,
                     icon: Icons.logout_rounded,
                     onPressed: () async {
-                      await state.logout();
-                      if (context.mounted) context.go('/login');
+                      if (!scope.current) return;
+                      await state.logout(
+                        expectedAccountId: scope.account?['id'],
+                      );
+                      if (context.mounted && state.user == null) {
+                        context.go('/login');
+                      }
                     },
                   ),
                 ],
@@ -112,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 24),
             if (state.isParent) ...[
               LoadView<Json>(
-                key: ValueKey('google-$version'),
+                key: ValueKey(('google', ObjectKey(scope.account), version)),
                 load: () => state.api.get('/auth/google/identity'),
                 builder: (value, _) =>
                     value['available'] != true && value['linked'] != true
@@ -134,17 +182,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   : 'Google verknüpfen',
                               secondary: true,
                               onPressed: () async {
+                                if (!scope.current) return;
                                 final password = await passwordDialog(
                                   context,
                                   'Elternzugang bestätigen',
                                   'Bestätige die Änderung mit deinem bisherigen Passwort. Bei Google verwendest du dieselbe E-Mail-Adresse.',
+                                  state: state,
+                                  confirm: value['linked'] == true
+                                      ? (password) async {
+                                          await state.api.delete(
+                                            '/auth/google/identity',
+                                            {'password': password},
+                                          );
+                                        }
+                                      : null,
                                 );
-                                if (password == null) return;
+                                if (password == null || !scope.current) return;
                                 if (value['linked'] == true) {
-                                  await state.api.delete(
-                                    '/auth/google/identity',
-                                    {'password': password},
-                                  );
                                   refresh();
                                 } else {
                                   final flow = await beginGoogleLogin(
@@ -152,7 +206,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     intent: 'link',
                                     password: password,
                                   );
-                                  if (context.mounted && flow != null) {
+                                  if (context.mounted &&
+                                      scope.current &&
+                                      flow != null) {
                                     context.go(
                                       '/auth/google/complete#flow=$flow',
                                     );
@@ -172,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
             heading('Angemeldete Geräte'),
             LoadView<List<dynamic>>(
-              key: ValueKey('sessions-$version'),
+              key: ValueKey(('sessions', ObjectKey(scope.account), version)),
               load: () => state.api.list('/auth/sessions'),
               builder: (sessions, _) => Panel(
                 child: Column(
@@ -204,12 +260,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     : 'Gerät abmelden',
                                 secondary: true,
                                 onPressed: () async {
+                                  if (!scope.current) return;
                                   await state.api.delete(
                                     '/auth/sessions/${s['id']}',
                                   );
+                                  if (!scope.current) return;
                                   if (s['current']) {
-                                    await state.clear();
-                                    if (context.mounted) context.go('/login');
+                                    await state.clear(
+                                      expectedUser: scope.account,
+                                    );
+                                    if (context.mounted && state.user == null) {
+                                      context.go('/login');
+                                    }
                                   } else {
                                     refresh();
                                   }
@@ -276,15 +338,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 label: 'Rechte entziehen',
                                 secondary: true,
                                 onPressed: () async {
+                                  if (!scope.current) return;
                                   if (await confirmDialog(
-                                    context,
-                                    'Familienrechte entziehen?',
-                                    'Dieses Elternkonto verliert den Familienzugriff. Seine Sitzungen werden widerrufen.',
-                                  )) {
+                                        context,
+                                        'Familienrechte entziehen?',
+                                        'Dieses Elternkonto verliert den Familienzugriff. Seine Sitzungen werden widerrufen.',
+                                      ) &&
+                                      scope.current) {
                                     await state.api.delete(
-                                      '/families/${state.familyId}/members/${m['id']}',
+                                      '/families/${scope.familyId}/members/${m['id']}',
                                     );
-                                    refresh();
+                                    if (scope.current) refresh();
                                   }
                                 },
                               )
@@ -296,8 +360,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: 'Weiteres Elternteil einladen',
                         icon: Icons.mail_outline_rounded,
                         onPressed: () async {
+                          if (!scope.current) return;
                           await inviteDialog(context, state);
-                          refresh();
+                          if (scope.current) refresh();
                         },
                       ),
                     ],
@@ -330,10 +395,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   label: 'Einladung widerrufen',
                                   secondary: true,
                                   onPressed: () async {
+                                    if (!scope.current) return;
                                     await state.api.delete(
-                                      '/families/${state.familyId}/invitations/${i['id']}',
+                                      '/families/${scope.familyId}/invitations/${i['id']}',
                                     );
-                                    refresh();
+                                    if (scope.current) refresh();
                                   },
                                 ),
                               ),
@@ -381,12 +447,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     label: 'Angaben bearbeiten',
                                     secondary: true,
                                     onPressed: () async {
+                                      if (!scope.current) return;
                                       await editChildDialog(
                                         context,
                                         state,
                                         Map<String, dynamic>.from(child),
                                       );
-                                      refresh();
+                                      if (scope.current) refresh();
                                     },
                                   ),
                                   ActionButton(
@@ -394,12 +461,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     secondary: true,
                                     icon: Icons.lock_reset_rounded,
                                     onPressed: () async {
+                                      if (!scope.current) return;
                                       await resetChildDialog(
                                         context,
                                         state,
                                         child['id'],
                                       );
-                                      refresh();
+                                      if (scope.current) refresh();
                                     },
                                   ),
                                   ActionButton(
@@ -407,16 +475,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     secondary: true,
                                     icon: Icons.delete_outline,
                                     onPressed: () async {
+                                      if (!scope.current) return;
                                       final password = await passwordDialog(
                                         context,
                                         'Kinderkonto wirklich löschen?',
                                         'Materialien, Antworten und Sitzungen dieses Kindes werden gelöscht. Backups verfallen nach höchstens 14 Tagen.',
+                                        state: state,
+                                        confirmLabel: 'Kinderkonto löschen',
+                                        destructive: true,
+                                        confirm: (password) async {
+                                          await state.api.delete(
+                                            '/children/${child['id']}',
+                                            {'password': password},
+                                          );
+                                        },
                                       );
-                                      if (password != null) {
-                                        await state.api.delete(
-                                          '/children/${child['id']}',
-                                          {'password': password},
-                                        );
+                                      if (password != null && scope.current) {
                                         refresh();
                                       }
                                     },
@@ -446,10 +520,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               label: 'Widerrufen',
                                               secondary: true,
                                               onPressed: () async {
+                                                if (!scope.current) return;
                                                 await state.api.delete(
                                                   '/children/${child['id']}/sessions/${s['id']}',
                                                 );
-                                                refresh();
+                                                if (scope.current) refresh();
                                               },
                                             )
                                           : null,
@@ -568,16 +643,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     secondary: true,
                     icon: Icons.download_outlined,
                     onPressed: () async {
+                      if (!scope.current) return;
                       final bytes = await state.api.bytes(
-                        '/families/${state.familyId}/export',
+                        '/families/${scope.familyId}/export',
                       );
+                      if (!scope.current) return;
                       final path = await FileSaver.instance.saveAs(
                         name: 'schulpilot-export',
                         bytes: bytes,
                         fileExtension: 'zip',
                         mimeType: MimeType.zip,
                       );
-                      if (context.mounted && path != null) {
+                      if (context.mounted && scope.current && path != null) {
                         toast(context, 'Export gespeichert: $path');
                       }
                     },
@@ -587,17 +664,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     label: 'Eigenes Elternkonto löschen',
                     secondary: true,
                     onPressed: () async {
+                      if (!scope.current) return;
                       final password = await passwordDialog(
                         context,
                         'Konto und eigene Familien löschen?',
                         'Als Familieninhaber löschst du auch alle zugehörigen Kinderkonten und Lerndaten. Eingeladene Eltern verlieren den Zugriff. Backups verfallen nach höchstens 14 Tagen.',
+                        state: state,
+                        confirmLabel: 'Konto und eigene Familien löschen',
+                        destructive: true,
+                        confirm: (password) async {
+                          await state.api.delete('/account', {
+                            'password': password,
+                          });
+                        },
                       );
-                      if (password != null) {
-                        await state.api.delete('/account', {
-                          'password': password,
-                        });
-                        await state.clear();
-                        if (context.mounted) context.go('/');
+                      if (password != null && scope.current) {
+                        await state.clear(expectedUser: scope.account);
+                        if (context.mounted && state.user == null) {
+                          context.go('/');
+                        }
                       }
                     },
                   ),
@@ -611,45 +696,226 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-Future<String?> passwordDialog(
-  BuildContext context,
-  String title,
-  String body,
-) async {
-  final controller = TextEditingController();
-  final result = await showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
+// A dialog or saved callback belongs to the exact signed-in session and family
+// that opened it. Backend authorization remains authoritative.
+class _SettingsContext {
+  final AppState state;
+  final Json? account;
+  final String? familyId;
+  _SettingsContext(this.state)
+    : account = state.user,
+      familyId = state.familyId;
+  bool get current =>
+      account != null &&
+      identical(state.user, account) &&
+      state.familyId == familyId;
+}
+
+class _SettingsFormDialog extends StatefulWidget {
+  final _SettingsContext scope;
+  final String title, confirmLabel;
+  final bool destructive;
+  final Widget Function(bool busy) fields;
+  final Future<void> Function() submit;
+  const _SettingsFormDialog({
+    required this.scope,
+    required this.title,
+    required this.confirmLabel,
+    required this.fields,
+    required this.submit,
+    this.destructive = false,
+  });
+  @override
+  State<_SettingsFormDialog> createState() => _SettingsFormDialogState();
+}
+
+class _SettingsFormDialogState extends State<_SettingsFormDialog> {
+  final form = GlobalKey<FormState>();
+  final feedback = GlobalKey();
+  bool busy = false, closing = false;
+  String? error;
+  @override
+  void initState() {
+    super.initState();
+    widget.scope.state.addListener(contextChanged);
+  }
+
+  void contextChanged() {
+    if (widget.scope.current || closing) return;
+    closing = true;
+    // Remove this exact dialog, never a newer route/account's overlay.
+    final route = ModalRoute.of(context);
+    final navigator = Navigator.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && route?.isActive == true) navigator.removeRoute(route!);
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.scope.state.removeListener(contextChanged);
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    if (busy || closing || !widget.scope.current) return;
+    final invalid = form.currentState!.validateGranularly();
+    if (invalid.isNotEmpty) {
+      reveal(() => invalid.first.context);
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.submit();
+      if (!mounted || !widget.scope.current || closing) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted || !widget.scope.current || closing) return;
+      setState(() {
+        error = e is ApiError ? e.message : 'Die Änderung konnte nicht abgeschlossen werden. Deine Eingaben bleiben erhalten.';
+      });
+      reveal(() => feedback.currentContext);
+    } finally {
+      if (mounted && widget.scope.current && !closing) {
+        setState(() => busy = false);
+      }
+    }
+  }
+
+  void reveal(BuildContext? Function() locate) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || closing || !widget.scope.current) return;
+      final target = locate();
+      if (target?.mounted == true) {
+        Scrollable.ensureVisible(
+          target!,
+          duration: const Duration(milliseconds: 180),
+          alignment: .5,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy,
+    child: AlertDialog(
+      scrollable: true,
+      title: Text(widget.title),
       content: SizedBox(
-        width: 440,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(body),
-            const SizedBox(height: 20),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Dein Elternpasswort',
-              ),
-            ),
-          ],
+        width: 460,
+        child: Form(
+          key: form,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              widget.fields(busy),
+              if (error != null) ...[
+                const SizedBox(height: 16),
+                Semantics(
+                  key: feedback,
+                  liveRegion: true,
+                  child: Notice(error!, warning: true),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: Text('Abbrechen'),
+          onPressed: busy ? null : () => Navigator.pop(context, false),
+          child: const Text('Abbrechen'),
         ),
         FilledButton(
-          onPressed: () => Navigator.pop(ctx, controller.text),
-          child: Text('Mit Passwort bestätigen'),
+          style: widget.destructive
+              ? FilledButton.styleFrom(
+                  backgroundColor: context.palette.dangerInk,
+                  foregroundColor: context.palette.dangerSurface,
+                )
+              : null,
+          onPressed: busy ? null : submit,
+          child: Text(busy ? 'Bitte warten …' : widget.confirmLabel),
         ),
       ],
     ),
   );
+}
+
+Future<bool> _settingsDialog(
+  BuildContext context,
+  _SettingsContext scope, {
+  required String title,
+  required String confirmLabel,
+  required Widget Function(bool busy) fields,
+  required Future<void> Function() submit,
+  bool destructive = false,
+}) async {
+  if (!scope.current) return false;
+  final route = DialogRoute<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _SettingsFormDialog(
+      scope: scope,
+      title: title,
+      confirmLabel: confirmLabel,
+      fields: fields,
+      submit: submit,
+      destructive: destructive,
+    ),
+  );
+  final changed = await Navigator.of(context, rootNavigator: true).push(route);
+  // Controllers must remain alive until the outgoing dialog is unmounted.
+  await route.completed;
+  return changed == true;
+}
+
+Future<String?> passwordDialog(
+  BuildContext context,
+  String title,
+  String body, {
+  required AppState state,
+  String confirmLabel = 'Mit Passwort bestätigen',
+  bool destructive = false,
+  Future<void> Function(String password)? confirm,
+}) async {
+  final controller = TextEditingController();
+  final scope = _SettingsContext(state);
+  final changed = await _settingsDialog(
+    context,
+    scope,
+    title: title,
+    confirmLabel: confirmLabel,
+    destructive: destructive,
+    fields: (busy) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(body),
+        const SizedBox(height: 20),
+        TextFormField(
+          controller: controller,
+          enabled: !busy,
+          obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+          autofillHints: const [AutofillHints.password],
+          decoration: const InputDecoration(labelText: 'Dein Elternpasswort'),
+          validator: (v) =>
+              v == null || v.isEmpty ? 'Gib dein Elternpasswort ein.' : null,
+        ),
+      ],
+    ),
+    submit: () async {
+      if (confirm != null) await confirm(controller.text);
+    },
+  );
+  final result = changed && scope.current ? controller.text : null;
   controller.dispose();
   return result;
 }
@@ -660,53 +926,53 @@ Future<void> resetChildDialog(
   String childId,
 ) async {
   final parent = TextEditingController(), password = TextEditingController();
-  await showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('Kinderzugang sicher zurücksetzen'),
-      content: SizedBox(
-        width: 440,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Notice(
-              'Das bisherige Passwort kann niemand auslesen. Ein neues Passwort beendet alle bestehenden Kindersitzungen.',
-            ),
-            TextField(
-              controller: parent,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Dein Elternpasswort',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Neues Kinderpasswort (mind. 12 Zeichen)',
-              ),
-            ),
-          ],
+  final scope = _SettingsContext(state);
+  await _settingsDialog(
+    context,
+    scope,
+    title: 'Kinderzugang sicher zurücksetzen',
+    confirmLabel: 'Passwort erneuern',
+    fields: (busy) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Notice(
+          'Das bisherige Passwort kann niemand auslesen. Ein neues Passwort beendet alle bestehenden Kindersitzungen.',
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: Text('Abbrechen'),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: parent,
+          enabled: !busy,
+          obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: const InputDecoration(labelText: 'Dein Elternpasswort'),
+          validator: (v) =>
+              v == null || v.isEmpty ? 'Gib dein Elternpasswort ein.' : null,
+          textInputAction: TextInputAction.next,
         ),
-        ActionButton(
-          label: 'Passwort erneuern',
-          onPressed: () async {
-            await state.api.put('/children/$childId/password', {
-              'password': password.text,
-              'parent_password': parent.text,
-            });
-            if (ctx.mounted) Navigator.pop(ctx);
-          },
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: password,
+          enabled: !busy,
+          obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: const InputDecoration(
+            labelText: 'Neues Kinderpasswort',
+            helperText: 'Mindestens 12 Zeichen.',
+          ),
+          validator: (v) => (v ?? '').runes.length < 12
+              ? 'Nutze mindestens 12 Zeichen.'
+              : null,
         ),
       ],
     ),
+    submit: () async {
+      await state.api.put('/children/$childId/password', {
+        'password': password.text,
+        'parent_password': parent.text,
+      });
+    },
   );
   parent.dispose();
   password.dispose();
@@ -724,58 +990,60 @@ Future<void> editChildDialog(
       ),
       school = TextEditingController(text: child['school_type']),
       region = TextEditingController(text: child['region']);
-  await showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('Notwendige Lernangaben'),
-      content: SizedBox(
-        width: 450,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final item in [
-                (name, 'Anzeigename'),
-                (grade, 'Klassenstufe'),
-                (subjects, 'Fächer (mit Komma trennen)'),
-                (school, 'Schulform (optional)'),
-                (region, 'Bundesland (optional)'),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: TextField(
-                    controller: item.$1,
-                    decoration: InputDecoration(labelText: item.$2),
-                  ),
-                ),
-            ],
+  await _settingsDialog(
+    context,
+    _SettingsContext(state),
+    title: 'Notwendige Lernangaben',
+    confirmLabel: 'Speichern',
+    fields: (busy) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final item in [
+          (name, 'Anzeigename'),
+          (grade, 'Klassenstufe'),
+          (subjects, 'Fächer (mit Komma trennen)'),
+          (school, 'Schulform (optional)'),
+          (region, 'Bundesland (optional)'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: TextFormField(
+              controller: item.$1,
+              enabled: !busy,
+              keyboardType: identical(item.$1, grade)
+                  ? TextInputType.number
+                  : null,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(labelText: item.$2),
+              validator: (v) {
+                if (identical(item.$1, name) && (v ?? '').trim().isEmpty) {
+                  return 'Gib einen Anzeigenamen ein.';
+                }
+                if (identical(item.$1, grade)) {
+                  final value = int.tryParse(v ?? '');
+                  if (value == null || value < 1 || value > 13) {
+                    return 'Nutze eine Klassenstufe von 1 bis 13.';
+                  }
+                }
+                return null;
+              },
+            ),
           ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: Text('Abbrechen'),
-        ),
-        ActionButton(
-          label: 'Speichern',
-          onPressed: () async {
-            await state.api.put('/children/${child['id']}', {
-              'display_name': name.text,
-              'grade': int.tryParse(grade.text) ?? 0,
-              'subjects': subjects.text
-                  .split(',')
-                  .map((s) => s.trim())
-                  .where((s) => s.isNotEmpty)
-                  .toList(),
-              'school_type': school.text,
-              'region': region.text,
-            });
-            if (ctx.mounted) Navigator.pop(ctx);
-          },
-        ),
       ],
     ),
+    submit: () async {
+      await state.api.put('/children/${child['id']}', {
+        'display_name': name.text.trim(),
+        'grade': int.parse(grade.text),
+        'subjects': subjects.text
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList(),
+        'school_type': school.text,
+        'region': region.text,
+      });
+    },
   );
   for (final c in [name, grade, subjects, school, region]) {
     c.dispose();
@@ -784,64 +1052,56 @@ Future<void> editChildDialog(
 
 Future<void> inviteDialog(BuildContext context, AppState state) async {
   final email = TextEditingController();
+  final scope = _SettingsContext(state);
   String permission = 'view';
-  await showDialog(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, set) => AlertDialog(
-        title: Text('Berechtigtes Elternteil einladen'),
-        content: SizedBox(
-          width: 460,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'E-Mail des Elternteils',
-                ),
-              ),
-              const SizedBox(height: 18),
-              DropdownButtonFormField<String>(
-                initialValue: permission,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: 'view', child: Text('Nur lesen')),
-                  DropdownMenuItem(
-                    value: 'manage',
-                    child: Text('Kinder & Lernvorgaben verwalten'),
-                  ),
-                ],
-                onChanged: (v) => set(() => permission = v!),
-                decoration: const InputDecoration(
-                  labelText: 'Ausdrückliche Berechtigung',
-                ),
-              ),
-              Notice(
-                'Nur der Familieninhaber kann weitere Eltern einladen oder deren Rechte entziehen. Einladungen gelten zwei Tage und können widerrufen werden.',
-              ),
-            ],
+  await _settingsDialog(
+    context,
+    scope,
+    title: 'Berechtigtes Elternteil einladen',
+    confirmLabel: 'Einladung senden',
+    fields: (busy) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextFormField(
+          controller: email,
+          enabled: !busy,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.none,
+          decoration: const InputDecoration(
+            labelText: 'E-Mail des Elternteils',
           ),
+          validator: (v) => (v ?? '').trim().isEmpty
+              ? 'Gib die E-Mail-Adresse des Elternteils ein.'
+              : null,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Abbrechen'),
-          ),
-          ActionButton(
-            label: 'Sichere E-Mail-Einladung senden',
-            onPressed: () async {
-              await state.api.post('/families/${state.familyId}/invitations', {
-                'email': email.text,
-                'permission': permission,
-              });
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-          ),
-        ],
-      ),
+        const SizedBox(height: 18),
+        DropdownButtonFormField<String>(
+          initialValue: permission,
+          isExpanded: true,
+          items: const [
+            DropdownMenuItem(value: 'view', child: Text('Nur lesen')),
+            DropdownMenuItem(value: 'manage', child: Text('Verwalten')),
+          ],
+          selectedItemBuilder: (context) => const [
+            Text('Nur lesen'),
+            Text('Verwalten'),
+          ],
+          onChanged: busy ? null : (v) => permission = v!,
+          decoration: const InputDecoration(labelText: 'Berechtigung'),
+        ),
+        const SizedBox(height: 16),
+        const Notice(
+          'Nur der Familieninhaber kann weitere Eltern einladen oder deren Rechte entziehen. Einladungen gelten zwei Tage und können widerrufen werden.',
+        ),
+      ],
     ),
+    submit: () async {
+      await state.api.post('/families/${scope.familyId}/invitations', {
+        'email': email.text.trim(),
+        'permission': permission,
+      });
+    },
   );
   email.dispose();
 }

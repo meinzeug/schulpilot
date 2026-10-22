@@ -8,6 +8,7 @@ class ParentChildNavigation extends StatelessWidget {
   final String childId, selected;
   final String? childName, subtitle;
   final VoidCallback? onRefresh;
+  final bool refreshing;
   const ParentChildNavigation({
     super.key,
     required this.childId,
@@ -15,6 +16,7 @@ class ParentChildNavigation extends StatelessWidget {
     this.childName,
     this.subtitle,
     this.onRefresh,
+    this.refreshing = false,
   });
 
   static const destinations = [
@@ -100,7 +102,7 @@ class ParentChildNavigation extends StatelessWidget {
               ? selected
               : 'overview';
           final picker = DropdownButtonFormField<String>(
-            key: ValueKey('parent-section-$section'),
+            key: ValueKey('parent-section-$childId-$section'),
             initialValue: section,
             isExpanded: true,
             itemHeight: null,
@@ -143,9 +145,15 @@ class ParentChildNavigation extends StatelessWidget {
             ),
             if (onRefresh != null)
               IconButton(
-                onPressed: onRefresh,
-                tooltip: 'Aktualisieren',
-                icon: const Icon(Icons.refresh_rounded),
+                onPressed: refreshing ? null : onRefresh,
+                tooltip: refreshing ? 'Wird aktualisiert …' : 'Aktualisieren',
+                icon: refreshing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
               ),
           ];
           if (wide) {

@@ -95,7 +95,7 @@ class FamilyVocabularyScreen extends StatelessWidget {
   }
 }
 
-class VocabularyScreen extends StatefulWidget {
+class VocabularyScreen extends StatelessWidget {
   final AppState state;
   final String childId;
   final String? materialId;
@@ -108,20 +108,43 @@ class VocabularyScreen extends StatefulWidget {
     this.initialLocale = 'en-GB',
   });
   @override
-  State<VocabularyScreen> createState() => _VocabularyScreenState();
+  Widget build(BuildContext context) => _VocabularyBody(
+    state,
+    key: ValueKey((state, childId, materialId, initialLocale)),
+    childId: childId,
+    materialId: materialId,
+    initialLocale: initialLocale,
+  );
 }
 
-class _VocabularyScreenState extends State<VocabularyScreen> {
+class _VocabularyBody extends StatefulWidget {
+  final AppState state;
+  final String childId, initialLocale;
+  final String? materialId;
+  const _VocabularyBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.materialId,
+    required this.initialLocale,
+  });
+  @override
+  State<_VocabularyBody> createState() => _VocabularyScreenState();
+}
+
+class _VocabularyScreenState extends State<_VocabularyBody> {
   final search = TextEditingController();
   Json? data;
   List<Json> imports = [];
+  List<Json> collections = [];
   String? error, collection, loadedQuery;
   String locale = 'en-GB';
   String section = 'words';
-  int page = 1, generation = 0;
+  int page = 1, generation = 0, collectionsRevision = 0;
   bool busy = false, due = false, loading = true;
   bool sourceOffered = false;
-  late String owner;
+  late Json? owner;
+  final ownedDialogs = <ModalRoute<dynamic>>{};
   Timer? poll;
   String? importRequestBody,
       importRequestKey,
@@ -129,15 +152,29 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       roundRequestKey;
   final revealed = <String>{};
   String get base => '/children/${widget.childId}/vocabulary';
-  bool get current => mounted && owner == widget.state.user?['id'];
+  String get memoryKey =>
+      'vocabulary:${widget.childId}:${widget.materialId ?? 'all'}:${widget.initialLocale}';
+  bool get current =>
+      mounted && owner != null && identical(owner, widget.state.user);
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'] ?? '';
+    owner = widget.state.user;
     locale = learningLocales.containsKey(widget.initialLocale)
         ? widget.initialLocale
         : 'en-GB';
+    final saved = widget.state.collectionViews[memoryKey];
+    if (saved != null) {
+      if (learningLocales.containsKey(saved['locale'])) {
+        locale = saved['locale'];
+      }
+      collection = saved['collection'];
+      due = saved['due'] == true;
+      search.text = saved['q'] ?? '';
+      page = saved['page'] is int && saved['page'] > 0 ? saved['page'] : 1;
+      section = saved['section'] == 'review' ? 'review' : 'words';
+    }
     widget.state.addListener(accountChanged);
     load();
   }
@@ -146,9 +183,13 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     if (!current && mounted) {
       poll?.cancel();
       generation++;
+      closeOwnedDialogs();
+      widget.state.collectionViews.remove(memoryKey);
       setState(() {
         data = null;
         imports = [];
+        collections = [];
+        search.clear();
         revealed.clear();
       });
     }
@@ -156,11 +197,42 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
 
   @override
   void dispose() {
+    closeOwnedDialogs();
     poll?.cancel();
     generation++;
     widget.state.removeListener(accountChanged);
     search.dispose();
     super.dispose();
+  }
+
+  void closeOwnedDialogs() {
+    for (final route in ownedDialogs.toList().reversed) {
+      Future<void>.microtask(() {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
+    ownedDialogs.clear();
+  }
+
+  Future<T?> scopedDialog<T>({required WidgetBuilder builder}) async {
+    if (!current) return null;
+    ModalRoute<dynamic>? dialogRoute;
+    try {
+      return await showDialog<T>(
+        context: context,
+        builder: (dialogContext) {
+          dialogRoute ??= ModalRoute.of(dialogContext);
+          if (dialogRoute != null) ownedDialogs.add(dialogRoute!);
+          if (!current) closeOwnedDialogs();
+          return builder(dialogContext);
+        },
+      );
+    } finally {
+      if (dialogRoute != null) {
+        await dialogRoute!.completed;
+        ownedDialogs.remove(dialogRoute);
+      }
+    }
   }
 
   Future<void> load() async {
@@ -174,6 +246,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       page,
     ]);
     poll?.cancel();
+    rememberView();
     setState(() {
       loading = true;
       error = null;
@@ -201,6 +274,10 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
       if (!current || request != generation) return;
       setState(() {
         data = responses[0];
+        collections = (responses[0]['collections'] as List? ?? [])
+            .map((row) => Json.from(row))
+            .toList();
+        collectionsRevision++;
         loadedQuery = query;
         imports = (responses[1]['imports'] as List)
             .map((row) => Json.from(row))
@@ -223,7 +300,13 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     } catch (e) {
       if (current && request == generation) {
         setState(() {
-          error = '$e';
+          if (e is ApiError && [401, 403, 404].contains(e.status)) {
+            data = null;
+            imports = [];
+            collections = [];
+            revealed.clear();
+          }
+          error = e is ApiError ? e.message : 'Die Wörter konnten gerade nicht geladen werden. Bitte versuche es erneut.';
           loading = false;
         });
       }
@@ -232,6 +315,18 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
 
   bool get filtered =>
       search.text.trim().isNotEmpty || due || collection != null;
+
+  void rememberView() {
+    if (!current) return;
+    widget.state.collectionViews[memoryKey] = {
+      'locale': locale,
+      'collection': collection,
+      'due': due,
+      'q': search.text.trim(),
+      'page': page,
+      'section': section,
+    };
+  }
 
   void resetFilters() {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -325,8 +420,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     var mode = widget.materialId == null ? 'manual' : 'material';
     String? pairError;
     String? titleError;
-    final result = await showDialog<Json>(
-      context: context,
+    final result = await scopedDialog<Json>(
       builder: (ctx) => _DialogFields(
         controllers: [title, text],
         child: StatefulBuilder(
@@ -506,8 +600,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     final decisions = <int, String>{};
     String? issue;
     bool saving = false;
-    final saved = await showDialog<bool>(
-      context: context,
+    final saved = await scopedDialog<bool>(
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => AlertDialog(
           title: const Text('Stimmen deine Wörter?'),
@@ -613,6 +706,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
               onPressed: saving
                   ? null
                   : () async {
+                      if (!current) return;
                       update(() {
                         saving = true;
                         issue = null;
@@ -680,8 +774,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     var direction = 'de_to_target';
     var voluntary = false;
     var count = 10;
-    final selection = await showDialog<Json>(
-      context: context,
+    final selection = await scopedDialog<Json>(
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, update) => AlertDialog(
           title: const Text('Deine nächste Wörterrunde'),
@@ -826,8 +919,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     final meaningVariants = TextEditingController(
       text: (item['meaning_variants'] as List? ?? []).join('\n'),
     );
-    final save = await showDialog<Json>(
-      context: context,
+    final save = await scopedDialog<Json>(
       builder: (ctx) => _DialogFields(
         controllers: [word, meaning, contextText, variants, meaningVariants],
         child: AlertDialog(
@@ -1164,6 +1256,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                   onSelected: (value) {
                     FocusManager.instance.primaryFocus?.unfocus();
                     setState(() => section = value);
+                    rememberView();
                   },
                 ),
                 const SizedBox(height: 20),
@@ -1197,7 +1290,10 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                         title: 'Es gibt noch Wörter zum Prüfen',
                         subtitle: 'Erst wenn du die Wortpaare bestätigst, übst du damit.',
                         icon: Icons.fact_check_outlined,
-                        onTap: () => setState(() => section = 'review'),
+                        onTap: () {
+                          setState(() => section = 'review');
+                          rememberView();
+                        },
                       ),
                     ),
                   const SizedBox(height: 20),
@@ -1289,9 +1385,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     SizedBox(
                       width: 260,
                       child: DropdownButtonFormField<String>(
-                        key: ValueKey(
-                          '$locale:$collection:${data?['collections']}',
-                        ),
+                        key: ValueKey((
+                          locale,
+                          collection,
+                          collectionsRevision,
+                        )),
                         initialValue: collection ?? '',
                         isExpanded: true,
                         decoration: const InputDecoration(
@@ -1302,7 +1400,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                             value: '',
                             child: Text('Alle Sammlungen'),
                           ),
-                          for (final row in data?['collections'] as List? ?? [])
+                          for (final row in collections)
                             if (row['target_locale'] == locale)
                               DropdownMenuItem(
                                 value: row['id'].toString(),
@@ -1311,6 +1409,22 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                          if (collection != null &&
+                              !collections.any(
+                                (row) =>
+                                    row['id'].toString() == collection &&
+                                    row['target_locale'] == locale,
+                              ))
+                            DropdownMenuItem(
+                              value: collection,
+                              enabled: false,
+                              child: Text(
+                                data != null && !loading
+                                    ? 'Sammlung nicht mehr verfügbar'
+                                    : 'Gespeicherte Sammlung',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                         ],
                         onChanged: busy
                             ? null
@@ -1500,6 +1614,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                   beforeRead: !widget.state.isChild
                                       ? null
                                       : () async {
+                                          if (!current) {
+                                            throw ApiError(
+                                              'Öffne deine Wörter bitte erneut.',
+                                            );
+                                          }
                                           await widget.state.api.post(
                                             '$base/${item['id']}/reveal',
                                           );
@@ -1512,6 +1631,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                   beforeRead: !widget.state.isChild
                                       ? null
                                       : () async {
+                                          if (!current) {
+                                            throw ApiError(
+                                              'Öffne deine Wörter bitte erneut.',
+                                            );
+                                          }
                                           await widget.state.api.post(
                                             '$base/${item['id']}/reveal',
                                           );

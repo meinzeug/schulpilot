@@ -134,7 +134,7 @@ class CollectionScreen extends StatelessWidget {
 }
 
 /// Both lists use server pagination, metadata only, and the same mobile controls.
-class PagedCollection extends StatefulWidget {
+class PagedCollection extends StatelessWidget {
   final AppState state;
   final String childId;
   final bool learning;
@@ -149,10 +149,35 @@ class PagedCollection extends StatefulWidget {
     this.initialSection = 'ready',
   });
   @override
-  State<PagedCollection> createState() => _PagedCollectionState();
+  Widget build(BuildContext context) => _PagedCollectionBody(
+    state,
+    key: ValueKey((state, childId, learning, onSelect != null, initialSection)),
+    childId: childId,
+    learning: learning,
+    onSelect: onSelect,
+    initialSection: initialSection,
+  );
 }
 
-class _PagedCollectionState extends State<PagedCollection> {
+// A different child or collection mode owns a new state, including pending work.
+class _PagedCollectionBody extends StatefulWidget {
+  final AppState state;
+  final String childId, initialSection;
+  final bool learning;
+  final ValueChanged<Json>? onSelect;
+  const _PagedCollectionBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.learning,
+    required this.onSelect,
+    required this.initialSection,
+  });
+  @override
+  State<_PagedCollectionBody> createState() => _PagedCollectionState();
+}
+
+class _PagedCollectionState extends State<_PagedCollectionBody> {
   final search = TextEditingController();
   final top = GlobalKey();
   Timer? debounce;
@@ -167,10 +192,12 @@ class _PagedCollectionState extends State<PagedCollection> {
   bool loading = true, toolsExpanded = false;
   bool get simpleLearning =>
       widget.learning && widget.state.isChild && widget.onSelect == null;
-  late String owner;
+  late Json? owner;
+  final ownedRoutes = <ModalRoute<dynamic>>{};
   String get cacheKey =>
       '${widget.learning ? 'learning' : 'materials'}:${widget.childId}';
-  bool get active => mounted && widget.state.user?['id'] == owner;
+  bool get active =>
+      mounted && owner != null && identical(widget.state.user, owner);
   bool get filtered =>
       search.text.trim().isNotEmpty ||
       subject != null ||
@@ -180,7 +207,7 @@ class _PagedCollectionState extends State<PagedCollection> {
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'] ?? '';
+    owner = widget.state.user;
     widget.state.addListener(identityChanged);
     section = widget.initialSection;
     final saved = widget.onSelect == null
@@ -208,6 +235,7 @@ class _PagedCollectionState extends State<PagedCollection> {
 
   @override
   void dispose() {
+    closeOwnedRoutes();
     widget.state.removeListener(identityChanged);
     debounce?.cancel();
     search.dispose();
@@ -215,9 +243,11 @@ class _PagedCollectionState extends State<PagedCollection> {
   }
 
   void identityChanged() {
-    if (mounted && widget.state.user?['id'] != owner) {
+    if (mounted && !active) {
       generation++;
       debounce?.cancel();
+      closeOwnedRoutes();
+      widget.state.collectionViews.remove(cacheKey);
       setState(() {
         data = null;
         selectedPages.clear();
@@ -225,6 +255,15 @@ class _PagedCollectionState extends State<PagedCollection> {
         search.clear();
       });
     }
+  }
+
+  void closeOwnedRoutes() {
+    for (final route in ownedRoutes.toList().reversed) {
+      Future<void>.microtask(() {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
+    ownedRoutes.clear();
   }
 
   Json query() => {
@@ -343,120 +382,143 @@ class _PagedCollectionState extends State<PagedCollection> {
     FocusManager.instance.primaryFocus?.unfocus();
     var draftStatus = status, draftSort = sort, draftSize = pageSize;
     var draftDates = dates;
+    ModalRoute<dynamic>? filterRoute;
     final accepted = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, set) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Ansicht anpassen',
-                  style: Theme.of(ctx).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 20),
-                if (!widget.learning && widget.onSelect == null) ...[
+      builder: (ctx) {
+        filterRoute ??= ModalRoute.of(ctx);
+        if (filterRoute != null) ownedRoutes.add(filterRoute!);
+        if (!active) closeOwnedRoutes();
+        return StatefulBuilder(
+          builder: (ctx, set) => Padding(
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Ansicht anpassen',
+                    style: Theme.of(ctx).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 20),
+                  if (!widget.learning && widget.onSelect == null) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: draftStatus,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Seiten'),
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('Alle')),
+                        DropdownMenuItem(
+                          value: 'review',
+                          child: Text('Bitte prüfen'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'confirmed',
+                          child: Text('Bestätigt'),
+                        ),
+                      ],
+                      onChanged: (value) => set(() => draftStatus = value!),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   DropdownButtonFormField<String>(
-                    initialValue: draftStatus,
+                    initialValue: draftSort,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Seiten'),
+                    decoration: const InputDecoration(labelText: 'Sortierung'),
                     items: const [
-                      DropdownMenuItem(value: 'all', child: Text('Alle')),
                       DropdownMenuItem(
-                        value: 'review',
-                        child: Text('Bitte prüfen'),
+                        value: 'subject',
+                        child: Text('Nach Fach'),
                       ),
                       DropdownMenuItem(
-                        value: 'confirmed',
-                        child: Text('Bestätigt'),
+                        value: 'newest',
+                        child: Text('Neueste zuerst'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'oldest',
+                        child: Text('Älteste zuerst'),
                       ),
                     ],
-                    onChanged: (value) => set(() => draftStatus = value!),
+                    onChanged: (value) => set(() => draftSort = value!),
                   ),
                   const SizedBox(height: 16),
-                ],
-                DropdownButtonFormField<String>(
-                  initialValue: draftSort,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Sortierung'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'subject',
-                      child: Text('Nach Fach'),
+                  DropdownButtonFormField<int>(
+                    initialValue: draftSize,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Ergebnisse pro Seite',
                     ),
-                    DropdownMenuItem(
-                      value: 'newest',
-                      child: Text('Neueste zuerst'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'oldest',
-                      child: Text('Älteste zuerst'),
-                    ),
-                  ],
-                  onChanged: (value) => set(() => draftSort = value!),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<int>(
-                  initialValue: draftSize,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Ergebnisse pro Seite',
+                    items: [
+                      for (final size in [10, 20, 50])
+                        DropdownMenuItem(value: size, child: Text('$size')),
+                    ],
+                    onChanged: (value) => set(() => draftSize = value!),
                   ),
-                  items: [
-                    for (final size in [10, 20, 50])
-                      DropdownMenuItem(value: size, child: Text('$size')),
+                  if (!widget.learning) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        ModalRoute<dynamic>? dateRoute;
+                        final selected = await showDateRangePicker(
+                          context: ctx,
+                          builder: (dateContext, child) {
+                            dateRoute ??= ModalRoute.of(dateContext);
+                            if (dateRoute != null) ownedRoutes.add(dateRoute!);
+                            if (!active) closeOwnedRoutes();
+                            return child!;
+                          },
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 366),
+                          ),
+                          initialDateRange: draftDates,
+                          helpText: 'Zeitraum wählen',
+                          saveText: 'Übernehmen',
+                        );
+                        if (dateRoute != null) {
+                          await dateRoute!.completed;
+                          ownedRoutes.remove(dateRoute);
+                        }
+                        if (selected != null && ctx.mounted) {
+                          set(() => draftDates = selected);
+                        }
+                      },
+                      icon: const Icon(Icons.date_range_rounded),
+                      label: Text(
+                        draftDates == null
+                            ? 'Alle Tage'
+                            : '${DateFormat('dd.MM.yy').format(draftDates!.start)} – ${DateFormat('dd.MM.yy').format(draftDates!.end)}',
+                      ),
+                    ),
+                    if (draftDates != null)
+                      TextButton(
+                        onPressed: () => set(() => draftDates = null),
+                        child: const Text('Zeitraum entfernen'),
+                      ),
                   ],
-                  onChanged: (value) => set(() => draftSize = value!),
-                ),
-                if (!widget.learning) ...[
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final selected = await showDateRangePicker(
-                        context: ctx,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 366)),
-                        initialDateRange: draftDates,
-                        helpText: 'Zeitraum wählen',
-                        saveText: 'Übernehmen',
-                      );
-                      if (selected != null && ctx.mounted) {
-                        set(() => draftDates = selected);
-                      }
-                    },
-                    icon: const Icon(Icons.date_range_rounded),
-                    label: Text(
-                      draftDates == null
-                          ? 'Alle Tage'
-                          : '${DateFormat('dd.MM.yy').format(draftDates!.start)} – ${DateFormat('dd.MM.yy').format(draftDates!.end)}',
-                    ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Anwenden'),
                   ),
-                  if (draftDates != null)
-                    TextButton(
-                      onPressed: () => set(() => draftDates = null),
-                      child: const Text('Zeitraum entfernen'),
-                    ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Abbrechen'),
+                  ),
                 ],
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Anwenden'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Abbrechen'),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
+    if (filterRoute != null) {
+      await filterRoute!.completed;
+      ownedRoutes.remove(filterRoute);
+    }
     if (accepted == true && active) {
       change(() {
         status = draftStatus;
@@ -686,7 +748,7 @@ class _PagedCollectionState extends State<PagedCollection> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.state.user?['id'] != owner) {
+    if (!active) {
       return const Notice('Bitte melde dich erneut an.');
     }
     final items = (data?['items'] as List? ?? []).cast<Json>();

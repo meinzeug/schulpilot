@@ -5,7 +5,7 @@ import 'child_section_ui.dart';
 import 'notebook_cover.dart';
 import 'ui.dart';
 
-class NotebookShelf extends StatefulWidget {
+class NotebookShelf extends StatelessWidget {
   final AppState state;
   final String childId;
   final Widget allPages;
@@ -18,38 +18,63 @@ class NotebookShelf extends StatefulWidget {
     this.onAddPhoto,
   });
   @override
-  State<NotebookShelf> createState() => _NotebookShelfState();
+  Widget build(BuildContext context) => _NotebookShelfBody(
+    state,
+    key: ValueKey((state, childId)),
+    childId: childId,
+    allPages: allPages,
+    onAddPhoto: onAddPhoto,
+  );
 }
 
-class _NotebookShelfState extends State<NotebookShelf> {
+class _NotebookShelfBody extends StatefulWidget {
+  final AppState state;
+  final String childId;
+  final Widget allPages;
+  final VoidCallback? onAddPhoto;
+  const _NotebookShelfBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.allPages,
+    this.onAddPhoto,
+  });
+  @override
+  State<_NotebookShelfBody> createState() => _NotebookShelfState();
+}
+
+class _NotebookShelfState extends State<_NotebookShelfBody> {
   final search = TextEditingController();
   final searchFocus = FocusNode();
-  late final String? owner;
+  late final Json? owner;
   Json? data;
   String? error;
   bool list = false, ownOnly = false, allPages = false, showSearch = false;
   int generation = 0;
   int stateRevision = 0;
-  bool get current => mounted && widget.state.user?['id'] == owner;
+  bool get current =>
+      mounted && owner != null && identical(widget.state.user, owner);
   String get memoryKey => 'notebook-shelf:${widget.childId}';
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     stateRevision = widget.state.revision;
     widget.state.addListener(identityChanged);
     final saved = widget.state.collectionViews[memoryKey];
     list = saved?['list'] == true;
     ownOnly = saved?['own_only'] as bool? ?? widget.state.isChild;
+    allPages = saved?['all_pages'] == true;
     search.text = saved?['q'] ?? '';
     showSearch = search.text.isNotEmpty;
     load();
   }
 
   void identityChanged() {
-    if (mounted && widget.state.user?['id'] != owner) {
+    if (mounted && !current) {
       generation++;
+      widget.state.collectionViews.remove(memoryKey);
       setState(() {
         data = null;
         error = null;
@@ -91,13 +116,16 @@ class _NotebookShelfState extends State<NotebookShelf> {
       widget.state.collectionViews[memoryKey] = {
         'list': list,
         'own_only': ownOnly,
+        'all_pages': allPages,
         'q': search.text,
       };
     }
   }
 
-  void open(Json item) =>
-      openRoute(context, '/library/${widget.childId}/subject/${item['id']}');
+  void open(Json item) {
+    if (!current) return;
+    openRoute(context, '/library/${widget.childId}/subject/${item['id']}');
+  }
 
   void toggleSearch() {
     if (showSearch) {
@@ -150,7 +178,10 @@ class _NotebookShelfState extends State<NotebookShelf> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: () => setState(() => allPages = false),
+                onPressed: () {
+                  setState(() => allPages = false);
+                  remember();
+                },
                 icon: Icon(Icons.folder_open_rounded),
                 label: Text('Zu den Heftern'),
               ),
@@ -359,6 +390,7 @@ class _NotebookShelfState extends State<NotebookShelf> {
                 ),
                 TextButton(
                   onPressed: () {
+                    searchFocus.unfocus();
                     setState(() {
                       ownOnly = false;
                       search.clear();

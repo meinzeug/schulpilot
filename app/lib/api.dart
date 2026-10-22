@@ -259,6 +259,21 @@ class AppState extends ChangeNotifier {
   final List<Uint8List> recoveredPhotos = [];
   // Only view preferences; never persisted, and cleared on account changes.
   final Map<String, Json> collectionViews = {};
+  // One public-form handoff. Never a password, URL parameter or stored value.
+  String? _authIdentifier;
+  void rememberAuthIdentifier(String value) {
+    final identifier = value.trim();
+    _authIdentifier = identifier.isNotEmpty && identifier.length <= 254
+        ? identifier
+        : null;
+  }
+
+  String? takeAuthIdentifier() {
+    final identifier = _authIdentifier;
+    _authIdentifier = null;
+    return identifier;
+  }
+
   AppState({Api? api, FlutterSecureStorage? storage, this.familyCallFactory})
     : api = api ?? Api(),
       storage = storage ?? const FlutterSecureStorage() {
@@ -334,10 +349,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> accept(Json response) async {
+    _authIdentifier = null;
     if (user != null) await familyCalls.clear();
     if (user != null && user!['id'] != response['user']['id']) {
       await LessonVoiceSession.shared.stop();
-      collectionViews.clear();
       inbox.clear();
       recoveredPhoto = null;
       recoveredPhotoPurpose = 'notebook';
@@ -350,6 +365,7 @@ class AppState extends ChangeNotifier {
       await pendingUploads.clear();
       await learningDrafts.clear();
     }
+    collectionViews.clear();
     user = Map<String, dynamic>.from(response['user']);
     if (!kIsWeb && response['token'] != null) {
       api.token = response['token'];
@@ -410,6 +426,7 @@ class AppState extends ChangeNotifier {
     bool currentAccount() =>
         expectedUser == null || identical(user, expectedUser);
     if (!currentAccount()) return;
+    _authIdentifier = null;
     await familyCalls.clear();
     if (!currentAccount()) return;
     await LessonVoiceSession.shared.stop();

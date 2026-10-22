@@ -30,17 +30,18 @@ class ProgressScreen extends StatefulWidget {
 class _ProgressScreenState extends State<ProgressScreen> {
   Json? data;
   Object? error;
-  String? subject, topic;
+  String? subject, topic, childName;
   int page = 1, generation = 0;
   bool loading = true;
-  late String owner;
+  late Json? owner;
   String get cacheKey => 'progress:${widget.childId}';
-  bool get current => mounted && widget.state.user?['id'] == owner;
+  bool get current =>
+      mounted && owner != null && identical(widget.state.user, owner);
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'] ?? '';
+    owner = widget.state.user;
     final saved = widget.state.collectionViews[cacheKey];
     subject = widget.initialSubject ?? saved?['subject'];
     topic = widget.initialSubject != null
@@ -52,11 +53,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   void identityChanged() {
-    if (mounted && widget.state.user?['id'] != owner) {
+    if (mounted && !current) {
       generation++;
       setState(() {
         data = null;
         error = null;
+        childName = null;
       });
     }
   }
@@ -77,6 +79,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       topic = widget.initialTopic;
       page = 1;
       data = null;
+      if (oldWidget.childId != widget.childId) childName = null;
       load();
     }
   }
@@ -115,6 +118,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
       if (current && child == widget.childId && request == generation) {
         setState(() {
           data = response;
+          childName = response['child_name'] is String
+              ? response['child_name']
+              : null;
           page = response['pagination']['page'];
           loading = false;
         });
@@ -123,6 +129,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
       if (current && child == widget.childId && request == generation) {
         setState(() {
           error = e;
+          if (e is ApiError && [401, 403, 404].contains(e.status)) {
+            childName = null;
+          }
           loading = false;
         });
       }
@@ -130,6 +139,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   void choose({String? nextSubject, String? nextTopic}) {
+    if (!current) return;
     if (nextSubject == subject && nextTopic == topic) return;
     subject = nextSubject;
     topic = nextTopic;
@@ -139,7 +149,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
     context.go(
       Uri(
         path: '/progress/${widget.childId}',
-        queryParameters: {'fach': ?nextSubject, 'thema': ?nextTopic},
+        queryParameters: nextSubject == null
+            ? null
+            : {'fach': nextSubject, 'thema': ?nextTopic},
       ).toString(),
     );
   }
@@ -150,11 +162,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
     title: widget.state.isChild ? 'Dein Lernstand' : 'Lernstand',
     showTitle: widget.state.isChild,
     actions: [
-      IconButton(
-        onPressed: loading ? null : load,
-        tooltip: 'Aktualisieren',
-        icon: Icon(Icons.refresh_rounded),
-      ),
+      if (widget.state.isChild)
+        IconButton(
+          onPressed: loading ? null : load,
+          tooltip: 'Aktualisieren',
+          icon: Icon(Icons.refresh_rounded),
+        ),
     ],
     child: !current
         ? const SizedBox()
@@ -165,16 +178,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 ParentChildNavigation(
                   childId: widget.childId,
                   selected: 'progress',
-                  childName: data?['child_name'],
+                  childName: childName,
+                  onRefresh: load,
+                  refreshing: loading,
                 ),
               if (!widget.state.isChild) ...[
-                if (subject == null)
-                  ParentInsightsPanel(
-                    widget.state,
-                    childId: widget.childId,
-                    compact: true,
-                    revision: generation,
-                  ),
                 const ParentWorkspaceHero(
                   eyebrow: 'FORTSCHRITT VERSTEHEN',
                   title: 'Der Lernstand im Detail',
@@ -195,13 +203,35 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                   ),
                 ),
-              if (subject != null) heading(topic ?? subject!),
-              if (loading) const LinearProgressIndicator(),
+              if (subject != null) ...[
+                if (topic != null)
+                  Text(
+                    'Fach: $subject',
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                heading(topic ?? subject!),
+              ],
+              if (loading)
+                Semantics(
+                  liveRegion: true,
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Lernstand wird geladen …'),
+                      SizedBox(height: 8),
+                      LinearProgressIndicator(),
+                    ],
+                  ),
+                ),
               if (error != null) ...[
-                Notice(
-                  error is ApiError
-                      ? (error as ApiError).message
-                      : 'Der Lernstand konnte gerade nicht geladen werden.',
+                Semantics(
+                  liveRegion: true,
+                  child: Notice(
+                    error is ApiError
+                        ? (error as ApiError).message
+                        : 'Der Lernstand konnte gerade nicht geladen werden.',
+                    warning: true,
+                  ),
                 ),
                 ActionButton(
                   label: 'Noch einmal laden',
@@ -231,84 +261,120 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       ? 'Themen'
                       : 'Gespeicherte Runden',
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _resultStatus(data!),
+                      style: TextStyle(color: context.palette.muted),
+                    ),
+                  ),
+                ),
                 for (final item in data!['items'] as List)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Panel(
                       padding: EdgeInsets.zero,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(22),
-                        onTap: loading
-                            ? null
-                            : () {
-                                if (data!['level'] == 'rounds') {
-                                  openRoute(context, '/unit/${item['id']}');
-                                } else if (data!['level'] == 'subjects') {
-                                  choose(nextSubject: item['subject']);
-                                } else {
-                                  choose(
-                                    nextSubject: subject,
-                                    nextTopic: item['topic'],
-                                  );
-                                }
-                              },
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      data!['level'] == 'subjects'
-                                          ? item['subject']
-                                          : data!['level'] == 'topics'
-                                          ? item['topic']
-                                          : 'Runde vom ${_day(item['last_activity'])}',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
+                      child: Semantics(
+                        button: true,
+                        hint: data!['level'] == 'subjects'
+                            ? 'Themen in diesem Fach ansehen'
+                            : data!['level'] == 'topics'
+                            ? 'Gespeicherte Runden zu diesem Thema ansehen'
+                            : 'Gespeicherte Aufgaben und Antworten ansehen',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(22),
+                          onTap: loading
+                              ? null
+                              : () {
+                                  if (!current || loading || data == null) {
+                                    return;
+                                  }
+                                  if (data!['level'] == 'rounds') {
+                                    openRoute(context, '/unit/${item['id']}');
+                                  } else if (data!['level'] == 'subjects') {
+                                    choose(nextSubject: item['subject']);
+                                  } else {
+                                    choose(
+                                      nextSubject: subject,
+                                      nextTopic: item['topic'],
+                                    );
+                                  }
+                                },
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        data!['level'] == 'subjects'
+                                            ? item['subject']
+                                            : data!['level'] == 'topics'
+                                            ? item['topic']
+                                            : 'Runde vom ${_day(item['last_activity'])}',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: context.palette.teal,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                PracticeEvidence(
+                                  Json.from(item),
+                                  compact: true,
+                                ),
+                                if (data!['level'] == 'rounds') ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${statusLabel(item['status'])} · ${counted(item['attempts'] as num? ?? 0, 'Versuch', 'Versuche')}',
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                      fontSize: 13,
+                                    ),
                                   ),
-                                  Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: context.palette.teal,
+                                ] else if (data!['level'] == 'subjects') ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${counted(item['topic_count'] as num? ?? 0, 'Thema', 'Themen')} · ${counted(item['practiced_rounds'] as num? ?? 0, 'Runde', 'Runden')}',
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 12),
-                              PracticeEvidence(Json.from(item), compact: true),
-                              if (data!['level'] == 'rounds') ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${statusLabel(item['status'])} · ${counted(item['attempts'] as num? ?? 0, 'Versuch', 'Versuche')}',
-                                  style: TextStyle(
-                                    color: context.palette.muted,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ] else if (data!['level'] == 'subjects') ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${counted(item['topic_count'] as num? ?? 0, 'Thema', 'Themen')} · ${counted(item['practiced_rounds'] as num? ?? 0, 'Runde', 'Runden')}',
-                                  style: TextStyle(
-                                    color: context.palette.muted,
-                                    fontSize: 13,
-                                  ),
-                                ),
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                if ((data!['items'] as List).isEmpty && !loading)
+                if ((data!['items'] as List).isEmpty && !loading) ...[
                   Notice(
-                    'Hier erscheinen beantwortete Aufgaben – auch aus noch nicht abgeschlossenen Runden.',
+                    subject == null
+                        ? 'Hier erscheinen beantwortete Aufgaben – auch aus noch nicht abgeschlossenen Runden.'
+                        : 'Für ${topic == null ? 'das Fach „$subject“' : '„$subject · $topic“'} sind noch keine beantworteten Aufgaben gespeichert.',
                   ),
+                  if (subject != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: choose,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Alle Fächer anzeigen'),
+                      ),
+                    ),
+                ],
                 const SizedBox(height: 12),
                 Wrap(
                   alignment: WrapAlignment.center,
@@ -343,10 +409,34 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                   ],
                 ),
+                if (!widget.state.isChild && subject == null) ...[
+                  const SizedBox(height: 24),
+                  ParentInsightsPanel(
+                    widget.state,
+                    childId: widget.childId,
+                    compact: true,
+                    revision: generation,
+                  ),
+                ],
               ],
             ],
           ),
   );
+
+  String _resultStatus(Json value) {
+    final pagination = value['pagination'] as Map;
+    final shown = (value['items'] as List).length;
+    final (singular, plural, afterFrom) = switch (value['level']) {
+      'subjects' => ('Fach', 'Fächer', 'Fächern'),
+      'topics' => ('Thema', 'Themen', 'Themen'),
+      _ => ('Runde', 'Runden', 'Runden'),
+    };
+    final total = pagination['total'];
+    final count = total is num
+        ? '$shown von $total ${total == 1 ? singular : afterFrom}'
+        : '${counted(shown, singular, plural)} auf dieser Seite';
+    return '$count · Seite ${pagination['page']} von ${pagination['pages']}';
+  }
 
   String _day(dynamic stamp) {
     if (stamp is! num) return 'unbekannt';

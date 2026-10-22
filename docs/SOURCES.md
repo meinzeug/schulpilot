@@ -1,3 +1,13 @@
+Weitere Bedienprüfung 22.10.2026, Version 1.19.7+86: bestehende Flutter-
+Sammlungen, Eltern-Lerndetails und Kontodialoge. Recherche zu
+[redundanter Eingabe und verständlicher Authentifizierung](https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html),
+[Formularvalidierung](https://design-system.service.gov.uk/patterns/validation/),
+[Formularrückmeldungen](https://www.w3.org/WAI/tutorials/forms/notifications/),
+[Orientierung](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o2-find/)
+und [Statusmeldungen](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html).
+Keine neuen Pakete, Dienste, KI-Aufträge oder Berechtigungen.
+Konkrete Entscheidungen und Abnahme in [UX_REVIEW_86_2026_10_22.md](UX_REVIEW_86_2026_10_22.md).
+
 Bedienprüfung22.10.2026, Version1.19.6+85: bestehende gemeinsame Flutter-
 Arbeitsräume und Rollenrechte. Recherche zu
 [klaren Controls](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o1-understandable/),
