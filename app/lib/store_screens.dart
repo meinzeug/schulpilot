@@ -519,9 +519,35 @@ class StoreAdminScreen extends StatefulWidget {
 }
 
 class _StoreAdminScreenState extends State<StoreAdminScreen> {
-  int version = 0, section = 0;
-  String orderFilter = 'all';
-  void refresh() => setState(() => version++);
+  int version = 0, orderVersion = 0, section = 0;
+  final storeForm = GlobalKey<_StoreAdminFormState>();
+  String orderFilter = 'all', orderQuery = '', orderSort = 'newest';
+  final orderSearch = TextEditingController();
+  @override
+  void dispose() {
+    orderSearch.dispose();
+    super.dispose();
+  }
+
+  Future<void> refresh() async {
+    if (storeForm.currentState?.dirty == true &&
+        !await confirmDialog(
+          context,
+          'Verkaufsentwurf beim Neuladen verwerfen?',
+          'Bei Abbrechen bleibt der ungespeicherte Verkaufsentwurf erhalten.',
+        )) {
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        version++;
+        orderVersion++;
+      });
+    }
+  }
+
+  void storeSaved() => setState(() => version++);
+  void orderSaved() => setState(() => orderVersion++);
 
   @override
   Widget build(BuildContext context) => PageFrame(
@@ -564,8 +590,12 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
             child: LoadView<Json>(
               key: ValueKey('store-$version'),
               load: () => widget.state.api.get('/admin/store'),
-              builder: (data, _) =>
-                  StoreAdminForm(widget.state, data, onSaved: refresh),
+              builder: (data, _) => StoreAdminForm(
+                widget.state,
+                data,
+                key: storeForm,
+                onSaved: storeSaved,
+              ),
             ),
           ),
         ),
@@ -581,51 +611,122 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                   subtitle: 'Erst mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung.',
                   icon: Icons.fact_check_outlined,
                 ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final item in const [
-                      ('all', 'Alle'),
-                      ('awaiting_payment', 'Zahlung offen'),
-                      ('paid', 'Freigeschaltet'),
-                      ('closed', 'Beendet'),
-                    ])
-                      FilterChip(
-                        label: Text(item.$2),
-                        selected: orderFilter == item.$1,
-                        showCheckmark: false,
-                        onSelected: (_) {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          setState(() => orderFilter = item.$1);
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
                 LoadView<List<dynamic>>(
-                  key: ValueKey('orders-$version'),
+                  key: ValueKey('orders-$orderVersion'),
                   load: () => widget.state.api.list('/admin/orders'),
                   builder: (orders, _) {
-                    bool matches(dynamic order) =>
-                        orderFilter == 'all' ||
-                        (orderFilter == 'closed'
+                    bool hasStatus(dynamic order, String status) =>
+                        status == 'all' ||
+                        (status == 'closed'
                             ? [
                                 'cancelled',
                                 'refunded',
                               ].contains(order['status'])
-                            : order['status'] == orderFilter);
+                            : order['status'] == status);
+                    bool matches(dynamic order) =>
+                        hasStatus(order, orderFilter) &&
+                        '${order['payment_reference'] ?? ''}'
+                            .toLowerCase()
+                            .contains(orderQuery);
+                    final sorted = [...orders]
+                      ..sort((a, b) {
+                        int compare = orderSort == 'status'
+                            ? '${a['status']}'.compareTo('${b['status']}')
+                            : 0;
+                        if (compare != 0) return compare;
+                        compare = (a['created'] as num? ?? 0).compareTo(
+                          b['created'] as num? ?? 0,
+                        );
+                        if (orderSort != 'oldest') compare = -compare;
+                        return compare == 0
+                            ? '${a['id']}'.compareTo('${b['id']}')
+                            : compare;
+                      });
                     final shown = orders.where(matches).length;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Text(
+                          'Lokale Suche in höchstens den 200 zuletzt geladenen Bestellungen · $shown von ${orders.length} angezeigt. Keine vollständige Bestellhistorie.',
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: orderSearch,
+                          onChanged: (v) => setState(
+                            () => orderQuery = v.trim().toLowerCase(),
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Bank-Verwendungszweck suchen',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: orderQuery.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Bestellsuche leeren',
+                                    icon: const Icon(Icons.close_rounded),
+                                    onPressed: () => setState(() {
+                                      orderSearch.clear();
+                                      orderQuery = '';
+                                    }),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final item in const [
+                              ('all', 'Alle'),
+                              ('awaiting_payment', 'Zahlung offen'),
+                              ('paid', 'Freigeschaltet'),
+                              ('closed', 'Beendet'),
+                            ])
+                              FilterChip(
+                                label: Text(
+                                  '${item.$2} (${orders.where((o) => hasStatus(o, item.$1)).length})',
+                                ),
+                                selected: orderFilter == item.$1,
+                                showCheckmark: false,
+                                onSelected: (_) {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() => orderFilter = item.$1);
+                                },
+                              ),
+                          ],
+                        ),
+                        DropdownButtonFormField<String>(
+                          initialValue: orderSort,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Geladene Bestellungen sortieren',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'newest',
+                              child: Text('Neueste zuerst'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'oldest',
+                              child: Text('Älteste zuerst'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'status',
+                              child: Text('Status, dann neueste zuerst'),
+                            ),
+                          ],
+                          onChanged: (v) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            setState(() => orderSort = v ?? 'newest');
+                          },
+                        ),
+                        const SizedBox(height: 16),
                         if (shown == 0)
                           const Panel(
                             child: Text(
                               'Keine Bestellungen in dieser Ansicht.',
                             ),
                           ),
-                        for (final order in orders)
+                        for (final order in sorted)
                           Offstage(
                             key: ValueKey(order['id']),
                             offstage: !matches(order),
@@ -682,14 +783,14 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                                         PaymentCheckForm(
                                           widget.state,
                                           order,
-                                          onSaved: refresh,
+                                          onSaved: orderSaved,
                                         ),
                                       if (order['status'] == 'paid')
                                         PaymentCheckForm(
                                           widget.state,
                                           order,
                                           refund: true,
-                                          onSaved: refresh,
+                                          onSaved: orderSaved,
                                         ),
                                     ],
                                   ),
@@ -733,8 +834,22 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
   );
   late bool enabled = widget.data['enabled'];
   late String tax = widget.data['tax_mode'];
+  bool busy = false;
+  final bankFocus = FocusNode(), taxFocus = FocusNode();
+  bool get dirty =>
+      recipient.text != widget.data['recipient'] ||
+      iban.text != widget.data['iban'] ||
+      bank.text != widget.data['bank_name'] ||
+      enabled != widget.data['enabled'] ||
+      tax != widget.data['tax_mode'] ||
+      plans.text !=
+          const JsonEncoder.withIndent('  ').convert(widget.data['plans']);
+  String? error;
+  late final Object? owner = widget.state.user;
   @override
   void dispose() {
+    bankFocus.dispose();
+    taxFocus.dispose();
     for (final field in [recipient, iban, bank, plans]) {
       field.dispose();
     }
@@ -747,10 +862,24 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         heading('Verkauf einrichten'),
-        if ((widget.data['missing'] as List).isNotEmpty)
-          Text(
-            'Noch erforderlich: ${(widget.data['missing'] as List).join(', ')}.',
-          ),
+        if ((widget.data['missing'] as List).isNotEmpty) ...[
+          for (final item in widget.data['missing'] as List)
+            Text('Noch erforderlich: $item'),
+          if ((widget.data['missing'] as List).contains(
+            'Kontoinhaber und geprüfte IBAN',
+          ))
+            TextButton(
+              onPressed: busy ? null : () => bankFocus.requestFocus(),
+              child: const Text('Bankdaten hier prüfen'),
+            ),
+          if ((widget.data['missing'] as List).contains(
+            'Bestätigte Umsatzsteuerbehandlung',
+          ))
+            TextButton(
+              onPressed: busy ? null : () => taxFocus.requestFocus(),
+              child: const Text('Steuerangabe hier prüfen'),
+            ),
+        ],
         TextButton(
           onPressed: () => context.go('/admin/settings'),
           child: const Text('Betreiberangaben & E-Mail einrichten'),
@@ -758,21 +887,26 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
         const SizedBox(height: 12),
         TextField(
           controller: recipient,
+          focusNode: bankFocus,
+          enabled: !busy,
           decoration: const InputDecoration(labelText: 'Kontoinhaber'),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: iban,
+          enabled: !busy,
           decoration: const InputDecoration(labelText: 'IBAN'),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: bank,
+          enabled: !busy,
           decoration: const InputDecoration(labelText: 'Bankname (optional)'),
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: tax,
+          focusNode: taxFocus,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Umsatzsteuer'),
           items: const [
@@ -789,13 +923,46 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
               child: Text('19 % im Endpreis enthalten'),
             ),
           ],
-          onChanged: (value) => setState(() => tax = value!),
+          onChanged: busy ? null : (value) => setState(() => tax = value!),
+        ),
+        ListenableBuilder(
+          listenable: plans,
+          builder: (context, _) {
+            dynamic parsed;
+            try {
+              parsed = jsonDecode(plans.text);
+            } catch (_) {
+              parsed = null;
+            }
+            return ExpansionTile(
+              title: const Text('Tarifvorschau des Entwurfs'),
+              children: [
+                const Text(
+                  '30 Tage ab Laufzeitbeginn · keine automatische Verlängerung. Noch nicht veröffentlicht.',
+                ),
+                if (parsed is! List || parsed.any((e) => e is! Map))
+                  const Text('Tarifliste zuerst korrigieren.'),
+                if (parsed is List)
+                  for (final plan in parsed.whereType<Map>())
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        '${plan['name'] ?? 'Name fehlt'} · ${plan['price_cents'] is int ? euro(plan['price_cents']) : 'Preis noch prüfen'}',
+                      ),
+                      subtitle: Text(
+                        'Kennung ${plan['id'] ?? 'fehlt'} · ${plan['children'] ?? '?'} Kinder · ${plan['calls'] ?? '?'} KI-Schritte je Laufzeit',
+                      ),
+                    ),
+              ],
+            );
+          },
         ),
         ExpansionTile(
           title: const Text('Tarife bearbeiten'),
           children: [
             TextField(
               controller: plans,
+              enabled: !busy,
               maxLines: 18,
               decoration: const InputDecoration(
                 labelText: 'Tarife (JSON)',
@@ -808,27 +975,136 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
           contentPadding: EdgeInsets.zero,
           title: const Text('Zahlungspflichtige Bestellungen freigeben'),
           value: enabled,
-          onChanged: (v) => setState(() => enabled = v),
+          onChanged: busy ? null : (v) => setState(() => enabled = v),
+        ),
+        ListenableBuilder(
+          listenable: Listenable.merge([recipient, iban, bank, plans]),
+          builder: (context, _) => Text(
+            dirty
+                ? 'Ungespeicherter Verkaufsentwurf · Veröffentlichung erst mit Speichern'
+                : 'Gespeicherte Verkaufseinstellungen · Revision ${widget.data['revision']}',
+          ),
+        ),
+        Text(
+          enabled
+              ? 'Entwurf: Neue Bestellungen freigeben. Voraussetzungen werden beim Speichern erneut geprüft.'
+              : 'Entwurf: Keine neuen Bestellungen freigeben. Bereits gespeicherte Bestellungen bleiben erhalten.',
+        ),
+        if (error != null)
+          Semantics(liveRegion: true, child: Notice(error!, warning: true)),
+        OutlinedButton.icon(
+          onPressed: busy
+              ? null
+              : () async {
+                  if (dirty &&
+                      !await confirmDialog(
+                        context,
+                        'Gespeicherten Verkaufsstand laden?',
+                        'Der ungespeicherte Entwurf wird verworfen. Bei Abbrechen bleibt er erhalten.',
+                      )) {
+                    return;
+                  }
+                  if (mounted && identical(widget.state.user, owner)) {
+                    widget.onSaved();
+                  }
+                },
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Gespeicherten Verkaufsstand laden'),
         ),
         ActionButton(
           label: 'Verkaufseinstellungen speichern',
+          enabled: !busy,
           onPressed: () async {
+            if (busy || !identical(widget.state.user, owner)) return;
             dynamic parsed;
             try {
               parsed = jsonDecode(plans.text);
             } catch (_) {
-              throw ApiError('Die Tarifliste ist kein gültiges JSON.');
+              setState(
+                () => error = 'Die Tarifliste ist kein gültiges JSON. Korrigiere den Entwurf.',
+              );
+              return;
             }
-            await widget.state.api.put('/admin/store', {
-              'revision': widget.data['revision'],
-              'enabled': enabled,
-              'recipient': recipient.text,
-              'iban': iban.text,
-              'bank_name': bank.text,
-              'tax_mode': tax,
-              'plans': parsed,
+            if (parsed is! List ||
+                parsed.isEmpty ||
+                parsed.length > 6 ||
+                parsed.any((item) => item is! Map)) {
+              setState(
+                () => error =
+                    'Die Tarifliste muss 1 bis 6 Tarifobjekte enthalten.',
+              );
+              return;
+            }
+            final ids = <String>{};
+            for (final (index, plan) in parsed.indexed) {
+              String? invalid;
+              final id = plan['id'];
+              if (id is! String ||
+                  !RegExp(r'^[a-z][a-z0-9-]{1,29}$').hasMatch(id) ||
+                  !ids.add(id)) {
+                invalid = 'id (eindeutig, 2 bis 30 Kleinbuchstaben/Ziffern/Bindestriche)';
+              }
+              if (plan['name'] is! String ||
+                  (plan['name'] as String).isEmpty ||
+                  (plan['name'] as String).runes.length > 40) {
+                invalid ??= 'name (1 bis 40 Zeichen)';
+              }
+              for (final entry in const {
+                'price_cents': (100, 25000),
+                'children': (1, 20),
+                'calls': (10, 10000),
+              }.entries) {
+                final v = plan[entry.key];
+                if (v is! int || v < entry.value.$1 || v > entry.value.$2) {
+                  invalid ??=
+                      '${entry.key} (ganze Zahl ${entry.value.$1} bis ${entry.value.$2})';
+                }
+              }
+              if (plan.keys.any(
+                (k) => !const {
+                  'id',
+                  'name',
+                  'price_cents',
+                  'children',
+                  'calls',
+                }.contains(k),
+              )) {
+                invalid ??= 'unbekanntes Tariffeld';
+              }
+              if (invalid != null) {
+                setState(() => error = 'Tarif ${index + 1}: $invalid prüfen.');
+                return;
+              }
+            }
+            FocusManager.instance.primaryFocus?.unfocus();
+            setState(() {
+              busy = true;
+              error = null;
             });
-            widget.onSaved();
+            try {
+              await widget.state.api.put('/admin/store', {
+                'revision': widget.data['revision'],
+                'enabled': enabled,
+                'recipient': recipient.text,
+                'iban': iban.text,
+                'bank_name': bank.text,
+                'tax_mode': tax,
+                'plans': parsed,
+              });
+              if (mounted && identical(widget.state.user, owner)) {
+                widget.onSaved();
+              }
+            } catch (failure) {
+              if (mounted && identical(widget.state.user, owner)) {
+                setState(
+                  () => error = failure is ApiError ? failure.message : 'Verkaufseinstellungen konnten nicht gespeichert werden. Dein Entwurf bleibt erhalten.',
+                );
+              }
+            } finally {
+              if (mounted && identical(widget.state.user, owner)) {
+                setState(() => busy = false);
+              }
+            }
           },
         ),
       ],
@@ -857,7 +1133,85 @@ class _PaymentCheckFormState extends State<PaymentCheckForm> {
   final bookingDate = TextEditingController(
     text: DateTime.now().toIso8601String().substring(0, 10),
   );
-  bool checked = false;
+  final form = GlobalKey<FormState>();
+  bool checked = false, busy = false, showCheckError = false;
+  String? error, statusMessage;
+  late final Object? owner = widget.state.user;
+  bool get own => mounted && identical(widget.state.user, owner);
+  void edited(String _) {
+    if (checked || showCheckError || error != null) {
+      setState(() {
+        checked = false;
+        showCheckError = false;
+        error = null;
+      });
+    }
+  }
+
+  int? cents(String raw) {
+    final value = raw.trim().replaceAll(',', '.');
+    if (!RegExp(r'^\d{1,4}(\.\d{1,2})?$').hasMatch(value)) return null;
+    final parts = value.split('.');
+    return int.parse(parts[0]) * 100 +
+        int.parse((parts.length == 2 ? parts[1] : '').padRight(2, '0'));
+  }
+
+  String? dateError(String? raw) {
+    final text = (raw ?? '').trim();
+    final parsed = DateTime.tryParse(text);
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text) ||
+        parsed == null ||
+        parsed.toIso8601String().substring(0, 10) != text) {
+      return 'Einen echten Buchungstag als JJJJ-MM-TT eingeben.';
+    }
+    return null;
+  }
+
+  Future<void> save() async {
+    if (!own || busy) return;
+    final valid = form.currentState!.validate();
+    setState(() => showCheckError = !checked);
+    if (!valid || !checked) return;
+    final body = <String, dynamic>{
+      'received_cents': cents(amount.text),
+      'booking_date': bookingDate.text.trim(),
+      'booking_reference': reference.text.trim(),
+      'bank_entry_checked': true,
+    };
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      busy = true;
+      error = null;
+      statusMessage = null;
+    });
+    final confirmed = await confirmDialog(
+      context,
+      widget.refund ? 'Erstattung prüfen' : 'Zahlung vor Freischaltung prüfen',
+      'Bestellung: ${widget.order['payment_reference'] ?? widget.order['id']}\nBetrag: ${euro(body['received_cents'])}\nBuchungstag: ${body['booking_date']}\nBank-Buchungsnummer: ${body['booking_reference']}\n${widget.refund ? 'Nur die bereits extern gebuchte Erstattung dokumentieren; die App überweist kein Geld.' : 'Erst nach deinem bewussten Bestätigen wird der Zugang freigeschaltet.'}',
+      confirmLabel: 'Buchung verbindlich speichern',
+    );
+    if (!own) return;
+    if (!confirmed) {
+      setState(() => busy = false);
+      return;
+    }
+    try {
+      await widget.state.api.post(
+        '/admin/orders/${widget.order['id']}/${widget.refund ? 'refund' : 'approve'}',
+        body,
+      );
+      if (own) widget.onSaved();
+    } catch (failure) {
+      if (own) {
+        setState(
+          () => error = failure is ApiError ? failure.message : 'Die Buchung konnte nicht bestätigt werden. Prüfe den gespeicherten Bestellstatus, bevor du erneut speicherst.',
+        );
+      }
+    } finally {
+      if (own) setState(() => busy = false);
+    }
+  }
+
   @override
   void dispose() {
     amount.dispose();
@@ -874,67 +1228,160 @@ class _PaymentCheckFormState extends State<PaymentCheckForm> {
           : 'Zahlung prüfen & freischalten',
     ),
     children: [
-      TextField(
-        controller: amount,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(
-          labelText: widget.refund
-              ? 'Tatsächlich erstatteter Betrag in EUR'
-              : 'Tatsächlich eingegangener Betrag in EUR',
+      Form(
+        key: form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: amount,
+              enabled: !busy,
+              onChanged: edited,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'Betrag in EUR',
+                helperText: widget.refund
+                    ? 'Tatsächlich extern erstatteter Betrag.'
+                    : 'Tatsächlich eingegangener Betrag.',
+                helperMaxLines: 3,
+                errorMaxLines: 3,
+              ),
+              validator: (v) =>
+                  (cents(v ?? '') ?? 0) < 1 ||
+                      (cents(v ?? '') ?? 100001) > 100000
+                  ? 'Eurobetrag von 0,01 bis 1000 mit höchstens zwei Nachkommastellen eingeben.'
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: bookingDate,
+              enabled: !busy,
+              onChanged: edited,
+              decoration: InputDecoration(
+                suffixIcon: IconButton(
+                  tooltip: 'Buchungstag auswählen',
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          final now = DateTime.now();
+                          final value =
+                              DateTime.tryParse(bookingDate.text) ?? now;
+                          final selected = await showDatePicker(
+                            context: context,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(now.year, now.month, now.day),
+                            initialDate:
+                                value.isBefore(DateTime(2000)) ||
+                                    value.isAfter(now)
+                                ? now
+                                : value,
+                          );
+                          if (!own || selected == null) return;
+                          bookingDate.text = selected
+                              .toIso8601String()
+                              .substring(0, 10);
+                          edited('');
+                        },
+                ),
+                labelText: 'Buchungstag',
+                helperText: 'JJJJ-MM-TT, zum Beispiel 2026-10-22.',
+                errorMaxLines: 3,
+              ),
+              validator: dateError,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: reference,
+              enabled: !busy,
+              onChanged: edited,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'Bank-Buchungsnummer',
+                helperText: 'Die eindeutige Banknummer, nicht nur den SCH-Verwendungszweck.',
+                helperMaxLines: 3,
+                errorMaxLines: 3,
+              ),
+              validator: (v) =>
+                  (v ?? '').trim().length < 6 || (v ?? '').trim().length > 160
+                  ? 'Die Bank-Buchungsnummer mit 6 bis 160 Zeichen eintragen.'
+                  : null,
+            ),
+            CheckboxListTile(
+              value: checked,
+              contentPadding: EdgeInsets.zero,
+              onChanged: busy
+                  ? null
+                  : (v) => setState(() {
+                      checked = v ?? false;
+                      showCheckError = false;
+                    }),
+              title: Text(
+                widget.refund
+                    ? 'Ich habe die tatsächlich gebuchte Erstattung geprüft. Die App führt keine Überweisung aus.'
+                    : 'Ich habe diesen Zahlungseingang im tatsächlichen Bankkonto geprüft.',
+              ),
+            ),
+            if (showCheckError)
+              Semantics(
+                liveRegion: true,
+                child: Notice(
+                  'Bestätige zuerst die Prüfung dieser Buchung im Bankkonto.',
+                  warning: true,
+                ),
+              ),
+            if (error != null)
+              Semantics(liveRegion: true, child: Notice(error!, warning: true)),
+            if (statusMessage != null)
+              Semantics(liveRegion: true, child: Notice(statusMessage!)),
+            if (error != null)
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        if (!own || busy) return;
+                        setState(() => busy = true);
+                        try {
+                          final orders = await widget.state.api.list(
+                            '/admin/orders',
+                          );
+                          if (!own) return;
+                          final found = orders
+                              .where((o) => o['id'] == widget.order['id'])
+                              .firstOrNull;
+                          setState(
+                            () => statusMessage = found == null
+                                ? 'Die Bestellung ist nicht im geladenen Ausschnitt. Der Buchungsstatus ist noch unklar; nicht ungeprüft erneut buchen.'
+                                : 'Gespeicherter Bestellstatus: ${orderStatus(found['status'])}. Keine neue Buchung ausgelöst.',
+                          );
+                          if (found != null &&
+                              found['status'] != widget.order['status']) {
+                            widget.onSaved();
+                          }
+                        } catch (_) {
+                          if (own) {
+                            setState(
+                              () => statusMessage = 'Der Bestellstatus konnte nicht geladen werden. Keine neue Buchung ausgelöst.',
+                            );
+                          }
+                        } finally {
+                          if (own) setState(() => busy = false);
+                        }
+                      },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Bestellstatus zuerst laden'),
+              ),
+            ActionButton(
+              label: widget.refund
+                  ? 'Erstattung dokumentieren & Laufzeit sperren'
+                  : 'Geprüften Zahlungseingang freischalten',
+              enabled: !busy,
+              onPressed: save,
+            ),
+          ],
         ),
-      ),
-      const SizedBox(height: 12),
-      TextField(
-        controller: bookingDate,
-        decoration: const InputDecoration(
-          labelText: 'Buchungstag · JJJJ-MM-TT',
-        ),
-      ),
-      const SizedBox(height: 12),
-      TextField(
-        controller: reference,
-        decoration: const InputDecoration(
-          labelText: 'Eindeutige Bank-Buchungsnummer',
-          helperText: 'Nicht nur den SCH-Verwendungszweck eintragen.',
-        ),
-      ),
-      CheckboxListTile(
-        value: checked,
-        contentPadding: EdgeInsets.zero,
-        title: Text(
-          widget.refund
-              ? 'Ich habe die tatsächlich gebuchte Erstattung geprüft. Die App führt keine Überweisung aus.'
-              : 'Ich habe diesen Zahlungseingang im tatsächlichen Bankkonto geprüft.',
-        ),
-        onChanged: (v) => setState(() => checked = v!),
-      ),
-      ActionButton(
-        label: widget.refund
-            ? 'Erstattung dokumentieren & Laufzeit sperren'
-            : 'Geprüften Zahlungseingang freischalten',
-        onPressed: () async {
-          if (!checked) {
-            throw ApiError(
-              'Bitte zuerst den Bankeintrag prüfen und bestätigen.',
-            );
-          }
-          final normalized = amount.text.trim().replaceAll(',', '.');
-          if (!RegExp(r'^\d{1,4}(\.\d{1,2})?$').hasMatch(normalized)) {
-            throw ApiError(
-              'Bitte den tatsächlich eingegangenen Eurobetrag eingeben.',
-            );
-          }
-          await widget.state.api.post(
-            '/admin/orders/${widget.order['id']}/${widget.refund ? 'refund' : 'approve'}',
-            {
-              'received_cents': (double.parse(normalized) * 100).round(),
-              'booking_date': bookingDate.text,
-              'booking_reference': reference.text,
-              'bank_entry_checked': true,
-            },
-          );
-          widget.onSaved();
-        },
       ),
     ],
   );

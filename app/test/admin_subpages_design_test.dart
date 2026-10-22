@@ -215,15 +215,12 @@ void main() {
     (tester) async {
       final requests = await mountAdminSubpage(tester, path: '/admin/verkauf');
       await press(tester, find.text('Zahlung prüfen & freischalten'));
-      final amount = find.widgetWithText(
-        TextField,
-        'Tatsächlich eingegangener Betrag in EUR',
-      );
+      final amount = find.widgetWithText(TextField, 'Betrag in EUR');
       await tester.ensureVisible(amount);
       await tester.enterText(amount, '12,00');
-      await press(tester, find.widgetWithText(FilterChip, 'Beendet'));
+      await press(tester, find.widgetWithText(FilterChip, 'Beendet (0)'));
       expect(find.text('SCH-SYNTHETIC'), findsNothing);
-      await press(tester, find.widgetWithText(FilterChip, 'Zahlung offen'));
+      await press(tester, find.widgetWithText(FilterChip, 'Zahlung offen (1)'));
       expect(tester.widget<TextField>(amount).controller!.text, '12,00');
       await press(
         tester,

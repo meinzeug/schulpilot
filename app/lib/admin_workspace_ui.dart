@@ -68,15 +68,18 @@ class AdminWorkspaceHeader extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.headlineLarge
-                            ?.copyWith(
-                              color: p.ink,
-                              fontSize: wide ? 40 : 30,
-                              height: 1.12,
-                              letterSpacing: -1.1,
-                            ),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                color: p.ink,
+                                fontSize: wide ? 40 : 30,
+                                height: 1.12,
+                                letterSpacing: -1.1,
+                              ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -131,40 +134,45 @@ class AdminContextTabs extends StatelessWidget {
         color: p.panelSurface,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Wrap(
-        spacing: 5,
-        runSpacing: 5,
-        children: [
-          for (final (index, item) in items.indexed)
-            ChoiceChip(
-              avatar: Icon(
-                item.$1,
-                size: 18,
-                color: selected == index ? Colors.white : p.muted,
-              ),
-              label: Text(item.$2),
-              labelStyle: TextStyle(
-                color: selected == index ? Colors.white : p.muted,
-                fontWeight: FontWeight.w700,
-              ),
-              selected: selected == index,
-              showCheckmark: false,
-              backgroundColor: Colors.transparent,
-              selectedColor: p.actionPurple,
-              side: WidgetStateBorderSide.resolveWith(
-                (states) => BorderSide(
-                  color: states.contains(WidgetState.focused)
-                      ? p.teal
-                      : Colors.transparent,
-                  width: 2.5,
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: 'Betriebsbereiche; aktuell ${items[selected].$2}',
+        child: Wrap(
+          spacing: 5,
+          runSpacing: 5,
+          children: [
+            for (final (index, item) in items.indexed)
+              ChoiceChip(
+                avatar: Icon(
+                  item.$1,
+                  size: 18,
+                  color: selected == index ? Colors.white : p.muted,
                 ),
+                label: Text(item.$2),
+                labelStyle: TextStyle(
+                  color: selected == index ? Colors.white : p.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+                selected: selected == index,
+                showCheckmark: false,
+                backgroundColor: Colors.transparent,
+                selectedColor: p.actionPurple,
+                side: WidgetStateBorderSide.resolveWith(
+                  (states) => BorderSide(
+                    color: states.contains(WidgetState.focused)
+                        ? p.teal
+                        : Colors.transparent,
+                    width: 2.5,
+                  ),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onSelected: (_) => onSelected(index),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              onSelected: (_) => onSelected(index),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -198,7 +206,13 @@ class AdminSectionHeading extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleLarge),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(subtitle, style: TextStyle(color: p.muted)),
               ],
@@ -308,39 +322,47 @@ class AdminStatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            ready == true
-                ? Icons.check_circle_outline_rounded
-                : ready == false
-                ? Icons.pending_outlined
-                : Icons.info_outline_rounded,
-            color: ready == true
-                ? p.successInk
-                : ready == false
-                ? p.warningInk
-                : p.cyanInk,
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(color: p.ink, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 3),
-                Text(value, style: TextStyle(color: p.muted)),
-              ],
+    return Semantics(
+      container: true,
+      label: ready == true
+          ? 'Prüfzustand erfüllt'
+          : ready == false
+          ? 'Prüfzustand offen'
+          : 'Kein Prüfzustand gemeldet',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              ready == true
+                  ? Icons.check_circle_outline_rounded
+                  : ready == false
+                  ? Icons.pending_outlined
+                  : Icons.info_outline_rounded,
+              color: ready == true
+                  ? p.successInk
+                  : ready == false
+                  ? p.warningInk
+                  : p.cyanInk,
+              size: 22,
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(color: p.ink, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(value, style: TextStyle(color: p.muted)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -53,6 +53,7 @@ class CodexModel {
 /// reasoning to the capabilities shared by the text and photo models.
 class CodexModelPicker extends StatefulWidget {
   final Api api;
+  final bool enabled;
   final String endpoint;
   final TextEditingController model, extractionModel;
   final String reasoningEffort;
@@ -62,6 +63,7 @@ class CodexModelPicker extends StatefulWidget {
   const CodexModelPicker({
     super.key,
     required this.api,
+    this.enabled = true,
     required this.endpoint,
     required this.model,
     required this.extractionModel,
@@ -77,7 +79,9 @@ class CodexModelPicker extends StatefulWidget {
 class CodexModelPickerState extends State<CodexModelPicker> {
   List<CodexModel> models = [];
   bool loading = true, loaded = false;
-  String? error, adjustment;
+  String? error, adjustment, cliVersion;
+  final search = TextEditingController();
+  String query = '';
   int generation = 0;
 
   CodexModel? modelById(String id) {
@@ -181,6 +185,7 @@ class CodexModelPickerState extends State<CodexModelPicker> {
       }
       setState(() {
         models = parsed;
+        cliVersion = response['cli_version'];
         loaded = true;
         loading = false;
       });
@@ -198,10 +203,12 @@ class CodexModelPickerState extends State<CodexModelPicker> {
   @override
   void dispose() {
     generation++;
+    search.dispose();
     super.dispose();
   }
 
   void chooseModel(String value, {bool photo = false}) {
+    if (!widget.enabled) return;
     setState(() {
       if (photo) {
         widget.extractionModel.text = value;
@@ -227,13 +234,19 @@ class CodexModelPickerState extends State<CodexModelPicker> {
 
   String label(CodexModel model) =>
       '${model.name}${model.hidden ? ' · ausgeblendet' : ''}'
+      '${!model.inputModalities.contains('text') ? ' · kein Texteingang' : ''}'
       '${model.reasoningEfforts.isEmpty ? ' · keine einstellbare Denkstufe' : ''}';
 
   Widget modelDropdown({bool photo = false}) {
     final value = photo ? widget.extractionModel.text : widget.model.text;
-    final choices = photo
+    final eligible = photo
         ? models.where((model) => model.inputModalities.contains('image'))
         : models;
+    final choices = eligible.where(
+      (model) =>
+          model.id == value ||
+          '${model.name} ${model.id}'.toLowerCase().contains(query),
+    );
     final known = choices.any((model) => model.id == value);
     final items = <DropdownMenuItem<String>>[
       if (photo) DropdownMenuItem(value: '', child: Text('Gleiches Modell')),
@@ -260,20 +273,33 @@ class CodexModelPickerState extends State<CodexModelPicker> {
           ),
         ),
     ];
-    return DropdownButtonFormField<String>(
-      key: ValueKey('codex-${photo ? 'photo' : 'lesson'}-$value'),
-      initialValue: value.isEmpty && !photo ? null : value,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: photo ? 'Bildmodell' : 'Modell für Lerneinheiten',
-      ),
-      hint: Text('Modell wählen'),
-      items: items,
-      onChanged: loading || !loaded || error != null
-          ? null
-          : (value) {
-              if (value != null) chooseModel(value, photo: photo);
-            },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          key: ValueKey('codex-${photo ? 'photo' : 'lesson'}-$value-$query'),
+          initialValue: value.isEmpty && !photo ? null : value,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: photo ? 'Bildmodell' : 'Modell für Lerneinheiten',
+          ),
+          hint: Text('Modell wählen'),
+          items: items,
+          onChanged: !widget.enabled || loading || !loaded || error != null
+              ? null
+              : (value) {
+                  if (value != null) chooseModel(value, photo: photo);
+                },
+        ),
+        if (value.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: SelectableText(
+              '${photo ? 'Gewähltes Bildmodell' : 'Gewähltes Lernmodell'}: ${modelById(value)?.name ?? 'nicht im aktuellen Katalog'} · $value',
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
+            ),
+          ),
+      ],
     );
   }
 
@@ -295,6 +321,45 @@ class CodexModelPickerState extends State<CodexModelPicker> {
           Text('Codex-Modelle werden geladen …'),
           SizedBox(height: 16),
         ],
+        if (cliVersion != null)
+          Text(
+            'Katalogquelle: isolierte Codex CLI $cliVersion · Metadaten, noch kein Zugriffsnachweis.',
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
+          ),
+        if (error != null && loaded)
+          const Notice(
+            'Der zuletzt geladene Katalog und die Auswahl bleiben sichtbar. Die Aktualisierung ist fehlgeschlagen; es liegt kein neuer Katalog vor.',
+            warning: true,
+          ),
+        TextField(
+          controller: search,
+          enabled: widget.enabled,
+          onChanged: (v) => setState(() => query = v.trim().toLowerCase()),
+          decoration: InputDecoration(
+            labelText: 'Geladenen Modellkatalog durchsuchen',
+            hintText: 'Name oder Modell-ID',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: query.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Modellsuche leeren',
+                    onPressed: () => setState(() {
+                      search.clear();
+                      query = '';
+                    }),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+          ),
+        ),
+        if (query.isNotEmpty)
+          Text(
+            '${models.where((m) => '${m.name} ${m.id}'.toLowerCase().contains(query)).length} Katalogtreffer; aktuelle Auswahl bleibt zusätzlich sichtbar.',
+          ),
+        const SizedBox(height: 12),
+        const Text(
+          'Nicht auswählbar: Modelle ohne Texteingang oder einstellbare Denkstufe. Bildauswahl enthält nur Modelle mit Bildeingang.',
+        ),
+        const SizedBox(height: 12),
         modelDropdown(),
         SizedBox(height: 16),
         DropdownButtonFormField<String>(
@@ -313,7 +378,12 @@ class CodexModelPickerState extends State<CodexModelPicker> {
                 ),
               ),
           ],
-          onChanged: loading || !loaded || error != null || efforts.isEmpty
+          onChanged:
+              !widget.enabled ||
+                  loading ||
+                  !loaded ||
+                  error != null ||
+                  efforts.isEmpty
               ? null
               : (value) {
                   if (value == null) return;
@@ -323,7 +393,13 @@ class CodexModelPickerState extends State<CodexModelPicker> {
         ),
         if (adjustment != null) ...[
           SizedBox(height: 8),
-          Text(adjustment!, style: TextStyle(color: context.palette.muted)),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              adjustment!,
+              style: TextStyle(color: context.palette.muted),
+            ),
+          ),
         ],
         SizedBox(height: 16),
         modelDropdown(photo: true),
@@ -339,7 +415,7 @@ class CodexModelPickerState extends State<CodexModelPicker> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: loading ? null : load,
+            onPressed: !widget.enabled || loading ? null : load,
             icon: Icon(Icons.refresh_rounded),
             label: Text('Modelle neu laden'),
           ),

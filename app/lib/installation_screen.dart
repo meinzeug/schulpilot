@@ -28,7 +28,43 @@ class _InstallationScreenState extends State<InstallationScreen> {
   final recipient = TextEditingController();
   final fields = <String, TextEditingController>{};
   final flags = <String, bool>{};
-  Json? probe;
+  bool busy = false, adminPasswordVisible = false;
+  final visibleSecrets = <String>{};
+  final fieldErrors = <String, String>{};
+  static const ranges = <String, (int, int)>{
+    'smtp_port': (1, 65535),
+    'default_child_limit': (1, 20),
+    'default_call_limit': (0, 10000),
+    'default_budget_micros': (0, 100000000),
+    'synthetic_ai_daily_limit': (1, 100),
+  };
+  Future<void> runAction(Future<void> Function() action) async {
+    if (busy || !mounted) return;
+    final owner = widget.state.user;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await action();
+    } catch (failure) {
+      if (mounted && identical(widget.state.user, owner)) {
+        setState(
+          () => error = failure is ApiError
+              ? failure
+              : ApiError(
+                  'Die Änderung konnte nicht abgeschlossen werden. Dein Entwurf bleibt erhalten.',
+                ),
+        );
+      }
+    } finally {
+      if (mounted && identical(widget.state.user, owner)) {
+        setState(() => busy = false);
+      }
+    }
+  }
+
   String get base => widget.initial ? '/setup' : '/admin/installation';
   static const groups = <List<(String, String)>>[
     [
@@ -117,6 +153,25 @@ class _InstallationScreenState extends State<InstallationScreen> {
   }
 
   Future<void> save() async {
+    fieldErrors.clear();
+    for (final entry in ranges.entries) {
+      final number = int.tryParse(fields[entry.key]?.text.trim() ?? '');
+      if (number == null ||
+          number < entry.value.$1 ||
+          number > entry.value.$2) {
+        fieldErrors[entry.key] =
+            'Ganze Zahl von ${entry.value.$1} bis ${entry.value.$2} eingeben.';
+      }
+    }
+    if (fieldErrors.isNotEmpty) {
+      setState(() {});
+      final key = fieldErrors.keys.first;
+      final label = [
+        ...groups.expand((g) => g),
+        ('synthetic_ai_daily_limit', 'Beispiel-KI-Aufrufe'),
+      ].firstWhere((e) => e.$1 == key).$2;
+      throw ApiError('$label: ${fieldErrors[key]}');
+    }
     final data = <String, dynamic>{...flags};
     for (final entry in fields.entries) {
       data[entry.key] = numbers.contains(entry.key)
@@ -146,11 +201,16 @@ class _InstallationScreenState extends State<InstallationScreen> {
     padding: const EdgeInsets.only(bottom: 16),
     child: TextField(
       controller: fields[key],
-      obscureText: [
-        'smtp_password',
-        'fcm_service_account_json',
-        'google_oauth_client_json',
-      ].contains(key),
+      enabled: !busy,
+      autocorrect: false,
+      enableSuggestions: false,
+      obscureText:
+          [
+            'smtp_password',
+            'fcm_service_account_json',
+            'google_oauth_client_json',
+          ].contains(key) &&
+          !visibleSecrets.contains(key),
       maxLines:
           [
             'operator_address',
@@ -163,9 +223,37 @@ class _InstallationScreenState extends State<InstallationScreen> {
           : 1,
       keyboardType: numbers.contains(key)
           ? TextInputType.number
+          : ['operator_support_email', 'smtp_from'].contains(key)
+          ? TextInputType.emailAddress
           : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
+        errorText: fieldErrors[key],
+        errorMaxLines: 3,
+        suffixIcon:
+            [
+              'smtp_password',
+              'fcm_service_account_json',
+              'google_oauth_client_json',
+            ].contains(key)
+            ? IconButton(
+                tooltip: visibleSecrets.contains(key)
+                    ? 'Eingabe verbergen'
+                    : 'Eingabe anzeigen',
+                onPressed: busy
+                    ? null
+                    : () => setState(() {
+                        if (!visibleSecrets.add(key)) {
+                          visibleSecrets.remove(key);
+                        }
+                      }),
+                icon: Icon(
+                  visibleSecrets.contains(key)
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+              )
+            : null,
         hintText:
             (key == 'smtp_password' &&
                     config?['site']['has_smtp_password'] == true) ||
@@ -183,7 +271,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
     contentPadding: EdgeInsets.zero,
     title: Text(label),
     value: flags[key] ?? false,
-    onChanged: (v) => setState(() => flags[key] = v),
+    onChanged: busy ? null : (v) => setState(() => flags[key] = v),
   );
 
   Widget group(int index) => Column(
@@ -191,7 +279,8 @@ class _InstallationScreenState extends State<InstallationScreen> {
     children: [for (final field in groups[index]) input(field.$1, field.$2)],
   );
 
-  void selectStep(int next) {
+  void selectStep(int next, {bool afterSave = false}) {
+    if (busy && !afterSave) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       step = next;
@@ -210,71 +299,26 @@ class _InstallationScreenState extends State<InstallationScreen> {
         onRefresh: load,
       ),
       const SizedBox(height: 20),
-      ActionButton(
-        label: 'Bild & Aufgaben mit Beispieldaten prüfen',
-        icon: Icons.science_outlined,
-        onPressed: () async {
-          final path = widget.initial ? '/setup/provider' : '/admin/provider';
-          final job = await widget.state.api.post('$path/probe');
-          for (var i = 0; i < 180; i++) {
-            final result = await widget.state.api.get(
-              '$path/probes/${job['id']}',
-            );
-            if (mounted) setState(() => probe = result);
-            if (!['queued', 'running'].contains(result['status'])) {
-              await load();
-              return;
-            }
-            await Future<void>.delayed(const Duration(seconds: 2));
-            if (!mounted) return;
-          }
-          if (mounted) {
-            toast(
-              context,
-              'Die Prüfung läuft weiter. Bitte später erneut öffnen.',
-            );
-          }
-        },
+      OperatorProbePanel(
+        widget.state,
+        endpoint: widget.initial ? '/setup/provider' : '/admin/provider',
+        savedRevision: config!['provider']['revision'],
+        onFinished: load,
       ),
-      if (probe != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 16),
-          child: Text(
-            probe!['status'] == 'completed'
-                ? 'Bild- und Aufgabenprüfung erfolgreich.'
-                : probe!['error'] ??
-                      (probe!['status'] == 'failed'
-                          ? 'Prüfung fehlgeschlagen. Anbieterstatus ansehen.'
-                          : 'Prüfung läuft …'),
-          ),
-        ),
-      if (probe != null)
-        for (final item in probe!['report'] as List? ?? [])
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              item['available'] == true
-                  ? Icons.check_circle_outline
-                  : Icons.info_outline,
-              color: item['available'] == true ? teal : muted,
-            ),
-            title: Text(
-              {
-                    'extract': 'Foto erkennen',
-                    'unit': 'Übungen erstellen',
-                    'package': 'Tagespaket erstellen',
-                  }[item['function']] ??
-                  'Anbieterprüfung',
-            ),
-            subtitle: Text(
-              item['error'] ??
-                  (item['cost_micros_usd'] == null
-                      ? 'Kosten unbekannt'
-                      : '${(item['cost_micros_usd'] / 1000000).toStringAsFixed(6)} USD'),
-            ),
-          ),
     ],
   );
+
+  int? _checkSection(String key) => switch (key) {
+    'mail_configured' => 1,
+    'operator_complete' || 'data_approved' => 0,
+    'push_available' => 4,
+    _ => null,
+  };
+  int _fieldSection(String key) => key.startsWith('smtp_')
+      ? 1
+      : key.startsWith('default_')
+      ? 3
+      : 0;
 
   Widget content() {
     if (widget.initial && !kIsWeb) {
@@ -287,15 +331,22 @@ class _InstallationScreenState extends State<InstallationScreen> {
             ActionButton(
               label: 'Im Browser öffnen',
               onPressed: () async {
-                await launchUrl(
-                  Uri.parse(
-                    widget.state.api.base.replaceFirst(
-                      RegExp(r'/api/?$'),
-                      '/setup',
+                await runAction(() async {
+                  final opened = await launchUrl(
+                    Uri.parse(
+                      widget.state.api.base.replaceFirst(
+                        RegExp(r'/api/?$'),
+                        '/setup',
+                      ),
                     ),
-                  ),
-                  mode: LaunchMode.externalApplication,
-                );
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!opened) {
+                    throw ApiError(
+                      'Der Browser konnte nicht geöffnet werden. Öffne die Webadresse deiner Installation manuell und wähle /setup.',
+                    );
+                  }
+                });
               },
             ),
           ],
@@ -364,15 +415,37 @@ class _InstallationScreenState extends State<InstallationScreen> {
           const SizedBox(height: 16),
           TextField(
             controller: password,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Admin-Passwort (mindestens 12 Zeichen)',
+            enabled: !busy,
+            autocorrect: false,
+            enableSuggestions: false,
+            obscureText: !adminPasswordVisible,
+            decoration: InputDecoration(
+              suffixIcon: IconButton(
+                tooltip: adminPasswordVisible
+                    ? 'Passwort verbergen'
+                    : 'Passwort anzeigen',
+                onPressed: busy
+                    ? null
+                    : () => setState(
+                        () => adminPasswordVisible = !adminPasswordVisible,
+                      ),
+                icon: Icon(
+                  adminPasswordVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+              ),
+              labelText: 'Admin-Passwort',
+              helperText: 'Mindestens 12 Zeichen.',
             ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: confirm,
-            obscureText: true,
+            enabled: !busy,
+            autocorrect: false,
+            enableSuggestions: false,
+            obscureText: !adminPasswordVisible,
             decoration: const InputDecoration(
               labelText: 'Admin-Passwort wiederholen',
             ),
@@ -419,24 +492,35 @@ class _InstallationScreenState extends State<InstallationScreen> {
               DropdownMenuItem(value: 'starttls', child: Text('STARTTLS')),
               DropdownMenuItem(value: 'tls', child: Text('TLS')),
             ],
-            onChanged: (v) => fields['smtp_mode']!.text = v ?? 'starttls',
+            onChanged: busy
+                ? null
+                : (v) => fields['smtp_mode']!.text = v ?? 'starttls',
           ),
           const SizedBox(height: 24),
           TextField(
             controller: recipient,
+            enabled: !busy,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
             decoration: const InputDecoration(labelText: 'Testnachricht an'),
           ),
           const SizedBox(height: 16),
           ActionButton(
             label: 'Speichern & Testmail senden',
             secondary: true,
-            onPressed: () async {
+            enabled: !busy,
+            onPressed: () => runAction(() async {
+              if (recipient.text.trim().isEmpty) {
+                throw ApiError(
+                  'Gib zuerst eine E-Mail-Adresse für die Testnachricht ein.',
+                );
+              }
               await save();
               final result = await widget.state.api.post('$base/mail-test', {
                 'email': recipient.text.trim(),
               });
               if (mounted) toast(context, result['message']);
-            },
+            }),
           ),
         ],
       );
@@ -466,6 +550,37 @@ class _InstallationScreenState extends State<InstallationScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           heading('Bereit für den Start'),
+          const Text(
+            'Prüfübersicht ohne Geheimnisse · vorhandene Eingaben werden erst durch ausdrückliches Speichern übernommen.',
+          ),
+          SurfaceInset(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (widget.initial)
+                  Text(
+                    'Erstadmin: ${username.text.trim()} · wird erst beim Abschluss angelegt',
+                  ),
+                Text(
+                  'Betreiber: ${fields['operator_name']!.text.isEmpty ? 'noch offen' : fields['operator_name']!.text}',
+                ),
+                Text(
+                  'Support: ${fields['operator_support_email']!.text.isEmpty ? 'noch offen' : fields['operator_support_email']!.text}',
+                ),
+                Text(
+                  'E-Mail-Absender: ${fields['smtp_from']!.text.isEmpty ? 'noch offen' : fields['smtp_from']!.text}',
+                ),
+                Text(
+                  'Gespeicherter KI-Stand: Revision ${config!['provider']['revision'] ?? 'nicht gemeldet'}',
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: busy ? null : () => runAction(load),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Status ohne Speichern aktualisieren'),
+          ),
           for (final item in {
             'database': 'Datenbank',
             'https': 'HTTPS',
@@ -484,15 +599,39 @@ class _InstallationScreenState extends State<InstallationScreen> {
                 color: checks[item.key] == true ? teal : muted,
               ),
               title: Text(item.value),
+              trailing:
+                  checks[item.key] == true || _checkSection(item.key) == null
+                  ? null
+                  : TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => selectStep(
+                              _checkSection(item.key)! +
+                                  (widget.initial ? 1 : 0),
+                            ),
+                      child: const Text('Prüfen'),
+                    ),
+              subtitle: Text(
+                checks[item.key] == true
+                    ? 'Erfüllt'
+                    : checks[item.key] == false
+                    ? 'Noch offen'
+                    : 'Noch nicht gemeldet',
+              ),
             ),
           const SizedBox(height: 16),
           Text(config!['provider']['status'] ?? ''),
+          TextButton(
+            onPressed: busy ? null : () => selectStep(widget.initial ? 3 : 2),
+            child: const Text('Gespeicherten KI-Stand prüfen'),
+          ),
           if (widget.initial) ...[
             const SizedBox(height: 24),
             ActionButton(
               label: 'Einrichtung abschließen',
               icon: Icons.check_rounded,
-              onPressed: () async {
+              enabled: !busy,
+              onPressed: () => runAction(() async {
                 if (password.text != confirm.text) {
                   throw ApiError('Die Passwörter stimmen nicht überein.');
                 }
@@ -505,7 +644,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
                 confirm.clear();
                 await widget.state.checkInstallation();
                 if (mounted) context.go('/login');
-              },
+              }),
             ),
           ],
         ],
@@ -546,7 +685,7 @@ class _InstallationScreenState extends State<InstallationScreen> {
                   ),
                   selected: i == step,
                   showCheckmark: false,
-                  onSelected: !widget.initial || i < step
+                  onSelected: !busy && (!widget.initial || i < step)
                       ? (_) => selectStep(i)
                       : null,
                 ),
@@ -554,9 +693,14 @@ class _InstallationScreenState extends State<InstallationScreen> {
           ),
         if (widget.initial) ...[
           const SizedBox(height: 20),
-          LinearProgressIndicator(
-            value: (step + 1) / labels.length,
-            borderRadius: BorderRadius.circular(8),
+          Semantics(
+            label: 'Einrichtungsfortschritt',
+            value: 'Schritt ${step + 1} von ${labels.length}: ${labels[step]}',
+            excludeSemantics: true,
+            child: LinearProgressIndicator(
+              value: (step + 1) / labels.length,
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ],
         const SizedBox(height: 24),
@@ -588,37 +732,46 @@ class _InstallationScreenState extends State<InstallationScreen> {
           children: [
             if (widget.initial && step > 0)
               OutlinedButton(
-                onPressed: () => selectStep(step - 1),
+                onPressed: busy ? null : () => selectStep(step - 1),
                 child: const Text('Zurück'),
               ),
             if (widget.initial && step < labels.length - 1)
               ActionButton(
-                label: 'Speichern & weiter',
+                label: step == 0
+                    ? 'Zugang prüfen & weiter'
+                    : 'Speichern & weiter',
+                enabled: !busy,
                 icon: Icons.arrow_forward_rounded,
                 onPressed: () async {
-                  if (widget.initial && step == 0) {
-                    if (!RegExp(r'^[A-Za-z0-9._-]{3,50}$')
-                            .hasMatch(username.text.trim()) ||
-                        password.text.length < 12 ||
-                        password.text.length > 128 ||
-                        password.text != confirm.text) {
-                      throw ApiError(
-                        'Bitte Benutzername und beide Passwörter prüfen.',
-                      );
+                  final startedStep = step;
+                  await runAction(() async {
+                    if (widget.initial && startedStep == 0) {
+                      if (!RegExp(r'^[A-Za-z0-9._-]{3,50}$')
+                              .hasMatch(username.text.trim()) ||
+                          password.text.runes.length < 12 ||
+                          password.text.runes.length > 128 ||
+                          password.text != confirm.text) {
+                        throw ApiError(
+                          'Bitte Benutzername und beide Passwörter prüfen.',
+                        );
+                      }
+                    } else {
+                      await save();
                     }
-                  } else {
-                    await save();
-                  }
-                  if (mounted) selectStep(step + 1);
+                    if (mounted && step == startedStep) {
+                      selectStep(startedStep + 1, afterSave: true);
+                    }
+                  });
                 },
               ),
             if (!widget.initial)
               ActionButton(
                 label: 'Einstellungen speichern',
-                onPressed: () async {
+                enabled: !busy,
+                onPressed: () => runAction(() async {
                   await save();
                   if (mounted) toast(context, 'Gespeichert.');
-                },
+                }),
               ),
           ],
         ),
@@ -630,7 +783,29 @@ class _InstallationScreenState extends State<InstallationScreen> {
   Widget build(BuildContext context) {
     final child = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [if (error != null) Notice('$error', warning: true), content()],
+      children: [
+        if (error != null)
+          Semantics(liveRegion: true, child: Notice('$error', warning: true)),
+        if (fieldErrors.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final section in fieldErrors.keys.map(_fieldSection).toSet())
+                if (!widget.initial || section + 1 <= step)
+                  TextButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => selectStep(section + (widget.initial ? 1 : 0)),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: Text(
+                      'Fehler in ${const ['Betrieb', 'E-Mail', 'KI', 'Tarif'][section]} anzeigen',
+                    ),
+                  ),
+            ],
+          ),
+        content(),
+      ],
     );
     if (!widget.initial) {
       return PageFrame(
@@ -666,4 +841,208 @@ class _InstallationScreenState extends State<InstallationScreen> {
       ),
     );
   }
+}
+
+/// Existing operator job recovery is GET-only; a new reservation always requires
+/// the explicit start action. An interrupted poll never becomes a second POST.
+class OperatorProbePanel extends StatefulWidget {
+  final AppState state;
+  final String endpoint;
+  final dynamic savedRevision;
+  final Future<void> Function() onFinished;
+  const OperatorProbePanel(
+    this.state, {
+    super.key,
+    required this.endpoint,
+    required this.savedRevision,
+    required this.onFinished,
+  });
+  @override
+  State<OperatorProbePanel> createState() => _OperatorProbePanelState();
+}
+
+class _OperatorProbePanelState extends State<OperatorProbePanel> {
+  Json? probe;
+  bool loading = true, starting = false;
+  String? error, origin;
+  int generation = 0;
+  late final Object? owner = widget.state.user;
+  bool get own => mounted && identical(widget.state.user, owner);
+  bool get active =>
+      probe != null && ['queued', 'running'].contains(probe!['status']);
+  @override
+  void initState() {
+    super.initState();
+    widget.state.addListener(accountChanged);
+    restore();
+  }
+
+  void accountChanged() {
+    if (!own && mounted) {
+      generation++;
+      setState(() {
+        probe = null;
+        error = null;
+        loading = false;
+        starting = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(accountChanged);
+    generation++;
+    super.dispose();
+  }
+
+  Future<void> restore() async {
+    if (!own || starting) return;
+    final request = ++generation;
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final metadata = await widget.state.api.get('${widget.endpoint}/probes');
+      if (!own || request != generation) return;
+      final found = metadata['active'] ?? metadata['latest'];
+      if (found is Map) {
+        setState(() {
+          probe = Json.from(found);
+          origin = metadata['active'] != null
+              ? 'Aktive künstliche Anbieterprüfung'
+              : 'Letzte eigene künstliche Anbieterprüfung';
+        });
+        await updateResult(request);
+      } else {
+        setState(() {
+          probe = null;
+          origin = null;
+        });
+      }
+    } catch (failure) {
+      if (own && request == generation) {
+        setState(
+          () => error = failure is ApiError ? failure.message : 'Der gespeicherte Prüfstatus konnte nicht geladen werden. Status erneut laden; keine neue Prüfung starten.',
+        );
+      }
+    } finally {
+      if (own && request == generation) setState(() => loading = false);
+    }
+  }
+
+  Future<void> updateResult(int request) async {
+    final id = probe?['id'];
+    if (id is! String || id.isEmpty) return;
+    final result = await widget.state.api.get('${widget.endpoint}/probes/$id');
+    if (!own || request != generation) return;
+    setState(() => probe = {...?probe, ...result});
+  }
+
+  Future<void> start() async {
+    if (!own || starting || loading || active || error != null) return;
+    final request = ++generation;
+    setState(() {
+      starting = true;
+      error = null;
+    });
+    try {
+      final job = await widget.state.api.post('${widget.endpoint}/probe');
+      if (!own || request != generation) return;
+      setState(() {
+        probe = {...job, 'status': job['status'] ?? 'queued'};
+        origin = 'Bewusst gestartete künstliche Anbieterprüfung';
+      });
+      for (var i = 0; i < 180; i++) {
+        await updateResult(request);
+        if (!own || request != generation) return;
+        if (!active) {
+          await widget.onFinished();
+          return;
+        }
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!own || request != generation) return;
+      }
+    } catch (failure) {
+      if (own && request == generation) {
+        setState(
+          () => error = failure is ApiError ? failure.message : 'Die Anfrage konnte nicht sicher abgeschlossen werden. Zuerst den gespeicherten Prüfstatus laden; nicht erneut starten.',
+        );
+      }
+    } finally {
+      if (own && request == generation) setState(() => starting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => !own
+      ? const SizedBox.shrink()
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Notice(
+              'Diese echte Anbieterprüfung verwendet feste künstliche Beispieldaten und reserviert reguläres Kontingent. Kosten können entstehen oder unbekannt bleiben. Öffnen und Statusladen starten keine neue Prüfung.',
+            ),
+            if (loading || starting) const LinearProgressIndicator(),
+            if (error != null)
+              Semantics(liveRegion: true, child: Notice(error!, warning: true)),
+            if (probe != null) ...[
+              Text(origin ?? 'Gespeicherte künstliche Anbieterprüfung'),
+              SelectableText('Prüfauftrag: ${probe!['id']}'),
+              Text(
+                'Konfigurationsrevision: ${probe!['config_revision'] ?? 'nicht gemeldet'} · aktuell gespeichert: ${widget.savedRevision ?? 'nicht gemeldet'}',
+              ),
+              if (probe!['created'] is num)
+                Text(
+                  'Gestartet: ${DateTime.fromMillisecondsSinceEpoch((probe!['created'] as num).toInt() * 1000).toLocal()} (Gerätezeit)',
+                ),
+              if (probe!['config_revision'] != null &&
+                  widget.savedRevision != null &&
+                  probe!['config_revision'] != widget.savedRevision)
+                const Notice(
+                  'Dieses Prüfergebnis gehört zu einer älteren gespeicherten Konfiguration. Es bestätigt nicht den aktuellen Entwurf.',
+                  warning: true,
+                ),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  probe!['status'] == 'completed'
+                      ? 'Bild- und Aufgabenprüfung erfolgreich.'
+                      : probe!['error'] ??
+                            (probe!['status'] == 'failed'
+                                ? 'Prüfung fehlgeschlagen. Anbieterstatus ansehen.'
+                                : 'Prüfung läuft weiter. Status kann ohne neuen Auftrag geladen werden.'),
+                ),
+              ),
+              for (final item in probe!['report'] as List? ?? [])
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    {
+                          'extract': 'Foto erkennen',
+                          'unit': 'Übungen erstellen',
+                          'package': 'Tagespaket erstellen',
+                        }[item['function']] ??
+                        'Anbieterprüfung',
+                  ),
+                  subtitle: Text(
+                    '${item['available'] == true ? 'Verfügbar' : 'Nicht bestätigt'} · ${item['error'] ?? (item['cost_micros_usd'] == null ? 'Kosten unbekannt' : '${(item['cost_micros_usd'] / 1000000).toStringAsFixed(6)} USD')}',
+                  ),
+                ),
+            ],
+            OutlinedButton.icon(
+              onPressed: loading || starting ? null : restore,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Gespeicherten Prüfstatus laden'),
+            ),
+            const SizedBox(height: 12),
+            ActionButton(
+              label: 'Bild & Aufgaben mit Beispieldaten prüfen',
+              icon: Icons.science_outlined,
+              enabled: !loading && !starting && !active && error == null,
+              onPressed: start,
+            ),
+          ],
+        );
 }

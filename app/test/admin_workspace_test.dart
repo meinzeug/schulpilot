@@ -28,6 +28,27 @@ Json provider() => {
   'structured_capable': false,
 };
 
+dynamic familyResponse(http.Request request, List<Json> rows) {
+  if (request.url.queryParameters['paginated'] != 'true') return rows;
+  final search = (request.url.queryParameters['search'] ?? '').toLowerCase();
+  final items = rows
+      .where(
+        (row) => '${row['id']} ${row['plan']}'.toLowerCase().contains(search),
+      )
+      .map((row) => {...row, 'synthetic': false})
+      .toList();
+  return {
+    'items': items,
+    'pagination': {
+      'page': 1,
+      'pages': 1,
+      'page_size': 50,
+      'total': items.length,
+    },
+    'filters': {'search': search},
+  };
+}
+
 Future<void> mount(
   WidgetTester tester,
   List<http.Request> requests, {
@@ -65,7 +86,7 @@ Future<void> mount(
             'push_failures_24h': 4,
             'worker_age_seconds': null,
           },
-          '/api/admin/families' => [
+          '/api/admin/families' => familyResponse(request, [
             {
               'id': 'synthetic-family-a',
               'plan': 'Pilot',
@@ -80,7 +101,7 @@ Future<void> mount(
               'call_limit': 30,
               'budget_micros': 2000000,
             },
-          ],
+          ]),
           '/api/admin/audit' => <Json>[],
           '/api/admin/installation' => {
             'site': <String, dynamic>{'smtp_mode': 'tls'},
@@ -181,9 +202,10 @@ void main() {
       await tester.ensureVisible(search);
       await tester.enterText(search, 'Plus');
       await tester.pumpAndSettle();
+      await tap(tester, find.widgetWithText(FilledButton, 'Suchen'));
       expect(find.textContaining('synthetic-family-a'), findsNothing);
       expect(find.textContaining('synthetic-family-b'), findsOneWidget);
-      expect(find.text('1 Familien'), findsOneWidget);
+      expect(find.text('1 von 1 Familien · Seite 1 von 1'), findsOneWidget);
       expect(
         requests.every(
           (request) =>
