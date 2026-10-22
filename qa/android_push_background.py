@@ -27,6 +27,7 @@ from android_push import (
     labels,
     load_credentials,
     native_login,
+    open_device_panel,
     own_notifications,
     quiet,
     safe_write,
@@ -264,6 +265,7 @@ def main():
         press("Konto")
         if credentials["child_username"] not in labels(nodes()):
             raise PushQaError("native_identity_mismatch")
+        open_device_panel()
         report["phase"] = "native_opt_in"
         safe_write(report_file, report)
         tap_node(seek_label("Zeiten & Auswahl", prefix=True))
@@ -351,6 +353,7 @@ def main():
             # Flutter callback and its neutral native foreground presentation.
             from android_push import mark_send
 
+            open_device_panel()
             seek_label("Test an dieses Gerät senden")
             mark_send(report["installed_code"])
             before = own_notifications()
@@ -382,10 +385,11 @@ def main():
             try:
                 adb("shell", "cmd", "statusbar", "collapse")
                 adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-                press("Konto")
+                open_device_panel()
                 if device_id:
                     tap_node(seek_label("Auf diesem Gerät ausschalten"))
-                press("Abmelden", scroll=True)
+                press("Konto öffnen")
+                press("Abmelden")
                 wait("Willkommen zurück")
                 report["app_logged_out"] = True
             except Exception:

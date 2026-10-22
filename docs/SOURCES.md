@@ -1,4 +1,4 @@
-Firebaseprüfung22.10.2026: bestehende Firebase-Konsole unter dem beauftragten
+Firebaseprüfung 22.10.2026, Version 1.19.5+84: bestehende Firebase-Konsole unter dem beauftragten
 Google-Konto, feste Projekt-/App-IDs über Firebase Management und Service Usage,
 minimale Senderrolle über IAM und redigierte Serverbetriebsmetadaten unabhängig
 abgeglichen. [API-Key-Einschränkungen](https://firebase.google.com/docs/projects/api-keys)

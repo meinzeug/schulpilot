@@ -23,6 +23,7 @@ const context = await chromium.launchPersistentContext(profile, {
   viewport:{width:1280,height:1000}, permissions:['notifications'],
 });
 let loggedIn = false;
+let page;
 try {
   // Only our disposable fixture: no quiet interval during this bounded test.
   await context.route(base + '/api/notifications/device', async route => {
@@ -37,6 +38,7 @@ try {
       report.firebase_responses.push({host,status:response.status()});
     }
   });
+  report.phase = 'artificial_login';
   const login = await context.request.post(base + '/api/auth/login', {
     headers, data:{username:fixture.credentials.parent_username,
       password:fixture.credentials.parent_password},
@@ -47,24 +49,35 @@ try {
   assert.equal(account.role, 'parent');
   assert(account.families.length === 1 && account.families[0].synthetic === true);
   assert.equal(account.families[0].id, fixture.family_id);
-  const page = await context.newPage();
+  page = await context.newPage();
   page.on('pageerror', () => { report.runtime_errors = (report.runtime_errors || 0) + 1; });
   async function semantics() {
     await page.waitForSelector('flutter-view');
     const entry = page.locator('flt-semantics-placeholder');
-    if (await entry.count()) await entry.click({force:true});
+    // Flutter's accessibility placeholder intentionally has no painted box.
+    if (await entry.count()) await entry.evaluateAll(nodes => nodes.forEach(node => node.click()));
   }
   async function tap(name) {
     const locator = page.getByRole('button', {name,exact:true});
-    await locator.waitFor({timeout:25000});
-    await locator.scrollIntoViewIfNeeded();
-    await locator.click();
+    for (let i=0; i<24; i++) {
+      const box = await locator.boundingBox({timeout:400}).catch(() => null);
+      if (box && box.y > 80 && box.y + box.height < 940) {
+        await page.mouse.click(box.x + box.width/2,box.y + box.height/2);
+        return;
+      }
+      await page.mouse.move(1180,800);
+      await page.mouse.wheel(0,box && box.y < 80 ? -450 : 450);
+      await page.waitForTimeout(150);
+    }
+    throw new Error('own_test_control_not_reachable');
   }
+  report.phase = 'document';
   await page.goto(base + '/notifications');
   await semantics();
   await page.getByText('Auf diesem Gerät', {exact:true}).waitFor();
   assert.equal(report.firebase_responses.length, 0);
   report.no_firebase_before_optin = true;
+  report.phase = 'explicit_optin';
   const registered = page.waitForResponse(r =>
     new URL(r.url()).pathname === '/api/notifications/device' && r.request().method() === 'PUT',
     {timeout:55000});
@@ -104,6 +117,7 @@ try {
     await claim.close();
     report.requested_messages++;
   }
+  report.phase = 'validate';
   report.validation = await ownTest('validate');
   assert.equal(report.validation, 'validated');
   const visible = page.getByText('Es gibt Neuigkeiten in SCHULPILOT.', {exact:true})
@@ -113,12 +127,14 @@ try {
     });
   visible.catch(() => {});
   await reserveSend('foreground');
+  report.phase = 'foreground';
   report.send = await ownTest('send');
   assert.equal(report.send,'accepted');
   await visible;
   // No Schulpilot document remains open. Check the actual background handler,
   // while distinguishing a registered Notification from a visible OS banner.
   await page.goto('about:blank');
+  report.phase = 'background';
   const worker = context.serviceWorkers().find(worker =>
     new URL(worker.url()).pathname === '/push/firebase-messaging-sw.js');
   assert(worker);
@@ -154,6 +170,7 @@ try {
   await semantics();
   await page.getByText('Für dieses Gerät eingeschaltet.',{exact:true}).waitFor();
   report.restore_after_reload = true;
+  report.phase = 'logout';
   await page.goto(base + '/settings');
   await semantics();
   await tap('Abmelden');
@@ -173,10 +190,15 @@ try {
   report.registration_removed_on_logout = true;
   report.os_background_notification_observed = false;
   assert.equal(report.runtime_errors || 0,0);
+  report.phase = 'complete';
 } catch (error) {
   // Never include raw URLs, provider errors, payloads or authentication data.
   report.failure = error instanceof assert.AssertionError ? 'assertion' :
     /^[a-z_]+$/.test(error.message || '') ? error.message : error.constructor.name;
+  let safe = String(error.message || '');
+  for (const value of Object.values(fixture.credentials)) safe = safe.split(value).join('[REDACTED]');
+  report.failure_detail = safe.replace(/https?:\/\/\S+|[A-Za-z0-9_:\-.]{48,}/g,'[REDACTED]').slice(0,600);
+  if (page) await page.screenshot({path:path.join(output,'web-failure.png')}).catch(() => {});
   process.exitCode = 1;
 } finally {
   if (loggedIn) {

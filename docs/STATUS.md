@@ -1,4 +1,61 @@
-# Produktionsstand 1.19.4+83 · 22.10.2026
+# Produktionsstand 1.19.5+84 · 22.10.2026
+
+Live: `20261022T065736Z-1647c03`, Produktcommit
+`1647c03533a0f493edab66b941499a1a34aa5b11`, main gepusht.
+
+Firebase unter dem beauftragten Google-Konto und auf dem Server unabhängig
+abgeglichen: bestehendes Projekt, Plattform-Apps/-Keys, VAPID, APIs und minimale
+Senderrolle stimmen; OAuth und Versandberechtigung funktionieren. Zum
+Prüfbeginn waren keine Pushgeräte registriert. Freigaben, Ruhezeiten und
+Sitzungsbindung bleiben erforderlich.
+
+Der Android-Empfänger verlor beim manuellen Delegieren den frameworkgebundenen
+PendingResult. Die signierte 83-APK reproduzierte mit genau einer echten
+Nachricht einen Absturz ohne sichtbare Meldung. Der korrigierte Receiver erbt
+vom fixierten FlutterFire-Receiver. Signierte 84-APK auf eigenem Android-36-
+Emulator: kalter Prozess und Vordergrund getrennt erfolgreich, echte Meldungen
+sichtbar und richtige Kindersitzung geöffnet. Exakt zwei neue Meldungen;
+Screenshotpause und sichtbare Helfernavigation erzeugten keine weiteren.
+
+Web: ausdrücklicher Permissionbutton mit Timeout, kontogebundene Wiederaufnahme
+und geordnete SDK-/Tokenwechsel. Im freigegebenen isolierten Chrome-Profil null
+Firebaseverkehr vor App-Opt-in, echte Registrierung und Validierung erfolgreich,
+Vordergrundbanner sichtbar. Zweite Meldung ohne geöffnetes App-Dokument durch
+den Serviceworker als Notification registriert; kein sichtbarer Desktop-OS-
+Banner behauptet. Restore und Logout/Registrierungsentfernung bestätigt.
+Im integrierten Browser zeigt die nicht beantwortete Permissionanfrage jetzt
+einen begrenzten Fehlerhinweis und gibt den Einschaltbutton wieder frei.
+
+1.155 Fluttertests einschließlich 20 gezielter Push-/Webfälle, volle Analyse,
+22 PostgreSQL-Push-/Inboxfälle, sechs native Regelfälle, echte Frameworkprobe
+und sechs lokale QA-Guardfälle bestanden. Gehosteter GitHub-Lauf 39724081470
+startete wegen der bestehenden Abrechnungssperre keine Schritte; lokale
+Prüfungen bleiben davon getrennt.
+
+Web, signierte Direct-APK und Play-AAB geprüft. APK 111776935 Bytes, SHA256
+`46c69e8e3b77ab98920dcc9826d8ea57071ccb047000e355c36ed930e8e47da9`;
+AAB 89009534 Bytes, SHA256
+`bde6cc79060e74b11243ee5461e5ab5c867829926e2be4c17f0e422032bb0ce1`.
+Vollständiger öffentlicher APK-Download identisch; Play ohne Installerberechtigung,
+kein Play-Upload. Releasequellen/Web/Archive gegen lokale Geheimnisse geprüft,
+Relaysecret zusätzlich ausschließlich im Speicher: keine Treffer.
+
+API/Worker/Caddy und projektspezifischer TURN-Dienst aktiv, Sicherung erfolgreich,
+Schema 0026 und Providerrevision 29 Economy/ZDR unverändert. Künstlicher
+Haushalt normal gelöscht; alle 15 gezielten Kaskadenzähler null, Logins/Sitzungen
+ungültig, Audit/Löschjournal bestätigt und lokale Zugangsdaten entfernt. Emulator
+beendet. Physisches Smartphone und hörbarer Ton bleiben getrennt ungeprüft.
+Rückweg für Web/API: `20261022T052536Z-e502960`, keine Datenbankrücksetzung.
+Native Folgekorrekturen brauchen einen höheren Versionscode.
+
+Vollständige Abnahme und eigene Gerätefreigabe in
+[FIREBASE_EVALUATION_2026_10_22.md](FIREBASE_EVALUATION_2026_10_22.md).
+Nachfolgende reine QA-/Dokumentationskorrekturen ändern den bereitgestellten
+Produktcode nicht.
+
+---
+
+# Historischer Produktionsstand 1.19.4+83 · 22.10.2026
 
 Live: `20261022T052536Z-e502960`, Produktcommit
 `e502960a96ce84f4c26899f0fc4bf44ee02ea3a3`, main gepusht.

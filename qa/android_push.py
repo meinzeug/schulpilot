@@ -133,6 +133,16 @@ def native_login(credentials):
     wait("Heute")
 
 
+def open_device_panel():
+    # Push configuration has its own stable route; do not depend on which
+    # account tab was selected previously.
+    press("Benachrichtigungen")
+    if "Alle anzeigen" in labels(nodes()):
+        press("Alle anzeigen")
+    wait("Deine Neuigkeiten")
+    press("Gerät einstellen")
+
+
 def quiet(moment, start, end):
     return (
         False
@@ -278,6 +288,7 @@ def main():
         wait("Zugänge & Einstellungen")
         if credentials["child_username"] not in labels(nodes()):
             raise PushQaError("native_session_is_not_the_explicit_fixture")
+        open_device_panel()
         report["phase"] = "configure_fixture_device"
         safe_write(REPORT, report)
         tap_node(seek_label("Zeiten & Auswahl", prefix=True))
@@ -352,7 +363,7 @@ def main():
         else:
             adb("shell", "cmd", "statusbar", "collapse")
             adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-        press("Konto")
+        open_device_panel()
         seek_label(ACCEPTED, prefix=True)
         values = labels(nodes())
         report["background_fcm_accepted"] = sum(value.startswith(ACCEPTED) for value in values) >= 2
@@ -380,10 +391,11 @@ def main():
             try:
                 adb("shell", "cmd", "statusbar", "collapse")
                 adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-                press("Konto")
+                open_device_panel()
                 if fixture_device_id:
                     tap_node(seek_label("Auf diesem Gerät ausschalten"))
-                press("Abmelden", scroll=True)
+                press("Konto öffnen")
+                press("Abmelden")
                 wait("Willkommen zurück")
                 report["app_logged_out"] = True
             except Exception:
