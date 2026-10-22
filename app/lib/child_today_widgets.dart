@@ -2,12 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'child_section_ui.dart';
 import 'daily_plan_panel.dart';
 import 'ui.dart';
 import 'schulbuddy.dart';
 
-/// The current, real learning station. No decorative levels or game scores.
+/// The current, real learning step, kept visually ahead of secondary tools.
 class ChildTodayHero extends StatefulWidget {
   final String eyebrow, title, subtitle;
   final Widget action;
@@ -66,260 +65,188 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
     final palette = context.palette;
     final action = widget.action;
     final actionLabel = action is ActionButton ? action.label : null;
-    final title = widget.title,
-        subtitle = widget.subtitle,
-        eyebrow = widget.eyebrow;
-    final learning = widget.learning;
+    final buddy = SchulbuddyScope.maybeOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 650;
+        final wide =
+            constraints.maxWidth >= 650 &&
+            MediaQuery.textScalerOf(context).scale(16) <= 24;
         final compact = constraints.maxWidth < 340;
-        final largeText = MediaQuery.textScalerOf(context).scale(16) > 24;
-        final companionSize = wide
-            ? 240.0
-            : compact
-            ? 100.0
-            : 148.0;
-        return Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [palette.panelSurface, palette.mint],
-            ),
-            border: Border.all(
-              color: palette.teal.withValues(alpha: palette.isDark ? .6 : .45),
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(10),
-              bottomLeft: Radius.circular(10),
-              bottomRight: Radius.circular(28),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: palette.teal.withValues(
-                  alpha: palette.isDark ? .12 : .06,
-                ),
-                blurRadius: 28,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _StationBackdrop(color: palette.cyanInk),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(
-                  wide
-                      ? 28
-                      : compact
-                      ? 16
-                      : 20,
-                ),
+        final heading = Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: actionLabel == null || opening
+                ? null
+                : () => unawaited(openHero(action)),
+            borderRadius: BorderRadius.circular(12),
+            child: Semantics(
+              button: actionLabel != null,
+              label: actionLabel == null ? null : 'Öffnen: $actionLabel',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: actionLabel == null || opening
-                            ? null
-                            : () => unawaited(openHero(action)),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Semantics(
-                          button: actionLabel != null,
-                          label: actionLabel == null
-                              ? null
-                              : 'Öffnen: $actionLabel',
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 6),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 7,
-                                            height: 7,
-                                            decoration: BoxDecoration(
-                                              color: palette.cyanInk,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              eyebrow,
-                                              style: TextStyle(
-                                                color: palette.cyanInk,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        title,
-                                        style: TextStyle(
-                                          fontFamily: 'SpaceGrotesk',
-                                          color: palette.ink,
-                                          fontSize: wide
-                                              ? 35
-                                              : compact
-                                              ? 23
-                                              : 28,
-                                          height: 1.12,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: -.6,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (!largeText) ...[
-                                  SizedBox(width: wide ? 28 : 10),
-                                  SchulbuddyScope.maybeOf(context) == null
-                                      ? LearningCompanionIllustration(
-                                          size: companionSize,
-                                        )
-                                      : Tooltip(
-                                          message: 'Schulbuddy fragen',
-                                          child: Semantics(
-                                            button: true,
-                                            label: 'Schulbuddy fragen',
-                                            child: InkWell(
-                                              onTap: () =>
-                                                  SchulbuddyScope.maybeOf(
-                                                    context,
-                                                  )?.open(),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              child:
-                                                  LearningCompanionIllustration(
-                                                    size: companionSize,
-                                                  ),
-                                            ),
-                                          ),
-                                        ),
-                                ],
-                              ],
+                    Row(
+                      children: [
+                        ExcludeSemantics(
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: palette.mint,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              action is ActionButton
+                                  ? action.icon ?? Icons.auto_stories_outlined
+                                  : Icons.auto_stories_outlined,
+                              color: palette.teal,
+                              size: 25,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.eyebrow,
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (buddy != null)
+                          IconButton(
+                            tooltip: 'Schulbuddy fragen',
+                            constraints: const BoxConstraints(
+                              minWidth: 48,
+                              minHeight: 48,
+                            ),
+                            onPressed: () => buddy.open(),
+                            icon: Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              color: palette.muted,
+                              size: 22,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        color: palette.ink,
+                        fontSize: wide
+                            ? 30
+                            : compact
+                            ? 22
+                            : 24,
+                        height: 1.18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -.5,
                       ),
                     ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                    if (widget.subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 10),
                       Text(
-                        subtitle,
+                        widget.subtitle,
                         style: TextStyle(
                           color: palette.muted,
                           fontSize: 15,
-                          height: 1.45,
+                          height: 1.5,
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    FilledButtonTheme(
-                      data: FilledButtonThemeData(
-                        style:
-                            FilledButton.styleFrom(
-                              backgroundColor: palette.actionPurple,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(48, 54),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(13),
-                              ),
-                              textStyle: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ).copyWith(
-                              side: WidgetStateProperty.resolveWith(
-                                (states) => states.contains(WidgetState.focused)
-                                    ? BorderSide(
-                                        color: palette.cyanInk,
-                                        width: 3,
-                                      )
-                                    : BorderSide.none,
-                              ),
-                            ),
-                      ),
-                      child: action is ActionButton
-                          ? ActionButton(
-                              label: action.label,
-                              icon: action.icon,
-                              secondary: action.secondary,
-                              enabled: action.enabled && !opening,
-                              onPressed: () => openHero(action),
-                            )
-                          : action,
-                    ),
-                    if (learning) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        'Verstehen · Üben · Rückblick',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: palette.muted, fontSize: 12),
                       ),
                     ],
                   ],
                 ),
               ),
-            ],
+            ),
           ),
+        );
+        final primaryAction = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButtonTheme(
+              data: FilledButtonThemeData(
+                style:
+                    FilledButton.styleFrom(
+                      backgroundColor: palette.actionPurple,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(48, 54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ).copyWith(
+                      side: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.focused)
+                            ? BorderSide(color: palette.cyanInk, width: 3)
+                            : BorderSide.none,
+                      ),
+                    ),
+              ),
+              child: action is ActionButton
+                  ? ActionButton(
+                      label: action.label,
+                      icon: action.icon,
+                      secondary: action.secondary,
+                      enabled: action.enabled && !opening,
+                      onPressed: () => openHero(action),
+                    )
+                  : action,
+            ),
+            if (widget.learning) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Verstehen · Üben · Rückblick',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+            ],
+          ],
+        );
+        return Container(
+          clipBehavior: Clip.antiAlias,
+          padding: EdgeInsets.all(
+            wide
+                ? 28
+                : compact
+                ? 18
+                : 22,
+          ),
+          decoration: BoxDecoration(
+            color: palette.panelSurface,
+            border: Border.all(color: palette.surfaceBorder),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: wide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: heading),
+                    const SizedBox(width: 32),
+                    SizedBox(width: 230, child: primaryAction),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    heading,
+                    const SizedBox(height: 22),
+                    primaryAction,
+                  ],
+                ),
         );
       },
     );
   }
-}
-
-class _StationBackdrop extends CustomPainter {
-  final Color color;
-  const _StationBackdrop({required this.color});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final edge = Paint()
-      ..color = color.withValues(alpha: .16)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3;
-    final trace = Path()
-      ..moveTo(size.width - 110, 0)
-      ..lineTo(size.width - 110, 20)
-      ..lineTo(size.width - 84, 46)
-      ..lineTo(size.width, 46);
-    canvas.drawPath(trace, edge);
-    canvas.drawCircle(
-      Offset(size.width - 110, 20),
-      3,
-      Paint()..color = color.withValues(alpha: .3),
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, size.height - 20)
-        ..lineTo(26, size.height - 20)
-        ..lineTo(46, size.height),
-      edge,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _StationBackdrop oldDelegate) =>
-      color != oldDelegate.color;
 }
 
 /// A compact scan dock or a real pending preparation, not another hero.
@@ -346,7 +273,7 @@ class ChildTodayTile extends StatelessWidget {
     return Material(
       color: palette.panelSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(color: palette.surfaceBorder),
       ),
       clipBehavior: Clip.antiAlias,
@@ -451,7 +378,7 @@ class ChildTodayProgress extends StatelessWidget {
         : null;
     return _TodayActionSurface(
       onTap: onOpen,
-      radius: 18,
+      radius: 24,
       child: Semantics(
         button: onOpen != null,
         label: [
@@ -503,7 +430,7 @@ class ChildTodayProgress extends StatelessWidget {
                       Text(
                         'ca. ${learningMinutes(activeMinutes)} Min.',
                         style: TextStyle(
-                          fontFamily: 'SpaceGrotesk',
+                          fontFamily: 'Nunito',
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
                           height: 1.15,
@@ -590,12 +517,6 @@ class ChildTodayTools extends StatelessWidget {
     final palette = context.palette;
     return Container(
       key: const ValueKey('today-tools'),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: palette.panelSurface,
-        border: Border.all(color: palette.surfaceBorder),
-        borderRadius: BorderRadius.circular(24),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -605,9 +526,9 @@ class ChildTodayTools extends StatelessWidget {
                 child: Text(
                   'Für deinen Tag',
                   style: TextStyle(
-                    fontFamily: 'SpaceGrotesk',
+                    fontFamily: 'Nunito',
                     fontWeight: FontWeight.w700,
-                    fontSize: 21,
+                    fontSize: MediaQuery.sizeOf(context).width < 720 ? 16 : 23,
                     color: palette.ink,
                   ),
                 ),
@@ -629,7 +550,7 @@ class ChildTodayTools extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final columns =
-                  constraints.maxWidth >= 300 &&
+                  constraints.maxWidth >= 420 &&
                   MediaQuery.textScalerOf(context).scale(14) <= 21;
               final tiles = [
                 _TodayTool(
@@ -646,7 +567,7 @@ class ChildTodayTools extends StatelessWidget {
                       ? 'Deinen Eltern schreiben'
                       : 'Von deinen Eltern: $latestMessage',
                   icon: Icons.forum_outlined,
-                  color: palette.cyanInk,
+                  color: palette.warningInk,
                   onTap: onMessages,
                   horizontal: !columns,
                 ),
@@ -654,7 +575,7 @@ class ChildTodayTools extends StatelessWidget {
                   title: 'Ich brauche Hilfe',
                   subtitle: 'Gemeinsam weiterkommen',
                   icon: Icons.volunteer_activism_outlined,
-                  color: palette.teal,
+                  color: palette.successInk,
                   onTap: onHelp,
                   horizontal: !columns,
                 ),
@@ -678,17 +599,23 @@ class ChildTodayTools extends StatelessWidget {
                   ],
                 );
               }
+              final columnCount = constraints.maxWidth >= 900 ? 4 : 2;
               return Column(
                 children: [
-                  for (var i = 0; i < tiles.length; i += 2) ...[
+                  for (var i = 0; i < tiles.length; i += columnCount) ...[
                     if (i > 0) const SizedBox(height: 10),
                     IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(child: tiles[i]),
-                          const SizedBox(width: 10),
-                          Expanded(child: tiles[i + 1]),
+                          for (
+                            var column = 0;
+                            column < columnCount;
+                            column++
+                          ) ...[
+                            if (column > 0) const SizedBox(width: 12),
+                            Expanded(child: tiles[i + column]),
+                          ],
                         ],
                       ),
                     ),
@@ -723,13 +650,13 @@ class _TodayTool extends StatelessWidget {
     final palette = context.palette;
     final emblem = ExcludeSemantics(
       child: Container(
-        width: 42,
-        height: 42,
+        width: horizontal ? 36 : 42,
+        height: horizontal ? 36 : 42,
         decoration: BoxDecoration(
           color: color.withValues(alpha: palette.isDark ? .14 : .09),
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(icon, color: color, size: 25),
+        child: Icon(icon, color: color, size: horizontal ? 22 : 25),
       ),
     );
     final words = Column(
@@ -741,7 +668,7 @@ class _TodayTool extends StatelessWidget {
           style: TextStyle(
             color: palette.ink,
             fontWeight: FontWeight.w800,
-            fontSize: 15,
+            fontSize: horizontal ? 14 : 15,
             height: 1.3,
           ),
         ),
@@ -750,7 +677,7 @@ class _TodayTool extends StatelessWidget {
           subtitle,
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: palette.muted, fontSize: 12, height: 1.4),
+          style: TextStyle(color: palette.muted, fontSize: 13, height: 1.4),
         ),
       ],
     );
@@ -809,7 +736,7 @@ class _TodayActionSurface extends StatefulWidget {
   const _TodayActionSurface({
     required this.onTap,
     required this.child,
-    this.radius = 17,
+    this.radius = 24,
   });
 
   @override
@@ -823,7 +750,7 @@ class _TodayActionSurfaceState extends State<_TodayActionSurface> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     return Material(
-      color: palette.surfaceLow,
+      color: palette.panelSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(widget.radius),
         side: BorderSide(

@@ -13,7 +13,7 @@ import 'package:schulpilot/child_account.dart';
 import 'package:schulpilot/child_section_ui.dart';
 import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/homework_screen.dart';
-import 'package:schulpilot/notebook_cover.dart';
+import 'package:schulpilot/subject_badge.dart';
 import 'package:schulpilot/ui.dart';
 import 'package:schulpilot/vocabulary_screen.dart';
 
@@ -198,10 +198,10 @@ void main() {
           expect(find.text('Demo · nur Beispieldaten'), findsOneWidget);
           final marker = content(page);
           expect(marker, findsWidgets);
-          // Measure the actual touch-card surface, including a real book cover,
+          // Measure the actual visual marker on the first row or card,
           // rather than a title positioned part way down its card.
           final firstCard = switch (page) {
-            'library' => find.byType(NotebookCover).first,
+            'library' => find.byType(SubjectBadge).first,
             'homework' =>
               find
                   .ancestor(

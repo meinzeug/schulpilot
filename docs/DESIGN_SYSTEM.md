@@ -1,4 +1,14 @@
-# Zwei Erscheinungsbilder: Cyber-Lerncockpit
+# Schulpilot: gemeinsame Lernoberfläche
+
+Gestaltungsauftrag22.10.2026: Die angemeldete simpleclub-App wurde direkt im
+Browser auf Desktopbreite und bei390×844px angesehen. Die gemeinsame
+Schulpilot-Oberfläche übernimmt ruhige Anthrazitflächen, blaue Hauptaktionen,
+runde Karten, dünne Navigationsicons und farbige lokale Fachsymbole. Ab720px
+steht eine80px breite schwebende Iconleiste; mobil eine abgerundete, eingerückte
+Bottomnavigation. Kinderhefte starten als kompakte Fachliste; die bewusst
+gewählte Listen-/Kachelansicht bleibt beim Wiederöffnen erhalten. Die
+Startseitensuche öffnet den vorhandenen Fachfilter ohne Schreib-/KI-Aufruf.
+Details: [SIMPLECLUB_STYLE_2026_10_22.md](SIMPLECLUB_STYLE_2026_10_22.md).
 
 Bedienprüfung1.19.6: gespeicherte Übungsbelege stehen in der Elternübersicht vor
 der optionalen KI-Verwaltung. Listen kennzeichnen Laden, Fehler und leere
@@ -34,14 +44,14 @@ Der ausdrückliche Betreiberauftrag ersetzt die frühere reine Hellgestaltung.
 
 | Ebene | Dunkel | Hell |
 | --- | --- | --- |
-| Arbeitsfläche | Navy `#080F1F` | `#F4F5FC` |
-| Inhaltsfläche | `#132139` | Weiß |
-| eingelagerte Gruppe | `#111F35` | `#EBEFF8` |
-| normale Schrift | `#EFF6FF` | `#17233C` |
-| sekundäre Schrift | `#ADBED5` | `#4C5F79` |
-| violette Textakzente | `#B49AFF` | `#623BEA` |
+| Arbeitsfläche | Anthrazit `#101E24` | `#F4F6F8` |
+| Inhaltsfläche | `#202C34` | Weiß |
+| eingelagerte Gruppe | `#1B272E` | `#EDF1F4` |
+| normale Schrift | `#F5F7F8` | `#17233C` |
+| sekundäre Schrift | `#B2BEC4` | `#4C5F79` |
+| blaue Textakzente | `#9AC2FF` | `#075BC5` |
 | Cyantext | `#67E8F0` | `#006575` |
-| Hauptaktion | `#7048D5` mit Weiß | `#7048D5` mit Weiß |
+| Hauptaktion | `#0866E9` mit Weiß | `#0866E9` mit Weiß |
 
 Der gemeinsame Sonnen-/Mondschalter ist schon vor der Anmeldung erreichbar und
 bleibt im Kontokopf. `AppState.setAppearance` ändert ausschließlich die lokale
@@ -54,8 +64,8 @@ Farbwerte werden nicht pauschal invertiert.
 
 ## Aufbau der drei Arbeitsräume
 
-Kinder: eine dominante Lernstation mit tatsächlichem nächsten Schritt und eigener
-Cyber-Buchdrohne. Ein kompakter Scan-Dock bleibt sichtbar. Echte Lernzeit,
+Kinder: eine klare Lernkarte mit tatsächlichem nächsten Schritt und blauer
+Hauptaktion, ohne große Maskottchenfläche. Ein kompakter Scan-Dock bleibt sichtbar. Echte Lernzeit,
 Kurzplan und Postfach sind klar getrennte kleinere Werkzeuge, keine aufklappbaren
 Kartenstapel. Lernen verwendet offene Themengruppen, Wörter echte Karteikarten,
 Konto geordnete Geräteeinstellungen. Keine erfundenen Punkte, Levels oder Streaks.
@@ -66,7 +76,8 @@ reale Triage, priorisierte Betriebsaktionen und breite Verwaltungstabellen.
 Der jeweilige Rollenbereich folgt derselben Formensprache ohne Kinderfigur vor
 Berichten und Betriebsformularen.
 
-Eine globale Navigation: Sidebar ab1050px, Rail ab720px, darunter Touchnavigation.
+Eine globale Navigation: schwebende80px-Iconleiste ab720px, darunter eine
+eingerückte Touchnavigation mit sichtbarer Auswahl. Kontoziel unten in der Rail.
 Betrieb, Einrichtung, Verkauf und Push bleiben auch mobil erreichbar.
 Lokale Kontextreiter wiederholen keine zweite globale Menüleiste.
 Die geführte Lernrunde erhält ihren klaren Rückweg und die drei Phasen
@@ -76,8 +87,9 @@ Hilfe und Hauptaktion haben feste Plätze außerhalb der Tastatur.
 
 ## Schrift und Grafik
 
-Nunito für Fließtext, Space Grotesk für kurze Überschriften und Zahlen, beide
-lokal mit OFL-Lizenz gebündelt. Keine Font-CDN-Abfrage. Formelsatz nutzt weiterhin
+Nunito für gemeinsame Überschriften und Fließtext; Space Grotesk bleibt für
+bestehende ausdrücklich gesetzte Zahlen-/Detailanzeigen lokal verfügbar. Beide
+Schriften sind mit OFL-Lizenz gebündelt. Keine Font-CDN-Abfrage. Formelsatz nutzt weiterhin
 die funktionalen KaTeX-Schriften; Code die lokale System-Monospace-Schrift.
 Fließtext15–17px, mindestens1,5-fache Zeilenhöhe. Hauptaktionen52px,
 andere Trefferflächen mindestens48px. Eingaben erhalten einen sichtbaren

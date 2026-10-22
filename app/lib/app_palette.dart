@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 
-/// Semantic colours for two deliberately designed cyberpunk appearances.
+/// Semantic colours for two coordinated learning workspaces.
 /// Personal photos and scientific values are never recoloured.
 @immutable
 class AppPalette {
   final bool isDark;
   const AppPalette({required this.isDark});
-  Color get ink => isDark ? const Color(0xFFEFF6FF) : const Color(0xFF17233C);
-  Color get muted => isDark ? const Color(0xFFADBED5) : const Color(0xFF4C5F79);
-  Color get teal => isDark ? const Color(0xFFB49AFF) : const Color(0xFF623BEA);
+  Color get ink => isDark ? const Color(0xFFF5F7F8) : const Color(0xFF17233C);
+  Color get muted => isDark ? const Color(0xFFB2BEC4) : const Color(0xFF4C5F79);
+  Color get teal => isDark ? const Color(0xFF9AC2FF) : const Color(0xFF075BC5);
   Color get electric => const Color(0xFF5DE7F5);
-  Color get cream => isDark ? const Color(0xFF080F1F) : const Color(0xFFF4F5FC);
-  Color get panelSurface => isDark ? const Color(0xFF132139) : Colors.white;
+  Color get cream => isDark ? const Color(0xFF101E24) : const Color(0xFFF4F6F8);
+  Color get panelSurface => isDark ? const Color(0xFF202C34) : Colors.white;
   Color get surfaceLow =>
-      isDark ? const Color(0xFF111F35) : const Color(0xFFEBEFF8);
+      isDark ? const Color(0xFF1B272E) : const Color(0xFFEDF1F4);
   Color get surfaceHigh =>
-      isDark ? const Color(0xFF1C304A) : const Color(0xFFDDE5F1);
+      isDark ? const Color(0xFF2D3A42) : const Color(0xFFDDE5F1);
   Color get surfaceBorder =>
-      isDark ? const Color(0xFF334D70) : const Color(0xFFB8C6D9);
+      isDark ? const Color(0xFF35454E) : const Color(0xFFB8C6D9);
   Color get controlBorder =>
-      isDark ? const Color(0xFF7895BB) : const Color(0xFF7788A2);
-  Color get mint => isDark ? const Color(0xFF2A2448) : const Color(0xFFEEE9FF);
+      isDark ? const Color(0xFF82969F) : const Color(0xFF7788A2);
+  Color get mint => isDark ? const Color(0xFF1D3450) : const Color(0xFFE8F0FF);
   Color get cyanInk =>
       isDark ? const Color(0xFF67E8F0) : const Color(0xFF006575);
   Color get cyanSurface =>
@@ -37,7 +37,9 @@ class AppPalette {
       isDark ? const Color(0xFFFFA7B6) : const Color(0xFFA82D40);
   Color get dangerSurface =>
       isDark ? const Color(0xFF3B2030) : const Color(0xFFFFF0F2);
-  Color get actionPurple => const Color(0xFF7048D5);
+  Color get actionBlue => const Color(0xFF0866E9);
+  // Keep the existing semantic API for all controlled components.
+  Color get actionPurple => actionBlue;
 
   /// Map historical semantic constants used by existing controlled components.
   Color resolve(Color value) =>

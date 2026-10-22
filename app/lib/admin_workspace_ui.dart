@@ -250,7 +250,7 @@ class _CompactAdminHeaderState extends State<_CompactAdminHeader> {
                 child: Text(
                   content.title,
                   style: TextStyle(
-                    fontFamily: 'SpaceGrotesk',
+                    fontFamily: 'Nunito',
                     fontSize: 24,
                     height: 1.2,
                     fontWeight: FontWeight.w700,

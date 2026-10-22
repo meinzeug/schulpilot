@@ -819,6 +819,7 @@ class _ChildHomeContent extends StatefulWidget {
 
 class _ChildHomeContentState extends State<_ChildHomeContent> {
   bool checkingIn = false;
+  bool searchFocused = false;
   AppState get state => widget.state;
   Json get data => widget.data;
   VoidCallback get refresh => widget.refresh;
@@ -1119,7 +1120,9 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
                     Text(
                       'Hallo, $name!',
                       style: TextStyle(
-                        fontSize: 21,
+                        fontSize: MediaQuery.sizeOf(context).width >= 720
+                            ? 34
+                            : 22,
                         fontWeight: FontWeight.w800,
                         color: context.palette.ink,
                         height: 1.2,
@@ -1146,6 +1149,70 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             ],
           ),
         ),
+        Semantics(
+          button: true,
+          excludeSemantics: true,
+          onTap: () => openSaved('/library/${child['id']}?search=1'),
+          label: 'Suche in deinen Heften …',
+          child: Material(
+            color: context.palette.panelSurface,
+            shape: StadiumBorder(
+              side: BorderSide(
+                color: searchFocused
+                    ? context.palette.cyanInk
+                    : context.palette.controlBorder,
+                width: searchFocused ? 2.5 : 1,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const ValueKey('child-home-search'),
+              onTap: () => openSaved('/library/${child['id']}?search=1'),
+              onFocusChange: (value) => setState(() => searchFocused = value),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: context.palette.muted,
+                        size: 27,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Suche in deinen Heften …',
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 30),
+        Text(
+          'Was möchtest du heute machen?',
+          style: TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: MediaQuery.sizeOf(context).width >= 720 ? 25 : 16,
+            fontWeight: FontWeight.w800,
+            color: context.palette.ink,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 16),
         hero,
         if ((guidance?['reason'] ?? '').toString().trim().isNotEmpty)
           Align(
@@ -1233,7 +1300,9 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
               label: Text('Heftseite prüfen'),
             ),
           ),
-        SizedBox(height: 22),
+        const SizedBox(height: 28),
+        Divider(color: context.palette.surfaceBorder, height: 1),
+        const SizedBox(height: 22),
         ChildTodayTools(
           learningTime: activeMinutes is num && dailyGoal is num
               ? ChildTodayProgress(

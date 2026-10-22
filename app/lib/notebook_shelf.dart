@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'child_section_ui.dart';
 import 'notebook_cover.dart';
+import 'subject_badge.dart';
 import 'ui.dart';
 
 class NotebookShelf extends StatelessWidget {
@@ -10,12 +11,14 @@ class NotebookShelf extends StatelessWidget {
   final String childId;
   final Widget allPages;
   final VoidCallback? onAddPhoto;
+  final bool initialSearch;
   const NotebookShelf(
     this.state, {
     super.key,
     required this.childId,
     required this.allPages,
     this.onAddPhoto,
+    this.initialSearch = false,
   });
   @override
   Widget build(BuildContext context) => _NotebookShelfBody(
@@ -24,6 +27,7 @@ class NotebookShelf extends StatelessWidget {
     childId: childId,
     allPages: allPages,
     onAddPhoto: onAddPhoto,
+    initialSearch: initialSearch,
   );
 }
 
@@ -32,12 +36,14 @@ class _NotebookShelfBody extends StatefulWidget {
   final String childId;
   final Widget allPages;
   final VoidCallback? onAddPhoto;
+  final bool initialSearch;
   const _NotebookShelfBody(
     this.state, {
     super.key,
     required this.childId,
     required this.allPages,
     this.onAddPhoto,
+    this.initialSearch = false,
   });
   @override
   State<_NotebookShelfBody> createState() => _NotebookShelfState();
@@ -63,11 +69,13 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
     stateRevision = widget.state.revision;
     widget.state.addListener(identityChanged);
     final saved = widget.state.collectionViews[memoryKey];
-    list = saved?['list'] == true;
+    list = saved?['list'] as bool? ?? widget.state.isChild;
     ownOnly = saved?['own_only'] as bool? ?? widget.state.isChild;
-    allPages = saved?['all_pages'] == true;
+    // An explicit home-search entry opens the subject filter, even if the
+    // previous library visit ended in the separate all-pages collection.
+    allPages = !widget.initialSearch && saved?['all_pages'] == true;
     search.text = saved?['q'] ?? '';
-    showSearch = search.text.isNotEmpty;
+    showSearch = widget.initialSearch || search.text.isNotEmpty;
     load();
   }
 
@@ -165,6 +173,28 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
     },
   );
 
+  Widget searchField() => TextField(
+    controller: search,
+    focusNode: searchFocus,
+    autocorrect: false,
+    enableSuggestions: false,
+    textInputAction: TextInputAction.search,
+    onSubmitted: (_) => searchFocus.unfocus(),
+    decoration: InputDecoration(
+      hintText: 'Fach suchen',
+      prefixIcon: Icon(Icons.search_rounded),
+      suffixIcon: IconButton(
+        tooltip: 'Suche schließen',
+        onPressed: toggleSearch,
+        icon: Icon(Icons.close_rounded),
+      ),
+    ),
+    onChanged: (_) {
+      setState(() {});
+      remember();
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     if (!current) return SizedBox();
@@ -231,11 +261,13 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
             key: const ValueKey('notebook-toolbar'),
             children: [
               Expanded(
-                child: TextButton.icon(
-                  onPressed: toggleSearch,
-                  icon: const Icon(Icons.search_rounded),
-                  label: Text(showSearch ? 'Suche schließen' : 'Fach suchen'),
-                ),
+                child: showSearch
+                    ? searchField()
+                    : TextButton.icon(
+                        onPressed: toggleSearch,
+                        icon: const Icon(Icons.search_rounded),
+                        label: const Text('Fach suchen'),
+                      ),
               ),
               IconButton.filledTonal(
                 tooltip: list ? 'Kacheln' : 'Liste',
@@ -343,29 +375,9 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
               ],
             ),
           ),
-        if (showSearch) ...[
+        if (showSearch && !widget.state.isChild) ...[
           SizedBox(height: 10),
-          TextField(
-            controller: search,
-            focusNode: searchFocus,
-            autocorrect: false,
-            enableSuggestions: false,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => searchFocus.unfocus(),
-            decoration: InputDecoration(
-              hintText: 'Fach suchen',
-              prefixIcon: Icon(Icons.search_rounded),
-              suffixIcon: IconButton(
-                tooltip: 'Suche schließen',
-                onPressed: toggleSearch,
-                icon: Icon(Icons.close_rounded),
-              ),
-            ),
-            onChanged: (_) {
-              setState(() {});
-              remember();
-            },
-          ),
+          searchField(),
         ],
         SizedBox(height: 12),
         if (error != null) ...[
@@ -405,21 +417,21 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
         else if (list) ...[
           for (final item in visible)
             Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 8),
               child: Material(
                 color: context.palette.panelSurface,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   side: BorderSide(color: context.palette.surfaceBorder),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: ListTile(
-                  minTileHeight: 104,
-                  leading: SizedBox(
-                    width: 72,
-                    height: 88,
-                    child: NotebookCover(item['cover_key']),
+                  minTileHeight: 80,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
                   ),
+                  leading: SubjectBadge(item['cover_key']),
                   title: Text(
                     '${item['title']}',
                     style: TextStyle(fontWeight: FontWeight.w800),

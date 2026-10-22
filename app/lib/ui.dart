@@ -11,6 +11,7 @@ export 'app_palette.dart';
 import 'download_panel.dart';
 import 'legal_links.dart';
 import 'schulbuddy.dart';
+import 'schulpilot_icons.dart';
 
 // Shared light-surface palette. Cyan is an accent on navy, not a text color
 // on white. Keep secondary text opaque so nested surfaces preserve contrast.
@@ -141,7 +142,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
     colorScheme: scheme,
   );
   final rounded = RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(28),
   );
   final focusSide = WidgetStateProperty.resolveWith<BorderSide>((states) {
     if (states.contains(WidgetState.focused)) {
@@ -166,7 +167,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
         .apply(bodyColor: ink, displayColor: ink)
         .copyWith(
           headlineLarge: TextStyle(
-            fontFamily: 'SpaceGrotesk',
+            fontFamily: 'Nunito',
             fontSize: 40,
             fontWeight: FontWeight.w800,
             color: ink,
@@ -174,14 +175,14 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
             letterSpacing: -1.3,
           ),
           headlineMedium: TextStyle(
-            fontFamily: 'SpaceGrotesk',
+            fontFamily: 'Nunito',
             fontSize: 32,
             fontWeight: FontWeight.w800,
             color: ink,
             letterSpacing: -.9,
           ),
           titleLarge: TextStyle(
-            fontFamily: 'SpaceGrotesk',
+            fontFamily: 'Nunito',
             fontSize: 22,
             fontWeight: FontWeight.w700,
             color: ink,
@@ -199,12 +200,11 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
           labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
     appBarTheme: AppBarTheme(
-      backgroundColor: p.panelSurface,
+      backgroundColor: p.cream,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       foregroundColor: ink,
-      shape: Border(bottom: BorderSide(color: surfaceBorder)),
     ),
     dividerTheme: DividerThemeData(color: surfaceBorder, thickness: 1),
     inputDecorationTheme: InputDecorationTheme(
@@ -218,23 +218,23 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       suffixIconColor: muted,
       floatingLabelStyle: TextStyle(color: teal, fontWeight: FontWeight.w700),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         borderSide: BorderSide(color: controlBorder, width: 1.25),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         borderSide: BorderSide(color: controlBorder, width: 1.25),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         borderSide: BorderSide(color: teal, width: 2.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         borderSide: BorderSide(color: dangerInk, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         borderSide: BorderSide(color: dangerInk, width: 2.5),
       ),
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -301,30 +301,30 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
           ),
     ),
     cardTheme: CardThemeData(
-      elevation: 2,
-      shadowColor: ink.withValues(alpha: .14),
+      elevation: 0,
+      shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       margin: EdgeInsets.zero,
       color: p.panelSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(color: surfaceBorder),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: p.panelSurface,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: p.actionPurple,
+      indicatorColor: p.surfaceHigh,
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
-          color: states.contains(WidgetState.selected) ? Colors.white : muted,
+          color: states.contains(WidgetState.selected) ? ink : muted,
           size: 23,
         ),
       ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontSize: 12,
-          color: states.contains(WidgetState.selected) ? teal : muted,
+          color: states.contains(WidgetState.selected) ? ink : muted,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w800
               : FontWeight.w600,
@@ -333,14 +333,14 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       height: 76,
     ),
     tabBarTheme: TabBarThemeData(
-      labelColor: teal,
+      labelColor: ink,
       unselectedLabelColor: muted,
       labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
       unselectedLabelStyle: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
       ),
-      indicatorColor: teal,
+      indicatorColor: ink,
       indicatorSize: TabBarIndicatorSize.tab,
       dividerColor: surfaceBorder,
     ),
@@ -352,11 +352,11 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       iconColor: teal,
       collapsedIconColor: muted,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(color: controlBorder),
       ),
       collapsedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(color: surfaceBorder),
       ),
       tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -388,7 +388,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
         fontWeight: FontWeight.w600,
       ),
       checkmarkColor: teal,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: teal,
@@ -473,7 +473,7 @@ Widget brand({bool light = false}) => Builder(
         Text(
           'SCHULPILOT',
           style: TextStyle(
-            fontFamily: 'SpaceGrotesk',
+            fontFamily: 'Nunito',
             fontSize: 19,
             fontWeight: FontWeight.w900,
             letterSpacing: .4,
@@ -505,7 +505,7 @@ class Panel extends StatelessWidget {
     shape: tone == PanelTone.neutral
         ? null
         : RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             side: BorderSide(
               color: context.palette
                   .resolve(panelAccent(tone))
@@ -603,7 +603,7 @@ class _ActionPanelState extends State<ActionPanel> {
           clipBehavior: Clip.antiAlias,
           elevation: widget.tone == PanelTone.subtle ? 0 : null,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             side: BorderSide(
               color: focused ? p.teal : p.resolve(panelAccent(widget.tone)),
               width: focused ? 2.5 : 1,
@@ -1143,7 +1143,7 @@ class WorkspaceShell extends StatelessWidget {
                   ),
                   for (final entry in entries.skip(3))
                     ListTile(
-                      leading: Icon(entry.$1),
+                      leading: LearningNavIcon(entry.$1),
                       title: Text(entry.$2),
                       selected: path == entry.$3,
                       onTap: () {
@@ -1256,7 +1256,7 @@ class WorkspaceShell extends StatelessWidget {
     final compactChild = !desktop && state.isChild;
     final mobileEntries = compactChild ? entries.take(3).toList() : entries;
     final maxWidth = state.isChild
-        ? 1060.0
+        ? 1160.0
         : state.isAdmin
         ? 1440.0
         : 1360.0;
@@ -1292,14 +1292,21 @@ class WorkspaceShell extends StatelessWidget {
       appBar: desktop
           ? null
           : AppBar(
-              title: width < 420
+              title: width < 360
                   ? Semantics(
                       label: 'SCHULPILOT',
                       child: ExcludeSemantics(
-                        child: Image.asset(
-                          'assets/brand/schulpilot-mark.png',
-                          width: 32,
-                          height: 32,
+                        child: Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFEAF8FF),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Image.asset(
+                            'assets/brand/schulpilot-mark.png',
+                            width: 24,
+                            height: 24,
+                          ),
                         ),
                       ),
                     )
@@ -1315,48 +1322,48 @@ class WorkspaceShell extends StatelessWidget {
             ),
       bottomNavigationBar: desktop
           ? null
-          : DecoratedBox(
-              decoration: BoxDecoration(
-                color: context.palette.panelSurface,
-                border: Border(
-                  top: BorderSide(color: context.palette.surfaceBorder),
+          : SafeArea(
+              top: false,
+              child: Container(
+                margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: context.palette.panelSurface,
+                  border: Border.all(color: context.palette.surfaceBorder),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x0F14243D),
-                    blurRadius: 16,
-                    offset: Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: NavigationBar(
-                selectedIndex: compactChild && selected >= 3 ? 3 : selected,
-                onDestinationSelected: selectDestination,
-                destinations: [
-                  for (var i = 0; i < mobileEntries.length; i++)
-                    if (mobileEntries[i].$2 == 'Hausaufgaben')
-                      Semantics(
-                        label: 'Hausaufgaben',
-                        excludeSemantics: true,
-                        onTap: () => selectDestination(i),
-                        child: NavigationDestination(
-                          icon: Icon(mobileEntries[i].$1),
-                          label: 'Haus\naufgaben',
-                          tooltip: 'Hausaufgaben',
+                child: NavigationBar(
+                  height: 72,
+                  labelBehavior:
+                      NavigationDestinationLabelBehavior.onlyShowSelected,
+                  selectedIndex: compactChild && selected >= 3 ? 3 : selected,
+                  onDestinationSelected: selectDestination,
+                  destinations: [
+                    for (var i = 0; i < mobileEntries.length; i++)
+                      if (mobileEntries[i].$2 == 'Hausaufgaben')
+                        Semantics(
+                          label: 'Hausaufgaben',
+                          excludeSemantics: true,
+                          onTap: () => selectDestination(i),
+                          child: NavigationDestination(
+                            icon: LearningNavIcon(mobileEntries[i].$1),
+                            label: 'Haus\naufgaben',
+                            tooltip: 'Hausaufgaben',
+                          ),
+                        )
+                      else
+                        NavigationDestination(
+                          icon: LearningNavIcon(mobileEntries[i].$1),
+                          label: mobileEntries[i].$2,
                         ),
-                      )
-                    else
+                    if (compactChild)
                       NavigationDestination(
-                        icon: Icon(mobileEntries[i].$1),
-                        label: mobileEntries[i].$2,
+                        icon: LearningNavIcon(Icons.more_horiz_rounded),
+                        label: 'Mehr',
+                        tooltip: 'Weitere Bereiche',
                       ),
-                  if (compactChild)
-                    NavigationDestination(
-                      icon: Icon(Icons.more_horiz_rounded),
-                      label: 'Mehr',
-                      tooltip: 'Weitere Bereiche',
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
       body: Row(
@@ -1396,18 +1403,14 @@ class WorkspaceShell extends StatelessWidget {
                     child: SingleChildScrollView(
                       key: ValueKey('workspace-scroll'),
                       padding: EdgeInsets.fromLTRB(
-                        sidebar
-                            ? 36
-                            : desktop
-                            ? 28
+                        desktop
+                            ? 24
                             : width < 360
                             ? 16
                             : 20,
-                        desktop ? 32 : 12,
-                        sidebar
-                            ? 36
-                            : desktop
-                            ? 28
+                        desktop ? 20 : 12,
+                        desktop
+                            ? 24
                             : width < 360
                             ? 16
                             : 20,
@@ -1498,122 +1501,11 @@ class _WorkspaceSidebar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: ValueKey('workspace-sidebar'),
-    width: 248,
-    margin: EdgeInsets.fromLTRB(12, 12, 0, 12),
-    decoration: BoxDecoration(
-      color: context.palette.panelSurface,
-      border: Border.all(color: context.palette.surfaceBorder),
-      borderRadius: BorderRadius.circular(26),
-    ),
-    child: SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-            child: TextButton(
-              key: const ValueKey('workspace-brand-home'),
-              onPressed: _workspaceLink(
-                context,
-                state,
-                state.isAdmin ? '/admin' : '/app',
-              ),
-              child: brand(),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(28, 0, 20, 16),
-            child: Text(
-              roleLabel,
-              style: TextStyle(
-                color: context.palette.muted,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                letterSpacing: .4,
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                for (var i = 0; i < entries.length; i++)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: _NavigationSurface(
-                      selected: i == selected,
-                      child: ListTile(
-                        selected: i == selected,
-                        focusColor: Colors.transparent,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        leading: Icon(
-                          entries[i].$1,
-                          color: i == selected
-                              ? context.palette.teal
-                              : context.palette.muted,
-                          size: 22,
-                        ),
-                        title: Text(
-                          entries[i].$2,
-                          style: TextStyle(
-                            color: i == selected
-                                ? context.palette.ink
-                                : context.palette.muted,
-                            fontSize: 14,
-                            fontWeight: i == selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                        ),
-                        onTap: _workspaceLink(context, state, entries[i].$3),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _NavigationSurface extends StatefulWidget {
-  final bool selected;
-  final Widget child;
-  const _NavigationSurface({required this.selected, required this.child});
-  @override
-  State<_NavigationSurface> createState() => _NavigationSurfaceState();
-}
-
-class _NavigationSurfaceState extends State<_NavigationSurface> {
-  bool focused = false;
-  @override
-  Widget build(BuildContext context) => Focus(
-    canRequestFocus: false,
-    onFocusChange: (value) => setState(() => focused = value),
-    child: Material(
-      color: focused
-          ? context.palette.cyanSurface
-          : widget.selected
-          ? context.palette.mint
-          : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: focused || widget.selected
-              ? context.palette.teal
-              : Colors.transparent,
-          width: focused ? 2.5 : 1,
-        ),
-      ),
-      child: widget.child,
-    ),
+  Widget build(BuildContext context) => _WorkspaceIconRail(
+    key: const ValueKey('workspace-sidebar'),
+    state: state,
+    entries: entries,
+    selected: selected,
   );
 }
 
@@ -1621,6 +1513,7 @@ class _WorkspaceRail extends StatelessWidget {
   final AppState state;
   final List<(IconData, String, String)> entries;
   final int selected;
+
   const _WorkspaceRail({
     required this.state,
     required this.entries,
@@ -1628,74 +1521,294 @@ class _WorkspaceRail extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: ValueKey('workspace-rail'),
-    width: 104,
-    color: context.palette.panelSurface,
-    child: SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: IconButton(
-              key: const ValueKey('workspace-brand-home'),
-              tooltip: 'Zur Übersicht',
-              onPressed: _workspaceLink(
-                context,
-                state,
-                state.isAdmin ? '/admin' : '/app',
-              ),
-              icon: Container(
-                padding: EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: context.palette.cyanSurface,
-                  borderRadius: BorderRadius.circular(14),
+  Widget build(BuildContext context) => _WorkspaceIconRail(
+    key: const ValueKey('workspace-rail'),
+    state: state,
+    entries: entries,
+    selected: selected,
+  );
+}
+
+/// A compact global navigation that leaves room for the actual learning content.
+class _WorkspaceIconRail extends StatelessWidget {
+  final AppState state;
+  final List<(IconData, String, String)> entries;
+  final int selected;
+
+  const _WorkspaceIconRail({
+    super.key,
+    required this.state,
+    required this.entries,
+    required this.selected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final accountIndex = entries.indexWhere((entry) => entry.$3 == '/settings');
+    final selectDestination = _workspaceSelection(context, state, entries);
+    final navigationIndexes = [
+      for (var i = 0; i < entries.length; i++)
+        if (i != accountIndex) i,
+    ];
+
+    Widget destination(int index) => _WorkspaceNavButton(
+      icon: entries[index].$1,
+      label: entries[index].$2,
+      selected: index == selected,
+      onPressed: () => selectDestination(index),
+    );
+
+    return Container(
+      width: 80,
+      margin: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: palette.panelSurface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: palette.surfaceBorder.withValues(alpha: .5)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: IconButton(
+                key: const ValueKey('workspace-brand-home'),
+                tooltip: 'Zur Übersicht',
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(48, 48),
+                  padding: const EdgeInsets.all(8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                child: Image.asset(
-                  'assets/brand/schulpilot-mark.png',
-                  width: 34,
-                  excludeFromSemantics: true,
+                onPressed: _workspaceLink(
+                  context,
+                  state,
+                  state.isAdmin ? '/admin' : '/app',
+                ),
+                icon: Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEAF8FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Image.asset(
+                    'assets/brand/schulpilot-mark.png',
+                    width: 28,
+                    height: 28,
+                    excludeFromSemantics: true,
+                  ),
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: NavigationRail(
-              scrollable: true,
-              minWidth: 104,
-              backgroundColor: context.palette.panelSurface,
-              indicatorColor: context.palette.mint,
-              selectedIconTheme: IconThemeData(color: context.palette.teal),
-              unselectedIconTheme: IconThemeData(color: context.palette.muted),
-              selectedLabelTextStyle: TextStyle(
-                color: context.palette.ink,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+            Expanded(
+              child: NavigationRail(
+                scrollable: true,
+                minWidth: 64,
+                groupAlignment: -1,
+                backgroundColor: Colors.transparent,
+                useIndicator: false,
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                labelType: NavigationRailLabelType.none,
+                selectedIndex: navigationIndexes.contains(selected)
+                    ? navigationIndexes.indexOf(selected)
+                    : null,
+                onDestinationSelected: (index) =>
+                    selectDestination(navigationIndexes[index]),
+                destinations: [
+                  for (final index in navigationIndexes)
+                    NavigationRailDestination(
+                      icon: Tooltip(
+                        message: entries[index].$2,
+                        excludeFromSemantics: true,
+                        preferBelow: false,
+                        child: _WorkspaceRailIcon(
+                          icon: entries[index].$1,
+                          selected: index == selected,
+                        ),
+                      ),
+                      label: Text(entries[index].$2),
+                    ),
+                ],
               ),
-              unselectedLabelTextStyle: TextStyle(
-                color: context.palette.muted,
-                fontSize: 12,
+            ),
+            if (accountIndex >= 0) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Divider(height: 1, color: palette.surfaceBorder),
               ),
-              labelType: NavigationRailLabelType.all,
-              selectedIndex: selected,
-              onDestinationSelected: _workspaceSelection(
-                context,
-                state,
-                entries,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14, top: 2),
+                child: destination(accountIndex),
               ),
-              destinations: [
-                for (final entry in entries)
-                  NavigationRailDestination(
-                    icon: Icon(entry.$1),
-                    label: Text(entry.$2),
-                  ),
-              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspaceRailIcon extends StatelessWidget {
+  final IconData icon;
+  final bool selected;
+
+  const _WorkspaceRailIcon({required this.icon, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final focused = Focus.maybeOf(context)?.hasFocus ?? false;
+    return SizedBox(
+      width: 64,
+      height: 48,
+      child: Stack(
+        children: [
+          if (selected)
+            Positioned(
+              left: 0,
+              top: 15,
+              bottom: 15,
+              child: Container(
+                width: 3,
+                decoration: BoxDecoration(
+                  color: palette.teal,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+          Center(
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: selected
+                    ? palette.surfaceHigh
+                    : focused
+                    ? palette.surfaceLow
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(13),
+                border: focused
+                    ? Border.all(color: palette.teal, width: 2.5)
+                    : null,
+              ),
+              child: LearningNavIcon(
+                icon,
+                size: 24,
+                color: selected ? palette.ink : palette.muted,
+              ),
             ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _WorkspaceNavButton extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  const _WorkspaceNavButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  State<_WorkspaceNavButton> createState() => _WorkspaceNavButtonState();
+}
+
+class _WorkspaceNavButtonState extends State<_WorkspaceNavButton> {
+  bool focused = false;
+  bool hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Tooltip(
+      message: widget.label,
+      excludeFromSemantics: true,
+      preferBelow: false,
+      child: Semantics(
+        label: widget.label,
+        button: true,
+        selected: widget.selected,
+        onTap: widget.onPressed,
+        child: SizedBox(
+          width: 64,
+          height: 48,
+          child: Stack(
+            children: [
+              if (widget.selected)
+                Positioned(
+                  left: 0,
+                  top: 15,
+                  bottom: 15,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: palette.teal,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              Center(
+                child: Material(
+                  color: widget.selected
+                      ? palette.surfaceHigh
+                      : hovered
+                      ? palette.surfaceLow
+                      : Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                    side: focused
+                        ? BorderSide(color: palette.teal, width: 2.5)
+                        : BorderSide.none,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    excludeFromSemantics: true,
+                    onTap: widget.onPressed,
+                    onFocusChange: (value) {
+                      if (mounted && focused != value) {
+                        setState(() => focused = value);
+                      }
+                    },
+                    onHover: (value) {
+                      if (mounted && hovered != value) {
+                        setState(() => hovered = value);
+                      }
+                    },
+                    focusColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: LearningNavIcon(
+                        widget.icon,
+                        size: 24,
+                        color: widget.selected ? palette.ink : palette.muted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _WorkspaceHeader extends StatelessWidget {
@@ -1705,6 +1818,7 @@ class _WorkspaceHeader extends StatelessWidget {
   final String displayName;
   final bool compact;
   final Widget notificationBell;
+
   const _WorkspaceHeader({
     required this.state,
     required this.roleLabel,
@@ -1716,44 +1830,48 @@ class _WorkspaceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    key: ValueKey('workspace-header'),
-    height: 88,
-    padding: EdgeInsets.symmetric(horizontal: compact ? 28 : 36),
-    decoration: BoxDecoration(
-      color: context.palette.panelSurface,
-      border: Border(bottom: BorderSide(color: context.palette.surfaceBorder)),
-    ),
+    key: const ValueKey('workspace-header'),
+    height: 64,
+    padding: const EdgeInsets.symmetric(horizontal: 24),
     child: Row(
       children: [
         Expanded(
           child: Row(
             children: [
               Flexible(
-                child: TextButton(
-                  key: const ValueKey('workspace-home-breadcrumb'),
-                  onPressed: _workspaceLink(
-                    context,
-                    state,
-                    state.isAdmin ? '/admin' : '/app',
-                  ),
-                  child: Text(
-                    roleLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: context.palette.muted,
-                      fontSize: 13,
-                      decoration: TextDecoration.underline,
+                child: Tooltip(
+                  message: roleLabel,
+                  child: TextButton(
+                    key: const ValueKey('workspace-home-breadcrumb'),
+                    onPressed: _workspaceLink(
+                      context,
+                      state,
+                      state.isAdmin ? '/admin' : '/app',
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.palette.ink,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    child: Text(
+                      'SCHULPILOT',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .4,
+                      ),
                     ),
                   ),
                 ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: context.palette.muted,
-                  size: 18,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Container(
+                  width: 1,
+                  height: 18,
+                  color: context.palette.surfaceBorder,
                 ),
               ),
               Flexible(
@@ -1761,19 +1879,22 @@ class _WorkspaceHeader extends StatelessWidget {
                   section,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: context.palette.muted,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        SizedBox(width: 16),
+        const SizedBox(width: 12),
         SchulbuddyButton(),
         AppearanceToggle(state),
-        SizedBox(width: 8),
         notificationBell,
-        SizedBox(width: 8),
-        AccountMenu(state, nameWidth: compact ? 140 : 200),
+        const SizedBox(width: 4),
+        AccountMenu(state, compact: compact, nameWidth: 160),
       ],
     ),
   );

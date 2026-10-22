@@ -131,6 +131,9 @@ class CollectionScreen extends StatelessWidget {
                 state,
                 key: ValueKey('shelf:${state.user?['id']}:$childId'),
                 childId: childId,
+                initialSearch:
+                    GoRouterState.of(context).uri.queryParameters['search'] ==
+                    '1',
                 allPages: PagedCollection(state, childId: childId),
                 onAddPhoto: state.isChild || state.canManage
                     ? () => addPhoto(context)

@@ -137,14 +137,18 @@ Future<GoRouter> _open(
 Finder _navigation(double width) => width >= 1050
     ? find.byKey(const ValueKey('workspace-sidebar'))
     : width >= 720
-    ? find.byType(NavigationRail)
+    ? find.byKey(const ValueKey('workspace-rail'))
     : find.byType(NavigationBar);
 
 Finder _navText(double width, String text) => find.descendant(
   of: _navigation(width),
-  matching: width < 720 && text == 'Hausaufgaben'
-      ? find.byTooltip('Hausaufgaben')
-      : find.text(text),
+  matching: width >= 720
+      ? find.byTooltip(text)
+      : find.byWidgetPredicate(
+          (widget) =>
+              widget is NavigationDestination &&
+              (widget.label == text || widget.tooltip == text),
+        ),
 );
 
 void main() {
@@ -201,17 +205,42 @@ void main() {
           }
         }
         if (role == 'child' && width < 720) {
-          await tester.tap(_navText(width, 'Mehr'));
+          final more = _navText(width, 'Mehr');
+          expect(more.hitTestable(), findsOneWidget);
+          await tester.tap(more);
           await tester.pumpAndSettle();
           for (final label in ['Wörter', 'Hefte', 'Konto']) {
             expect(find.widgetWithText(ListTile, label), findsOneWidget);
           }
           await tester.tap(find.widgetWithText(ListTile, 'Konto'));
         } else {
-          await tester.tap(_navText(width, 'Konto'));
+          // Unselected mobile labels are hidden; activate the actual whole
+          // destination, whose icon remains visible and touchable.
+          final account = _navText(width, 'Konto');
+          expect(account.hitTestable(), findsOneWidget);
+          await tester.tap(account);
         }
         await tester.pumpAndSettle();
         expect(router.routeInformationProvider.value.uri.path, '/settings');
+        if (width >= 720) {
+          // Account stays pinned below the scrolling destinations and exposes
+          // its selected state without relying on a painted text label.
+          final account = find.descendant(
+            of: _navText(width, 'Konto'),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics && widget.properties.label == 'Konto',
+            ),
+          );
+          expect(account, findsOneWidget);
+          expect(tester.widget<Semantics>(account).properties.selected, isTrue);
+          expect(
+            tester
+                .widget<NavigationRail>(find.byType(NavigationRail))
+                .selectedIndex,
+            isNull,
+          );
+        }
         expect(tester.takeException(), isNull);
         expect(
           fixture.requests.every((r) => r == 'GET /api/app-release'),
@@ -231,14 +260,22 @@ void main() {
       ('Verkauf', '/admin/verkauf'),
       ('Push', '/admin/push'),
     ]) {
-      await tester.tap(_navText(1440, entry.$1));
+      final destination = _navText(1440, entry.$1);
+      expect(destination.hitTestable(), findsOneWidget);
+      await tester.tap(destination);
       await tester.pumpAndSettle();
       expect(router.routeInformationProvider.value.uri.path, entry.$2);
-      final selected = tester
-          .widgetList<ListTile>(find.byType(ListTile))
-          .where((tile) => tile.selected);
-      expect(selected, hasLength(1));
-      expect((selected.single.title as Text).data, entry.$1);
+      final rail = tester.widget<NavigationRail>(
+        find.descendant(
+          of: _navigation(1440),
+          matching: find.byType(NavigationRail),
+        ),
+      );
+      expect(rail.selectedIndex, isNotNull);
+      expect(
+        (rail.destinations[rail.selectedIndex!].label as Text).data,
+        entry.$1,
+      );
     }
     expect(fixture.requests, isEmpty);
     expect(tester.takeException(), isNull);
@@ -279,7 +316,7 @@ void main() {
       final width = tester
           .getSize(find.byKey(const ValueKey('workspace-content')))
           .width;
-      expect(width, {'child': 1060.0, 'parent': 1360.0, 'admin': 1440.0}[role]);
+      expect(width, {'child': 1160.0, 'parent': 1360.0, 'admin': 1440.0}[role]);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });

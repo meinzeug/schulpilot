@@ -125,9 +125,16 @@ class _LandingScreenState extends State<LandingScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF111C34), teal],
+                    colors: [
+                      context.palette.isDark
+                          ? context.palette.panelSurface
+                          : const Color(0xFF202C34),
+                      context.palette.isDark
+                          ? context.palette.surfaceLow
+                          : const Color(0xFF1B272E),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(32),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -32,27 +32,19 @@ class ChildSectionHero extends StatelessWidget {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 600;
         final badge = Container(
-          width: wide ? 96 : 48,
-          height: wide ? 96 : 48,
+          width: wide ? 56 : 44,
+          height: wide ? 56 : 44,
           decoration: BoxDecoration(
             color: palette.mint,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(wide ? 30 : 16),
-              topRight: const Radius.circular(12),
-              bottomLeft: const Radius.circular(12),
-              bottomRight: Radius.circular(wide ? 30 : 16),
-            ),
-            border: Border.all(color: palette.teal.withValues(alpha: .45)),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icon, color: palette.teal, size: wide ? 46 : 26),
+          child: Icon(icon, color: palette.teal, size: wide ? 28 : 24),
         );
         final heading = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(width: 4, height: 18, color: palette.cyanInk),
-                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     eyebrow,
@@ -73,12 +65,12 @@ class ChildSectionHero extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                fontFamily: 'SpaceGrotesk',
+                fontFamily: 'Nunito',
                 color: palette.ink,
                 fontSize: wide ? 34 : 28,
                 height: 1.12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -.8,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -.6,
               ),
             ),
             const SizedBox(height: 12),
@@ -95,7 +87,7 @@ class ChildSectionHero extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: heading),
-                  const SizedBox(width: 36),
+                  const SizedBox(width: 24),
                   ExcludeSemantics(child: badge),
                 ],
               )
@@ -161,7 +153,7 @@ class _CompactChildHeroState extends State<_CompactChildHero> {
                 child: Text(
                   content.compactTitle ?? content.eyebrow,
                   style: TextStyle(
-                    fontFamily: 'SpaceGrotesk',
+                    fontFamily: 'Nunito',
                     fontSize: 24,
                     height: 1.2,
                     color: palette.ink,
@@ -252,7 +244,7 @@ class ChildHeroFact extends StatelessWidget {
       decoration: BoxDecoration(
         color: palette.surfaceLow,
         border: Border.all(color: palette.surfaceBorder),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -357,44 +349,60 @@ class _ChildSectionTabsState extends State<ChildSectionTabs> {
       for (final tab in tabs)
         Padding(
           key: tabKeys.putIfAbsent(tab.id, () => GlobalKey()),
-          padding: EdgeInsets.only(right: compact ? 6 : 0),
-          child: Semantics(
-            selected: selected == tab.id,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                backgroundColor: selected == tab.id
-                    ? palette.actionPurple
-                    : palette.panelSurface,
-                foregroundColor: selected == tab.id
-                    ? Colors.white
-                    : palette.ink,
-                minimumSize: Size(48, compact ? 48 : 52),
-                padding: EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: compact ? 10 : 13,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                side: BorderSide(
+          padding: EdgeInsets.only(right: compact ? 8 : 12),
+          child: DecoratedBox(
+            position: DecorationPosition.foreground,
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
                   color: selected == tab.id
                       ? palette.actionPurple
-                      : palette.controlBorder,
+                      : Colors.transparent,
+                  width: 3,
                 ),
               ),
-              onPressed: () => onSelected(tab.id),
-              icon: Icon(tab.icon, size: 20),
-              label: Text(tab.label),
+            ),
+            child: Semantics(
+              selected: selected == tab.id,
+              child: OutlinedButton.icon(
+                style:
+                    OutlinedButton.styleFrom(
+                      backgroundColor: palette.cream,
+                      foregroundColor: selected == tab.id
+                          ? palette.ink
+                          : palette.muted,
+                      minimumSize: Size(48, compact ? 48 : 52),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: compact ? 10 : 13,
+                      ),
+                      shape: const RoundedRectangleBorder(),
+                      side: BorderSide.none,
+                      textStyle: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 15,
+                        fontWeight: selected == tab.id
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ).copyWith(
+                      side: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.focused)
+                            ? BorderSide(color: palette.cyanInk, width: 2.5)
+                            : BorderSide.none,
+                      ),
+                    ),
+                onPressed: () => onSelected(tab.id),
+                icon: Icon(tab.icon, size: 20),
+                label: Text(tab.label),
+              ),
             ),
           ),
         ),
     ];
     return Container(
-      padding: EdgeInsets.all(compact ? 4 : 6),
       decoration: BoxDecoration(
-        color: palette.surfaceLow,
-        border: Border.all(color: palette.surfaceBorder),
-        borderRadius: BorderRadius.circular(compact ? 14 : 18),
+        border: Border(bottom: BorderSide(color: palette.surfaceBorder)),
       ),
       child: compact
           ? SingleChildScrollView(
@@ -435,7 +443,7 @@ class ChildActionTile extends StatelessWidget {
         color: palette.panelSurface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: palette.surfaceBorder),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -445,18 +453,13 @@ class ChildActionTile extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: palette.isDark ? .16 : .09),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(18),
-                      topRight: Radius.circular(8),
-                      bottomLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(18),
-                    ),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, color: color, size: 28),
+                  child: Icon(icon, color: color, size: 25),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

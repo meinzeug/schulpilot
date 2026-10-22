@@ -1,3 +1,13 @@
+Gestaltung22.10.2026: visuelle Primärreferenz auf ausdrücklichen Nutzerauftrag
+direkt im angemeldeten Browser geprüft: https://app.simpleclub.com/search,
+Home, Fach Mathematik, Bibliothek und Bruch-Lektionsansicht. Desktop sowie
+390×844px: dunkle Arbeitsfläche, abgesetzte Karten, schmale Iconleiste bzw.
+schwebende Bottomnavigation, Reiterunterlinien, farbige Fachsymbole. Umsetzung
+in der vorhandenen Flutter3.47.7/Dart3.13.5-App mit lokalem Nunito, eigenen
+Canvas-Navigationsicons und eigenen Fachbadges. Keine neuen Pakete oder
+externen Font-/Bildabrufe; keine Übernahme von Kontozugängen oder Lernmedien.
+Umfang und lokale Abnahme: SIMPLECLUB_STYLE_2026_10_22.md und STATUS.md.
+
 Commerce93, 22.10.2026: neue ausdrücklich beauftragte PayPal-/Google-Pay-Webintegration
 auf unveränderlichen vorausbezahlten Bestellungen. Tatsächlich gelesene Primärquellen:
 [PayPal SDKv6](https://developer.paypal.com/checkout/integrate/),

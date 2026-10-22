@@ -14,6 +14,7 @@ import 'package:schulpilot/collection_screen.dart';
 import 'package:schulpilot/notebook_cover.dart';
 import 'package:schulpilot/notebook_photo.dart';
 import 'package:schulpilot/notebook_screen.dart';
+import 'package:schulpilot/subject_badge.dart';
 import 'package:schulpilot/ui.dart';
 
 const mathId = '11111111111111111111111111111111';
@@ -83,6 +84,8 @@ Json pages(
 Future<(AppState, GoRouter, List<http.Request>)> open(
   WidgetTester tester, {
   bool shelf = false,
+  String? initialLocation,
+  Json? shelfView,
   double width = 390,
   double textScale = 1,
   bool reducedMotion = false,
@@ -136,10 +139,13 @@ Future<(AppState, GoRouter, List<http.Request>)> open(
                 'child_id': 'child',
                 'display_name': 'Beispiel',
               };
+  if (shelfView != null) {
+    state.collectionViews['notebook-shelf:child'] = Json.from(shelfView);
+  }
   final router = GoRouter(
-    initialLocation: shelf
-        ? '/library/child'
-        : '/library/child/subject/$mathId',
+    initialLocation:
+        initialLocation ??
+        (shelf ? '/library/child' : '/library/child/subject/$mathId'),
     routes: [
       GoRoute(
         path: '/library/:id',
@@ -275,6 +281,11 @@ void main() {
         } else {
           expect(find.text('Dein Stoff. Gut sortiert.'), findsOneWidget);
         }
+        expect(find.byType(SubjectBadge), findsWidgets);
+        expect(find.byType(NotebookCover), findsNothing);
+        expect(find.byType(GridView), findsNothing);
+        await tap(tester, find.byTooltip('Kacheln'));
+        expect(find.byType(GridView), findsOneWidget);
         expect(find.byType(NotebookCover), findsWidgets);
         await tap(tester, find.text('Fach suchen'));
         await tester.enterText(find.byType(TextField), 'Biologie');
@@ -375,6 +386,104 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'Child shelf restores an explicit grid or list choice after leaving',
+    (tester) async {
+      final (state, router, requests) = await open(tester, shelf: true);
+      expect(find.byType(SubjectBadge), findsWidgets);
+      expect(find.byType(GridView), findsNothing);
+      expect(find.byType(NotebookCover), findsNothing);
+
+      Future<void> leaveAndReturn() async {
+        router.go('/library/child/subject/$bioId');
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Hier sind noch keine Heftseiten vorhanden.'),
+          findsOneWidget,
+        );
+        router.go('/library/child');
+        await tester.pumpAndSettle();
+      }
+
+      await tap(tester, find.byTooltip('Kacheln'));
+      expect(find.byType(GridView), findsOneWidget);
+      expect(find.byType(NotebookCover), findsWidgets);
+      expect(state.collectionViews['notebook-shelf:child']!['list'], isFalse);
+      await leaveAndReturn();
+      expect(find.byType(GridView), findsOneWidget);
+      expect(find.byType(NotebookCover), findsWidgets);
+      expect(find.byTooltip('Liste'), findsOneWidget);
+
+      await tap(tester, find.byTooltip('Liste'));
+      expect(find.byType(GridView), findsNothing);
+      expect(find.byType(NotebookCover), findsNothing);
+      expect(find.byType(SubjectBadge), findsWidgets);
+      expect(state.collectionViews['notebook-shelf:child']!['list'], isTrue);
+      await leaveAndReturn();
+      expect(find.byType(GridView), findsNothing);
+      expect(find.byType(NotebookCover), findsNothing);
+      expect(find.byType(SubjectBadge), findsWidgets);
+      expect(find.byTooltip('Kacheln'), findsOneWidget);
+      expect(requests.every((request) => request.method == 'GET'), isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final list in [false, true]) {
+    testWidgets(
+      'Home search overrides all-pages while preserving shelf filters and list=$list',
+      (tester) async {
+        final (_, router, requests) = await open(
+          tester,
+          shelf: true,
+          initialLocation: '/library/child?search=1',
+          shelfView: {
+            'all_pages': true,
+            'list': list,
+            'own_only': false,
+            'q': 'Biologie',
+          },
+        );
+        expect(router.routeInformationProvider.value.uri.query, 'search=1');
+        expect(find.byType(TextField), findsOneWidget);
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'Biologie',
+        );
+        expect(find.text('Biologie'), findsWidgets);
+        expect(find.text('Mathematik'), findsNothing);
+        expect(
+          tester
+              .widget<ChildSectionTabs>(find.byType(ChildSectionTabs))
+              .selected,
+          'all',
+        );
+        expect(find.byType(GridView), list ? findsNothing : findsOneWidget);
+        expect(
+          find.byType(NotebookCover),
+          list ? findsNothing : findsOneWidget,
+        );
+        expect(find.byType(SubjectBadge), list ? findsOneWidget : findsNothing);
+        expect(requests, hasLength(1));
+        expect(requests.single.method, 'GET');
+        expect(requests.single.url.path, '/api/children/child/subjects');
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets('Parent shelf keeps its default cover grid', (tester) async {
+    final (_, _, requests) = await open(tester, shelf: true, parent: true);
+    expect(find.byType(GridView), findsOneWidget);
+    expect(find.byType(NotebookCover), findsWidgets);
+    expect(find.byTooltip('Liste'), findsOneWidget);
+    expect(requests.every((request) => request.method == 'GET'), isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
     'Confirmed page deletion and KI actions are visible in album, tiles and list',

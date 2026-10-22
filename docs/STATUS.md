@@ -1,3 +1,41 @@
+# Lokaler Gestaltungsstand · 22.10.2026
+
+Die bestehende Flutter-App in `~/schulpilot` hat eine neue gemeinsame Gestaltung
+nach der ausdrücklich beauftragten simpleclub-Referenz. Direkt im Browser wurden
+Desktop und390×844px angesehen: Home, Entdecken, Bibliothek, Fach- und
+Lektionsansichten. Schulpilot verwendet jetzt ruhige Anthrazitflächen, blaue
+Hauptaktionen, lokale Nunito-Überschriften, flache runde Karten,80px-Iconnavigation
+im Browser und eine schwebende mobile Navigation. Eigene dünne Canvas-Icons und
+farbige Fachbadges ergänzen Startseite, Suche und Fachlisten. Die gemeinsame
+Palette wirkt auch in Eltern-, Verwaltungs-, Zugangs- und Lernansichten sowie im
+Webstart und den eigenständigen Webformularen.
+
+Nachgewiesen:
+
+- **255 Flutterprüfungen** aus19 betroffenen Testsammlungen bestanden. Rollen,
+  Kontowechsel, reine GET-Navigation, Formular-/Providerentwürfe, Kontraste,
+  Tastaturfokus und320/390/960/1440px einschließlich200% Schrift geprüft.
+- Anschließend **52 gezielte Hefter-/Mobilprüfungen** bestanden, darunter zwei
+  neue Rückkehrfälle für die Startseitensuche mit zuvor gemerkter Ansicht
+  „Alle Seiten“. Diese52 überschneiden sich mit dem großen Lauf und werden
+  nicht als zusätzliche52 unabhängige Prüfungen ausgegeben.
+- Statische Analyse der12 betroffenen Dartdateien ohne Befund. Webmanifest
+  geprüft, Diff ohne Whitespacefehler und auf eingefügte Zugangsdaten geprüft.
+- Regulärer Release-Webbuild und eine getrennte lokale Browser-Vorschau mit
+  künstlichen Daten erfolgreich gebaut. Die Vorschau verwendet die tatsächlichen
+  Flutter-Ansichten; sie verweigert sämtliche schreibenden Anfragen.
+- Lokale Browser-Sichtprüfung auf Desktop und390px: Startseite, Fachsuche,
+  Suchfilter und Hefterdarstellung. Screenshots enthalten ausschließlich
+  ausdrücklich gekennzeichnete Beispieldaten.
+
+Quellversion bleibt1.23.0+93. Es wurde keine neue APK gebaut und kein
+Produktionsdeployment durchgeführt. Die bestehende Live-Abnahme darunter
+beschreibt weiterhin die zuvor veröffentlichte Version. Umfang:
+[SIMPLECLUB_STYLE_2026_10_22.md](SIMPLECLUB_STYLE_2026_10_22.md), gemeinsame Regeln:
+[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
+
+---
+
 # Produktionsstand 1.22.2+92 · 22.10.2026
 
 Live: `20261022T212319Z-12d4389`, Produktcommit
