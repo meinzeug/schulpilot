@@ -437,5 +437,52 @@
       "status": "tested"
     }
   ],
-  "verification_note": "Native Mock-Tests und isolierte PostgreSQL-Prüfung; keine echte KI, kein Geräte-/Push-/WCAG-Vollnachweis. Produktion noch nicht ausgeliefert."
+  "verification_note": "Gemeinsamer Release1.21.1+89 ausgeliefert;2009 native Fälle bestanden und5 ausschließlich webrelevante Fälle übersprungen,1593 isolierte PostgreSQL-Fälle bestanden, vollständige Analyse ohne Befund. Automatisierte Bedienfälle verwenden synthetische Mockdaten. Abschließender Browsernachweis ausschließlich an eigener künstlicher Familie; keine echte KI, kein neuer Geräte-/Push-/WCAG-Vollnachweis. Überlappende Testgruppen werden nicht addiert.",
+  "release_acceptance": {
+    "version": "1.21.1+89",
+    "release_id": "20261022T134524Z-03e3bfe",
+    "source_commit": "03e3bfeffd654ff169ebf2daceb6537476cadf03",
+    "native": {
+      "passed": 2009,
+      "web_only_skipped": 5,
+      "evidence": "artifacts/ux89/flutter-final.log"
+    },
+    "postgresql": {
+      "passed": 1593,
+      "evidence": "artifacts/ux88/backend-full.log",
+      "subsequent_backend_change": "version_only"
+    },
+    "analysis": {
+      "result": "no_issues",
+      "evidence": "artifacts/ux89/flutter-analyze-final.log"
+    },
+    "artifact_evidence": [
+      "artifacts/ux89/release-check.json",
+      "artifacts/ux89/public-check.json",
+      "artifacts/ux89/web-check.json"
+    ],
+    "synthetic_browser": {
+      "evidence": "artifacts/ux89/browser-checks.json",
+      "scope": "own_synthetic_child_and_parent_only",
+      "child_session_survived_reload": true,
+      "parent_time_card_role": "button",
+      "parent_week_tab_selected": true
+    },
+    "synthetic_cleanup": {
+      "evidence": "artifacts/ux89/cleanup.json",
+      "own_family_deleted": true,
+      "both_logins_revoked_status": [401, 401],
+      "external_ai_calls": 0,
+      "push_sends": 0
+    },
+    "hosted_ci": {
+      "run_id": 39772352507,
+      "result": "jobs_not_started_due_to_billing_account_lock",
+      "evidence": "artifacts/ux89/github-ci-source.json"
+    },
+    "limits": [
+      "Keine zusätzlichen Maßnahmen für Browsernachkorrekturen oder ergänzte Negativfälle.",
+      "Keine vollständige Screenreader-/WCAG-Abnahme, neue physische Androidabnahme, Live-Providerprüfung oder Pushzustellbeobachtung."
+    ]
+  }
 }

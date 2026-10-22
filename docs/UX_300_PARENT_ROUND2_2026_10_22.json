@@ -4,7 +4,7 @@
   "scope": "Eltern; gemeinsame Helfer und Routerverdrahtung nur benutzt, nicht zusätzlich gezählt",
   "tested_count": 85,
   "implemented_unverified_count": 0,
-  "integration_status": "Quellen eingefroren; Root-Gesamtlauf ausstehend",
+  "integration_status": "passed_release_89",
   "sources": {
     "S1": "https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html",
     "S2": "https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html",
@@ -1054,5 +1054,22 @@
     }
   ],
   "chrome_targeted_passed": 7,
-  "chrome_log": "artifacts/ux88/parent-chrome-verified.log"
+  "chrome_log": "artifacts/ux88/parent-chrome-verified.log",
+  "integration_verification": {
+    "flutter_native_passed": 2009,
+    "flutter_web_only_skipped": 5,
+    "flutter_log": "artifacts/ux89/flutter-final.log",
+    "backend_postgresql_passed": 1593,
+    "backend_existing_dependency_warnings": 3,
+    "backend_log": "artifacts/ux88/backend-full.log",
+    "flutter_analysis": "clean",
+    "flutter_analysis_log": "artifacts/ux89/flutter-analyze-final.log",
+    "legacy_parent_test_files_reverified": 6,
+    "additional_uncounted_dialog_regressions_passed": 5
+  },
+  "release": {
+    "id": "20261022T134524Z-03e3bfe",
+    "source_commit": "03e3bfe",
+    "version_code": 89
+  }
 }

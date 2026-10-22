@@ -2,7 +2,7 @@
 
 **55 eigenständige umgesetzte Maßnahmen** gegenüber `3df2849`; die früheren321 sind ausgeschlossen. Fünf gekoppelte Unterfälle werden nicht zusätzlich gezählt. RR046 ist eine nicht umgesetzte Idee und zählt nicht.
 
-Stand: lokale Abnahme; Auslieferung und Browsernachweis folgen im gemeinsamen Bericht. Die Root-Tests prüfen ausschließlich synthetische Daten und Mock-Transporte. Kategorien im Lernstand wurden zusätzlich gegen isoliertes PostgreSQL geprüft. Keine Änderung an Providerfreigaben, Reservierungen, Quoten oder privatem Inhaltszugriff.
+Abschlussstand: **1.21.1+89** ist als Release `20261022T134524Z-03e3bfe` aus Quellcommit `03e3bfeffd654ff169ebf2daceb6537476cadf03` ausgeliefert. Die automatisierten Verhaltenstests verwenden synthetische Daten und Mock-Transporte; Kategorien im Lernstand wurden zusätzlich gegen isoliertes PostgreSQL geprüft. Die abschließende Browserprüfung verwendete ausschließlich die eigene künstliche Familie. Keine Änderung an Providerfreigaben, Reservierungen, Quoten oder privatem Inhaltszugriff.
 
 | ID | Änderung | Konkrete Stelle | Verhaltenstest | Status |
 |---|---|---|---|---|
@@ -70,6 +70,17 @@ Stand: lokale Abnahme; Auslieferung und Browsernachweis folgen im gemeinsamen Be
 
 Die gemeinsame Aktionskarte zählt einmal, einschließlich ihrer Tastatur-, Fokus-, Semantik-, Schriftgrößen-, Busy- und Fehlerbehandlung. Native/Web-Varianten oder mehrere Kategorien werden nicht als weitere Maßnahmen gezählt. Formularkarten und Bereiche mit mehreren getrennten Aktionen behalten bewusst getrennte Bedienelemente.
 
-Prüflogs: `artifacts/ux88/root-new-combined.log` (Vorversuch), `public-cards-final.log`, `preparation-covered-verified.log`, `progress-backend-tests.log`; verbindlich ist nach Abschluss der gemeinsame grüne Gesamtlauf.
+Frühere Prüflogs: `artifacts/ux88/root-new-combined.log` (Vorversuch), `public-cards-final.log`, `preparation-covered-verified.log`, `progress-backend-tests.log`. Fehlgeschlagene Vorversuche bleiben erhalten; maßgeblich sind die abgeschlossenen Nachweise unten.
 
 Nachweis Neuigkeitensuche/-filter: `artifacts/ux88/notification-filters-verified.log`,35/35 inklusive Regressionen.
+
+## Gemeinsamer Abschluss für 1.21.1+89
+
+- Vollständiger nativer Flutterlauf: **2009 bestanden**, fünf ausschließlich webrelevante Fälle übersprungen; `artifacts/ux89/flutter-final.log`. Vollständige Analyse ohne Befund: `artifacts/ux89/flutter-analyze-final.log`.
+- Vollständiges Backend auf isoliertem PostgreSQL16: **1593 bestanden**; `artifacts/ux88/backend-full.log`. Im Backend wurde danach nur die Versionsnummer geändert. Überlappende Bereichs- und Gesamttests werden nicht addiert.
+- Signierte APK und Play-AAB, tatsächliche Version, festgelegter Signierer und fehlende Play-Installerberechtigung bestätigt: `artifacts/ux89/release-check.json`. Öffentlicher APK-Download sowie ausgeliefertes JavaScript stimmen in Hash und Größe mit den lokalen Dateien überein: `artifacts/ux89/public-check.json`, `artifacts/ux89/web-check.json`.
+- Tatsächlicher Browser89, ausschließlich eigene künstliche Familie: Kindersitzung überlebt Neuladen; die Eltern-Lernzeitkarte besitzt Rolle `button`, erhält die genauen Zeitziele und öffnet die ausgewählte Wochenansicht. Beide Rollen wurden regulär abgemeldet: `artifacts/ux89/browser-checks.json`.
+- Eigene künstliche Familie über den normalen Löschweg bereinigt; beide Anmeldungen danach mit401 abgewiesen, alte Sitzung widerrufen. Keine externen KI-Aufrufe und kein Pushversand: `artifacts/ux89/cleanup.json`.
+- GitHub-Lauf [39772352507](https://github.com/meinzeug/schulpilot/actions/runs/39772352507) startete Flutter und Backend wegen einer Billing-Kontosperre nicht. Dies ist kein erfolgreicher gehosteter CI-Lauf; die lokalen Abschlussnachweise stehen oben. Quelle: `artifacts/ux89/github-ci-source.json`.
+
+Die Browsernachkorrektur der dekorativen Fortschrittsrollen in89 und zusätzliche Negativfälle bleiben bestehenden Maßnahmen zugeordnet; die Zahl55 steigt dadurch nicht. Der Browserbeleg ist begrenzt auf die eigene synthetische Familie und die dokumentierten Wege. Er ersetzt keine vollständige Screenreader-/WCAG-Abnahme, neue physische Androidabnahme, Live-Providerprüfung oder Pushzustellbeobachtung. Der übergreifende Abschluss steht in [UX_300_ROUND2_2026_10_22.md](UX_300_ROUND2_2026_10_22.md).

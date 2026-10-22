@@ -1,4 +1,58 @@
-# Produktionsstand 1.19.6+85 · 22.10.2026
+# Produktionsstand 1.21.1+89 · 22.10.2026
+
+Live: `20261022T134524Z-03e3bfe`, Produktcommit
+`03e3bfeffd654ff169ebf2daceb6537476cadf03`, main gepusht.
+
+Mit Root und drei parallelen Fachagenten wurden **317 zusätzliche eigenständige
+Bedienverbesserungen** gegenüber dem321er-Zwischenstand umgesetzt und belegt:
+88 Kind,85 Eltern,89 Administration/Bestellungen und55 gemeinsame Wege.
+Die früheren321 Maßnahmen werden nicht erneut gezählt. Karten mit einem klaren
+Ziel sind über die gesamte Fläche bedienbar, mit sichtbarer Zielbeschriftung,
+Pfeil, Tastaturfokus und benannter Aktion. Formular-/Mehrfachaktionen bleiben
+gezielt erreichbar. Elternkarten öffnen passende Planreiter und gespeicherte
+Aufgabenfilter; Kinder-, Konto-, Anmelde-, Admin- und Bestellwege wurden ebenfalls
+verbessert. Kontowechsel-/Routenprüfungen verwerfen verspätete private Inhalte
+und alte Aktionen. Lesende Wege starten keine KI.
+
+Breite Browserprüfung von88 und anschließende89-Abnahme im eigenen künstlichen
+Haushalt: Kinder-Reload erhält Sitzung; korrigierte Eltern-Lernzeitkarte ist im
+Accessibilitybaum eine Schaltfläche und führt direkt zu Woche & Vorgaben.
+Die Browserkorrektur89 schließt nur dekorative Fortschrittsindikatoren aus der
+Kartensemantik aus; genaue Zeit-/Statusinformationen bleiben zugänglich.
+320px-Kinderansicht und Elternansicht gesichert, Viewport zurückgesetzt.
+Beide Rollen regulär abgemeldet, eigener Testhaushalt normal gelöscht; alte
+Sitzung und beide Logins danach401, lokale Zugangsdaten entfernt. Null KI- und
+Push-Aufträge. Öffentliche Startseite offen, ursprünglicher Google-Tab erhalten.
+
+Vollständiger isolierter PostgreSQL16-Lauf: **1593 bestanden**; drei bestehende
+Abhängigkeitshinweise. Vollständiger nativer Flutterlauf89: **2009 bestanden**,
+fünf reine Webfälle bewusst übersprungen. Betroffene Kartenrollen zusätzlich
+nativ und im echten Chrome-Runner geprüft; vollständige Analyse und Ruff sauber.
+GitHub-Lauf39772352507 startete wegen der bestehenden Abrechnungssperre keine
+Flutter-/Backendjobs. Keine gehostete grüne CI behauptet.
+
+Web, signierte Direct-APK und tatsächliches Play-AAB gebaut und unabhängig
+geprüft. Öffentliche APK und öffentliches JavaScript stimmen bytegenau mit den
+lokalen Release-Dateien überein. Signierer/Version korrekt, Play-Bundle gültig
+und ohne APK-Installerberechtigung; kein Storeupload. Quellen-/Archiv-/Web- und
+Relaysecretprüfung ohne Treffer, nach Testkontobereinigung erneut geprüft.
+
+API, Worker, Caddy und TURN aktiv; Sicherung erfolgreich, Schema0026 und
+OpenRouter-Providerrevision29 mit Economy/ZDR unverändert. Rückweg für Web/API:
+`20261022T131154Z-9498e08` (88 mit dokumentiertem Kartenrollenfehler), auf dem
+Server erhalten. Keine Datenbankrücksetzung; Androidkorrektur mit höherem Code.
+
+Vollständige317er-Liste, Artefakthashes, Recherche, Code-/Testverweise und Grenzen:
+[UX_300_ROUND2_2026_10_22.md](UX_300_ROUND2_2026_10_22.md).
+Die Tutor-Vorschauseitenbegrenzung K081 und der ungünstige Hausaufgaben-Umbruch
+bei320px bleiben ausdrücklich offen und erhöhen die Maßnahmezahl nicht.
+Keine neue physische Android-, Live-Admin-, Foto-/KI-Qualitäts-, Pushzustell-
+oder vollständige Screenreader-/WCAG-Abnahme. Nachfolgende reine
+Dokumentationsänderungen verändern den bereitgestellten Produktcode nicht.
+
+---
+
+# Historischer Produktionsstand 1.19.6+85 · 22.10.2026
 
 Live: `20261022T075254Z-a8201fc`, Produktcommit
 `a8201fcc3c596f6a1f0243b5e7443d482256a9ca`, main gepusht.

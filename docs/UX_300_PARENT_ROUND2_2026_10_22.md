@@ -2,7 +2,7 @@
 
 Basis ist `3df2849`; die früheren321 Verbesserungen werden nicht erneut gezählt. Jede Kennung steht für eine konkrete neue Nutzersituation. Thema-/Farbvarianten, einzelne Regressionstests und Reparaturen eigener Zwischenstände sind keine weiteren Punkte.
 
-Die85 Einträge haben gezielte Verhaltensnachweise. Der unabhängige integrierte Gesamtlauf durch Root steht noch aus. Fünf zusätzliche Overlay-/Disposed-Dialog-Schutztests für die gemeinsame Eltern-Dialogqualität sind im ersten gemeinsamen Lauf ebenfalls grün; sie erhöhen die Zahl nicht. Sechs ältere Eltern-Testdateien wurden danach gezielt an neue Bestätigungen, Kartenbezeichnungen, Filterfelder und gültige Owner-Fixtures angepasst. Ihr erneuter Nachweis steht noch aus.
+Die 85 Einträge haben gezielte Verhaltensnachweise und sind im abschließenden integrierten Gesamtlauf von Version 89 enthalten: 2009 native Flutter-Tests bestanden, fünf reine Webfälle bewusst übersprungen. Fünf zusätzliche Overlay-/Disposed-Dialog-Schutztests für die gemeinsame Eltern-Dialogqualität sind ebenfalls grün; sie erhöhen die Zahl nicht. Die sechs angepassten älteren Eltern-Testdateien sind im grünen Gesamtlauf erneut geprüft.
 
 ## Quellen und Prinzipien
 
@@ -29,6 +29,15 @@ Die Quellen begründen klare Zielnamen, Tastaturbedienung, große Trefferfläche
 Frühe negative Testläufe betrafen unter anderem zu eng inferierte synthetische Map-Typen, eine unrealistische completed=NULL-Fixture, bestehende page_size-Metadaten und Lazy-Listenbedienung im Test. Es wurde kein Produktfehler für diese Fixturekorrekturen gezählt. Ein erster echter PDF-Chromefall scheiterte, weil der synthetische XFile-Helfer nur Fake-Frames statt Browser-Blob-I/O abgewartet hatte. Ein begrenzter runAsync-Schritt und eine ausdrückliche Vorschau-Assertion beheben ausschließlich den Test; die Produktionslogik wurde dafür nicht geändert. Ein kurzzeitiger fremder Parser-Zwischenstand blockierte einen Lauf; dessen Fehler sind ebenfalls kein Freigabenachweis.
 
 Es wurden keine echten Eltern-/Kinderdaten geändert und keine KI-/Pushaufträge gestartet. Filter bleiben lesend und familiengebunden. PDF-Inhalte bleiben im vorhandenen lokalen Serverpfad. Ganze Karten haben nur ein Ziel; Formulare und sekundäre Verwaltungsaktionen bleiben getrennt.
+
+## Bestätigter Abschlussstand 89
+
+- Vollständiger nativer Flutter-Gesamtlauf: **2009 bestanden**, fünf reine Webfälle bewusst übersprungen. `artifacts/ux89/flutter-final.log`.
+- Vollständiges Backend auf isoliertem PostgreSQL 16: **1593 bestanden**, drei bestehende Abhängigkeitshinweise. `artifacts/ux88/backend-full.log`. Danach wurde im Backend ausschließlich die Versionsnummer geändert.
+- Vollständige Flutter-Analyse: **ohne Befund**. `artifacts/ux89/flutter-analyze-final.log`.
+- Ausgelieferter Release: **`20261022T134524Z-03e3bfe`**, Quellstand **`03e3bfe`**, Versionscode **89**.
+
+Die Einzeltests und ihre begrenzten Aussagen bleiben oben erhalten. Der Abschluss erhöht die Zahl der Elternmaßnahmen nicht über 85; die fünf ausgelassenen Webfälle werden nicht als native Erfolge gezählt.
 
 ## Einzelmatrix
 

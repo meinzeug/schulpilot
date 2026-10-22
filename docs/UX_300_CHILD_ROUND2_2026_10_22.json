@@ -97,10 +97,13 @@
     "KK093"
   ],
   "limits": [
-    "No real child data modified.",
-    "Only synthetic MockClient tests; no AI, push or server writes.",
-    "Targeted regression runs recorded; full integration run and browser/native visual acceptance remain Root tasks.",
-    "No full WCAG conformity claim.",
+    "No real child data modified in the child work.",
+    "Automated child tests use synthetic MockClient data; no AI, push or server writes from these tests.",
+    "Root completed the full89 Flutter run and separate production-browser acceptance; broad88 and targeted89 browser scopes are distinct.",
+    "The own fixed synthetic browser fixture contains text material, no homework photos and no learning attempts. No fresh photo import, zoom, OCR or live AI-answer quality claim follows from this acceptance.",
+    "No fresh physical Android, live call, push-delivery, full screen-reader or full WCAG conformity claim.",
+    "Only cards with one meaningful destination receive a whole-card action; forms, diagrams and multiple actions remain separate.",
+    "The 320px Hausaufgaben bottom label can still wrap awkwardly; no font or native tab-semantics loss was introduced to hide it.",
     "Old K081 tutor-history page retention remains open and is not counted here."
   ],
   "sources": [
@@ -1487,9 +1490,7 @@
       "status": "checked"
     }
   ],
-  "pending_integration_cases": [
-    "Root complete Flutter integration after the verified final child guard block is running separately; no final full-suite result recorded here yet. Browser/native visual acceptance remains a separate Root task."
-  ],
+  "pending_integration_cases": [],
   "test_source_sha256": {
     "app/test/child_homework_details_ux88_test.dart": "a6adf70f05bc04878bccafb0d601b70da7123d2e3914cdc61781010b74eb58a1",
     "app/test/child_local_tools_ux88_test.dart": "98febed21b4bbe39df437514dccc6f89c41680403b01019a77eb5c25d1178c58",
@@ -1509,6 +1510,12 @@
       "scope": "Only additionally opened older tutor preview cards after a fresh authorized GET.",
       "effect": "The extra older cards must be loaded again using the read-only older-questions action. Persisted questions, answers and sources are unchanged.",
       "reason": "Do not retain old private source citations across refresh without fresh authorization. No cursor/cache redesign in this round.",
+      "counted": false
+    },
+    {
+      "id": "navigation_label_wrapping_320px",
+      "scope": "Compact child bottom navigation label Hausaufgaben at320px.",
+      "effect": "The full word can wrap awkwardly over two lines. Font size and tested native tab semantics remain unchanged.",
       "counted": false
     }
   ],
@@ -1531,6 +1538,46 @@
         "app/test/child_local_tools_ux88_test.dart"
       ],
       "includes": "All 24 additional synthetic KK012 cases for final photo, Today and account callback guards."
+    },
+    {
+      "log": "artifacts/ux89/flutter-final.log",
+      "executor": "Root",
+      "passed": 2009,
+      "failed": 0,
+      "skipped": 5,
+      "skipped_scope": "Separate web-only cases are intentionally skipped by the native Flutter runner.",
+      "scope": "Full Flutter application suite for version1.21.1+89."
     }
-  ]
+  ],
+  "final_acceptance": {
+    "version": "1.21.1+89",
+    "release_id": "20261022T134524Z-03e3bfe",
+    "source_commit": "03e3bfeffd654ff169ebf2daceb6537476cadf03",
+    "full_analysis": {
+      "result": "No issues found!",
+      "log": "artifacts/ux89/flutter-analyze-final.log"
+    },
+    "browser": [
+      {
+        "version": "1.21.0+88",
+        "scope": "Broad child, parent and login navigation, meaningful card destinations, empty states and filters, private text source, dark/light at320px. Own fixed synthetic family only.",
+        "evidence": "artifacts/ux88/browser-checks.json"
+      },
+      {
+        "version": "1.21.1+89",
+        "scope": "Targeted final runtime and reload, regular parent login, corrected learning-time card button role, exact week-plan destination and week selection, regular logout for both roles. Own fixed synthetic family only.",
+        "evidence": "artifacts/ux89/browser-checks.json"
+      }
+    ],
+    "public_release_evidence": "artifacts/ux89/public-check.json",
+    "external_ai_calls": 0,
+    "push_sends": 0,
+    "browser_fixture": {
+      "own_fixed_synthetic_family": true,
+      "text_material": true,
+      "homework_photos": false,
+      "learning_attempts": false
+    },
+    "counts_unchanged": true
+  }
 }

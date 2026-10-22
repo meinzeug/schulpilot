@@ -881,5 +881,50 @@
     "RR031 wird ausschließlich bei Root gezählt. Setup-/API-Schlüssel-Tests prüfen zusätzlich exakt erhaltene künstliche Zeichen, keine echten Zugangsdaten.",
     "Alle Backendgrenzen aus vorhandenen schemas.py/installation.py/commerce.py/admin.py gelesen; keine Rechte-, Budget-, Provider-, Vertrags- oder Kostenlockerung."
   ],
-  "verification_notes": "211 native und33 Chrome sind überlappende Nachweisgruppen und werden nicht addiert. 42er/75er-Frühgruppen bleiben nur Verlauf. Keine vollständige App-/Geräte-/WCAG- oder Produktionsabnahme."
+  "verification_notes": "211 native und33 Chrome sind überlappende Bereichsnachweise und werden nicht addiert. 42er/75er-Frühgruppen bleiben nur Verlauf. Admin- und Bestelloberflächen ausschließlich mit künstlichen Mockdaten nativ/Chrome geprüft, Backendbelege aus isoliertem PostgreSQL; keine Live-Adminanmeldung oder echte Zahlungsbuchung. Gemeinsamer Release1.21.1+89 ist ausgeliefert:2009 native Fälle bestanden,5 Webfälle übersprungen,1593 PostgreSQL-Fälle bestanden und vollständige Analyse ohne Befund. Begrenzte echte Kinder-/Elternbrowserprüfung und eigene synthetische Bereinigung sind separat belegt; keine vollständige Geräte-/Screenreader-/WCAG-Abnahme.",
+  "release_acceptance": {
+    "version": "1.21.1+89",
+    "release_id": "20261022T134524Z-03e3bfe",
+    "source_commit": "03e3bfeffd654ff169ebf2daceb6537476cadf03",
+    "native": {
+      "passed": 2009,
+      "web_only_skipped": 5,
+      "evidence": "artifacts/ux89/flutter-final.log"
+    },
+    "postgresql": {
+      "passed": 1593,
+      "evidence": "artifacts/ux88/backend-full.log",
+      "subsequent_backend_change": "version_only"
+    },
+    "analysis": {
+      "result": "no_issues",
+      "evidence": "artifacts/ux89/flutter-analyze-final.log"
+    },
+    "admin_ui_scope": "synthetic_mock_native_and_chrome",
+    "live_admin_login_performed": false,
+    "real_payment_booking_performed": false,
+    "artifact_evidence": [
+      "artifacts/ux89/release-check.json",
+      "artifacts/ux89/public-check.json",
+      "artifacts/ux89/web-check.json"
+    ],
+    "synthetic_browser": {
+      "evidence": "artifacts/ux89/browser-checks.json",
+      "scope": "own_synthetic_child_and_parent_only",
+      "child_session_survived_reload": true,
+      "parent_time_card_role": "button",
+      "parent_week_tab_selected": true
+    },
+    "synthetic_cleanup": {
+      "evidence": "artifacts/ux89/cleanup.json",
+      "own_family_deleted": true,
+      "both_logins_revoked_status": [401, 401],
+      "external_ai_calls": 0,
+      "push_sends": 0
+    },
+    "limits": [
+      "Kinder-/Elternbrowserbelege sind keine Live-Adminabnahme.",
+      "Keine neue Zählung für Browsernachkorrekturen; keine vollständige Geräte-/Screenreader-/WCAG-Abnahme."
+    ]
+  }
 }

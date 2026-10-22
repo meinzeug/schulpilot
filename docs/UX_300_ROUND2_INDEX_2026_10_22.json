@@ -9,7 +9,7 @@
     "admin": 89,
     "child": 88
   },
-  "integration_status": "PostgreSQL-Backend1593/1593, native Integration88:2008 und nach Browserkorrektur89:2009 bestanden; fünf separate Webfälle übersprungen. Folgekorrektur39 native/10 Chrome grün; aktuelle Test-APIs nativ/Chrome10/10 und vollständige Analyse sauber. Version88 ausgeliefert; signierte Builds und abschließender Produktions-/Browsernachweis für89 noch ausstehend.",
+  "integration_status": "317 zusätzliche Maßnahmen; PostgreSQL1593/1593, native Integration89:2009 bestanden plus fünf bewusst übersprungene Webfälle. Folgekorrektur39 native/10 Chrome grün, aktuelle Test-APIs nativ/Chrome10/10, vollständige Analyse sauber. Web, signierte Direct-APK und Play-AAB89 geprüft. Release20261022T134524Z-03e3bfe aus03e3bfeffd654ff169ebf2daceb6537476cadf03 live; öffentliche APK/JS identisch, gezielte Browserabnahme89 bestanden, eigene künstliche Familie bereinigt. GitHub-CI wegen Abrechnungssperre nicht gestartet. Grenzen im Hauptbericht.",
   "items": [
     {
       "id": "RR001",
