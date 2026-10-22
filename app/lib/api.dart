@@ -350,6 +350,8 @@ class AppState extends ChangeNotifier {
 
   Future<void> accept(Json response) async {
     _authIdentifier = null;
+    // A fresh login has a new session even when the account ID is unchanged.
+    inbox.clear();
     if (user != null) await familyCalls.clear();
     if (user != null && user!['id'] != response['user']['id']) {
       await LessonVoiceSession.shared.stop();

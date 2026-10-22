@@ -271,12 +271,20 @@ class GoogleCompletionScreen extends StatefulWidget {
 
 class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     with WidgetsBindingObserver {
+  final form = GlobalKey<FormState>();
   final name = TextEditingController();
   final family = TextEditingController();
   final password = TextEditingController();
+  final nameFocus = FocusNode(),
+      familyFocus = FocusNode(),
+      passwordFocus = FocusNode();
   Timer? timer;
   String? flow, verifier, ticket, email, error;
-  bool busy = false, consent = false, returnToApp = false;
+  bool busy = false,
+      consent = false,
+      returnToApp = false,
+      cancelling = false,
+      passwordVisible = false;
   int generation = 0;
 
   @override
@@ -289,13 +297,24 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
   @override
   void didUpdateWidget(covariant GoogleCompletionScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.uri != widget.uri) initialize();
+    if (oldWidget.uri != widget.uri ||
+        oldWidget.start != widget.start ||
+        !identical(oldWidget.state, widget.state)) {
+      name.clear();
+      family.clear();
+      password.clear();
+      consent = false;
+      passwordVisible = false;
+      initialize();
+    }
   }
 
   Future<void> initialize() async {
     final current = ++generation;
     timer?.cancel();
     busy = false;
+    cancelling = false;
+    flow = null;
     email = null;
     verifier = null;
     ticket = null;
@@ -314,6 +333,11 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       }
       flow = googleFlowId(widget.uri);
       final fragment = Uri.splitQueryString(widget.uri.fragment);
+      if (fragment.containsKey('flow') && flow == null) {
+        throw ApiError(
+          'Der Anmeldelink ist ungültig. Bitte starte die Google-Anmeldung erneut.',
+        );
+      }
       if (fragment.containsKey('error')) {
         throw ApiError(
           'Die Google-Anmeldung konnte nicht bestätigt werden. Bitte starte erneut.',
@@ -351,13 +375,29 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       }
     } catch (e) {
       if (mounted && generation == current) {
-        setState(() => error = e.toString());
+        setState(
+          () => error = e is ApiError ? e.message : 'Die Anmeldung konnte gerade nicht geprüft werden. Bitte versuche es erneut.',
+        );
       }
     }
   }
 
   Future<void> check({bool register = false}) async {
-    if (busy || flow == null) return;
+    if (!mounted || busy || cancelling || flow == null) return;
+    if (register) {
+      final invalid = form.currentState?.validateGranularly();
+      if (invalid == null || invalid.isNotEmpty) {
+        if (invalid != null && invalid.isNotEmpty) {
+          final first = invalid.first;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !cancelling && first.mounted) {
+              Scrollable.ensureVisible(first.context, alignment: .2);
+            }
+          });
+        }
+        return;
+      }
+    }
     final current = generation;
     setState(() {
       busy = true;
@@ -381,16 +421,17 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       if (result['status'] == 'verification_required') {
         timer?.cancel();
         if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
-        if (mounted) context.go('/verify');
+        if (mounted && current == generation) context.go('/verify');
         return;
       }
       if (result['status'] == 'authenticated' || result['status'] == 'linked') {
         timer?.cancel();
         if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
+        if (!mounted || current != generation) return;
         if (result['status'] == 'authenticated') {
           await widget.state.accept(result);
         }
-        if (mounted) {
+        if (mounted && current == generation) {
           context.go(result['status'] == 'linked' ? '/settings' : '/app');
         }
       } else {
@@ -401,7 +442,9 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
       }
     } catch (e) {
       if (mounted && current == generation) {
-        setState(() => error = e.toString());
+        setState(
+          () => error = e is ApiError ? e.message : 'Die Anmeldung konnte gerade nicht geprüft werden. Bitte versuche es erneut.',
+        );
       }
     } finally {
       if (mounted && current == generation) setState(() => busy = false);
@@ -413,6 +456,8 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     if (state == AppLifecycleState.resumed &&
         !widget.start &&
         email == null &&
+        error == null &&
+        !cancelling &&
         !returnToApp) {
       check();
     }
@@ -426,7 +471,29 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     name.dispose();
     family.dispose();
     password.dispose();
+    nameFocus.dispose();
+    familyFocus.dispose();
+    passwordFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> cancel() async {
+    if (!mounted || cancelling) return;
+    ++generation;
+    timer?.cancel();
+    setState(() => cancelling = true);
+    try {
+      if (!kIsWeb) await widget.state.storage.delete(key: _proofKey);
+      if (!mounted) return;
+      context.go(widget.state.user == null ? '/login' : '/settings');
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          cancelling = false;
+          error = 'Der Anmeldeschritt konnte nicht beendet werden. Bitte versuche es erneut.';
+        });
+      }
+    }
   }
 
   @override
@@ -434,104 +501,222 @@ class _GoogleCompletionScreenState extends State<GoogleCompletionScreen>
     appBar: AppBar(title: brand()),
     body: Center(
       child: SingleChildScrollView(
-        padding: EdgeInsets.all(22),
+        padding: const EdgeInsets.all(22),
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 490),
-          child: Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                heading(
-                  email != null ? 'Dein Elternkonto' : 'Mit Google anmelden',
-                ),
-                if (error != null) Notice(error!, warning: true),
-                if (busy) LinearProgressIndicator(),
-                if (email != null) ...[
-                  Text(email!, style: TextStyle(color: context.palette.muted)),
-                  SizedBox(height: 18),
-                  TextField(
-                    controller: name,
-                    decoration: InputDecoration(labelText: 'Dein Anzeigename'),
-                  ),
-                  SizedBox(height: 16),
-                  TextField(
-                    controller: family,
-                    decoration: InputDecoration(
-                      labelText: 'Name deiner Familie',
+          constraints: const BoxConstraints(maxWidth: 490),
+          child: AutofillGroup(
+            onDisposeAction: AutofillContextAction.cancel,
+            child: Panel(
+              child: Form(
+                key: form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    heading(
+                      email != null
+                          ? 'Dein Elternkonto'
+                          : 'Mit Google anmelden',
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  TextField(
-                    controller: password,
-                    obscureText: true,
-                    enableSuggestions: false,
-                    autocorrect: false,
-                    autofillHints: [AutofillHints.newPassword],
-                    decoration: InputDecoration(
-                      labelText: 'Elternpasswort (mindestens 12 Zeichen)',
-                      helperText: 'Für Wiederherstellung und geschützte Kontoeinstellungen.',
-                    ),
-                  ),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: consent,
-                    onChanged: (v) => setState(() => consent = v ?? false),
-                    title: Text(
-                      'Ich bin volljährig und zur Einrichtung dieser Familie berechtigt.',
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.push('/privacy'),
-                    child: Text('Datenschutz lesen'),
-                  ),
-                  FilledButton(
-                    onPressed: busy || !consent
-                        ? null
-                        : () => check(register: true),
-                    child: Text('Elternkonto erstellen'),
-                  ),
-                ] else if (returnToApp) ...[
-                  Text(
-                    'Google ist bestätigt. Öffne SCHULPILOT, um fortzufahren.',
-                  ),
-                  SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => launchUrl(
-                      Uri(
-                        scheme: 'schulpilot',
-                        host: 'google',
-                        path: '/complete',
-                        queryParameters: {'flow': flow!, 'ticket': ?ticket},
+                    if (error != null)
+                      Semantics(
+                        liveRegion: true,
+                        child: Notice(error!, warning: true),
                       ),
-                      webOnlyWindowName: '_self',
+                    if (busy || cancelling)
+                      Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              cancelling
+                                  ? 'Anmeldung wird beendet …'
+                                  : 'Google-Anmeldung wird geprüft …',
+                            ),
+                            const SizedBox(height: 8),
+                            const LinearProgressIndicator(),
+                          ],
+                        ),
+                      ),
+                    if (email != null) ...[
+                      SelectableText(
+                        email!,
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                      const SizedBox(height: 18),
+                      TextFormField(
+                        key: ValueKey(('google-name', generation)),
+                        controller: name,
+                        focusNode: nameFocus,
+                        enabled: !busy && !cancelling,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (_) => familyFocus.requestFocus(),
+                        autofillHints: const [AutofillHints.name],
+                        validator: (value) => (value ?? '').trim().isEmpty
+                            ? 'Gib deinen Anzeigenamen ein.'
+                            : (value ?? '').trim().runes.length > 80
+                            ? 'Nutze höchstens 80 Zeichen.'
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Dein Anzeigename',
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        key: ValueKey(('google-family', generation)),
+                        controller: family,
+                        focusNode: familyFocus,
+                        enabled: !busy && !cancelling,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (_) => passwordFocus.requestFocus(),
+                        validator: (value) => (value ?? '').trim().isEmpty
+                            ? 'Gib einen Namen für deine Familie ein.'
+                            : (value ?? '').trim().runes.length > 120
+                            ? 'Nutze höchstens 120 Zeichen.'
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Name deiner Familie',
+                          errorMaxLines: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        key: ValueKey(('google-password', generation)),
+                        controller: password,
+                        focusNode: passwordFocus,
+                        enabled: !busy && !cancelling,
+                        obscureText: !passwordVisible,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => check(register: true),
+                        autofillHints: const [AutofillHints.newPassword],
+                        validator: (value) =>
+                            (value ?? '').trim().runes.length < 12
+                            ? 'Nutze mindestens 12 Zeichen.'
+                            : (value ?? '').runes.length > 128
+                            ? 'Nutze höchstens 128 Zeichen.'
+                            : null,
+                        decoration: InputDecoration(
+                          labelText: 'Elternpasswort',
+                          helperText: 'Mindestens 12 Zeichen. Für Wiederherstellung und geschützte Kontoeinstellungen.',
+                          helperMaxLines: 5,
+                          errorMaxLines: 3,
+                          suffixIcon: IconButton(
+                            tooltip: passwordVisible
+                                ? 'Passwort verbergen'
+                                : 'Passwort anzeigen',
+                            onPressed: busy || cancelling
+                                ? null
+                                : () => setState(
+                                    () => passwordVisible = !passwordVisible,
+                                  ),
+                            icon: Icon(
+                              passwordVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                      ),
+                      FormField<bool>(
+                        key: ValueKey(('google-consent', generation)),
+                        initialValue: consent,
+                        validator: (value) => value == true ? null : 'Bestätige deine Volljährigkeit und Berechtigung.',
+                        builder: (field) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              value: field.value,
+                              onChanged: busy || cancelling
+                                  ? null
+                                  : (value) {
+                                      field.didChange(value ?? false);
+                                      setState(() => consent = value ?? false);
+                                    },
+                              title: const Text(
+                                'Ich bin volljährig und zur Einrichtung dieser Familie berechtigt.',
+                              ),
+                            ),
+                            if (field.hasError)
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  field.errorText!,
+                                  style: TextStyle(
+                                    color: context.palette.dangerInk,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: busy || cancelling
+                            ? null
+                            : () => context.push('/privacy'),
+                        child: const Text('Datenschutz lesen'),
+                      ),
+                      FilledButton(
+                        onPressed: busy || cancelling
+                            ? null
+                            : () => check(register: true),
+                        child: const Text('Elternkonto erstellen'),
+                      ),
+                    ] else if (returnToApp) ...[
+                      const Text(
+                        'Google ist bestätigt. Öffne SCHULPILOT, um fortzufahren.',
+                      ),
+                      const SizedBox(height: 16),
+                      ActionButton(
+                        label: 'SCHULPILOT öffnen',
+                        enabled: !cancelling,
+                        onPressed: () async {
+                          final opened = await launchUrl(
+                            Uri(
+                              scheme: 'schulpilot',
+                              host: 'google',
+                              path: '/complete',
+                              queryParameters: {
+                                'flow': flow!,
+                                'ticket': ?ticket,
+                              },
+                            ),
+                            webOnlyWindowName: '_self',
+                          );
+                          if (!opened) {
+                            throw ApiError(
+                              'Die App konnte nicht geöffnet werden. Öffne SCHULPILOT auf diesem Gerät und kehre zur Anmeldung zurück.',
+                            );
+                          }
+                        },
+                      ),
+                    ] else ...[
+                      if (error == null)
+                        const Text(
+                          'Bestätige deine Anmeldung bei Google. Danach geht es hier weiter.',
+                        ),
+                      if (flow != null && !widget.start) ...[
+                        const SizedBox(height: 16),
+                        OutlinedButton(
+                          onPressed: busy || cancelling ? null : check,
+                          child: Text(
+                            error == null ? 'Weiter' : 'Erneut prüfen',
+                          ),
+                        ),
+                      ],
+                    ],
+                    TextButton(
+                      onPressed: cancelling ? null : cancel,
+                      child: const Text('Zurück'),
                     ),
-                    child: Text('SCHULPILOT öffnen'),
-                  ),
-                ] else if (error == null) ...[
-                  Text(
-                    'Bestätige deine Anmeldung bei Google. Danach geht es hier weiter.',
-                  ),
-                  SizedBox(height: 16),
-                  OutlinedButton(
-                    onPressed: busy ? null : check,
-                    child: Text('Weiter'),
-                  ),
-                ],
-                TextButton(
-                  onPressed: () async {
-                    timer?.cancel();
-                    if (!kIsWeb) {
-                      await widget.state.storage.delete(key: _proofKey);
-                    }
-                    if (context.mounted) {
-                      context.go(
-                        widget.state.user == null ? '/login' : '/settings',
-                      );
-                    }
-                  },
-                  child: Text('Zurück'),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

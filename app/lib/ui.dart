@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
@@ -679,9 +681,11 @@ class _ActionButtonState extends State<ActionButton> {
       ],
     );
     Future<void> pressed() async {
+      if (!mounted || busy || !widget.enabled) return;
       setState(() => busy = true);
+      final action = widget.onPressed;
       try {
-        await widget.onPressed();
+        await action();
       } catch (e) {
         if (context.mounted) showError(context, e);
       } finally {
@@ -689,14 +693,20 @@ class _ActionButtonState extends State<ActionButton> {
       }
     }
 
+    final accessibleChild = Semantics(
+      liveRegion: busy,
+      label: busy ? '${widget.label}: Bitte warten …' : widget.label,
+      excludeSemantics: true,
+      child: child,
+    );
     return widget.secondary
         ? OutlinedButton(
             onPressed: busy || !widget.enabled ? null : pressed,
-            child: child,
+            child: accessibleChild,
           )
         : FilledButton(
             onPressed: busy || !widget.enabled ? null : pressed,
-            child: child,
+            child: accessibleChild,
           );
   }
 }
@@ -721,9 +731,14 @@ void showError(BuildContext context, Object error) =>
         behavior: SnackBarBehavior.floating,
       ),
     );
-void toast(BuildContext context, String text) => ScaffoldMessenger.of(context)
-    .showSnackBar(
-      SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
+void toast(BuildContext context, String text) =>
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        showCloseIcon: true,
+        duration: const Duration(seconds: 8),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
 
 class LoadView<T> extends StatefulWidget {
@@ -742,21 +757,34 @@ class LoadView<T> extends StatefulWidget {
 
 class _LoadViewState<T> extends State<LoadView<T>> {
   late Future<T> future;
+  int request = 0;
+  bool pending = false;
+
+  void startLoad() {
+    final current = ++request;
+    pending = true;
+    future = Future<T>.sync(widget.load).whenComplete(() {
+      if (mounted && current == request) pending = false;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
-    future = widget.load();
+    startLoad();
   }
 
   @override
   void didUpdateWidget(covariant LoadView<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.revision != oldWidget.revision) future = widget.load();
+    if (widget.revision != oldWidget.revision) startLoad();
   }
 
-  void refresh() => setState(() {
-    future = widget.load();
-  });
+  void refresh() {
+    if (!mounted || pending) return;
+    setState(startLoad);
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<T>(
     future: future,
@@ -810,9 +838,18 @@ class _LoadViewState<T> extends State<LoadView<T>> {
         );
       }
       if (!snapshot.hasData) {
-        return const Padding(
-          padding: EdgeInsets.all(64),
-          child: Center(child: CircularProgressIndicator()),
+        return Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Notice('Hier sind gerade keine Daten verfügbar.'),
+              OutlinedButton.icon(
+                onPressed: refresh,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Erneut laden'),
+              ),
+            ],
+          ),
         );
       }
       return widget.builder(snapshot.data as T, refresh);
@@ -869,6 +906,70 @@ class WorkspaceShell extends StatelessWidget {
     this.actions = const [],
     this.showTitle = true,
   });
+
+  Future<String?> _moreMenu(
+    BuildContext context,
+    List<(IconData, String, String)> entries,
+    String path,
+  ) async {
+    final account = state.user;
+    if (account == null) return null;
+    ModalRoute<dynamic>? ownRoute;
+    void closeOldMenu() {
+      if (identical(state.user, account)) return;
+      final route = ownRoute;
+      scheduleMicrotask(() {
+        if (!identical(state.user, account) && route?.isActive == true) {
+          route!.navigator?.removeRoute(route);
+        }
+      });
+    }
+
+    state.addListener(closeOldMenu);
+    try {
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) {
+          ownRoute ??= ModalRoute.of(ctx);
+          closeOldMenu();
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Semantics(
+                      header: true,
+                      child: const Text('Weitere Bereiche'),
+                    ),
+                  ),
+                  for (final entry in entries.skip(3))
+                    ListTile(
+                      leading: Icon(entry.$1),
+                      title: Text(entry.$2),
+                      selected: path == entry.$3,
+                      onTap: () {
+                        if (ctx.mounted &&
+                            identical(state.user, account) &&
+                            ownRoute?.isCurrent == true) {
+                          Navigator.pop(ctx, entry.$3);
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      return identical(state.user, account) ? selected : null;
+    } finally {
+      state.removeListener(closeOldMenu);
+    }
+  }
 
   String get _roleLabel => state.isChild
       ? 'Dein Lernraum'
@@ -996,25 +1097,9 @@ class WorkspaceShell extends StatelessWidget {
               child: NavigationBar(
                 selectedIndex: compactChild && selected >= 3 ? 3 : selected,
                 onDestinationSelected: (i) async {
+                  FocusManager.instance.primaryFocus?.unfocus();
                   if (compactChild && i == 3) {
-                    final route = await showModalBottomSheet<String>(
-                      context: context,
-                      showDragHandle: true,
-                      builder: (ctx) => SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final entry in entries.skip(3))
-                              ListTile(
-                                leading: Icon(entry.$1),
-                                title: Text(entry.$2),
-                                selected: path == entry.$3,
-                                onTap: () => Navigator.pop(ctx, entry.$3),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
+                    final route = await _moreMenu(context, entries, path);
                     if (route != null && context.mounted) context.go(route);
                   } else {
                     context.go(mobileEntries[i].$3);
@@ -1627,13 +1712,16 @@ class _NotificationBellState extends State<NotificationBell> {
     if (!_sameHeaderAccount(state, snapshot)) return;
     try {
       await state.inbox.markRead([item['id'] as String]);
+    } catch (_) {
       if (mounted && _sameHeaderAccount(state, snapshot)) {
-        context.go(item['route'] as String);
+        toast(
+          context,
+          'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
+        );
       }
-    } catch (error) {
-      if (mounted && _sameHeaderAccount(state, snapshot)) {
-        showError(context, error);
-      }
+    }
+    if (mounted && _sameHeaderAccount(state, snapshot)) {
+      context.go(item['route'] as String);
     }
   }
 
@@ -1738,7 +1826,7 @@ class _NotificationBellState extends State<NotificationBell> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          '${state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                          '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
                           style: TextStyle(
                             fontSize: 12,
                             color: context.palette.muted,
@@ -2032,21 +2120,31 @@ class _DialogControllerScopeState extends State<DialogControllerScope> {
 Future<bool> confirmDialog(
   BuildContext context,
   String title,
-  String text,
-) async =>
+  String text, {
+  String confirmLabel = 'Bestätigen',
+  bool destructive = false,
+}) async =>
     await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(title),
         content: Text(text),
         actions: [
           TextButton(
+            autofocus: destructive,
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Abbrechen'),
           ),
           FilledButton(
+            style: destructive
+                ? FilledButton.styleFrom(
+                    backgroundColor: context.palette.dangerInk,
+                    foregroundColor: context.palette.dangerSurface,
+                  )
+                : null,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Bestätigen'),
+            child: Text(confirmLabel),
           ),
         ],
       ),

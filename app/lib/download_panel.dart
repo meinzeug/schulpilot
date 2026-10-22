@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
@@ -33,7 +34,16 @@ class AndroidDownload extends StatelessWidget {
                   SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Schulpilot für Android',
+                      [
+                        'Schulpilot für Android',
+                        if (release['version'] is String)
+                          'Version ${release['version']}',
+                        if (release['size_bytes'] is num &&
+                            release['size_bytes'] > 0)
+                          '${NumberFormat('0.0', 'de').format(release['size_bytes'] / (1024 * 1024))} MB',
+                        if (release['min_android'] is String)
+                          'Ab Android ${release['min_android']}',
+                      ].join(' · '),
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 17,
@@ -47,7 +57,22 @@ class AndroidDownload extends StatelessWidget {
               label: 'Android-App herunterladen',
               icon: Icons.download_rounded,
               onPressed: () async {
-                final uri = Uri.parse(release['download_url'] as String);
+                final uri = Uri.tryParse(
+                  release['download_url'] as String? ?? '',
+                );
+                final origin = Uri.tryParse(api.base);
+                if (uri == null ||
+                    origin == null ||
+                    uri.scheme != 'https' ||
+                    uri.host != origin.host ||
+                    uri.port != origin.port ||
+                    uri.userInfo.isNotEmpty ||
+                    uri.fragment.isNotEmpty ||
+                    uri.path != '/downloads/schulpilot-android.apk') {
+                  throw ApiError(
+                    'Die Downloadadresse ist nicht gültig. Bitte lade den aktuellen Stand neu.',
+                  );
+                }
                 if (!await launchUrl(
                   uri,
                   mode: LaunchMode.externalApplication,

@@ -350,7 +350,17 @@ class _AuthScreenState extends State<AuthScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.linkUri != widget.linkUri || oldWidget.mode != widget.mode) {
       formRevision++;
-      if (oldWidget.mode != widget.mode) _restoreIdentifier();
+      if (oldWidget.mode != widget.mode) {
+        _restoreIdentifier();
+        name.clear();
+        family.clear();
+        consent = false;
+      }
+      if (oldWidget.mode != widget.mode ||
+          oldWidget.linkUri.fragment != widget.linkUri.fragment) {
+        password.clear();
+        passwordVisible = false;
+      }
       _readLink();
       result = null;
       error = null;
@@ -444,25 +454,36 @@ class _AuthScreenState extends State<AuthScreen> {
       invalid['username'] = mode == 'login'
           ? 'Gib deine E-Mail oder deinen Benutzernamen ein.'
           : 'Gib deine E-Mail-Adresse ein.';
+    } else if (username.text.trim().runes.length > 254) {
+      invalid['username'] = 'Nutze höchstens 254 Zeichen.';
     }
     if (mode == 'register' && name.text.trim().isEmpty) {
       invalid['name'] = 'Gib deinen Anzeigenamen ein.';
+    } else if (name.text.trim().runes.length > 80) {
+      invalid['name'] = 'Nutze höchstens 80 Zeichen.';
     }
     if (mode == 'register' && family.text.trim().isEmpty) {
       invalid['family'] = 'Gib einen Namen für deine Familie ein.';
+    } else if (family.text.trim().runes.length > 120) {
+      invalid['family'] = 'Nutze höchstens 120 Zeichen.';
     }
-    if (['login', 'register', 'reset'].contains(mode) &&
+    if (['login', 'register', 'reset', 'invite'].contains(mode) &&
         password.text.isEmpty) {
       invalid['password'] = 'Gib dein Passwort ein.';
     } else if (['register', 'reset'].contains(mode) &&
-        password.text.runes.length < 12) {
+        password.text.trim().runes.length < 12) {
       invalid['password'] =
           'Dein neues Passwort braucht mindestens 12 Zeichen.';
+    } else if (password.text.runes.length > 128) {
+      invalid['password'] = 'Nutze höchstens 128 Zeichen.';
     }
     if (['reset', 'verify', 'invite'].contains(mode) &&
         token.text.trim().isEmpty) {
       invalid['token'] =
           'Öffne den vollständigen E-Mail-Link oder füge seinen Code ein.';
+    } else if (['reset', 'verify', 'invite'].contains(mode) &&
+        !RegExp(r'^[A-Za-z0-9_-]{32,128}$').hasMatch(token.text.trim())) {
+      invalid['token'] = 'Der Code ist unvollständig. Öffne den vollständigen E-Mail-Link oder füge den ganzen Code ein.';
     }
     if (mode == 'register' && !consent) {
       invalid['consent'] = 'Bestätige deine Volljährigkeit und Berechtigung.';
@@ -524,10 +545,10 @@ class _AuthScreenState extends State<AuthScreen> {
             'adult_consent': consent,
           },
           'recovery' => {'email': username.text.trim()},
-          'reset' => {'token': token.text, 'password': password.text},
-          'verify' => {'token': token.text},
+          'reset' => {'token': token.text.trim(), 'password': password.text},
+          'verify' => {'token': token.text.trim()},
           _ => {
-            'token': token.text,
+            'token': token.text.trim(),
             'password': password.text,
             'display_name': name.text.trim(),
           },
@@ -614,7 +635,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: username,
                         onChanged: (_) => fieldEdited('username'),
                         focusNode: usernameFocus,
-                        enabled: !submitting,
+                        enabled: !submitting && !googleBusy,
                         autocorrect: false,
                         textInputAction: mode == 'recovery'
                             ? TextInputAction.done
@@ -652,7 +673,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: name,
                         onChanged: (_) => fieldEdited('name'),
                         focusNode: nameFocus,
-                        enabled: !submitting,
+                        enabled: !submitting && !googleBusy,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) =>
@@ -660,6 +681,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                 .requestFocus(),
                         decoration: InputDecoration(
                           labelText: 'Dein Anzeigename',
+                          helperText: mode == 'invite'
+                              ? 'Nur für ein neues Elternkonto erforderlich.'
+                              : null,
+                          helperMaxLines: 3,
                           errorText: fieldErrors['name'],
                           errorMaxLines: 3,
                         ),
@@ -671,7 +696,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: family,
                         onChanged: (_) => fieldEdited('family'),
                         focusNode: familyFocus,
-                        enabled: !submitting,
+                        enabled: !submitting && !googleBusy,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => passwordFocus.requestFocus(),
@@ -693,7 +718,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: password,
                         onChanged: (_) => fieldEdited('password'),
                         focusNode: passwordFocus,
-                        enabled: !submitting,
+                        enabled: !submitting && !googleBusy,
                         textInputAction:
                             ['login', 'register'].contains(mode) ||
                                 token.text.isNotEmpty
@@ -710,7 +735,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         obscureText: !passwordVisible,
                         enableSuggestions: false,
                         autocorrect: false,
-                        autofillHints: mode == 'login'
+                        autofillHints: ['login', 'invite'].contains(mode)
                             ? [AutofillHints.password]
                             : [AutofillHints.newPassword],
                         decoration: InputDecoration(
@@ -723,9 +748,11 @@ class _AuthScreenState extends State<AuthScreen> {
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
                             ),
-                            onPressed: () => setState(
-                              () => passwordVisible = !passwordVisible,
-                            ),
+                            onPressed: submitting || googleBusy
+                                ? null
+                                : () => setState(
+                                    () => passwordVisible = !passwordVisible,
+                                  ),
                           ),
                           labelText: mode == 'invite'
                               ? 'Elternpasswort'
@@ -733,7 +760,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               ? 'Passwort'
                               : 'Neues Passwort',
                           helperText: mode == 'invite'
-                              ? 'Bestehendes Passwort oder für ein neues Konto mindestens 12 Zeichen. Bereits angemeldet? Dann darf dieses Feld leer bleiben.'
+                              ? 'Bestehendes Konto: dein aktuelles Passwort, auch wenn du schon angemeldet bist. Neues Konto: mindestens 12 Zeichen.'
                               : mode == 'login'
                               ? null
                               : 'Mindestens 12 Zeichen.',
@@ -749,7 +776,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: token,
                         onChanged: (_) => fieldEdited('token'),
                         focusNode: tokenFocus,
-                        enabled: !submitting,
+                        enabled: !submitting && !googleBusy,
                         autocorrect: false,
                         enableSuggestions: false,
                         textInputAction: TextInputAction.done,
@@ -770,7 +797,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         contentPadding: EdgeInsets.zero,
                         value: consent,
                         focusNode: consentFocus,
-                        onChanged: submitting
+                        onChanged: submitting || googleBusy
                             ? null
                             : (v) {
                                 setState(() => consent = v ?? false);
@@ -809,7 +836,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (mode == 'login' || mode == 'register')
                       GoogleLoginButton(
                         widget.state,
-                        enabled: !submitting,
+                        enabled: !submitting && !googleBusy,
                         onBusyChanged: (busy) {
                           if (mounted) setState(() => googleBusy = busy);
                         },

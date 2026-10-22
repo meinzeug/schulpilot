@@ -411,4 +411,99 @@ void main() {
       await tester.runAsync(f.close);
     },
   );
+  testWidgets(
+    'an overlaid or replaced-account permission sheet cannot prompt from an old callback',
+    (tester) async {
+      final f = _Fixture();
+      f.transport.allowed = false;
+      final state = _State(f.api, f.push)..user = f.owner;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: Scaffold(
+            body: SingleChildScrollView(child: NotificationPanel(state)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final enable = find.text('Auf diesem Gerät einschalten');
+      await tester.ensureVisible(enable);
+      await tester.tap(enable);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final prompt = tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('push-browser-permission')),
+          )
+          .onPressed!;
+      final oldCancel = tester
+          .widget<TextButton>(find.widgetWithText(TextButton, 'Später'))
+          .onPressed!;
+      final context = tester.element(find.text('Im Browser erlauben'));
+      final next = showDialog<void>(
+        context: context,
+        builder: (_) => const AlertDialog(title: Text('Neuer Dialog')),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      prompt();
+      oldCancel();
+      await tester.pump();
+      expect(find.text('Neuer Dialog'), findsOneWidget);
+      expect(f.transport.calls, isNot(contains('permission:true')));
+      state.user = Json.from(state.user!);
+      f.owner = state.user;
+      state.notifyListeners();
+      await tester.pumpAndSettle();
+      expect(find.text('Neuer Dialog'), findsOneWidget);
+      expect(find.text('Im Browser erlauben'), findsNothing);
+      prompt();
+      await tester.pump();
+      expect(f.registrations, isEmpty);
+      Navigator.of(tester.element(find.text('Neuer Dialog'))).pop();
+      await tester.pumpAndSettle();
+      await next;
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(f.close);
+    },
+  );
+  testWidgets(
+    'leaving device settings closes only their own permission dialog',
+    (tester) async {
+      final f = _Fixture();
+      f.transport.allowed = false;
+      final state = _State(f.api, f.push)..user = f.owner;
+      final visible = ValueNotifier(true);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(),
+          home: Scaffold(
+            body: ValueListenableBuilder<bool>(
+              valueListenable: visible,
+              builder: (_, show, _) => SingleChildScrollView(
+                child: show
+                    ? NotificationPanel(state)
+                    : const Text('Einstellungen verlassen'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final enable = find.text('Auf diesem Gerät einschalten');
+      await tester.ensureVisible(enable);
+      await tester.tap(enable);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Im Browser erlauben'), findsOneWidget);
+      visible.value = false;
+      await tester.pumpAndSettle();
+      expect(find.text('Im Browser erlauben'), findsNothing);
+      expect(find.text('Einstellungen verlassen'), findsOneWidget);
+      expect(f.registrations, isEmpty);
+      expect(f.transport.calls, isNot(contains('permission:true')));
+      await tester.pumpWidget(const SizedBox());
+      visible.dispose();
+      await tester.runAsync(f.close);
+    },
+  );
 }

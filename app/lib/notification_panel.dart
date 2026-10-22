@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -50,6 +52,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           listenable: widget.state.inbox,
           builder: (context, _) {
             final inbox = widget.state.inbox;
+            final owner = widget.state.user;
             return Panel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,8 +67,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ],
                   ),
-                  if (inbox.loading) LinearProgressIndicator(),
-                  if (inbox.error != null) Notice(inbox.error!),
+                  if (inbox.loading) ...[
+                    const LinearProgressIndicator(),
+                    Semantics(
+                      liveRegion: true,
+                      child: const Text('Neuigkeiten werden geladen …'),
+                    ),
+                  ],
+                  if (inbox.error != null) ...[
+                    Notice(inbox.error!),
+                    ActionButton(
+                      label: 'Neuigkeiten erneut laden',
+                      secondary: true,
+                      onPressed: inbox.refresh,
+                    ),
+                  ],
                   if (inbox.hasLoaded &&
                       inbox.items.isEmpty &&
                       inbox.error == null)
@@ -81,12 +97,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       child: ActionButton(
                         label: 'Alle als gelesen markieren',
                         secondary: true,
-                        onPressed: () => inbox.markRead(
-                          inbox.items
-                              .where((row) => row['read'] != true)
-                              .map((row) => row['id'] as String)
-                              .toList(),
-                        ),
+                        onPressed: () => identical(widget.state.user, owner)
+                            ? inbox.markRead(
+                                inbox.items
+                                    .where((row) => row['read'] != true)
+                                    .map((row) => row['id'] as String)
+                                    .toList(),
+                              )
+                            : Future<void>.value(),
                       ),
                     ),
                   for (final item in inbox.items)
@@ -129,17 +147,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            '${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
+                            '${item['read'] == true ? 'Gelesen' : 'Ungelesen'} · ${widget.state.isParent ? '${item['child_name']} · ' : ''}${DateFormat('dd.MM. · HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000))}',
                           ),
                           trailing: Icon(Icons.chevron_right_rounded),
                           onTap: () async {
+                            if (!identical(widget.state.user, owner)) return;
                             try {
                               await inbox.markRead([item['id']]);
-                              if (context.mounted) context.go(item['route']);
-                            } catch (error) {
-                              if (context.mounted) {
-                                toast(context, error.toString());
+                            } catch (_) {
+                              if (context.mounted &&
+                                  identical(widget.state.user, owner)) {
+                                toast(
+                                  context,
+                                  'Die Lesemarkierung konnte nicht gespeichert werden. Die Nachricht bleibt ungelesen.',
+                                );
                               }
+                            }
+                            if (context.mounted &&
+                                identical(widget.state.user, owner)) {
+                              context.go(item['route']);
                             }
                           },
                         ),
@@ -352,6 +378,9 @@ class _NotificationPanelState extends State<NotificationPanel>
     with WidgetsBindingObserver {
   bool reminders = true, help = true, summaries = false, familyCalls = false;
   bool preferencesLoaded = false;
+  bool dirty = false, busy = false;
+  Json? owner;
+  Route<dynamic>? permissionRoute;
   int start = 20, end = 8, version = 0;
   String timezone = 'Europe/Berlin';
 
@@ -359,28 +388,80 @@ class _NotificationPanelState extends State<NotificationPanel>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    owner = widget.state.user;
+    widget.state.addListener(accountChanged);
+  }
+
+  void accountChanged() {
+    if (identical(owner, widget.state.user)) return;
+    final route = permissionRoute;
+    if (route != null && route.isActive) route.navigator?.removeRoute(route);
+    if (mounted) {
+      setState(() {
+        owner = widget.state.user;
+        preferencesLoaded = dirty = busy = false;
+        reminders = help = true;
+        summaries = familyCalls = false;
+        start = 20;
+        end = 8;
+        timezone = 'Europe/Berlin';
+        version++;
+      });
+    }
+  }
+
+  bool isCurrentAccount(Json? account) =>
+      mounted && account != null && identical(widget.state.user, account);
+
+  @override
+  void didUpdateWidget(covariant NotificationPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.state, widget.state)) {
+      oldWidget.state.removeListener(accountChanged);
+      widget.state.addListener(accountChanged);
+      accountChanged();
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.state.removeListener(accountChanged);
+    final route = permissionRoute;
+    scheduleMicrotask(() {
+      if (route?.isActive == true) route!.navigator?.removeRoute(route);
+    });
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
-      setState(() => version++);
+    if (state == AppLifecycleState.resumed && mounted && !busy) {
+      setState(() {
+        if (!dirty) preferencesLoaded = false;
+        version++;
+      });
     }
   }
 
   Future<Json> load() async {
+    final account = widget.state.user;
+    final revision = version;
+    void check() {
+      if (!isCurrentAccount(account) || revision != version) {
+        throw ApiError('Der Gerätebereich wurde neu geöffnet.');
+      }
+    }
+
     final config = await widget.state.api.get('/notifications/config');
+    check();
     final devices = await widget.state.api.list('/notifications/devices');
+    check();
     final tests = config['test_access'] == true
         ? await widget.state.api.get('/notifications/tests')
         : <String, dynamic>{'allowed': false, 'results': <dynamic>[]};
-    if (!preferencesLoaded) {
+    check();
+    if (!preferencesLoaded && !dirty) {
       for (final device in devices) {
         if (device['current'] == true) {
           reminders = device['reminders'] == true;
@@ -399,10 +480,12 @@ class _NotificationPanelState extends State<NotificationPanel>
     Json calls = {};
     try {
       native = await widget.state.push.deviceStatus();
+      check();
       if (widget.state.isParent) calls = await widget.state.push.callStatus();
     } catch (_) {
       /* Show unknown, never an invented success. */
     }
+    check();
     return {
       'config': config,
       'devices': devices,
@@ -413,7 +496,9 @@ class _NotificationPanelState extends State<NotificationPanel>
   }
 
   Future<void> enable() async {
+    if (busy || !isCurrentAccount(owner)) return;
     final account = widget.state.user;
+    setState(() => busy = true);
     try {
       await widget.state.push.enable(
         {
@@ -432,20 +517,22 @@ class _NotificationPanelState extends State<NotificationPanel>
             ? _confirmBrowserPermission
             : null,
       );
+      if (mounted && isCurrentAccount(account)) {
+        dirty = false;
+        preferencesLoaded = false;
+        toast(context, 'Deine Benachrichtigungen sind gespeichert.');
+      }
     } on PushPermissionCancelled {
-      if (mounted && identical(widget.state.user, account)) {
-        setState(() => version++);
-      }
       return;
-    } on ApiError {
-      if (mounted && identical(widget.state.user, account)) {
-        setState(() => version++);
+    } catch (_) {
+      if (isCurrentAccount(account)) rethrow;
+    } finally {
+      if (isCurrentAccount(account)) {
+        setState(() {
+          busy = false;
+          version++;
+        });
       }
-      rethrow;
-    }
-    if (mounted && identical(widget.state.user, account)) {
-      setState(() => version++);
-      toast(context, 'Deine Benachrichtigungen sind gespeichert.');
     }
   }
 
@@ -453,65 +540,103 @@ class _NotificationPanelState extends State<NotificationPanel>
     Future<bool> Function() request,
   ) async {
     if (!mounted) return null;
+    final account = widget.state.user;
+    Route<dynamic>? openedRoute;
     Object? failure;
     var asking = false;
     final result = await showDialog<bool>(
       context: context,
-      builder: (dialog) => StatefulBuilder(
-        builder: (dialog, update) => AlertDialog(
-          title: const Text('Im Browser erlauben'),
-          content: const SingleChildScrollView(
-            child: Text(
-              'Bestätige jetzt die Browserfreigabe. Wähle im nächsten Browserfenster „Zulassen“, wenn du auf diesem Gerät Benachrichtigungen bekommen möchtest.',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: asking ? null : () => Navigator.pop(dialog),
-              child: const Text('Später'),
-            ),
-            FilledButton.icon(
-              key: const ValueKey('push-browser-permission'),
-              onPressed: asking
-                  ? null
-                  : () async {
-                      try {
-                        // Keep the native browser prompt in this click's activation.
-                        // Configuration and Firebase imports already finished.
-                        final permission = request();
-                        update(() => asking = true);
-                        final allowed = await permission;
-                        if (dialog.mounted) Navigator.pop(dialog, allowed);
-                      } catch (error) {
-                        failure = error;
-                        if (dialog.mounted) Navigator.pop(dialog, false);
-                      }
-                    },
-              icon: const Icon(Icons.notifications_active_outlined),
-              label: Text(
-                asking
-                    ? 'Bitte im Browser bestätigen …'
-                    : 'Browserfreigabe bestätigen',
+      builder: (dialog) {
+        final route = ModalRoute.of(dialog);
+        openedRoute = permissionRoute = route;
+        bool allowedAction() =>
+            isCurrentAccount(account) &&
+            dialog.mounted &&
+            route?.isCurrent == true;
+        return StatefulBuilder(
+          builder: (dialog, update) => AlertDialog(
+            title: const Text('Im Browser erlauben'),
+            content: const SingleChildScrollView(
+              child: Text(
+                'Bestätige jetzt die Browserfreigabe. Wähle im nächsten Browserfenster „Zulassen“, wenn du auf diesem Gerät Benachrichtigungen bekommen möchtest.',
               ),
             ),
-          ],
-        ),
-      ),
+            actions: [
+              TextButton(
+                onPressed: asking
+                    ? null
+                    : () {
+                        if (allowedAction()) Navigator.pop(dialog);
+                      },
+                child: const Text('Später'),
+              ),
+              FilledButton.icon(
+                key: const ValueKey('push-browser-permission'),
+                onPressed: asking
+                    ? null
+                    : () async {
+                        if (asking || !allowedAction()) return;
+                        try {
+                          // Keep the native browser prompt in this click's activation.
+                          // Configuration and Firebase imports already finished.
+                          final permission = request();
+                          update(() => asking = true);
+                          final allowed = await permission;
+                          if (dialog.mounted && allowedAction()) {
+                            Navigator.pop(dialog, allowed);
+                          }
+                        } catch (error) {
+                          failure = error;
+                          if (dialog.mounted && allowedAction()) {
+                            Navigator.pop(dialog, false);
+                          }
+                        }
+                      },
+                icon: const Icon(Icons.notifications_active_outlined),
+                label: Text(
+                  asking
+                      ? 'Bitte im Browser bestätigen …'
+                      : 'Browserfreigabe bestätigen',
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
+    if (identical(permissionRoute, openedRoute)) permissionRoute = null;
+    if (!isCurrentAccount(account)) return null;
     if (failure != null) throw failure!;
     return result;
   }
 
   Future<void> disable(dynamic device) async {
+    if (busy || !isCurrentAccount(owner)) return;
     final account = widget.state.user;
+    setState(() => busy = true);
     final revision = widget.state.push.registrationRevision;
-    await widget.state.api.delete('/notifications/devices/${device['id']}');
-    if (!identical(widget.state.user, account)) return;
-    if (device['current'] == true) {
-      await widget.state.push.forget(expectedRevision: revision);
-    }
-    if (mounted && identical(widget.state.user, account)) {
-      setState(() => version++);
+    try {
+      await widget.state.api.delete('/notifications/devices/${device['id']}');
+      if (!identical(widget.state.user, account)) return;
+      if (device['current'] == true) {
+        await widget.state.push.forget(expectedRevision: revision);
+      }
+      if (mounted && isCurrentAccount(account)) {
+        preferencesLoaded = false;
+        toast(
+          context,
+          'Benachrichtigungen für dieses Gerät sind ausgeschaltet.',
+        );
+      }
+    } catch (_) {
+      if (isCurrentAccount(account)) rethrow;
+    } finally {
+      if (isCurrentAccount(account)) {
+        setState(() {
+          busy = false;
+          version++;
+        });
+      }
     }
   }
 
@@ -602,7 +727,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                     'Gesondert erlauben und unten speichern. Die Kategorie „Familienanrufe“ verwendet einen Klingelton. Ruhezeiten, Lautlos und Gerätesperren bleiben wirksam.',
                   ),
                   value: familyCalls,
-                  onChanged: (value) => setState(() => familyCalls = value),
+                  onChanged: busy
+                      ? null
+                      : (value) => setState(() {
+                          familyCalls = value;
+                          dirty = true;
+                        }),
                 ),
                 if (enabled && familyCalls && data['calls']['channel'] == false)
                   Notice(
@@ -640,7 +770,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                       contentPadding: EdgeInsets.zero,
                       title: Text('Fertige Lernrunden & Lernzeit'),
                       value: reminders,
-                      onChanged: (value) => setState(() => reminders = value),
+                      onChanged: busy
+                          ? null
+                          : (value) => setState(() {
+                              reminders = value;
+                              dirty = true;
+                            }),
                     ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -650,14 +785,24 @@ class _NotificationPanelState extends State<NotificationPanel>
                           : 'Wenn meine Eltern antworten',
                     ),
                     value: help,
-                    onChanged: (value) => setState(() => help = value),
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(() {
+                            help = value;
+                            dirty = true;
+                          }),
                   ),
                   if (widget.state.isParent)
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text('Tagesüberblick'),
                       value: summaries,
-                      onChanged: (value) => setState(() => summaries = value),
+                      onChanged: busy
+                          ? null
+                          : (value) => setState(() {
+                              summaries = value;
+                              dirty = true;
+                            }),
                     ),
                   SizedBox(height: 12),
                   Row(
@@ -671,7 +816,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                             for (var i = 0; i < 24; i++)
                               DropdownMenuItem(value: i, child: Text(hour(i))),
                           ],
-                          onChanged: (value) => setState(() => start = value!),
+                          onChanged: busy
+                              ? null
+                              : (value) => setState(() {
+                                  start = value!;
+                                  dirty = true;
+                                }),
                         ),
                       ),
                       SizedBox(width: 12),
@@ -684,7 +834,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                             for (var i = 0; i < 24; i++)
                               DropdownMenuItem(value: i, child: Text(hour(i))),
                           ],
-                          onChanged: (value) => setState(() => end = value!),
+                          onChanged: busy
+                              ? null
+                              : (value) => setState(() {
+                                  end = value!;
+                                  dirty = true;
+                                }),
                         ),
                       ),
                     ],
@@ -692,7 +847,18 @@ class _NotificationPanelState extends State<NotificationPanel>
                 ],
               ),
               SizedBox(height: 10),
+              if (dirty)
+                Semantics(
+                  liveRegion: true,
+                  child: const Text('Noch nicht gespeichert'),
+                ),
+              if (busy)
+                Semantics(
+                  liveRegion: true,
+                  child: const Text('Geräteeinstellungen werden gespeichert …'),
+                ),
               ActionButton(
+                enabled: !busy,
                 label: enabled
                     ? 'Änderungen speichern'
                     : 'Auf diesem Gerät einschalten',
@@ -710,6 +876,7 @@ class _NotificationPanelState extends State<NotificationPanel>
               SizedBox(height: 8),
               Align(
                 child: ActionButton(
+                  enabled: !busy,
                   label: 'Auf diesem Gerät ausschalten',
                   secondary: true,
                   onPressed: () => disable(current.first),
@@ -736,28 +903,45 @@ class _NotificationPanelState extends State<NotificationPanel>
                             ? 'FCM-Anfrage validieren'
                             : 'Test an dieses Gerät senden',
                         secondary: true,
+                        enabled: !busy,
                         onPressed: () async {
-                          final result = await widget.state.api.post(
-                            '/notifications/test',
-                            {'mode': mode},
-                          );
-                          for (var i = 0; i < 12; i++) {
-                            await Future<void>.delayed(Duration(seconds: 2));
-                            final status = await widget.state.api.get(
-                              '/notifications/tests',
+                          if (busy || !isCurrentAccount(owner)) return;
+                          final account = widget.state.user;
+                          setState(() => busy = true);
+                          try {
+                            final result = await widget.state.api.post(
+                              '/notifications/test',
+                              {'mode': mode},
                             );
-                            final rows = (status['results'] as List).where(
-                              (r) => r['id'] == result['id'],
-                            );
-                            if (rows.isNotEmpty &&
-                                ![
-                                  'queued',
-                                  'sending',
-                                ].contains(rows.first['status'])) {
-                              break;
+                            for (
+                              var i = 0;
+                              i < 12 && isCurrentAccount(account);
+                              i++
+                            ) {
+                              await Future<void>.delayed(Duration(seconds: 2));
+                              if (!isCurrentAccount(account)) return;
+                              final status = await widget.state.api.get(
+                                '/notifications/tests',
+                              );
+                              final rows = (status['results'] as List).where(
+                                (r) => r['id'] == result['id'],
+                              );
+                              if (rows.isNotEmpty &&
+                                  ![
+                                    'queued',
+                                    'sending',
+                                  ].contains(rows.first['status'])) {
+                                break;
+                              }
+                            }
+                          } finally {
+                            if (isCurrentAccount(account)) {
+                              setState(() {
+                                busy = false;
+                                version++;
+                              });
                             }
                           }
-                          if (mounted) setState(() => version++);
                         },
                       ),
                   ],
@@ -803,13 +987,17 @@ class _NotificationPanelState extends State<NotificationPanel>
                       trailing: IconButton(
                         tooltip: 'Benachrichtigungen ausschalten',
                         icon: Icon(Icons.notifications_off_outlined),
-                        onPressed: () async {
-                          try {
-                            await disable(device);
-                          } catch (error) {
-                            if (context.mounted) showError(context, error);
-                          }
-                        },
+                        onPressed: busy
+                            ? null
+                            : () async {
+                                try {
+                                  await disable(device);
+                                } catch (error) {
+                                  if (context.mounted) {
+                                    showError(context, error);
+                                  }
+                                }
+                              },
                       ),
                     ),
                 ],
