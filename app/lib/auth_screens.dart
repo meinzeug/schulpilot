@@ -12,6 +12,7 @@ import 'ui.dart';
 import 'store_screens.dart';
 import 'google_login.dart';
 import 'public_trial.dart';
+import 'legal_links.dart';
 
 class LandingScreen extends StatefulWidget {
   final AppState state;
@@ -361,6 +362,7 @@ class _LandingScreenState extends State<LandingScreen> {
                                   onPressed: () => context.go('/bedingungen'),
                                   child: Text('Vertragsbedingungen & Widerruf'),
                                 ),
+                              PublicLegalLinks(state.api.base),
                             ],
                           ),
                         ],

@@ -166,7 +166,7 @@ class LoadedOpenOrderAmount extends StatelessWidget {
               '${open.length - known.length} offene Bestellungen ohne verwertbaren Preis bleiben aus der Summe ausgeschlossen.',
             ),
           const Text(
-            'Bestellwerte, kein gemessener Zahlungseingang und keine vollständige Forderungsübersicht. Erst die tatsächliche Bankbuchung bestätigt eine Zahlung.',
+            'Bestellwerte, kein gemessener Zahlungseingang und keine vollständige Forderungsübersicht. Eine Zahlung zählt erst nach geprüftem Zahlungsbeleg.',
           ),
         ],
       ),

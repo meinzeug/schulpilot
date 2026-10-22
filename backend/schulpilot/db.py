@@ -83,6 +83,9 @@ class BankOrder(Base):
     buyer_id = Column(ForeignKey("users.id", ondelete="SET NULL"))
     idempotency = Column(String(100), unique=True, nullable=False)
     payment_reference = Column(String(24), unique=True, nullable=False)
+    payment_method = Column(String(24), nullable=False, default="bank_transfer", server_default="bank_transfer")
+    currency = Column(String(3), nullable=False, default="EUR", server_default="EUR")
+    request_digest = Column(String(64))
     status = Column(String(24), default="awaiting_payment", nullable=False)
     # NULL permits history; the unique family slot permits one open order.
     pending_slot = Column(String(32), unique=True)
@@ -932,7 +935,7 @@ class Audit(Base):
 Index("jobs_queue", Job.status, Job.created)
 
 # Register additive catalog tables after all referenced private models exist.
-from . import catalog_models  # noqa: E402,F401
+from . import catalog_models, order_withdrawal_models, payment_models  # noqa: E402,F401
 
 settings.data_dir.mkdir(parents=True, exist_ok=True)
 engine = create_engine(

@@ -38,6 +38,7 @@ def shop(operator, monkeypatch):
         "operator_name": "Künstlicher Testanbieter",
         "operator_address": "Teststraße 1, 12345 Teststadt",
         "operator_support_email": "synthetic@example.org",
+        "operator_phone": "+49 30 000000",
         "smtp_host": "smtp.invalid",
         "smtp_from": "synthetic@example.org",
     }.items():

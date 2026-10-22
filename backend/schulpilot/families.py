@@ -580,7 +580,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
     from .commerce import orders_export, trial_data
     from .db import FamilyTrial, NotificationRead, SchulbuddyTurn
 
-    family, _ = family_access(db, p, family_id)
+    family, membership = family_access(db, p, family_id)
     children = list(db.scalars(select(Child).where(Child.family_id == family.id)))
     directory = settings.data_dir / "exports"
     directory.mkdir(exist_ok=True, mode=0o700)
@@ -604,7 +604,7 @@ def export_family(family_id: str, p=Depends(parent), db=Depends(get_db)):
                         for column in SchulbuddyTurn.__table__.columns if column.name != "session_id"}
                         for row in db.scalars(select(SchulbuddyTurn).where(SchulbuddyTurn.user_id == p.user.id,
                             SchulbuddyTurn.child_id.in_([c.id for c in children])))],
-                    "orders": orders_export(db, family.id),
+                    "orders": orders_export(db, family.id, include_withdrawals=True) if membership.permission == "owner" else [],
                     "trial": trial_data(db.get(FamilyTrial, family.id)),
                     "notification_reads": [{"event_key": row.event_key, "created": row.created}
                         for row in db.scalars(select(NotificationRead).where(

@@ -231,6 +231,9 @@ class _InstallationScreenState extends State<InstallationScreen>
     'operator_name': 160,
     'operator_address': 1000,
     'operator_support_email': 254,
+    'operator_phone': 80,
+    'operator_complaints_address': 1000,
+    'operator_legal_info': 2000,
     'smtp_host': 253,
     'smtp_user': 254,
     'smtp_password': 1024,
@@ -286,6 +289,9 @@ class _InstallationScreenState extends State<InstallationScreen>
       ('operator_name', 'Betreiber'),
       ('operator_address', 'Anschrift'),
       ('operator_support_email', 'Support-E-Mail'),
+      ('operator_phone', 'Telefonnummer für Kunden'),
+      ('operator_complaints_address', 'Beschwerdeanschrift (nur falls abweichend)'),
+      ('operator_legal_info', 'Register, Vertretung und USt-IdNr. (falls erforderlich)'),
     ],
     [
       ('smtp_host', 'SMTP-Server'),
@@ -688,6 +694,8 @@ class _InstallationScreenState extends State<InstallationScreen>
           maxLines:
               [
                 'operator_address',
+                'operator_complaints_address',
+                'operator_legal_info',
                 'fcm_public_config',
                 'privacy_evidence',
                 'push_privacy_evidence',
@@ -697,6 +705,8 @@ class _InstallationScreenState extends State<InstallationScreen>
               : 1,
           keyboardType: numbers.contains(key)
               ? TextInputType.number
+              : key == 'operator_phone'
+              ? TextInputType.phone
               : ['operator_support_email', 'smtp_from'].contains(key)
               ? TextInputType.emailAddress
               : TextInputType.text,

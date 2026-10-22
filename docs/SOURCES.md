@@ -1,3 +1,26 @@
+Commerce93, 22.10.2026: neue ausdrücklich beauftragte PayPal-/Google-Pay-Webintegration
+auf unveränderlichen vorausbezahlten Bestellungen. Tatsächlich gelesene Primärquellen:
+[PayPal SDKv6](https://developer.paypal.com/checkout/integrate/),
+[Google Pay mit SDKv6](https://developer.paypal.com/google-pay/integrate/),
+[Orders Create](https://developer.paypal.com/api/orders/v2/orders-create),
+[Orders Capture](https://developer.paypal.com/api/orders/v2/orders-capture),
+[Webhooksignaturprüfung](https://developer.paypal.com/api/webhooks/v1/verify-webhook-signature-post/),
+[Ereignisse](https://developer.paypal.com/api/rest/webhooks/event-names/),
+[Payments-v2-Schema](https://developer.paypal.com/api/payments/v2/schema.json),
+[Refunds](https://developer.paypal.com/checkout/refund-payment),
+[Google-Pay-Freigabe](https://developers.google.com/pay/api/web/guides/test-and-deploy/publish-your-integration)
+und [Google-Pay-FAQ](https://developers.google.com/pay/api/faq).
+Gesamtpreis-/Vertragsdaten und ausdrückliche Bestellbestätigung anhand
+[§312j BGB](https://www.gesetze-im-internet.de/bgb/__312j.html),
+[§3 PAngV](https://www.gesetze-im-internet.de/pangv_2022/__3.html),
+[Art.246a §1 EGBGB](https://www.gesetze-im-internet.de/bgbeg/art_246a__1.html)
+und [§356a BGB](https://www.gesetze-im-internet.de/bgb/__356a.html).
+[W3C PaymentRequest und Permissions Policy](https://www.w3.org/TR/payment-request/#permissions-policy)
+und [Googles iframe-Anforderung](https://developers.google.com/pay/api/web/guides/tutorial?hl=en)
+belegen den erlaubten Top-Level-Kontext und erforderliche Delegation bei Einbettung.
+Keine Händlerfreigabe, echte Zahlung oder juristische Abnahme behauptet.
+Konkrete Grenzen, Backendvertrag und isolierte Nachweise: [PAYMENTS.md](PAYMENTS.md).
+
 Arbeitsstand22.10.2026 · Releasekandidat1.22.0+90: dritte zusätzliche Bedienrunde
 mit300 unabhängig gezählten Maßnahmen gegenüber den vorherigen638.
 Tatsächlich recherchierte Primärquellen: [W3C, klare Seitenstruktur](https://www.w3.org/WAI/WCAG2/supplemental/patterns/o2p03-page-structure/),

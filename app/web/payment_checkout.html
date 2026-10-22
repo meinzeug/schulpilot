@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de" data-order-id="__ORDER_ID__"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sichere Zahlung · SCHULPILOT</title>
+<link rel="stylesheet" href="/payment_checkout.css">
+<script nonce="__CSP_NONCE__" src="/payment_checkout.js" defer></script>
+</head><body>
+<main>
+<a class="back" href="/bestellungen">← Zu meinen Bestellungen</a>
+<header><p class="brand">SCHULPILOT</p><h1>Sichere Zahlung</h1></header>
+<section aria-labelledby="order-heading">
+<h2 id="order-heading">Gespeicherte Bestellung</h2>
+<p id="offer">Bestellung wird gelesen …</p><p id="amount" class="amount"></p>
+<p id="method"></p><p id="status" role="status" aria-live="polite"></p>
+<p id="notice"></p>
+</section>
+<section aria-labelledby="payment-heading">
+<h2 id="payment-heading">Zahlung ausführen</h2>
+<p id="privacy">Erst mit „Zahlung vorbereiten“ wird der Zahlungsanbieter geladen. Dabei erhält PayPal technische Verbindungsdaten und den Zahlungsbetrag. Google Pay wird nur bei deiner entsprechenden Zahlungswahl geladen. Keine Lerninhalte werden übermittelt.</p>
+<button id="prepare" type="button" hidden>Zahlung vorbereiten</button>
+<p id="ready" hidden>Prüfe den Betrag. Mit dem folgenden Anbieterbutton öffnest du das Zahlungsfenster.</p>
+<div id="payment-button"></div>
+<p id="message" role="status" aria-live="polite"></p>
+<div class="actions">
+<button id="refresh" type="button">Gespeicherten Status aktualisieren</button>
+<button id="reconcile" type="button" hidden>Zahlung beim Anbieter abgleichen</button>
+</div>
+<p>Ein geöffnetes oder geschlossenes Zahlungsfenster bestätigt keine Zahlung. Maßgeblich ist der gespeicherte Zahlungsstatus.</p>
+</section>
+<p><a href="/bedingungen">Vertragsbedingungen und Widerruf</a> · <a href="/privacy">Datenschutz</a></p>
+</main>
+</body></html>

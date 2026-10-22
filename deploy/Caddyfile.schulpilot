@@ -14,8 +14,22 @@ schulpilot.dorfspy.de {
     Referrer-Policy "no-referrer"
     X-Frame-Options "DENY"
     Permissions-Policy "camera=(self), microphone=(self), display-capture=(self), geolocation=()"
-    Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     Cache-Control "no-cache"
+  }
+  # Only authenticated checkout documents may load payment-provider resources.
+  # Their per-response nonce/CSP comes from the API. The main SPA stays scoped.
+  @application not path /api/orders/*/payment-checkout /api/orders/*/withdrawal-form /api/legal/withdrawal /api/admin/withdrawals/dashboard /widerrufen
+  header @application Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  @pay path_regexp pay ^/pay/([a-f0-9]{32})$
+  # sp_session intentionally has Path=/api; a rewrite would omit its cookie.
+  redir @pay /api/orders/{re.pay.1}/payment-checkout?{query} 303
+  handle /widerrufen {
+    rewrite * /api/legal/withdrawal
+    reverse_proxy 127.0.0.1:3240
+  }
+  handle /impressum {
+    rewrite * /api/legal/imprint
+    reverse_proxy 127.0.0.1:3240
   }
   @api path /api /api/*
   handle /privacy {

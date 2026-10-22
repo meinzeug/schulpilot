@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de" data-mode="__WITHDRAWAL_MODE__" data-order-id="__ORDER_ID__"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Vertrag widerrufen · SCHULPILOT</title>
+<link rel="stylesheet" href="/payment_checkout.css"><link rel="stylesheet" href="/withdrawal.css">
+<script nonce="__CSP_NONCE__" src="/withdrawal.js" defer></script>
+</head><body><main>
+<a class="back" href="/">← Zu SCHULPILOT</a>
+<header><p class="brand">SCHULPILOT</p><h1>Vertrag widerrufen</h1></header>
+<section aria-labelledby="declaration-heading"><h2 id="declaration-heading">Deine Erklärung</h2>
+<p>Hier kannst du uns deinen Widerruf mitteilen. Das Formular ist auch ohne Anmeldung erreichbar. Du erhältst einen Eingangsbeleg. Eine Rückzahlung wird dadurch nicht automatisch ausgeführt.</p>
+<p id="scope" role="status"></p>
+<form id="withdrawal-form">
+<p><label for="buyer-name">Dein vollständiger Name</label><br><input id="buyer-name" name="buyer_name" autocomplete="name" required minlength="2" maxlength="160" value="__BUYER_NAME__"></p>
+<p><label for="contact-email">E-Mail für die Eingangsbestätigung</label><br><input id="contact-email" name="contact_email" type="email" autocomplete="email" required maxlength="254" value="__CONTACT_EMAIL__"></p>
+<p><label for="order-reference">Bestellnummer oder Verwendungszweck</label><br><input id="order-reference" name="order_reference" required maxlength="80" value="__ORDER_REFERENCE__" aria-describedby="reference-help"></p>
+<p id="reference-help">Du findest diese Angabe in deiner Bestellbestätigung. Teile hier keine Kinderfotos, Lernantworten oder Bankzugangsdaten.</p>
+<label class="confirm"><input id="confirm" type="checkbox" required> Hiermit widerrufe ich den oben bezeichneten Vertrag über SCHULPILOT.</label>
+<p>Prüfe Name, Bestellbezug und E-Mail. Mit dem folgenden Button übermittelst du deine Erklärung.</p>
+<button id="submit" type="submit">Widerruf bestätigen</button>
+</form></section>
+<section id="result" hidden aria-labelledby="result-heading"><h2 id="result-heading">Dein Eingangsbeleg</h2>
+<p id="result-notice" role="status" aria-live="polite"></p>
+<p id="mail-status"></p><pre id="receipt" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+<button id="download" type="button">Eingangsbeleg als Textdatei speichern</button>
+</section><p id="message" role="alert" aria-live="polite"></p>
+<nav><a href="/bestellungen">Meine Bestellungen</a> · <a href="/bedingungen">Vertragsbedingungen</a> · <a href="/impressum">Impressum</a> · <a href="/privacy">Datenschutz</a></nav>
+</main></body></html>

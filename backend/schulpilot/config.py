@@ -40,6 +40,9 @@ class Settings:
     operator_name: str = os.getenv("OPERATOR_NAME", "")
     operator_address: str = os.getenv("OPERATOR_ADDRESS", "")
     operator_support_email: str = os.getenv("OPERATOR_SUPPORT_EMAIL", "")
+    operator_phone: str = os.getenv("OPERATOR_PHONE", "")
+    operator_complaints_address: str = os.getenv("OPERATOR_COMPLAINTS_ADDRESS", "")
+    operator_legal_info: str = os.getenv("OPERATOR_LEGAL_INFO", "")
     codex_socket: str = os.getenv("CODEX_SOCKET", "")
     codex_approved: bool = os.getenv("CODEX_APPROVED", "false") == "true"
     codex_auth_mode: str = os.getenv("CODEX_AUTH_MODE", "api_key")
@@ -75,6 +78,9 @@ RUNTIME_FIELDS = frozenset(
         "operator_name",
         "operator_address",
         "operator_support_email",
+        "operator_phone",
+        "operator_complaints_address",
+        "operator_legal_info",
         "fcm_public_config",
         "fcm_service_account_json",
         "push_approved",

@@ -9,6 +9,7 @@ import 'api.dart';
 import 'app_palette.dart';
 export 'app_palette.dart';
 import 'download_panel.dart';
+import 'legal_links.dart';
 import 'schulbuddy.dart';
 
 // Shared light-surface palette. Cyan is an accent on navy, not a text color
@@ -1463,6 +1464,7 @@ class WorkspaceShell extends StatelessWidget {
                                           openRoute(context, '/about'),
                                       child: Text('Über SCHULPILOT'),
                                     ),
+                                    PublicLegalLinks(state.api.base),
                                   ],
                                 ),
                               ],

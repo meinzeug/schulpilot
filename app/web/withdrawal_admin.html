@@ -1,0 +1,14 @@
+<!doctype html><html lang="de"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Widerrufe prüfen · SCHULPILOT</title>
+<link rel="stylesheet" href="/payment_checkout.css"><link rel="stylesheet" href="/withdrawal.css">
+<script nonce="__CSP_NONCE__" src="/withdrawal_admin.js" defer></script>
+</head><body><main><a class="back" href="/admin/verkauf">← Zur Verkaufsverwaltung</a>
+<header><p class="brand">SCHULPILOT · BETRIEB</p><h1>Widerrufe prüfen</h1></header>
+<p>Diese Ansicht enthält Vertragsangaben erwachsener Käufer. Die Zuordnung einer Erklärung bestätigt keinen Geldrückfluss. Rückzahlungen werden gesondert beim Zahlungsdienst beziehungsweise bei der Bank geprüft und ausgeführt.</p>
+<section aria-labelledby="selection-heading"><h2 id="selection-heading">Eingegangene Erklärungen</h2>
+<label for="status-filter">Status</label><select id="status-filter"><option value="">Alle</option><option value="received_unverified">Zuordnung noch prüfen</option><option value="received_verified">Berechtigt eingegangen</option><option value="linked_verified">Geprüft zugeordnet</option><option value="review_required">Frist oder Einordnung prüfen</option></select>
+<div class="actions"><button id="refresh" type="button">Neu laden</button><button id="next" type="button" hidden>Weitere Eingänge</button></div>
+<p id="message" role="status" aria-live="polite"></p><div id="declarations"></div>
+</section><nav><a href="/widerrufen">Öffentliches Widerrufsformular</a><a href="/impressum">Impressum</a></nav>
+</main></body></html>

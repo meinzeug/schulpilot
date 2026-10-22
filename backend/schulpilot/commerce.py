@@ -1,4 +1,4 @@
-"""Prepaid family access. Only a recorded manual bank check grants access."""
+"""Prepaid family access from checked bank receipts or verified provider payments."""
 
 import json
 import re
@@ -18,7 +18,7 @@ from .db import BankOrder, Child, Family, FamilyTrial, Membership, StoreConfigur
 from .security import admin, audit, decrypt, digest, encrypt, family_access, insert_ignore, parent, rate_limit
 
 router = APIRouter(tags=["Verkauf"])
-TERMS_VERSION = "2026-10-14.1"
+TERMS_VERSION = "2026-10-22.2"
 DAY = 86400
 DEFAULT_PLANS = [
     {"id": "start", "name": "Start", "price_cents": 990, "children": 1, "calls": 300},
@@ -70,8 +70,10 @@ def store(db):
 def prerequisites(db, config):
     site = runtime_settings(db)
     missing = []
-    if not all((site.operator_name, site.operator_address, site.operator_support_email)):
-        missing.append("Vollständige Betreiberangaben")
+    if not all(
+        (site.operator_name, site.operator_address, site.operator_support_email, getattr(site, "operator_phone", ""))
+    ):
+        missing.append("Vollständige Betreiberangaben einschließlich Telefonnummer")
     if not (config.recipient and config.iban):
         missing.append("Kontoinhaber und geprüfte IBAN")
     if config.tax_mode == "unconfirmed":
@@ -84,7 +86,7 @@ def prerequisites(db, config):
 def trial_prerequisites(db):
     site = runtime_settings(db)
     missing = []
-    if not all((site.operator_name, site.operator_address, site.operator_support_email)):
+    if not all((site.operator_name, site.operator_address, site.operator_support_email, site.operator_phone)):
         missing.append("Vollständige Betreiberangaben")
     if not site.mail_ready:
         missing.append("E-Mail-Versand zur Kontobestätigung")
@@ -93,10 +95,16 @@ def trial_prerequisites(db):
 
 def trial_catalog(db, config):
     site = runtime_settings(db)
-    return {"enabled": config.trial_enabled and not trial_prerequisites(db), "duration_days": 30,
-            "children": min(1, site.default_child_limit), "calls": site.default_call_limit,
-            "payment_required": False, "auto_renew": False, "starts_on": "verified_email",
-            "notice": "Einmalige kostenlose Testphase für neue Familien nach E-Mail-Bestätigung. Begrenzte KI-Nutzung; bestehende Kosten- und Systemgrenzen gelten weiter. Keine automatische Bestellung oder Verlängerung."}
+    return {
+        "enabled": config.trial_enabled and not trial_prerequisites(db),
+        "duration_days": 30,
+        "children": min(1, site.default_child_limit),
+        "calls": site.default_call_limit,
+        "payment_required": False,
+        "auto_renew": False,
+        "starts_on": "verified_email",
+        "notice": "Einmalige kostenlose Testphase für neue Familien nach E-Mail-Bestätigung. Begrenzte KI-Nutzung; bestehende Kosten- und Systemgrenzen gelten weiter. Keine automatische Bestellung oder Verlängerung.",
+    }
 
 
 def registration_notice(db):
@@ -116,9 +124,17 @@ def prepare_trial(db, family, user, site):
     family.commerce_required = True
     family.plan = "Testphase nach E-Mail-Bestätigung"
     family.child_limit, family.call_limit, family.budget_micros = (
-        min(1, site.default_child_limit), site.default_call_limit, site.default_budget_micros)
-    row = FamilyTrial(family_id=family.id, owner_user_id=user.id, child_limit=family.child_limit,
-        call_limit=family.call_limit, budget_micros=family.budget_micros)
+        min(1, site.default_child_limit),
+        site.default_call_limit,
+        site.default_budget_micros,
+    )
+    row = FamilyTrial(
+        family_id=family.id,
+        owner_user_id=user.id,
+        child_limit=family.child_limit,
+        call_limit=family.call_limit,
+        budget_micros=family.budget_micros,
+    )
     db.add(row)
     audit(db, user.id, "trial.prepared", family.id)
     return row
@@ -128,8 +144,14 @@ def activate_trials(db, user):
     """Once, after verified mail/OIDC: Family lock serializes distinct links."""
     if user.role != "parent" or not user.verified or user.disabled:
         return
-    candidates = list(db.scalars(select(FamilyTrial.family_id).where(
-        FamilyTrial.owner_user_id == user.id, FamilyTrial.starts.is_(None)).order_by(FamilyTrial.family_id).limit(20)))
+    candidates = list(
+        db.scalars(
+            select(FamilyTrial.family_id)
+            .where(FamilyTrial.owner_user_id == user.id, FamilyTrial.starts.is_(None))
+            .order_by(FamilyTrial.family_id)
+            .limit(20)
+        )
+    )
     for family_id in candidates:
         if db.bind.dialect.name == "postgresql":
             family = db.scalar(select(Family).where(Family.id == family_id).with_for_update())
@@ -137,9 +159,19 @@ def activate_trials(db, user):
             db.execute(update(Family).where(Family.id == family_id).values(name=Family.name))
             family = db.get(Family, family_id, populate_existing=True)
         row = db.get(FamilyTrial, family_id, populate_existing=True)
-        member = db.scalar(select(Membership).where(Membership.family_id == family_id,
-            Membership.user_id == user.id, Membership.permission == "owner"))
-        if not family or family.synthetic or not member or not row or row.owner_user_id != user.id or row.starts is not None:
+        member = db.scalar(
+            select(Membership).where(
+                Membership.family_id == family_id, Membership.user_id == user.id, Membership.permission == "owner"
+            )
+        )
+        if (
+            not family
+            or family.synthetic
+            or not member
+            or not row
+            or row.owner_user_id != user.id
+            or row.starts is not None
+        ):
             continue
         row.starts = int(now())
         row.ends = row.starts + 30 * DAY
@@ -152,10 +184,17 @@ def trial_data(row, current=None):
     if row is None:
         return None
     current = int(now()) if current is None else current
-    return {"state": "pending" if row.starts is None else "active" if row.starts <= current < row.ends else "expired",
-            "starts": row.starts, "ends": row.ends, "duration_days": 30, "children": row.child_limit,
-            "calls": row.call_limit, "budget_micros_usd": row.budget_micros, "auto_renew": False,
-            "payment_required": False}
+    return {
+        "state": "pending" if row.starts is None else "active" if row.starts <= current < row.ends else "expired",
+        "starts": row.starts,
+        "ends": row.ends,
+        "duration_days": 30,
+        "children": row.child_limit,
+        "calls": row.call_limit,
+        "budget_micros_usd": row.budget_micros,
+        "auto_renew": False,
+        "payment_required": False,
+    }
 
 
 def current_trial(db, family, current=None):
@@ -182,15 +221,30 @@ def tax_notice(mode):
     )
 
 
-def contract_text(seller):
+def contract_text(seller, payment_method="bank_transfer"):
+    methods = {
+        "bank_transfer": "Überweisung mit dem angegebenen Verwendungszweck",
+        "paypal": "PayPal",
+        "google_pay": "Google Pay über PayPal",
+    }
+    if payment_method not in methods:
+        raise HTTPException(422, "Unbekanntes Zahlungsmittel.")
+    payment_terms = (
+        "Nach dokumentierter Prüfung des tatsächlichen Bankzahlungseingangs aktiviert der Anbieter den Zugang manuell."
+        if payment_method == "bank_transfer"
+        else "Der Zugang wird erst nach serverseitig bestätigter vollständiger Zahlung an den gebundenen Händler freigeschaltet. Eine Freigabe im Zahlungsfenster allein genügt nicht."
+    )
     return f"""SCHULPILOT – Vertragsbedingungen {TERMS_VERSION}
 Anbieter: {seller["name"]}
 Anschrift: {seller["address"]}
 Kontakt: {seller["email"]}
+Telefon: {seller["phone"]}
+{seller["legal_info"]}
+Beschwerdeanschrift: {seller["complaints_address"] or seller["address"]}
 
 Leistung: Nutzung der SCHULPILOT-Lernplattform für die im bestellten Tarif angegebene Kinderanzahl und die enthaltenen KI-Schritte. Ein KI-Schritt ist ein einzelner Erkennungs-, Aufgaben- oder Lernhilfe-Aufruf, einschließlich ausdrücklich erneut angeforderter Versuche. Bei fehlgeschlagenen Aufrufen mit unbekanntem Verbrauch bleibt die Reservierung angerechnet. Gespeicherte Lerninhalte bleiben nach Ende der Laufzeit im Konto erreichbar. Uploads, Antworten und vorhandene Erklärungen sind keine zusätzlichen KI-Schritte. KI-Ausgaben können Fehler enthalten und werden nicht als Noten- oder Lernerfolgsgarantie verkauft. Die Verfügbarkeit externer KI-Anbieter kann schwanken; es gibt keinen heimlichen Modellwechsel.
 
-Der Gesamtpreis und der Leistungsumfang werden vor der Bestellung angezeigt. Zahlung ausschließlich per Überweisung mit dem angegebenen Verwendungszweck. Die Bestellung wird mit der gespeicherten Bestellbestätigung angenommen. Nach Prüfung des tatsächlichen Zahlungseingangs aktiviert der Anbieter den Zugang manuell. Die Laufzeit beträgt 30 Tage ab Beginn; keine automatische Verlängerung, keine wiederkehrende Abbuchung. Bei Verlängerung desselben Tarifs beginnt der neue Zeitraum nach dem bisherigen. Ein Tarifwechsel während einer laufenden oder vorgemerkten Laufzeit erfolgt erst nach deren Ende. Die enthaltenen KI-Schritte gelten pro bezahltem Zeitraum und werden nicht angesammelt.
+Der Gesamtpreis und der Leistungsumfang werden vor der Bestellung angezeigt. Zahlung per {methods[payment_method]}. Die Bestellung wird mit der gespeicherten Bestellbestätigung angenommen. {payment_terms} Die Laufzeit beträgt 30 Tage ab Beginn; keine automatische Verlängerung, keine wiederkehrende Abbuchung. Bei Verlängerung desselben Tarifs beginnt der neue Zeitraum nach dem bisherigen. Ein Tarifwechsel während einer laufenden oder vorgemerkten Laufzeit erfolgt erst nach deren Ende. Die enthaltenen KI-Schritte gelten pro bezahltem Zeitraum und werden nicht angesammelt.
 
 Ohne ausdrücklichen Wunsch nach vorzeitigem Beginn startet die Leistung frühestens 14 Tage nach Vertragsabschluss und erst nach Zahlungsprüfung. Bei gewünschtem vorzeitigem Beginn kann der Zugang nach Zahlungsprüfung früher beginnen. Gesetzliche Mängel- und Verbraucherrechte bleiben bestehen.
 
@@ -206,6 +260,9 @@ def seller_data(db, config):
         "name": site.operator_name,
         "address": site.operator_address,
         "email": site.operator_support_email,
+        "phone": getattr(site, "operator_phone", ""),
+        "legal_info": getattr(site, "operator_legal_info", ""),
+        "complaints_address": getattr(site, "operator_complaints_address", ""),
         "tax_mode": config.tax_mode,
         "tax_notice": tax_notice(config.tax_mode),
     }
@@ -213,8 +270,19 @@ def seller_data(db, config):
 
 @router.get("/store/catalog")
 def catalog(db=Depends(get_db)):
+    from .payments_paypal import payment_methods
+
     config, revision = store(db)
+    seller = seller_data(db, config)
+    legal_ready = (
+        all((seller["name"], seller["address"], seller["email"], seller["phone"])) and config.tax_mode != "unconfirmed"
+    )
+    methods = payment_methods(db)
+    preview = "Die Vertragsbedingungen werden vorbereitet. Vollständige Anbieter-, Kontakt- und Steuerangaben fehlen noch; Bestellungen sind nicht freigegeben."
     return {
+        "payment_methods": methods,
+        "legal_ready": legal_ready,
+        "legal_notice": "" if legal_ready else preview,
         "enabled": config.enabled and not prerequisites(db, config),
         "revision": revision,
         "currency": "EUR",
@@ -222,9 +290,10 @@ def catalog(db=Depends(get_db)):
         "auto_renew": False,
         "plans": [p.model_dump() for p in config.plans],
         "tax_notice": tax_notice(config.tax_mode),
-        "terms_version": TERMS_VERSION,
+        "terms_version": TERMS_VERSION if legal_ready else None,
         "trial": trial_catalog(db, config),
-        "terms": contract_text(seller_data(db, config)),
+        "terms": contract_text(seller) if legal_ready else preview,
+        "terms_by_payment_method": {method: contract_text(seller, method) for method in methods} if legal_ready else {},
     }
 
 
@@ -233,8 +302,12 @@ def admin_store(p=Depends(admin), db=Depends(get_db)):
     config, revision = store(db)
     audit(db, p.user.id, "store.settings_read", "store")
     db.commit()
-    return {**config.model_dump(), "revision": revision, "missing": prerequisites(db, config),
-            "trial_missing": trial_prerequisites(db)}
+    return {
+        **config.model_dump(),
+        "revision": revision,
+        "missing": prerequisites(db, config),
+        "trial_missing": trial_prerequisites(db),
+    }
 
 
 @router.put("/admin/store")
@@ -264,18 +337,46 @@ def update_store(data: StoreUpdate, p=Depends(admin), db=Depends(get_db)):
     return {"revision": data.revision + 1, "message": "Verkaufseinstellungen gespeichert."}
 
 
+def payment_hold(db, order_id):
+    from .order_withdrawals import payment_hold as held
+
+    return held(db, order_id)
+
+
+def last_paid_order(db, family_id, current):
+    """The latest unheld paid period; withdrawal holds never extend another order."""
+    return next(
+        (
+            row
+            for row in db.scalars(
+                select(BankOrder)
+                .where(BankOrder.family_id == family_id, BankOrder.status == "paid", BankOrder.ends > current)
+                .order_by(BankOrder.ends.desc())
+            )
+            if not payment_hold(db, row.id)
+        ),
+        None,
+    )
+
+
 def current_order(db, family, current=None):
     current = int(now()) if current is None else current
-    return db.scalar(
-        select(BankOrder)
-        .where(
-            BankOrder.family_id == family.id,
-            BankOrder.status == "paid",
-            BankOrder.starts <= current,
-            BankOrder.ends > current,
-        )
-        .order_by(BankOrder.starts.desc())
-        .limit(1)
+    return next(
+        (
+            row
+            for row in db.scalars(
+                select(BankOrder)
+                .where(
+                    BankOrder.family_id == family.id,
+                    BankOrder.status == "paid",
+                    BankOrder.starts <= current,
+                    BankOrder.ends > current,
+                )
+                .order_by(BankOrder.starts.desc())
+            )
+            if not payment_hold(db, row.id)
+        ),
+        None,
     )
 
 
@@ -286,20 +387,37 @@ def access(db, family):
     if order:
         return {"state": "active", "plan": order.offer["name"], "starts": order.starts, "ends": order.ends}
     trial = current_trial(db, family)
-    future = db.scalar(
-        select(BankOrder)
-        .where(BankOrder.family_id == family.id, BankOrder.status == "paid", BankOrder.starts > now())
-        .order_by(BankOrder.starts)
-        .limit(1)
+    future = next(
+        (
+            row
+            for row in db.scalars(
+                select(BankOrder)
+                .where(BankOrder.family_id == family.id, BankOrder.status == "paid", BankOrder.starts > now())
+                .order_by(BankOrder.starts)
+            )
+            if not payment_hold(db, row.id)
+        ),
+        None,
     )
     if trial:
-        return {"state": "trial", "plan": "Kostenlose Testphase", "starts": trial.starts, "ends": trial.ends,
-                "trial": trial_data(trial), "scheduled_paid": {"starts": future.starts, "ends": future.ends,
-                    "plan": future.offer["name"]} if future else None}
+        return {
+            "state": "trial",
+            "plan": "Kostenlose Testphase",
+            "starts": trial.starts,
+            "ends": trial.ends,
+            "trial": trial_data(trial),
+            "scheduled_paid": {"starts": future.starts, "ends": future.ends, "plan": future.offer["name"]}
+            if future
+            else None,
+        }
     ended_trial = db.get(FamilyTrial, family.id)
     return {
         "trial": trial_data(ended_trial),
-        "state": "scheduled" if future else "trial_expired" if ended_trial and ended_trial.starts is not None else "inactive",
+        "state": "scheduled"
+        if future
+        else "trial_expired"
+        if ended_trial and ended_trial.starts is not None
+        else "inactive",
         "plan": future.offer["name"] if future else family.plan,
         "starts": future.starts if future else None,
         "ends": future.ends if future else None,
@@ -328,6 +446,8 @@ def order_data(row, *, private=True):
     fields = (
         "id",
         "payment_reference",
+        "payment_method",
+        "currency",
         "status",
         "amount_cents",
         "offer",
@@ -344,8 +464,21 @@ def order_data(row, *, private=True):
     return result
 
 
-def orders_export(db, family_id):
-    return [order_data(row) for row in db.scalars(select(BankOrder).where(BankOrder.family_id == family_id))]
+def orders_export(db, family_id, *, include_withdrawals=False):
+    from .order_withdrawals import withdrawals_export
+
+    declarations = withdrawals_export(db, family_id) if include_withdrawals else []
+    return [
+        {
+            **order_data(row),
+            **(
+                {"withdrawals": [entry for entry in declarations if entry.get("order_id") == row.id]}
+                if include_withdrawals
+                else {}
+            ),
+        }
+        for row in db.scalars(select(BankOrder).where(BankOrder.family_id == family_id))
+    ]
 
 
 class OrderCreate(s.Strict):
@@ -354,6 +487,7 @@ class OrderCreate(s.Strict):
     request_key: str = Field(min_length=16, max_length=60, pattern=r"^[A-Za-z0-9_-]+$")
     accept_terms: Literal[True]
     early_start: bool = False
+    payment_method: Literal["bank_transfer", "paypal", "google_pay"] = "bank_transfer"
 
 
 @router.get("/families/{family_id}/orders")
@@ -380,14 +514,25 @@ def create_order(family_id: str, data: OrderCreate, p=Depends(parent), db=Depend
             403, "Im Testraum sind keine Käufe möglich. Bitte zuerst ein eigenes Elternkonto erstellen."
         )
     rate_limit(db, "orders:" + p.user.id, 10, 3600)
-    db.execute(update(Family).where(Family.id == family.id).values(child_limit=Family.child_limit))
+    from .payments_paypal import lock_owned_family
+
+    family = lock_owned_family(db, p, family.id)
     key = family.id + ":" + data.request_key
     existing = db.scalar(select(BankOrder).where(BankOrder.idempotency == key))
+    request_digest = digest(data.model_dump_json())
     if existing:
+        if existing.payment_method != data.payment_method or (
+            existing.request_digest and existing.request_digest != request_digest
+        ):
+            raise HTTPException(409, "Dieser Auftragsschlüssel gehört zu einer anderen Bestellung.")
         return order_data(existing)
     config, revision = store(db)
     if not config.enabled or prerequisites(db, config):
         raise HTTPException(503, "Bestellungen sind noch nicht freigegeben.")
+    from .payments_paypal import method_available
+
+    if not method_available(db, data.payment_method):
+        raise HTTPException(503, "Das gewählte Zahlungsmittel ist noch nicht freigegeben.")
     if revision != data.catalog_revision:
         raise HTTPException(409, "Die Tarife wurden geändert. Bitte prüfe den aktuellen Gesamtpreis.")
     plan = next((item for item in config.plans if item.id == data.plan_id), None)
@@ -398,12 +543,7 @@ def create_order(family_id: str, data: OrderCreate, p=Depends(parent), db=Depend
         raise HTTPException(409, "Dieser Tarif bietet zu wenige Kinderzugänge für deine Familie.")
     if db.scalar(select(BankOrder.id).where(BankOrder.pending_slot == family.id)):
         raise HTTPException(409, "Es gibt bereits eine offene Bestellung. Du findest sie unter Tarif & Bestellungen.")
-    remaining = db.scalar(
-        select(BankOrder)
-        .where(BankOrder.family_id == family.id, BankOrder.status == "paid", BankOrder.ends > now())
-        .order_by(BankOrder.ends.desc())
-        .limit(1)
-    )
+    remaining = last_paid_order(db, family.id, int(now()))
     if remaining and remaining.offer["id"] != plan.id:
         raise HTTPException(409, "Während einer laufenden Laufzeit ist nur die Verlängerung desselben Tarifs möglich.")
     offer = {**plan.model_dump(), "duration_days": 30, "budget_micros": 5_000_000}
@@ -414,10 +554,14 @@ def create_order(family_id: str, data: OrderCreate, p=Depends(parent), db=Depend
         idempotency=key,
         payment_reference="SCH-" + secrets.token_hex(6).upper(),
         amount_cents=plan.price_cents,
+        payment_method=data.payment_method,
+        currency="EUR",
+        request_digest=request_digest,
         offer=offer,
         seller=seller,
         bank={"recipient": config.recipient, "iban": config.iban, "name": config.bank_name},
-        terms=contract_text(seller),
+        terms=contract_text(seller, data.payment_method),
+        terms_version=TERMS_VERSION,
         early_start=data.early_start,
         pending_slot=family.id,
     )
@@ -431,6 +575,11 @@ def create_order(family_id: str, data: OrderCreate, p=Depends(parent), db=Depend
 
 def receipt(row):
     bank = row.bank
+    if row.payment_method == "bank_transfer":
+        payment_text = f"Empfänger: {bank['recipient']}\nIBAN: {bank['iban']}\nBank: {bank['name']}\nBitte innerhalb von 14 Tagen überweisen. Erst nach manueller Prüfung des Zahlungseingangs wird freigeschaltet."
+    else:
+        label = "Google Pay über PayPal" if row.payment_method == "google_pay" else "PayPal"
+        payment_text = f"Zahlungsmittel: {label}\nKeine Banküberweisung für diese Bestellung senden. Erst eine vom Zahlungsanbieter bestätigte vollständige Zahlung schaltet die gespeicherte Laufzeit frei."
     return f"""SCHULPILOT – Bestellbestätigung
 Bestellnummer / Verwendungszweck: {row.payment_reference}
 Bestellt am: {datetime.fromtimestamp(row.created, timezone.utc).isoformat()}
@@ -438,10 +587,7 @@ Tarif: {row.offer["name"]} · {row.offer["children"]} Kinderzugänge · {row.off
 Laufzeit: 30 Tage, keine automatische Verlängerung
 Gesamtpreis: {row.amount_cents / 100:.2f} EUR
 {row.seller["tax_notice"]}
-Empfänger: {bank["recipient"]}
-IBAN: {bank["iban"]}
-Bank: {bank["name"]}
-Bitte innerhalb von 14 Tagen überweisen. Erst nach manueller Prüfung des Zahlungseingangs wird freigeschaltet.
+{payment_text}
 Vorzeitiger Beginn ausdrücklich gewünscht: {"Ja" if row.early_start else "Nein"}
 Status: {row.status}
 
@@ -483,7 +629,17 @@ def resend(order_id: str, p=Depends(parent), db=Depends(get_db)):
 
 @router.post("/orders/{order_id}/cancel")
 def cancel(order_id: str, p=Depends(parent), db=Depends(get_db)):
+    from .payment_models import PaymentAttempt
+    from .payments_paypal import lock_owned_family
+
     row = owned_order(db, p, order_id)
+    lock_owned_family(db, p, row.family_id)
+    row = owned_order(db, p, order_id)
+    payment = db.scalar(select(PaymentAttempt).where(PaymentAttempt.order_id == row.id))
+    if payment and (payment.capture_started is not None or payment.status in ("capture_pending", "uncertain")):
+        raise HTTPException(
+            409, "Zahlungsausgang zuerst abgleichen. Eine mögliche Zahlung wird nicht durch Stornieren gelöscht."
+        )
     result = db.execute(
         update(BankOrder)
         .where(BankOrder.id == row.id, BankOrder.status == "awaiting_payment")
@@ -493,6 +649,8 @@ def cancel(order_id: str, p=Depends(parent), db=Depends(get_db)):
         raise HTTPException(
             409, "Die Bestellung wurde bereits bearbeitet. Bei Widerruf bitte den Anbieter kontaktieren."
         )
+    if payment:
+        payment.status, payment.updated = "cancelled", int(now())
     audit(db, p.user.id, "order.cancelled", row.id)
     db.commit()
     return {"message": "Offene Bestellung storniert. Falls du schon überwiesen hast, kontaktiere bitte den Anbieter."}
@@ -521,10 +679,22 @@ def approve(order_id: str, data: PaymentCheck, p=Depends(admin), db=Depends(get_
     row = db.get(BankOrder, order_id)
     if not row or not row.family_id:
         raise HTTPException(404, "Bestellung nicht gefunden.")
+    if row.payment_method != "bank_transfer":
+        raise HTTPException(
+            409, "Anbieterzahlungen werden ausschließlich über verifizierte Zahlungsbelege freigeschaltet."
+        )
     db.execute(update(Family).where(Family.id == row.family_id).values(child_limit=Family.child_limit))
-    db.refresh(row)
+    from .payments_paypal import fresh_authority
+
+    db.expire_all()
+    fresh_authority(db, p, role="admin")
+    row = db.get(BankOrder, order_id, populate_existing=True)
+    if not row or not row.family_id:
+        raise HTTPException(404, "Bestellung nicht gefunden.")
     if row.status != "awaiting_payment":
         raise HTTPException(409, "Diese Bestellung wurde bereits bearbeitet.")
+    if payment_hold(db, row.id):
+        raise HTTPException(409, "Ein Widerruf wird bearbeitet. Diese Bestellung wird nicht freigeschaltet.")
     if data.received_cents != row.amount_cents:
         raise HTTPException(
             422,
@@ -533,12 +703,7 @@ def approve(order_id: str, data: PaymentCheck, p=Depends(admin), db=Depends(get_
     if data.booking_date > datetime.now(timezone.utc).date():
         raise HTTPException(422, "Der Buchungstag darf nicht in der Zukunft liegen.")
     current = int(now())
-    previous = db.scalar(
-        select(BankOrder)
-        .where(BankOrder.family_id == row.family_id, BankOrder.status == "paid", BankOrder.ends > current)
-        .order_by(BankOrder.ends.desc())
-        .limit(1)
-    )
+    previous = last_paid_order(db, row.family_id, current)
     if previous and previous.offer["id"] != row.offer["id"]:
         raise HTTPException(409, "Ein anderer Tarif ist noch aktiv. Erst nach Ende freischalten.")
     family = db.get(Family, row.family_id)
@@ -579,8 +744,19 @@ def approve(order_id: str, data: PaymentCheck, p=Depends(admin), db=Depends(get_
 
 
 def erase_family_orders(db, family_id):
-    """Keep only required paid accounting records, unlink all family identity."""
-    db.execute(delete(BankOrder).where(BankOrder.family_id == family_id, BankOrder.status.not_in(["paid", "refunded"])))
+    """Keep necessary financial/uncertain receipts and unlink family identity."""
+    from .order_withdrawals import erase_family_withdrawals
+    from .payment_models import PaymentAttempt
+
+    erase_family_withdrawals(db, family_id)
+    attempted = select(PaymentAttempt.order_id)
+    db.execute(
+        delete(BankOrder).where(
+            BankOrder.family_id == family_id,
+            BankOrder.status.not_in(["paid", "refunded"]),
+            BankOrder.id.not_in(attempted),
+        )
+    )
     for row in db.scalars(select(BankOrder).where(BankOrder.family_id == family_id)):
         row.family_id, row.buyer_id, row.pending_slot = None, None, None
         row.idempotency = "erased:" + row.id
@@ -591,6 +767,8 @@ def record_refund(order_id: str, data: PaymentCheck, p=Depends(admin), db=Depend
     row = db.get(BankOrder, order_id)
     if not row:
         raise HTTPException(404, "Bestellung nicht gefunden.")
+    if row.payment_method != "bank_transfer":
+        raise HTTPException(409, "Anbietererstattungen müssen beim Zahlungsanbieter bestätigt und verifiziert werden.")
     if data.received_cents != row.amount_cents or data.booking_date > datetime.now(timezone.utc).date():
         raise HTTPException(
             422,
@@ -598,6 +776,10 @@ def record_refund(order_id: str, data: PaymentCheck, p=Depends(admin), db=Depend
         )
     if row.family_id:
         db.execute(update(Family).where(Family.id == row.family_id).values(child_limit=Family.child_limit))
+    from .payments_paypal import fresh_authority
+
+    db.expire_all()
+    fresh_authority(db, p, role="admin")
     try:
         changed = db.execute(
             update(BankOrder)
@@ -622,6 +804,8 @@ def record_refund(order_id: str, data: PaymentCheck, p=Depends(admin), db=Depend
 
 
 def maintenance(db):
+    from .payment_models import PaymentAttempt, PaymentConfiguration, PaymentConfigurationRevision, PaymentEvent
+
     # Eight years after the end of the booking year; never child content.
     cutoff = int(datetime(datetime.now(timezone.utc).year - 8, 1, 1, tzinfo=timezone.utc).timestamp())
     db.execute(
@@ -631,4 +815,24 @@ def maintenance(db):
             (BankOrder.revoked_at.is_(None)) | (BankOrder.revoked_at < cutoff),
         )
     )
-    db.execute(delete(BankOrder).where(BankOrder.status == "cancelled", BankOrder.created < now() - 90 * DAY))
+    attempted = select(PaymentAttempt.order_id)
+    db.execute(
+        delete(BankOrder).where(
+            BankOrder.status == "cancelled", BankOrder.created < now() - 90 * DAY, BankOrder.id.not_in(attempted)
+        )
+    )
+    # An unresolved attempt is never cleared by time alone. Proven terminal
+    # non-payments retain their receipt for the same eight accounting years.
+    terminal = select(PaymentAttempt.order_id).where(
+        PaymentAttempt.status.in_(["cancelled", "denied"]), PaymentAttempt.created < cutoff
+    )
+    db.execute(delete(BankOrder).where(BankOrder.status == "cancelled", BankOrder.id.in_(terminal)))
+    db.execute(delete(PaymentEvent).where(PaymentEvent.created < cutoff))
+    current_revision = select(PaymentConfiguration.revision)
+    bound_revisions = select(PaymentAttempt.config_revision)
+    db.execute(
+        delete(PaymentConfigurationRevision).where(
+            PaymentConfigurationRevision.revision.not_in(current_revision),
+            PaymentConfigurationRevision.revision.not_in(bound_revisions),
+        )
+    )
