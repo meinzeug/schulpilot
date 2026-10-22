@@ -7,30 +7,87 @@ import 'ui.dart';
 
 /// A small mailbox, separate from the child's learning start page.
 /// Filtering and switching views never mark, resolve, or send a message.
-class ChildMessagesHub extends StatefulWidget {
+class ChildMessagesHub extends StatelessWidget {
   final AppState state;
   final Json data;
   final Future<void> Function(String kind, String title) onCompose;
   final Future<void> Function() onWriteMessage;
+  final Future<void> Function(Json message)? onReply;
   const ChildMessagesHub(
     this.state, {
     super.key,
     required this.data,
     required this.onCompose,
     required this.onWriteMessage,
+    this.onReply,
   });
   @override
-  State<ChildMessagesHub> createState() => _ChildMessagesHubState();
+  Widget build(BuildContext context) => _ChildMessagesBody(
+    state,
+    data: data,
+    onCompose: onCompose,
+    onWriteMessage: onWriteMessage,
+    onReply: onReply,
+    key: ValueKey((state, ObjectKey(state.user), data['child']['id'])),
+  );
 }
 
-class _ChildMessagesHubState extends State<ChildMessagesHub> {
+class _ChildMessagesBody extends StatefulWidget {
+  final AppState state;
+  final Json data;
+  final Future<void> Function(String kind, String title) onCompose;
+  final Future<void> Function() onWriteMessage;
+  final Future<void> Function(Json message)? onReply;
+  const _ChildMessagesBody(
+    this.state, {
+    super.key,
+    required this.data,
+    required this.onCompose,
+    required this.onWriteMessage,
+    this.onReply,
+  });
+  @override
+  State<_ChildMessagesBody> createState() => _ChildMessagesHubState();
+}
+
+final _mailboxAccount = Expando<Json>();
+
+class _ChildMessagesHubState extends State<_ChildMessagesBody> {
   String section = 'inbox';
+  late final account = widget.state.user;
+  String get cacheKey => 'child_mailbox:${widget.data['child']['id']}';
+  bool get current =>
+      mounted && account != null && identical(account, widget.state.user);
+  @override
+  void initState() {
+    super.initState();
+    if (!identical(_mailboxAccount[widget.state], account)) {
+      widget.state.collectionViews.removeWhere(
+        (key, _) => key.startsWith('child_mailbox:'),
+      );
+      _mailboxAccount[widget.state] = account;
+    }
+    final saved = widget.state.collectionViews[cacheKey]?['section'];
+    if (['inbox', 'wishes', 'done'].contains(saved)) section = saved;
+    widget.state.addListener(accountChanged);
+  }
+
+  void accountChanged() {
+    if (!current && mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(accountChanged);
+    super.dispose();
+  }
+
   bool composing = false;
   bool get isWish => section == 'wishes';
   bool wish(Json row) => ['interest', 'plan_change'].contains(row['kind']);
 
   Future<void> compose(Future<void> Function() action) async {
-    if (composing) return;
+    if (!current || composing) return;
     final account = widget.state.user;
     setState(() => composing = true);
     try {
@@ -82,6 +139,7 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
 
   @override
   Widget build(BuildContext context) {
+    if (!current) return const SizedBox.shrink();
     final messages = (widget.data['messages'] as List? ?? [])
         .map((row) => Json.from(row))
         .toList();
@@ -154,7 +212,11 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
             (id: 'done', label: 'Besprochen', icon: Icons.task_alt_rounded),
           ],
           selected: section,
-          onSelected: (value) => setState(() => section = value),
+          onSelected: (value) {
+            if (!current) return;
+            setState(() => section = value);
+            widget.state.collectionViews[cacheKey] = {'section': value};
+          },
         ),
         const SizedBox(height: 20),
         if (isWish) ...[
@@ -162,7 +224,9 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
             title: 'Das interessiert mich',
             subtitle: 'Erzähle deinen Eltern von deiner nächsten Lernidee.',
             icon: Icons.lightbulb_outline_rounded,
-            onTap: () => widget.onCompose('interest', 'Das interessiert mich'),
+            onTap: () => compose(
+              () => widget.onCompose('interest', 'Das interessiert mich'),
+            ),
           ),
           const SizedBox(height: 12),
           ChildActionTile(
@@ -170,8 +234,9 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
             subtitle: 'Passt etwas gerade nicht? Schlage gemeinsam einen anderen Plan vor.',
             icon: Icons.edit_calendar_outlined,
             accent: context.palette.cyanInk,
-            onTap: () =>
-                widget.onCompose('plan_change', 'Planänderung vorschlagen'),
+            onTap: () => compose(
+              () => widget.onCompose('plan_change', 'Planänderung vorschlagen'),
+            ),
           ),
           const SizedBox(height: 24),
         ],
@@ -180,6 +245,14 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
           'done' => 'Schon besprochen',
           _ => 'Nachrichten für dich und von dir',
         }),
+        if (messages.length >= 100)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Diese Liste zeigt die 100 neuesten Nachrichten.',
+              style: TextStyle(color: context.palette.muted),
+            ),
+          ),
         if (rows.isEmpty)
           Panel(
             tone: PanelTone.subtle,
@@ -264,7 +337,19 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Text(message['body'] ?? ''),
+                      SelectableText(message['body'] ?? ''),
+                      if (message['sender_role'] == 'parent' &&
+                          widget.onReply != null)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: composing
+                                ? null
+                                : () => compose(() => widget.onReply!(message)),
+                            icon: const Icon(Icons.reply_rounded),
+                            label: const Text('Dazu eine Frage schreiben'),
+                          ),
+                        ),
                       if (message['context_unavailable'] == true) ...[
                         const SizedBox(height: 10),
                         Text(
@@ -280,7 +365,9 @@ class _ChildMessagesHubState extends State<ChildMessagesHub> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: OutlinedButton.icon(
-                            onPressed: () => openRoute(context, target.path),
+                            onPressed: () {
+                              if (current) openRoute(context, target.path);
+                            },
                             icon: const Icon(Icons.arrow_forward_rounded),
                             label: Text(target.label),
                           ),

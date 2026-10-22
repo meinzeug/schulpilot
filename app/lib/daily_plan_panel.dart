@@ -9,12 +9,14 @@ class DailyPlanPanel extends StatelessWidget {
   final bool childView;
   final AppState? state;
   final String? childId;
+  final bool showRemaining;
   const DailyPlanPanel({
     super.key,
     required this.plan,
     this.childView = false,
     this.state,
     this.childId,
+    this.showRemaining = false,
   });
 
   List<Json> tipContexts(dynamic day) => [
@@ -26,13 +28,13 @@ class DailyPlanPanel extends StatelessWidget {
 
   Future<void> openTips(BuildContext context, dynamic day) async {
     if (state == null || childId == null) return;
-    final owner = state!.user?['id'];
+    final owner = state!.user;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => AnimatedBuilder(
         animation: state!,
-        builder: (_, _) => state!.user?['id'] != owner
+        builder: (_, _) => owner == null || !identical(state!.user, owner)
             ? SizedBox.shrink()
             : SafeArea(
                 child: SizedBox(
@@ -59,7 +61,11 @@ class DailyPlanPanel extends StatelessWidget {
                             ),
                           ],
                         ),
-                        for (final item in tipContexts(day).take(5)) ...[
+                        if (tipContexts(day).length > 5)
+                          Text(
+                            'Alle ${tipContexts(day).length} Themen dieses Tages',
+                          ),
+                        for (final item in tipContexts(day)) ...[
                           SizedBox(height: 14),
                           Text(
                             '${item['subject']} · ${item['topic']}',
@@ -83,7 +89,7 @@ class DailyPlanPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final days = (plan['week'] as List? ?? [])
+    final availableDays = (plan['week'] as List? ?? [])
         .where(
           (day) =>
               !childView ||
@@ -91,10 +97,24 @@ class DailyPlanPanel extends StatelessWidget {
                   day['free_day'] != true &&
                   day['paused'] != true),
         )
-        .take(childView ? 3 : 7);
+        .toList();
+    final days = availableDays
+        .skip(showRemaining ? 3 : 0)
+        .take(
+          showRemaining
+              ? 7
+              : childView
+              ? 3
+              : 7,
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (childView && !showRemaining && availableDays.length > 3)
+          Text(
+            'Die nächsten drei Lerntage',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         for (final day in days)
           LayoutBuilder(
             builder: (context, constraints) {
@@ -157,12 +177,26 @@ class DailyPlanPanel extends StatelessWidget {
               );
             },
           ),
-        Text(
-          childView
-              ? 'Du lernst in kleinen Runden. Zum Tagesziel zählt deine aktive Zeit.'
-              : 'Vorschlag für die nächsten Tage. Nach dem Mindestziel ist Weiterlernen freiwillig.',
-          style: TextStyle(color: context.palette.muted, fontSize: 12),
-        ),
+        if (childView && !showRemaining && availableDays.length > 3)
+          ExpansionTile(
+            title: Text('Weitere ${availableDays.length - 3} Lerntage ansehen'),
+            children: [
+              DailyPlanPanel(
+                plan: plan,
+                childView: true,
+                state: state,
+                childId: childId,
+                showRemaining: true,
+              ),
+            ],
+          ),
+        if (!showRemaining)
+          Text(
+            childView
+                ? 'Du lernst in kleinen Runden. Zum Tagesziel zählt deine aktive Zeit.'
+                : 'Vorschlag für die nächsten Tage. Nach dem Mindestziel ist Weiterlernen freiwillig.',
+            style: TextStyle(color: context.palette.muted, fontSize: 12),
+          ),
         if (!childView) ...[
           SizedBox(height: 12),
           Text(

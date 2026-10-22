@@ -22,17 +22,24 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   Json? data;
   String? error;
   late Json? owner;
-  int generation = 0, section = 0, page = 1, refresh = 0;
+  late String? family;
+  int generation = 0, section = 0, page = 1, refresh = 0, operation = 0;
   bool loading = false, includeCompleted = false, busy = false;
   bool loadFailed = false;
   final Map<String, String> preparationKeys = {};
+  String get cacheKey => 'parent-plan:${widget.childId}';
   bool get own =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      family == widget.state.familyId;
 
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
+    family = widget.state.familyId;
+    restoreView();
     widget.state.addListener(identityChanged);
     load();
   }
@@ -40,6 +47,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   void identityChanged() {
     if (!own && mounted) {
       generation++;
+      operation++;
       setState(() {
         data = null;
         error = null;
@@ -53,11 +61,39 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.childId != widget.childId) {
       generation++;
+      operation++;
       data = null;
-      page = 1;
+      busy = false;
+      restoreView();
       preparationKeys.clear();
       load();
     }
+  }
+
+  void restoreView() {
+    final saved = widget.state.collectionViews[cacheKey];
+    final savedSection = saved?['section'];
+    section = savedSection is int && savedSection >= 0 && savedSection <= 2
+        ? savedSection
+        : 0;
+    final savedPage = saved?['page'];
+    page = savedPage is int && savedPage > 0 ? savedPage : 1;
+    includeCompleted = saved?['include_completed'] == true;
+  }
+
+  void rememberView() {
+    if (!own) return;
+    widget.state.collectionViews[cacheKey] = {
+      'section': section,
+      'page': page,
+      'include_completed': includeCompleted,
+    };
+  }
+
+  void selectSection(int value) {
+    if (!own || section == value) return;
+    setState(() => section = value);
+    rememberView();
   }
 
   @override
@@ -69,6 +105,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   Future<void> load() async {
     if (!own) return;
     final stamp = ++generation, child = widget.childId;
+    rememberView();
     setState(() {
       loading = true;
       error = null;
@@ -85,6 +122,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
         loading = false;
         refresh++;
       });
+      rememberView();
     } catch (e) {
       if (own && child == widget.childId && stamp == generation) {
         setState(() {
@@ -102,24 +140,33 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   Future<void> add({Json? source, Json? sourceUnit, Json? existing}) async {
     if (!own || data == null || busy || loading) return;
     final child = widget.childId;
-    await assignmentDialog(
-      context,
-      widget.state,
-      Json.from(data!['child']),
-      [],
-      source: source,
-      sourceUnit: sourceUnit,
-      existing: existing,
-    );
-    if (own && child == widget.childId) {
-      section = 1;
-      await load();
+    final action = ++operation;
+    setState(() => busy = true);
+    try {
+      await assignmentDialog(
+        context,
+        widget.state,
+        Json.from(data!['child']),
+        [],
+        source: source,
+        sourceUnit: sourceUnit,
+        existing: existing,
+      );
+      if (own && child == widget.childId && action == operation) {
+        section = 1;
+        await load();
+      }
+    } finally {
+      if (own && child == widget.childId && action == operation) {
+        setState(() => busy = false);
+      }
     }
   }
 
   Future<void> prepare(Json topic) async {
     if (!own || busy || loading) return;
     final child = widget.childId, id = topic['id'] as String;
+    final action = ++operation;
     final key = preparationKeys.putIfAbsent(id, homeworkKey);
     setState(() => busy = true);
     try {
@@ -128,7 +175,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
         {},
         {'Idempotency-Key': key},
       );
-      if (!own || child != widget.childId) return;
+      if (!own || child != widget.childId || action != operation) return;
       if (!mounted) return;
       preparationKeys.remove(id);
       openRoute(
@@ -138,7 +185,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
             : '/learning-preparation/$child/${value['id']}',
       );
     } catch (e) {
-      if (own && child == widget.childId) {
+      if (own && child == widget.childId && action == operation) {
         setState(() {
           if (e is ApiError && e.status >= 400 && e.status < 500) {
             preparationKeys.remove(id);
@@ -147,7 +194,9 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
         });
       }
     } finally {
-      if (own && child == widget.childId) setState(() => busy = false);
+      if (own && child == widget.childId && action == operation) {
+        setState(() => busy = false);
+      }
     }
   }
 
@@ -203,15 +252,16 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
       if (confirmationRoute != null) await confirmationRoute!.completed;
     }
     if (!confirmed || !current() || busy || data?['can_manage'] != true) return;
+    final action = ++operation;
     setState(() => busy = true);
     try {
       await widget.state.api.post(
         '/children/$child/assignments/${topic['id']}/complete',
         {if (topic['revision'] != null) 'revision': topic['revision']},
       );
-      if (own && child == widget.childId) await load();
+      if (own && child == widget.childId && action == operation) await load();
     } catch (e) {
-      if (own && child == widget.childId) {
+      if (own && child == widget.childId && action == operation) {
         setState(
           () => error = e is ApiError
               ? e.message
@@ -219,7 +269,9 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
         );
       }
     } finally {
-      if (own && child == widget.childId) setState(() => busy = false);
+      if (own && child == widget.childId && action == operation) {
+        setState(() => busy = false);
+      }
     }
   }
 
@@ -227,6 +279,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
     final canManage = data!['can_manage'] == true;
     final existing = topic['available_unit'] as Map?;
     final pending = topic['preparation'] as Map?;
+    final today = data?['plan']?['date'] as String?;
+    final start = topic['scheduled_for'] as String?;
+    final due = topic['due'] as String?;
+    final future = today != null && start != null && start.compareTo(today) > 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Panel(
@@ -249,6 +305,13 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                 ),
                 if (topic['done'] == true)
                   const Tag('Als abgeschlossen markiert'),
+                if (topic['kind'] == 'exam') const Tag('Klassenarbeit'),
+                if ((topic['origin_kind'] ?? topic['kind']) == 'homework')
+                  const Tag('Notierte Hausaufgabe'),
+                if (today != null && due != null && due.compareTo(today) <= 0)
+                  Tag(due == today ? 'Termin heute' : 'Termin liegt zurück'),
+                if (existing != null)
+                  Tag('Runde: ${statusLabel(existing['status'])}'),
                 if (topic['source_status'] == 'needs_review')
                   const Tag('Quelle geändert · prüfen'),
               ],
@@ -268,6 +331,14 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
               ),
             if (topic['due'] != null)
               Text('Termin: ${friendlyDate(topic['due'])}'),
+            if (future)
+              Text(
+                'Die Vorbereitung ist ab ${friendlyDate(start)} möglich. Du kannst den Lernbeginn bewusst ändern.',
+              ),
+            if (topic['source_status'] == 'needs_review')
+              const Notice(
+                'Prüfe zuerst die geänderte Heftquelle und den Auftrag. Erst danach lassen sich passende neue Übungen vorbereiten.',
+              ),
             const SizedBox(height: 14),
             Wrap(
               spacing: 10,
@@ -278,7 +349,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     onPressed: () =>
                         openRoute(context, '/unit/${existing['id']}'),
                     icon: const Icon(Icons.visibility_outlined),
-                    label: const Text('Vorhandene Übungen ansehen'),
+                    label: const Text('Gespeicherte Runde ansehen'),
                   )
                 else if (pending != null)
                   FilledButton.icon(
@@ -291,7 +362,8 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                   )
                 else if (canManage && topic['done'] != true)
                   FilledButton.icon(
-                    onPressed: busy || topic['source_status'] != 'confirmed'
+                    onPressed:
+                        busy || future || topic['source_status'] != 'confirmed'
                         ? null
                         : () => prepare(topic),
                     icon: const Icon(Icons.auto_awesome_outlined),
@@ -318,7 +390,11 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     onPressed: () =>
                         openRoute(context, '/material/${topic['material_id']}'),
                     icon: const Icon(Icons.auto_stories_outlined),
-                    label: const Text('Heftquelle öffnen'),
+                    label: Text(
+                      topic['source_status'] == 'needs_review'
+                          ? 'Geänderte Heftquelle prüfen'
+                          : 'Heftquelle öffnen',
+                    ),
                   ),
               ],
             ),
@@ -331,9 +407,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     ListTile(
                       title: Text(unit['topic']),
                       subtitle: Text(
-                        unit['status'] == 'completed'
-                            ? 'Abgeschlossen'
-                            : 'Gespeichert',
+                        '${statusLabel(unit['status'])}${unit['revision'] != null && topic['revision'] != null && unit['revision'] != topic['revision'] ? ' · Frühere Auftragsfassung' : ''}',
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => openRoute(context, '/unit/${unit['id']}'),
@@ -360,7 +434,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                 childId: widget.childId,
                 childName: data?['child']?['display_name'],
                 selected: 'plan',
-                onRefresh: load,
+                onRefresh: () {
+                  if (!busy) load();
+                },
+                refreshing: loading,
               ),
               const ParentWorkspaceHero(
                 eyebrow: 'EIN WEG MIT RICHTUNG',
@@ -381,12 +458,19 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     ChoiceChip(
                       label: Text(item.$2),
                       selected: section == item.$1,
-                      onSelected: (_) => setState(() => section = item.$1),
+                      onSelected: (_) => selectSection(item.$1),
                     ),
                 ],
               ),
               const SizedBox(height: 20),
               if (loading) const LinearProgressIndicator(),
+              if (loading && section != 1)
+                Semantics(
+                  liveRegion: true,
+                  child: const Text(
+                    'Der gespeicherte Plan wird aktualisiert …',
+                  ),
+                ),
               if (error != null)
                 Semantics(
                   liveRegion: true,
@@ -398,7 +482,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                   child: const Text('Lernplan erneut laden'),
                 ),
               if (data != null) ...[
-                if (section == 0) ...[
+                if (section == 0 && !loading && !loadFailed) ...[
                   ParentInsightsPanel(
                     widget.state,
                     childId: widget.childId,
@@ -438,9 +522,23 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                                       ? Icons.play_circle_outline
                                       : Icons.radio_button_unchecked,
                                 ),
-                                title: Text(reviewAction(step['kind'])),
-                                subtitle: Text(
-                                  '${step['reason']}\nDanach prüfen: ${step['expected_result']}',
+                                title: Text(
+                                  '${index + 1}. ${reviewAction(step['kind'])}',
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      index < plan['cursor']
+                                          ? 'Bereits durchlaufen'
+                                          : index == plan['cursor']
+                                          ? 'Aktueller Schritt'
+                                          : 'Danach vorgesehen',
+                                    ),
+                                    LearningContent(
+                                      '${step['reason']}\nDanach prüfen: ${step['expected_result']}',
+                                    ),
+                                  ],
                                 ),
                               ),
                             TextButton(
@@ -570,7 +668,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                                       page--;
                                       load();
                                     },
-                              child: const Text('Zurück'),
+                              child: const Text('Vorherige Themenseite'),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -585,7 +683,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                                       page++;
                                       load();
                                     },
-                              child: const Text('Weiter'),
+                              child: const Text('Nächste Themenseite'),
                             ),
                           ),
                         ],
@@ -593,7 +691,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     ],
                   ),
                 ],
-                if (section == 2) ...[
+                if (section == 2 && !loading && !loadFailed) ...[
                   Notice(
                     data!['ai_guidance'] != null
                         ? 'KI-Schwerpunkte vom ${reviewDate(data!['ai_guidance']['finished'])} ergänzen diesen Vorschlag. Begonnene Runden, Termine und Elternvorgaben haben Vorrang.'
@@ -637,6 +735,12 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  for (final conflict
+                      in data!['plan']['conflicts'] as List? ?? [])
+                    Notice(
+                      'Termin prüfen: ${conflict['topic']} bis ${friendlyDate(conflict['due'])}. Der gespeicherte Vorschlag meldet einen Terminkonflikt.',
+                      warning: true,
+                    ),
                   for (final day in data!['plan']['week'])
                     Padding(
                       padding: const EdgeInsets.only(bottom: 14),
@@ -645,7 +749,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              friendlyDate(day['date']),
+                              '${day['date'] == data!['plan']['date'] ? 'Heute · ' : ''}${weekDay(day['date'])}${friendlyDate(day['date'])}',
                               style: const TextStyle(
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800,
@@ -673,14 +777,31 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                                 subtitle: Text(
                                   '${item['estimated_minutes']} Minuten vorgeschlagen${item['mandatory'] == true ? ' · verbindlicher Elternauftrag' : ''}${item['planning_source'] == 'ai_priority' ? ' · KI-Schwerpunkt' : ''}',
                                 ),
-                                trailing: item['kind'] == 'unit'
+                                trailing:
+                                    [
+                                      'unit',
+                                      'material',
+                                      'assignment',
+                                    ].contains(item['kind'])
                                     ? const Icon(Icons.chevron_right)
                                     : null,
-                                onTap: item['kind'] == 'unit'
-                                    ? () => openRoute(
-                                        context,
-                                        '/unit/${item['id']}',
-                                      )
+                                onTap:
+                                    [
+                                      'unit',
+                                      'material',
+                                      'assignment',
+                                    ].contains(item['kind'])
+                                    ? () {
+                                        if (!own || loading) return;
+                                        if (item['kind'] == 'assignment') {
+                                          selectSection(1);
+                                        } else {
+                                          openRoute(
+                                            context,
+                                            '/${item['kind'] == 'unit' ? 'unit' : 'material'}/${item['id']}',
+                                          );
+                                        }
+                                      }
                                     : null,
                               ),
                           ],
@@ -692,4 +813,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
             ],
           ),
   );
+
+  String weekDay(dynamic value) {
+    final date = DateTime.tryParse('$value');
+    if (date == null) return '';
+    return '${const ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][date.weekday - 1]} · ';
+  }
 }

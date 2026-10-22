@@ -273,6 +273,7 @@ void main() {
     testWidgets(
       '$role notification opens the message content instead of a learning round',
       (tester) async {
+        const unitId = '00000000000000000000000000000002';
         tester.view.physicalSize = const Size(320, 950);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
@@ -312,7 +313,7 @@ void main() {
                             'body': 'Wir schauen uns das gemeinsam an.',
                             'sender_role': 'parent',
                             'resolved': false,
-                            'context': {'unit_id': 'saved-unit'},
+                            'context': {'unit_id': unitId},
                             'created': 1792485000,
                           },
                         ],
@@ -344,6 +345,14 @@ void main() {
               path: '/messages/:id',
               builder: (_, _) => MessagesScreen(state, childId: 'child'),
             ),
+            GoRoute(
+              path: '/unit/:id',
+              builder: (_, route) => Scaffold(
+                body: Text(
+                  'Gespeicherte Lernrunde: ${route.pathParameters['id']}',
+                ),
+              ),
+            ),
           ],
         );
         await tester.pumpWidget(
@@ -362,17 +371,33 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Deine Eltern haben geantwortet'));
         await tester.pumpAndSettle();
-        expect(find.text('Wir schauen uns das gemeinsam an.'), findsOneWidget);
         expect(
-          find.text(role == 'child' ? 'Lernrunde öffnen' : 'Dazu ansehen'),
-          findsOneWidget,
+          router.routeInformationProvider.value.uri.path,
+          '/messages/child',
         );
+        expect(find.text('Wir schauen uns das gemeinsam an.'), findsOneWidget);
+        final contextLabel = role == 'child'
+            ? 'Lernrunde öffnen'
+            : 'Lernrunde ansehen';
+        expect(find.text(contextLabel), findsOneWidget);
         if (role == 'parent') {
           expect(find.text('Kurze Nachricht senden'), findsNothing);
         }
         final writes = requests.where((r) => r.method != 'GET').toList();
         expect(writes, hasLength(1));
         expect(writes.single.url.path, endsWith('/inbox/read'));
+        expect(requests.any((r) => r.url.path.contains('/units/')), isFalse);
+        await tester.ensureVisible(find.text(contextLabel));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(contextLabel));
+        await tester.pumpAndSettle();
+        final savedRound = find.text('Gespeicherte Lernrunde: $unitId');
+        expect(savedRound, findsOneWidget);
+        expect(
+          GoRouterState.of(tester.element(savedRound)).uri.path,
+          '/unit/$unitId',
+        );
+        expect(requests.where((r) => r.method != 'GET'), hasLength(1));
         expect(requests.any((r) => r.url.path.contains('/units/')), isFalse);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());

@@ -14,11 +14,15 @@ import 'family_call_screen.dart';
 import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
+import 'lesson_voice.dart';
 import 'parent_child_navigation.dart';
 import 'ui.dart';
 
 String homeworkKey() =>
     'hw-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
+
+String _homeworkError(Object error, String fallback) =>
+    error is ApiError ? error.message : fallback;
 
 class HomeworkScreen extends StatefulWidget {
   final AppState state;
@@ -31,7 +35,21 @@ class HomeworkScreen extends StatefulWidget {
 class _HomeworkScreenState extends State<HomeworkScreen> {
   final List<Json> photos = [];
   late final actor = widget.state.user;
-  bool loading = true, busy = false;
+  bool loading = true, busy = false, choosing = false;
+  int photoOperation = 0;
+  ModalRoute<dynamic>? photoChoice;
+  void closePhotoChoice() {
+    final previous = photoChoice;
+    photoChoice = null;
+    if (previous?.isActive == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (previous?.isActive == true) {
+          previous!.navigator?.removeRoute(previous);
+        }
+      });
+    }
+  }
+
   bool _requestActive = false;
   int generation = 0;
   bool? retryMore;
@@ -39,6 +57,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   Uint8List? pending;
   String? uploadKey;
   bool get own => actor != null && identical(actor, widget.state.user);
+  bool get photoBusy => busy || choosing;
+  bool photoCurrent(int operation, String child) =>
+      mounted && own && operation == photoOperation && child == widget.childId;
 
   @override
   void initState() {
@@ -50,6 +71,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   void identity() {
     if (!own && mounted) {
       generation++;
+      photoOperation++;
+      closePhotoChoice();
       setState(() {
         photos.clear();
         pending = null;
@@ -62,6 +85,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.childId != widget.childId) {
       generation++;
+      photoOperation++;
+      closePhotoChoice();
+      busy = choosing = false;
       _requestActive = false;
       photos.clear();
       pending = null;
@@ -73,6 +99,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
 
   @override
   void dispose() {
+    closePhotoChoice();
     pending = null;
     widget.state.removeListener(identity);
     super.dispose();
@@ -96,7 +123,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       }
       setState(() {
         if (!more) photos.clear();
-        photos.addAll((result['photos'] as List).map((p) => Json.from(p)));
+        for (final value in result['photos'] as List) {
+          final photo = Json.from(value);
+          final index = photos.indexWhere((item) => item['id'] == photo['id']);
+          if (index < 0) {
+            photos.add(photo);
+          } else {
+            photos[index] = photo;
+          }
+        }
         cursor = result['next_cursor'];
       });
     } catch (e) {
@@ -117,6 +152,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   }
 
   Future<void> capture() async {
+    if (!own || photoBusy) return;
     if (widget.state.isDemo) {
       showError(
         context,
@@ -124,67 +160,108 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       );
       return;
     }
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.photo_camera_outlined),
-              title: Text('Hausaufgaben fotografieren'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_library_outlined),
-              title: Text('Foto auswählen'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null || !mounted || !own) return;
-    await rememberCameraSource(
-      widget.state,
-      widget.childId,
-      purpose: 'homework',
-    );
-    Uint8List? bytes;
+    final operation = ++photoOperation, child = widget.childId;
+    setState(() => choosing = true);
     try {
-      if (!mounted || !own) return;
-      bytes = await pickMaterialPhoto(context, source);
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (ctx) {
+          photoChoice = ModalRoute.of(ctx);
+          void choose(ImageSource source) {
+            if (ctx.mounted &&
+                photoCurrent(operation, child) &&
+                ModalRoute.of(ctx)?.isCurrent == true) {
+              Navigator.pop(ctx, source);
+            }
+          }
+
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.photo_camera_outlined),
+                  title: Text('Hausaufgaben fotografieren'),
+                  onTap: () => choose(ImageSource.camera),
+                ),
+                ListTile(
+                  leading: Icon(Icons.photo_library_outlined),
+                  title: Text('Foto auswählen'),
+                  onTap: () => choose(ImageSource.gallery),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+      if (source == null || !photoCurrent(operation, child)) return;
+      await rememberCameraSource(widget.state, child, purpose: 'homework');
+      Uint8List? bytes;
+      try {
+        if (!mounted || !photoCurrent(operation, child)) return;
+        bytes = await pickMaterialPhoto(context, source);
+      } finally {
+        if (photoCurrent(operation, child)) {
+          await clearCameraSource(widget.state);
+        }
+      }
+      if (bytes == null || !photoCurrent(operation, child)) return;
+      setState(() {
+        pending = bytes;
+        uploadKey = homeworkKey();
+      });
+      await upload();
+    } catch (e) {
+      if (photoCurrent(operation, child)) {
+        setState(
+          () => error = _homeworkError(
+            e,
+            'Das Foto konnte nicht geöffnet werden. Versuche es noch einmal.',
+          ),
+        );
+      }
     } finally {
-      await clearCameraSource(widget.state);
+      if (photoCurrent(operation, child)) setState(() => choosing = false);
     }
-    if (bytes == null || !mounted || !own) return;
-    setState(() {
-      pending = bytes;
-      uploadKey = homeworkKey();
-    });
-    await upload();
   }
 
   Future<void> recoverPhoto() async {
-    if (busy || !own || widget.state.recoveredPhotoPurpose != 'homework') {
+    if (photoBusy || !own || widget.state.recoveredPhotoPurpose != 'homework') {
       return;
     }
     final photo = widget.state.recoveredPhoto;
     if (photo == null) return;
-    final bytes = await cropMaterialPhoto(context, photo);
-    if (bytes == null || !mounted || !own) return;
-    setState(() {
-      pending = bytes;
-      uploadKey = homeworkKey();
-      widget.state.recoveredPhoto = widget.state.recoveredPhotos.isEmpty
-          ? null
-          : widget.state.recoveredPhotos.removeAt(0);
-    });
-    await upload();
+    final operation = ++photoOperation, child = widget.childId;
+    setState(() => choosing = true);
+    try {
+      final bytes = await cropMaterialPhoto(context, photo);
+      if (bytes == null || !photoCurrent(operation, child)) return;
+      setState(() {
+        pending = bytes;
+        uploadKey = homeworkKey();
+        widget.state.recoveredPhoto = widget.state.recoveredPhotos.isEmpty
+            ? null
+            : widget.state.recoveredPhotos.removeAt(0);
+      });
+      await upload();
+    } catch (e) {
+      if (photoCurrent(operation, child)) {
+        setState(
+          () => error = _homeworkError(
+            e,
+            'Das Foto konnte nicht geöffnet werden.',
+          ),
+        );
+      }
+    } finally {
+      if (photoCurrent(operation, child)) setState(() => choosing = false);
+    }
   }
 
   Future<void> upload() async {
     if (busy || pending == null || !own) return;
+    final operation = photoOperation, child = widget.childId;
+    final bytes = pending!, key = uploadKey;
     setState(() {
       busy = true;
       error = null;
@@ -192,12 +269,12 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     });
     try {
       final photo = await widget.state.api.upload(
-        widget.childId,
-        pending!,
-        uploadKey: uploadKey,
+        child,
+        bytes,
+        uploadKey: key,
         purpose: 'homework',
       );
-      if (!mounted || !own) return;
+      if (!photoCurrent(operation, child)) return;
       pending = null;
       // This POST belongs to the explicit photo submission. Reloads only GET.
       try {
@@ -207,13 +284,20 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       } catch (_) {
         // The stored page and job status explain an uncertain/failed submission.
       }
-      if (mounted && own) {
-        context.go('/homework/${widget.childId}/${photo['id']}');
+      if (mounted && photoCurrent(operation, child)) {
+        context.go('/homework/$child/${photo['id']}');
       }
     } catch (e) {
-      if (mounted && own) setState(() => error = e.toString());
+      if (photoCurrent(operation, child)) {
+        setState(
+          () => error = _homeworkError(
+            e,
+            'Das Foto ist noch nicht abgegeben. Du kannst es erneut senden.',
+          ),
+        );
+      }
     } finally {
-      if (mounted && own) setState(() => busy = false);
+      if (photoCurrent(operation, child)) setState(() => busy = false);
     }
   }
 
@@ -235,16 +319,20 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
             action: Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.icon(
-                onPressed: busy ? null : (pending == null ? capture : upload),
+                onPressed: photoBusy
+                    ? null
+                    : (pending == null ? capture : upload),
                 icon: Icon(
                   pending == null ? Icons.add_a_photo_outlined : Icons.refresh,
                 ),
                 label: Text(
-                  busy
+                  choosing
+                      ? 'Foto wird ausgewählt …'
+                      : busy
                       ? 'Foto wird abgegeben …'
                       : pending == null
                       ? 'Hausaufgaben fotografieren'
-                      : 'Upload wiederholen',
+                      : 'Foto erneut senden',
                 ),
               ),
             ),
@@ -258,13 +346,13 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
               if (widget.state.recoveredPhoto != null &&
                   widget.state.recoveredPhotoPurpose == 'homework')
                 TextButton.icon(
-                  onPressed: busy || pending != null ? null : recoverPhoto,
+                  onPressed: photoBusy || pending != null ? null : recoverPhoto,
                   icon: Icon(Icons.restore_rounded),
                   label: Text('Wiedergefundenes Foto prüfen'),
                 ),
               IconButton(
                 tooltip: 'Aktualisieren',
-                onPressed: loading || busy ? null : load,
+                onPressed: loading || photoBusy ? null : load,
                 icon: Icon(Icons.refresh_rounded),
               ),
             ],
@@ -273,6 +361,38 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
           Text(
             'Das Foto wird mit der KI gelesen. Prüfe den erkannten Text, bevor du dir helfen lässt.',
             style: TextStyle(color: context.palette.muted, height: 1.5),
+          ),
+        ],
+        if (pending != null) ...[
+          const SizedBox(height: 12),
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Dieses Foto ist noch nicht abgegeben.'),
+                const SizedBox(height: 8),
+                Image.memory(
+                  pending!,
+                  height: 160,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'Noch nicht abgegebenes Hausaufgabenfoto',
+                  errorBuilder: (_, _, _) =>
+                      const Text('Die Vorschau ist nicht verfügbar.'),
+                ),
+                TextButton.icon(
+                  onPressed: photoBusy
+                      ? null
+                      : () => setState(() {
+                          photoOperation++;
+                          pending = null;
+                          uploadKey = null;
+                          error = null;
+                        }),
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Anderes Foto nehmen'),
+                ),
+              ],
+            ),
           ),
         ],
         if (error != null)
@@ -298,8 +418,27 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
         SizedBox(height: 22),
         heading('Deine Aufgabenfotos'),
         SizedBox(height: 12),
-        if (loading && photos.isEmpty)
-          Center(child: CircularProgressIndicator()),
+        if (loading)
+          Semantics(
+            liveRegion: true,
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    photos.isEmpty
+                        ? 'Aufgabenfotos werden geladen …'
+                        : 'Aufgabenfotos werden aktualisiert …',
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (!loading && photos.isEmpty && error == null)
           Panel(
             child: Text(
@@ -315,8 +454,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                         ? photo['topic']
                         : 'Neues Hausaufgabenfoto',
                     subtitle: photo['confirmed'] == true
-                        ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt'
-                        : 'Foto und erkannten Text prüfen',
+                        ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}'
+                        : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}',
                     icon: photo['confirmed'] == true
                         ? Icons.assignment_outlined
                         : Icons.document_scanner_outlined,
@@ -339,8 +478,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                       ),
                       subtitle: Text(
                         photo['confirmed'] == true
-                            ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt'
-                            : 'Foto und erkannten Text prüfen',
+                            ? '${photo['subject']} · ${(photo['marked_done'] as num? ?? 0)} selbst abgehakt${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}'
+                            : 'Foto und erkannten Text prüfen${photo['created'] == null ? '' : ' · ${schoolDate(photo['created'])}'}',
                       ),
                       trailing: Icon(Icons.arrow_forward_rounded),
                       onTap: () => context.go(
@@ -365,7 +504,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   );
 }
 
-class HomeworkDetailScreen extends StatefulWidget {
+class HomeworkDetailScreen extends StatelessWidget {
   final AppState state;
   final String childId, materialId;
   const HomeworkDetailScreen(
@@ -375,10 +514,28 @@ class HomeworkDetailScreen extends StatefulWidget {
     required this.materialId,
   });
   @override
-  State<HomeworkDetailScreen> createState() => _HomeworkDetailScreenState();
+  Widget build(BuildContext context) => _HomeworkDetailBody(
+    state,
+    childId: childId,
+    materialId: materialId,
+    key: ValueKey((state, ObjectKey(state.user), childId, materialId)),
+  );
 }
 
-class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
+class _HomeworkDetailBody extends StatefulWidget {
+  final AppState state;
+  final String childId, materialId;
+  const _HomeworkDetailBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.materialId,
+  });
+  @override
+  State<_HomeworkDetailBody> createState() => _HomeworkDetailScreenState();
+}
+
+class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     with WidgetsBindingObserver {
   final draft = TextEditingController(), question = TextEditingController();
   final Map<String, String> drafts = {};
@@ -391,7 +548,9 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   Future<void>? saveRequest;
   Timer? poll, debounce;
   int revision = 0, generation = 0, edits = 0, savedEdits = 0;
-  bool conflict = false;
+  bool conflict = false, closing = false, routeVisible = true;
+  final helpStatus = GlobalKey();
+  final helpReply = GlobalKey();
   String? restoredAnalysis;
   String? practiceKey;
   int? practiceRevision;
@@ -464,15 +623,30 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visible = ModalRoute.of(context)?.isCurrent ?? true;
+    if (visible == routeVisible) return;
+    routeVisible = visible;
+    poll?.cancel();
+    if (visible && foreground && own) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && own && routeVisible && foreground) unawaited(load());
+      });
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
     poll?.cancel();
-    if (foreground && own) unawaited(load());
+    if (foreground && own && routeVisible) unawaited(load());
     if (!foreground && canWrite) unawaited(persist());
   }
 
   @override
   void dispose() {
+    closing = true;
     if (canWrite && unsaved) {
       unawaited(persist());
     }
@@ -490,8 +664,20 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
 
   void schedule() {
     poll?.cancel();
-    if (mounted && own && foreground && (pending || extracting)) {
-      poll = Timer(Duration(seconds: 3), () => unawaited(load()));
+    if (mounted &&
+        own &&
+        foreground &&
+        (ModalRoute.of(context)?.isCurrent ?? true) &&
+        (pending || extracting)) {
+      poll = Timer(Duration(seconds: 3), () {
+        if (mounted &&
+            own &&
+            foreground &&
+            routeVisible &&
+            (ModalRoute.of(context)?.isCurrent ?? true)) {
+          unawaited(load());
+        }
+      });
     }
   }
 
@@ -558,7 +744,10 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     } catch (e) {
       if (mounted && own && ticket == generation) {
         setState(() {
-          error = e.toString();
+          error = _homeworkError(
+            e,
+            'Deine Hausaufgaben konnten gerade nicht geladen werden. Versuche es noch einmal.',
+          );
           loading = false;
         });
       }
@@ -618,7 +807,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
 
   Future<void> writeState(Json initial) async {
     saving = true;
-    if (mounted) setState(() => saveError = null);
+    if (mounted && !closing) setState(() => saveError = null);
     try {
       Json? snapshot = initial;
       while (snapshot != null && own && !conflict) {
@@ -638,16 +827,19 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
         queuedSave = null;
       }
     } catch (e) {
-      if (mounted && own) {
+      if (mounted && !closing && own) {
         setState(() {
-          saveError = e.toString();
+          saveError = _homeworkError(
+            e,
+            'Speichern klappt gerade nicht. Dein Text bleibt hier erhalten.',
+          );
           if (e is ApiError && e.status == 409) conflict = true;
         });
       }
     } finally {
       saving = false;
       queuedSave = null;
-      if (mounted && own) {
+      if (mounted && !closing && own) {
         setState(() {});
         if (saveError == null && unsaved) {
           debounce?.cancel();
@@ -661,7 +853,8 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
   }
 
   Future<void> ask(String action, {bool retry = false}) async {
-    if (!canWrite ||
+    if (!mounted ||
+        !canWrite ||
         busy ||
         pending ||
         extracting ||
@@ -669,55 +862,65 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       return;
     }
     if (uncertainBody != null && !retry) return;
-    if (action == 'check' && draft.text.trim().isEmpty) {
+    final sentQuestion = question.text;
+    final sentDraft = draft.text;
+    if (action == 'check' && sentDraft.trim().isEmpty) {
       toast(context, 'Schreibe zuerst deinen eigenen Versuch.');
       return;
     }
-    if (action == 'question' && question.text.trim().isEmpty) return;
+    if (action == 'question' && sentQuestion.trim().isEmpty) return;
     FocusManager.instance.primaryFocus?.unfocus();
     debounce?.cancel();
-    await persist();
-    if (!mounted || !canWrite) return;
-    final labels = {
-      'analyze': 'Welche Aufgaben sind auf meinem Foto?',
-      'explain': 'Erkläre es mir, ohne die Lösung zu verraten.',
-      'hint': 'Gib mir einen kleinen Hinweis.',
-      'plan': 'Wie teile ich die Aufgabe in kleine Schritte?',
-      'example': 'Zeig mir ein anderes Beispiel.',
-      'check': 'Schau auf meinen eigenen Versuch.',
-      'question': question.text.trim(),
-    };
-    final previous = turns
-        .where(
-          (t) =>
-              t['status'] == 'ready' &&
-              t['source_changed'] != true &&
-              (t['homework'] as Map?)?['task_id'] == selectedId &&
-              (t['homework'] as Map?)?['analysis_id'] == analysis?['id'],
-        )
-        .lastOrNull;
-    final body = retry
-        ? uncertainBody!
-        : <String, dynamic>{
-            'material_id': widget.materialId,
-            'question': labels[action],
-            if (previous != null && action != 'analyze')
-              'reply_to': previous['id'],
-            'homework': {
-              'action': action,
-              if (action != 'analyze') 'analysis_id': analysis!['id'],
-              if (action != 'analyze') 'task_id': selectedId,
-              'draft': action == 'analyze' ? '' : draft.text,
-            },
-          };
-    final key = retry ? uncertainKey! : homeworkKey();
     setState(() {
       busy = true;
       sendError = null;
-      uncertainBody = body;
-      uncertainKey = key;
     });
     try {
+      await persist();
+      if (!mounted || !canWrite) return;
+      if (saveError != null || conflict) {
+        setState(
+          () => sendError = 'Speichere zuerst deinen Entwurf sicher. Deine Frage bleibt hier stehen.',
+        );
+        return;
+      }
+      final labels = {
+        'analyze': 'Welche Aufgaben sind auf meinem Foto?',
+        'explain': 'Erkläre es mir, ohne die Lösung zu verraten.',
+        'hint': 'Gib mir einen kleinen Hinweis.',
+        'plan': 'Wie teile ich die Aufgabe in kleine Schritte?',
+        'example': 'Zeig mir ein anderes Beispiel.',
+        'check': 'Schau auf meinen eigenen Versuch.',
+        'question': sentQuestion.trim(),
+      };
+      final previous = turns
+          .where(
+            (t) =>
+                t['status'] == 'ready' &&
+                t['source_changed'] != true &&
+                (t['homework'] as Map?)?['task_id'] == selectedId &&
+                (t['homework'] as Map?)?['analysis_id'] == analysis?['id'],
+          )
+          .lastOrNull;
+      final body = retry
+          ? uncertainBody!
+          : <String, dynamic>{
+              'material_id': widget.materialId,
+              'question': labels[action],
+              if (previous != null && action != 'analyze')
+                'reply_to': previous['id'],
+              'homework': {
+                'action': action,
+                if (action != 'analyze') 'analysis_id': analysis!['id'],
+                if (action != 'analyze') 'task_id': selectedId,
+                'draft': action == 'analyze' ? '' : sentDraft,
+              },
+            };
+      final key = retry ? uncertainKey! : homeworkKey();
+      setState(() {
+        uncertainBody = body;
+        uncertainKey = key;
+      });
       await widget.state.api.post(
         '/children/${widget.childId}/tutor/questions',
         body,
@@ -727,13 +930,19 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
       setState(() {
         uncertainBody = null;
         uncertainKey = null;
-        question.clear();
+        // A new question belongs to the child, not to this completed request.
+        if (action == 'question' && question.text.trim() == body['question']) {
+          question.clear();
+        }
       });
       await load();
     } catch (e) {
       if (mounted && own) {
         setState(() {
-          sendError = e.toString();
+          sendError = _homeworkError(
+            e,
+            'Wir konnten gerade nicht sicher nachsehen. Deine Frage bleibt erhalten.',
+          );
           if (e is ApiError && e.status >= 400 && e.status < 500) {
             uncertainBody = null;
             uncertainKey = null;
@@ -741,7 +950,21 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
         });
       }
     } finally {
-      if (mounted && own) setState(() => busy = false);
+      if (mounted && own) {
+        setState(() => busy = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !own || !routeVisible) return;
+          final target =
+              (sendError == null ? helpReply : helpStatus).currentContext;
+          if (target != null) {
+            Scrollable.ensureVisible(
+              target,
+              alignment: .15,
+              duration: Duration(milliseconds: 180),
+            );
+          }
+        });
+      }
     }
   }
 
@@ -787,29 +1010,29 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     if (!canWrite || busy || saving || pending || extracting) return;
     FocusManager.instance.primaryFocus?.unfocus();
     debounce?.cancel();
-    await persist();
-    if (!mounted || !canWrite || saveError != null || conflict) return;
-    final currentRevision = photo?['revision'] as int?;
-    if (currentRevision == null || photo?['confirmed'] != true) return;
-    final existing = data?['practice'] as Map?;
-    if (existing != null && practiceKey == null) {
-      context.go(
-        existing['kind'] == 'unit'
-            ? '/unit/${existing['id']}'
-            : '/learning-preparation/${widget.childId}/${existing['id']}',
-      );
-      return;
-    }
-    if (practiceRevision != currentRevision) {
-      practiceKey = null;
-      practiceRevision = currentRevision;
-    }
-    practiceKey ??= homeworkKey();
     setState(() {
       busy = true;
       practiceError = null;
     });
     try {
+      await persist();
+      if (!mounted || !canWrite || saveError != null || conflict) return;
+      final currentRevision = photo?['revision'] as int?;
+      if (currentRevision == null || photo?['confirmed'] != true) return;
+      final existing = data?['practice'] as Map?;
+      if (existing != null && practiceKey == null) {
+        context.go(
+          existing['kind'] == 'unit'
+              ? '/unit/${existing['id']}'
+              : '/learning-preparation/${widget.childId}/${existing['id']}',
+        );
+        return;
+      }
+      if (practiceRevision != currentRevision) {
+        practiceKey = null;
+        practiceRevision = currentRevision;
+      }
+      practiceKey ??= homeworkKey();
       final result = await widget.state.api.post(
         '$path/practice',
         {'source_revision': currentRevision},
@@ -827,7 +1050,10 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
     } catch (e) {
       if (mounted && own) {
         setState(() {
-          practiceError = e.toString();
+          practiceError = _homeworkError(
+            e,
+            'Die Vorbereitung konnte gerade nicht bestätigt werden. Du kannst bewusst noch einmal nachsehen.',
+          );
           if (e is ApiError && e.status >= 400 && e.status < 500) {
             practiceKey = null;
           }
@@ -879,6 +1105,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
             if (reply != null) ...[
               SizedBox(height: 12),
               LearningContent(reply['answer'] ?? ''),
+              ReadAloudButton(text: (reply['answer'] ?? '').toString()),
               if (reply['action'] == 'check')
                 Text(
                   reply['method'] == 'homework_math_v1'
@@ -1206,7 +1433,10 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                         ),
                         if (relevant.isNotEmpty) ...[
                           SizedBox(height: 16),
-                          replyCard(relevant.last),
+                          KeyedSubtree(
+                            key: helpReply,
+                            child: replyCard(relevant.last),
+                          ),
                         ],
                         SizedBox(height: 18),
                         TextField(
@@ -1232,9 +1462,18 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                               label: Text('Meinen Weg prüfen'),
                             ),
                             TextButton(
-                              onPressed: saving ? null : persist,
-                              child: Text(
-                                saving ? 'Speichert …' : 'Entwurf speichern',
+                              onPressed: saving || !unsaved || conflict
+                                  ? null
+                                  : persist,
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  saving
+                                      ? 'Speichert …'
+                                      : unsaved
+                                      ? 'Entwurf speichern'
+                                      : 'Entwurf gespeichert',
+                                ),
                               ),
                             ),
                           ],
@@ -1261,11 +1500,16 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                               },
                               child: Text('Gespeicherten Entwurf laden'),
                             ),
-                        ] else if (lastSaved == draft.text &&
+                        ] else if (!unsaved &&
+                            !saving &&
+                            lastSaved == draft.text &&
                             draft.text.isNotEmpty)
-                          Text(
-                            'Entwurf gespeichert',
-                            style: TextStyle(color: context.palette.muted),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              'Entwurf gespeichert',
+                              style: TextStyle(color: context.palette.muted),
+                            ),
                           ),
                         SizedBox(height: 12),
                         Wrap(
@@ -1357,7 +1601,12 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                   style: TextStyle(color: context.palette.muted),
                 ),
             ],
-            if (sendError != null) Notice(sendError!, warning: true),
+            SizedBox(key: helpStatus),
+            if (sendError != null)
+              Semantics(
+                liveRegion: true,
+                child: Notice(sendError!, warning: true),
+              ),
             if (uncertainBody != null && !busy && canWrite)
               TextButton.icon(
                 onPressed: () => ask(
@@ -1365,7 +1614,7 @@ class _HomeworkDetailScreenState extends State<HomeworkDetailScreen>
                   retry: true,
                 ),
                 icon: Icon(Icons.sync),
-                label: Text('Anfrage mit gleichem Schlüssel abgleichen'),
+                label: Text('Nachsehen, ob die Frage angekommen ist'),
               ),
             if (busy && !pending)
               Padding(

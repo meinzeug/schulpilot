@@ -166,7 +166,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text(
-          'Deine Eingabe bleibt gespeichert. Du kannst später hier weiterlernen.',
+          'Deine Eingabe ist gespeichert. Du kannst später hier weiterlernen.',
         ),
         findsOneWidget,
       );

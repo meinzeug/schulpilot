@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'app_version.dart';
@@ -63,11 +64,23 @@ class _ChildAccountState extends State<ChildAccount> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(dialogContext, false),
+                    onPressed: () {
+                      if (dialogContext.mounted &&
+                          identical(state.user, account) &&
+                          confirmationRoute?.isCurrent == true) {
+                        Navigator.pop(dialogContext, false);
+                      }
+                    },
                     child: const Text('Abbrechen'),
                   ),
                   FilledButton(
-                    onPressed: () => Navigator.pop(dialogContext, true),
+                    onPressed: () {
+                      if (dialogContext.mounted &&
+                          identical(state.user, account) &&
+                          confirmationRoute?.isCurrent == true) {
+                        Navigator.pop(dialogContext, true);
+                      }
+                    },
                     child: const Text('Gerät abmelden'),
                   ),
                 ],
@@ -166,117 +179,149 @@ class _ChildAccountState extends State<ChildAccount> {
                   LoadView<List<dynamic>>(
                     key: ValueKey('child-devices:$owner:$version'),
                     load: () => state.api.list('/auth/sessions'),
-                    builder: (sessions, _) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (sessions.isEmpty)
-                          Panel(
-                            tone: PanelTone.subtle,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Gerade werden keine Geräte angezeigt.',
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Lade die Liste erneut, um deine angemeldeten Geräte zu sehen.',
-                                ),
-                                const SizedBox(height: 12),
-                                OutlinedButton.icon(
-                                  onPressed: () => setState(() => version++),
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text('Geräte neu laden'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        for (final session in sessions)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Panel(
+                    builder: (values, _) {
+                      final sessions =
+                          values.map((value) => Json.from(value)).toList()
+                            ..sort((a, b) {
+                              final current = (b['current'] == true ? 1 : 0)
+                                  .compareTo(a['current'] == true ? 1 : 0);
+                              if (current != 0) return current;
+                              final recent = (b['seen'] as num? ?? 0).compareTo(
+                                a['seen'] as num? ?? 0,
+                              );
+                              return recent != 0
+                                  ? recent
+                                  : '${a['id']}'.compareTo('${b['id']}');
+                            });
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (sessions.isEmpty)
+                            Panel(
+                              tone: PanelTone.subtle,
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding: EdgeInsets.only(top: 4),
-                                        child: Icon(
-                                          Icons.devices_rounded,
-                                          color: context.palette.teal,
-                                          size: 28,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              session['device'],
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 17,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              session['current'] == true
-                                                  ? 'Dieses Gerät'
-                                                  : 'Weiteres angemeldetes Gerät',
-                                              style: TextStyle(
-                                                color: context.palette.muted,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  const Text(
+                                    'Gerade werden keine Geräte angezeigt.',
                                   ),
-                                  if (session['current'] == true) ...[
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Nach dem Abmelden brauchst du deine Zugangsdaten, um hier weiterzulernen.',
-                                      style: TextStyle(
-                                        color: context.palette.muted,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 16),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: OutlinedButton.icon(
-                                      onPressed: pendingSession != null
-                                          ? null
-                                          : () => revokeSession(
-                                              Json.from(session),
-                                            ),
-                                      icon: Icon(
-                                        deletingSession &&
-                                                pendingSession == session['id']
-                                            ? Icons.hourglass_top_rounded
-                                            : Icons.logout_rounded,
-                                      ),
-                                      label: Text(
-                                        deletingSession &&
-                                                pendingSession == session['id']
-                                            ? 'Wird abgemeldet …'
-                                            : session['current'] == true
-                                            ? 'Hier abmelden'
-                                            : 'Gerät abmelden',
-                                      ),
-                                    ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Lade die Liste erneut, um deine angemeldeten Geräte zu sehen.',
+                                  ),
+                                  const SizedBox(height: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () => setState(() => version++),
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text('Geräte neu laden'),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                          for (final session in sessions)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Panel(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 4),
+                                          child: Icon(
+                                            Icons.devices_rounded,
+                                            color: context.palette.teal,
+                                            size: 28,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                session['device'],
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 17,
+                                                ),
+                                              ),
+                                              if (session['seen'] is num &&
+                                                  (session['seen'] as num)
+                                                      .isFinite &&
+                                                  (session['seen'] as num) >=
+                                                      946684800 &&
+                                                  (session['seen'] as num) <=
+                                                      4133980800)
+                                                Text(
+                                                  'Zuletzt aktiv: ${DateFormat('dd.MM.yyyy · HH:mm').format(DateTime.fromMillisecondsSinceEpoch(((session['seen'] as num) * 1000).toInt()).toLocal())}',
+                                                  style: TextStyle(
+                                                    color:
+                                                        context.palette.muted,
+                                                  ),
+                                                ),
+                                              const SizedBox(height: 5),
+                                              Text(
+                                                session['current'] == true
+                                                    ? 'Dieses Gerät'
+                                                    : 'Weiteres angemeldetes Gerät',
+                                                style: TextStyle(
+                                                  color: context.palette.muted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (session['current'] == true) ...[
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Nach dem Abmelden brauchst du deine Zugangsdaten, um hier weiterzulernen.',
+                                        style: TextStyle(
+                                          color: context.palette.muted,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 16),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: OutlinedButton.icon(
+                                        onPressed: pendingSession != null
+                                            ? null
+                                            : () => revokeSession(
+                                                Json.from(session),
+                                              ),
+                                        icon: Icon(
+                                          deletingSession &&
+                                                  pendingSession ==
+                                                      session['id']
+                                              ? Icons.hourglass_top_rounded
+                                              : Icons.logout_rounded,
+                                        ),
+                                        label: Text(
+                                          deletingSession &&
+                                                  pendingSession ==
+                                                      session['id']
+                                              ? 'Wird abgemeldet …'
+                                              : session['current'] == true
+                                              ? 'Hier abmelden'
+                                              : 'Gerät abmelden',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
                 if (section == 'notifications') ...[

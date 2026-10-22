@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'api.dart';
 import 'learning_content.dart';
@@ -36,6 +37,53 @@ Future<void> showTutorSheet(
     constraints: BoxConstraints(maxWidth: 760),
     builder: (_) => _TutorSheet(state, childId: childId, scope: scope),
   );
+}
+
+final _tutorDrafts = Expando<_TutorDraftMemory>();
+
+class _TutorDraftMemory {
+  final AppState state;
+  Json? account;
+  final drafts =
+      <
+        String,
+        ({
+          String text,
+          String? replyTo,
+          bool newQuestion,
+          _TutorSubmission? submission,
+        })
+      >{};
+  _TutorDraftMemory(this.state) : account = state.user {
+    state.addListener(changed);
+  }
+  void changed() {
+    if (!identical(account, state.user)) {
+      drafts.clear();
+      account = state.user;
+    }
+  }
+
+  void put(
+    String scope,
+    String text,
+    String? replyTo,
+    bool newQuestion,
+    _TutorSubmission? submission,
+  ) {
+    changed();
+    drafts.remove(scope);
+    if (text.isEmpty && submission == null) return;
+    drafts[scope] = (
+      text: text.characters.take(1000).toString(),
+      replyTo: replyTo,
+      newQuestion: newQuestion,
+      submission: submission,
+    );
+    while (drafts.length > 20) {
+      drafts.remove(drafts.keys.first);
+    }
+  }
 }
 
 class _TutorSubmission {
@@ -77,20 +125,37 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     }
     final reply = last?['reply'] as Map?;
     return (reply?['next_question'] as String? ?? '').trim().isNotEmpty ||
-            (reply?['answer'] as String? ?? '').trim().endsWith('?')
+            reply?['kind'] == 'clarification'
         ? last
         : null;
   }
 
   Timer? poll;
   String? cursor, replyTo, readError, sendError;
-  late final String? actor = widget.state.user?['id'];
+  late final Json? actor = widget.state.user;
   bool loading = true, reading = false, sending = false;
+  bool sourceUnavailable = false;
+  ({String text, String? replyTo, bool newQuestion})? replacedDraft;
+  late final memory = _tutorDrafts[state] ??= _TutorDraftMemory(state);
+  String get draftScope =>
+      '${widget.childId}:${widget.scope.entries.map((e) => '${e.key}:${e.value}').join(':')}';
+  void rememberDraft() {
+    if (ownerMatches && state.isChild) {
+      memory.put(
+        draftScope,
+        question.text,
+        replyTo,
+        newQuestionMode,
+        unconfirmed,
+      );
+    }
+  }
+
   bool foreground = true, routeVisible = true;
   int generation = 0;
   _TutorSubmission? unconfirmed;
   AppState get state => widget.state;
-  bool get ownerMatches => actor != null && state.user?['id'] == actor;
+  bool get ownerMatches => actor != null && identical(state.user, actor);
   bool get active => mounted && ownerMatches && foreground && routeVisible;
   bool get hasPending =>
       turns.any((turn) => ['queued', 'running'].contains(turn['status']));
@@ -101,6 +166,14 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     state.addListener(identityChanged);
+    memory.changed();
+    final saved = memory.drafts[draftScope];
+    if (state.isChild && ownerMatches && saved != null) {
+      question.text = saved.text;
+      replyTo = saved.replyTo;
+      newQuestionMode = saved.newQuestion;
+      unconfirmed = saved.submission;
+    }
     question.addListener(draftChanged);
     unawaited(load());
   }
@@ -135,16 +208,23 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
       poll?.cancel();
       poll = null;
       generation++;
+      question.clear();
+      replyTo = null;
+      replacedDraft = null;
+      unconfirmed = null;
+      readError = sendError = null;
       if (mounted) setState(turns.clear);
     }
   }
 
   void draftChanged() {
+    rememberDraft();
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    rememberDraft();
     generation++;
     poll?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -182,7 +262,10 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
           .map((turn) => Json.from(turn as Map))
           .toList();
       setState(() {
+        // A new server snapshot also revalidates source access. Do not retain
+        // old answers/citations across refreshes without fresh authorization.
         if (!older) turns.clear();
+        sourceUnavailable = false;
         final combined = <String, Json>{
           for (final turn in turns) turn['id'].toString(): turn,
         };
@@ -219,6 +302,11 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
         setState(() {
           loading = false;
           readError = _message(error);
+          if (error is ApiError && [401, 403, 404].contains(error.status)) {
+            turns.clear();
+            sourceUnavailable = true;
+            cursor = null;
+          }
         });
       }
     } finally {
@@ -296,6 +384,13 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   void useStarter(String text, {Json? related}) {
     if (hasPending || sending || unconfirmed != null) return;
     setState(() {
+      if (question.text.isNotEmpty && question.text != text) {
+        replacedDraft = (
+          text: question.text,
+          replyTo: replyTo,
+          newQuestion: newQuestionMode,
+        );
+      }
       question.text = text;
       question.selection = TextSelection.collapsed(
         offset: question.text.length,
@@ -311,7 +406,12 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final editable = ownerMatches && state.isChild;
-    final blocked = sending || hasPending || unconfirmed != null || loading;
+    final blocked =
+        sending ||
+        hasPending ||
+        unconfirmed != null ||
+        loading ||
+        sourceUnavailable;
     final latest = turns.lastOrNull;
     final parentTurn = turns
         .where((turn) => turn['id'] == latest?['reply_to'])
@@ -453,6 +553,23 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 ),
                             ],
                           ),
+                        if (replacedDraft != null)
+                          TextButton.icon(
+                            onPressed: blocked
+                                ? null
+                                : () {
+                                    if (!ownerMatches) return;
+                                    final saved = replacedDraft!;
+                                    setState(() {
+                                      question.text = saved.text;
+                                      replyTo = saved.replyTo;
+                                      newQuestionMode = saved.newQuestion;
+                                      replacedDraft = null;
+                                    });
+                                  },
+                            icon: Icon(Icons.undo_rounded),
+                            label: Text('Eigene Frage wiederherstellen'),
+                          ),
                         if (replyTo != null)
                           Row(
                             children: [
@@ -561,7 +678,6 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                                 : () => setState(() {
                                     newQuestionMode = true;
                                     replyTo = null;
-                                    question.clear();
                                   }),
                             child: Text('Eine andere Frage stellen'),
                           ),
@@ -602,6 +718,18 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (turn['created'] is num &&
+            (turn['created'] as num).isFinite &&
+            (turn['created'] as num) >= 946684800 &&
+            (turn['created'] as num) <= 4133980800)
+          Text(
+            DateFormat('dd.MM.yyyy · HH:mm').format(
+              DateTime.fromMillisecondsSinceEpoch(
+                ((turn['created'] as num) * 1000).toInt(),
+              ).toLocal(),
+            ),
+            style: TextStyle(color: context.palette.muted, fontSize: 13),
+          ),
         if (!collapsed) ...[
           MathText(
             turn['question'] ?? '',
@@ -689,6 +817,21 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                             ),
                           ),
                         SizedBox(height: 5),
+                        if (source['material_id'] is String &&
+                            RegExp(r'^[a-f0-9]{32}$')
+                                .hasMatch(source['material_id']))
+                          TextButton.icon(
+                            onPressed: () {
+                              if (mounted && ownerMatches) {
+                                openRoute(
+                                  context,
+                                  '/material/${source['material_id']}',
+                                );
+                              }
+                            },
+                            icon: Icon(Icons.menu_book_outlined),
+                            label: Text('Heftseite dazu ansehen'),
+                          ),
                         MathText(
                           '„${source['quote']}“',
                           style: TextStyle(color: context.palette.muted),

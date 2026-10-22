@@ -152,7 +152,7 @@ void main() {
           160,
           scrollable: find
               .descendant(
-                of: find.byType(ListView),
+                of: find.byType(CustomScrollView),
                 matching: find.byType(Scrollable),
               )
               .first,
@@ -160,7 +160,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(select);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Schon erfasst · 2026-10-10 · Zellen').last);
+        await tester.tap(find.text('Schon erfasst · 10.10.2026 · Zellen').last);
         await tester.pumpAndSettle();
         await tester.tap(find.text('Auswahl übernehmen'));
         await tester.pumpAndSettle();

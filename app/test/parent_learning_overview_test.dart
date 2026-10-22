@@ -316,7 +316,7 @@ void main() {
         expect(find.text('Tagesziel offen'), findsOneWidget);
         expect(find.text('Tagesziel erfüllt'), findsNothing);
         expect(find.text('Offene Pflichtaufträge: 1'), findsOneWidget);
-        expect(find.text('1 Hilfewunsch heute'), findsOneWidget);
+        expect(find.text('1 offener Hilfewunsch'), findsOneWidget);
         expect(
           find.text('Anliegen und Antworten findet ihr in den Nachrichten.'),
           findsOneWidget,

@@ -6,7 +6,7 @@ import 'api.dart';
 import 'ui.dart';
 
 /// Observes a single already reserved job. Opening/reloading never creates one.
-class LearningPreparationScreen extends StatefulWidget {
+class LearningPreparationScreen extends StatelessWidget {
   final AppState state;
   final String childId;
   final String jobId;
@@ -18,30 +18,50 @@ class LearningPreparationScreen extends StatefulWidget {
   });
 
   @override
-  State<LearningPreparationScreen> createState() =>
+  Widget build(BuildContext context) => _LearningPreparationBody(
+    state,
+    childId: childId,
+    jobId: jobId,
+    key: ValueKey((state, ObjectKey(state.user), childId, jobId)),
+  );
+}
+
+class _LearningPreparationBody extends StatefulWidget {
+  final AppState state;
+  final String childId, jobId;
+  const _LearningPreparationBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.jobId,
+  });
+  @override
+  State<_LearningPreparationBody> createState() =>
       _LearningPreparationScreenState();
 }
 
-class _LearningPreparationScreenState extends State<LearningPreparationScreen>
+class _LearningPreparationScreenState extends State<_LearningPreparationBody>
     with WidgetsBindingObserver {
   Json? job;
   Timer? poll;
   Object? error;
   String? readingJob;
-  late String? owner;
+  late final Json? owner;
   bool foreground = true;
-  bool get sameOwner => widget.state.user?['id'] == owner;
+  bool get sameOwner =>
+      mounted && owner != null && identical(widget.state.user, owner);
   bool get waiting =>
       job == null || ['queued', 'running'].contains(job?['status']);
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     foreground =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
+    widget.state.addListener(accountChanged);
     load();
     poll = Timer.periodic(Duration(seconds: 3), (_) {
       if (foreground &&
@@ -54,15 +74,15 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
     });
   }
 
-  @override
-  void didUpdateWidget(covariant LearningPreparationScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.jobId != widget.jobId ||
-        oldWidget.childId != widget.childId) {
-      job = null;
-      error = null;
-      owner = widget.state.user?['id'];
-      load();
+  void accountChanged() {
+    if (!sameOwner) {
+      poll?.cancel();
+      if (mounted) {
+        setState(() {
+          job = null;
+          error = null;
+        });
+      }
     }
   }
 
@@ -75,6 +95,7 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.state.removeListener(accountChanged);
     poll?.cancel();
     super.dispose();
   }
@@ -137,6 +158,8 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                       ? 'Diese Runde konnte nicht vorbereitet werden.'
                       : error != null
                       ? 'Wir können gerade nicht nachsehen.'
+                      : job?['status'] == 'queued'
+                      ? 'Deine Vorbereitung wartet auf ihren Start.'
                       : planning
                       ? 'Dein Lernplan entsteht …'
                       : 'Deine Runde entsteht …',
@@ -144,7 +167,13 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                 ),
                 SizedBox(height: 14),
                 if (waiting && error == null) ...[
-                  LinearProgressIndicator(),
+                  Semantics(
+                    liveRegion: true,
+                    label: job?['status'] == 'queued'
+                        ? 'Vorbereitung wartet'
+                        : 'Vorbereitung läuft',
+                    child: LinearProgressIndicator(),
+                  ),
                   SizedBox(height: 16),
                   Text('Du kannst die App schließen. Wir arbeiten weiter.'),
                 ],
@@ -189,14 +218,29 @@ class _LearningPreparationScreenState extends State<LearningPreparationScreen>
                     icon: Icons.refresh_rounded,
                     onPressed: load,
                   ),
+                if (failed && widget.state.isChild) ...[
+                  SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      if (sameOwner) {
+                        openRoute(context, '/learn/${widget.childId}');
+                      }
+                    },
+                    icon: Icon(Icons.auto_stories_outlined),
+                    label: Text('Gespeicherte Runden ansehen'),
+                  ),
+                ],
                 SizedBox(height: 12),
                 TextButton.icon(
-                  onPressed: () => openRoute(
-                    context,
-                    widget.state.isParent
-                        ? '/parent-plan/${widget.childId}'
-                        : '/app',
-                  ),
+                  onPressed: () {
+                    if (!sameOwner) return;
+                    openRoute(
+                      context,
+                      widget.state.isParent
+                          ? '/parent-plan/${widget.childId}'
+                          : '/app',
+                    );
+                  },
                   icon: Icon(Icons.home_outlined),
                   label: Text(
                     widget.state.isParent ? 'Zum Lernplan' : 'Zur Startseite',

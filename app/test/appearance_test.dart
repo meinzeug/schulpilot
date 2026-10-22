@@ -71,7 +71,7 @@ void main() {
 
   for (final brightness in Brightness.values) {
     testWidgets(
-      'Fraction labels contrast with both marked portions in $brightness',
+      'Fraction legend describes both portions and retains readable contrast in $brightness',
       (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -83,27 +83,44 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Anteile zusammenlegen'));
         await tester.pumpAndSettle();
-        for (final label in ['A', 'B']) {
-          final finder = find.text(label).first;
-          final color = tester.widget<Text>(finder).style!.color!;
-          final box =
-              tester
-                      .widget<Container>(
-                        find
-                            .ancestor(
-                              of: finder,
-                              matching: find.byType(Container),
-                            )
-                            .first,
-                      )
-                      .decoration!
-                  as BoxDecoration;
-          final x = color.computeLuminance(), y = box.color!.computeLuminance();
-          expect(
-            x > y ? (x + .05) / (y + .05) : (y + .05) / (x + .05),
-            greaterThanOrEqualTo(4.5),
-          );
-        }
+        final legend = find.textContaining('A steht für 1/3, B für 1/6');
+        expect(legend, findsOneWidget);
+        // Letters no longer sit inside tiny colored cells. Check the actual
+        // replacement legend against the inset on which it is rendered.
+        final element = tester.element(legend);
+        final text = tester.widget<Text>(legend);
+        final color = DefaultTextStyle.of(element).style
+            .merge(text.style)
+            .color!;
+        final inset = find
+            .ancestor(of: legend, matching: find.byType(SurfaceInset))
+            .first;
+        final box =
+            tester
+                    .widget<Container>(
+                      find
+                          .descendant(
+                            of: inset,
+                            matching: find.byType(Container),
+                          )
+                          .first,
+                    )
+                    .decoration!
+                as BoxDecoration;
+        final x = color.computeLuminance(), y = box.color!.computeLuminance();
+        expect(
+          x > y ? (x + .05) / (y + .05) : (y + .05) / (x + .05),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label ==
+                    'A + B: 3/6: 3 von 6 gleich großen Teilen markiert.',
+          ),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       },
     );

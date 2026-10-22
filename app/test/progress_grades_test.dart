@@ -161,7 +161,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('7 Aufgaben geübt'), findsOneWidget);
         expect(find.text('3 alleine gelöst'), findsOneWidget);
-        expect(find.text('2 mit Hilfe gelöst'), findsOneWidget);
+        expect(find.text('2 mit Hilfe/erneut gelöst'), findsOneWidget);
         expect(find.text('1 weiter üben'), findsOneWidget);
         expect(find.text('1 Bewertung offen'), findsOneWidget);
         expect(find.text('0 von 3 Prüftagen'), findsNothing);

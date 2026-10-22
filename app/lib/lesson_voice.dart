@@ -105,7 +105,12 @@ class LessonVoiceSession extends ChangeNotifier {
     var heard = false;
     // A hard app-side deadline complements platform-specific silence limits.
     _deadline = Timer(const Duration(seconds: 35), () {
-      if (_active(owner, generation)) unawaited(stop(owner: owner));
+      if (_active(owner, generation)) {
+        messageOwner = owner;
+        message = 'Die Aufnahme ist nach 35 Sekunden beendet. Prüfe deinen Text; du kannst weiter tippen oder erneut bewusst sprechen.';
+        messageIsFailure = false;
+        unawaited(stop(owner: owner));
+      }
     });
     try {
       await adapter.cancel().timeout(const Duration(seconds: 3));
@@ -486,6 +491,8 @@ class ReadAloudButton extends StatefulWidget {
 
 class _ReadAloudButtonState extends State<ReadAloudButton>
     with WidgetsBindingObserver, _VoiceLifecycle<ReadAloudButton> {
+  bool preparing = false;
+  int preparation = 0;
   @override
   LessonVoiceSession get voice => widget.voice ?? LessonVoiceSession.shared;
   @override
@@ -516,6 +523,8 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
         oldWidget.text != widget.text ||
         oldWidget.locale != widget.locale ||
         oldWidget.slow != widget.slow) {
+      preparation++;
+      preparing = false;
       unawaited(voice.stop(owner: owner));
     }
   }
@@ -541,6 +550,8 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
     final active = voice.owns(owner);
     final label = active
         ? 'Vorlesen stoppen'
+        : preparing
+        ? 'Vorlesen wird vorbereitet …'
         : widget.slow
         ? 'Langsam vorlesen'
         : 'Vorlesen';
@@ -548,9 +559,13 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
       if (active) {
         unawaited(voice.stop(owner: owner));
       } else {
+        if (preparing || !mounted || !widget.enabled) return;
+        final ticket = ++preparation;
+        setState(() => preparing = true);
         try {
           await widget.beforeRead?.call();
-          if (!mounted) return;
+          if (!mounted || ticket != preparation) return;
+          setState(() => preparing = false);
           if (!widget.enabled ||
               ModalRoute.of(this.context)?.isCurrent == false) {
             return;
@@ -563,11 +578,15 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
           );
           if (completed && mounted) await widget.onReadCompleted?.call();
         } catch (_) {
-          if (mounted) {
+          if (mounted && ticket == preparation) {
             presentVoiceMessage(
               'Die Sprachhilfe konnte nicht gespeichert werden. Bitte erneut versuchen.',
               failure: true,
             );
+          }
+        } finally {
+          if (mounted && ticket == preparation) {
+            setState(() => preparing = false);
           }
         }
       }
@@ -576,7 +595,8 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
     return widget.iconOnly
         ? IconButton(
             tooltip: label,
-            onPressed: widget.enabled && widget.text.trim().isNotEmpty
+            onPressed:
+                widget.enabled && !preparing && widget.text.trim().isNotEmpty
                 ? pressed
                 : null,
             icon: Icon(
@@ -584,7 +604,8 @@ class _ReadAloudButtonState extends State<ReadAloudButton>
             ),
           )
         : TextButton.icon(
-            onPressed: widget.enabled && widget.text.trim().isNotEmpty
+            onPressed:
+                widget.enabled && !preparing && widget.text.trim().isNotEmpty
                 ? pressed
                 : null,
             icon: Icon(
@@ -619,6 +640,30 @@ class VoiceInputButton extends StatefulWidget {
 class _VoiceInputButtonState extends State<VoiceInputButton>
     with WidgetsBindingObserver, _VoiceLifecycle<VoiceInputButton> {
   bool writing = false, confirming = false;
+  DialogRoute<bool>? consentRoute;
+  int consentGeneration = 0;
+  void dismissConsent() {
+    consentGeneration++;
+    final route = consentRoute;
+    consentRoute = null;
+    confirming = false;
+    if (route != null) {
+      Future<void>.microtask(() {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    super.didChangeAppLifecycleState(lifecycle);
+    if (lifecycle == AppLifecycleState.hidden ||
+        lifecycle == AppLifecycleState.paused ||
+        lifecycle == AppLifecycleState.detached) {
+      dismissConsent();
+    }
+  }
+
   @override
   LessonVoiceSession get voice => widget.voice ?? LessonVoiceSession.shared;
   @override
@@ -651,11 +696,13 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       voice.addListener(voiceChanged);
     }
     if (oldWidget.controller != widget.controller) {
+      dismissConsent();
       oldWidget.controller.removeListener(textChanged);
       widget.controller.addListener(textChanged);
       unawaited(voice.stop(owner: owner));
     }
     if (!widget.enabled || oldWidget.locale != widget.locale) {
+      dismissConsent();
       unawaited(voice.stop(owner: owner));
     }
   }
@@ -677,7 +724,18 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
     }
     if (confirming) return;
     confirming = true;
-    final accepted = await showDialog<bool>(
+    final ticket = ++consentGeneration;
+    late final DialogRoute<bool> route;
+    void finish(bool result) {
+      if (mounted &&
+          widget.enabled &&
+          ticket == consentGeneration &&
+          route.isCurrent) {
+        route.navigator?.pop(result);
+      }
+    }
+
+    route = DialogRoute<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Mit dem Mikrofon schreiben?'),
@@ -686,19 +744,26 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => finish(false),
             child: const Text('Lieber tippen'),
           ),
           FilledButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () => finish(true),
             icon: const Icon(Icons.mic_none_rounded),
             label: const Text('Sprechen'),
           ),
         ],
       ),
     );
-    confirming = false;
+    consentRoute = route;
+    final accepted = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(route);
+    if (identical(consentRoute, route)) consentRoute = null;
+    if (ticket == consentGeneration) confirming = false;
     if (!mounted ||
+        ticket != consentGeneration ||
         accepted != true ||
         !widget.enabled ||
         ModalRoute.of(context)?.isCurrent == false) {
@@ -709,10 +774,8 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
       if (!mounted) return;
       final combined =
           '${initial.isEmpty || initial.endsWith(' ') ? initial : '$initial '}$words';
-      if (initial.length >= widget.maxLength) return;
-      final limited = combined.length > widget.maxLength
-          ? combined.substring(0, widget.maxLength)
-          : combined;
+      if (initial.characters.length >= widget.maxLength) return;
+      final limited = combined.characters.take(widget.maxLength).toString();
       widget.onRecognized?.call();
       writing = true;
       widget.controller.value = TextEditingValue(
@@ -725,6 +788,7 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
 
   @override
   void dispose() {
+    dismissConsent();
     widget.controller.removeListener(textChanged);
     detachVoice();
     super.dispose();
@@ -733,7 +797,11 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
   @override
   Widget build(BuildContext context) {
     final active = voice.owns(owner);
-    final label = active ? 'Aufnahme stoppen' : 'Sprechen';
+    final label = active
+        ? voice.mode == LessonVoiceMode.preparing
+              ? 'Mikrofon wird vorbereitet · Stoppen'
+              : 'Aufnahme stoppen'
+        : 'Sprechen';
     return widget.iconOnly
         ? IconButton(
             tooltip: label,

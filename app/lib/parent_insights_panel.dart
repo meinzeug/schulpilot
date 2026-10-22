@@ -48,13 +48,17 @@ class ParentInsightsPanel extends StatefulWidget {
 class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     with WidgetsBindingObserver {
   Json? data;
-  String? error, requestKey, selectedReview;
+  String? error, requestKey, selectedReview, operationLabel;
   bool loading = false, busy = false, foreground = true, routeVisible = true;
-  int generation = 0;
+  int generation = 0, operation = 0;
   Timer? poll;
   late Json? owner;
+  late String? family;
   bool get own =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      family == widget.state.familyId;
   bool get active => own && foreground && routeVisible;
   String get route => '/children/${widget.childId}/parent-insights';
 
@@ -62,6 +66,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   void initState() {
     super.initState();
     owner = widget.state.user;
+    family = widget.state.familyId;
     widget.state.addListener(identityChanged);
     WidgetsBinding.instance.addObserver(this);
     load();
@@ -71,6 +76,7 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     if (!own && mounted) {
       poll?.cancel();
       generation++;
+      operation++;
       setState(() {
         data = null;
         error = null;
@@ -84,10 +90,13 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.childId != widget.childId) {
       generation++;
+      operation++;
       poll?.cancel();
       data = null;
       requestKey = null;
       selectedReview = null;
+      busy = false;
+      operationLabel = null;
       load();
     } else if (oldWidget.revision != widget.revision && !busy) {
       load();
@@ -132,7 +141,10 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
     poll?.cancel();
     final stamp = ++generation;
     final child = widget.childId;
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       final value = await widget.state.api.get(
         Uri(
@@ -183,21 +195,23 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
   Future<void> prepare() async {
     if (!own || busy) return;
     final child = widget.childId;
+    final action = ++operation;
     requestKey ??= homeworkKey();
     setState(() {
       busy = true;
+      operationLabel = 'Neue KI-Auswertung anfordern …';
       error = null;
     });
     try {
       await widget.state.api.post('$route/review', {}, {
         'Idempotency-Key': requestKey!,
       });
-      if (!own || child != widget.childId) return;
+      if (!own || child != widget.childId || action != operation) return;
       requestKey = null;
       selectedReview = null;
       await load();
     } catch (e) {
-      if (own && child == widget.childId) {
+      if (own && child == widget.childId && action == operation) {
         if (e is ApiError && e.status >= 400 && e.status < 500) {
           requestKey = null;
         }
@@ -206,22 +220,32 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
         );
       }
     } finally {
-      if (own && child == widget.childId) setState(() => busy = false);
+      if (own && child == widget.childId && action == operation) {
+        setState(() {
+          busy = false;
+          operationLabel = null;
+        });
+      }
     }
   }
 
   Future<void> enable(bool enabled) async {
     if (!own || busy || data == null) return;
     final child = widget.childId;
-    setState(() => busy = true);
+    final action = ++operation;
+    setState(() {
+      busy = true;
+      operationLabel = 'Einstellung speichern …';
+      error = null;
+    });
     try {
       await widget.state.api.put('$route/settings', {
         'revision': data!['settings']['revision'],
         'enabled': enabled,
       });
-      if (own && child == widget.childId) await load();
+      if (own && child == widget.childId && action == operation) await load();
     } catch (e) {
-      if (own && child == widget.childId) {
+      if (own && child == widget.childId && action == operation) {
         setState(
           () => error = e is ApiError
               ? e.message
@@ -229,7 +253,12 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
         );
       }
     } finally {
-      if (own && child == widget.childId) setState(() => busy = false);
+      if (own && child == widget.childId && action == operation) {
+        setState(() {
+          busy = false;
+          operationLabel = null;
+        });
+      }
     }
   }
 
@@ -242,12 +271,13 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
         .whereType<Map>();
     final topics = {for (final t in savedTopics) t['ref']: t};
     final findings = (report?['findings'] as List? ?? []).whereType<Map>();
+    final visibleFindings = findings.take(widget.compact ? 3 : 6).toList();
     final plan = (report?['plan'] as List? ?? []).whereType<Map>();
     final pending = ['queued', 'running'].contains(data?['pending']?['status']);
     final failed =
         data?['latest_attempt']?['status'] == 'failed' ||
         data?['pending']?['status'] == 'failed';
-    final attention = (data?['topics'] as List? ?? [])
+    final allAttention = (data?['topics'] as List? ?? [])
         .whereType<Map>()
         .where(
           (t) =>
@@ -255,7 +285,13 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
               (t['assisted_tasks'] as num? ?? 0) > 0 ||
               (t['uncertain_tasks'] as num? ?? 0) > 0,
         )
-        .take(widget.compact ? 3 : 6);
+        .toList();
+    final attention = allAttention.take(widget.compact ? 3 : 6).toList();
+    final child = widget.childId;
+    final historical =
+        selectedReview != null &&
+        (data?['history'] as List? ?? []).isNotEmpty &&
+        latest?['id'] != data!['history'][0]['id'];
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Panel(
@@ -284,11 +320,33 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
               'Konkrete Übungsbelege. Vorsichtige Einschätzungen. Ein nächster Schritt.',
             ),
             if (loading || busy || pending)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: LinearProgressIndicator(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        loading
+                            ? 'Gespeicherten Lernkompass laden …'
+                            : busy
+                            ? operationLabel ?? 'Anfrage speichern …'
+                            : 'KI-Auswertung wird vorbereitet …',
+                      ),
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(),
+                    ],
+                  ),
+                ),
               ),
-            if (error != null) Notice(error!, warning: true),
+            if (error != null) ...[
+              Semantics(liveRegion: true, child: Notice(error!, warning: true)),
+              TextButton(
+                onPressed: loading || busy ? null : load,
+                child: const Text('Lernkompass erneut laden'),
+              ),
+            ],
             if (data != null) ...[
               if (attention.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -307,8 +365,17 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                       color: context.palette.teal,
                     ),
                     title: Text('${t['subject']} · ${t['topic']}'),
-                    subtitle: Text(
-                      '${t['needs_practice_tasks']} weiter üben · ${t['assisted_tasks']} mit Hilfe/erneut richtig · ${t['uncertain_tasks']} unklar',
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${t['needs_practice_tasks']} weiter üben · ${t['assisted_tasks']} mit Hilfe/erneut richtig · ${t['uncertain_tasks']} unklar',
+                        ),
+                        if (t['last_activity'] is num)
+                          Text(
+                            'Zuletzt geübt: ${reviewDate(t['last_activity'])}',
+                          ),
+                      ],
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => openRoute(
@@ -321,6 +388,10 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                         },
                       ).toString(),
                     ),
+                  ),
+                if (allAttention.length > attention.length)
+                  Text(
+                    '${attention.length} von ${allAttention.length} Themen in dieser Vorschau. Alle Belege stehen im Lernstand.',
                   ),
                 const Divider(height: 28),
               ],
@@ -342,13 +413,17 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                 const Notice(
                   'Es gibt einen neueren Lernstand. Die KI-Einschätzung unten bezieht sich auf ihren angezeigten Stand.',
                 ),
-              if (failed)
+              if (failed) ...[
+                const Text(
+                  'Der letzte Auswertungsversuch wurde nicht abgeschlossen.',
+                ),
                 Notice(
                   data!['latest_attempt']?['error'] ??
                       data!['pending']?['error'] ??
                       'Die letzte Auswertung ist offen. Gespeicherte Belege bleiben verfügbar.',
                   warning: true,
                 ),
+              ],
               if (report == null) ...[
                 const SizedBox(height: 12),
                 Text(
@@ -359,17 +434,21 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
               ] else ...[
                 const SizedBox(height: 16),
                 Text(
-                  'KI-Einschätzung · ${reviewDate(latest?['finished'])}',
+                  '${historical ? 'Gespeicherte KI-Einschätzung' : 'Letzte erfolgreiche KI-Einschätzung'} · ${reviewDate(latest?['finished'])}',
                   style: TextStyle(color: context.palette.muted),
                 ),
                 const SizedBox(height: 8),
                 LearningContent(report['summary'].toString()),
                 const SizedBox(height: 16),
-                for (final finding in findings.take(widget.compact ? 3 : 6))
+                for (final finding in visibleFindings)
                   _FindingCard(
                     finding: finding,
                     topic: topics[finding['topic_ref']],
                     childId: widget.childId,
+                  ),
+                if (findings.length > visibleFindings.length)
+                  Text(
+                    '${visibleFindings.length} von ${findings.length} KI-Schwerpunkten in dieser Vorschau. Der Lernplan zeigt die vollständige gespeicherte Auswertung.',
                   ),
                 if ((latest?['observations']?['topic_count'] as num? ?? 0) >
                     (latest?['observations']?['selected_topic_count'] as num? ??
@@ -395,6 +474,27 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                         children: [
                           LearningContent(step['purpose'].toString()),
                           Text('Danach prüfen: ${step['expected_result']}'),
+                          if (topics[step['topic_ref']] != null)
+                            TextButton.icon(
+                              onPressed: () {
+                                if (!own || child != widget.childId) return;
+                                final target = topics[step['topic_ref']]!;
+                                openRoute(
+                                  context,
+                                  Uri(
+                                    path: '/progress/$child',
+                                    queryParameters: {
+                                      'fach': target['subject'],
+                                      'thema': target['topic'],
+                                    },
+                                  ).toString(),
+                                );
+                              },
+                              icon: const Icon(Icons.fact_check_outlined),
+                              label: const Text(
+                                'Belege zu diesem Schritt ansehen',
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -450,19 +550,43 @@ class _ParentInsightsPanelState extends State<ParentInsightsPanel>
                     labelText: 'Gespeicherte Auswertung ansehen',
                   ),
                   items: [
-                    for (final old in data!['history'])
+                    for (final (index, old)
+                        in (data!['history'] as List).indexed)
                       DropdownMenuItem(
                         value: old['id'],
-                        child: Text(reviewDate(old['finished'])),
+                        child: Text(
+                          '${index == 0 ? 'Neueste' : '${index + 1}. Auswertung'} · ${old['finished'] is num ? DateFormat('dd.MM.yyyy · HH:mm:ss').format(DateTime.fromMillisecondsSinceEpoch((old['finished'] * 1000).round()).toLocal()) : 'Datum offen'}',
+                        ),
                       ),
                   ],
-                  onChanged: busy
+                  onChanged: busy || loading
                       ? null
                       : (value) {
-                          selectedReview = value;
+                          if (!own || value == selectedReview) return;
+                          setState(() {
+                            selectedReview = value;
+                            data = null;
+                          });
                           load();
                         },
                 ),
+                if (historical)
+                  TextButton.icon(
+                    onPressed: loading || busy
+                        ? null
+                        : () {
+                            if (!own) return;
+                            setState(() {
+                              selectedReview = null;
+                              data = null;
+                            });
+                            load();
+                          },
+                    icon: const Icon(Icons.update_rounded),
+                    label: const Text(
+                      'Neueste gespeicherte Auswertung ansehen',
+                    ),
+                  ),
               ],
             ],
           ],

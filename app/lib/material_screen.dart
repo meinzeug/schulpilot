@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
@@ -23,25 +24,31 @@ Future<void> importMaterial(
   AppState state,
   String childId,
 ) async {
-  final owner = state.user?['id'];
+  final owner = state.user;
   if (state.isDemo) {
     if (!await confirmDialog(
       context,
       'Künstliches Testblatt mit echter KI erkennen?',
-      'Der Server erstellt ein festes Bild ohne persönliche Daten. Dieses Bild wird an das konfigurierte kostenlose OpenRouter-Modell gesendet. Keine eigenen Fotos oder Texte werden verwendet.',
+      'Der Server erstellt ein festes Bild ohne persönliche Daten. Dieses Bild wird vom eingerichteten KI-Dienst gelesen. Keine eigenen Fotos oder Texte werden verwendet.',
     )) {
+      return;
+    }
+    if (!context.mounted ||
+        !identical(owner, state.user) ||
+        ModalRoute.of(context)?.isCurrent == false) {
       return;
     }
     final material = await state.api.post(
       '/children/$childId/materials/synthetic-fixture',
     );
-    if (context.mounted && owner == state.user?['id']) {
+    if (context.mounted && identical(owner, state.user)) {
       state.refreshState();
       openRoute(context, '/material/${material['id']}');
     }
     return;
   }
   final status = await state.api.get('/status');
+  if (!context.mounted || !identical(owner, state.user)) return;
   if (status['real_data_enabled'] != true) {
     throw ApiError(
       'Der Import echter Materialien ist bis zur dokumentierten Datenschutzfreigabe gesperrt.',
@@ -74,19 +81,19 @@ Future<void> importMaterial(
     ),
   );
   if (source == null || !context.mounted) return;
-  if (owner != state.user?['id']) return;
+  if (!identical(owner, state.user)) return;
   await rememberCameraSource(state, childId);
   Uint8List? cropped;
   try {
-    if (!context.mounted || owner != state.user?['id']) return;
+    if (!context.mounted || !identical(owner, state.user)) return;
     cropped = await pickMaterialPhoto(context, source);
   } finally {
-    await clearCameraSource(state);
+    if (identical(owner, state.user)) await clearCameraSource(state);
   }
   if (cropped == null) return;
-  if (owner != state.user?['id']) return;
+  if (!identical(owner, state.user)) return;
   final material = await state.api.upload(childId, cropped);
-  if (context.mounted && owner == state.user?['id']) {
+  if (context.mounted && identical(owner, state.user)) {
     state.refreshState();
     openRoute(context, '/material/${material['id']}');
   }
@@ -133,6 +140,7 @@ class _CropDialogState extends State<CropDialog> {
   double left = 0, top = 0, right = 1, bottom = 1;
   int quarterTurns = 0;
   int? dragCorner;
+  bool encoding = false;
   late img.Image? image = orientedImage();
   img.Image? orientedImage() {
     final decoded = img.decodeImage(widget.bytes);
@@ -164,7 +172,7 @@ class _CropDialogState extends State<CropDialog> {
               style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
             TextButton.icon(
-              onPressed: image == null
+              onPressed: image == null || encoding
                   ? null
                   : () => setState(() {
                       image = img.copyRotate(image!, angle: 90);
@@ -172,93 +180,133 @@ class _CropDialogState extends State<CropDialog> {
                       preview = Uint8List.fromList(
                         img.encodeJpg(image!, quality: 85),
                       );
-                      left = top = 0;
-                      right = bottom = 1;
+                      final oldLeft = left,
+                          oldTop = top,
+                          oldRight = right,
+                          oldBottom = bottom;
+                      left = 1 - oldBottom;
+                      top = oldLeft;
+                      right = 1 - oldTop;
+                      bottom = oldRight;
                     }),
               icon: Icon(Icons.rotate_right),
               label: Text('Um 90° drehen'),
             ),
-            SizedBox(
-              height: (MediaQuery.sizeOf(context).height * .40).clamp(240, 420),
-              child: LayoutBuilder(
-                builder: (context, size) => Center(
-                  child: AspectRatio(
-                    aspectRatio: image == null
-                        ? 1
-                        : image!.width / image!.height,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.memory(preview, fit: BoxFit.fill),
-                        LayoutBuilder(
-                          builder: (context, bounds) => Semantics(
-                            label: 'Zuschneiderahmen. Ziehe eine Ecke. Darunter kannst du die Ränder mit Reglern verändern.',
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onPanStart: image == null
-                                  ? null
-                                  : (event) {
-                                      final corners = [
-                                        Offset(left, top),
-                                        Offset(right, top),
-                                        Offset(left, bottom),
-                                        Offset(right, bottom),
-                                      ];
-                                      final point = Offset(
-                                        event.localPosition.dx /
-                                            bounds.maxWidth,
-                                        event.localPosition.dy /
-                                            bounds.maxHeight,
-                                      );
-                                      var nearest = 0;
-                                      for (var i = 1; i < corners.length; i++) {
-                                        if ((corners[i] - point).distance <
-                                            (corners[nearest] - point)
-                                                .distance) {
-                                          nearest = i;
+            TextButton.icon(
+              onPressed: image == null || encoding
+                  ? null
+                  : () => setState(() {
+                      left = top = 0;
+                      right = bottom = 1;
+                    }),
+              icon: Icon(Icons.crop_free_rounded),
+              label: Text('Ganzes Foto verwenden'),
+            ),
+            if (image == null)
+              Notice(
+                'Dieses Bild kann nicht gelesen werden. Wähle bitte ein anderes Foto als JPEG oder PNG.',
+                warning: true,
+              ),
+            if (image != null)
+              SizedBox(
+                height: (MediaQuery.sizeOf(context).height * .40).clamp(
+                  240,
+                  420,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, size) => Center(
+                    child: AspectRatio(
+                      aspectRatio: image == null
+                          ? 1
+                          : image!.width / image!.height,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.memory(preview, fit: BoxFit.fill),
+                          LayoutBuilder(
+                            builder: (context, bounds) => Semantics(
+                              label: 'Zuschneiderahmen. Ziehe eine Ecke. Darunter kannst du die Ränder mit Reglern verändern.',
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onPanStart: image == null || encoding
+                                    ? null
+                                    : (event) {
+                                        final corners = [
+                                          Offset(left, top),
+                                          Offset(right, top),
+                                          Offset(left, bottom),
+                                          Offset(right, bottom),
+                                        ];
+                                        final point = Offset(
+                                          event.localPosition.dx /
+                                              bounds.maxWidth,
+                                          event.localPosition.dy /
+                                              bounds.maxHeight,
+                                        );
+                                        var nearest = 0;
+                                        for (
+                                          var i = 1;
+                                          i < corners.length;
+                                          i++
+                                        ) {
+                                          if ((corners[i] - point).distance <
+                                              (corners[nearest] - point)
+                                                  .distance) {
+                                            nearest = i;
+                                          }
                                         }
-                                      }
-                                      dragCorner = nearest;
-                                    },
-                              onPanUpdate: image == null
-                                  ? null
-                                  : (event) => setState(() {
-                                      final x =
-                                          (event.localPosition.dx /
-                                                  bounds.maxWidth)
-                                              .clamp(0.0, 1.0);
-                                      final y =
-                                          (event.localPosition.dy /
-                                                  bounds.maxHeight)
-                                              .clamp(0.0, 1.0);
-                                      if (dragCorner == 0 || dragCorner == 2) {
-                                        left = x.clamp(0.0, right - .1);
-                                      }
-                                      if (dragCorner == 1 || dragCorner == 3) {
-                                        right = x.clamp(left + .1, 1.0);
-                                      }
-                                      if (dragCorner == 0 || dragCorner == 1) {
-                                        top = y.clamp(0.0, bottom - .1);
-                                      }
-                                      if (dragCorner == 2 || dragCorner == 3) {
-                                        bottom = y.clamp(top + .1, 1.0);
-                                      }
-                                    }),
-                              onPanEnd: (_) => dragCorner = null,
-                              child: CustomPaint(
-                                painter: _CropPainter(
-                                  Rect.fromLTRB(left, top, right, bottom),
+                                        final offset = corners[nearest] - point;
+                                        final pixelDistance = Offset(
+                                          offset.dx * bounds.maxWidth,
+                                          offset.dy * bounds.maxHeight,
+                                        ).distance;
+                                        dragCorner = pixelDistance <= 32
+                                            ? nearest
+                                            : null;
+                                      },
+                                onPanUpdate: image == null || encoding
+                                    ? null
+                                    : (event) => setState(() {
+                                        final x =
+                                            (event.localPosition.dx /
+                                                    bounds.maxWidth)
+                                                .clamp(0.0, 1.0);
+                                        final y =
+                                            (event.localPosition.dy /
+                                                    bounds.maxHeight)
+                                                .clamp(0.0, 1.0);
+                                        if (dragCorner == 0 ||
+                                            dragCorner == 2) {
+                                          left = x.clamp(0.0, right - .1);
+                                        }
+                                        if (dragCorner == 1 ||
+                                            dragCorner == 3) {
+                                          right = x.clamp(left + .1, 1.0);
+                                        }
+                                        if (dragCorner == 0 ||
+                                            dragCorner == 1) {
+                                          top = y.clamp(0.0, bottom - .1);
+                                        }
+                                        if (dragCorner == 2 ||
+                                            dragCorner == 3) {
+                                          bottom = y.clamp(top + .1, 1.0);
+                                        }
+                                      }),
+                                onPanEnd: (_) => dragCorner = null,
+                                child: CustomPaint(
+                                  painter: _CropPainter(
+                                    Rect.fromLTRB(left, top, right, bottom),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             SizedBox(height: 16),
             ExpansionTile(
               title: Text('Bild zuschneiden'),
@@ -308,7 +356,7 @@ class _CropDialogState extends State<CropDialog> {
                           value: item.$2,
                           min: item.$3,
                           max: item.$4,
-                          onChanged: item.$5,
+                          onChanged: encoding ? null : item.$5,
                         ),
                       ),
                     ],
@@ -321,29 +369,45 @@ class _CropDialogState extends State<CropDialog> {
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: Text('Abbrechen'),
+        onPressed: encoding
+            ? null
+            : () {
+                if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+                  Navigator.pop(context);
+                }
+              },
+        child: Text(image == null ? 'Anderes Foto wählen' : 'Abbrechen'),
       ),
       ActionButton(
         label: 'Zuschnitt übernehmen',
+        enabled: image != null && !encoding,
         onPressed: () async {
+          final cropRoute = ModalRoute.of(context);
+          if (!mounted || encoding || cropRoute?.isCurrent != true) return;
           if (image == null) {
             throw ApiError(
               'Dieses Bildformat konnte nicht gelesen werden. Bitte JPEG oder PNG auswählen.',
             );
           }
-          // Give the busy indicator a frame; native encoding runs off the UI
-          // isolate. Web's compute still runs on the browser's event loop.
-          await Future<void>.delayed(Duration(milliseconds: 32));
-          final encoded = await compute(encodeMaterialCrop, <String, dynamic>{
+          final values = <String, dynamic>{
             'bytes': widget.bytes,
             'turns': quarterTurns,
             'left': left,
             'top': top,
             'right': right,
             'bottom': bottom,
-          });
-          if (context.mounted) Navigator.pop(context, encoded);
+          };
+          setState(() => encoding = true);
+          try {
+            // Paint feedback before the bounded local encoding operation.
+            await Future<void>.delayed(Duration(milliseconds: 32));
+            final encoded = await compute(encodeMaterialCrop, values);
+            if (context.mounted && cropRoute?.isCurrent == true) {
+              Navigator.pop(context, encoded);
+            }
+          } finally {
+            if (mounted) setState(() => encoding = false);
+          }
         },
       ),
     ],
@@ -462,14 +526,21 @@ class _MaterialTaskDialogState extends State<MaterialTaskDialog> {
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+            Navigator.pop(context);
+          }
+        },
         child: Text('Zurück'),
       ),
       FilledButton(
-        onPressed: () => Navigator.pop(context, <Json>[
-          for (final entry in choices.entries)
-            {'key': entry.key, 'classification': entry.value},
-        ]),
+        onPressed: () {
+          if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+          Navigator.pop(context, <Json>[
+            for (final entry in choices.entries)
+              {'key': entry.key, 'classification': entry.value},
+          ]);
+        },
         child: Text(
           widget.hasDuplicate && widget.items.isEmpty
               ? 'Seite bewusst behalten'
@@ -535,21 +606,46 @@ class MaterialScreen extends StatefulWidget {
 
 class _MaterialScreenState extends State<MaterialScreen> {
   int version = 0;
+  late final account = widget.state.user;
+  bool get current =>
+      mounted && account != null && identical(account, widget.state.user);
+  @override
+  void initState() {
+    super.initState();
+    widget.state.addListener(accountChanged);
+  }
+
+  void accountChanged() {
+    if (!current && mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.state.removeListener(accountChanged);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => PageFrame(
     state: widget.state,
     title: widget.state.isChild ? 'Dein Lernstoff' : 'Heftseite',
     subtitle: widget.state.isChild ? 'Schau kurz, ob der Text stimmt.' : null,
-    child: LoadView<Json>(
-      key: ValueKey(version),
-      load: () => widget.state.api.get('/materials/${widget.materialId}'),
-      builder: (data, refresh) => MaterialReview(
-        widget.state,
-        data,
-        simpleChild: widget.state.isChild,
-        onRefresh: () => setState(() => version++),
-      ),
-    ),
+    child: !current
+        ? SizedBox.shrink()
+        : LoadView<Json>(
+            key: ValueKey((version, widget.materialId, ObjectKey(account))),
+            load: () => widget.state.api.get('/materials/${widget.materialId}'),
+            builder: (data, refresh) => !current
+                ? SizedBox.shrink()
+                : MaterialReview(
+                    widget.state,
+                    data,
+                    simpleChild: widget.state.isChild,
+                    onRefresh: () {
+                      if (current) setState(() => version++);
+                    },
+                  ),
+          ),
   );
 }
 
@@ -581,12 +677,160 @@ class _MaterialReviewState extends State<MaterialReview> {
     text: (widget.data['homework'] as List).join('\n'),
   );
   bool editing = false, confirmedHere = false;
-  bool changing = false;
+  bool changing = false, sourceConflict = false, restoredCorrection = false;
+  int? correctionRevision;
+  String get correctionKey =>
+      'source_correction:${widget.data['child_id']}:${widget.data['id']}';
+  DialogRoute<List<Json>>? taskPreviewRoute;
+  bool get dirty =>
+      subject.text != widget.data['subject'] ||
+      topic.text != widget.data['topic'] ||
+      content.text != widget.data['content'] ||
+      homework.text != (widget.data['homework'] as List).join('\n');
+  void retainCorrection() {
+    if (!current) return;
+    widget.state.collectionViews.remove(correctionKey);
+    if (!dirty || confirmedHere || widget.data['confirmed'] == true) return;
+    if (content.text.runes.length > 24000 ||
+        topic.text.runes.length > 160 ||
+        homework.text.length > 12000) {
+      return;
+    }
+    widget.state.collectionViews[correctionKey] = {
+      'account': account,
+      'revision': correctionRevision,
+      'subject': subject.text,
+      'topic': topic.text,
+      'content': content.text,
+      'homework': homework.text,
+    };
+    final keys = widget.state.collectionViews.keys
+        .where((key) => key.startsWith('source_correction:'))
+        .toList();
+    while (keys.length > 10) {
+      widget.state.collectionViews.remove(keys.removeAt(0));
+    }
+  }
+
+  void validateCorrection() {
+    if (topic.text.runes.length > 160) {
+      throw ApiError(
+        'Das Thema darf höchstens 160 Zeichen haben. Dein Text bleibt hier erhalten.',
+      );
+    }
+    if (content.text.runes.length > 24000) {
+      throw ApiError(
+        'Der Seitentext darf höchstens 24.000 Zeichen haben. Dein Text bleibt hier erhalten.',
+      );
+    }
+    final lines = homework.text
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (lines.length > 20 || lines.any((s) => s.runes.length > 500)) {
+      throw ApiError(
+        'Bis zu 20 Aufgaben mit je höchstens 500 Zeichen sind möglich. Dein Text bleibt hier erhalten.',
+      );
+    }
+  }
+
+  late final account = widget.state.user;
+  bool get current =>
+      mounted && account != null && identical(account, widget.state.user);
+  @override
+  void initState() {
+    super.initState();
+    correctionRevision = widget.data['revision'] as int?;
+    widget.state.addListener(accountChanged);
+    final saved = widget.state.collectionViews[correctionKey];
+    if (widget.data['confirmed'] != true &&
+        saved != null &&
+        identical(saved['account'], account)) {
+      subject.text = saved['subject'];
+      topic.text = saved['topic'];
+      content.text = saved['content'];
+      homework.text = saved['homework'];
+      restoredCorrection = true;
+      correctionRevision = saved['revision'] as int?;
+      sourceConflict = correctionRevision != widget.data['revision'];
+      editing = true;
+    }
+  }
+
+  void accountChanged() {
+    if (!current && mounted) {
+      widget.state.collectionViews.remove(correctionKey);
+      final old = taskPreviewRoute;
+      if (old != null) {
+        Future<void>.microtask(() {
+          if (old.isActive) old.navigator?.removeRoute(old);
+        });
+      }
+      setState(() {
+        for (final c in [subject, topic, content, homework]) {
+          c.clear();
+        }
+        selectedWords = [];
+      });
+    }
+  }
+
+  void resetSource() {
+    correctionRevision = widget.data['revision'] as int?;
+    subject.text = widget.data['subject'] ?? '';
+    topic.text = widget.data['topic'] ?? '';
+    content.text = widget.data['content'] ?? '';
+    homework.text = (widget.data['homework'] as List).join('\n');
+    selectedWords = [];
+    editedWordPreview = null;
+    previewSubject = previewTopic = previewContent = null;
+    wordLocale = null;
+    reverseWords = false;
+    confirmedHere = false;
+    sourceConflict = false;
+  }
+
+  @override
+  void didUpdateWidget(covariant MaterialReview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.data['id'] != widget.data['id'] ||
+        oldWidget.data['revision'] != widget.data['revision']) {
+      final route = taskPreviewRoute;
+      taskPreviewRoute = null;
+      if (route != null) {
+        Future<void>.microtask(() {
+          if (route.isActive) route.navigator?.removeRoute(route);
+        });
+      }
+    }
+    if (oldWidget.data['id'] != widget.data['id']) {
+      resetSource();
+      editing = false;
+    } else if (oldWidget.data['revision'] != widget.data['revision']) {
+      final changed =
+          subject.text != (oldWidget.data['subject'] ?? '') ||
+          topic.text != (oldWidget.data['topic'] ?? '') ||
+          content.text != (oldWidget.data['content'] ?? '') ||
+          homework.text != (oldWidget.data['homework'] as List).join('\n');
+      if (changed) {
+        sourceConflict = true;
+      } else {
+        resetSource();
+      }
+    }
+  }
+
   String? wordLocale;
   bool reverseWords = false;
   Json? editedWordPreview;
   List<Json> selectedWords = [];
   String? previewSubject, previewTopic, previewContent;
+
+  bool sourceCurrent(Json source) =>
+      current &&
+      source['id'] == widget.data['id'] &&
+      source['revision'] == widget.data['revision'];
 
   bool get editedPreviewCurrent =>
       previewSubject == subject.text &&
@@ -641,6 +885,7 @@ class _MaterialReviewState extends State<MaterialReview> {
   Widget wordPreviewPanel({bool saved = false}) => MaterialWordsPanel(
     key: ValueKey(jsonEncode([wordPreview, selectedWordLocale, reverseWords])),
     preview: wordPreview!,
+    enabled: !changing,
     locale: selectedWordLocale,
     reverse: reverseWords,
     actionLabel: saved ? 'Wörter übernehmen' : 'Stimmt, weiter',
@@ -658,7 +903,11 @@ class _MaterialReviewState extends State<MaterialReview> {
   Widget savedWordPanel() => Padding(
     padding: EdgeInsets.symmetric(vertical: 16),
     child: LoadView<Json>(
-      revision: widget.data['revision'],
+      revision: (
+        widget.data['id'],
+        widget.data['revision'],
+        ObjectKey(account),
+      ),
       load: () =>
           widget.state.api.get('/materials/${widget.data['id']}/vocabulary'),
       builder: (status, refresh) {
@@ -697,12 +946,13 @@ class _MaterialReviewState extends State<MaterialReview> {
                   icon: Icons.playlist_add_check_rounded,
                   enabled: selectedWords.isNotEmpty,
                   onPressed: () async {
-                    final owner = widget.state.user?['id'];
+                    if (!current) return;
+                    final owner = widget.state.user;
                     await widget.state.api.post(
                       '/materials/${widget.data['id']}/vocabulary',
                       wordConfirmation,
                     );
-                    if (mounted && owner == widget.state.user?['id']) {
+                    if (mounted && identical(owner, widget.state.user)) {
                       refresh();
                     }
                   },
@@ -716,18 +966,29 @@ class _MaterialReviewState extends State<MaterialReview> {
   );
 
   Future<void> change(Future<void> Function() action) async {
-    if (changing) return;
-    changing = true;
+    if (changing || !current) return;
+    if (sourceConflict) {
+      toast(
+        context,
+        'Die gespeicherte Seite wurde geändert. Lade zuerst die neue Fassung.',
+      );
+      return;
+    }
+    setState(() => changing = true);
     try {
       await action();
     } finally {
-      changing = false;
+      if (current) {
+        setState(() => changing = false);
+      } else {
+        changing = false;
+      }
     }
   }
 
   Future<void> deletePage() async {
     final d = widget.data;
-    final owner = widget.state.user?['id'];
+    final owner = widget.state.user;
     final deleted = await deleteNotebookPages(
       context,
       widget.state,
@@ -737,7 +998,13 @@ class _MaterialReviewState extends State<MaterialReview> {
       // global listeners reload the newly reduced page list.
       onDeleted: widget.onDeleted,
     );
-    if (!deleted || !mounted || owner != widget.state.user?['id']) return;
+    if (!deleted ||
+        !mounted ||
+        !identical(owner, widget.state.user) ||
+        d['id'] != widget.data['id'] ||
+        d['revision'] != widget.data['revision']) {
+      return;
+    }
     if (widget.onDeleted == null) {
       context.go('/library/${d['child_id']}');
     }
@@ -792,6 +1059,14 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   @override
   void dispose() {
+    retainCorrection();
+    final old = taskPreviewRoute;
+    if (old != null) {
+      Future<void>.microtask(() {
+        if (old.isActive) old.navigator?.removeRoute(old);
+      });
+    }
+    widget.state.removeListener(accountChanged);
     for (final c in [subject, topic, content, homework]) {
       c.dispose();
     }
@@ -800,6 +1075,33 @@ class _MaterialReviewState extends State<MaterialReview> {
 
   @override
   Widget build(BuildContext context) {
+    if (!current) return SizedBox.shrink();
+    if (sourceConflict) {
+      return Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Notice(
+              'Diese Heftseite wurde inzwischen geändert. Deine Korrektur steht noch hier; lade die neue Fassung, bevor du sie bestätigst.',
+              warning: true,
+            ),
+            Text(
+              'Deine noch nicht gespeicherte Korrektur',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            Text('${subject.text} · ${topic.text}'),
+            LearningContent(content.text),
+            if (homework.text.isNotEmpty) Text(homework.text),
+            OutlinedButton(
+              onPressed: () {
+                if (current) setState(resetSource);
+              },
+              child: Text('Gespeicherte Seite laden'),
+            ),
+          ],
+        ),
+      );
+    }
     final d = widget.data;
     if (widget.simpleChild && widget.state.isChild) return childReview(context);
     final synthetic = d['synthetic'] == true;
@@ -826,6 +1128,15 @@ class _MaterialReviewState extends State<MaterialReview> {
         ),
         SizedBox(height: 12),
         pageActions(),
+        if (dirty && !confirmedHere)
+          Semantics(
+            liveRegion: true,
+            child: Notice(
+              restoredCorrection
+                  ? 'Deine Korrektur ist hier wieder aufgenommen. Mit „Stimmt, weiter“ übernimmst du sie.'
+                  : 'Deine Korrektur ist noch nicht übernommen. Mit „Stimmt, weiter“ speicherst du den geprüften Text.',
+            ),
+          ),
         SizedBox(height: 12),
         if (liveFixture)
           Notice(
@@ -840,6 +1151,7 @@ class _MaterialReviewState extends State<MaterialReview> {
         if (!synthetic || liveFixture)
           Panel(
             child: LoadView<Uint8List>(
+              revision: (d['id'], d['revision'], ObjectKey(account)),
               load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
               builder: (bytes, _) => SizedBox(
                 height: 350,
@@ -858,19 +1170,27 @@ class _MaterialReviewState extends State<MaterialReview> {
               label: 'Material erkennen lassen',
               icon: Icons.document_scanner_outlined,
               onPressed: () async {
+                if (!sourceCurrent(d)) return;
                 await widget.state.api.job('/materials/${d['id']}/extract');
-                widget.onRefresh();
+                if (sourceCurrent(d)) widget.onRefresh();
               },
             ),
           ),
         for (final uncertainty in d['uncertainties'] as List)
           Notice(uncertainty, warning: true),
         SizedBox(height: 18),
-        if (d['status'] == 'unreadable')
+        if (d['status'] == 'unreadable') ...[
           Notice(
             'Das Foto ist nicht lesbar. Bitte im Fotoassistenten neu aufnehmen.',
             warning: true,
           ),
+          OutlinedButton.icon(
+            onPressed: () =>
+                openRoute(context, '/after-school/${d['child_id']}'),
+            icon: Icon(Icons.add_a_photo_outlined),
+            label: Text('Neues Foto machen'),
+          ),
+        ],
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -888,14 +1208,18 @@ class _MaterialReviewState extends State<MaterialReview> {
                 ),
                 if (canConfirm && !synthetic)
                   TextButton.icon(
-                    onPressed: () => setState(() => editing = true),
+                    onPressed: changing
+                        ? null
+                        : () => setState(() => editing = true),
                     icon: Icon(Icons.edit_outlined),
                     label: Text('Erkannten Text verbessern'),
                   ),
               ],
               if (editing)
                 TextButton.icon(
-                  onPressed: () => setState(() => editing = false),
+                  onPressed: changing
+                      ? null
+                      : () => setState(() => editing = false),
                   icon: Icon(Icons.menu_book_outlined),
                   label: Text('Leseansicht'),
                 ),
@@ -913,13 +1237,19 @@ class _MaterialReviewState extends State<MaterialReview> {
                             widget.state,
                             childId: d['child_id'],
                             controller: subject,
-                            enabled: !synthetic && canConfirm,
+                            enabled: !changing && !synthetic && canConfirm,
                             changed: () => setState(() {}),
                           )
                         : TextField(
                             controller: item.$1,
+                            maxLength: item.$1 == content
+                                ? 24000
+                                : item.$1 == topic
+                                ? 160
+                                : null,
+                            maxLengthEnforcement: MaxLengthEnforcement.none,
                             onChanged: (_) => setState(() {}),
-                            readOnly: synthetic || !canConfirm,
+                            readOnly: changing || synthetic || !canConfirm,
                             maxLines: item.$3,
                             decoration: InputDecoration(
                               labelText: item.$2,
@@ -968,17 +1298,19 @@ class _MaterialReviewState extends State<MaterialReview> {
                         : 'Lerneinheit für das Kind vorbereiten',
                     icon: Icons.auto_stories_outlined,
                     onPressed: () async {
+                      if (!sourceCurrent(d)) return;
                       final childId = d['child_id'] as String;
                       final result = await widget.state.api.job(
                         '/children/$childId/units',
                         {'material_id': d['id']},
                       );
+                      if (!mounted || !sourceCurrent(d)) return;
                       if (widget.state.isChild) {
                         await widget.state.api.post(
                           '/units/${result['unit_id']}/start',
                         );
                       }
-                      if (context.mounted) {
+                      if (context.mounted && sourceCurrent(d)) {
                         openRoute(context, '/unit/${result['unit_id']}');
                       }
                     },
@@ -1010,8 +1342,10 @@ class _MaterialReviewState extends State<MaterialReview> {
   }
 
   Future<void> confirmPage() async {
+    validateCorrection();
+    if (!current || sourceConflict) return;
     final d = widget.data;
-    final owner = widget.state.user?['id'];
+    final owner = widget.state.user;
     if (d.containsKey('vocabulary_preview') &&
         !editedPreviewCurrent &&
         (subject.text != d['subject'] ||
@@ -1025,7 +1359,9 @@ class _MaterialReviewState extends State<MaterialReview> {
         {'subject': draftSubject, 'topic': draftTopic, 'content': draftContent},
       );
       if (!mounted ||
-          owner != widget.state.user?['id'] ||
+          !identical(owner, widget.state.user) ||
+          d['id'] != widget.data['id'] ||
+          d['revision'] != widget.data['revision'] ||
           subject.text != draftSubject ||
           topic.text != draftTopic ||
           content.text != draftContent) {
@@ -1066,22 +1402,35 @@ class _MaterialReviewState extends State<MaterialReview> {
         '/materials/${d['id']}/task-preview',
         body,
       );
-      if (!mounted || owner != widget.state.user?['id']) return;
+      if (!mounted ||
+          !identical(owner, widget.state.user) ||
+          d['id'] != widget.data['id'] ||
+          d['revision'] != widget.data['revision']) {
+        return;
+      }
       final items = (preview['items'] as List? ?? [])
           .map((r) => Json.from(r))
           .toList();
       final duplicates = (preview['duplicates'] as List? ?? []);
       if (items.isNotEmpty || duplicates.isNotEmpty) {
-        final decisions = await showDialog<List<Json>>(
+        final route = DialogRoute<List<Json>>(
           context: context,
           builder: (_) => MaterialTaskDialog(
             items: items,
             hasDuplicate: duplicates.isNotEmpty,
           ),
         );
+        taskPreviewRoute = route;
+        final decisions = await Navigator.of(
+          context,
+          rootNavigator: true,
+        ).push(route);
+        if (identical(taskPreviewRoute, route)) taskPreviewRoute = null;
         if (decisions == null ||
             !mounted ||
-            owner != widget.state.user?['id']) {
+            !identical(owner, widget.state.user) ||
+            d['id'] != widget.data['id'] ||
+            d['revision'] != widget.data['revision']) {
           return;
         }
         body['task_decisions'] = decisions;
@@ -1091,7 +1440,13 @@ class _MaterialReviewState extends State<MaterialReview> {
       '/materials/${d['id']}/confirm',
       body,
     );
-    if (!mounted || owner != widget.state.user?['id']) return;
+    if (!mounted ||
+        !identical(owner, widget.state.user) ||
+        d['id'] != widget.data['id'] ||
+        d['revision'] != widget.data['revision']) {
+      return;
+    }
+    widget.state.collectionViews.remove(correctionKey);
     setState(() => confirmedHere = true);
     widget.state.refreshState();
     if (result['vocabulary_transfer'] is Map) {
@@ -1123,36 +1478,27 @@ class _MaterialReviewState extends State<MaterialReview> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         pageActions(),
+        if (dirty && !confirmedHere)
+          Semantics(
+            liveRegion: true,
+            child: Notice(
+              restoredCorrection
+                  ? 'Deine Korrektur ist hier wieder aufgenommen. Mit „Stimmt, weiter“ übernimmst du sie.'
+                  : 'Deine Korrektur ist noch nicht übernommen. Mit „Stimmt, weiter“ speicherst du den geprüften Text.',
+            ),
+          ),
         SizedBox(height: 10),
         if (!synthetic || d['fixture_id'] != null) ...[
           Panel(
             padding: EdgeInsets.all(12),
             child: LoadView<Uint8List>(
+              revision: (d['id'], d['revision'], ObjectKey(account)),
               load: () => widget.state.api.bytes('/materials/${d['id']}/image'),
               builder: (bytes, _) => Semantics(
                 button: true,
                 label: 'Heftfoto vergrößern',
                 child: InkWell(
-                  onTap: () => showDialog<void>(
-                    context: context,
-                    builder: (ctx) => Dialog(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: InteractiveViewer(
-                              maxScale: 5,
-                              child: Image.memory(bytes),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: Text('Schließen'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  onTap: () => zoomNotebookPhoto(context, widget.state, d),
                   child: SizedBox(
                     height: 150,
                     child: Stack(
@@ -1180,14 +1526,26 @@ class _MaterialReviewState extends State<MaterialReview> {
           ActionButton(
             label: 'Text lesen lassen',
             onPressed: () async {
+              if (!sourceCurrent(d)) return;
               await widget.state.api.job('/materials/${d['id']}/extract');
-              widget.onRefresh();
+              if (sourceCurrent(d)) widget.onRefresh();
             },
           )
         else if (d['status'] == 'unreadable')
-          Notice(
-            'Das Foto ist nicht lesbar. Nimm die Seite bitte noch einmal auf.',
-            warning: true,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Notice(
+                'Das Foto ist nicht lesbar. Nimm die Seite bitte noch einmal auf.',
+                warning: true,
+              ),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    openRoute(context, '/after-school/${d['child_id']}'),
+                icon: Icon(Icons.add_a_photo_outlined),
+                label: Text('Neues Foto machen'),
+              ),
+            ],
           )
         else
           Panel(
@@ -1245,7 +1603,9 @@ class _MaterialReviewState extends State<MaterialReview> {
                 ],
                 if (canConfirm && !synthetic)
                   TextButton.icon(
-                    onPressed: () => setState(() => editing = !editing),
+                    onPressed: changing
+                        ? null
+                        : () => setState(() => editing = !editing),
                     icon: Icon(
                       editing ? Icons.close_rounded : Icons.edit_outlined,
                       size: 18,
@@ -1268,11 +1628,18 @@ class _MaterialReviewState extends State<MaterialReview> {
                               widget.state,
                               childId: d['child_id'],
                               controller: subject,
-                              enabled: !synthetic && canConfirm,
+                              enabled: !changing && !synthetic && canConfirm,
                               changed: () => setState(() {}),
                             )
                           : TextField(
                               controller: field.$1,
+                              maxLength: field.$1 == content
+                                  ? 24000
+                                  : field.$1 == topic
+                                  ? 160
+                                  : null,
+                              maxLengthEnforcement: MaxLengthEnforcement.none,
+                              readOnly: changing,
                               onChanged: (_) => setState(() {}),
                               maxLines: field.$3,
                               decoration: InputDecoration(
@@ -1316,6 +1683,7 @@ class _MaterialReviewState extends State<MaterialReview> {
             label: languageMaterial ? 'Wörter & Sprache üben' : 'Jetzt lernen',
             icon: Icons.play_arrow_rounded,
             onPressed: () async {
+              if (!sourceCurrent(d)) return;
               if (languageMaterial) {
                 openRoute(
                   context,
@@ -1327,8 +1695,9 @@ class _MaterialReviewState extends State<MaterialReview> {
                 '/children/${d['child_id']}/units',
                 {'material_id': d['id']},
               );
+              if (!sourceCurrent(d)) return;
               await widget.state.api.post('/units/${result['unit_id']}/start');
-              if (context.mounted) {
+              if (context.mounted && sourceCurrent(d)) {
                 openRoute(context, '/unit/${result['unit_id']}');
               }
             },

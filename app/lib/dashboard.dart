@@ -876,6 +876,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       ),
                       SizedBox(height: 20),
                       LoadView<List<dynamic>>(
+                        key: ValueKey('parent-activity:${child['id']}'),
+                        revision: (state.revision, data),
                         load: () =>
                             state.api.list('/children/${child['id']}/activity'),
                         builder: (activities, _) => Panel(
@@ -886,6 +888,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                                 title: 'Zeitlicher Verlauf',
                                 icon: Icons.timeline_rounded,
                               ),
+                              if (!activities.any((a) => !technicalActivity(a['kind'])))
+                                Notice('Hier sind noch keine fachlichen Lernaktivitäten gespeichert. Technische Ereignisse zählen nicht als bearbeitete Aufgaben.'),
                               for (final a in activities.where(
                                 (a) => !technicalActivity(a['kind']),
                               ))
@@ -1798,14 +1802,19 @@ class MessagesScreen extends StatelessWidget {
   final AppState state;
   final String childId;
   final Json? account;
+  final String? family;
   MessagesScreen(this.state, {super.key, required this.childId})
-    : account = state.user;
+    : account = state.user,
+      family = state.familyId;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: state,
     builder: (context, _) =>
-        state.user == null || !identical(state.user, account) || state.isAdmin
+        state.user == null ||
+            !identical(state.user, account) ||
+            family != state.familyId ||
+            state.isAdmin
         ? SizedBox.shrink()
         : PageFrame(
             state: state,
@@ -1845,6 +1854,247 @@ class MessagesScreen extends StatelessWidget {
   );
 }
 
+class _ParentMessages extends StatefulWidget {
+  final AppState state;
+  final Json data;
+  final VoidCallback refresh;
+  final bool standalone;
+  const _ParentMessages({
+    super.key,
+    required this.state,
+    required this.data,
+    required this.refresh,
+    required this.standalone,
+  });
+  @override
+  State<_ParentMessages> createState() => _ParentMessagesState();
+}
+
+class _ParentMessagesState extends State<_ParentMessages> {
+  late final Json? account = widget.state.user;
+  late final String? family = widget.state.familyId;
+  bool openOnly = false;
+  bool get current =>
+      mounted &&
+      identical(account, widget.state.user) &&
+      family == widget.state.familyId &&
+      widget.state.isParent;
+  String get childId => widget.data['child']['id'];
+  Future<void> compose([Json? scope]) async {
+    if (!current || !widget.state.canManage) return;
+    final child = childId;
+    final contextMap = scope?['context'] is Map
+        ? Json.from(scope!['context'])
+        : null;
+    try {
+      await showLearningMessage(
+        context,
+        widget.state,
+        childId: child,
+        kind: 'reply',
+        title: scope == null ? 'Kurze Nachricht senden' : 'Dazu antworten',
+        messageContext: contextMap,
+        referenceText: contextMap == null
+            ? null
+            : contextMap['unit_id'] != null
+            ? 'Zur ausgewählten Lernrunde'
+            : contextMap['material_id'] != null
+            ? 'Zur ausgewählten Heftseite'
+            : 'Zum ausgewählten Schultag',
+        refresh: () {
+          if (current && childId == child) widget.refresh();
+        },
+      );
+    } catch (e) {
+      if (mounted && current && childId == child) showError(context, e);
+    }
+  }
+
+  String kindLabel(Json m) => switch (m['kind']) {
+    'help' => 'Hilfewunsch',
+    'interest' => 'Interesse',
+    'plan_change' => 'Planvorschlag',
+    'reply' => 'Antwort',
+    'preparation' => 'Heftvorbereitung',
+    'reminder' => 'Lernerinnerung',
+    _ => 'Nachricht',
+  };
+  @override
+  Widget build(BuildContext context) {
+    if (!current) return const SizedBox.shrink();
+    final all = (widget.data['messages'] as List)
+        .map((m) => Json.from(m))
+        .toList();
+    final open = all
+        .where((m) => m['kind'] == 'help' && m['resolved'] != true)
+        .toList();
+    final visible = openOnly ? open : all;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!widget.standalone) ...[
+          heading('Familiennachrichten'),
+          TextButton.icon(
+            onPressed: () {
+              if (current) openRoute(context, '/messages/$childId');
+            },
+            icon: const Icon(Icons.forum_outlined),
+            label: const Text('Nachrichten öffnen'),
+          ),
+        ],
+        if (widget.state.canManage)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ActionButton(
+              label: 'Kurze Nachricht senden',
+              secondary: true,
+              onPressed: compose,
+            ),
+          ),
+        const SizedBox(height: 16),
+        Text(
+          'Bis zu 100 neueste Nachrichten · ${all.length} geladen',
+          style: TextStyle(color: context.palette.muted),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Alle geladenen'),
+              selected: !openOnly,
+              onSelected: (_) {
+                if (current) setState(() => openOnly = false);
+              },
+            ),
+            ChoiceChip(
+              label: Text('Offene Hilfe (${open.length})'),
+              selected: openOnly,
+              onSelected: (_) {
+                if (current) setState(() => openOnly = true);
+              },
+            ),
+          ],
+        ),
+        if (openOnly)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Offene Hilfewünsche innerhalb der geladenen Vorschau. Ältere Nachrichten können außerhalb dieser Vorschau liegen.',
+            ),
+          ),
+        const SizedBox(height: 16),
+        if (visible.isEmpty)
+          Notice(
+            openOnly
+                ? 'In der geladenen Vorschau gibt es keine offenen Hilfewünsche.'
+                : 'Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.',
+          ),
+        for (final m in visible)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    m['sender_role'] == 'system'
+                        ? 'Von Schulpilot'
+                        : m['sender_role'] == 'child'
+                        ? 'Von deinem Kind'
+                        : 'Von einem Elternteil',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Tag(kindLabel(m)),
+                      if (m['resolved'] == true) Tag('Besprochen'),
+                      if (m['created'] is num)
+                        Text(
+                          DateFormat('dd.MM.yyyy · HH:mm').format(
+                            DateTime.fromMillisecondsSinceEpoch(
+                              ((m['created'] as num) * 1000).toInt(),
+                            ).toLocal(),
+                          ),
+                          style: TextStyle(
+                            color: context.palette.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(m['body']),
+                  if (m['context_unavailable'] == true)
+                    Text(
+                      'Der zugehörige Lernstoff ist nicht mehr verfügbar.',
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  if (m['context'] is Map &&
+                      (m['context'] as Map).isNotEmpty) ...[
+                    TextButton.icon(
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                      label: Text(
+                        (m['context'] as Map)['unit_id'] != null
+                            ? 'Lernrunde ansehen'
+                            : (m['context'] as Map)['material_id'] != null
+                            ? 'Heftseite ansehen'
+                            : 'Schultag ansehen',
+                      ),
+                      onPressed: () {
+                        if (!current) return;
+                        final scope = m['context'] as Map;
+                        openRoute(
+                          context,
+                          scope['unit_id'] != null
+                              ? '/unit/${scope['unit_id']}'
+                              : scope['material_id'] != null
+                              ? '/material/${scope['material_id']}'
+                              : '/after-school/$childId?day=${scope['day_id']}',
+                        );
+                      },
+                    ),
+                    if (widget.state.canManage && m['sender_role'] == 'child')
+                      TextButton.icon(
+                        onPressed: () => compose(m),
+                        icon: const Icon(Icons.reply_rounded),
+                        label: const Text('Dazu antworten'),
+                      ),
+                  ],
+                  if (widget.state.canManage &&
+                      m['kind'] == 'help' &&
+                      m['resolved'] != true)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ActionButton(
+                        label: 'Als besprochen markieren',
+                        secondary: true,
+                        onPressed: () async {
+                          if (!current) return;
+                          final child = childId;
+                          await widget.state.api.post(
+                            '/children/$child/messages/${m['id']}/resolve',
+                          );
+                          if (current && childId == child) widget.refresh();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 Widget messages(
   BuildContext context,
   AppState state,
@@ -1865,6 +2115,20 @@ Widget messages(
         title: title,
         refresh: refresh,
       ),
+      onReply: (message) => showLearningMessage(
+        context,
+        state,
+        childId: data['child']['id'],
+        kind: 'help',
+        title: 'Frage zu dieser Nachricht',
+        refresh: refresh,
+        offerLiveCall: false,
+        messageContext:
+            message['context_unavailable'] != true && message['context'] is Map
+            ? Json.from(message['context'])
+            : null,
+        referenceText: message['body']?.toString(),
+      ),
       onWriteMessage: () => showLearningMessage(
         context,
         state,
@@ -1874,6 +2138,15 @@ Widget messages(
         refresh: refresh,
         offerLiveCall: false,
       ),
+    );
+  }
+  if (state.isParent) {
+    return _ParentMessages(
+      key: ValueKey('parent-messages:${data['child']['id']}'),
+      state: state,
+      data: data,
+      refresh: refresh,
+      standalone: standalone,
     );
   }
   return Column(
@@ -2102,11 +2375,28 @@ Future<void> showLearningMessage(
   required String title,
   required VoidCallback refresh,
   bool offerLiveCall = true,
+  Json? messageContext,
+  String? referenceText,
 }) async {
+  final references = <String, String>{};
+  for (final key in ['unit_id', 'material_id', 'day_id']) {
+    final value = messageContext?[key];
+    if (value != null) {
+      if (value is! String || !RegExp(r'^[a-f0-9]{32}$').hasMatch(value)) {
+        throw ApiError('Der Bezug dieser Nachricht ist nicht mehr verfügbar.');
+      }
+      references[key] = value;
+    }
+  }
+  if (references.length > 1) {
+    throw ApiError('Wähle nur einen Bezug für deine Nachricht.');
+  }
   final account = state.user;
+  final family = state.familyId;
   bool currentAccount() =>
       account != null &&
       identical(state.user, account) &&
+      state.familyId == family &&
       (!state.isChild || account['child_id'] == childId);
   if (!currentAccount()) return;
   if (kind == 'help' && offerLiveCall && state.isChild) {
@@ -2123,6 +2413,8 @@ Future<void> showLearningMessage(
           title: title,
           refresh: refresh,
           offerLiveCall: false,
+          messageContext: references,
+          referenceText: referenceText,
         );
       },
     );
@@ -2154,7 +2446,9 @@ Future<void> showLearningMessage(
         accountChanged();
         return AlertDialog(
           scrollable: true,
-          title: Text(help ? 'Hilfe von deinen Eltern' : title),
+          title: Text(
+            help && referenceText == null ? 'Hilfe von deinen Eltern' : title,
+          ),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -2162,6 +2456,27 @@ Future<void> showLearningMessage(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(state.isChild ? 'An: Deine Eltern' : 'An: Dein Kind'),
+                if (referenceText?.trim().isNotEmpty == true) ...[
+                  SizedBox(height: 12),
+                  Text(
+                    'Bezug zur Nachricht',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  SelectableText(
+                    referenceText!.characters.take(1000).toString(),
+                  ),
+                ],
+                if (references.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      references.containsKey('unit_id')
+                          ? 'Zur gleichen Lernrunde'
+                          : references.containsKey('material_id')
+                          ? 'Zur gleichen Heftseite'
+                          : 'Zum gleichen Schultag',
+                    ),
+                  ),
                 SizedBox(height: 12),
                 TextField(
                   controller: controller,
@@ -2174,7 +2489,13 @@ Future<void> showLearningMessage(
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () {
+                if (ctx.mounted &&
+                    currentAccount() &&
+                    draftRoute?.isCurrent == true) {
+                  Navigator.pop(ctx);
+                }
+              },
               child: Text('Abbrechen'),
             ),
             ActionButton(
@@ -2187,12 +2508,19 @@ Future<void> showLearningMessage(
                 final body = controller.text.trim();
                 await state.api.post('/children/$childId/messages', {
                   'kind': kind,
+                  ...references,
                   'body': help && body.isEmpty
                       ? 'Ich brauche Unterstützung beim Lernen.'
                       : body,
                 });
                 if (!currentAccount()) return;
-                if (ctx.mounted) Navigator.pop(ctx);
+                if (ctx.mounted && draftRoute?.isActive == true) {
+                  if (draftRoute!.isCurrent) {
+                    Navigator.pop(ctx);
+                  } else {
+                    draftRoute!.navigator?.removeRoute(draftRoute!);
+                  }
+                }
                 if (!context.mounted) return;
                 refresh();
                 if (context.mounted) {
@@ -2531,12 +2859,24 @@ Future<void> preferencesDialog(
   AppState state,
   Json child,
 ) async {
+  final account = state.user, family = state.familyId;
+  bool currentAccount() =>
+      account != null &&
+      identical(account, state.user) &&
+      state.isParent &&
+      state.canManage &&
+      family == state.familyId;
+  if (!currentAccount()) return;
   final p = Map<String, dynamic>.from(child['preferences']);
   final form = GlobalKey<FormState>();
   final daily = TextEditingController(text: '${p['daily_minutes']}'),
       weekly = TextEditingController(text: '${p['weekly_minutes']}'),
       session = TextEditingController(text: '${p['session_minutes']}'),
-      pause = TextEditingController(text: p['pause_until'] ?? ''),
+      pause = TextEditingController(
+        text: p['pause_until'] == null
+            ? ''
+            : DateFormat('dd.MM.yyyy').format(DateTime.parse(p['pause_until'])),
+      ),
       breaks = TextEditingController(text: '${p['break_minutes']}'),
       focus = TextEditingController(
         text: (p['focus_subjects'] as List).join(', '),
@@ -2551,6 +2891,31 @@ Future<void> preferencesDialog(
     for (final entry in (p['subject_days'] as Map? ?? {}).entries)
       entry.key: List<int>.from(entry.value),
   };
+  List<String> entries(TextEditingController c) => c.text
+      .split(',')
+      .map((v) => v.trim())
+      .where((v) => v.isNotEmpty)
+      .toList();
+  String? listError(String? value) =>
+      (value ?? '').split(',').where((v) => v.trim().isNotEmpty).length > 20
+      ? 'Bitte höchstens 20 Einträge angeben.'
+      : null;
+  bool saving = false;
+  ModalRoute<dynamic>? draftRoute, dateRoute;
+  void accountChanged() {
+    if (currentAccount()) return;
+    final route = draftRoute;
+    if (route == null) return;
+    Future<void>.microtask(() {
+      if (!currentAccount() && dateRoute?.isActive == true) {
+        dateRoute!.navigator?.removeRoute(dateRoute!);
+      }
+      if (!currentAccount() && route.isActive) {
+        route.navigator?.removeRoute(route);
+      }
+    });
+  }
+
   Widget numeric(
     TextEditingController controller,
     String label,
@@ -2562,6 +2927,7 @@ Future<void> preferencesDialog(
     padding: EdgeInsets.only(bottom: 16),
     child: TextFormField(
       controller: controller,
+      enabled: !saving,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         labelText: label,
@@ -2577,292 +2943,492 @@ Future<void> preferencesDialog(
       },
     ),
   );
-  await showDialog<void>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, set) => AlertDialog(
-        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        title: Text('Lernziele & Plan'),
-        contentPadding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _PreferenceSection(
-                    title: 'Mindestlernzeit',
-                    description: 'An Lerntagen gilt das Tagesziel. Danach darf dein Kind freiwillig weiterlernen.',
-                    child: Column(
-                      children: [
-                        numeric(daily, 'Mindestziel pro Tag', 5, 120),
-                        numeric(weekly, 'Mindestziel pro Woche', 5, 600),
-                        numeric(
-                          session,
-                          'Rundendauer',
-                          5,
-                          45,
-                          helper: 'Empfehlung für kleine Lernportionen, kein Stopp.',
-                        ),
-                        numeric(
-                          breaks,
-                          'Lernpause',
-                          1,
-                          30,
-                          helper: 'Pausenempfehlung zwischen den Runden.',
-                        ),
-                      ],
-                    ),
-                  ),
-                  _PreferenceSection(
-                    title: 'Lerntage',
-                    description:
-                        'Ohne ausgewählte Tage gibt es kein festes Tagesziel.',
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        for (var day = 0; day < 7; day++)
-                          FilterChip(
-                            label: Text(
-                              ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][day],
-                            ),
-                            selected: weekdays.contains(day),
-                            onSelected: (selected) => set(() {
-                              if (selected) {
-                                weekdays.add(day);
-                              } else {
-                                weekdays.remove(day);
-                              }
-                            }),
-                          ),
-                      ],
-                    ),
-                  ),
-                  _PreferenceSection(
-                    title: 'Schwerpunkte',
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: focus,
-                          decoration: InputDecoration(
-                            labelText: 'Fächer',
-                            hintText: 'Zum Beispiel Mathematik, Englisch',
-                            helperText: 'Mehrere Fächer mit Komma trennen.',
-                            helperMaxLines: 2,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        TextFormField(
-                          controller: repeat,
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                            labelText: 'Themen zum Wiederholen',
-                            hintText: 'Mathematik: Brüche, Englisch: Verben',
-                            helperText:
-                                'Fach: Thema; mehrere mit Komma trennen.',
-                            helperMaxLines: 2,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        ExpansionTile(
-                          title: Text('Fächer auf Tage verteilen'),
-                          subtitle: Text('Ohne Auswahl: alle Lerntage'),
+  state.addListener(accountChanged);
+  try {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        draftRoute ??= ModalRoute.of(ctx);
+        accountChanged();
+        return StatefulBuilder(
+          builder: (ctx, set) => PopScope(
+            canPop: !saving,
+            child: AlertDialog(
+              insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              title: Text('Lernziele & Plan'),
+              contentPadding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+              content: ExcludeFocus(
+                excluding: saving,
+                child: AbsorbPointer(
+                  absorbing: saving,
+                  child: SizedBox(
+                    width: 520,
+                    child: SingleChildScrollView(
+                      child: Form(
+                        key: form,
+                        onChanged: () => set(() {}),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            for (final subject
-                                in child['subjects'] as List) ...[
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: EdgeInsets.only(top: 12, bottom: 8),
-                                  child: Text(
-                                    subject,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Wrap(
-                                spacing: 5,
-                                runSpacing: 4,
+                            Text(
+                              'Für ${child['display_name']}',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            SizedBox(height: 16),
+                            _PreferenceSection(
+                              title: 'Mindestlernzeit',
+                              description: 'An Lerntagen gilt das Tagesziel. Danach darf dein Kind freiwillig weiterlernen.',
+                              child: Column(
                                 children: [
-                                  for (var day = 0; day < 7; day++)
-                                    FilterChip(
-                                      label: Text(
-                                        [
-                                          'Mo',
-                                          'Di',
-                                          'Mi',
-                                          'Do',
-                                          'Fr',
-                                          'Sa',
-                                          'So',
-                                        ][day],
-                                      ),
-                                      selected:
-                                          subjectDays[subject]?.contains(day) ??
-                                          false,
-                                      onSelected: (selected) => set(() {
-                                        final days = subjectDays.putIfAbsent(
-                                          subject,
-                                          () => [],
-                                        );
-                                        if (selected) {
-                                          days.add(day);
-                                        } else {
-                                          days.remove(day);
-                                        }
-                                        if (days.isEmpty) {
-                                          subjectDays.remove(subject);
-                                        }
-                                      }),
-                                    ),
+                                  numeric(daily, 'Mindestziel pro Tag', 5, 120),
+                                  numeric(
+                                    weekly,
+                                    'Mindestziel pro Woche',
+                                    5,
+                                    600,
+                                  ),
+                                  numeric(
+                                    session,
+                                    'Rundendauer',
+                                    5,
+                                    45,
+                                    helper: 'Empfehlung für kleine Lernportionen, kein Stopp.',
+                                  ),
+                                  numeric(
+                                    breaks,
+                                    'Lernpause',
+                                    1,
+                                    30,
+                                    helper:
+                                        'Pausenempfehlung zwischen den Runden.',
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
+                            _PreferenceSection(
+                              title: 'Lerntage',
+                              description: 'Ohne ausgewählte Tage gibt es kein festes Tagesziel.',
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      for (var day = 0; day < 7; day++)
+                                        FilterChip(
+                                          label: Text(
+                                            [
+                                              'Mo',
+                                              'Di',
+                                              'Mi',
+                                              'Do',
+                                              'Fr',
+                                              'Sa',
+                                              'So',
+                                            ][day],
+                                          ),
+                                          selected: weekdays.contains(day),
+                                          onSelected: (selected) => set(() {
+                                            if (selected) {
+                                              weekdays.add(day);
+                                            } else {
+                                              weekdays.remove(day);
+                                            }
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    '${weekdays.length} feste Lerntage · ${daily.text.trim()} Min. pro Lerntag · ${weekly.text.trim()} Min. Wochenminimum. Beide Ziele bleiben eigenständig; freiwilliges Lernen ist immer möglich.',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _PreferenceSection(
+                              title: 'Schwerpunkte',
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: focus,
+                                    enabled: !saving,
+                                    validator: listError,
+                                    decoration: InputDecoration(
+                                      labelText: 'Fächer',
+                                      hintText:
+                                          'Zum Beispiel Mathematik, Englisch',
+                                      helperText:
+                                          'Mehrere Fächer mit Komma trennen.',
+                                      helperMaxLines: 2,
+                                    ),
+                                  ),
+                                  if ((child['subjects'] as List)
+                                      .isNotEmpty) ...[
+                                    SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        'Vorhandene Fächer auswählen',
+                                      ),
+                                    ),
+                                    Wrap(
+                                      spacing: 6,
+                                      children: [
+                                        for (final subject
+                                            in child['subjects'] as List)
+                                          FilterChip(
+                                            label: Text(subject),
+                                            selected: entries(focus)
+                                                .contains(subject),
+                                            onSelected: (selected) => set(() {
+                                              final values = entries(focus);
+                                              if (selected) {
+                                                if (!values.contains(subject)) {
+                                                  values.add(subject);
+                                                }
+                                              } else {
+                                                values.removeWhere(
+                                                  (v) => v == subject,
+                                                );
+                                              }
+                                              focus.text = values.join(', ');
+                                            }),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                  SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: repeat,
+                                    enabled: !saving,
+                                    validator: listError,
+                                    maxLines: 2,
+                                    decoration: InputDecoration(
+                                      labelText: 'Themen zum Wiederholen',
+                                      hintText: 'Mathematik: Brüche, Englisch: Verben',
+                                      helperText: 'Fach: Thema; mehrere mit Komma trennen.',
+                                      helperMaxLines: 2,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  ExpansionTile(
+                                    title: Text('Fächer auf Tage verteilen'),
+                                    subtitle: Text(
+                                      'Ohne Auswahl: alle Lerntage',
+                                    ),
+                                    children: [
+                                      for (final subject
+                                          in child['subjects'] as List) ...[
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                              top: 12,
+                                              bottom: 8,
+                                            ),
+                                            child: Text(
+                                              subject,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Wrap(
+                                          spacing: 5,
+                                          runSpacing: 4,
+                                          children: [
+                                            for (var day = 0; day < 7; day++)
+                                              FilterChip(
+                                                label: Text(
+                                                  [
+                                                    'Mo',
+                                                    'Di',
+                                                    'Mi',
+                                                    'Do',
+                                                    'Fr',
+                                                    'Sa',
+                                                    'So',
+                                                  ][day],
+                                                ),
+                                                selected:
+                                                    subjectDays[subject]
+                                                        ?.contains(day) ??
+                                                    false,
+                                                onSelected: (selected) =>
+                                                    set(() {
+                                                      final days = subjectDays
+                                                          .putIfAbsent(
+                                                            subject,
+                                                            () => [],
+                                                          );
+                                                      if (selected) {
+                                                        days.add(day);
+                                                      } else {
+                                                        days.remove(day);
+                                                      }
+                                                      if (days.isEmpty) {
+                                                        subjectDays.remove(
+                                                          subject,
+                                                        );
+                                                      }
+                                                    }),
+                                              ),
+                                          ],
+                                        ),
+                                        if (subjectDays[subject]?.isNotEmpty ==
+                                                true &&
+                                            !subjectDays[subject]!.any(
+                                              weekdays.contains,
+                                            ))
+                                          Notice(
+                                            '$subject hat keinen Fach-Lerntag gemeinsam mit den allgemeinen Lerntagen. Dafür wird kein passender Tagesvorschlag eingeplant. Deine Auswahl bleibt erhalten.',
+                                          ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _PreferenceSection(
+                              title: 'Geplante Auszeit',
+                              description: 'Urlaub oder Krankheit pausieren das Tagesziel. Freiwilliges Lernen bleibt möglich.',
+                              child: TextFormField(
+                                controller: pause,
+                                enabled: !saving,
+                                decoration: InputDecoration(
+                                  labelText: 'Auszeit bis',
+                                  hintText: 'TT.MM.JJJJ',
+                                  helperText: 'Einschließlich dieses Tages.',
+                                  suffixIcon: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Auszeit im Kalender wählen',
+                                        icon: Icon(
+                                          Icons.calendar_month_outlined,
+                                        ),
+                                        onPressed: () async {
+                                          if (!currentAccount() ||
+                                              draftRoute?.isCurrent != true) {
+                                            return;
+                                          }
+                                          final day = await showDatePicker(
+                                            context: ctx,
+                                            builder: (context, child) {
+                                              dateRoute = ModalRoute.of(
+                                                context,
+                                              );
+                                              final theme = Theme.of(context);
+                                              return Theme(
+                                                data: theme.copyWith(
+                                                  datePickerTheme: theme
+                                                      .datePickerTheme
+                                                      .copyWith(
+                                                        headerHeadlineStyle:
+                                                            theme
+                                                                .textTheme
+                                                                .headlineMedium,
+                                                      ),
+                                                ),
+                                                child: child!,
+                                              );
+                                            },
+                                            initialDate:
+                                                planningDate(pause.text) ??
+                                                DateTime.now(),
+                                            firstDate: DateTime(2000),
+                                            lastDate: DateTime(2100),
+                                          );
+                                          if (day != null &&
+                                              ctx.mounted &&
+                                              currentAccount()) {
+                                            set(
+                                              () => pause.text = DateFormat(
+                                                'dd.MM.yyyy',
+                                              ).format(day),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Auszeit aufheben',
+                                        icon: Icon(Icons.close_rounded),
+                                        onPressed: () =>
+                                            set(() => pause.clear()),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                validator: (value) {
+                                  final text = value?.trim() ?? '';
+                                  if (text.isEmpty) return null;
+                                  return planningDate(text) != null
+                                      ? null
+                                      : 'Bitte ein gültiges Datum als TT.MM.JJJJ eingeben.';
+                                },
+                              ),
+                            ),
+                            _PreferenceSection(
+                              title: 'Erinnerungen & Ruhezeiten',
+                              child: Column(
+                                children: [
+                                  SwitchListTile.adaptive(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text('Lernerinnerung in der App'),
+                                    value: p['reminders'] == true,
+                                    onChanged: (value) =>
+                                        set(() => p['reminders'] = value),
+                                  ),
+                                  SwitchListTile.adaptive(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text('Push am Kindergerät erlauben'),
+                                    subtitle: Text(
+                                      'Dein Kind schaltet Push auf seinem Gerät selbst ein. Ausschalten entfernt seine vorhandenen Push-Registrierungen.',
+                                    ),
+                                    value: p['push_consent'] == true,
+                                    onChanged: (value) =>
+                                        set(() => p['push_consent'] = value),
+                                  ),
+                                  SwitchListTile.adaptive(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      'Hilfewünsche hervorheben & melden',
+                                    ),
+                                    subtitle: Text(
+                                      'Erlaubt Hinweise auf Hilfewünsche. Push bleibt zusätzlich vom Geräte-Opt-in und den Ruhezeiten abhängig.',
+                                    ),
+                                    value: p['notify_help'] == true,
+                                    onChanged: (value) =>
+                                        set(() => p['notify_help'] = value),
+                                  ),
+                                  SizedBox(height: 16),
+                                  numeric(
+                                    quietStart,
+                                    'Ruhezeit ab',
+                                    0,
+                                    23,
+                                    suffix: 'Uhr',
+                                  ),
+                                  numeric(
+                                    quietEnd,
+                                    'Ruhezeit bis',
+                                    0,
+                                    23,
+                                    suffix: 'Uhr',
+                                  ),
+                                  Text(
+                                    quietStart.text.trim() ==
+                                            quietEnd.text.trim()
+                                        ? 'Gleiche Uhrzeiten: keine Ruhezeit.'
+                                        : 'Ruhezeit von ${quietStart.text.trim()} bis ${quietEnd.text.trim()} Uhr${(int.tryParse(quietStart.text.trim()) ?? 0) > (int.tryParse(quietEnd.text.trim()) ?? 0) ? ' am nächsten Tag' : ''}.',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              'Zeitzone: ${p['timezone'] ?? 'Europe/Berlin'}',
+                              style: TextStyle(
+                                color: context.palette.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                            SizedBox(height: 16),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  _PreferenceSection(
-                    title: 'Geplante Auszeit',
-                    description: 'Urlaub oder Krankheit pausieren das Tagesziel. Freiwilliges Lernen bleibt möglich.',
-                    child: TextFormField(
-                      controller: pause,
-                      decoration: InputDecoration(
-                        labelText: 'Auszeit bis',
-                        hintText: 'JJJJ-MM-TT',
-                        suffixIcon: IconButton(
-                          tooltip: 'Auszeit aufheben',
-                          icon: Icon(Icons.close_rounded),
-                          onPressed: () => pause.clear(),
-                        ),
                       ),
-                      validator: (value) {
-                        final text = value?.trim() ?? '';
-                        if (text.isEmpty) return null;
-                        final date = DateTime.tryParse(text);
-                        return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text) &&
-                                date != null &&
-                                date.toIso8601String().substring(0, 10) == text
-                            ? null
-                            : 'Bitte ein gültiges Datum eingeben.';
-                      },
                     ),
                   ),
-                  _PreferenceSection(
-                    title: 'Erinnerungen & Ruhezeiten',
-                    child: Column(
-                      children: [
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Lernerinnerung in der App'),
-                          value: p['reminders'] == true,
-                          onChanged: (value) =>
-                              set(() => p['reminders'] = value),
-                        ),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Push am Kindergerät erlauben'),
-                          subtitle: Text(
-                            'Dein Kind schaltet Push auf seinem Gerät selbst ein.',
-                          ),
-                          value: p['push_consent'] == true,
-                          onChanged: (value) =>
-                              set(() => p['push_consent'] = value),
-                        ),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Hilfewünsche hervorheben'),
-                          value: p['notify_help'] == true,
-                          onChanged: (value) =>
-                              set(() => p['notify_help'] = value),
-                        ),
-                        SizedBox(height: 16),
-                        numeric(
-                          quietStart,
-                          'Ruhezeit ab',
-                          0,
-                          23,
-                          suffix: 'Uhr',
-                        ),
-                        numeric(quietEnd, 'Ruhezeit bis', 0, 23, suffix: 'Uhr'),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    'Zeitzone: ${p['timezone'] ?? 'Europe/Berlin'}',
-                    style: TextStyle(
-                      color: context.palette.muted,
-                      fontSize: 12,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                ],
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: saving
+                      ? null
+                      : () {
+                          if (ctx.mounted && draftRoute?.isCurrent == true) {
+                            Navigator.pop(ctx);
+                          }
+                        },
+                  child: Text('Abbrechen'),
+                ),
+                ActionButton(
+                  label: 'Speichern',
+                  onPressed: () async {
+                    if (!currentAccount() ||
+                        !ctx.mounted ||
+                        saving ||
+                        draftRoute?.isCurrent != true) {
+                      return;
+                    }
+                    if (form.currentState?.validate() != true) return;
+                    final body = {
+                      ...p,
+                      'weekdays': List<int>.from(weekdays),
+                      'subject_days': {
+                        for (final e in subjectDays.entries)
+                          e.key: List<int>.from(e.value),
+                      },
+                      'daily_minutes': int.parse(daily.text.trim()),
+                      'weekly_minutes': int.parse(weekly.text.trim()),
+                      'session_minutes': int.parse(session.text.trim()),
+                      'break_minutes': int.parse(breaks.text.trim()),
+                      'focus_subjects': entries(focus),
+                      'repeat_topics': entries(repeat),
+                      'pause_until': pause.text.trim().isEmpty
+                          ? null
+                          : DateFormat('yyyy-MM-dd')
+                                .format(planningDate(pause.text)!),
+                      'quiet_start': int.parse(quietStart.text.trim()),
+                      'quiet_end': int.parse(quietEnd.text.trim()),
+                    };
+                    set(() => saving = true);
+                    try {
+                      await state.api.put(
+                        '/children/${child['id']}/preferences',
+                        body,
+                      );
+                      if (!currentAccount()) return;
+                      state.refreshState();
+                      if (draftRoute?.isActive == true) {
+                        if (draftRoute!.isCurrent) {
+                          draftRoute!.navigator?.pop();
+                        } else {
+                          draftRoute!.navigator?.removeRoute(draftRoute!);
+                        }
+                      }
+                    } finally {
+                      if (ctx.mounted && currentAccount()) {
+                        set(() => saving = false);
+                      }
+                    }
+                  },
+                ),
+              ],
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Abbrechen'),
-          ),
-          ActionButton(
-            label: 'Speichern',
-            onPressed: () async {
-              if (form.currentState?.validate() != true) return;
-              await state.api.put('/children/${child['id']}/preferences', {
-                ...p,
-                'weekdays': weekdays,
-                'subject_days': subjectDays,
-                'daily_minutes': int.parse(daily.text.trim()),
-                'weekly_minutes': int.parse(weekly.text.trim()),
-                'session_minutes': int.parse(session.text.trim()),
-                'break_minutes': int.parse(breaks.text.trim()),
-                'focus_subjects': focus.text
-                    .split(',')
-                    .map((s) => s.trim())
-                    .where((s) => s.isNotEmpty)
-                    .toList(),
-                'repeat_topics': repeat.text
-                    .split(',')
-                    .map((s) => s.trim())
-                    .where((s) => s.isNotEmpty)
-                    .toList(),
-                'pause_until': pause.text.trim().isEmpty
-                    ? null
-                    : pause.text.trim(),
-                'quiet_start': int.parse(quietStart.text.trim()),
-                'quiet_end': int.parse(quietEnd.text.trim()),
-              });
-              state.refreshState();
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-          ),
-        ],
-      ),
-    ),
-  );
-  // Dialog route transitions may still paint its fields during this frame.
-  await Future<void>.delayed(Duration(milliseconds: 200));
-  for (final c in [
-    daily,
-    weekly,
-    session,
-    pause,
-    breaks,
-    focus,
-    repeat,
-    quietStart,
-    quietEnd,
-  ]) {
-    c.dispose();
+        );
+      },
+    );
+  } finally {
+    state.removeListener(accountChanged);
+    if (draftRoute != null) await draftRoute!.completed;
+    for (final c in [
+      daily,
+      weekly,
+      session,
+      pause,
+      breaks,
+      focus,
+      repeat,
+      quietStart,
+      quietEnd,
+    ]) {
+      c.dispose();
+    }
   }
 }
 

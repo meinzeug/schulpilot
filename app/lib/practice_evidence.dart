@@ -81,7 +81,7 @@ class PracticeEvidence extends StatelessWidget {
               ),
               (
                 'assisted_tasks',
-                'mit Hilfe gelöst',
+                'mit Hilfe/erneut gelöst',
                 Icons.lightbulb_outline_rounded,
               ),
               (

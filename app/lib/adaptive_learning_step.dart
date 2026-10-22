@@ -20,15 +20,20 @@ class AdaptiveLearningStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phase = plan['phase'];
-    final explanation = plan['explanation'] as Map?;
+    final explanation = plan['explanation'] is Map
+        ? plan['explanation'] as Map
+        : null;
+    final explanationText = explanation?['text'];
+    final hasText =
+        explanationText is String && explanationText.trim().isNotEmpty;
     final checking = phase == 'offer_probe';
     final title =
         plan['title']?.toString() ??
         (checking
             ? 'Wir prüfen einen kleinen Zwischenschritt'
             : explanation == null
-            ? 'Ein anderer Blick auf die Brüche'
-            : 'Schau dir die gleich großen Mengen an');
+            ? 'Ein anderer Blick auf deine Aufgabe'
+            : 'Schau dir den nächsten Schritt an');
     return Panel(
       tone: PanelTone.info,
       child: Column(
@@ -50,10 +55,17 @@ class AdaptiveLearningStep extends StatelessWidget {
               'Ein Fehler kann viele Gründe haben. Eine kurze neue Frage zeigt, welcher Schritt dir hilft.',
               style: TextStyle(fontSize: 17, height: 1.5),
             )
-          else if (explanation != null)
+          else if (hasText)
             LearningExplanation(
-              text: explanation['text'] as String,
-              prompt: explanation['prompt'] as String?,
+              text: explanationText,
+              prompt: explanation?['prompt'] is String
+                  ? explanation!['prompt'] as String
+                  : null,
+            )
+          else if (explanation != null)
+            Notice(
+              'Diese gespeicherte Erklärung ist noch nicht vollständig verfügbar. Du kannst mit deiner Aufgabe weiterarbeiten.',
+              warning: true,
             )
           else
             Text(

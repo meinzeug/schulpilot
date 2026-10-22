@@ -10,14 +10,22 @@ import 'learning_content.dart';
 class LearningExplanation extends StatefulWidget {
   final String text;
   final String? prompt;
-  const LearningExplanation({super.key, required this.text, this.prompt});
+  final int initialStep;
+  final ValueChanged<int>? onStepChanged;
+  const LearningExplanation({
+    super.key,
+    required this.text,
+    this.prompt,
+    this.initialStep = 0,
+    this.onStepChanged,
+  });
 
   @override
   State<LearningExplanation> createState() => _LearningExplanationState();
 }
 
 class _LearningExplanationState extends State<LearningExplanation> {
-  int step = 0;
+  late int step = widget.initialStep;
   final stepTop = GlobalKey();
 
   void revealBeginning() {
@@ -31,14 +39,15 @@ class _LearningExplanationState extends State<LearningExplanation> {
 
   void changeStep(int next) {
     setState(() => step = next);
+    widget.onStepChanged?.call(next);
     revealBeginning();
   }
 
   @override
   void didUpdateWidget(LearningExplanation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) {
-      step = 0;
+    if (oldWidget.text != widget.text || oldWidget.prompt != widget.prompt) {
+      step = widget.initialStep;
       revealBeginning();
     }
   }
@@ -63,9 +72,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
         chunks.add(paragraph);
       } else {
         var chunk = '';
-        for (final sentence in paragraph.split(
-          RegExp(r'(?<=[.!?])\s+(?=[A-ZÄÖÜ])'),
-        )) {
+        for (final sentence in paragraph.split(RegExp(r'(?<=[.!?])\s+'))) {
           if (chunk.isNotEmpty && chunk.length + sentence.length > 300) {
             chunks.add(chunk);
             chunk = '';
@@ -83,9 +90,12 @@ class _LearningExplanationState extends State<LearningExplanation> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (chunks.length > 1) ...[
-          MathText(
-            'Schritt ${current + 1} von ${chunks.length}',
-            style: TextStyle(color: context.palette.muted, fontSize: 13),
+          Semantics(
+            liveRegion: true,
+            child: MathText(
+              'Schritt ${current + 1} von ${chunks.length}',
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
+            ),
           ),
           SizedBox(height: 10),
         ],
@@ -143,9 +153,18 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
   @override
   Widget build(BuildContext context) {
     final match = RegExp(
-      r'(\d{1,2})\s*/\s*([1-9]\d?)\s*\+\s*(\d{1,2})\s*/\s*([1-9]\d?)',
+      r'(?<![\w/.,])(\d{1,2})\s*/\s*([1-9]\d?)\s*\+\s*(\d{1,2})\s*/\s*([1-9]\d?)(?![\w/])',
     ).firstMatch(widget.prompt);
     if (match == null) return SizedBox.shrink();
+    // This local visual supports exactly two positive proper fractions. A
+    // matching substring of a negative/longer expression is not that example.
+    final before = widget.prompt.substring(0, match.start).trimRight();
+    final after = widget.prompt.substring(match.end).trimLeft();
+    if (RegExp(r'[\d+*/×÷−-]$').hasMatch(before) ||
+        RegExp(r'^(?:[+*/×÷−-]|[.,]\d)').hasMatch(after) ||
+        RegExp(r'\d+\s*/\s*\d+').allMatches(widget.prompt).length != 2) {
+      return SizedBox.shrink();
+    }
     final a = int.parse(match[1]!),
         b = int.parse(match[2]!),
         c = int.parse(match[3]!),
@@ -163,7 +182,6 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
       String label, {
       int split = 0,
       int? divisions,
-      String mark = 'A',
     }) => Padding(
       padding: EdgeInsets.only(top: 12),
       child: Semantics(
@@ -188,23 +206,24 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
                                 : split > 0 && i >= split
                                 ? context.palette.cyanInk
                                 : context.palette.teal,
-                            border: Border.all(
-                              color: context.palette.muted,
-                              width: .7,
+                            border: Border(
+                              left: BorderSide(
+                                color: context.palette.muted,
+                                width: split > 0 && i == split ? 3 : .7,
+                              ),
+                              right: BorderSide(
+                                color: context.palette.muted,
+                                width: .7,
+                              ),
+                              top: BorderSide(
+                                color: context.palette.muted,
+                                width: .7,
+                              ),
+                              bottom: BorderSide(
+                                color: context.palette.muted,
+                                width: .7,
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: i < filled
-                                ? Text(
-                                    split > 0 && i >= split ? 'B' : mark,
-                                    style: TextStyle(
-                                      color: context.palette.isDark
-                                          ? context.palette.cream
-                                          : Colors.white,
-                                      fontSize: 10,
-                                    ),
-                                  )
-                                : null,
                           ),
                         ),
                       ),
@@ -231,10 +250,10 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
           ),
           if (stage == 0) ...[
             bar(a, 'A: $a/$b', divisions: b),
-            bar(c, 'B: $c/$d', divisions: d, mark: 'B'),
+            bar(c, 'B: $c/$d', divisions: d),
           ] else if (stage == 1) ...[
             bar(first, 'A: $a/$b = $first/$denominator'),
-            bar(second, 'B: $c/$d = $second/$denominator', mark: 'B'),
+            bar(second, 'B: $c/$d = $second/$denominator'),
             Text(
               'Beim Erweitern werden die Stücke kleiner. Die markierte Menge bleibt gleich.',
             ),
@@ -245,7 +264,7 @@ class _FractionSumDiagramState extends State<FractionSumDiagram> {
               split: first,
             ),
             Text(
-              'A und B markieren die beiden Anteile – zusätzlich zur Farbe.',
+              'Links liegen $first Teile von A, danach $second Teile von B. A steht für $a/$b, B für $c/$d. Die Beschriftung erklärt die Anteile zusätzlich zur Farbe.',
             ),
           ],
           Wrap(

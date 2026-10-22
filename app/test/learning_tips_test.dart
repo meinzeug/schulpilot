@@ -43,6 +43,7 @@ Future<AppState> mount(
   WidgetTester tester,
   Future<http.Response> Function(http.Request) respond, {
   bool browser = false,
+  bool parent = false,
   double width = 390,
   double height = 800,
   double scale = 1,
@@ -54,9 +55,18 @@ Future<AppState> mount(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetViewInsets);
-  final state = AppState(
-    api: Api(base: 'https://example.invalid/api', client: MockClient(respond)),
-  )..user = {'id': 'own-user', 'role': 'child', 'child_id': 'child'};
+  final state =
+      AppState(
+          api: Api(
+            base: 'https://example.invalid/api',
+            client: MockClient(respond),
+          ),
+        )
+        ..user = {
+          'id': 'own-user',
+          'role': parent ? 'parent' : 'child',
+          'child_id': 'child',
+        };
   await tester.pumpWidget(
     MaterialApp(
       theme: appTheme(),
@@ -196,11 +206,11 @@ void main() {
   testWidgets('Read-only parents see content and no modifying controls', (
     tester,
   ) async {
-    final state = await mount(
+    await mount(
       tester,
       (_) async => reply(tips()..['can_respond'] = false),
+      parent: true,
     );
-    state.user = {'id': 'own-user', 'role': 'parent'};
     await tap(tester, find.text('Lerntipps'));
     expect(find.text('Künstlicher Lerntipp 1'), findsOneWidget);
     expect(find.text('Passt nicht'), findsNothing);
@@ -298,7 +308,7 @@ void main() {
         ),
       ),
     );
-    await tap(tester, find.byType(TextField));
+    await tap(tester, find.byType(OutlinedButton));
     expect(find.text('Mathematik'), findsOneWidget);
     await tap(tester, find.text('Englisch'));
     expect(controller.text, 'Englisch');

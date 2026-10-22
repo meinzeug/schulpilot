@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'api.dart';
+import 'learning_content.dart';
 import 'coaching_panel.dart';
 import 'daily_plan_panel.dart';
 import 'parent_child_navigation.dart';
@@ -54,6 +55,9 @@ class ParentOverview extends StatelessWidget {
               (a['source_status'] ?? 'confirmed') == 'confirmed',
         )
         .length;
+    final changedAssignments = (data['assignments'] as List? ?? [])
+        .where((a) => a['done'] != true && a['source_status'] == 'needs_review')
+        .length;
     final subjects = data['subject_progress'] as List? ?? [];
     final guidance = data['learning_guidance'] as Map?;
     final guidanceUnitId = guidance?['unit_id'];
@@ -98,6 +102,14 @@ class ParentOverview extends StatelessWidget {
           ],
         ),
         ParentPracticeSummary(evidence),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => section('progress'),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Gespeicherte Übungsbelege im Detail ansehen'),
+          ),
+        ),
         if (state != null) ...[
           const SizedBox(height: 24),
           ParentInsightsPanel(
@@ -122,10 +134,10 @@ class ParentOverview extends StatelessWidget {
                 _OverviewAction(
                   icon: Icons.volunteer_activism_outlined,
                   title: help > 0
-                      ? '$help ${help == 1 ? 'Hilfewunsch' : 'Hilfewünsche'} heute'
+                      ? '$help ${help == 1 ? 'offener Hilfewunsch' : 'offene Hilfewünsche'}'
                       : coachingSupport
                       ? 'Rückmeldung der Lernbegleitung'
-                      : 'Heute kein Hilfewunsch',
+                      : 'Kein offener Hilfewunsch',
                   detail: help > 0
                       ? 'Anliegen und Antworten findet ihr in den Nachrichten.'
                       : coachingSupport
@@ -153,6 +165,16 @@ class ParentOverview extends StatelessWidget {
                   action: 'Plan ansehen',
                   onTap: () => section('plan'),
                 ),
+                if (changedAssignments > 0)
+                  _OverviewAction(
+                    icon: Icons.rule_folder_outlined,
+                    title:
+                        '${counted(changedAssignments, 'Auftragsquelle', 'Auftragsquellen')} prüfen',
+                    detail: 'Der Heftstoff hat sich geändert. Diese Aufträge zählen erst nach der Prüfung wieder zu den bestätigten offenen Zielen.',
+                    action: 'Aufträge im Lernplan prüfen',
+                    onTap: () => section('plan'),
+                    highlighted: true,
+                  ),
                 if (guidance != null &&
                     guidanceUnitId is String &&
                     guidanceUnitId.isNotEmpty)
@@ -249,8 +271,20 @@ class ParentOverview extends StatelessWidget {
                 icon: Icons.history_rounded,
               ),
               Text(
-                '${counted(data['week_summary']?['completed_units'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')} · ${counted(data['week_summary']?['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
+                '${counted(data['week_summary']?['completed_units'] as num? ?? 0, 'abgeschlossene Runde', 'abgeschlossene Runden')}${data['week_summary']?['answer_count'] is num ? ' · ${counted(data['week_summary']['answer_count'], 'gespeicherter Antwortversuch', 'gespeicherte Antwortversuche')}' : ''} · ${counted(data['week_summary']?['hints_used'] as num? ?? 0, 'Hinweis', 'Hinweise')}',
               ),
+              if ((data['week_summary']?['topics'] as List? ?? [])
+                  .isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('Themen abgeschlossener Runden in diesem Zeitraum:'),
+                for (final topic
+                    in (data['week_summary']['topics'] as List).take(3))
+                  Text(topic.toString()),
+                if ((data['week_summary']['topics'] as List).length > 3)
+                  Text(
+                    '${(data['week_summary']['topics'] as List).length - 3} weitere Themen im Verlauf',
+                  ),
+              ],
               const SizedBox(height: 8),
               Text(
                 data['week_summary']?['support'] ?? 'Noch keine Rückmeldung.',
@@ -301,6 +335,17 @@ class ParentOverview extends StatelessWidget {
                 subtitle: Text(
                   'Nächste Wiederholung: ${friendlyDate(mastery['next_review'])} · ${mastery['description']}',
                 ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => openRoute(
+                  context,
+                  Uri(
+                    path: '/progress/$childId',
+                    queryParameters: {
+                      'fach': mastery['subject'],
+                      'thema': mastery['topic'],
+                    },
+                  ).toString(),
+                ),
               ),
             if (paths.isEmpty && (data['mastery'] as List? ?? []).isEmpty)
               const Notice(
@@ -314,7 +359,7 @@ class ParentOverview extends StatelessWidget {
             Icons.document_scanner_outlined,
             color: context.palette.cyanInk,
           ),
-          title: const Text('Heutige Heftseiten & Vorbereitung'),
+          title: const Text('Gespeicherte Seiten & Tagespakete'),
           subtitle: Text(
             '${counted(data['material_count'] as num? ?? 0, 'gespeicherte Seite', 'gespeicherte Seiten')} insgesamt',
           ),
@@ -568,9 +613,9 @@ class _OverviewAction extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-              Text(
-                detail,
+              DefaultTextStyle.merge(
                 style: TextStyle(color: context.palette.muted, fontSize: 14),
+                child: LearningContent(detail),
               ),
               const SizedBox(height: 5),
               TextButton.icon(

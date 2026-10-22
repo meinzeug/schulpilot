@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'lesson_voice.dart';
+import 'learning_content.dart';
 import 'ui.dart';
 import 'vocabulary_screen.dart';
 
@@ -29,7 +30,23 @@ const workshopModes = {
   'debate': 'Argumente & Perspektiven',
 };
 
-class LanguageWorkshop extends StatefulWidget {
+String workshopGoal(String mode) => switch (mode) {
+  'summary' => 'Einen eigenen Text verständlich zusammenfassen',
+  'translation' => 'Meine eigene Übersetzung verstehen und verbessern',
+  'presentation' || 'speech' => 'Meinen Stoff klar erklären und vorstellen',
+  'writing_feedback' ||
+  'model_text' ||
+  'writing_help' => 'Meinen eigenen Text verständlicher schreiben',
+  'email' => 'Eine passende Nachricht schreiben',
+  'simplify' ||
+  'study_notes' ||
+  'worksheet' => 'Meinen bestätigten Stoff besser verstehen',
+  'debate' => 'Eigene Argumente verständlich begründen',
+  'dialog' => 'Mit meinen Schulwörtern ein Gespräch führen',
+  _ => 'Meine Schulwörter in passenden Sätzen anwenden',
+};
+
+class LanguageWorkshop extends StatelessWidget {
   final AppState state;
   final String childId;
   final String? materialId, projectId;
@@ -41,10 +58,38 @@ class LanguageWorkshop extends StatefulWidget {
     this.projectId,
   });
   @override
-  State<LanguageWorkshop> createState() => _LanguageWorkshopState();
+  Widget build(BuildContext context) => _LanguageWorkshopBody(
+    state,
+    childId: childId,
+    materialId: materialId,
+    projectId: projectId,
+    key: ValueKey((
+      state,
+      ObjectKey(state.user),
+      childId,
+      materialId,
+      projectId,
+    )),
+  );
 }
 
-class _LanguageWorkshopState extends State<LanguageWorkshop> {
+class _LanguageWorkshopBody extends StatefulWidget {
+  final AppState state;
+  final String childId;
+  final String? materialId, projectId;
+  const _LanguageWorkshopBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    this.materialId,
+    this.projectId,
+  });
+  @override
+  State<_LanguageWorkshopBody> createState() => _LanguageWorkshopState();
+}
+
+class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
+    with WidgetsBindingObserver {
   final goal = TextEditingController(
     text: 'Meine Schulwörter in passenden Sätzen anwenden',
   );
@@ -57,27 +102,70 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
   Timer? poll;
   String? requestBody, requestKey;
   bool busy = false, loading = true;
-  int generation = 0, page = 1;
+  int generation = 0, page = 1, wordPage = 1, sourcePage = 1;
+  int wordTotal = 0, sourceTotal = 0;
+  final wordLabels = <String, String>{};
+  final wordPages = <String, int>{};
+  bool revalidateSavedSelection = false;
+  Json? chosenSource;
+  String get draftKey =>
+      'workshop_form:${widget.childId}:${widget.materialId ?? "none"}:${widget.projectId ?? "new"}';
   bool more = false;
-  late String owner;
+  late final Json? owner;
+  bool foreground = true;
   String get base => '/children/${widget.childId}';
-  bool get current => mounted && owner == widget.state.user?['id'];
+  bool get current =>
+      mounted && owner != null && identical(owner, widget.state.user);
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'] ?? '';
+    owner = widget.state.user;
+    WidgetsBinding.instance.addObserver(this);
     material = widget.materialId;
+    final saved = widget.state.collectionViews[draftKey];
+    if (saved != null && identical(saved['account'], owner)) {
+      goal.text = saved['goal'] ?? goal.text;
+      draft.text = saved['draft'] ?? '';
+      mode = saved['mode'] ?? mode;
+      locale = saved['locale'] ?? locale;
+      grammar = saved['grammar'] ?? grammar;
+      material = saved['material'];
+      selected.addAll(List<String>.from(saved['selected'] ?? []));
+      wordLabels.addAll(Map<String, String>.from(saved['labels'] ?? {}));
+      wordPages.addAll(Map<String, int>.from(saved['word_pages'] ?? {}));
+      wordPage = (saved['word_page'] as int? ?? 1).clamp(1, 100000);
+      sourcePage = (saved['source_page'] as int? ?? 1).clamp(1, 100000);
+      revalidateSavedSelection = true;
+      chosenSource = saved['source'] is Map ? Json.from(saved['source']) : null;
+    }
+    goal.addListener(formChanged);
+    draft.addListener(formChanged);
     widget.state.addListener(accountChanged);
     load();
   }
 
+  void formChanged() {
+    if (current) setState(() {});
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    foreground = lifecycle == AppLifecycleState.resumed;
+    poll?.cancel();
+    if (foreground && current) load();
+  }
+
   void accountChanged() {
     if (!current && mounted) {
+      widget.state.collectionViews.remove(draftKey);
       generation++;
       poll?.cancel();
       setState(() {
         words = [];
+        materials = [];
+        selected.clear();
+        goal.clear();
         projects = [];
         project = null;
         draft.clear();
@@ -87,9 +175,41 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
 
   @override
   void dispose() {
+    if (current &&
+        goal.text.runes.length <= 500 &&
+        draft.text.runes.length <= 6000) {
+      widget.state.collectionViews[draftKey] = {
+        'account': owner,
+        'goal': goal.text,
+        'draft': draft.text,
+        'locale': locale,
+        'mode': mode,
+        'grammar': grammar,
+        'material': material,
+        'selected': selected.toList(),
+        'labels': {
+          for (final id in selected) id: wordLabels[id] ?? 'Ausgewähltes Wort',
+        },
+        'source': chosenSource,
+        'word_page': wordPage,
+        'source_page': sourcePage,
+        'word_pages': {
+          for (final id in selected) id: wordPages[id] ?? wordPage,
+        },
+      };
+      final keys = widget.state.collectionViews.keys
+          .where((k) => k.startsWith('workshop_form:'))
+          .toList();
+      while (keys.length > 10) {
+        widget.state.collectionViews.remove(keys.removeAt(0));
+      }
+    }
     generation++;
     poll?.cancel();
     widget.state.removeListener(accountChanged);
+    WidgetsBinding.instance.removeObserver(this);
+    goal.removeListener(formChanged);
+    draft.removeListener(formChanged);
     goal.dispose();
     draft.dispose();
     super.dispose();
@@ -98,6 +218,10 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
   Future<void> load() async {
     if (!current) return;
     final request = ++generation;
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       if (widget.projectId != null) {
         final result = await widget.state.api.get(
@@ -110,16 +234,64 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
           error = null;
         });
         poll?.cancel();
-        if (['queued', 'running'].contains(result['status'])) {
+        if (foreground && ['queued', 'running'].contains(result['status'])) {
           poll = Timer(Duration(seconds: 3), load);
         }
       } else {
         final results = await Future.wait([
-          widget.state.api.get('$base/vocabulary?locale=$locale&page_size=50'),
-          widget.state.api.get('$base/materials?status=confirmed&page_size=50'),
+          widget.state.api.get(
+            '$base/vocabulary?locale=$locale&page=$wordPage&page_size=50',
+          ),
+          widget.state.api.get(
+            '$base/materials?status=confirmed&page=$sourcePage&page_size=50',
+          ),
           widget.state.api.get('$base/language-projects?page=$page'),
         ]);
         if (!current || request != generation) return;
+        // Reopened choices are never accepted from an unvalidated private RAM
+        // list. Re-read their bounded pages through the ordinary authorized API.
+        if (revalidateSavedSelection) {
+          final verified = <String, Json>{
+            for (final value in results[0]['items'] as List)
+              value['id']: Json.from(value),
+          };
+          final pages = selected
+              .map((id) => wordPages[id] ?? wordPage)
+              .where((p) => p != wordPage && p >= 1 && p <= 100000)
+              .toSet();
+          for (final p in pages.take(10)) {
+            final value = await widget.state.api.get(
+              '$base/vocabulary?locale=$locale&page=$p&page_size=50',
+            );
+            if (!current || request != generation) return;
+            for (final item in value['items'] as List? ?? []) {
+              verified[item['id']] = Json.from(item);
+            }
+          }
+          selected.removeWhere((id) => !verified.containsKey(id));
+          for (final id in selected) {
+            wordLabels[id] = verified[id]!['word'];
+          }
+          revalidateSavedSelection = false;
+        }
+        if (material != null &&
+            !((results[1]['items'] as List).any((m) => m['id'] == material))) {
+          try {
+            final value = await widget.state.api.get('/materials/$material');
+            if (!current || request != generation) return;
+            chosenSource =
+                value['child_id'] == widget.childId &&
+                    value['confirmed'] == true
+                ? value
+                : null;
+            if (chosenSource == null) material = null;
+          } on ApiError catch (e) {
+            if (![403, 404].contains(e.status)) rethrow;
+            if (!current || request != generation) return;
+            material = null;
+            chosenSource = null;
+          }
+        }
         setState(() {
           words = (results[0]['items'] as List)
               .map((e) => Json.from(e))
@@ -127,6 +299,22 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
           materials = (results[1]['items'] as List)
               .map((e) => Json.from(e))
               .toList();
+          wordTotal =
+              (results[0]['pagination']?['total'] as num? ?? words.length)
+                  .toInt();
+          sourceTotal =
+              (results[1]['pagination']?['total'] as num? ?? materials.length)
+                  .toInt();
+          wordLabels.removeWhere((id, _) => !selected.contains(id));
+          for (final word in words) {
+            wordLabels[word['id']] = word['word'];
+            wordPages[word['id']] = wordPage;
+          }
+          if (chosenSource != null &&
+              material == chosenSource!['id'] &&
+              !materials.any((m) => m['id'] == material)) {
+            materials.insert(0, chosenSource!);
+          }
           projects = (results[2]['projects'] as List)
               .map((e) => Json.from(e))
               .toList();
@@ -138,7 +326,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
     } catch (e) {
       if (current && request == generation) {
         setState(() {
-          error = '$e';
+          error = e is ApiError ? e.message : 'Deine Sprachwerkstatt konnte gerade nicht geladen werden. Versuche es noch einmal.';
           loading = false;
         });
       }
@@ -146,7 +334,11 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
   }
 
   Future<void> create({Json? previous}) async {
-    if (!current || busy) return;
+    if (!current || busy || loading || !widget.state.isChild) return;
+    if (previous == null && (selected.isEmpty || goal.text.trim().length < 3)) {
+      return;
+    }
+    if (previous != null && draft.text.trim().isEmpty) return;
     final originRoute = ModalRoute.of(context);
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -183,7 +375,11 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
         '/language-projects/${widget.childId}?project=${result['id']}',
       );
     } catch (e) {
-      if (current) setState(() => error = '$e');
+      if (current) {
+        setState(
+          () => error = e is ApiError ? e.message : 'Dein Lernprojekt konnte gerade nicht bestätigt werden. Deine Eingaben bleiben erhalten.',
+        );
+      }
     } finally {
       if (current) setState(() => busy = false);
     }
@@ -218,7 +414,11 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
       setState(() => project = result);
       await load();
     } catch (e) {
-      if (current) setState(() => error = '$e');
+      if (current) {
+        setState(
+          () => error = e is ApiError ? e.message : 'Dein Lernprojekt konnte gerade nicht bestätigt werden. Deine Eingaben bleiben erhalten.',
+        );
+      }
     } finally {
       if (current) setState(() => busy = false);
     }
@@ -236,7 +436,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
       ),
       IconButton(
         tooltip: 'Aktualisieren',
-        onPressed: busy ? null : load,
+        onPressed: busy || loading ? null : load,
         icon: Icon(Icons.refresh_rounded),
       ),
     ],
@@ -281,12 +481,15 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                 child: Text(entry.value),
                               ),
                           ],
-                          onChanged: busy
+                          onChanged: busy || loading
                               ? null
                               : (v) {
                                   setState(() {
                                     locale = v!;
                                     selected.clear();
+                                    wordLabels.clear();
+                                    wordPage = 1;
+                                    words = [];
                                   });
                                   load();
                                 },
@@ -305,9 +508,14 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                 child: Text(e.value),
                               ),
                           ],
-                          onChanged: busy
+                          onChanged: busy || loading
                               ? null
-                              : (v) => setState(() => mode = v!),
+                              : (v) => setState(() {
+                                  if (goal.text == workshopGoal(mode)) {
+                                    goal.text = workshopGoal(v!);
+                                  }
+                                  mode = v!;
+                                }),
                         ),
                         SizedBox(height: 16),
                         TextField(
@@ -317,6 +525,13 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                           maxLines: 3,
                           decoration: InputDecoration(
                             labelText: 'Dein konkretes Lernziel',
+                            hintText: mode == 'summary'
+                                ? 'Was möchtest du zusammenfassen?'
+                                : mode == 'translation'
+                                ? 'Welche Übersetzung möchtest du prüfen?'
+                                : mode == 'presentation' || mode == 'speech'
+                                ? 'Was möchtest du erklären oder vorstellen?'
+                                : 'Was möchtest du mit deinem Stoff können?',
                           ),
                         ),
                         DropdownButtonFormField<String>(
@@ -343,15 +558,52 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                 ),
                               ),
                           ],
-                          onChanged: busy
+                          onChanged: busy || loading
                               ? null
-                              : (v) => setState(
-                                  () => material = v == '' ? null : v,
-                                ),
+                              : (v) => setState(() {
+                                  material = v == '' ? null : v;
+                                  chosenSource = materials
+                                      .where((m) => m['id'] == material)
+                                      .firstOrNull;
+                                }),
                         ),
                         SizedBox(height: 16),
+                        if (sourceTotal > 50)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                tooltip: 'Vorherige Heftseiten',
+                                onPressed: busy || loading || sourcePage <= 1
+                                    ? null
+                                    : () {
+                                        sourcePage--;
+                                        load();
+                                      },
+                                icon: Icon(Icons.chevron_left),
+                              ),
+                              Flexible(
+                                child: Text(
+                                  'Heftseiten · Seite $sourcePage von ${(sourceTotal / 50).ceil()}',
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Weitere Heftseiten',
+                                onPressed:
+                                    busy ||
+                                        loading ||
+                                        sourcePage * 50 >= sourceTotal
+                                    ? null
+                                    : () {
+                                        sourcePage++;
+                                        load();
+                                      },
+                                icon: Icon(Icons.chevron_right),
+                              ),
+                            ],
+                          ),
                         Text(
-                          'Welche Wörter gehören dazu? Bis zu 10 auswählen.',
+                          'Welche Wörter gehören dazu? ${selected.length} von höchstens 10 ausgewählt.',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         SizedBox(height: 8),
@@ -363,6 +615,22 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                             ),
                             child: Text('Zuerst Schulwörter bestätigen'),
                           ),
+                        if (selected.isNotEmpty && !loading)
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              for (final id in selected)
+                                InputChip(
+                                  label: Text(
+                                    wordLabels[id] ?? 'Ausgewähltes Wort',
+                                  ),
+                                  onDeleted: busy || loading
+                                      ? null
+                                      : () =>
+                                            setState(() => selected.remove(id)),
+                                ),
+                            ],
+                          ),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -371,7 +639,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                               FilterChip(
                                 label: Text(word['word']),
                                 selected: selected.contains(word['id']),
-                                onSelected: busy
+                                onSelected: busy || loading
                                     ? null
                                     : (v) {
                                         if (!v || selected.length < 10) {
@@ -382,12 +650,51 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                               selected.remove(word['id']);
                                             }
                                           });
+                                        } else {
+                                          toast(
+                                            context,
+                                            'Du hast schon 10 Wörter ausgewählt. Wähle erst eines ab.',
+                                          );
                                         }
                                       },
                               ),
                           ],
                         ),
                         SizedBox(height: 16),
+                        if (wordTotal > 50)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                tooltip: 'Vorherige Wörter',
+                                onPressed: busy || loading || wordPage <= 1
+                                    ? null
+                                    : () {
+                                        wordPage--;
+                                        load();
+                                      },
+                                icon: Icon(Icons.chevron_left),
+                              ),
+                              Flexible(
+                                child: Text(
+                                  'Wörter · Seite $wordPage von ${(wordTotal / 50).ceil()}',
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Weitere Wörter',
+                                onPressed:
+                                    busy ||
+                                        loading ||
+                                        wordPage * 50 >= wordTotal
+                                    ? null
+                                    : () {
+                                        wordPage++;
+                                        load();
+                                      },
+                                icon: Icon(Icons.chevron_right),
+                              ),
+                            ],
+                          ),
                         if (mode == 'grammar') ...[
                           DropdownButtonFormField<String>(
                             initialValue: grammar,
@@ -409,7 +716,9 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                 child: Text('Progressive / Verlaufsform'),
                               ),
                             ],
-                            onChanged: (v) => setState(() => grammar = v!),
+                            onChanged: busy || loading
+                                ? null
+                                : (v) => setState(() => grammar = v!),
                           ),
                           Padding(
                             padding: EdgeInsets.symmetric(vertical: 12),
@@ -419,6 +728,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                           ),
                         ],
                         ExpansionTile(
+                          key: ValueKey(('draft-editor', mode)),
                           initiallyExpanded: [
                             'writing_feedback',
                             'model_text',
@@ -447,6 +757,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                         FilledButton.icon(
                           onPressed:
                               busy ||
+                                  loading ||
                                   selected.isEmpty ||
                                   goal.text.trim().length < 3
                               ? null
@@ -458,6 +769,15 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                                 : 'Mein Lernprojekt vorbereiten',
                           ),
                         ),
+                        if (selected.isEmpty || goal.text.trim().length < 3)
+                          Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              selected.isEmpty
+                                  ? 'Wähle zuerst mindestens ein bestätigtes Wort aus.'
+                                  : 'Beschreibe dein Lernziel mit mindestens 3 Zeichen.',
+                            ),
+                          ),
                         SizedBox(height: 8),
                         Text(
                           'Ein KI-Auftrag. Danach übst du mit gespeicherten Aufgaben. Neue Beispiele sind Übungen, keine neuen Heftquellen.',
@@ -475,7 +795,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                   Text(
                     'Hier findest du später deine vorbereiteten Projekte und eigenen Entwürfe.',
                   ),
-                for (final row in projects)
+                for (final row in loading ? <Json>[] : projects)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(
@@ -498,7 +818,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                   children: [
                     IconButton(
                       tooltip: 'Vorherige Projektseite',
-                      onPressed: page > 1
+                      onPressed: !loading && !busy && page > 1
                           ? () {
                               page--;
                               load();
@@ -511,7 +831,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                     ),
                     IconButton(
                       tooltip: 'Nächste Projektseite',
-                      onPressed: more
+                      onPressed: !loading && !busy && more
                           ? () {
                               page++;
                               load();
@@ -544,7 +864,18 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
               if (row['mode'] == 'dialog')
                 Text('Schritt ${row['step']} von höchstens 4'),
               SizedBox(height: 12),
-              Tag(statusLabel(row['status'])),
+              Semantics(
+                liveRegion: true,
+                child: Tag(statusLabel(row['status'])),
+              ),
+              if (['queued', 'running'].contains(row['status'])) ...[
+                SizedBox(height: 12),
+                LinearProgressIndicator(),
+                SizedBox(height: 8),
+                Text(
+                  'Dein Lernprojekt bleibt gespeichert. Du kannst später hier weitermachen.',
+                ),
+              ],
               if (row['error'] != null) Notice(row['error'], warning: true),
               if (row['status'] == 'failed')
                 Text('Deine Wörter und dein Entwurf bleiben gespeichert.'),
@@ -567,10 +898,7 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                 SizedBox(height: 18),
                 Tag('Erzeugte Lernhilfe'),
                 SizedBox(height: 10),
-                SelectableText(
-                  result['response'] ?? '',
-                  style: TextStyle(fontSize: 17, height: 1.5),
-                ),
+                LearningContent(result['response'] ?? ''),
                 ReadAloudButton(
                   text: result['response'] ?? '',
                   locale: result['response_locale'] ?? 'de-DE',
@@ -640,7 +968,9 @@ class _LanguageWorkshopState extends State<LanguageWorkshop> {
                   maxLength: 4000,
                 ),
                 FilledButton(
-                  onPressed: busy ? null : () => create(previous: row),
+                  onPressed: busy || loading || draft.text.trim().isEmpty
+                      ? null
+                      : () => create(previous: row),
                   child: Text('Nächster Gesprächsschritt'),
                 ),
               ],

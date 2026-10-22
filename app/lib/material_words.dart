@@ -206,8 +206,10 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                             setState(() {
                               if (value == true) {
                                 selected.add(key);
+                                decisions[key] = 'confirmed';
                               } else {
                                 selected.remove(key);
+                                decisions.remove(key);
                               }
                             });
                             emit();
@@ -221,13 +223,15 @@ class _MaterialWordsPanelState extends State<MaterialWordsPanel> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${row['word']}',
+                          widget.reverse
+                              ? 'Deutsch: ${row['word']}'
+                              : '${row['word']}',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         Text(
                           (row['meaning'] ?? '').toString().isEmpty
                               ? 'Übersetzung ergänzen'
-                              : 'Deutsch: ${row['meaning']}',
+                              : '${widget.reverse ? learningLocales[widget.locale] ?? 'Lernsprache' : 'Deutsch'}: ${row['meaning']}',
                         ),
                         if ((row['context'] ?? '').toString().isNotEmpty)
                           Text(
@@ -397,12 +401,20 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
           children: [
             TextField(
               controller: word,
+              textInputAction: TextInputAction.next,
+              onChanged: (_) {
+                if (error != null) setState(() => error = null);
+              },
               maxLength: 200,
               decoration: InputDecoration(labelText: 'Wort oder Wendung'),
             ),
             SizedBox(height: 12),
             TextField(
               controller: meaning,
+              textInputAction: TextInputAction.next,
+              onChanged: (_) {
+                if (error != null) setState(() => error = null);
+              },
               maxLength: 200,
               decoration: InputDecoration(
                 labelText: 'Deutsche Bedeutung',
@@ -412,6 +424,8 @@ class _WordCorrectionDialogState extends State<_WordCorrectionDialog> {
             SizedBox(height: 12),
             TextField(
               controller: contextText,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
               maxLength: 500,
               decoration: InputDecoration(
                 labelText: 'Kontext oder Beispielsatz',

@@ -220,7 +220,7 @@ void main() {
     await fixture.open(tester, state, 'plan');
     await fixture.tap(tester, 'Meine Themen');
     expect(find.text('Mathematik · Bruchaddition'), findsOneWidget);
-    final forward = find.text('Weiter');
+    final forward = find.text('Nächste Themenseite');
     await tester.ensureVisible(forward);
     await tester.tap(forward);
     await tester.pump();

@@ -22,6 +22,9 @@ Json _provider() => {
   'image_capable': true,
   'structured_capable': true,
   'privacy_approved': false,
+  'reserve_micros': 1000,
+  'max_output_tokens': 4000,
+  'global_limit_micros': 10000000,
 };
 
 http.Response _json(Json body) => http.Response(
@@ -140,12 +143,13 @@ void main() {
         await _section(tester, 'KI');
         await _choose(tester, 'lesson', 'beta (fixture-beta)');
         await _choose(tester, 'reasoning', 'high');
-        final secret = find.widgetWithText(
-          TextField,
-          'Neuer API-Schlüssel (optional)',
+        expect(find.text('Neuer API-Schlüssel (optional)'), findsNothing);
+        final pricing = find.widgetWithText(
+          TextFormField,
+          'Preisquelle mit Datum / Vertrag',
         );
-        await tester.ensureVisible(secret);
-        await tester.enterText(secret, 'synthetic-not-a-real-key');
+        await tester.ensureVisible(pricing);
+        await tester.enterText(pricing, 'Künstlicher Preisquellenentwurf');
         await _section(tester, 'E-Mail');
         expect(find.text('KI-Anbieter'), findsNothing);
         expect(find.text('E-Mail-Versand'), findsOneWidget);
@@ -163,8 +167,8 @@ void main() {
           'high',
         );
         expect(
-          tester.widget<TextField>(secret).controller!.text,
-          'synthetic-not-a-real-key',
+          tester.widget<TextFormField>(pricing).controller!.text,
+          'Künstlicher Preisquellenentwurf',
         );
         expect(
           fixture.requests.where((r) => r.url.path.endsWith('/codex/models')),

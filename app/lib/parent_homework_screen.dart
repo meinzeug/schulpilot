@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'learning_content.dart';
 import 'parent_child_navigation.dart';
 import 'parent_insights_panel.dart' show reviewDate;
 import 'parent_workspace_ui.dart';
@@ -22,15 +23,19 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   bool loading = false;
   bool retryMore = false;
   late Json? owner;
+  late String? family;
   bool get own =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      family == widget.state.familyId;
   String get cacheKey => 'parent-homework:${widget.childId}';
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
-    filter = widget.state.collectionViews[cacheKey]?['filter'] ?? 'all';
-    if (!['all', 'worked', 'open', 'review'].contains(filter)) filter = 'all';
+    family = widget.state.familyId;
+    restoreView();
     widget.state.addListener(identityChanged);
     load();
   }
@@ -51,7 +56,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   void didUpdateWidget(covariant ParentHomeworkScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.childId != widget.childId) {
-      filter = 'all';
+      restoreView();
       generation++;
       photos.clear();
       childName = null;
@@ -59,6 +64,14 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
       cursor = null;
       load();
     }
+  }
+
+  void restoreView() {
+    final saved = widget.state.collectionViews[cacheKey]?['filter'];
+    filter =
+        saved is String && ['all', 'worked', 'open', 'review'].contains(saved)
+        ? saved
+        : 'all';
   }
 
   @override
@@ -138,6 +151,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                 childName: childName,
                 selected: 'homework',
                 onRefresh: load,
+                refreshing: loading,
               ),
               const ParentWorkspaceHero(
                 eyebrow: 'SELBSTSTÄNDIG ARBEITEN',
@@ -166,12 +180,22 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                       onSelected: loading
                           ? null
                           : (_) {
+                              if (!own || filter == item.$1) return;
                               setState(() => filter = item.$1);
                               load();
                             },
                     ),
                 ],
               ),
+              Text(switch (filter) {
+                'worked' => 'Mindestens eine Aufgabe ist vom Kind abgehakt. Das Foto muss noch nicht vollständig bearbeitet sein.',
+                'open' => 'Für diese Fotos ist noch keine Aufgabe abgehakt.',
+                'review' =>
+                  'Diese Fotos sind noch nicht als geprüfte Quelle bestätigt.',
+                _ => 'Alle gespeicherten Hausaufgabenfotos.',
+              }, style: TextStyle(color: context.palette.muted)),
+              const SizedBox(height: 8),
+              const Text('Neueste Fotos zuerst'),
               const SizedBox(height: 16),
               if (loading)
                 Semantics(
@@ -247,7 +271,7 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                '${photo['subject']} · ${photo['topic']}',
+                                photoHeading(photo),
                                 style: const TextStyle(
                                   fontSize: 19,
                                   fontWeight: FontWeight.w800,
@@ -256,6 +280,20 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                             ),
                           ],
                         ),
+                        if ((photo['title'] ?? '')
+                                .toString()
+                                .trim()
+                                .isNotEmpty &&
+                            photo['title'] != photo['topic'])
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              photo['title'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 8),
                         Text(reviewDate(photo['created'])),
                         const SizedBox(height: 12),
@@ -274,7 +312,9 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                               const Tag('Weitere Aufgaben im Foto möglich'),
                           ],
                         ),
-                        for (final task in photo['tasks'] as List? ?? [])
+                        for (final task in (photo['tasks'] as List? ?? []).take(
+                          3,
+                        ))
                           ListTile(
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -283,10 +323,14 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                                   ? Icons.check_circle_outline
                                   : Icons.radio_button_unchecked,
                             ),
-                            title: Text(task['title']),
+                            title: LearningContent(task['title']),
                             subtitle: task['marked'] == true
                                 ? const Text('Vom Kind abgehakt')
-                                : null,
+                                : const Text('Noch nicht abgehakt'),
+                          ),
+                        if ((photo['tasks'] as List? ?? []).length > 3)
+                          Text(
+                            '${(photo['tasks'] as List).length - 3} weitere Aufgaben in den Details',
                           ),
                         const SizedBox(height: 8),
                         Align(
@@ -312,4 +356,15 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
             ],
           ),
   );
+
+  String photoHeading(Json photo) {
+    final labels = [photo['subject'], photo['topic']]
+        .whereType<String>()
+        .map((label) => label.trim())
+        .where((label) => label.isNotEmpty)
+        .toList();
+    return labels.isEmpty
+        ? 'Hausaufgabenfoto · Fach und Thema noch prüfen'
+        : labels.join(' · ');
+  }
 }

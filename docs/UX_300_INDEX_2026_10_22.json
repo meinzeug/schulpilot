@@ -1,0 +1,2299 @@
+{
+  "baseline_commit": "b2d3f85a1d6da8144ca34138f78e62e3753cb3d2",
+  "candidate_version": "1.20.0+87",
+  "count": 321,
+  "counts": {
+    "Gemeinsam und Anmeldung": 43,
+    "Admin": 99,
+    "Eltern": 99,
+    "Kinder": 80
+  },
+  "release_status": "local_validation_passed_release_pending",
+  "entries": [
+    {
+      "id": "R001",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Gespeicherter ActionButton-Callback kann vor Rebuild doppelt auslösen oder nach Deaktivierung weiter senden.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R002",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Während einer Aktion heißt der Button zugänglich nur „Bitte warten“, sein Zweck geht verloren.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R003",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Kurze Erfolgsmeldung verschwindet ohne eigenen Schließenweg.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R004",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Synchroner Fehler einer Ladefunktion wirft außerhalb FutureBuilder statt einer korrigierbaren Anzeige.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R005",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Gespeicherter Aktualisieren-Callback kann parallele GETs bzw. setState nach Verlassen auslösen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R006",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Erfolgreiche Antwort ohne Daten bleibt endlos als Spinner.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R007",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Lange gemeinsame Bestätigungsdialoge sind bei320px/200% nicht scrollbar.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R008",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Google-Neuregistrierung sendet leere Namen/zu kurze Passwörter, fehlende Zustimmung erklärt sich nicht.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R009",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Google-Registrierungswerte bleiben während POST veränderbar, späterer Fehler widerspricht sichtbarem Entwurf.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R010",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Google-Abschluss hat keinen Tastaturweg über Name/Familie/Passwort bis Absenden.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R011",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Google-Abschluss gruppiert Passwortmanagerfelder nicht.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R012",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Neues Google-Elternpasswort kann zur Tippfehlerprüfung nicht ausdrücklich sichtbar gemacht werden.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R013",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Google-Abschluss rendert beliebige Exceptiontexte direkt.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R014",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Nach fehlgeschlagener Google-Ergebnisprüfung verschwindet die einzige Weiteraktion.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R015",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Ungültiger neuer Google-Flow kann den alten lokalen Proof beim Resume erneut benutzen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R016",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Neuer Google-Link hält alte Registrierungsfelder, Zustimmung und Passwortsichtbarkeit.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R017",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Zurück löscht Proof erst nach Await, eine spätere Ergebnisantwort kann inzwischen anmelden/navigieren.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R018",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Ergebnisprüfung zeigt nur einen unbeschrifteten Balken.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R019",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Öffnen der nativen App ignoriert launchUrl=false und suggeriert Erfolg.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R020",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Langer Passwort-Hilfetext im Google-Abschluss ist einzeilig gekappt.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R021",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Gemeinschafts-Mehrmenü lässt bei kleiner Höhe/Tastatur keine Scrollmöglichkeit.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R022",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Offenes Mehrmenü bleibt bei neuer Anmeldung derselben ID bestehen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R023",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Benachrichtigungen lassen sich bei fehlgeschlagener Lesemarkierung nicht öffnen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R024",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Benachrichtigungsseite nennt Laden/Fehler nur Balken/ungeordneten Notice.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R025",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Ungelesene Benachrichtigungen sind nur über Farbe/Fettdruck unterscheidbar.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R026",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Androiddownload nennt weder reale Version noch Dateigröße.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R027",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "APK-Download öffnet jede gelieferte URI ungeprüft.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R028",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Rand-Leerzeichen in Passwörtern wurden bei Anlage/Bestätigung entfernt, Login prüft aber exakte Zeichen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R029",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Einladung suggeriert leeres Passwort bei vorhandenem Login, Backend benötigt es weiterhin.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R030",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Manuell kopierter E-Mail-Code wird ungeprüft mit Randwhitespace gesendet.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R031",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Überlange Namen/Kennungen/Passwörter scheitern erst nach POST.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R032",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Neuer Reset-Link oder neue Formularart übernimmt Passwort/Sichtbarkeit bzw. nicht mehr passenden privaten Entwurf.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R033",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Während Google geöffnet wird können parallele Login-/Formulardaten verändert werden.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R034",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Gerätebereich kann unter neuer Sitzung derselben ID alte Einstellungen/nachlaufende Ladeaufrufe übernehmen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R035",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Rückkehr aus dem Hintergrund ersetzt oder verliert ungespeicherte Geräteauswahl.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R036",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Unveränderte Geräteansicht lädt nach Resume zwar GET, übernimmt geänderte Serverpräferenzen aber nie.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R037",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Speichern/Ausschalten/Tests können parallel laufen, gesendeter Entwurf bleibt editierbar.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R038",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Alter Browserfreigabebutton kann neuen Dialog schließen oder nach Sitzungswechsel anfragen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R039",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Künstlicher Pushstatuspoll läuft nach Abmeldung/Kontowechsel weiter.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R040",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Geräteabschaltung aktualisiert still die Ansicht ohne Bestätigung des betroffenen Vorgangs.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R041",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Neue Anmeldung derselben ID lässt alte In-App-Neuigkeiten im Cache.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R042",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Gespeicherte Pushregistrierung wird bei unbekannter Geräteberechtigung als eingeschaltet ausgegeben.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "R043",
+      "area": "Gemeinsam und Anmeldung",
+      "problem": "Neuer E-Mail-Link während wartendem Google-/Formularauftrag kann Busy übernehmen oder von alter Antwort freigegeben werden; alter Google-Start könnte noch extern öffnen.",
+      "evidence_document": "UX_300_SHARED_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A001",
+      "area": "Admin",
+      "problem": "AdminOperationCards (`settings_screen.dart:1679`) ersetzt fehlende Auftrags-/Fehlerzahlen durch0; unbekannt wirkt gemessen.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A002",
+      "area": "Admin",
+      "problem": "Worker-Alter wird ausschließlich als rohe Sekunden ausgegeben (`settings_screen.dart:1884`); lange Ausfälle sind schwer zeitlich einzuordnen.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A003",
+      "area": "Admin",
+      "problem": "Operationskarten haben keinen sichtbaren Abrufzeitpunkt (`:1277`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A004",
+      "area": "Admin",
+      "problem": "`attention` schließt workerUnknown aus (`:1687`), unbekannter Dienst steht im normalen Meldungskasten.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A005",
+      "area": "Admin",
+      "problem": "Notfallstopp führt nur refresh aus (`:1239`); schlägt Provider-GET fehl, fehlt eine beständige Stoppbestätigung.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A006",
+      "area": "Admin",
+      "problem": "Stalled-Zähler fasst Warteschlange und laufende Aufträge zusammen (`:1681`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A007",
+      "area": "Admin",
+      "problem": "Pushfehler führen ausschließlich zum allgemeinen Protokoll (`:1775`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A008",
+      "area": "Admin",
+      "problem": "Offene Löschprotokolle nennen nur Veröffentlichung prüfen (`:1694`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A009",
+      "area": "Admin",
+      "problem": "Familien-GET liefert höchstens200 (`backend/admin.py:215`); UI nennt nur „N Familien“.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A010",
+      "area": "Admin",
+      "problem": "Mehr als200 Familien sind über dieselbe Liste nicht erreichbar (`admin.py:231`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A011",
+      "area": "Admin",
+      "problem": "Familienquery hat keine order_by (`admin.py:231`), limit kann wechselnde Ausschnitte geben.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A012",
+      "area": "Admin",
+      "problem": "Familienfilter prüft nur geladenen Ausschnitt (`settings_screen.dart:1448`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A013",
+      "area": "Admin",
+      "problem": "`synthetic` wird geliefert, in Tarifkarten aber nicht dargestellt (`:1497`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A014",
+      "area": "Admin",
+      "problem": "Alle Tabellenbuttons heißen „Tarif bearbeiten“ (`:1179`), ohne Zeilenbezug im zugänglichen Namen.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A015",
+      "area": "Admin",
+      "problem": "Familientarife zeigen im Überblick kein budget_micros (`familyTable`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A016",
+      "area": "Admin",
+      "problem": "Suchfeld hat keine direkte Löschaktion (`:1434`); leerer Treffer erfordert manuelles Abtippen.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A017",
+      "area": "Admin",
+      "problem": "Protokoll sind nur jüngste200 Ereignisse (`admin.py:198`); Umfang bleibt unsichtbar.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A018",
+      "area": "Admin",
+      "problem": "Audit liefert actor, UI zeigt ihn nicht (`:1588`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A019",
+      "area": "Admin",
+      "problem": "Incident-Suche ist auf Aktion/Ziel beschränkt (`:1554`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A020",
+      "area": "Admin",
+      "problem": "Audit zeigt Maschinenaktionen ohne Erläuterung (`:1604`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A021",
+      "area": "Admin",
+      "problem": "Provider-Refresh tauscht den Formular-Key aus (`:1407`) und verwirft ungespeicherte Werte.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A022",
+      "area": "Admin",
+      "problem": "ProviderForm zeigt nicht, welche Werte Entwurf sind (`:1929`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A023",
+      "area": "Admin",
+      "problem": "ProviderForm hat keinen gezielten Rückweg zum gespeicherten Stand.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A024",
+      "area": "Admin",
+      "problem": "API-Schlüssel bleibt beim Wechsel des Providers im keyField (`:1987`,`:2010`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A025",
+      "area": "Admin",
+      "problem": "Codex-Konto zeigt immer „Neuer API-Schlüssel“/„kein Schlüssel“ (`:2016`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A026",
+      "area": "Admin",
+      "problem": "Ungültige Zahlen werden in ProviderForm zu null (`:2183`), erst Server lehnt ab.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A027",
+      "area": "Admin",
+      "problem": "Providergrenzen sind nur Backendschema (`schemas.py:368`) und fehlen am Formular.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A028",
+      "area": "Admin",
+      "problem": "Mikro-USD müssen ohne Umrechnung eingegeben werden (`:2090`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A029",
+      "area": "Admin",
+      "problem": "Free-Schalter erlaubt im Entwurf inkompatible Modell-ID (`:2024`,Backend save_provider).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A030",
+      "area": "Admin",
+      "problem": "Free-Schalter und unpassende Preisobergrenzen werden erst serverseitig abgelehnt.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A031",
+      "area": "Admin",
+      "problem": "Save- und Check-Buttons haben getrennte Busy-Zustände (`:2148`,`:2190`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A032",
+      "area": "Admin",
+      "problem": "Nach await save folgt keyField.clear/onRefresh ohne mounted (`:2185`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A033",
+      "area": "Admin",
+      "problem": "Vorlage überschreibt vorhandene Eingaben ohne Rückfrage (`:2219`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A034",
+      "area": "Admin",
+      "problem": "Vorlage setzt emergency_stop=false (`:2225`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A035",
+      "area": "Admin",
+      "problem": "Vorlage setzt image_capable/structured_capable=true trotz ausstehendem Test (`:2226`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A036",
+      "area": "Admin",
+      "problem": "Vorlage enthält feste veraltbare Modell-/Upstreamwerte (`:2229`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A037",
+      "area": "Admin",
+      "problem": "Status Notice bleibt bei Providerentwurfwechsel der gespeicherte alte Status (`:1965`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A038",
+      "area": "Admin",
+      "problem": "Nachweistexte überschreiten Backend500 Zeichen ohne lokalen Hinweis (`:2135`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A039",
+      "area": "Admin",
+      "problem": "Fehlender codexPicker überspringt Clientprüfung durch ?. (`:2152`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A040",
+      "area": "Admin",
+      "problem": "ProviderUpdate hat keine erwartete Revision (`schemas.py:368`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A041",
+      "area": "Admin",
+      "problem": "Installation.save sendet alle Felder aller Reiter (`installation_screen.dart:119`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A042",
+      "area": "Admin",
+      "problem": "Ungültige Setup-Zahlen werden zu null (`:123`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A043",
+      "area": "Admin",
+      "problem": "Support-/Absender-/Test-E-Mail haben Texttastatur (`:164`,`:425`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A044",
+      "area": "Admin",
+      "problem": "Secretfelder in input() lassen Autokorrektur/Suggestions implizit (`:147`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A045",
+      "area": "Admin",
+      "problem": "Setup-Adminpasswort lässt sich nicht bewusst sichtbar prüfen (`:365`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A046",
+      "area": "Admin",
+      "problem": "Erstes „Speichern & weiter“ prüft nur lokal (`:599`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A047",
+      "area": "Admin",
+      "problem": "Abschluss enthält nur Systemchecks, keine kompakte Operator-/E-Mail-Zusammenfassung (`:468`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A048",
+      "area": "Admin",
+      "problem": "Fortschrittsbalken nennt keine Schrittnummer im zugänglichen Namen (`:557`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A049",
+      "area": "Admin",
+      "problem": "Checkliste unterscheidet Erfolg/offen nur über Icons (`:480`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A050",
+      "area": "Admin",
+      "problem": "Fehlgeschlagene Abschlusschecks haben keinen direkten Korrekturweg (`:478`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A051",
+      "area": "Admin",
+      "problem": "Statusreiter prüft beim Öffnen nicht neu (`selectStep`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A052",
+      "area": "Admin",
+      "problem": "Speichern und Testmail können parallel gestartet werden (`:430`,`:616`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A053",
+      "area": "Admin",
+      "problem": "Leerer Testempfänger löst Speichern und Versandversuch aus (`:433`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A054",
+      "area": "Admin",
+      "problem": "Native „Im Browser öffnen“ ignoriert launchUrl false (`:287`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A055",
+      "area": "Admin",
+      "problem": "Nach await save wird step+1 aus aktuellem statt gestartetem Schritt berechnet (`:612`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A056",
+      "area": "Admin",
+      "problem": "Step-Wechsel während Mutation bleibt möglich (`:194`,`:591`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A057",
+      "area": "Admin",
+      "problem": "Laufender Anbieterprobejob ist nur in lokalem probe gespeichert (`:218`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A058",
+      "area": "Admin",
+      "problem": "Poll-GET-Fehler beendet Button und legt erneuten kostenpflichtigen Start nahe (`:219`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A059",
+      "area": "Admin",
+      "problem": "Probeaktion erklärt Umfang/Kostenreservierung nicht neben dem Start (`:214`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A060",
+      "area": "Admin",
+      "problem": "Probeergebnis nennt keine zugehörige gespeicherte Konfiguration (`:239`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A061",
+      "area": "Admin",
+      "problem": "Zahlungs-/Erstattungsbetrag steckt in einem sehr langen Feldlabel (`store_screens.dart:881`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A062",
+      "area": "Admin",
+      "problem": "Buchungstag muss ISO abgetippt werden (`:887`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A063",
+      "area": "Admin",
+      "problem": "Unmögliche Buchungstage werden erst am Server erkannt (`:931`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A064",
+      "area": "Admin",
+      "problem": "Leere Buchungsnummer wird übertragen (`:932`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A065",
+      "area": "Admin",
+      "problem": "Bankbestätigung fehlt nur als Snackbar (`:916`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A066",
+      "area": "Admin",
+      "problem": "Prüfform zeigt keine Zusammenfassung der eingegebenen Buchung vor Freischaltung (`:927`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A067",
+      "area": "Admin",
+      "problem": "checked bleibt nach Betrag-/Datums-/Referenzänderung true (`:856`,`:909`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A068",
+      "area": "Admin",
+      "problem": "Formularfelder bleiben während Zahlungs-POST editierbar (`:877`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A069",
+      "area": "Admin",
+      "problem": "Zahlungsserverfehler erscheint nur in Snackbar (`ActionButton`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A070",
+      "area": "Admin",
+      "problem": "Unklarer Transport lässt keinen „Status zuerst prüfen“-Weg im Formular erkennen.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A071",
+      "area": "Admin",
+      "problem": "Bestellungen lassen sich nicht nach Bank-Verwendungszweck durchsuchen (`:584`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A072",
+      "area": "Admin",
+      "problem": "Bestellfilter zeigt keine Anzahl pro Zustand (`:588`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A073",
+      "area": "Admin",
+      "problem": "Liste gibt keine Begrenzung/den Suchumfang an (`:606`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A074",
+      "area": "Admin",
+      "problem": "Operator muss alte offene Bestellungen manuell zwischen neueren finden.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A075",
+      "area": "Admin",
+      "problem": "Tarif-JSON-Editor akzeptiert beliebige JSON-Typen (`:816`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A076",
+      "area": "Admin",
+      "problem": "Preis/Laufzeit/Kontingent sind nur Roh-JSON (`:797`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A077",
+      "area": "Admin",
+      "problem": "StoreAdminForm: fehlende Verkaufsanforderungen werden vom Backend bereits lesbar geliefert; bisher haben Bankdaten und Steuerangabe aber nur einen falschen gemeinsamen E-Mail-/Betreiber-Rückweg.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A078",
+      "area": "Admin",
+      "problem": "Verkaufseingaben bleiben im PUT editierbar, danach onSaved remount (`:822`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A079",
+      "area": "Admin",
+      "problem": "Store-Revisionkonflikt hat keinen bewussten Entwurf-/Neuladeweg (`:823`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A080",
+      "area": "Admin",
+      "problem": "Verkaufsfreigabeschalter zeigt keine sofortige Zusammenfassung des Entwurfs.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A081",
+      "area": "Admin",
+      "problem": "Routing-JSON-Syntaxfehler wird generisch gefangen (`ai_cost_panel.dart:371`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A082",
+      "area": "Admin",
+      "problem": "Leerer Routingentwurf wird bei Rebuild automatisch ersetzt (`:315`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A083",
+      "area": "Admin",
+      "problem": "Nach Routing-Save bleibt draft unnormalisiert vom zurückgegebenen policy (`:375`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A084",
+      "area": "Admin",
+      "problem": "Routen zeigen hart „medium“, unabhängig vom gelieferten Wert (`:343`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A085",
+      "area": "Admin",
+      "problem": "Routingliste zeigt Modell ohne Aktionsart als sichtbaren Titel (`:341`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A086",
+      "area": "Admin",
+      "problem": "Kostenliste bietet keine Filter auf offene/unbrauchbare Ergebnisse (`:67`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A087",
+      "area": "Admin",
+      "problem": "Kostenmetrik P50/P95 wird ohne Erklärung ausgegeben (`:84`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A088",
+      "area": "Admin",
+      "problem": "Kontokostenstellen haben bei null Einträgen keinen Leerzustand (`:147`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A089",
+      "area": "Admin",
+      "problem": "Belegfelder bleiben während Save editierbar (`:216`), obwohl Payload bereits gesendet ist.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A090",
+      "area": "Admin",
+      "problem": "Guthabenbelegfehler verschwindet in Snackbar (`:277`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A091",
+      "area": "Admin",
+      "problem": "Codex-Modellnamen werden vollständig einzeilig abgeschnitten (`codex_model_picker.dart:246`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A092",
+      "area": "Admin",
+      "problem": "Textliste enthält auch nicht-textfähige, nur deaktivierte Modelle (`:235`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A093",
+      "area": "Admin",
+      "problem": "Modelldropdown lädt CLI-Version, zeigt sie aber nicht (`:170`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A094",
+      "area": "Admin",
+      "problem": "Modellliste kann nach Namen/ID nicht durchsucht werden.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A095",
+      "area": "Admin",
+      "problem": "Anpassung der Denkstufe wird nur als gewöhnlicher Text eingefügt (`:324`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A096",
+      "area": "Admin",
+      "problem": "Ladefehler zeigt alter Auswahlliste und Notice ohne Zeit-/Quellenbezug (`:187`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A097",
+      "area": "Admin",
+      "problem": "AdminWorkspaceHeader-Titel besitzt keine Heading-Semantik (`admin_workspace_ui.dart:72`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A099",
+      "area": "Admin",
+      "problem": "AdminContextTabs sind ChoiceChips, ohne beschriftete zusammengehörige Bereichsauswahl (`:135`).",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "A100",
+      "area": "Admin",
+      "problem": "AdminStatusLine transportiert `ready` nur durch Icon/Farbe (`admin_workspace_ui.dart:317`); dieser zusätzliche Prüfzustand wird nicht benannt. Die Zeile ist bereits korrekt umbrochen.",
+      "evidence_document": "UX_300_ADMIN_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P01",
+      "area": "Eltern",
+      "problem": "`grades_screen.dart:39,572`, `grade_import_screen.dart:28`: Besitzer nur User-ID; eine neue Sitzung desselben Kontos kann alte Noten, Entwürfe und Antworten übernehmen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P02",
+      "area": "Eltern",
+      "problem": "`GradeEditor.build:654` und `edit/importPdf:135,152`: Dialog per Back/Barriere entfernbar, während Speichern läuft; Ergebnis bleibt danach in der Liste unsichtbar.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P03",
+      "area": "Eltern",
+      "problem": "`GradeEditor:668,675,698,772`: Fach/Thema/Wert/Notiz bleiben während POST editierbar; sichtbarer Entwurf stimmt nicht mehr mit gesendetem Inhalt überein.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P04",
+      "area": "Eltern",
+      "problem": "`GradeEditor.value.validator:706`: Meldung nennt weder erlaubten Bereich noch Notensystem.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P05",
+      "area": "Eltern",
+      "problem": "`GradeEditor.save:608,664`: Fehler stehen ggf. weit oberhalb der sichtbaren Speichernaktion; Fokus/Scroll findet fehlerhaftes Feld nicht.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P06",
+      "area": "Eltern",
+      "problem": "`GradeEditor.day:593,728`: nach Ergänzung eines vorher unbekannten PDF-Datums lässt sich der ungespeicherte Irrtum nicht zurücknehmen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P07",
+      "area": "Eltern",
+      "problem": "`GradeEditor:756`, `_gradeCard:494`, PDF-Matches: rohe ISO-Tage erscheinen neben sonst lokalisierten Berichten.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P08",
+      "area": "Eltern",
+      "problem": "`GradeEditor:764`: „Gewichtung“/„3-fach“ erklärt die Wirkung auf den Schnitt nicht.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P09",
+      "area": "Eltern",
+      "problem": "`GradesScreen.remove:200`: Rückfrage benennt nicht Fach, Note oder Datum.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P10",
+      "area": "Eltern",
+      "problem": "`GradesScreen.goal:170`: Zielbestätigung benennt das konkrete Thema nicht.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P11",
+      "area": "Eltern",
+      "problem": "`GradesScreen.goal:186`: bei fehlender passender Quelle nur 409, kein klarer Weg zur Behebung.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P12",
+      "area": "Eltern",
+      "problem": "`_gradeCard:533`: bereits angelegtes Lernziel nur als deaktivierter Button dargestellt; Eltern finden es nicht wieder.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P13",
+      "area": "Eltern",
+      "problem": "`GradesScreen.manage/build:41,231`: reine Leserechte entfernen alle Aktionen ohne Erläuterung.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P14",
+      "area": "Eltern",
+      "problem": "`GradesScreen:360`: leeres gefiltertes Fach meldet pauschal „Noch keine Noten eingetragen“.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P15",
+      "area": "Eltern",
+      "problem": "`GradesScreen:358,380`: Seite wird angezeigt, Umfang der Einträge/Treffer fehlt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P16",
+      "area": "Eltern",
+      "problem": "`GradesScreen:289,429`: „Notenschnitt“ steht prominent, sein begrenzter 90-Tage-/Schuljahresbezug erst in doppelt verschachtelter Erklärung.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P17",
+      "area": "Eltern",
+      "problem": "`GradesScreen:274,333`: Fachfilter liegt unter fachübergreifenden Schwerpunkten; Eltern können annehmen, der Filter ändere auch diese.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P18",
+      "area": "Eltern",
+      "problem": "`GradesScreen:249`: reguläre Ansicht hat keinen gemeinsamen Aktualisierungsweg; in Plan/Hausaufgaben ist der bestehende Refresh während Laden nicht gebunden.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P19",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.selectFile:100,108`: eigener verständlicher 6-MB-Fehler wird vom Catch in „konnte nicht geöffnet werden“ überschrieben.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P20",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.upload/refresh/save:135,153,194`: beliebiges Exception.toString landet im privaten Dialog.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P21",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.usePreview:65`: GET kann status=applied+result liefern, wird aber erneut als offene Vorschau behandelt; nach unklarem POST führt das zu 409 statt Abschluss.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P22",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.refresh/usePreview:65,141`: jeder Vorschau-GET löscht alle zuvor bewusst ausgewählten Zuordnungen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P23",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.selectFile/build:87,258`: nach Dateiwahl keine Dateibenennung/-größe; Eltern können die ausgewählte PDF nicht prüfen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P24",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.preview branch:299`: falsche PDF-Vorschau lässt sich nur durch komplettes Schließen/Neustart ersetzen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P25",
+      "area": "Eltern",
+      "problem": "`GradePdfImport:354`: bei bis 1200 Positionen nur „offene Zuordnungen“ ohne Zahl/Ort; Eltern müssen Konflikt manuell suchen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P26",
+      "area": "Eltern",
+      "problem": "`GradePdfImport:306,371`: vor Bestätigung nur gesamte erkannte Zahl, nicht Umfang der gewählten Add/Link/Update/Skip-Aktionen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P27",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.entry:458`: „Nicht übernehmen“ verschweigt, dass diese Quellposition auch bei erneuter PDF als ausgelassen erhalten bleibt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P28",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.entry:450`: Matchoptionen kürzen Thema mit Ellipse und nennen nur Datum/Thema; ähnliche vorhandene Einträge sind schwer zu unterscheiden.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P29",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.entry:433`: alle Auswahlfelder heißen nur „Übernahme“; Screenreader-Feldliste verliert Fach/Halbjahr/Position.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P30",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.items:36`, ListView:319–320: jeder items-Aufruf kopiert sämtliche Zeilen; itemBuilder wiederholt dies pro sichtbarer Zeile.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P31",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.build:209,238,258`: Einleitungs-/Ergebniszweig benutzt feste Column+Spacer ohne Scrollweg; große Schrift/kleine Höhe kann Inhalt verdrängen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P32",
+      "area": "Eltern",
+      "problem": "`GradePdfImport:333`: zwei Gewichtungsfelder bleiben starr nebeneinander, auch bei geringer Breite/großer Schrift.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P33",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.entry:415–427`: „new“ und „possible_match“ haben kein eigenes Statuslabel, anders als bestehend/geändert/ignoriert.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P34",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.entry:408,426`: PDF-Zahlen erscheinen roh mit Dezimalpunkt, während manuelle Noten Dezimalkomma nutzen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P35",
+      "area": "Eltern",
+      "problem": "`GradePdfImport.weight:384`, Backend confirm:255,263: UI erklärt nicht, dass gewählte Gewichte nur neue Noten betreffen; Wert-Updates behalten vorhandene Gewichte.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P36",
+      "area": "Eltern",
+      "problem": "`parent_plan_screen.dart:54,150,222`: Kinderwechsel während prepare/complete setzt busy nicht zurück; das finally des alten Kindes darf es nicht zurücksetzen. Neues Kind kann dauerhaft deaktivierte Aktionen sehen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P37",
+      "area": "Eltern",
+      "problem": "`ParentPlan:25,37` speichert keine gewählte Planansicht/Seite/Abgeschlossen-Auswahl; `ParentHomework.didUpdateWidget:54` verwirft bestehende Sichtpräferenz des neuen Kindes.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P38",
+      "area": "Eltern",
+      "problem": "`ParentPlan:400,596`: beim Refresh bleiben KI-Schritte/Wochenvorschlag als interaktive alte Daten sichtbar, nur eine dünne Fortschrittslinie steht davor.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P39",
+      "area": "Eltern",
+      "problem": "`ParentPlan.topicCard:294`: Quelle braucht Prüfung→KI-Knopf disabled; Tag nennt Änderung, aber nicht den nötigen nächsten Schritt zur erneuten Quellenprüfung.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P40",
+      "area": "Eltern",
+      "problem": "`ParentPlan.topicCard:276`: unterbrochene/bereite Runde heißt nur „Vorhandene Übungen ansehen“, obwohl available_unit.status vorhanden ist.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P42",
+      "area": "Eltern",
+      "problem": "`ParentPlan.topicCard:330`, Backend parent_plans:142 liefert revision; historische Runden alter Zielrevision sind nicht als solche erkennbar.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P43",
+      "area": "Eltern",
+      "problem": "`ParentPlan:430–445`: Vergangenheit/aktueller/nächster KI-Schritt nur per unterschiedlichem Icon.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P44",
+      "area": "Eltern",
+      "problem": "`ParentPlan.topicCard:240`: Elternauftrag und Klassenarbeit haben dieselben Badges; vorhandenes kind=exam wird nicht angezeigt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P45",
+      "area": "Eltern",
+      "problem": "`ParentPlan.topicCard:265–270`: ein überfälliger Termin ist optisch/textlich eine gewöhnliche Datumszeile.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P46",
+      "area": "Eltern",
+      "problem": "`ParentPlan.topicCard:292`, materials.py:480: KI-Vorbereitung ist trotz bekannter zukünftiger Startgrenze bedienbar und führt erst nach POST zu 409.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P47",
+      "area": "Eltern",
+      "problem": "`ParentPlan:573,588`: „Zurück/Weiter“ meint Listenseiten, klingt zwischen Kontextnavigation und Planaktionen wie Seitenwechsel.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P48",
+      "area": "Eltern",
+      "problem": "`ParentPlan:648`: Wochenkarten zeigen nur Datum; Eltern müssen Wochentag und heutigen Tag selbst zuordnen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P49",
+      "area": "Eltern",
+      "problem": "`ParentPlan.section2:596–689` rendert plan.week, aber nicht plan.conflicts, die DailyPlanPanel:177 bereits fachlich anzeigt. Eltern sehen dort bekannte Terminkonflikte nicht.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P50",
+      "area": "Eltern",
+      "problem": "`ParentPlan:676–684`: Wochenpositionen anderer Art als unit haben keinen Rückweg zum gespeicherten Material/Auftrag.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P51",
+      "area": "Eltern",
+      "problem": "`parent_insights_panel.load:135`, History:461: bei Auswahl einer alten Auswertung bleibt bis Antwort die vorige Einschätzung sichtbar.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P52",
+      "area": "Eltern",
+      "problem": "`ParentInsights.history:442–465`: nach Wahl einer historischen Auswertung fehlt ein klarer Rückweg „Neueste Auswertung“.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P53",
+      "area": "Eltern",
+      "problem": "`ParentInsights.history:456`: Auswertungen derselben Minute haben identische Auswahlbezeichnungen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P54",
+      "area": "Eltern",
+      "problem": "`ParentInsights:345,362`: jüngster fehlgeschlagener Versuch und älterer erfolgreicher Bericht stehen ohne klare Unterscheidung nebeneinander.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P55",
+      "area": "Eltern",
+      "problem": "`ParentInsights:258,368`: kompakte Ansicht kürzt Aufmerksamkeits-/Befundlisten auf 3, aber Umfang der Vorschau ist nicht bezeichnet.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P56",
+      "area": "Eltern",
+      "problem": "`ParentInsights:309–312`, Backend facts:198: last_activity ist pro Thema vorhanden, wird bei auffälligen Belegen nicht gezeigt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P57",
+      "area": "Eltern",
+      "problem": "`ParentInsights:386–400`: vorgeschlagene Planschritte nennen Thema, lassen sich aber nicht direkt zu den zugrunde liegenden Belegen öffnen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P58",
+      "area": "Eltern",
+      "problem": "`ParentInsights.enable:216`: nach vorigem Speicherfehler bleibt dessen Fehlermeldung beim erneuten Einstellungsversuch stehen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P59",
+      "area": "Eltern",
+      "problem": "`ParentInsights:286`: Laden, Einstellungswechsel und queued/running benutzen denselben unbeschrifteten Balken; nur pending hat zusätzlichen nicht angekündigten Text.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P60",
+      "area": "Eltern",
+      "problem": "`ParentInsights:291`: GET-Fehler bietet nur den allgemeinen oberen Refresh-Iconweg; neben dem Fehler fehlt eine eindeutige Wiederholungsaktion.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P61",
+      "area": "Eltern",
+      "problem": "`parent_homework_screen:281–289`: nicht abgehakte Aufgabe nur durch leeren Kreis markiert, während erledigte einen ausdrücklichen Text haben.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P62",
+      "area": "Eltern",
+      "problem": "`ParentHomework:249`, Backend parent_plans:49: eigener Fototitel wird geliefert, aber nie gezeigt; gleiche Fach-/Themenfotos sind kaum unterscheidbar.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P63",
+      "area": "Eltern",
+      "problem": "`ParentHomework:250`: noch ungeklärtes Foto ohne subject/topic wird als bloßes „ · “ dargestellt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P64",
+      "area": "Eltern",
+      "problem": "`ParentHomework:158–161`, backend mark:23–28: Filter „Mit Häkchen“ umfasst schon ein einziges Häkchen, nicht vollständig erledigte Fotos.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P65",
+      "area": "Eltern",
+      "problem": "`ParentHomework:277`: jedes Foto zeigt alle erkannten Aufgaben, bei 20 Fotos verdrängen lange Aufgabenlisten weitere Fotos.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P66",
+      "area": "Eltern",
+      "problem": "`ParentHomework:286` und `ParentOverview:163` nutzen Text für fachliche Aufgaben-/Anleitungstexte, obwohl der gemeinsame LearningContent-Renderer existiert.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P67",
+      "area": "Eltern",
+      "problem": "`ParentHomework:260`, Backend parent_plans:37: Liste ist stabil neueste-zuerst, aber Sortierung bleibt unbenannt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P68",
+      "area": "Eltern",
+      "problem": "`ParentHomework.ChoiceChip:166`: Tippen auf schon ausgewählten Filter setzt Sammlung zurück und lädt neu; nach mehrseitigem Lesen verschwinden geladene Fotos.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P69",
+      "area": "Eltern",
+      "problem": "`parent_overview.dart:41–56`: offene Elternaufträge mit geänderter Quelle fehlen in bestätigten Pflicht-/Freiwilligzahlen und erhalten keinen eigenen Handlungsbedarf.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P70",
+      "area": "Eltern",
+      "problem": "`ParentOverview:252`: Sieben-Tage-Zeile zeigt nur abgeschlossene Runden/Hinweise; vorhandenes week_summary.answer_count mit begonnenen Runden bleibt unsichtbar.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P71",
+      "area": "Eltern",
+      "problem": "`ParentOverview.mastery:294–304`: Wiederholungsbeobachtung hat Fach/Thema/Datum, aber keinen Weg zu den Aufgabenbelegen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P72",
+      "area": "Eltern",
+      "problem": "`ParentOverview:317–320`, Backend learning:916: Überschrift „Heutige Heftseiten“ steht über material_count aller Materialien.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P73",
+      "area": "Eltern",
+      "problem": "`ParentOverview:100–109`: Gesamtnachweise zeigen Zahlen, direkter Detailweg liegt erst nach KI-/weiteren Abschnitten bei „Alle Fächer“.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P74",
+      "area": "Eltern",
+      "problem": "`ParentOverview:243–268`, Backend summary:458: tatsächlich im Zeitraum abgeschlossene Themen liegen als week_summary.topics vor, werden aber nicht genannt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P75",
+      "area": "Eltern",
+      "problem": "`practice_evidence.dart:83–85`: kompakte Kategorien heißen nur „mit Hilfe gelöst“, obwohl derselbe Zähler auch erneut richtige Antworten enthält.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P76",
+      "area": "Eltern",
+      "problem": "`dashboard.preferencesDialog:2693–2722`: Fach-Lerntage können vollständig außerhalb der allgemeinen Lerntage liegen; so findet ein Fach keinen passenden Vorschlag.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P77",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2601–2602,2628`: Eltern sehen unabhängige Tages-/Wochenminimumfelder, nicht die Konsequenz ihrer ausgewählten Lerntage.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P78",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2787–2794`, notifications.quiet:238: gleiche Ruhezeitstunden bedeuten keine Ruhezeit, aber UI erklärt diesen Sonderfall nicht.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P79",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2735–2755`: Urlaubsauszeit erfordert technisches ISO-Freitippen, obwohl normale Datumswahl vorhanden ist.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P80",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2649–2656`: vorhandene Kinderfächer müssen zum Schwerpunkt erneut korrekt abgetippt werden.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P81",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2828–2837`, schemas.Preferences:89,92: Listen können nach viel Eingabe die 20-Einträge-Grenze erst serverseitig verletzen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P82",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2771–2777`: Push-Elternfreigabe erklärt Opt-in, aber nicht, dass Ausschalten vorhandene Kinderregistrierungen entfernt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P83",
+      "area": "Eltern",
+      "problem": "`preferencesDialog:2781`, notifications.py:419–421: „Hilfewünsche hervorheben“ beeinflusst tatsächlich auch Push-Berechtigung für Hilfewünsche.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P84",
+      "area": "Eltern",
+      "problem": "`_TopicBrowserState`: Bei neuer Suche sofort loading/generation, alte Zeilen ausgeblendet, alte Checkbox während Laden gesperrt.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P85",
+      "area": "Eltern",
+      "problem": "`chosenLabels` und eigene InputChips erhalten die benannte Auswahl außerhalb der aktuellen Ergebnisseite und erlauben Entfernen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P86",
+      "area": "Eltern",
+      "problem": "Explizites „Keine Themen übernehmen“ gibt ein leeres Set zurück; `LearningTips.selectTopics` sendet normalen PUT mit `revision:1`, `topic_ids:[]`, `confirmed:true`. Keine Ersatzthemen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P87",
+      "area": "Eltern",
+      "problem": "Sichtbarer Zähler nennt die unveränderte Acht-Grenze; neunte Auswahl wird zurückgewiesen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P88",
+      "area": "Eltern",
+      "problem": "Leere bekannte Stufe hat ihren eigenen Text und „Alle Themen anzeigen“ als ausschließlich lesenden Rückweg.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P89",
+      "area": "Eltern",
+      "problem": "Nach Erweiterung bleiben höchstens zwölf TipContentCards; weiteres `has_more` erhält den exakten Hinweis „Hier siehst du höchstens 12 Lerntipps. Wähle ein Thema, um gezielter zu suchen.“",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P90",
+      "area": "Eltern",
+      "problem": "Bewusstes Leeren bricht den Debounce ab, setzt Seite und Fokus zurück und liest einmal neu.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P91",
+      "area": "Eltern",
+      "problem": "`openSofatutor` gibt das boolesche Ergebnis seiner eigenen Fallbackroute zurück. Ein erster fehlgeschlagener und zweiter erfolgreicher expliziter Öffnungsversuch ergibt true. Das ist ein Linkaufrufversuch, kein Nachweis einer sichtbaren Seite, eines angesehenen Videos oder von Verständnis.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P93",
+      "area": "Eltern",
+      "problem": "`subject_level.dart:40–114`: Auswahl-Dialog schließt vor PUT; Konflikt verliert die gewählte Stufe und bietet nur einen äußeren Fehler.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P94",
+      "area": "Eltern",
+      "problem": "`dashboard.messages:1931–2001`, backend message_previews:77: Nachrichtenkarten zeigen keinen vorhandenen Zeitstempel.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P95",
+      "area": "Eltern",
+      "problem": "`messages:1949–1954`: Interessen und Planänderungsvorschläge werden Eltern nur als generische Nachricht markiert.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P96",
+      "area": "Eltern",
+      "problem": "`messages:1924`: bis 100 Karten werden einheitlich chronologisch gezeigt; offene Hilfewünsche können hinter vielen Rückmeldungen verschwinden.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P97",
+      "area": "Eltern",
+      "problem": "`MessagesScreen.load:1821`, backend message_previews:64: auf 100 begrenzte Nachrichten wirken wie vollständiger Verlauf.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P98",
+      "area": "Eltern",
+      "problem": "`messages:1903–1917,1968`: allgemeine Elternantwort verliert den vorhandenen Aufgaben-/Seitenkontext einer konkreten Hilfenachricht.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P99",
+      "area": "Eltern",
+      "problem": "`ChildDetailScreen Verlauf:889–945`: ohne sichtbare fachliche Aktivitäten bleibt die Karte unter der Überschrift leer.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P100",
+      "area": "Eltern",
+      "problem": "`ChildDetailScreen Verlauf:878`: Aktivitäts-LoadView hat weder Key noch revision; ein per state/version aktualisierter Überblick kann einen alten zeitlichen Verlauf stehen lassen.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "P101",
+      "area": "Eltern",
+      "problem": "`ParentOverview`: Alle ungelösten Hilfewünsche wurden als „heute“ bezeichnet; `learning.summary` zählt unabhängig vom Tag.",
+      "evidence_document": "UX_300_PARENT_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K001",
+      "area": "Kinder",
+      "problem": "homework_screen.dart ask: nach POST wird question.clear blind ausgeführt; währenddessen neu getippte Folgefrage geht verloren.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K002",
+      "area": "Kinder",
+      "problem": "homework_screen.dart ask/continuePractice: busy erst nach await persist; zwei Klicks während PUT erzeugen getrennte Absichten/Schlüssel.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K003",
+      "area": "Kinder",
+      "problem": "homework_screen.dart HomeworkDetailScreen: kein Kontextreset bei materialId/childId-Wechsel; alter Entwurf kann unter neuer path-Adresse bleiben.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K004",
+      "area": "Kinder",
+      "problem": "homework_screen.dart capture/recover/upload: prüfen nach Await nur Konto, nicht begonnenen Kind-/Fotokontext.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K005",
+      "area": "Kinder",
+      "problem": "homework_screen.dart capture: chooser/camera/crop haben noch kein busy; mehrfache Fotoauswahl möglich.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K008",
+      "area": "Kinder",
+      "problem": "homework_screen.dart list load: .addAll fügt bei überlappenden Cursorseiten dieselbe Fotokarte mehrfach ein.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K009",
+      "area": "Kinder",
+      "problem": "homework_screen.dart Karten nennen bei wiederholten Themen kein Erfassungsdatum.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K010",
+      "area": "Kinder",
+      "problem": "homework_screen.dart Nichtinitiale Aktualisierung zeigt weder Startstatus noch Abschlussstatus bei vorhandenen Fotos.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K011",
+      "area": "Kinder",
+      "problem": "homework_screen.dart persist-Fehler wird von ask ignoriert: Lernhilfe kann loslaufen, obwohl gerade zugesicherter Entwurf nicht sicher gespeichert ist.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K012",
+      "area": "Kinder",
+      "problem": "homework_screen.dart Speicheranzeige prüft nur lastSaved==draft; neue Frage/Checklistenänderung kann daneben „gespeichert“ heißen.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K013",
+      "area": "Kinder",
+      "problem": "homework_screen.dart „Entwurf speichern“ ist auch ohne Änderungen aktiv und macht dann nichts.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K014",
+      "area": "Kinder",
+      "problem": "homework_screen.dart Wiederaufnahme sagt „Anfrage mit gleichem Schlüssel abgleichen“. Kind muss einen technischen Begriff verstehen.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K015",
+      "area": "Kinder",
+      "problem": "homework_screen.dart catch zeigt e.toString für Upload/Hilfe/Speichern/Übung.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K017",
+      "area": "Kinder",
+      "problem": "homework_screen.dart replyCard zeigt fertige Erklärung ohne vorhandene ausdrückliche Vorlesehilfe.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K018",
+      "area": "Kinder",
+      "problem": "homework_screen.dart Lade-Poll läuft auf überdeckter Detailroute weiter, da nur App-Foreground geprüft wird.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K021",
+      "area": "Kinder",
+      "problem": "learning_explanation.dart FractionSumDiagram regex findet positive Teilfolge in -1/3 + 1/6. Grafik widerspricht der Aufgabe.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K022",
+      "area": "Kinder",
+      "problem": "learning_explanation.dart didUpdateWidget setzt Schritt nur bei Textwechsel zurück, nicht bei neuer Frage mit identischem Erklärungstext.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K023",
+      "area": "Kinder",
+      "problem": "learning_explanation.dart Erklärungsschrittwechsel scrollt zwar, meldet neuen Schritt aber nicht als Status.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K024",
+      "area": "Kinder",
+      "problem": "learning_explanation.dart Markierungen A/B sind 10px in je einem von bis24 schmalen Segmenten; bei großer Schrift überlaufen sie.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K025",
+      "area": "Kinder",
+      "problem": "learning_explanation.dart ein langer kleingeschriebener Fließabsatz wird nicht geteilt (Satzgrenze nur vor Großbuchstaben).",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K026",
+      "area": "Kinder",
+      "problem": "learning_explanation.dart lokale Leseposition geht beim Schließen und erneuten Öffnen derselben Erklärung verloren.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K027",
+      "area": "Kinder",
+      "problem": "lesson_voice.dart ReadAloudButton vor beforeRead-Await nicht gesperrt. Doppelclick kann mehrfach Hilfe speichern/vorbereiten.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K028",
+      "area": "Kinder",
+      "problem": "lesson_voice.dart VoiceInputButton maxLength verwendet UTF16-substring und kann ein Zeichen/Emoji teilen.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K029",
+      "area": "Kinder",
+      "problem": "lesson_voice.dart vorbereitende Spracherkennung heißt schon „Aufnahme stoppen“, obwohl noch auf Gerätestart gewartet wird.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K030",
+      "area": "Kinder",
+      "problem": "lesson_voice.dart Aufnahme endet nach35s ohne sichtbare Erklärung des Zeitendes.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K031",
+      "area": "Kinder",
+      "problem": "lesson_voice.dart Mikrofon-Dialog kann bei Widget-/Routenablösung weiter offen bleiben.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K032",
+      "area": "Kinder",
+      "problem": "language_workshop.dart current und school_day_history.dart prüfen nur ID oder gar kein Konto; Vorbereitung ist ausschließlich K052. Neue Sitzung gleicher ID behält private alte Inhalte. Gleicher Mechanismus zusammengefasst.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K033",
+      "area": "Kinder",
+      "problem": "language_workshop.dart kein didUpdateWidget für Kind/Projekt/Material; alter Zustand bleibt bei Routerparameterwechsel.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K034",
+      "area": "Kinder",
+      "problem": "language_workshop.dart load setzt loading nicht neu; Sprachwechsel zeigt alte Wörter interaktiv unter neuer Sprache.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K035",
+      "area": "Kinder",
+      "problem": "language_workshop.dart Zieltext hat keinen onChanged-Refresh; Startbutton bleibt nach Löschen/Korrigieren im alten enabled-Zustand.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K036",
+      "area": "Kinder",
+      "problem": "language_workshop.dart Text-Expansion initiallyExpanded reagiert nicht auf späteren Moduswechsel. Schreibmodus kann den nötigen eigenen Text verstecken.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K037",
+      "area": "Kinder",
+      "problem": "language_workshop.dart leere Gesprächsantwort kann über aktiven Fortsetzen-Button abgesendet werden.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K038",
+      "area": "Kinder",
+      "problem": "language_workshop.dart Auswahl des elften Wortes reagiert stillschweigend nicht.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K040",
+      "area": "Kinder",
+      "problem": "language_workshop.dart Antwort als SelectableText(result.response) zeigt Markdown/Formeln wörtlich.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K041",
+      "area": "Kinder",
+      "problem": "language_workshop.dart queued/running Projekt nur mit Status-Tag, ohne deutliche Wiederaufnahmeinformation.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K042",
+      "area": "Kinder",
+      "problem": "language_workshop.dart GET nimmt erste50 Wörter/Quellen ohne Hinweis; geeignete ältere Wörter sind unsichtbar.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K043",
+      "area": "Kinder",
+      "problem": "language_workshop.dart lokale Ziele/Entwürfe/Selektion gehen bei versehentlichem Zurück verloren.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K045",
+      "area": "Kinder",
+      "problem": "language_workshop.dart generischer Zielvorschlag „Schulwörter in Sätzen“ passt nicht zu Zusammenfassung/Referat/Übersetzungsprüfung.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K046",
+      "area": "Kinder",
+      "problem": "school_day_history.dart load hat keine Request-Sperre; gespeicherter Callback startet parallele Cursorabrufe.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K047",
+      "area": "Kinder",
+      "problem": "school_day_history.dart didUpdateWidget fehlt; Kindwechsel kann Tageslisten mischen.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K048",
+      "area": "Kinder",
+      "problem": "school_day_history.dart Tage werden ohne ID-Deduplizierung angehängt.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K049",
+      "area": "Kinder",
+      "problem": "school_day_history.dart Datum steht roh als YYYY-MM-DD.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K050",
+      "area": "Kinder",
+      "problem": "school_day_history.dart Spinner/Erneut-laden nennen keinen Umfang/Status für Screenreader.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K052",
+      "area": "Kinder",
+      "problem": "learning_preparation_screen.dart Kontowechsel wird nicht aktiv beobachtet; private Jobdaten bleiben bis anderem Rebuild sichtbar.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K053",
+      "area": "Kinder",
+      "problem": "learning_preparation_screen.dart fehlgeschlagene Vorbereitung bietet nur Startseite, keinen direkten Weg zur betroffenen Lernsammlung.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K054",
+      "area": "Kinder",
+      "problem": "learning_preparation_screen.dart queued/running visuell gleich; Kind weiß nicht, ob wartet oder arbeitet.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K055",
+      "area": "Kinder",
+      "problem": "material_screen.dart MaterialReview initialisiert Controller nur einmal; erneuerte Seite/anderer Materialslot kann alten OCR-Text behalten.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K056",
+      "area": "Kinder",
+      "problem": "material_screen.dart importMaterial erklärt festen kostenlosen OpenRouter-Anbieter, obwohl Operator inzwischen andere Konfiguration nutzen kann.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K057",
+      "area": "Kinder",
+      "problem": "material_screen.dart CropDialog ungültiges Bild: Primärbutton bleibt aktiv, Fehler erst nach Klick.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K058",
+      "area": "Kinder",
+      "problem": "material_screen.dart CropDialog Rotation setzt Zuschnitt komplett zurück, ohne Möglichkeit, den letzten Rahmen wiederherzustellen.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K059",
+      "area": "Kinder",
+      "problem": "material_screen.dart CropDialog hat keinen direkten „Ganzes Foto“-Reset.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K065",
+      "area": "Kinder",
+      "problem": "material_screen.dart OCR-Korrekturen können über Leseansicht/Routenwechsel ohne sichtbaren Speicherhinweis verlassen werden.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K066",
+      "area": "Kinder",
+      "problem": "material_screen.dart große OCR-Felder spiegeln relevante Backendgrenzen nicht in der Eingabe.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K067",
+      "area": "Kinder",
+      "problem": "subject_picker.dart Fachauswahl ist readOnly TextField mit onTap; keine explizite Button-/Auswahlrolle für Tastatur.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K068",
+      "area": "Kinder",
+      "problem": "subject_picker.dart vollständiger Fachstamm ohne Suche; langes Scrollen nötig.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K069",
+      "area": "Kinder",
+      "problem": "subject_picker.dart leere Serverliste zeigt nur leere Fläche.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K070",
+      "area": "Kinder",
+      "problem": "subject_picker.dart gewähltes Fach nur durch Checkicon, nicht selected Semantik.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K072",
+      "area": "Kinder",
+      "problem": "unit_screen.dart ownerId/accountChanged behandeln neue Sitzung gleicher ID wie alte Sitzung.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K075",
+      "area": "Kinder",
+      "problem": "unit_screen.dart wordBankUndo löscht nach manueller Bearbeitung nur usedBank, lässt Text stehen; Wörter wieder einfügbar.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K076",
+      "area": "Kinder",
+      "problem": "unit_screen.dart „Neu zusammensetzen“ löscht ganzen eigenen Antworttext ohne Undo.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K082",
+      "area": "Kinder",
+      "problem": "tutor_sheet.dart unsent question nur im Controller; versehentliches Sheet-Schließen verliert Frage.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K083",
+      "area": "Kinder",
+      "problem": "tutor_sheet.dart „Neue Frage stellen“ clear löscht bereits angefangene Frage.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K084",
+      "area": "Kinder",
+      "problem": "tutor_sheet.dart Antwortaufforderung wird aus endsWith('?') statt vorhandenem strukturierten Auftrag abgeleitet. Rhetorische Schlussfrage ändert Eingabelabel.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K085",
+      "area": "Kinder",
+      "problem": "tutor_sheet.dart mehrere ähnlich formulierte Fragen haben keine sichtbare Zeitzuordnung.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K086",
+      "area": "Kinder",
+      "problem": "tutor_sheet.dart Quelle wird zitiert, aber vorhandene Heftreferenz führt nicht direkt zum überprüfbaren Originalfoto.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K087",
+      "area": "Kinder",
+      "problem": "learning_tips.dart beforeOpen wird unawaited aufgerufen, Ressource öffnet auch wenn Rückkehrpunkt-Speichern fehlschlägt.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K088",
+      "area": "Kinder",
+      "problem": "learning_tips.dart externer Öffnungsbutton nicht gegen schnellen Doppelklick geschützt.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K089",
+      "area": "Kinder",
+      "problem": "learning_tips.dart checkAfterMedia liest erst Session und benutzt danach veränderliche Widgetresource ohne eingefrorenen Kontext.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K091",
+      "area": "Kinder",
+      "problem": "adaptive_learning_step.dart generische Erklärung fallback spricht immer von Brüchen, auch bei anderer Fachphase.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K092",
+      "area": "Kinder",
+      "problem": "adaptive_learning_step.dart explanation.text wird ungeprüft asString gelesen; ältere unvollständige Pläne können Lernraum crashen.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K093",
+      "area": "Kinder",
+      "problem": "daily_plan_panel.dart take(3) Lerntage und take(5) Themen ohne sichtbaren Vorschauumfang.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K094",
+      "area": "Kinder",
+      "problem": "notebook_photo.dart decode-error zeigt nur „Foto nicht verfügbar“, obwohl GET-Retry bei Transportfehler vorhanden ist.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K095",
+      "area": "Kinder",
+      "problem": "notebook_photo.dart Thumbnailfehler nur cloud_off-Icon ohne inhaltlichen Alternativtext.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K096",
+      "area": "Kinder",
+      "problem": "material_words.dart reverse=true vertauscht Paare, Label bleibt „Deutsch: meaning“ und nennt dann die Fremdsprache Deutsch.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K097",
+      "area": "Kinder",
+      "problem": "material_words.dart Checkboxänderung passt decisions nicht an; ein nach „Weiß ich noch nicht“ erneut ausgewähltes Wort zeigt weiterhin den Aufschubtext.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K100",
+      "area": "Kinder",
+      "problem": "child_account.dart Geräteliste zeigt nur device und current, aber keine gelieferten created/seen-Zeiten; mehrere „Android“-Einträge kaum unterscheidbar.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K101",
+      "area": "Kinder",
+      "problem": "child_messages.dart Nachrichtensektion wird beim Zurückkommen auf Standard zurückgesetzt.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K103",
+      "area": "Kinder",
+      "problem": "child_messages.dart keine direkte Antwort auf eine konkrete Elternnachricht; generische Frage zwingt zum erneuten Benennen des Themas.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K104",
+      "area": "Kinder",
+      "problem": "homework_screen.dart dispose/persist: abschließendes Speichern ruft setState während unmount auf, wenn ein frischer Text noch nicht per Debounce gesendet wurde. Im neuen Verhaltenstest reproduziert.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    },
+    {
+      "id": "K105",
+      "area": "Kinder",
+      "problem": "material_screen.dart change setzt changing ohne sichtbaren Rebuild; während Confirm/Taskpreview kann eine neue Korrektur geschrieben und später vom Erfolg der älteren Fassung verdrängt werden.",
+      "evidence_document": "UX_300_CHILD_2026_10_22.md",
+      "status": "verified"
+    }
+  ],
+  "excluded": {
+    "coupled": [
+      "A098",
+      "P41",
+      "K071"
+    ],
+    "withdrawn": [
+      "P92"
+    ],
+    "child_changed_not_fully_counted": [
+      "K006",
+      "K007",
+      "K016",
+      "K019",
+      "K039",
+      "K044",
+      "K060",
+      "K061",
+      "K063",
+      "K064",
+      "K073",
+      "K077",
+      "K078",
+      "K079",
+      "K090",
+      "K098",
+      "K099",
+      "K102"
+    ],
+    "child_open": [
+      "K020",
+      "K051",
+      "K062",
+      "K074",
+      "K080",
+      "K081"
+    ]
+  }
+}

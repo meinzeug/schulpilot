@@ -25,18 +25,19 @@ class NotebookPhoto extends StatefulWidget {
 }
 
 class _NotebookPhotoState extends State<NotebookPhoto> {
-  late final String? owner;
+  late final Json? owner;
   ImageProvider? image;
   String? error;
   int generation = 0;
   final zoom = TransformationController();
   Size photoViewport = Size.zero;
-  bool get current => mounted && widget.state.user?['id'] == owner;
+  bool get current =>
+      mounted && owner != null && identical(widget.state.user, owner);
 
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     widget.state.addListener(identityChanged);
     load();
   }
@@ -105,30 +106,39 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
     }
   }
 
+  void retry() {
+    if (!current) return;
+    setState(discard);
+    load();
+  }
+
+  Widget unavailable(String message) => Semantics(
+    label: widget.thumbnail ? 'Heftfoto nicht verfügbar' : null,
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.broken_image_outlined, color: context.palette.muted),
+            if (!widget.thumbnail) ...[
+              const SizedBox(height: 10),
+              Text(message, textAlign: TextAlign.center),
+              TextButton(
+                onPressed: retry,
+                child: const Text('Foto erneut laden'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     if (!current) return const SizedBox();
-    if (error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.broken_image_outlined, color: context.palette.muted),
-              if (!widget.thumbnail) ...[
-                const SizedBox(height: 10),
-                Text(error!, textAlign: TextAlign.center),
-                TextButton(
-                  onPressed: load,
-                  child: const Text('Foto erneut laden'),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    }
+    if (error != null) return unavailable(error!);
     if (image == null) {
       return const Center(
         child: SizedBox(
@@ -139,13 +149,14 @@ class _NotebookPhotoState extends State<NotebookPhoto> {
       );
     }
     final photo = Image(
+      key: ObjectKey(image),
       image: image!,
       fit: BoxFit.contain,
       semanticLabel: widget.figureIndex == null
           ? 'Fotografierte Heftseite'
           : 'Abbildung aus deinem Heftfoto',
       errorBuilder: (_, _, _) =>
-          const Center(child: Text('Foto nicht verfügbar.')),
+          unavailable('Das Foto kann nicht angezeigt werden.'),
     );
     if (!widget.zoomable) return photo;
     return Column(

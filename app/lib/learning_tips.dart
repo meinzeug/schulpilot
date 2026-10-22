@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -39,7 +40,13 @@ Uri? safeSofatutorUri(String value) {
   return uri;
 }
 
-Future<bool> openSofatutor(BuildContext context, String link) async {
+Future<bool> openSofatutor(
+  BuildContext context,
+  String link, {
+  bool deferToExplicitClick = false,
+  bool Function()? isCurrent,
+  ValueChanged<ModalRoute<dynamic>>? onFallbackRoute,
+}) async {
   final uri = safeSofatutorUri(link);
   if (uri == null) {
     showError(
@@ -60,54 +67,87 @@ Future<bool> openSofatutor(BuildContext context, String link) async {
     }
   }
 
-  if (await launch()) return true;
-  if (!context.mounted) return false;
-  await showModalBottomSheet<void>(
+  bool valid() => context.mounted && (isCurrent?.call() ?? true);
+  if (!valid()) return false;
+  if (!deferToExplicitClick && await launch()) return true;
+  if (!context.mounted || !valid()) return false;
+  final fallbackOpened = await showModalBottomSheet<bool>(
     context: context,
-    builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Der Link konnte nicht geöffnet werden.',
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+    isScrollControlled: true,
+    builder: (ctx) {
+      onFallbackRoute?.call(ModalRoute.of(ctx)!);
+      return SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  deferToExplicitClick
+                      ? 'Dein Stand ist gesichert. Öffne jetzt den Lerntipp.'
+                      : 'Der Link konnte nicht geöffnet werden.',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () async {
+                    if (!valid() || ModalRoute.of(ctx)?.isCurrent != true) {
+                      return;
+                    }
+                    final attempt = launch();
+                    if (await attempt &&
+                        valid() &&
+                        ctx.mounted &&
+                        ModalRoute.of(ctx)?.isCurrent == true) {
+                      Navigator.pop(ctx, true);
+                    }
+                  },
+                  icon: Icon(Icons.open_in_new_rounded),
+                  label: Text(
+                    deferToExplicitClick
+                        ? 'Jetzt bei Sofatutor öffnen'
+                        : 'Noch einmal öffnen',
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    try {
+                      await Clipboard.setData(
+                        ClipboardData(text: uri.toString()),
+                      );
+                      if (ctx.mounted) {
+                        toast(ctx, 'Link kopiert');
+                      }
+                    } catch (_) {
+                      if (ctx.mounted) {
+                        toast(ctx, 'Der Link konnte nicht kopiert werden.');
+                      }
+                    }
+                  },
+                  icon: Icon(Icons.copy_rounded),
+                  label: Text('Link kopieren'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (ctx.mounted && ModalRoute.of(ctx)?.isCurrent == true) {
+                      Navigator.pop(ctx, false);
+                    }
+                  },
+                  child: Text('Zurück zu Schulpilot'),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () async {
-                if (await launch() && ctx.mounted) Navigator.pop(ctx);
-              },
-              icon: Icon(Icons.open_in_new_rounded),
-              label: Text('Noch einmal öffnen'),
-            ),
-            TextButton.icon(
-              onPressed: () async {
-                try {
-                  await Clipboard.setData(ClipboardData(text: uri.toString()));
-                  if (ctx.mounted) {
-                    toast(ctx, 'Link kopiert');
-                  }
-                } catch (_) {
-                  if (ctx.mounted) {
-                    toast(ctx, 'Der Link konnte nicht kopiert werden.');
-                  }
-                }
-              },
-              icon: Icon(Icons.copy_rounded),
-              label: Text('Link kopieren'),
-            ),
-          ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
-  return false;
+  return fallbackOpened == true;
 }
 
-class TipContentCard extends StatelessWidget {
+class TipContentCard extends StatefulWidget {
   final Json item;
   final VoidCallback? onReject;
   final Future<void> Function()? onOpened;
@@ -120,7 +160,80 @@ class TipContentCard extends StatelessWidget {
     this.beforeOpen,
   });
   @override
+  State<TipContentCard> createState() => _TipContentCardState();
+}
+
+class _TipContentCardState extends State<TipContentCard> {
+  bool opening = false;
+  int operation = 0;
+  ModalRoute<dynamic>? openingRoute;
+  void closeOpeningRoute() {
+    final old = openingRoute;
+    openingRoute = null;
+    if (old != null) {
+      Future<void>.microtask(() {
+        if (old.isActive) old.navigator?.removeRoute(old);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    operation++;
+    closeOpeningRoute();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant TipContentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item['id'] != widget.item['id'] ||
+        oldWidget.item['url'] != widget.item['url']) {
+      operation++;
+      closeOpeningRoute();
+      opening = false;
+    }
+  }
+
+  Future<void> open() async {
+    if (!mounted || opening) return;
+    final ticket = ++operation;
+    final before = widget.beforeOpen, after = widget.onOpened;
+    final url = widget.item['url']?.toString() ?? '';
+    setState(() => opening = true);
+    try {
+      if (before != null) await before();
+      if (!mounted || ticket != operation) return;
+      // A blocked browser popup gets an explicit second opening button in the
+      // existing fallback sheet. Never leave before the return point is saved.
+      final opened = await openSofatutor(
+        context,
+        url,
+        deferToExplicitClick: kIsWeb && before != null,
+        isCurrent: () => mounted && ticket == operation,
+        onFallbackRoute: (route) => openingRoute = route,
+      );
+      openingRoute = null;
+      if (opened && mounted && ticket == operation) await after?.call();
+    } catch (error) {
+      if (mounted && ticket == operation) {
+        showError(
+          context,
+          error is ApiError
+              ? error
+              : ApiError(
+                  'Dein Stand konnte gerade nicht gesichert werden. Der Lerntipp bleibt hier erreichbar.',
+                ),
+        );
+      }
+    } finally {
+      if (mounted && ticket == operation) setState(() => opening = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final text = item['content_type'] == 'learning_text';
     return Padding(
       padding: EdgeInsets.only(top: 10),
@@ -183,26 +296,17 @@ class TipContentCard extends StatelessWidget {
               ),
             SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () async {
-                unawaited(beforeOpen?.call());
-                if (await openSofatutor(context, item['url'] ?? '')) {
-                  // A link action is separate from learning/completion. Opening a
-                  // website cannot establish playback or comprehension.
-                  try {
-                    await onOpened?.call();
-                  } catch (_) {
-                    /* no invented activity */
-                  }
-                }
-              },
+              onPressed: opening ? null : open,
               icon: Icon(Icons.open_in_new_rounded, size: 18),
-              label: Text('Bei Sofatutor ansehen'),
+              label: Text(
+                opening ? 'Link wird vorbereitet …' : 'Bei Sofatutor ansehen',
+              ),
             ),
-            if (onReject != null)
+            if (widget.onReject != null)
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: onReject,
+                  onPressed: opening ? null : widget.onReject,
                   child: Text('Passt nicht'),
                 ),
               ),
@@ -238,7 +342,7 @@ class LearningTips extends StatefulWidget {
 
 class _LearningTipsState extends State<LearningTips>
     with WidgetsBindingObserver {
-  late final String? owner;
+  late final Json? owner;
   Json? data;
   String? error;
   bool expanded = false,
@@ -249,13 +353,13 @@ class _LearningTipsState extends State<LearningTips>
   final pendingKeys = <String, String>{};
   int generation = 0, revision = 0;
   bool get current =>
-      mounted && owner != null && owner == widget.state.user?['id'];
+      mounted && owner != null && identical(owner, widget.state.user);
   String get path =>
       '/children/${widget.childId}/learning-tips/${widget.kind}/${widget.resourceId}';
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     revision = widget.state.revision;
     widget.state.addListener(changed);
     WidgetsBinding.instance.addObserver(this);
@@ -275,6 +379,7 @@ class _LearningTipsState extends State<LearningTips>
       unavailable = false;
       error = null;
       pendingKeys.clear();
+      writing = false;
     }
   }
 
@@ -362,29 +467,34 @@ class _LearningTipsState extends State<LearningTips>
 
   Future<void> checkAfterMedia() async {
     if (!current || writing) return;
+    final resource = (widget.childId, widget.kind, widget.resourceId);
+    final unitId = widget.resourceId;
+    bool sameContext() =>
+        current && resource == (widget.childId, widget.kind, widget.resourceId);
     setState(() => writing = true);
     try {
       final session = await widget.state.api.get(
-        '/units/${widget.resourceId}/learning-session',
+        '/units/$unitId/learning-session',
       );
+      if (!sameContext()) return;
       final result = await widget.state.api.post(
-        '/units/${widget.resourceId}/learning-session/check',
+        '/units/$unitId/learning-session/check',
         {
           'request_key': tipRequestKey(),
           'revision': session['revision'],
           'kind': 'check_understanding',
         },
       );
-      if (mounted && current) {
+      if (mounted && sameContext()) {
         openRoute(
           context,
           '/learning-preparation/${widget.childId}/${result['id']}',
         );
       }
     } catch (e) {
-      if (mounted && current) showError(context, e);
+      if (mounted && sameContext()) showError(context, e);
     } finally {
-      if (current) setState(() => writing = false);
+      if (sameContext()) setState(() => writing = false);
     }
   }
 
@@ -509,6 +619,11 @@ class _LearningTipsState extends State<LearningTips>
       subjectId,
       selected: {
         for (final t in data?['topics'] as List? ?? []) t['id'] as String,
+      },
+      selectedLabels: {
+        for (final topic in data?['topics'] as List? ?? [])
+          topic['id'] as String:
+              topic['title']?.toString() ?? 'Ausgewähltes Thema',
       },
     );
     if (result == null ||
@@ -664,6 +779,13 @@ class _LearningTipsState extends State<LearningTips>
                             ),
                         ],
                       ),
+                    if (more && data?['has_more'] == true)
+                      Padding(
+                        padding: EdgeInsets.only(top: 12),
+                        child: Text(
+                          'Hier siehst du höchstens 12 Lerntipps. Wähle ein Thema, um gezielter zu suchen.',
+                        ),
+                      ),
                     Wrap(
                       spacing: 8,
                       children: [
@@ -708,6 +830,7 @@ Future<Set<String>?> showTopicBrowser(
   String childId,
   String subjectId, {
   Set<String>? selected,
+  Map<String, String> selectedLabels = const {},
 }) => showModalBottomSheet<Set<String>>(
   context: context,
   isScrollControlled: true,
@@ -716,40 +839,74 @@ Future<Set<String>?> showTopicBrowser(
     childId: childId,
     subjectId: subjectId,
     selected: selected,
+    selectedLabels: selectedLabels,
   ),
 );
 
-class TopicBrowser extends StatefulWidget {
+class TopicBrowser extends StatelessWidget {
   final AppState state;
   final String childId, subjectId;
   final Set<String>? selected;
+  final Map<String, String> selectedLabels;
   const TopicBrowser(
     this.state, {
     super.key,
     required this.childId,
     required this.subjectId,
     this.selected,
+    this.selectedLabels = const {},
   });
   @override
-  State<TopicBrowser> createState() => _TopicBrowserState();
+  Widget build(BuildContext context) => _TopicBrowserBody(
+    state,
+    childId: childId,
+    subjectId: subjectId,
+    selected: selected,
+    selectedLabels: selectedLabels,
+    key: ValueKey((
+      state,
+      ObjectKey(state.user),
+      childId,
+      subjectId,
+      selected != null,
+    )),
+  );
 }
 
-class _TopicBrowserState extends State<TopicBrowser> {
+class _TopicBrowserBody extends StatefulWidget {
+  final AppState state;
+  final String childId, subjectId;
+  final Set<String>? selected;
+  final Map<String, String> selectedLabels;
+  const _TopicBrowserBody(
+    this.state, {
+    super.key,
+    required this.childId,
+    required this.subjectId,
+    required this.selected,
+    required this.selectedLabels,
+  });
+  @override
+  State<_TopicBrowserBody> createState() => _TopicBrowserState();
+}
+
+class _TopicBrowserState extends State<_TopicBrowserBody> {
   final search = TextEditingController();
-  late final String? owner;
+  late final Json? owner;
   late final chosen = {...?widget.selected};
+  late final chosenLabels = <String, String>{...widget.selectedLabels};
   Json? data;
   String? error;
   int page = 1, generation = 0;
   Timer? debounce;
   bool loading = true, knownOnly = false;
   bool get current =>
-      mounted && owner != null && owner == widget.state.user?['id'];
+      mounted && owner != null && identical(owner, widget.state.user);
   String get path => '/children/${widget.childId}/subjects/${widget.subjectId}';
   @override
   void initState() {
     super.initState();
-    owner = widget.state.user?['id'];
+    owner = widget.state.user;
     widget.state.addListener(changed);
     load();
   }
@@ -790,6 +947,9 @@ class _TopicBrowserState extends State<TopicBrowser> {
       if (current && request == generation) {
         setState(() {
           data = value;
+          for (final row in value['items'] as List? ?? []) {
+            chosenLabels[row['id']] = row['title'].toString();
+          }
           loading = false;
         });
       }
@@ -806,7 +966,9 @@ class _TopicBrowserState extends State<TopicBrowser> {
   @override
   Widget build(BuildContext context) {
     if (!current) return SizedBox.shrink();
-    final rows = data?['items'] as List? ?? [];
+    final rows = loading || error != null
+        ? <dynamic>[]
+        : data?['items'] as List? ?? [];
     return LayoutBuilder(
       builder: (context, bounds) {
         final screen = MediaQuery.sizeOf(context);
@@ -870,8 +1032,26 @@ class _TopicBrowserState extends State<TopicBrowser> {
                     decoration: InputDecoration(
                       labelText: 'Thema suchen',
                       prefixIcon: Icon(Icons.search),
+                      suffixIcon: search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Suche leeren',
+                              onPressed: () {
+                                debounce?.cancel();
+                                search.clear();
+                                page = 1;
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                load();
+                              },
+                              icon: Icon(Icons.close_rounded),
+                            ),
                     ),
                     onChanged: (_) {
+                      generation++;
+                      setState(() {
+                        loading = true;
+                        error = null;
+                      });
                       page = 1;
                       debounce?.cancel();
                       debounce = Timer(Duration(milliseconds: 350), load);
@@ -910,9 +1090,46 @@ class _TopicBrowserState extends State<TopicBrowser> {
                     Padding(
                       padding: EdgeInsets.all(20),
                       child: Text(
-                        'Kein Thema gefunden. Versuche einen anderen Begriff.',
+                        knownOnly
+                            ? 'Für deine eingestellte Stufe wurde hier kein Thema gefunden.'
+                            : 'Kein Thema passt zu deiner Suche.',
                       ),
                     ),
+                  if (data != null && rows.isEmpty && !loading && knownOnly)
+                    TextButton(
+                      onPressed: () {
+                        knownOnly = false;
+                        page = 1;
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        load();
+                      },
+                      child: Text('Alle Themen anzeigen'),
+                    ),
+                  if (widget.selected != null) ...[
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        '${chosen.length} von höchstens 8 Themen ausgewählt',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final id in chosen)
+                          InputChip(
+                            label: Text(
+                              chosenLabels[id] ??
+                                  'Thema aus deiner bisherigen Auswahl',
+                            ),
+                            onDeleted: () {
+                              if (current) setState(() => chosen.remove(id));
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
                   for (final row in rows)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -924,6 +1141,7 @@ class _TopicBrowserState extends State<TopicBrowser> {
                               semanticLabel: '${row['title']} auswählen',
                               value: chosen.contains(row['id']),
                               onChanged: (value) {
+                                if (!current || loading) return;
                                 if (value == true && chosen.length >= 8) {
                                   toast(
                                     context,
@@ -989,15 +1207,27 @@ class _TopicBrowserState extends State<TopicBrowser> {
                     Padding(
                       padding: EdgeInsets.all(8),
                       child: Text(
-                        'Wähle ein passendes Thema oder schließe die Suche.',
+                        'Keine Themen ausgewählt. Du kannst diese leere Zuordnung bewusst übernehmen.',
                       ),
                     ),
                   if (widget.selected != null)
                     FilledButton(
-                      onPressed: loading || chosen.isEmpty
+                      onPressed: loading
                           ? null
-                          : () => Navigator.pop(context, chosen),
-                      child: Text('Auswahl übernehmen'),
+                          : () {
+                              if (current &&
+                                  ModalRoute.of(context)?.isCurrent == true) {
+                                Navigator.pop(
+                                  context,
+                                  Set<String>.from(chosen),
+                                );
+                              }
+                            },
+                      child: Text(
+                        chosen.isEmpty
+                            ? 'Keine Themen übernehmen'
+                            : 'Auswahl übernehmen',
+                      ),
                     ),
                 ],
               ),
@@ -1041,7 +1271,7 @@ class _TopicRowState extends State<_TopicRow> {
   }
 
   Future<void> load() async {
-    final owner = widget.state.user?['id'], id = widget.topic['id'];
+    final owner = widget.state.user, id = widget.topic['id'];
     setState(() {
       loading = true;
       error = null;
@@ -1051,7 +1281,7 @@ class _TopicRowState extends State<_TopicRow> {
         '/children/${widget.childId}/subjects/${widget.subjectId}/topics/${Uri.encodeComponent(id)}',
       );
       if (mounted &&
-          owner == widget.state.user?['id'] &&
+          identical(owner, widget.state.user) &&
           id == widget.topic['id']) {
         setState(() {
           detail = value;
@@ -1059,7 +1289,7 @@ class _TopicRowState extends State<_TopicRow> {
         });
       }
     } catch (e) {
-      if (mounted && owner == widget.state.user?['id']) {
+      if (mounted && identical(owner, widget.state.user)) {
         setState(() {
           error = '$e';
           loading = false;

@@ -152,8 +152,12 @@ void main() {
       await tester.tap(tipsButton);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
       final back = find.text('Zur gespeicherten Aufgabe');
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.ensureVisible(back);
+      await tester.pump(const Duration(milliseconds: 200));
       await tester.tap(back);
       await tester.pumpAndSettle();
       expect(find.text('Was bedeutet cat?'), findsOneWidget);

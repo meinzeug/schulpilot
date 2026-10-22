@@ -59,7 +59,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   int pendingSeconds = 0;
   bool clockOffline = false;
   bool clockWasRunning = false;
-  String? ownerId;
+  Json? ownerAccount;
   final text = TextEditingController();
   String? choice;
   Map<String, String> matches = {};
@@ -68,6 +68,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? hintRequestKey;
   bool hintExhausted = false;
   final usedBank = <int>{};
+  String? resetBankText, resetBankQuestion;
+  Set<int> resetBankUsed = {};
   bool speechAnswer = false;
   List<String>? languageBank;
   String bankJoiner = ' ';
@@ -90,15 +92,77 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   final roomScroll = ScrollController();
   AppState get state => widget.state;
   DateTime get interactionNow => widget.activityClock?.call() ?? DateTime.now();
-  bool requestIsCurrent(String id, String? requestedOwner) =>
+  bool requestIsCurrent(String id, Json? requestedOwner) =>
       mounted &&
+      requestedOwner != null &&
       widget.unitId == id &&
-      ownerId == requestedOwner &&
-      state.user?['id'] == requestedOwner;
+      identical(ownerAccount, requestedOwner) &&
+      identical(state.user, requestedOwner);
+  final explanationPositions = <(String, String), int>{};
+  final privateRoutes = <PopupRoute<dynamic>, ({String id, Json? account})>{};
+  void closePrivateRoutes() {
+    for (final route in privateRoutes.keys.toList()) {
+      Future<void>.microtask(() {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
+  }
+
+  Future<T?> pushPrivateRoute<T>(PopupRoute<T> route) async {
+    if (!requestIsCurrent(widget.unitId, ownerAccount)) return null;
+    privateRoutes[route] = (id: widget.unitId, account: ownerAccount);
+    try {
+      return await Navigator.of(context, rootNavigator: true).push(route);
+    } finally {
+      await route.completed;
+      privateRoutes.remove(route);
+    }
+  }
+
+  Future<T?> showUnitDialog<T>({
+    required BuildContext context,
+    required WidgetBuilder builder,
+    bool barrierDismissible = true,
+  }) => pushPrivateRoute(
+    DialogRoute<T>(
+      context: context,
+      builder: builder,
+      barrierDismissible: barrierDismissible,
+    ),
+  );
+  Future<T?> showUnitSheet<T>({
+    required BuildContext context,
+    required WidgetBuilder builder,
+    bool isScrollControlled = false,
+    bool useSafeArea = false,
+    bool? showDragHandle,
+  }) => pushPrivateRoute(
+    ModalBottomSheetRoute<T>(
+      builder: builder,
+      isScrollControlled: isScrollControlled,
+      useSafeArea: useSafeArea,
+      showDragHandle: showDragHandle,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: Navigator.of(context, rootNavigator: true).context,
+      ),
+    ),
+  );
+  void popUnitRoute(BuildContext context, [Object? result]) {
+    if (!context.mounted) return;
+    final route = ModalRoute.of(context);
+    final owner = privateRoutes[route];
+    if (owner != null &&
+        route?.isCurrent == true &&
+        requestIsCurrent(owner.id, owner.account)) {
+      Navigator.pop(context, result);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    ownerId = state.user?['id'];
+    ownerAccount = state.user;
     lastInteraction = interactionNow;
     visible =
         WidgetsBinding.instance.lifecycleState == null ||
@@ -136,6 +200,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       accountChanged();
     }
     if (oldWidget.unitId != widget.unitId) {
+      closePrivateRoutes();
+      explanationPositions.clear();
       coachingPoll?.cancel();
       coachingPoll = null;
       unit = null;
@@ -150,7 +216,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       helpExpanded = clockDetails = actionBusy = false;
       actionError = null;
       instructionalRequestKey = null;
-      ownerId = state.user?['id'];
+      ownerAccount = state.user;
       savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
       draftOffline = draftConflict = false;
       needsTimeBaseline = true;
@@ -175,6 +241,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    closePrivateRoutes();
     draftTimer?.cancel();
     unawaited(saveDraft());
     WidgetsBinding.instance.removeObserver(this);
@@ -248,11 +315,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final snapshot = draftSnapshot();
     if (snapshot == null ||
         draftConflict ||
-        ownerId == null ||
-        state.user?['id'] != ownerId) {
+        ownerAccount == null ||
+        !identical(state.user, ownerAccount)) {
       return;
     }
-    final id = widget.unitId, owner = ownerId!;
+    final id = widget.unitId, owner = ownerAccount!;
     final signature = snapshot.toString();
     if (signature == savedDraftSignature) return;
     final session = Json.from(unit!['learning_session']);
@@ -262,7 +329,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       // before sending the latest revision to the server.
       final pending = draftDone;
       try {
-        await state.learningDrafts.save(owner, id, {
+        await state.learningDrafts.save(owner['id'] as String, id, {
           ...snapshot,
           'source_signature': session['source_signature'],
         });
@@ -283,13 +350,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         pendingDraftSignature = signature;
         pendingDraftKey = tipRequestKey();
       }
-      await state.learningDrafts.save(owner, id, {
+      await state.learningDrafts.save(owner['id'] as String, id, {
         ...snapshot,
         'source_signature': session['source_signature'],
       });
       if (!requestIsCurrent(id, owner)) {
-        if (state.user?['id'] != owner) {
-          await state.learningDrafts.remove(owner, id);
+        if (state.user?['id'] != owner['id']) {
+          await state.learningDrafts.remove(owner['id'] as String, id);
         }
         return;
       }
@@ -328,14 +395,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Future<void> restoreDraft(Json data) async {
     if (!state.isChild ||
         data['learning_session'] is! Map ||
-        ownerId == null ||
+        ownerAccount == null ||
         awaitingContinue) {
       return;
     }
-    final id = widget.unitId, owner = ownerId!;
+    final id = widget.unitId, owner = ownerAccount!;
     final session = Json.from(data['learning_session']);
     final server = session['working_memory']?['draft'];
-    final local = await state.learningDrafts.get(owner, id);
+    final local = await state.learningDrafts.get(owner['id'] as String, id);
     if (!requestIsCurrent(id, owner) ||
         text.text.isNotEmpty ||
         choice != null ||
@@ -379,12 +446,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> resolveDraft({required bool keepMine}) async {
-    final id = widget.unitId, owner = ownerId;
+    final id = widget.unitId, owner = ownerAccount;
     if (!state.isChild || owner == null || savingDraft) return;
     final latest = await state.api.get('/units/$id');
     if (!requestIsCurrent(id, owner)) return;
     if (!keepMine) {
-      await state.learningDrafts.remove(owner, id);
+      await state.learningDrafts.remove(owner['id'] as String, id);
       if (!requestIsCurrent(id, owner)) return;
       updatingDraft = true;
       text.clear();
@@ -412,7 +479,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   void accountChanged() {
-    if (!mounted || state.user?['id'] == ownerId) return;
+    if (!mounted || identical(state.user, ownerAccount)) return;
+    closePrivateRoutes();
+    explanationPositions.clear();
+    resetBankText = resetBankQuestion = null;
+    resetBankUsed.clear();
     timer?.cancel();
     liveClock?.cancel();
     coachingPoll?.cancel();
@@ -528,7 +599,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> advanceAdaptive(String kind) async {
-    final id = widget.unitId, owner = ownerId;
+    final id = widget.unitId, owner = ownerAccount;
     if (awaitingContinue) await acknowledgeFeedback();
     if (requestIsCurrent(id, owner) && !awaitingContinue && unit != null) {
       if (kind == 'model_hint' && currentQuestion != null) {
@@ -558,6 +629,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     speechAnswer = false;
     languageBank = null;
     usedBank.clear();
+    resetBankText = resetBankQuestion = null;
+    resetBankUsed.clear();
     hintExhausted = false;
     hintRequestKey = null;
     bankJoiner = ' ';
@@ -613,7 +686,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   bool get clockRunning =>
       mounted &&
       state.isChild &&
-      state.user?['id'] == ownerId &&
+      identical(state.user, ownerAccount) &&
       visible &&
       routeVisible &&
       unit?['status'] == 'active' &&
@@ -650,7 +723,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Future<void> beat() async {
     if (!mounted ||
         !state.isChild ||
-        state.user?['id'] != ownerId ||
+        !identical(state.user, ownerAccount) ||
         !visible ||
         !routeVisible ||
         unit?['status'] != 'active') {
@@ -669,7 +742,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return;
     }
     final requestedId = widget.unitId;
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     final baseline = needsTimeBaseline;
     if (baseline) clockAnchor = null;
     needsTimeBaseline = false;
@@ -684,7 +757,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       heartbeatSucceeded = true;
       if (mounted &&
           requestedId == widget.unitId &&
-          requestedOwner == state.user?['id'] &&
+          identical(requestedOwner, state.user) &&
           unit?['status'] == 'active') {
         setState(() {
           unit!['status'] = result['status'] ?? unit!['status'];
@@ -722,7 +795,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (loading) return;
     loading = true;
     final requestedId = widget.unitId;
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     try {
       if (!requestIsCurrent(requestedId, requestedOwner)) return;
       final data = await state.api.get('/units/$requestedId');
@@ -754,7 +827,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           'running',
         ].contains(unit?['learning_session']?['preparation']?['status'])) {
       coachingPoll ??= Timer.periodic(Duration(seconds: 3), (_) {
-        if (visible && routeVisible && state.user?['id'] == ownerId) load();
+        if (visible && routeVisible && identical(state.user, ownerAccount)) {
+          load();
+        }
       });
     } else {
       coachingPoll?.cancel();
@@ -798,7 +873,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (state.user?['id'] != ownerId) {
+    if (!identical(state.user, ownerAccount)) {
       return Scaffold(
         body: SafeArea(
           child: Center(child: MathText('Bitte melde dich erneut an.')),
@@ -839,7 +914,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
       );
     }
-    if (state.user?['id'] != ownerId) {
+    if (!identical(state.user, ownerAccount)) {
       return Scaffold(
         body: SafeArea(
           child: Center(child: MathText('Bitte melde dich erneut an.')),
@@ -931,9 +1006,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> perform(Future<void> Function() action) async {
-    if (actionBusy || state.user?['id'] != ownerId) return;
+    if (actionBusy || !identical(state.user, ownerAccount)) return;
     final requestedId = widget.unitId;
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     setState(() {
       actionBusy = true;
       actionError = null;
@@ -1044,7 +1119,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> startUnit(Json u) async {
     final id = u['id'];
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(id, requestedOwner)) return;
     final data = await state.api.post('/units/$id/start');
     if (!requestIsCurrent(id, requestedOwner)) return;
@@ -1061,7 +1136,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> finishIntroduction(Json u) async {
     final id = u['id'];
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(id, requestedOwner)) return;
     final data = await state.api.post('/units/$id/introduction');
     if (!requestIsCurrent(id, requestedOwner)) return;
@@ -1073,7 +1148,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> controllerAction(Json u, String kind) async {
-    final id = u['id'] as String, owner = ownerId;
+    final id = u['id'] as String, owner = ownerAccount;
     final session = await state.api.get('/units/$id/learning-session');
     if (!requestIsCurrent(id, owner)) return;
     final data = await state.api.post('/units/$id/learning-session/action', {
@@ -1093,7 +1168,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> acknowledgeFeedback() async {
     final id = widget.unitId;
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     final attemptId = feedbackAttemptId;
     noteInteraction();
     await beat();
@@ -1127,28 +1202,34 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   Future<void> leaveLearning() async {
     if (actionBusy || leaving) return;
     final requestedId = widget.unitId;
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     final u = unit;
     final hasDraft =
         !awaitingContinue &&
         (choice != null || text.text.trim().isNotEmpty || matches.isNotEmpty);
     if (hasDraft) {
-      final leave = await showDialog<bool>(
+      final leave = await showUnitDialog<bool>(
         context: context,
         builder: (dialog) => AlertDialog(
           title: Text('Jetzt eine Pause machen?'),
           content: Text(
-            u?['learning_session'] is Map
-                ? 'Deine Eingabe bleibt gespeichert. Du kannst später hier weiterlernen.'
+            u?['learning_session'] is Map &&
+                    !draftOffline &&
+                    !draftConflict &&
+                    !savingDraft &&
+                    draftSnapshot()?.toString() == savedDraftSignature
+                ? 'Deine Eingabe ist gespeichert. Du kannst später hier weiterlernen.'
+                : u?['learning_session'] is Map
+                ? 'Deine letzte Änderung ist noch nicht sicher auf dem Server gespeichert. Bleib hier, um sie zu sichern, oder mache bewusst eine Pause. Geprüfte Antworten bleiben erhalten.'
                 : 'Deine ungeprüfte Antwort musst du später neu eingeben. Geprüfte Antworten bleiben gespeichert.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialog, false),
+              onPressed: () => popUnitRoute(dialog, false),
               child: Text('Hier bleiben'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialog, true),
+              onPressed: () => popUnitRoute(dialog, true),
               child: Text('Pause machen'),
             ),
           ],
@@ -1799,10 +1880,25 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ],
             ),
             Text(
-              'Höre erst zu, dann antworte. Ohne passende Stimme wähle im Wortschatz eine Lese- oder Schreibübung.',
+              'Höre erst zu, dann antworte. Ohne passende Stimme kannst du in „Wörter“ eine Lese- oder Schreibübung auswählen.',
               style: TextStyle(fontSize: 13, color: context.palette.muted),
             ),
           ],
+          if (meta['skill'] == 'listening')
+            TextButton.icon(
+              onPressed: actionBusy
+                  ? null
+                  : () {
+                      if (requestIsCurrent(widget.unitId, ownerAccount)) {
+                        openRoute(
+                          context,
+                          '/vocabulary/${unit?['child_id'] ?? state.user?['child_id']}',
+                        );
+                      }
+                    },
+              icon: Icon(Icons.translate_rounded),
+              label: Text('Andere Wortübung auswählen'),
+            ),
           if (bank.isNotEmpty) ...[
             Text(
               meta['skill'] == 'spelling'
@@ -1832,11 +1928,33 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               onPressed: actionBusy
                   ? null
                   : () => setState(() {
+                      resetBankText = text.text;
+                      resetBankUsed = Set<int>.from(usedBank);
+                      resetBankQuestion = q['id'];
                       usedBank.clear();
                       text.clear();
                     }),
               child: Text('Neu zusammensetzen'),
             ),
+            if (resetBankText?.isNotEmpty == true &&
+                resetBankQuestion == q['id'] &&
+                text.text.isEmpty &&
+                usedBank.isEmpty)
+              TextButton.icon(
+                onPressed: actionBusy
+                    ? null
+                    : () => setState(() {
+                        final value = resetBankText!;
+                        final used = Set<int>.from(resetBankUsed);
+                        resetBankText = resetBankQuestion = null;
+                        text.text = value;
+                        usedBank
+                          ..clear()
+                          ..addAll(used);
+                      }),
+                icon: Icon(Icons.restore_rounded),
+                label: Text('Zurücksetzen rückgängig'),
+              ),
             TextButton.icon(
               onPressed: actionBusy || usedBank.isEmpty
                   ? null
@@ -1851,7 +1969,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         );
                         usedBank.remove(index);
                       } else {
-                        usedBank.clear();
+                        toast(
+                          context,
+                          'Du hast den Text schon selbst verändert. Bearbeite ihn direkt im Antwortfeld. Deine Bausteine bleiben markiert.',
+                        );
                       }
                     }),
               icon: Icon(Icons.undo_rounded),
@@ -1992,8 +2113,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> chooseMatch(Json q, String pair) async {
     final id = widget.unitId;
-    final requestedOwner = ownerId;
-    final selected = await showModalBottomSheet<String>(
+    final requestedOwner = ownerAccount;
+    final selected = await showUnitSheet<String>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -2014,7 +2135,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               child: SingleChildScrollView(
                 child: RadioGroup<String>(
                   groupValue: matches[pair],
-                  onChanged: (value) => Navigator.pop(sheet, value),
+                  onChanged: (value) => popUnitRoute(sheet, value),
                   child: Column(
                     children: [
                       for (final value in (q['choices'] as List).reversed)
@@ -2034,7 +2155,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             Padding(
               padding: EdgeInsets.all(12),
               child: TextButton(
-                onPressed: () => Navigator.pop(sheet),
+                onPressed: () => popUnitRoute(sheet),
                 child: Text('Zurück zur Aufgabe'),
               ),
             ),
@@ -2062,7 +2183,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> requestHint(Json u, dynamic q) async {
     final id = u['id'];
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(id, requestedOwner)) return;
     hintRequestKey ??= vocabularyKey();
     final data = await state.api.post(
@@ -2111,7 +2232,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> submitAnswer(Json u, dynamic q) async {
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     final answer = q['type'] == 'choice'
         ? choice
         : q['type'] == 'match'
@@ -2399,7 +2520,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     onPressed: actionBusy
                         ? null
                         : () => perform(() async {
-                            final owner = ownerId;
+                            final owner = ownerAccount;
                             final response = await state.api.post(
                               '/units/${u['id']}/questions/${q['id']}/recheck',
                             );
@@ -2525,6 +2646,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           Text(
             'Vergleiche gleich große Teile: Beim Addieren bleibt der gemeinsame Nenner stehen.',
           ),
+        if (hintExhausted)
+          Text(
+            'Du hast alle vorhandenen Tipps gesehen. Unter „Mehr Hilfe“ findest du andere Unterstützung.',
+          ),
         Wrap(
           spacing: 8,
           runSpacing: 4,
@@ -2553,8 +2678,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   );
 
   Future<void> moreHelp(Json u) async {
-    final requestedOwner = ownerId;
-    final selected = await showModalBottomSheet<String>(
+    final requestedOwner = ownerAccount;
+    final selected = await showUnitSheet<String>(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
@@ -2624,10 +2749,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   leading: Icon(option.$3, color: context.palette.teal),
                   title: MathText(option.$2),
                   minVerticalPadding: 12,
-                  onTap: () => Navigator.pop(sheet, option.$1),
+                  onTap: () => popUnitRoute(sheet, option.$1),
                 ),
               TextButton(
-                onPressed: () => Navigator.pop(sheet),
+                onPressed: () => popUnitRoute(sheet),
                 child: Text('Zurück zur Aufgabe'),
               ),
             ],
@@ -2696,7 +2821,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? instructionalRequestKey;
 
   Future<void> prepareInstructionalPlan({bool supportCheck = false}) async {
-    final id = widget.unitId, owner = ownerId;
+    final id = widget.unitId, owner = ownerAccount;
     final route = ModalRoute.of(context);
     final session = await state.api.get('/units/$id/learning-session');
     if (!requestIsCurrent(id, owner) || route?.isCurrent == false) return;
@@ -2731,12 +2856,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> showTips(Json u) async {
-    await showModalBottomSheet<void>(
+    final expectedOwner = ownerAccount;
+    await showUnitSheet<void>(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => FractionallySizedBox(
+      builder: (sheetContext) => FractionallySizedBox(
         heightFactor: .85,
         child: SingleChildScrollView(
           padding: EdgeInsets.all(16),
@@ -2746,8 +2872,17 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             kind: 'unit',
             resourceId: u['id'],
             questionId: currentQuestion?['id'],
-            beforeOpen: saveDraft,
-            onReturnToTask: () => Navigator.pop(context),
+            beforeOpen: () async {
+              await saveDraft();
+              if (!requestIsCurrent(u['id'], expectedOwner) ||
+                  draftOffline ||
+                  draftConflict) {
+                throw ApiError(
+                  'Dein aktueller Entwurf ist noch nicht sicher gespeichert. Speichere ihn zuerst; der Lerntipp bleibt hier erreichbar.',
+                );
+              }
+            },
+            onReturnToTask: () => popUnitRoute(sheetContext),
             initiallyExpanded: true,
           ),
         ),
@@ -2788,7 +2923,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> pauseUnit(Json u) async {
     final id = u['id'];
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     noteInteraction();
     await saveDraft();
     await beat();
@@ -2812,7 +2947,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   );
 
   Future<void> showExplanation(BuildContext context, Json u) async {
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final introduction = u['introduction_seen'] == false;
     final q = introduction ? null : currentQuestion;
@@ -2823,7 +2958,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           : null,
     );
     if (!context.mounted || !requestIsCurrent(u['id'], requestedOwner)) return;
-    final continuePractice = await showDialog<bool>(
+    final positionKey = (
+      q?['id']?.toString() ?? 'introduction',
+      data['explanation'].toString(),
+    );
+    final continuePractice = await showUnitDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Kurz erklärt'),
@@ -2834,6 +2973,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             children: [
               LearningExplanation(
                 text: data['explanation'],
+                initialStep: explanationPositions[positionKey] ?? 0,
+                onStepChanged: (value) {
+                  if (!requestIsCurrent(u['id'], requestedOwner)) return;
+                  explanationPositions[positionKey] = value;
+                  while (explanationPositions.length > 10) {
+                    explanationPositions.remove(
+                      explanationPositions.keys.first,
+                    );
+                  }
+                },
                 prompt: data['question_id'] != null && q != null
                     ? q['prompt']
                     : null,
@@ -2848,7 +2997,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () => popUnitRoute(ctx, true),
             child: Text('Weiter üben'),
           ),
         ],
@@ -2866,7 +3015,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> requestParentHelp(BuildContext context, Json u) async {
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     await showFamilyHelp(
       context,
@@ -2882,11 +3031,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> requestParentMessage(BuildContext context, Json u) async {
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final note = TextEditingController();
     try {
-      await showDialog(
+      await showUnitDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text('Deine Eltern um Hilfe bitten?'),
@@ -2912,7 +3061,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => popUnitRoute(ctx),
               child: Text('Abbrechen'),
             ),
             ActionButton(
@@ -2933,9 +3082,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 );
                 if (!requestIsCurrent(u['id'], requestedOwner)) return;
                 state.refreshState();
-                if (ctx.mounted) Navigator.pop(ctx);
+                if (ctx.mounted) popUnitRoute(ctx);
                 if (context.mounted) {
-                  toast(context, 'Deine Eltern wissen Bescheid.');
+                  toast(context, 'Hilfewunsch gesendet.');
                 }
               },
             ),
@@ -2948,9 +3097,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   }
 
   Future<void> showTaskFeedback(BuildContext context, Json u) async {
-    final requestedOwner = ownerId;
+    final requestedOwner = ownerAccount;
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
-    await showModalBottomSheet(
+    await showUnitSheet(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
@@ -3008,7 +3157,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         'question_id': currentQuestion!['id'],
                     });
                     if (!requestIsCurrent(u['id'], requestedOwner)) return;
-                    if (sheet.mounted) Navigator.pop(sheet);
+                    if (sheet.mounted) popUnitRoute(sheet);
                     if (context.mounted) {
                       toast(context, 'Danke, das ist gespeichert.');
                     }
