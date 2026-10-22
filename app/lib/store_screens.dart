@@ -1652,7 +1652,7 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
             children: [
               const AdminWorkspaceHeader(
                 title: 'Zahlungen sicher prüfen',
-                subtitle: 'Bestellungen mit dem Bankkonto abgleichen und anschließend freischalten.',
+                subtitle: 'Überweisungen manuell mit dem Bankkonto abgleichen. Online-Zahlungsbelege werden automatisch geprüft.',
                 currentPath: '/admin/verkauf',
                 icon: Icons.account_balance_outlined,
               ),
@@ -1725,7 +1725,7 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                     children: [
                       const AdminSectionHeading(
                         title: 'Bestellungen prüfen',
-                        subtitle: 'Erst mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung.',
+                        subtitle: 'Nur Überweisungen mit dem tatsächlichen Bankkonto abgleichen. Keine automatische Bankanbindung. Online-Zahlungsbelege werden automatisch geprüft.',
                         icon: Icons.fact_check_outlined,
                       ),
                       LoadView<List<dynamic>>(

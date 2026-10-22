@@ -166,6 +166,7 @@ class _PayPalSettingsState extends State<PayPalSettings> {
     String label, {
     bool sensitive = false,
     int lines = 1,
+    int? maxLength,
   }) => Padding(
     padding: const EdgeInsets.only(top: 12),
     child: TextField(
@@ -176,11 +177,13 @@ class _PayPalSettingsState extends State<PayPalSettings> {
       smartQuotesType: sensitive ? SmartQuotesType.disabled : null,
       enableIMEPersonalizedLearning: !sensitive,
       maxLines: lines,
-      maxLength: sensitive
-          ? 4096
-          : lines > 1
-          ? 1000
-          : 300,
+      maxLength:
+          maxLength ??
+          (sensitive
+              ? 4096
+              : lines > 1
+              ? 1000
+              : 300),
       autocorrect: false,
       enableSuggestions: false,
       decoration: InputDecoration(labelText: label),
@@ -246,8 +249,8 @@ class _PayPalSettingsState extends State<PayPalSettings> {
                     : 'PayPal-Client-Secret',
                 sensitive: true,
               ),
-              input(merchant, 'PayPal-Händler-ID'),
-              input(webhook, 'PayPal-Webhook-ID'),
+              input(merchant, 'PayPal-Händler-ID', maxLength: 64),
+              input(webhook, 'PayPal-Webhook-ID', maxLength: 80),
               input(
                 approval,
                 'Nachweis der Händler- und Livefreigabe',
@@ -294,8 +297,7 @@ class _PayPalSettingsState extends State<PayPalSettings> {
                         }
                       },
               ),
-              if (data!['readiness'] != null)
-                Text('Gespeicherter Prüfstand: ${data!['readiness']}'),
+              Text(paypalReadinessSummary(data!['readiness'])),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -322,4 +324,16 @@ class _PayPalSettingsState extends State<PayPalSettings> {
               ),
           ],
         );
+}
+
+/// Readiness lists missing configuration fields, never merchant approval.
+String paypalReadinessSummary(Object? readiness) {
+  if (readiness is! List ||
+      readiness.any((item) => item is! String || item.trim().isEmpty)) {
+    return 'Gespeicherter Prüfstand: Nicht verfügbar. Lade den gespeicherten Zahlungsstand erneut.';
+  }
+  if (readiness.isEmpty) {
+    return 'Gespeicherter Prüfstand: Keine fehlenden Konfigurationsangaben gemeldet. Eine Händlerfreigabe oder erfolgreiche Zahlung ist damit nicht bestätigt.';
+  }
+  return 'Gespeicherter Prüfstand – noch offen: ${readiness.join('; ')}.';
 }
