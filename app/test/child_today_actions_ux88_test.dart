@@ -135,7 +135,7 @@ void main() {
       data['plan']['weekly_active_seconds'] = 367;
       data['plan']['weekly_goal_minutes'] = 100;
       final (_, _, requests) = await open(tester, data: data);
-      await tap(tester, find.text('Deine Lernzeit · Details'));
+      await tap(tester, find.text('Lernzeit heute'));
       expect(find.text('2:00 / 20 Min.'), findsOneWidget);
       expect(find.text('6:07 / 100 Min.'), findsOneWidget);
       expect(find.textContaining('sagt noch nicht'), findsOneWidget);

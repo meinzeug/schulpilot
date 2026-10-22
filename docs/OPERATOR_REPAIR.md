@@ -90,9 +90,16 @@ laufende Prozesse, identischen Inode bei identischem Binary und geschützte
 Dateitypen. Die vorherigen61 Regressionen und13 Runtimeguardfälle sind ebenfalls
 grün; überlappende Tests werden nicht addiert.
 
-Die persönliche Reparaturanmeldung und der echte Sol/max-Reparaturauftrag sind
-noch offen. Weder der reine Katalog noch die Shellprobe werden als erfolgreiche
-KI-Reparatur ausgegeben.
+Die ausdrücklich bestätigte persönliche Reparaturanmeldung ist abgeschlossen.
+Der eigene echte CLI-Katalog meldet `gpt-6.1-sol` mit `max` und CLI0.162.1;
+die vorhandene Lernanmeldung wurde nicht verändert. Der echte künstliche
+Sol/max-Reparaturauftrag folgt erst nach dem passenden Deployment. Weder der
+reine Katalog noch die Shellprobe werden als erfolgreiche KI-Reparatur ausgegeben.
+
+Vor der Socket-Ergänzung wurde die betroffene Konfiguration unter
+`/var/backups/schulpilot-config/before90-20261022T162840Z` gesichert
+(Verzeichnis0700, Dateien0600). Nur `OPERATOR_REPAIR_SOCKET` wurde ergänzt;
+vorhandene Anbieterwerte, Firewallregeln und andere Dienste blieben erhalten.
 
 ## Primärquelle
 

@@ -1428,7 +1428,10 @@ class WorkspaceShell extends StatelessWidget {
                                 SizedBox(height: 26),
                               ],
                               child,
-                              if (browser && path == '/app') ...[
+                              if (browser &&
+                                  state.user != null &&
+                                  !state.isChild &&
+                                  path == '/app') ...[
                                 SizedBox(height: 28),
                                 AndroidDownload(state.api),
                               ],

@@ -138,12 +138,9 @@ void main() {
         final requests = <http.Request>[];
         await mountHome(tester, data, requests: requests, width: width);
         expect(find.text('Freiwillig weiterlernen'), findsOneWidget);
-        expect(
-          find.textContaining(
-            'Tagesziel geschafft · Heute ca. 20 von 20 Min. aktiv',
-          ),
-          findsOneWidget,
-        );
+        expect(find.text('ca. 20 Min.'), findsOneWidget);
+        expect(find.text('von 20 Min. Mindestziel'), findsOneWidget);
+        expect(find.text('Mindestziel erreicht'), findsOneWidget);
         expect(find.text('Jetzt lernen'), findsNothing);
         expect(requests.where((request) => request.method != 'GET'), isEmpty);
         await tap(tester, 'Freiwillig weiterlernen');
@@ -199,11 +196,10 @@ void main() {
       data['units'][0]['estimated_minutes'] = 20;
       final requests = <http.Request>[];
       await mountHome(tester, data, requests: requests);
-      expect(
-        find.text('Tagesziel offen · Heute ca. 0,5 von 20 Min. aktiv'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Tagesziel geschafft'), findsNothing);
+      expect(find.text('ca. 0,5 Min.'), findsOneWidget);
+      expect(find.text('von 20 Min. Mindestziel'), findsOneWidget);
+      expect(find.text('Mindestziel noch offen'), findsOneWidget);
+      expect(find.text('Mindestziel erreicht'), findsNothing);
       expect(find.text('Für heute geschafft!'), findsNothing);
       expect(find.text('Weiterlernen'), findsOneWidget);
       expect(requests.where((request) => request.method == 'POST'), isEmpty);
@@ -229,13 +225,12 @@ void main() {
       data['plan']['voluntary'][0]['id'] = 'next-saved-round';
       final requests = <http.Request>[];
       await mountHome(tester, data, requests: requests, width: 320);
-      expect(
-        find.text('Tagesziel offen · Heute ca. 12 von 20 Min. aktiv'),
-        findsOneWidget,
-      );
+      expect(find.text('ca. 12 Min.'), findsOneWidget);
+      expect(find.text('von 20 Min. Mindestziel'), findsOneWidget);
+      expect(find.text('Mindestziel noch offen'), findsOneWidget);
       expect(find.text('Weiterlernen'), findsOneWidget);
       expect(find.text('Freiwillig weiterlernen'), findsNothing);
-      expect(find.textContaining('Tagesziel geschafft'), findsNothing);
+      expect(find.text('Mindestziel erreicht'), findsNothing);
       expect(find.text('Für heute geschafft!'), findsNothing);
       expect(requests.every((request) => request.method == 'GET'), true);
       expect(tester.takeException(), isNull);
@@ -253,11 +248,10 @@ void main() {
         'daily_goal_met': false,
       });
       await mountHome(tester, data, requests: []);
-      expect(
-        find.text('Tagesziel offen · Heute ca. 19,9 von 20 Min. aktiv'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Tagesziel geschafft'), findsNothing);
+      expect(find.text('ca. 19,9 Min.'), findsOneWidget);
+      expect(find.text('von 20 Min. Mindestziel'), findsOneWidget);
+      expect(find.text('Mindestziel noch offen'), findsOneWidget);
+      expect(find.text('Mindestziel erreicht'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -275,11 +269,10 @@ void main() {
       });
       await mountHome(tester, data, requests: []);
       expect(find.text('Weiterlernen'), findsOneWidget);
-      expect(find.textContaining('Tagesziel geschafft'), findsNothing);
-      expect(
-        find.text('Tagesziel offen · Heute ca. 1 von 20 Min. aktiv'),
-        findsOneWidget,
-      );
+      expect(find.text('Mindestziel erreicht'), findsNothing);
+      expect(find.text('ca. 1 Min.'), findsOneWidget);
+      expect(find.text('von 20 Min. Mindestziel'), findsOneWidget);
+      expect(find.text('Mindestziel noch offen'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );

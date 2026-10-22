@@ -337,7 +337,37 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets(
+    'Cleared session cannot create a download in its still mounted workspace',
+    (tester) async {
+      final fixture = _account('child', releaseAvailable: true);
+      final router = await _open(tester, fixture.state, width: 390);
+      expect(fixture.requests, isEmpty);
+      fixture.state.user = null;
+      fixture.state.api.token = null;
+      fixture.state.refreshState();
+      await tester.pumpAndSettle();
+      expect(fixture.state.user, isNull);
+      expect(router.routeInformationProvider.value.uri.path, '/app');
+      expect(find.text('Android-App herunterladen'), findsNothing);
+      expect(fixture.requests, isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   for (final width in [320.0, 1440.0]) {
+    testWidgets(
+      'Child home keeps Android installation in its account at ${width.toInt()}px',
+      (tester) async {
+        final fixture = _account('child', releaseAvailable: true);
+        await _open(tester, fixture.state, width: width);
+        expect(find.text('Android-App herunterladen'), findsNothing);
+        expect(fixture.requests, isEmpty);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
     testWidgets(
       'Authenticated Android download remains available at ${width.toInt()}px',
       (tester) async {

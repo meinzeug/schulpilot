@@ -123,7 +123,11 @@ void main() {
         },
       ];
       final (_, requests) = await today(tester, data);
-      await old.tap(tester, find.text('Letzte Nachricht von deinen Eltern'));
+      expect(
+        find.text('Von deinen Eltern: Ich bin heute später erreichbar.'),
+        findsOneWidget,
+      );
+      await old.tap(tester, find.text('Nachrichten & Wünsche'));
       expect(
         find.text('Ziel /messages/${data['child']['id']}'),
         findsOneWidget,

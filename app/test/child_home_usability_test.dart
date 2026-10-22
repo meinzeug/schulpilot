@@ -484,11 +484,9 @@ void main() {
         await tester.ensureVisible(find.text('Heutige Seiten scannen'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        await tester.ensureVisible(
-          find.text('Tagesziel offen · Heute ca. 19,9 von 20 Min. aktiv'),
-        );
+        await tester.ensureVisible(find.text('ca. 19,9 Min.'));
         await tester.pumpAndSettle();
-        expect(find.textContaining('Tagesziel geschafft'), findsNothing);
+        expect(find.text('Mindestziel erreicht'), findsNothing);
         expect(requests.where((request) => request.method != 'GET'), isEmpty);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());

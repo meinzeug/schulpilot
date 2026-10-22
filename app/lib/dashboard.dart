@@ -1233,130 +1233,111 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
               label: Text('Heftseite prüfen'),
             ),
           ),
-        if (activeMinutes is num && dailyGoal is num) ...[
-          SizedBox(height: 16),
-          ChildTodayProgress(
-            activeMinutes: activeMinutes.toDouble(),
-            goalMinutes: dailyGoal.toDouble(),
-            goalRequired: goalRequired,
-            goalMet: goalMet,
-            completed: completed,
-            onOpen: () {
-              if (current()) _showChildLearningTime(context, state, plan);
-            },
-            description: goalRequired
-                ? '${goalMet ? 'Tagesziel geschafft' : 'Tagesziel offen'} · Heute ca. ${learningMinutes(activeMinutes)} von ${learningMinutes(dailyGoal)} Min. aktiv'
-                : 'Heute ca. ${learningMinutes(activeMinutes)} Min. aktiv · ohne festes Lernziel',
-          ),
-        ],
         SizedBox(height: 22),
-        Text(
-          'Dein Überblick',
-          style: TextStyle(
-            fontFamily: 'SpaceGrotesk',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: context.palette.ink,
+        ChildTodayTools(
+          learningTime: activeMinutes is num && dailyGoal is num
+              ? ChildTodayProgress(
+                  activeMinutes: activeMinutes.toDouble(),
+                  goalMinutes: dailyGoal.toDouble(),
+                  goalRequired: goalRequired,
+                  goalMet: goalMet,
+                  completed: completed,
+                  onOpen: () {
+                    if (current()) _showChildLearningTime(context, state, plan);
+                  },
+                  description: goalRequired
+                      ? '${goalMet ? 'Tagesziel geschafft' : 'Tagesziel offen'} · Heute ca. ${learningMinutes(activeMinutes)} von ${learningMinutes(dailyGoal)} Min. aktiv'
+                      : 'Heute ca. ${learningMinutes(activeMinutes)} Min. aktiv · ohne festes Lernziel',
+                )
+              : null,
+          pageSummary: counted(
+            pageCount,
+            'gespeicherte Seite',
+            'gespeicherte Seiten',
           ),
-        ),
-        SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () {
-                if (current()) {
-                  _showChildPlan(context, state, data);
-                }
-              },
-              icon: Icon(Icons.route_rounded),
-              label: Text('Mein Plan'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => openSaved('/messages/${child['id']}'),
-              icon: Icon(Icons.forum_rounded),
-              label: Text('Nachrichten & Wünsche'),
-            ),
-          ],
-        ),
-        if ((data['messages'] as List? ?? [])
-            .where((m) => m['sender_role'] == 'parent')
-            .isNotEmpty) ...[
-          SizedBox(height: 14),
-          ChildTodayTile(
-            title: 'Letzte Nachricht von deinen Eltern',
-            subtitle:
-                ((data['messages'] as List)
-                            .where((m) => m['sender_role'] == 'parent')
+          latestMessage:
+              (data['messages'] as List? ?? [])
+                  .where((message) => message['sender_role'] == 'parent')
+                  .isEmpty
+              ? null
+              : ((data['messages'] as List)
+                            .where(
+                              (message) => message['sender_role'] == 'parent',
+                            )
                             .first['body'] ??
                         '')
                     .toString()
                     .characters
-                    .take(120)
+                    .take(90)
                     .toString(),
-            icon: Icons.mail_outline_rounded,
-            onTap: () => openSaved('/messages/${child['id']}'),
-          ),
-        ],
-        SizedBox(height: 14),
-        Wrap(
-          spacing: 12,
-          runSpacing: 4,
-          children: [
-            TextButton.icon(
-              onPressed: () {
-                if (!current()) return;
-                showHomeHelp(
-                  context,
-                  state,
-                  childId: child['id'],
-                  unitId: next != null && next['kind'] == 'unit'
-                      ? next['id']
-                      : null,
-                  refresh: refresh,
-                );
-              },
-              icon: Icon(Icons.volunteer_activism_outlined, size: 21),
-              label: Text('Ich brauche Hilfe'),
-            ),
-            TextButton.icon(
-              onPressed: () => openSaved('/library/${child['id']}'),
-              icon: Icon(Icons.folder_open_rounded, size: 21),
-              label: Text('Meine Heftseiten'),
-            ),
-          ],
-        ),
-        Text(
-          counted(pageCount, 'gespeicherte Seite', 'gespeicherte Seiten'),
-          style: TextStyle(color: context.palette.muted, fontSize: 12),
-        ),
-        SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (dialogContext) => AlertDialog(
-                title: Text('Was sehen meine Eltern?'),
-                content: Text(
-                  'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in Schulpilot.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: Text('Verstanden'),
-                  ),
-                ],
-              ),
-            ),
-            icon: Icon(Icons.visibility_outlined, size: 18),
-            label: Text('Was sehen meine Eltern?'),
-          ),
+          onPlan: () {
+            if (current()) _showChildPlan(context, state, renderedData);
+          },
+          onMessages: () => openSaved('/messages/${child['id']}'),
+          onHelp: () {
+            if (!current()) return;
+            showHomeHelp(
+              context,
+              state,
+              childId: child['id'],
+              unitId: next != null && next['kind'] == 'unit'
+                  ? next['id']
+                  : null,
+              refresh: refresh,
+            );
+          },
+          onNotebooks: () => openSaved('/library/${child['id']}'),
+          onInfo: () {
+            if (current()) _showChildLearningInfo(context, state);
+          },
         ),
         if (state.demoCredentials != null) demoAccess(context, state),
       ],
     );
+  }
+}
+
+Future<void> _showChildLearningInfo(
+  BuildContext context,
+  AppState state,
+) async {
+  final account = state.user, family = state.familyId;
+  bool current() =>
+      context.mounted &&
+      account != null &&
+      identical(state.user, account) &&
+      state.familyId == family;
+  if (!current()) return;
+  late final DialogRoute<void> route;
+  route = DialogRoute<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      scrollable: true,
+      title: Text('Was sehen meine Eltern?'),
+      content: Text(
+        'Deine berechtigten Eltern sehen deine Heftseiten, Aufgaben, Antworten, genutzten Hilfen, Lernzeit und Hilfewünsche in Schulpilot.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            if (dialogContext.mounted && current() && route.isCurrent) {
+              Navigator.pop(dialogContext);
+            }
+          },
+          child: Text('Verstanden'),
+        ),
+      ],
+    ),
+  );
+  void changed() {
+    if (!current() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  state.addListener(changed);
+  try {
+    await Navigator.of(context, rootNavigator: true).push(route);
+  } finally {
+    state.removeListener(changed);
   }
 }
 

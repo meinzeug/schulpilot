@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'api.dart';
 import 'app_version.dart';
 import 'child_section_ui.dart';
 import 'child_photo_preview.dart';
+import 'download_panel.dart';
 import 'notification_panel.dart';
 import 'ui.dart';
 
@@ -402,6 +404,10 @@ class _ChildAccountState extends State<ChildAccount> {
                 ),
                 const SizedBox(height: 20),
                 if (section == 'devices') ...[
+                  if (kIsWeb) ...[
+                    AndroidDownload(state.api),
+                    const SizedBox(height: 20),
+                  ],
                   heading(
                     'Angemeldete Geräte',
                     subtitle: 'Erkennst du ein Gerät nicht? Melde es hier ab.',

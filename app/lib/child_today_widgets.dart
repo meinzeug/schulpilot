@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'child_section_ui.dart';
+import 'daily_plan_panel.dart';
 import 'ui.dart';
 import 'schulbuddy.dart';
 
@@ -445,94 +446,396 @@ class ChildTodayProgress extends StatelessWidget {
     final progress = goalRequired && goalMinutes > 0
         ? (activeMinutes / goalMinutes).clamp(0.0, 1.0)
         : 0.0;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(12),
-        child: Semantics(
-          button: onOpen != null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 2),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: palette.surfaceBorder)),
-            ),
-            child: Row(
+    final completion = completed > 0
+        ? '${completed == 1 ? 'Eine Runde' : '$completed Runden'} heute geschafft.'
+        : null;
+    return _TodayActionSurface(
+      onTap: onOpen,
+      radius: 18,
+      child: Semantics(
+        button: onOpen != null,
+        label: [
+          description,
+          ?completion,
+          if (onOpen != null) 'Lernzeitdetails öffnen.',
+        ].join(' '),
+        child: ExcludeSemantics(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ExcludeSemantics(
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 42,
-                          height: 42,
-                          child: CircularProgressIndicator(
-                            value: progress,
-                            color: goalMet && goalRequired
-                                ? palette.successInk
-                                : palette.cyanInk,
-                            backgroundColor: palette.surfaceLow,
-                            strokeWidth: 4,
-                            strokeCap: StrokeCap.round,
-                          ),
-                        ),
-                        Icon(
-                          goalMet && goalRequired
-                              ? Icons.done_rounded
-                              : Icons.schedule_rounded,
-                          color: goalMet && goalRequired
-                              ? palette.successInk
-                              : palette.cyanInk,
-                          size: 22,
-                        ),
-                      ],
+                Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.schedule_rounded,
+                        color: palette.cyanInk,
+                        size: 20,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Lernzeit heute',
+                        style: TextStyle(
+                          color: palette.ink,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (onOpen != null)
+                      ExcludeSemantics(
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          color: palette.muted,
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 12),
+                ExcludeSemantics(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 3,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
-                        onOpen == null
-                            ? 'Deine Lernzeit'
-                            : 'Deine Lernzeit · Details',
+                        'ca. ${learningMinutes(activeMinutes)} Min.',
                         style: TextStyle(
-                          fontWeight: FontWeight.w800,
+                          fontFamily: 'SpaceGrotesk',
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
                           color: palette.ink,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        description,
+                        goalRequired
+                            ? 'von ${learningMinutes(goalMinutes)} Min. Mindestziel'
+                            : 'ohne festes Lernziel',
                         style: TextStyle(
-                          color: palette.muted,
                           fontSize: 13,
+                          color: palette.muted,
                           height: 1.4,
                         ),
                       ),
-                      if (completed > 0) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          '${completed == 1 ? 'Eine Runde' : '$completed Runden'} heute geschafft.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: palette.successInk,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
+                if (goalRequired) ...[
+                  const SizedBox(height: 12),
+                  ExcludeSemantics(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 6,
+                        backgroundColor: palette.surfaceBorder,
+                        color: goalMet ? palette.successInk : palette.cyanInk,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ExcludeSemantics(
+                    child: Text(
+                      goalMet
+                          ? 'Mindestziel erreicht'
+                          : 'Mindestziel noch offen',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: goalMet ? palette.successInk : palette.muted,
+                      ),
+                    ),
+                  ),
+                ],
+                if (completion != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    completion,
+                    style: TextStyle(fontSize: 12, color: palette.muted),
+                  ),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Secondary tools form one calm area beneath the single main learning action.
+class ChildTodayTools extends StatelessWidget {
+  final Widget? learningTime;
+  final String pageSummary;
+  final String? latestMessage;
+  final VoidCallback onPlan, onMessages, onHelp, onNotebooks, onInfo;
+
+  const ChildTodayTools({
+    super.key,
+    this.learningTime,
+    required this.pageSummary,
+    this.latestMessage,
+    required this.onPlan,
+    required this.onMessages,
+    required this.onHelp,
+    required this.onNotebooks,
+    required this.onInfo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      key: const ValueKey('today-tools'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.panelSurface,
+        border: Border.all(color: palette.surfaceBorder),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Für deinen Tag',
+                  style: TextStyle(
+                    fontFamily: 'SpaceGrotesk',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 21,
+                    color: palette.ink,
+                  ),
+                ),
+              ),
+              IconButton(
+                key: const ValueKey('today-learning-info'),
+                onPressed: onInfo,
+                tooltip: 'Was sehen meine Eltern?',
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                icon: Icon(Icons.info_outline_rounded, color: palette.muted),
+              ),
+            ],
+          ),
+          if (learningTime != null) ...[
+            const SizedBox(height: 8),
+            learningTime!,
+          ],
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns =
+                  constraints.maxWidth >= 300 &&
+                  MediaQuery.textScalerOf(context).scale(14) <= 21;
+              final tiles = [
+                _TodayTool(
+                  title: 'Mein Plan',
+                  subtitle: 'Was als Nächstes ansteht',
+                  icon: Icons.route_rounded,
+                  color: palette.teal,
+                  onTap: onPlan,
+                  horizontal: !columns,
+                ),
+                _TodayTool(
+                  title: 'Nachrichten & Wünsche',
+                  subtitle: latestMessage == null
+                      ? 'Deinen Eltern schreiben'
+                      : 'Von deinen Eltern: $latestMessage',
+                  icon: Icons.forum_outlined,
+                  color: palette.cyanInk,
+                  onTap: onMessages,
+                  horizontal: !columns,
+                ),
+                _TodayTool(
+                  title: 'Ich brauche Hilfe',
+                  subtitle: 'Gemeinsam weiterkommen',
+                  icon: Icons.volunteer_activism_outlined,
+                  color: palette.teal,
+                  onTap: onHelp,
+                  horizontal: !columns,
+                ),
+                _TodayTool(
+                  title: 'Meine Heftseiten',
+                  subtitle: pageSummary,
+                  icon: Icons.auto_stories_outlined,
+                  color: palette.cyanInk,
+                  onTap: onNotebooks,
+                  horizontal: !columns,
+                ),
+              ];
+              if (!columns) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < tiles.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      tiles[i],
+                    ],
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  for (var i = 0; i < tiles.length; i += 2) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: tiles[i]),
+                          const SizedBox(width: 10),
+                          Expanded(child: tiles[i + 1]),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayTool extends StatelessWidget {
+  final String title, subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool horizontal;
+  const _TodayTool({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    required this.horizontal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final emblem = ExcludeSemantics(
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: palette.isDark ? .14 : .09),
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Icon(icon, color: color, size: 25),
+      ),
+    );
+    final words = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: palette.ink,
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          subtitle,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: palette.muted, fontSize: 12, height: 1.4),
+        ),
+      ],
+    );
+    return _TodayActionSurface(
+      onTap: onTap,
+      child: Semantics(
+        button: true,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: horizontal
+              ? Row(
+                  children: [
+                    emblem,
+                    const SizedBox(width: 12),
+                    Expanded(child: words),
+                    const SizedBox(width: 4),
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        color: palette.muted,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        emblem,
+                        const Spacer(),
+                        ExcludeSemantics(
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            color: palette.muted,
+                            size: 19,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    words,
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayActionSurface extends StatefulWidget {
+  final VoidCallback? onTap;
+  final Widget child;
+  final double radius;
+  const _TodayActionSurface({
+    required this.onTap,
+    required this.child,
+    this.radius = 17,
+  });
+
+  @override
+  State<_TodayActionSurface> createState() => _TodayActionSurfaceState();
+}
+
+class _TodayActionSurfaceState extends State<_TodayActionSurface> {
+  bool focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Material(
+      color: palette.surfaceLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(widget.radius),
+        side: BorderSide(
+          color: focused ? palette.cyanInk : palette.surfaceBorder,
+          width: focused ? 2.5 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onTap,
+        onFocusChange: (value) => setState(() => focused = value),
+        child: widget.child,
       ),
     );
   }
