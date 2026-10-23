@@ -228,6 +228,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
+      await tap(tester, find.text('Suche & Aktivitätsfilter'));
       await choose(tester, 'Lernaktivität', 'Hilfen & Erklärungen');
       expect(find.text('Künstliche Antwort zu Brüchen'), findsNothing);
       expect(find.text('Künstlicher Hinweis'), findsOneWidget);
@@ -240,6 +241,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester);
+      await tap(tester, find.text('Suche & Aktivitätsfilter'));
       await tester.enterText(input('Geladenen Verlauf durchsuchen'), 'Zellen');
       expect(find.text('Künstliche Antwort zu Brüchen'), findsOneWidget);
       await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -259,6 +261,7 @@ void main() {
     (tester) async {
       final f = Fixture();
       await f.mount(tester, width: 320, scale: 2);
+      await tap(tester, find.text('Suche & Aktivitätsfilter'));
       await choose(tester, 'Lernaktivität', 'Antworten');
       expect(tester.takeException(), isNull);
       await tap(tester, find.text('Zugehörige Lernrunde ansehen'));

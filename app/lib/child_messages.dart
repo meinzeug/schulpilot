@@ -306,7 +306,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         ChildSectionTabs(
           tabs: const [
             (id: 'inbox', label: 'Postfach', icon: Icons.mail_outline_rounded),
@@ -324,7 +324,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
             remember();
           },
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         if (isWish) ...[
           ChildActionTile(
             title: 'Das interessiert mich',
@@ -344,7 +344,7 @@ class _ChildMessagesHubState extends State<_ChildMessagesBody> {
               () => widget.onCompose('plan_change', 'Planänderung vorschlagen'),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
         ],
         heading(switch (section) {
           'wishes' => 'Deine Ideen und Planwünsche',

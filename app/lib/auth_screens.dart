@@ -62,27 +62,27 @@ class _LandingScreenState extends State<LandingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Tag('GEMEINSAM GUT WEITERLERNEN'),
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
                   Text(
                     'Lernen, das zum\nSchulalltag passt.',
                     style: TextStyle(
-                      fontSize: wide ? 64 : 42,
+                      fontSize: wide ? 28 : 24,
                       color: context.palette.ink,
                       height: 1.06,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: -2.3,
+                      letterSpacing: -.8,
                     ),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
                   Text(
                     'Aus euren Heftseiten werden verständliche Lernschritte. Dein Kind übt mit Hilfe, du behältst den Überblick.',
                     style: TextStyle(
-                      fontSize: 19,
+                      fontSize: 17,
                       height: 1.5,
                       color: context.palette.muted,
                     ),
                   ),
-                  SizedBox(height: 30),
+                  SizedBox(height: 20),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -103,7 +103,7 @@ class _LandingScreenState extends State<LandingScreen> {
                       _DemoEntryButton(state),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   if (snapshot.connectionState != ConnectionState.done)
                     const Text('Der aktuelle Testzugang wird geprüft …')
                   else if (snapshot.hasError) ...[
@@ -120,7 +120,7 @@ class _LandingScreenState extends State<LandingScreen> {
                 ],
               );
               final flow = Container(
-                padding: EdgeInsets.all(28),
+                padding: EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -134,7 +134,7 @@ class _LandingScreenState extends State<LandingScreen> {
                           : const Color(0xFF1B272E),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,17 +144,17 @@ class _LandingScreenState extends State<LandingScreen> {
                       color: context.palette.electric,
                       size: 32,
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 16),
                     Text(
                       'Ein klarer nächster Schritt.',
                       style: TextStyle(
-                        fontSize: 29,
+                        fontSize: 24,
                         height: 1.15,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 16),
                     for (final item in [
                       (
                         Icons.document_scanner_rounded,
@@ -259,7 +259,7 @@ class _LandingScreenState extends State<LandingScreen> {
                               ),
                             ],
                           ),
-                          SizedBox(height: wide ? 80 : 44),
+                          SizedBox(height: wide ? 40 : 28),
                           if (wide)
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -271,10 +271,10 @@ class _LandingScreenState extends State<LandingScreen> {
                             )
                           else ...[
                             hero,
-                            SizedBox(height: 36),
+                            SizedBox(height: 24),
                             flow,
                           ],
-                          SizedBox(height: 42),
+                          SizedBox(height: 24),
                           Wrap(
                             spacing: 20,
                             runSpacing: 20,
@@ -338,7 +338,7 @@ class _LandingScreenState extends State<LandingScreen> {
                                 ),
                             ],
                           ),
-                          SizedBox(height: 30),
+                          SizedBox(height: 20),
                           if (kIsWeb &&
                               snapshot.connectionState ==
                                   ConnectionState.done &&
@@ -349,10 +349,10 @@ class _LandingScreenState extends State<LandingScreen> {
                               catalog: snapshot.data,
                               showTrial: false,
                             ),
-                            SizedBox(height: 32),
+                            SizedBox(height: 24),
                           ],
                           if (kIsWeb) AndroidDownload(state.api),
-                          SizedBox(height: 24),
+                          SizedBox(height: 16),
                           Wrap(
                             spacing: 12,
                             children: [
@@ -916,7 +916,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         ),
         body: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(22),
+            padding: EdgeInsets.all(16),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: 490),
               child: AutofillGroup(
@@ -950,7 +950,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                         _ => 'Bestätige deine E-Mail-Adresse. Der sichere Code wird aus dem vollständigen E-Mail-Link übernommen.',
                       }, style: TextStyle(color: context.palette.muted)),
                       if (mode == 'register' && !completed) ...[
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                         FutureBuilder<Json>(
                           future: registrationCatalog,
                           builder: (context, snapshot) {
@@ -990,7 +990,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                           },
                         ),
                       ],
-                      SizedBox(height: 24),
+                      SizedBox(height: 16),
                       SizedBox(
                         key: feedbackKey,
                         child: Semantics(
@@ -1005,7 +1005,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                               if (result != null && accessNotice != null)
                                 Notice(accessNotice!),
                               if (mode == 'register' && completed) ...[
-                                const SizedBox(height: 20),
+                                const SizedBox(height: 16),
                                 const Notice(
                                   'Nächster Schritt: Prüfe dein E-Mail-Postfach und den Spamordner. Wenn du einen Bestätigungslink erhalten hast, öffne ihn vollständig. Danach kannst du dich anmelden.',
                                 ),
@@ -1497,7 +1497,7 @@ class InformationScreen extends StatelessWidget {
     ),
     body: SelectionArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(16),
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: 800),
@@ -1533,7 +1533,7 @@ class InformationScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: 16),
                   if (kind != 'privacy' && features.containsKey(section)) ...[
                     SurfaceInset(
                       tone: PanelTone.info,

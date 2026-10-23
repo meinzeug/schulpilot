@@ -101,6 +101,7 @@ class _ParentChildPickerState extends State<ParentChildPicker> {
 
   @override
   Widget build(BuildContext context) => TextButton.icon(
+    style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
     onPressed: busy ? null : pick,
     icon: const Icon(Icons.switch_account_outlined),
     label: const Text('Anderes Kind'),
@@ -182,7 +183,7 @@ class _ChildrenState extends State<_Children> {
         .toList();
     return AlertDialog(
       scrollable: true,
-      title: const Text('Mit einem anderen Kind weitersehen'),
+      title: const Text('Kind auswählen'),
       content: SizedBox(
         width: 480,
         child: Column(
@@ -217,6 +218,8 @@ class _ChildrenState extends State<_Children> {
               const Notice('Kein Kind passt zu dieser Auswahl.'),
             for (final child in visible)
               ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                minVerticalPadding: 8,
                 title: Text(child['display_name']),
                 subtitle: Text(
                   '${child['username'] ?? 'Kinderzugang'}${child['id'] == widget.childId ? ' · Aktuell geöffnet' : ''}',

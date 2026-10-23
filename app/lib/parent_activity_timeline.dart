@@ -25,6 +25,13 @@ class ParentActivityTimeline extends StatefulWidget {
 }
 
 class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
+  bool? filtersExpanded;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
+  }
+
   late final Json? account;
   late final String? family;
   final search = TextEditingController();
@@ -145,30 +152,65 @@ class _ParentActivityTimelineState extends State<ParentActivityTimeline> {
           '${widget.activities.length} gespeicherte Ereignisse geladen. Diese Vorschau umfasst höchstens die 200 neuesten Ereignisse; sie ist keine vollständige Aufgabenstatistik.',
         ),
         const SizedBox(height: 12),
-        ParentCollectionSearch(
-          controller: search,
-          label: 'Geladenen Verlauf durchsuchen',
-          appliedQuery: query,
-          helperText: 'Sucht nur in dieser geladenen Vorschau. Alle Aufgabenbelege stehen im Lernstand.',
-          onSearch: () => change(() => query = search.text.trim()),
-          onClear: () => change(() {
-            query = '';
-            search.clear();
-          }),
-        ),
-        ParentChoiceFilter(
-          label: 'Lernaktivität',
-          value: category,
-          choices: const [
-            ('all', 'Alle Lernaktivitäten'),
-            ('answers', 'Antworten'),
-            ('support', 'Hilfen & Erklärungen'),
-            ('rounds', 'Lernrunden'),
-            ('materials', 'Stoff & Planung'),
+        ExpansionTile(
+          key: const ValueKey('parent-timeline-filters'),
+          title: const Text('Suche & Aktivitätsfilter'),
+          subtitle: query.isEmpty && category == 'all'
+              ? null
+              : Text(
+                  [
+                    if (query.isNotEmpty) 'Suche: $query',
+                    if (category != 'all')
+                      'Aktivität: ${switch (category) {
+                        'answers' => 'Antworten',
+                        'support' => 'Hilfen & Erklärungen',
+                        'rounds' => 'Lernrunden',
+                        'materials' => 'Stoff & Planung',
+                        _ => 'Alle Lernaktivitäten',
+                      }}',
+                  ].join(' · '),
+                ),
+          tilePadding: EdgeInsets.zero,
+          initiallyExpanded: (filtersExpanded ?? false),
+          maintainState: true,
+          onExpansionChanged: (value) {
+            if (current) setState(() => filtersExpanded = value);
+          },
+          children: [
+            ExcludeFocus(
+              excluding: !(filtersExpanded ?? false),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ParentCollectionSearch(
+                    controller: search,
+                    label: 'Geladenen Verlauf durchsuchen',
+                    appliedQuery: query,
+                    helperText: 'Sucht nur in dieser geladenen Vorschau. Alle Aufgabenbelege stehen im Lernstand.',
+                    onSearch: () => change(() => query = search.text.trim()),
+                    onClear: () => change(() {
+                      query = '';
+                      search.clear();
+                    }),
+                  ),
+                  ParentChoiceFilter(
+                    label: 'Lernaktivität',
+                    value: category,
+                    choices: const [
+                      ('all', 'Alle Lernaktivitäten'),
+                      ('answers', 'Antworten'),
+                      ('support', 'Hilfen & Erklärungen'),
+                      ('rounds', 'Lernrunden'),
+                      ('materials', 'Stoff & Planung'),
+                    ],
+                    onChanged: (v) => change(() => category = v),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
           ],
-          onChanged: (v) => change(() => category = v),
         ),
-        const SizedBox(height: 12),
         Semantics(
           liveRegion: true,
           child: Text(

@@ -55,7 +55,12 @@ Future<void> press(WidgetTester t, Finder f) async {
   await t.pumpAndSettle();
 }
 
-Future<void> mount(WidgetTester t, AppState s, {double scale = 1}) async {
+Future<void> mount(
+  WidgetTester t,
+  AppState s, {
+  double scale = 1,
+  bool openFilters = true,
+}) async {
   t.view.physicalSize = const Size(390, 900);
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.resetPhysicalSize);
@@ -79,6 +84,8 @@ Future<void> mount(WidgetTester t, AppState s, {double scale = 1}) async {
     ),
   );
   await t.pumpAndSettle();
+  // Existing filter scenarios explicitly open the optional102 tools.
+  if (openFilters) await press(t, find.text('Suche & Haushaltsfilter'));
 }
 
 Future<void> clean(WidgetTester t, AppState s) async {

@@ -552,7 +552,7 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
                     label: error == null ? 'Ältere Tage laden' : 'Erneut laden',
                     onPressed: load,
                   ),
-                SizedBox(height: 20),
+                SizedBox(height: 16),
                 OutlinedButton(
                   onPressed: () {
                     if (current) {

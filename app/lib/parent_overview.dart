@@ -148,7 +148,7 @@ class ParentOverview extends StatelessWidget {
           ),
         ),
         if (state != null) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ParentInsightsPanel(
             state!,
             childId: childId,
@@ -156,7 +156,7 @@ class ParentOverview extends StatelessWidget {
             revision: revision,
           ),
         ],
-        const SizedBox(height: 32),
+        const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, size) {
             final nextSteps = Column(
@@ -283,11 +283,11 @@ class ParentOverview extends StatelessWidget {
             }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [nextSteps, const SizedBox(height: 24), time],
+              children: [nextSteps, const SizedBox(height: 16), time],
             );
           },
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 20),
         ParentSectionHeading(
           title: 'Fächer im Überblick',
           subtitle: 'Selbstständige Lösungen, Hilfe und offene Fragen je Fach.',
@@ -321,7 +321,7 @@ class ParentOverview extends StatelessWidget {
               style: TextStyle(color: context.palette.muted),
             ),
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         ActionPanel(
           actionLabel: 'Verlauf der letzten sieben Tage ansehen',
           onPressed: () => section('history'),
@@ -524,7 +524,7 @@ class ParentPracticeSummary extends StatelessWidget {
           counted(count('practiced_tasks'), 'Aufgabe geübt', 'Aufgaben geübt'),
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             color: palette.ink,
-            fontSize: 32,
+            fontSize: 24,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -548,7 +548,7 @@ class ParentPracticeSummary extends StatelessWidget {
             style: TextStyle(color: palette.muted, fontSize: 12),
           ),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         if (items.any((item) => count(item.$1) > 0)) ...[
           ExcludeSemantics(
             child: ClipRRect(
@@ -581,17 +581,35 @@ class ParentPracticeSummary extends StatelessWidget {
                 : constraints.maxWidth >= 440
                 ? 2
                 : 1;
-            final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+            final width = (constraints.maxWidth - (columns - 1) * 8) / columns;
             return Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final item in items)
                   SizedBox(
                     width: width,
-                    child: onCategorySelected == null
+                    child: columns == 1
+                        ? _CompactPracticeCategory(
+                            label: '${count(item.$1)} ${item.$2}',
+                            detail: item.$3,
+                            icon: item.$4,
+                            surface: colors[item.$5]!.$1,
+                            accent: colors[item.$5]!.$2,
+                            enabled: count(item.$1) > 0,
+                            onPressed: onCategorySelected == null
+                                ? null
+                                : () => onCategorySelected!(switch (item.$1) {
+                                    'independent_tasks' => 'independent',
+                                    'assisted_tasks' => 'assisted',
+                                    'needs_practice_tasks' => 'needs_practice',
+                                    'uncertain_tasks' => 'uncertain',
+                                    _ => 'reflection',
+                                  }),
+                          )
+                        : onCategorySelected == null
                         ? Container(
-                            padding: const EdgeInsets.all(18),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: colors[item.$5]!.$1,
                               borderRadius: BorderRadius.circular(16),
@@ -609,7 +627,7 @@ class ParentPracticeSummary extends StatelessWidget {
                           )
                         : ActionPanel(
                             tone: item.$5,
-                            padding: const EdgeInsets.all(18),
+                            padding: const EdgeInsets.all(14),
                             enabled: count(item.$1) > 0,
                             actionLabel: 'Passende Aufgaben ansehen',
                             onPressed: () =>
@@ -648,26 +666,169 @@ class ParentPracticeSummary extends StatelessWidget {
     (String, String, String, IconData, PanelTone) item,
     int count,
     Color iconColor,
-  ) => Column(
+  ) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Icon(item.$4, color: iconColor, size: 25),
-      const SizedBox(height: 14),
-      Text(
-        '$count ${item.$2}',
-        style: TextStyle(
-          color: context.palette.ink,
-          fontSize: 19,
-          fontWeight: FontWeight.w800,
+      Icon(item.$4, color: iconColor, size: 22),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$count ${item.$2}',
+              style: TextStyle(
+                color: context.palette.ink,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.$3,
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
+            ),
+          ],
         ),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        item.$3,
-        style: TextStyle(color: context.palette.muted, fontSize: 13),
       ),
     ],
   );
+}
+
+class _CompactPracticeCategory extends StatefulWidget {
+  final String label, detail;
+  final IconData icon;
+  final Color surface, accent;
+  final bool enabled;
+  final VoidCallback? onPressed;
+  const _CompactPracticeCategory({
+    required this.label,
+    required this.detail,
+    required this.icon,
+    required this.surface,
+    required this.accent,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  State<_CompactPracticeCategory> createState() =>
+      _CompactPracticeCategoryState();
+}
+
+class _CompactPracticeCategoryState extends State<_CompactPracticeCategory> {
+  bool focused = false, activationQueued = false;
+  bool get enabled => widget.enabled && widget.onPressed != null;
+
+  void activateCategory() {
+    if (!mounted ||
+        !enabled ||
+        activationQueued ||
+        ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    activationQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) activationQueued = false;
+    });
+    try {
+      widget.onPressed!();
+    } catch (error) {
+      if (mounted && ModalRoute.of(context)?.isCurrent != false) {
+        showError(context, error);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const actionLabel = 'Passende Aufgaben ansehen';
+    final interactive = widget.onPressed != null;
+    final p = context.palette;
+    return Tooltip(
+      message: interactive && !enabled
+          ? '$actionLabel · Keine passenden Aufgaben'
+          : actionLabel,
+      excludeFromSemantics: true,
+      child: MergeSemantics(
+        child: Semantics(
+          container: true,
+          button: interactive,
+          enabled: interactive ? enabled : null,
+          label: interactive ? actionLabel : null,
+          onTap: enabled ? activateCategory : null,
+          child: Material(
+            color: widget.surface,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(
+                color: focused ? p.teal : widget.accent,
+                width: focused ? 2.5 : 1,
+              ),
+            ),
+            child: InkWell(
+              excludeFromSemantics: true,
+              canRequestFocus: enabled,
+              onTap: enabled ? activateCategory : null,
+              onFocusChange: (value) {
+                if (mounted && focused != value)
+                  setState(() => focused = value);
+              },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(widget.icon, color: widget.accent, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.label,
+                              style: TextStyle(
+                                color: p.ink,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.detail,
+                              style: TextStyle(color: p.muted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (interactive) ...[
+                        const SizedBox(width: 8),
+                        ExcludeSemantics(
+                          child: Icon(
+                            enabled
+                                ? Icons.chevron_right_rounded
+                                : Icons.remove_circle_outline_rounded,
+                            color: enabled ? p.teal : p.muted,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _OverviewAction extends StatelessWidget {

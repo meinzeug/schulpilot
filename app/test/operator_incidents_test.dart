@@ -180,6 +180,7 @@ void main() {
   ) async {
     final f = saved.Fixture();
     await mount(t, f);
+    await tap(t, find.text('Suche & Fehlerfilter'));
     await tap(t, find.byType(DropdownButtonFormField<String>).first);
     await tap(t, find.text('decision').last);
     expect(f.requests.last.url.queryParameters['kind'], 'decision');

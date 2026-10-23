@@ -255,7 +255,7 @@ class _AdminAuditExplorerState extends State<AdminAuditExplorer> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900, maxHeight: 900),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -265,7 +265,7 @@ class _AdminAuditExplorerState extends State<AdminAuditExplorer> {
                           child: Text(
                             'Gesamtes Betriebsprotokoll',
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

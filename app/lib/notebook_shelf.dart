@@ -463,7 +463,7 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: ListTile(
-                  minTileHeight: 80,
+                  minTileHeight: 72,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 6,
@@ -497,8 +497,8 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
                   mainAxisExtent:
-                      (constraints.maxWidth < 350 ? 244.0 : 280.0) +
-                      (textScale - 1).clamp(0.0, 3.0).toDouble() * 100,
+                      (constraints.maxWidth < 350 ? 176.0 : 196.0) +
+                      (textScale - 1).clamp(0.0, 3.0).toDouble() * 80,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 16,
                 ),
@@ -524,7 +524,7 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
       color: context.palette.panelSurface,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: context.palette.surfaceBorder),
       ),
       clipBehavior: Clip.antiAlias,

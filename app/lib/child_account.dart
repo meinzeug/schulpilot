@@ -410,7 +410,7 @@ class _ChildAccountState extends State<ChildAccount> {
                 if (section == 'devices') ...[
                   if (kIsWeb && MediaQuery.sizeOf(context).width >= 720) ...[
                     AndroidDownload(state.api),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
                   if (MediaQuery.sizeOf(context).width >= 720)
                     heading(
@@ -855,10 +855,10 @@ class _ChildAccountState extends State<ChildAccount> {
                     ),
                   ),
                 if (widget.demoAccess != null) ...[
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   widget.demoAccess!,
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: ActionButton(

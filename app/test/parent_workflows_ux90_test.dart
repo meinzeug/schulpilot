@@ -247,6 +247,9 @@ void main() {
     ) async {
       final f = collection();
       await f.mount(tester, path);
+      if (path.startsWith('/parent-homework')) {
+        await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+      }
       await tap(
         tester,
         find.text(
@@ -392,6 +395,7 @@ void main() {
   ) async {
     final f = collection();
     await f.mount(tester, '/parent-homework/child');
+    await tap(tester, find.text('Suche & Hausaufgabenfilter'));
     await choose(tester, 'Reihenfolge der Fotos', 'Älteste Fotos zuerst');
     expect(f.requests.last.url.queryParameters['order'], 'oldest');
     expect(f.requests.last.url.queryParameters.containsKey('cursor'), isFalse);
@@ -401,6 +405,7 @@ void main() {
     (tester) async {
       final f = collection();
       await f.mount(tester, '/parent-homework/child');
+      await tap(tester, find.text('Suche & Hausaufgabenfilter'));
       await tap(tester, find.text('Zeitraum und Bearbeitung eingrenzen'));
       await choose(
         tester,
@@ -420,6 +425,7 @@ void main() {
     final f = collection();
     f.homework['collection_totals'] = {'all': 30, 'needs_review': 4};
     await f.mount(tester, '/parent-homework/child');
+    await tap(tester, find.text('Suche & Hausaufgabenfilter'));
     expect(
       find.textContaining('30 Aufgabenfotos · 4 Fotos noch als Quelle prüfen'),
       findsOneWidget,

@@ -21,7 +21,7 @@ class AccountDeletionScreen extends StatelessWidget {
       ),
     ),
     body: SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -32,7 +32,7 @@ class AccountDeletionScreen extends StatelessWidget {
               const Text(
                 'Melde dich hier im Web mit deinem Elternkonto an. Unter „Zugänge & Einstellungen“ kannst du einzelne Kinder samt Lernverlauf oder dein Konto und deine eigenen Familien löschen. Bestätige die Löschung mit deinem Elternpasswort.',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               if (state.isParent) ...[
                 ActionPanel(
                   actionLabel: 'Datenverwaltung und Export öffnen',
@@ -51,16 +51,16 @@ class AccountDeletionScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
               ],
               const Text(
                 'Dabei werden die betroffenen Zugänge, Sitzungen, Materialien, Bilder, Aufgaben, Antworten und privaten Familiennachrichten aus dem aktiven System entfernt. Verschlüsselte Backups verfallen spätestens nach 14 Tagen. Inhaltsfreie Betriebs- und Abrechnungsnachweise können nach den dokumentierten Aufbewahrungsfristen verbleiben.',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               const Text(
                 'Passwort vergessen? Nutze die Wiederherstellung auf der Anmeldeseite. Kinder wenden sich zur Löschung an ein berechtigtes Elternteil.',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               FilledButton(
                 onPressed: () =>
                     context.go(state.isParent ? '/settings' : '/login'),

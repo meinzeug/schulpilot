@@ -580,7 +580,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   subtitle: 'Eingetragene Schulnoten ordnen und Lernschwerpunkte bewusst begleiten. Der Übungsstand bleibt ein eigener Blick auf das Lernen.',
                   icon: Icons.school_outlined,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 if (loading || saving) const LinearProgressIndicator(),
                 if (error != null) ...[
                   Semantics(
@@ -976,7 +976,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   const Text(
                     'Enthält die gewählten Einträge aller Seiten einschließlich privater Notizen. Kein PDF und keine KI-Verarbeitung.',
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   Semantics(
                     liveRegion: true,
                     child: Text(
@@ -1062,7 +1062,7 @@ class _GradesScreenState extends State<GradesScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   ExpansionTile(
                     title: Text('Einfluss auf den Lernplan'),
                     children: [
@@ -1096,7 +1096,7 @@ class _GradesScreenState extends State<GradesScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       ExpansionTile(
                         title: Text('Wie wird das berücksichtigt?'),
                         childrenPadding: const EdgeInsets.fromLTRB(
@@ -1267,7 +1267,7 @@ class _GradesScreenState extends State<GradesScreen> {
                     '${gradeNumber(grade['value'])}${grade['scale'] == 'points_0_15' ? ' P.' : ''}',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 23,
+                      fontSize: 20,
                       color: context.palette.teal,
                     ),
                   ),

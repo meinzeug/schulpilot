@@ -145,7 +145,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
     colorScheme: scheme,
   );
   final rounded = RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(28),
+    borderRadius: BorderRadius.circular(16),
   );
   final focusSide = WidgetStateProperty.resolveWith<BorderSide>((states) {
     if (states.contains(WidgetState.focused)) {
@@ -171,22 +171,22 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
         .copyWith(
           headlineLarge: TextStyle(
             fontFamily: 'Nunito',
-            fontSize: 40,
+            fontSize: 28,
             fontWeight: FontWeight.w800,
             color: ink,
             height: 1.12,
-            letterSpacing: -1.3,
+            letterSpacing: -.6,
           ),
           headlineMedium: TextStyle(
             fontFamily: 'Nunito',
-            fontSize: 32,
+            fontSize: 28,
             fontWeight: FontWeight.w800,
             color: ink,
-            letterSpacing: -.9,
+            letterSpacing: -.5,
           ),
           titleLarge: TextStyle(
             fontFamily: 'Nunito',
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             color: ink,
             letterSpacing: -.4,
@@ -197,9 +197,9 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
             color: ink,
             height: 1.4,
           ),
-          bodyLarge: TextStyle(fontSize: 16, color: ink, height: 1.55),
-          bodyMedium: TextStyle(fontSize: 15, color: ink, height: 1.5),
-          bodySmall: TextStyle(fontSize: 12, color: muted, height: 1.5),
+          bodyLarge: TextStyle(fontSize: 16, color: ink, height: 1.45),
+          bodyMedium: TextStyle(fontSize: 15, color: ink, height: 1.45),
+          bodySmall: TextStyle(fontSize: 14, color: muted, height: 1.4),
           labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
     appBarTheme: AppBarTheme(
@@ -221,26 +221,26 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       suffixIconColor: muted,
       floatingLabelStyle: TextStyle(color: teal, fontWeight: FontWeight.w700),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: controlBorder, width: 1.25),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: controlBorder, width: 1.25),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: teal, width: 2.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: dangerInk, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: dangerInk, width: 2.5),
       ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style:
@@ -250,8 +250,8 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
             disabledBackgroundColor: p.surfaceHigh,
             disabledForegroundColor: muted,
             textStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-            minimumSize: Size(48, 52),
-            padding: EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            minimumSize: Size(48, 48),
+            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             shape: rounded,
           ).copyWith(
             side: WidgetStateProperty.resolveWith(
@@ -268,7 +268,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
         disabledForegroundColor: muted,
         textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         minimumSize: Size(48, 48),
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: rounded,
       ).copyWith(side: focusSide),
     ),
@@ -310,7 +310,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       margin: EdgeInsets.zero,
       color: p.panelSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: surfaceBorder),
       ),
     ),
@@ -355,11 +355,11 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       iconColor: teal,
       collapsedIconColor: muted,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: controlBorder),
       ),
       collapsedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: surfaceBorder),
       ),
       tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -391,7 +391,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
         fontWeight: FontWeight.w600,
       ),
       checkmarkColor: teal,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: teal,
@@ -409,7 +409,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
     dialogTheme: DialogThemeData(
       backgroundColor: p.panelSurface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: p.panelSurface,
@@ -439,7 +439,7 @@ ThemeData appTheme({Brightness brightness = Brightness.light}) {
       textColor: ink,
       iconColor: muted,
       selectedColor: teal,
-      subtitleTextStyle: TextStyle(color: muted, fontSize: 13, height: 1.45),
+      subtitleTextStyle: TextStyle(color: muted, fontSize: 14, height: 1.4),
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
@@ -498,7 +498,7 @@ class Panel extends StatelessWidget {
     required this.child,
     this.color,
     this.tone = PanelTone.neutral,
-    this.padding = const EdgeInsets.all(24),
+    this.padding = const EdgeInsets.all(18),
   });
   @override
   Widget build(BuildContext context) => Card(
@@ -508,7 +508,7 @@ class Panel extends StatelessWidget {
     shape: tone == PanelTone.neutral
         ? null
         : RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: context.palette
                   .resolve(panelAccent(tone))
@@ -517,9 +517,9 @@ class Panel extends StatelessWidget {
           ),
     child: Padding(
       padding:
-          MediaQuery.sizeOf(context).width < 600 &&
-              padding == const EdgeInsets.all(24)
-          ? const EdgeInsets.all(20)
+          MediaQuery.sizeOf(context).width < 720 &&
+              padding == const EdgeInsets.all(18)
+          ? const EdgeInsets.all(16)
           : padding,
       child: child,
     ),
@@ -544,7 +544,7 @@ class ActionPanel extends StatefulWidget {
     required this.onPressed,
     this.tone = PanelTone.neutral,
     this.color,
-    this.padding = const EdgeInsets.all(24),
+    this.padding = const EdgeInsets.all(18),
     this.enabled = true,
   });
 
@@ -589,9 +589,9 @@ class _ActionPanelState extends State<ActionPanel> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final padding =
-        MediaQuery.sizeOf(context).width < 600 &&
-            widget.padding == const EdgeInsets.all(24)
-        ? const EdgeInsets.all(20)
+        MediaQuery.sizeOf(context).width < 720 &&
+            widget.padding == const EdgeInsets.all(18)
+        ? const EdgeInsets.all(16)
         : widget.padding;
     return MergeSemantics(
       child: Semantics(
@@ -606,7 +606,7 @@ class _ActionPanelState extends State<ActionPanel> {
           clipBehavior: Clip.antiAlias,
           elevation: widget.tone == PanelTone.subtle ? 0 : null,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: focused ? p.teal : p.resolve(panelAccent(widget.tone)),
               width: focused ? 2.5 : 1,
@@ -625,7 +625,7 @@ class _ActionPanelState extends State<ActionPanel> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   widget.child,
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -718,10 +718,10 @@ class FocusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(26),
+    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 720 ? 16 : 18),
     decoration: BoxDecoration(
       color: context.palette.mint,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(16),
       border: Border.all(color: context.palette.controlBorder),
     ),
     child: Column(
@@ -742,18 +742,19 @@ class FocusCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Text(
           title,
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(fontSize: 29),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontSize: MediaQuery.sizeOf(context).width < 720 ? 24 : 28,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
           subtitle,
           style: TextStyle(color: context.palette.muted, height: 1.5),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Align(alignment: Alignment.centerLeft, child: action),
       ],
     ),
@@ -1722,6 +1723,8 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                             displayName: displayName,
                             compact: rail,
                             notificationBell: NotificationBell(state),
+                            onChooseArea: () => openWorkspaceTool(),
+                            onKeyboardHelp: () => openWorkspaceTool(help: true),
                           ),
                         Expanded(
                           child: Stack(
@@ -1731,17 +1734,9 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                                   key: ValueKey('workspace-scroll'),
                                   controller: scroll,
                                   padding: EdgeInsets.fromLTRB(
-                                    desktop
-                                        ? 24
-                                        : width < 360
-                                        ? 16
-                                        : 20,
-                                    desktop ? 20 : 12,
-                                    desktop
-                                        ? 24
-                                        : width < 360
-                                        ? 16
-                                        : 20,
+                                    desktop ? 20 : 16,
+                                    desktop ? 16 : 12,
+                                    desktop ? 20 : 16,
                                     // Keep final actions clear of the floating
                                     // return-to-top target from the first scroll.
                                     96,
@@ -1759,41 +1754,6 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            if (desktop)
-                                              Wrap(
-                                                spacing: 8,
-                                                runSpacing: 4,
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                children: [
-                                                  TextButton.icon(
-                                                    key: const ValueKey(
-                                                      'workspace-area-switch',
-                                                    ),
-                                                    onPressed: () =>
-                                                        openWorkspaceTool(),
-                                                    icon: const Icon(
-                                                      Icons.search_rounded,
-                                                      size: 20,
-                                                    ),
-                                                    label: const Text(
-                                                      'Bereiche',
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    tooltip:
-                                                        'Tastatur & Bedienung',
-                                                    onPressed: () =>
-                                                        openWorkspaceTool(
-                                                          help: true,
-                                                        ),
-                                                    icon: const Icon(
-                                                      Icons.keyboard_outlined,
-                                                      size: 22,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
                                             if (returnEntry != null)
                                               Padding(
                                                 padding: const EdgeInsets.only(
@@ -1841,7 +1801,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                                             if (state.isDemo)
                                               Padding(
                                                 padding: EdgeInsets.only(
-                                                  bottom: desktop ? 20 : 10,
+                                                  bottom: 12,
                                                 ),
                                                 child: Tag(
                                                   'Demo · nur Beispieldaten',
@@ -1863,9 +1823,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                                                     : null,
                                                 actions: actions,
                                               ),
-                                              SizedBox(
-                                                height: desktop ? 26 : 16,
-                                              ),
+                                              SizedBox(height: 16),
                                             ],
                                             child,
                                             if (browser &&
@@ -2369,6 +2327,7 @@ class _WorkspaceHeader extends StatelessWidget {
   final String displayName;
   final bool compact;
   final Widget notificationBell;
+  final VoidCallback onChooseArea, onKeyboardHelp;
 
   const _WorkspaceHeader({
     required this.state,
@@ -2377,78 +2336,96 @@ class _WorkspaceHeader extends StatelessWidget {
     required this.displayName,
     required this.compact,
     required this.notificationBell,
+    required this.onChooseArea,
+    required this.onKeyboardHelp,
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: const ValueKey('workspace-header'),
-    height: 64,
-    padding: const EdgeInsets.symmetric(horizontal: 24),
-    child: Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Flexible(
-                child: Tooltip(
-                  message: roleLabel,
-                  child: TextButton(
-                    key: const ValueKey('workspace-home-breadcrumb'),
-                    onPressed: _workspaceLink(
-                      context,
-                      state,
-                      state.isAdmin ? '/admin' : '/app',
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: context.palette.ink,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                    ),
-                    child: Text(
-                      'SCHULPILOT',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Nunito',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .4,
+  Widget build(BuildContext context) {
+    final narrow = compact || MediaQuery.textScalerOf(context).scale(1) > 1.3;
+    return Container(
+      key: const ValueKey('workspace-header'),
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: Tooltip(
+                    message: roleLabel,
+                    child: TextButton(
+                      key: const ValueKey('workspace-home-breadcrumb'),
+                      onPressed: _workspaceLink(
+                        context,
+                        state,
+                        state.isAdmin ? '/admin' : '/app',
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: context.palette.ink,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      child: const Text(
+                        'SCHULPILOT',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .4,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Container(
-                  width: 1,
-                  height: 18,
-                  color: context.palette.surfaceBorder,
-                ),
-              ),
-              Flexible(
-                child: Text(
-                  section,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.palette.muted,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                if (!narrow) ...[
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      section,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        SchulbuddyButton(),
-        AppearanceToggle(state),
-        notificationBell,
-        const SizedBox(width: 4),
-        AccountMenu(state, compact: compact, nameWidth: 160),
-      ],
-    ),
-  );
+          const SizedBox(width: 8),
+          if (narrow)
+            IconButton(
+              key: const ValueKey('workspace-area-switch'),
+              tooltip: 'Bereiche',
+              onPressed: onChooseArea,
+              icon: const Icon(Icons.search_rounded, size: 22),
+            )
+          else
+            TextButton.icon(
+              key: const ValueKey('workspace-area-switch'),
+              onPressed: onChooseArea,
+              icon: const Icon(Icons.search_rounded, size: 20),
+              label: const Text('Bereiche'),
+            ),
+          IconButton(
+            tooltip: 'Tastatur & Bedienung',
+            onPressed: onKeyboardHelp,
+            icon: const Icon(Icons.keyboard_outlined, size: 22),
+          ),
+          SchulbuddyButton(),
+          AppearanceToggle(state),
+          notificationBell,
+          AccountMenu(state, compact: narrow, nameWidth: 128),
+        ],
+      ),
+    );
+  }
 }
 
 bool _sameHeaderAccount(AppState state, Json? snapshot) =>
@@ -2958,8 +2935,10 @@ class _WorkspaceHeading extends StatelessWidget {
               header: true,
               child: Text(
                 title!,
-                style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontSize: constraints.maxWidth < 500 ? 28 : 32),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: MediaQuery.sizeOf(context).width < 720 ? 24 : 28,
+                  height: 1.2,
+                ),
               ),
             ),
           if (subtitle?.isNotEmpty == true)
@@ -2977,7 +2956,7 @@ class _WorkspaceHeading extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: heading),
-            const SizedBox(width: 24),
+            const SizedBox(width: 16),
             Flexible(
               child: Wrap(
                 alignment: WrapAlignment.end,
@@ -2993,7 +2972,7 @@ class _WorkspaceHeading extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null) heading,
-          if (title != null && actions.isNotEmpty) const SizedBox(height: 16),
+          if (title != null && actions.isNotEmpty) const SizedBox(height: 12),
           if (actions.isNotEmpty)
             Wrap(spacing: 8, runSpacing: 8, children: actions),
         ],
@@ -3004,7 +2983,7 @@ class _WorkspaceHeading extends StatelessWidget {
 
 Widget heading(String title, {String? subtitle, Widget? trailing}) => Builder(
   builder: (context) => Padding(
-    padding: const EdgeInsets.only(top: 6, bottom: 18),
+    padding: const EdgeInsets.only(top: 4, bottom: 12),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3017,7 +2996,7 @@ Widget heading(String title, {String? subtitle, Widget? trailing}) => Builder(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: context.palette.ink,
                   ),
@@ -3030,7 +3009,7 @@ Widget heading(String title, {String? subtitle, Widget? trailing}) => Builder(
                     subtitle,
                     style: TextStyle(
                       color: context.palette.muted,
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                   ),
                 ),

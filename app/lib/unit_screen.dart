@@ -1662,14 +1662,14 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
           ),
           unitTips(u),
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           if (u['status'] == 'completed') ...[
             if (u['round_kind'] == 'vocabulary')
               vocabularyResult(u)
             else
               CoachingPanel(state: state, unit: u, refresh: load),
             askButton(u),
-            SizedBox(height: 20),
+            SizedBox(height: 16),
           ],
           OutlinedButton.icon(
             onPressed: () {
@@ -1874,7 +1874,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         ? 'Deine Lernprobe wird vorbereitet.'
                         : 'Deine Runde wartet auf dich.'
                   : 'Bereit für deine Runde?',
-              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             SizedBox(height: 10),
             MathText(
@@ -1917,7 +1917,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               SizedBox(height: 16),
               Text(
                 'Was weißt du schon?',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
               SizedBox(height: 10),
               Text(
@@ -1939,7 +1939,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           children: [
             Text(
               'Schau dir das kurz an',
-              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             SizedBox(height: 16),
             LearningExplanation(
@@ -2272,7 +2272,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           if (cue.isNotEmpty) ...[
             MathText(
               cue,
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             ReadAloudButton(text: cue, locale: meta['cue_locale'] ?? 'de-DE'),
           ],
@@ -2475,7 +2475,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               SizedBox(height: 12),
               Text(
                 'Deine Wörterrunde ist bearbeitet.',
-                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
               ),
               SizedBox(height: 12),
               MathText(
@@ -2866,7 +2866,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                         ),
                                   ))
                                     const Padding(
-                                      padding: EdgeInsets.all(20),
+                                      padding: EdgeInsets.all(16),
                                       child: Text(
                                         'Keine vorhandene Option passt zur Suche.',
                                       ),
@@ -3080,7 +3080,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       children: [
         Panel(
           tone: PanelTone.neutral,
-          padding: EdgeInsets.all(20),
+          padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -3090,7 +3090,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 MathText(
                   cue,
                   key: ValueKey('feedback-language-cue'),
-                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                 ),
               ],
               if (languageContext.isNotEmpty)
@@ -3530,7 +3530,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
                 child: MathText(
                   'Was hilft dir jetzt?',
-                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
               ),
               for (final option in [

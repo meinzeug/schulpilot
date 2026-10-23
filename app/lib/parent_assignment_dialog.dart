@@ -382,6 +382,10 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
     },
     child: AlertDialog(
       scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+      contentPadding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+      actionsPadding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
       title: Text(
         widget.existing == null
             ? 'Ein Lernziel vorgeben'
@@ -406,7 +410,7 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
                 const Notice(
                   'Neue Kopie: Antworten und Runden bleiben beim ursprünglichen Auftrag. Start und Termin legst du neu fest.',
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: kind,
                 isExpanded: true,
@@ -420,14 +424,14 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
                 ],
                 onChanged: editable ? (v) => setState(() => kind = v!) : null,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               for (final item in [
                 (subject, 'Fach'),
                 (topic, 'Thema / Lernziel'),
                 (note, 'Was soll geübt werden?'),
               ])
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: TextFormField(
                     controller: item.$1,
                     enabled: editable,
@@ -462,13 +466,13 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
                       ),
                   ],
                 ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               for (final item in [
                 (due, 'Termin'),
                 (scheduled, 'Frühester Lernbeginn'),
               ])
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: TextFormField(
                     controller: item.$1,
                     enabled: editable,

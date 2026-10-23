@@ -77,7 +77,7 @@ class _AiCostPanelState extends State<AiCostPanel> {
           Text(
             '${number(data['peak_calls_per_minute'])} Aufrufe / Minute in der Spitze · ${number(data['escalations'])} schwierige Fälle',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           if ((data['models'] as Map? ?? {}).isEmpty)
             const Padding(
               padding: EdgeInsets.only(bottom: 14),
@@ -126,7 +126,7 @@ class _AiCostPanelState extends State<AiCostPanel> {
                   ),
                 ),
               ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
           ],
           Wrap(
             spacing: 8,
@@ -167,7 +167,7 @@ class _AiCostPanelState extends State<AiCostPanel> {
             data['models'] ?? {},
           ).entries.where((e) => !anomaliesOnly || anomaly(e.value))) ...[
             ActionPanel(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               actionLabel: 'Verbrauch für ${entry.key} ansehen',
               onPressed: () => modelDetails(entry.key, Json.from(entry.value)),
               child: Column(
@@ -185,7 +185,7 @@ class _AiCostPanelState extends State<AiCostPanel> {
                     '${number(entry.value['unknown_calls'])} Kosten offen · ${number(entry.value['unusable_calls'])} unbrauchbare Ergebnisse',
                   ),
                   Text(
-                    'Latenz P50: ${entry.value['p50_ms'] ?? 'offen'} ms · P95: ${entry.value['p95_ms'] ?? 'offen'} ms',
+                    'P50 ${entry.value['p50_ms'] ?? 'offen'} ms · P95 ${entry.value['p95_ms'] ?? 'offen'} ms',
                   ),
                 ],
               ),
@@ -557,7 +557,7 @@ class _AiRoutingPanelState extends State<AiRoutingPanel> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: ActionPanel(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   actionLabel: 'Route ${entry.key} prüfen',
                   onPressed: saving
                       ? null

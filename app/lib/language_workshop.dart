@@ -655,7 +655,7 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                         Text(
                           'Wähle dein Ziel und ein paar bestätigte Wörter. Daraus entsteht eine kleine Übung mit Hilfe.',
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           key: ValueKey(
                             'workshop-locale-$locale-$localePickerRevision',
@@ -1081,7 +1081,7 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
                       ],
                     ),
                   ),
-                SizedBox(height: 24),
+                SizedBox(height: 16),
                 heading('Deine gespeicherten Lernprojekte'),
                 if (projects.isNotEmpty ||
                     projectSearch.text.isNotEmpty ||
@@ -1486,7 +1486,7 @@ class _LanguageWorkshopState extends State<_LanguageWorkshopBody>
           ),
         ),
         if (row['can_continue'] == true && widget.state.isChild) ...[
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           Panel(
             color: context.palette.mint,
             child: Column(

@@ -335,6 +335,14 @@ void main() {
           'unread': 2,
         });
       });
+      if (find
+          .widgetWithText(TextField, 'Geladene Neuigkeiten durchsuchen')
+          .evaluate()
+          .isEmpty) {
+        await tester.ensureVisible(find.text('Suche & Neuigkeitenfilter'));
+        await tester.tap(find.text('Suche & Neuigkeitenfilter'));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(
         find.widgetWithText(TextField, 'Geladene Neuigkeiten durchsuchen'),
         'beta',

@@ -28,91 +28,75 @@ class ChildSectionHero extends StatelessWidget {
       return _CompactChildHero(this);
     }
     final palette = context.palette;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 600;
-        final badge = Container(
-          width: wide ? 56 : 44,
-          height: wide ? 56 : 44,
-          decoration: BoxDecoration(
-            color: palette.mint,
-            borderRadius: BorderRadius.circular(14),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (eyebrow.trim().toLowerCase() != title.trim().toLowerCase()) ...[
+          Text(
+            eyebrow,
+            style: TextStyle(
+              color: palette.cyanInk,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          child: Icon(icon, color: palette.teal, size: wide ? 28 : 24),
-        );
-        final heading = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 6),
+        ],
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    eyebrow,
-                    style: TextStyle(
-                      color: palette.cyanInk,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    color: palette.ink,
+                    fontSize: 28,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.5,
                   ),
                 ),
-                if (!wide) ...[
-                  const SizedBox(width: 12),
-                  ExcludeSemantics(child: badge),
-                ],
-              ],
-            ),
-            SizedBox(height: wide ? 12 : 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: 'Nunito',
-                color: palette.ink,
-                fontSize: wide ? 34 : 28,
-                height: 1.12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -.6,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: TextStyle(color: palette.muted, fontSize: 15, height: 1.5),
-            ),
-          ],
-        );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (wide)
-              Row(
-                children: [
-                  Expanded(child: heading),
-                  const SizedBox(width: 24),
-                  ExcludeSemantics(child: badge),
-                ],
-              )
-            else
-              heading,
-            if (facts.isNotEmpty) ...[
-              const SizedBox(height: 18),
-              Wrap(spacing: 10, runSpacing: 10, children: facts),
-            ],
-            if (action != null) ...[
-              const SizedBox(height: 20),
-              FilledButtonTheme(
-                data: FilledButtonThemeData(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: palette.actionPurple,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(48, 54),
-                  ),
+            const SizedBox(width: 12),
+            ExcludeSemantics(
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: palette.mint,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: action!,
+                child: Icon(icon, color: palette.teal, size: 20),
               ),
-            ],
+            ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          description,
+          style: TextStyle(color: palette.muted, fontSize: 15, height: 1.45),
+        ),
+        if (facts.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(spacing: 12, runSpacing: 8, children: facts),
+        ],
+        if (action != null) ...[
+          const SizedBox(height: 12),
+          FilledButtonTheme(
+            data: FilledButtonThemeData(
+              style: FilledButton.styleFrom(
+                backgroundColor: palette.actionPurple,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(48, 48),
+              ),
+            ),
+            child: action!,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -240,7 +224,7 @@ class ChildHeroFact extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: palette.surfaceLow,
         border: Border.all(color: palette.surfaceBorder),
@@ -255,7 +239,7 @@ class ChildHeroFact extends StatelessWidget {
             label,
             style: TextStyle(
               color: palette.ink,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -371,10 +355,10 @@ class _ChildSectionTabsState extends State<ChildSectionTabs> {
                       foregroundColor: selected == tab.id
                           ? palette.ink
                           : palette.muted,
-                      minimumSize: Size(48, compact ? 48 : 52),
+                      minimumSize: const Size(48, 48),
                       padding: EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: compact ? 10 : 13,
+                        vertical: 10,
                       ),
                       shape: const RoundedRectangleBorder(),
                       side: BorderSide.none,
@@ -443,25 +427,25 @@ class ChildActionTile extends StatelessWidget {
         color: palette.panelSurface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: palette.surfaceBorder),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: palette.isDark ? .16 : .09),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, color: color, size: 25),
+                  child: Icon(icon, color: color, size: 22),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,10 +455,10 @@ class ChildActionTile extends StatelessWidget {
                         style: TextStyle(
                           color: palette.ink,
                           fontWeight: FontWeight.w800,
-                          fontSize: 17,
+                          fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: TextStyle(

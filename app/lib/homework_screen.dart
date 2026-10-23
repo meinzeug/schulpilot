@@ -3159,7 +3159,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                             ),
                           ],
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 16),
                         TextField(
                           controller: question,
                           minLines: 1,

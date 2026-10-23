@@ -127,7 +127,11 @@ void main() {
             findsOneWidget,
           );
         }
-        await tester.tap(find.text('Künstliche Nachricht'));
+        final target = find.text('Künstliche Nachricht');
+        await tester.ensureVisible(target);
+        await tester.pumpAndSettle();
+        expect(target.hitTestable(), findsOneWidget);
+        await tester.tap(target);
         await tester.pumpAndSettle();
         expect(router.routeInformationProvider.value.uri.path, '/target');
         expect(state.inbox.unread, 1);

@@ -131,9 +131,7 @@ void main() {
               width: width,
               brightness: brightness,
             );
-            final back = width < 720
-                ? find.byTooltip('Betriebsübersicht')
-                : find.widgetWithText(TextButton, 'Betriebsübersicht');
+            final back = find.byTooltip('Betriebsübersicht');
             if (width < 720) {
               expect(
                 find.byKey(const ValueKey('compact-admin-heading')),

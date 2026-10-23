@@ -977,7 +977,7 @@ void main() {
             of: find.byType(ChildSectionHero),
             matching: find.byType(FilledButton),
           );
-          expect(tester.getSize(photoButton).height, greaterThanOrEqualTo(54));
+          expect(tester.getSize(photoButton).height, greaterThanOrEqualTo(48));
           expect(find.text('Alle Hefter'), findsOneWidget);
           expect(find.text('Themen entdecken'), findsOneWidget);
           expect(tester.takeException(), isNull);

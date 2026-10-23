@@ -503,7 +503,7 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                       visible ? '${word['word']}' : '${word['meaning']}',
                       query: visible ? search.text : '',
                       style: const TextStyle(
-                        fontSize: 28,
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -3059,7 +3059,7 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                       ),
                     ),
                   if (MediaQuery.sizeOf(context).width >= 720)
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                 ],
               ],
               if (!widget.state.isChild || section == 'review') ...[
@@ -3849,7 +3849,7 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                   ),
               ],
               if (data != null && !widget.state.isChild) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 heading('Geprüfte Fähigkeiten'),
                 for (final skill in scopeSummary!['skills'] as List)
                   ListTile(

@@ -89,8 +89,8 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: context.palette.mint,
                 borderRadius: BorderRadius.circular(14),
@@ -100,13 +100,13 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
                 widget.childName?.characters.firstOrNull?.toUpperCase() ?? 'L',
                 style: TextStyle(
                   color: context.palette.teal,
-                  fontSize: 21,
+                  fontSize: 18,
                   height: 1,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +114,7 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
                   Text(
                     widget.childName ?? 'Lernübersicht',
                     style: const TextStyle(
-                      fontSize: 21,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -232,7 +232,7 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -260,7 +260,7 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 2),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -284,9 +284,9 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
           content = Row(
             children: [
               Expanded(child: identity),
-              const SizedBox(width: 16),
-              SizedBox(width: 225, child: picker),
               const SizedBox(width: 12),
+              SizedBox(width: 225, child: picker),
+              const SizedBox(width: 8),
               ...actions,
             ],
           );
@@ -295,7 +295,7 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               identity,
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               picker,
               Align(
                 alignment: Alignment.centerRight,
@@ -318,9 +318,9 @@ class _ParentChildNavigationState extends State<ParentChildNavigation> {
           );
         }
         return Padding(
-          padding: EdgeInsets.only(bottom: compact ? 10 : 20),
+          padding: EdgeInsets.only(bottom: compact ? 6 : 12),
           child: Container(
-            padding: EdgeInsets.only(bottom: compact ? 10 : 18),
+            padding: EdgeInsets.only(bottom: compact ? 6 : 10),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: context.palette.surfaceBorder),

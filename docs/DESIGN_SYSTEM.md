@@ -1,5 +1,23 @@
 # Schulpilot: gemeinsame Lernoberfläche
 
+## Rollenübergreifende Verdichtung102
+
+Arbeitsstand1.29.0+102: Kinder, Eltern, Administration und öffentliche Formulare
+verwenden einen gemeinsamen kompakteren Rahmen. Alle47Routen sind im
+[Änderungsinventar](COMPACT_DESIGN_102_2026_10_23.md) einzeln erfasst.
+Abnahme und Veröffentlichung laufen; der Produktionsstand bleibt bis zum
+geprüften Wechsel101.
+
+Seitenköpfe nutzen24px mobil und28px am Desktop, Abschnittstitel18px.
+Karten haben standardmäßig16px Innenraum mobil beziehungsweise18px breit
+und16px Radius. Abstände folgen12/16/20px. Felder und Hauptaktionen behalten
+mindestens48px große Bedienflächen und dürfen bei großer Schrift wachsen.
+Normale Lerntexte werden nicht mit einem begrenzten TextScaler verkleinert.
+Bereichssuche und Tastaturhilfe stehen im Desktopkopf, ohne eine weitere
+Werkzeugzeile vor dem Inhalt. Optionale Filter und KI-Details öffnen sich
+bewusst; aktive Bedingungen und gespeicherte Fakten bleiben erkennbar.
+Der101-Leser und der normale geprüfte Lernrundenabschluss bleiben erhalten.
+
 Veröffentlichte Gestaltungsbasis **1.26.0+97** am23.10.2026, aufbauend auf
 **1.25.0+96**. Der interaktive Ausbau ist veröffentlicht. Die angemeldete
 simpleclub-App wurde auf ausdrücklichen Nutzerauftrag direkt bei

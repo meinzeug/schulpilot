@@ -124,7 +124,7 @@ class DailyPlanPanel extends StatelessWidget {
                         'Ein Vorschlag für diesen Lerntag. Gespeicherte Elternaufträge bleiben verbindlich; zum Zeitziel zählt nur aktive Lernzeit.',
                       ),
                       if ((day['items'] as List? ?? []).isEmpty) ...[
-                        SizedBox(height: 16),
+                        SizedBox(height: 12),
                         Text('Für diesen Tag ist noch kein Thema vorgemerkt.'),
                       ],
                       Ideas100DayItems(
@@ -132,7 +132,7 @@ class DailyPlanPanel extends StatelessWidget {
                         builder: (raw) => Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            SizedBox(height: 16),
+                            SizedBox(height: 12),
                             SurfaceInset(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -437,7 +437,7 @@ class LearningGoalPanel extends StatelessWidget {
     final weeklyMet = plan['weekly_goal_met'] == true;
     return SurfaceInset(
       tone: dailyMet && required ? PanelTone.success : PanelTone.subtle,
-      padding: EdgeInsets.all(compact ? 16 : 20),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -460,7 +460,7 @@ class LearningGoalPanel extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          SizedBox(height: 12),
           _goal(context, 'Heute', 'daily'),
           SizedBox(height: 6),
           Text(
@@ -475,7 +475,7 @@ class LearningGoalPanel extends StatelessWidget {
               color: context.palette.muted,
             ),
           ),
-          SizedBox(height: 16),
+          SizedBox(height: 12),
           _goal(context, 'Diese Woche', 'weekly'),
           SizedBox(height: 6),
           Text(

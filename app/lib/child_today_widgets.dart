@@ -71,7 +71,6 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
         final wide =
             constraints.maxWidth >= 650 &&
             MediaQuery.textScalerOf(context).scale(16) <= 24;
-        final compact = constraints.maxWidth < 340;
         final heading = Material(
           color: Colors.transparent,
           child: InkWell(
@@ -82,128 +81,103 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
             child: Semantics(
               button: actionLabel != null,
               label: actionLabel == null ? null : 'Öffnen: $actionLabel',
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        ExcludeSemantics(
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: palette.mint,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              action is ActionButton
-                                  ? action.icon ?? Icons.auto_stories_outlined
-                                  : Icons.auto_stories_outlined,
-                              color: palette.teal,
-                              size: 22,
-                            ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ExcludeSemantics(
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: palette.mint,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            widget.eyebrow,
-                            style: TextStyle(
-                              color: palette.muted,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: Icon(
+                            action is ActionButton
+                                ? action.icon ?? Icons.auto_stories_outlined
+                                : Icons.auto_stories_outlined,
+                            color: palette.teal,
+                            size: 22,
                           ),
-                        ),
-                        if (buddy != null)
-                          IconButton(
-                            tooltip: 'Schulbuddy fragen',
-                            constraints: const BoxConstraints(
-                              minWidth: 48,
-                              minHeight: 48,
-                            ),
-                            onPressed: () => buddy.open(),
-                            icon: Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              color: palette.muted,
-                              size: 22,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.title,
-                      style: TextStyle(
-                        fontFamily: 'Nunito',
-                        color: palette.ink,
-                        fontSize: wide
-                            ? 24
-                            : compact
-                            ? 20
-                            : 22,
-                        height: 1.25,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -.2,
-                      ),
-                    ),
-                    if (widget.subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.subtitle,
-                        style: TextStyle(
-                          color: palette.muted,
-                          fontSize: 15,
-                          height: 1.5,
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.eyebrow,
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              widget.title,
+                              style: TextStyle(
+                                fontFamily: 'Nunito',
+                                color: palette.ink,
+                                fontSize: wide ? 22 : 20,
+                                height: 1.2,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (buddy != null)
+                        IconButton(
+                          tooltip: 'Schulbuddy fragen',
+                          onPressed: () => buddy.open(),
+                          icon: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            color: palette.muted,
+                            size: 21,
+                          ),
+                        ),
                     ],
+                  ),
+                  if (widget.subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
         );
-        final primaryAction = Column(
+        final primaryAction = action is ActionButton
+            ? ActionButton(
+                label: action.label,
+                icon: action.icon,
+                secondary: action.secondary,
+                enabled: action.enabled && !opening,
+                onPressed: () => openHero(action),
+              )
+            : action;
+        final actionArea = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            FilledButtonTheme(
-              data: FilledButtonThemeData(
-                style:
-                    FilledButton.styleFrom(
-                      backgroundColor: palette.actionPurple,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(48, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ).copyWith(
-                      side: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.focused)
-                            ? BorderSide(color: palette.cyanInk, width: 3)
-                            : BorderSide.none,
-                      ),
-                    ),
-              ),
-              child: action is ActionButton
-                  ? ActionButton(
-                      label: action.label,
-                      icon: action.icon,
-                      secondary: action.secondary,
-                      enabled: action.enabled && !opening,
-                      onPressed: () => openHero(action),
-                    )
-                  : action,
-            ),
+            primaryAction,
             if (widget.learning) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 'Verstehen · Üben · Rückblick',
                 textAlign: TextAlign.center,
@@ -213,35 +187,29 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
           ],
         );
         return Container(
-          clipBehavior: Clip.antiAlias,
-          padding: EdgeInsets.all(
-            wide
-                ? 20
-                : compact
-                ? 16
-                : 18,
-          ),
+          key: const ValueKey('today-primary-step'),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: palette.panelSurface,
-            border: Border.all(color: palette.surfaceBorder),
-            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.learning
+                  ? palette.teal.withValues(alpha: .55)
+                  : palette.surfaceBorder,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: wide
               ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: heading),
-                    const SizedBox(width: 24),
-                    SizedBox(width: 224, child: primaryAction),
+                    const SizedBox(width: 20),
+                    SizedBox(width: 210, child: actionArea),
                   ],
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    heading,
-                    const SizedBox(height: 16),
-                    primaryAction,
-                  ],
+                  mainAxisSize: MainAxisSize.min,
+                  children: [heading, const SizedBox(height: 12), actionArea],
                 ),
         );
       },
@@ -273,7 +241,7 @@ class ChildTodayTile extends StatelessWidget {
     return Material(
       color: palette.panelSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: palette.surfaceBorder),
       ),
       clipBehavior: Clip.antiAlias,
@@ -285,12 +253,12 @@ class ChildTodayTile extends StatelessWidget {
             child: InkWell(
               onTap: onTap,
               child: Padding(
-                padding: EdgeInsets.all(14),
+                padding: EdgeInsets.all(12),
                 child: Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 48,
+                      width: 36,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: color.withValues(
                           alpha: palette.isDark ? .16 : .10,
@@ -378,7 +346,6 @@ class ChildTodayProgress extends StatelessWidget {
         : null;
     return _TodayActionSurface(
       onTap: onOpen,
-      radius: 24,
       child: Semantics(
         button: onOpen != null,
         label: [
@@ -388,100 +355,98 @@ class ChildTodayProgress extends StatelessWidget {
         ].join(' '),
         child: ExcludeSemantics(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
+              key: const ValueKey('today-learning-time'),
               crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
-                    ExcludeSemantics(
-                      child: Icon(
-                        Icons.schedule_rounded,
-                        color: palette.cyanInk,
-                        size: 20,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          color: palette.cyanInk,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Lernzeit heute',
+                            style: TextStyle(
+                              color: palette.ink,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (onOpen != null)
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: palette.muted,
+                            size: 20,
+                          ),
+                      ],
+                    ),
+                    Text(
+                      'ca. ${learningMinutes(activeMinutes)} Min.',
+                      style: TextStyle(
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w800,
+                        color: palette.ink,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Lernzeit heute',
-                        style: TextStyle(
-                          color: palette.ink,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    if (onOpen != null)
-                      ExcludeSemantics(
-                        child: Icon(
-                          Icons.chevron_right_rounded,
-                          color: palette.muted,
-                        ),
-                      ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                ExcludeSemantics(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 3,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        'ca. ${learningMinutes(activeMinutes)} Min.',
-                        style: TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          height: 1.15,
-                          color: palette.ink,
-                        ),
-                      ),
-                      Text(
-                        goalRequired
-                            ? 'von ${learningMinutes(goalMinutes)} Min. Mindestziel'
-                            : 'ohne festes Lernziel',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: palette.muted,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 4),
+                Text(
+                  goalRequired
+                      ? 'von ${learningMinutes(goalMinutes)} Min. Mindestziel'
+                      : 'ohne festes Lernziel',
+                  style: TextStyle(fontSize: 13, color: palette.muted),
                 ),
                 if (goalRequired) ...[
-                  const SizedBox(height: 12),
-                  ExcludeSemantics(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 6,
-                        backgroundColor: palette.surfaceBorder,
-                        color: goalMet ? palette.successInk : palette.cyanInk,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 8),
-                  ExcludeSemantics(
-                    child: Text(
-                      goalMet
-                          ? 'Mindestziel erreicht'
-                          : 'Mindestziel noch offen',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: goalMet ? palette.successInk : palette.muted,
-                      ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 5,
+                      backgroundColor: palette.surfaceBorder,
+                      color: goalMet ? palette.successInk : palette.cyanInk,
                     ),
                   ),
                 ],
-                if (completion != null) ...[
+                if (goalRequired || completion != null) ...[
                   const SizedBox(height: 6),
-                  Text(
-                    completion,
-                    style: TextStyle(fontSize: 12, color: palette.muted),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      if (goalRequired)
+                        Text(
+                          goalMet
+                              ? 'Mindestziel erreicht'
+                              : 'Mindestziel noch offen',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: goalMet ? palette.successInk : palette.muted,
+                          ),
+                        ),
+                      if (completion != null)
+                        Text(
+                          completion,
+                          style: TextStyle(fontSize: 12, color: palette.muted),
+                        ),
+                    ],
                   ),
                 ],
               ],
@@ -495,7 +460,7 @@ class ChildTodayProgress extends StatelessWidget {
 
 /// Secondary tools form one calm area beneath the single main learning action.
 class ChildTodayTools extends StatelessWidget {
-  final Widget? learningTime;
+  final Widget? learningTime, secondaryAction;
   final String pageSummary;
   final String? latestMessage;
   final VoidCallback onPlan, onMessages, onHelp, onNotebooks, onInfo;
@@ -503,6 +468,7 @@ class ChildTodayTools extends StatelessWidget {
   const ChildTodayTools({
     super.key,
     this.learningTime,
+    this.secondaryAction,
     required this.pageSummary,
     this.latestMessage,
     required this.onPlan,
@@ -520,19 +486,21 @@ class ChildTodayTools extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
-              Expanded(
-                child: Text(
-                  'Für deinen Tag',
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontWeight: FontWeight.w700,
-                    fontSize: MediaQuery.sizeOf(context).width < 720 ? 16 : 23,
-                    color: palette.ink,
-                  ),
+              Text(
+                'Für deinen Tag',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: palette.ink,
                 ),
               ),
+              ?secondaryAction,
               IconButton(
                 key: const ValueKey('today-learning-info'),
                 onPressed: onInfo,
@@ -546,7 +514,7 @@ class ChildTodayTools extends StatelessWidget {
             const SizedBox(height: 8),
             learningTime!,
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
               final columns =
@@ -686,7 +654,7 @@ class _TodayTool extends StatelessWidget {
       child: Semantics(
         button: true,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: horizontal
               ? Row(
                   children: [
@@ -719,7 +687,7 @@ class _TodayTool extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     words,
                   ],
                 ),
@@ -732,12 +700,7 @@ class _TodayTool extends StatelessWidget {
 class _TodayActionSurface extends StatefulWidget {
   final VoidCallback? onTap;
   final Widget child;
-  final double radius;
-  const _TodayActionSurface({
-    required this.onTap,
-    required this.child,
-    this.radius = 24,
-  });
+  const _TodayActionSurface({required this.onTap, required this.child});
 
   @override
   State<_TodayActionSurface> createState() => _TodayActionSurfaceState();
@@ -752,7 +715,7 @@ class _TodayActionSurfaceState extends State<_TodayActionSurface> {
     return Material(
       color: palette.panelSurface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(widget.radius),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color: focused ? palette.cyanInk : palette.surfaceBorder,
           width: focused ? 2.5 : 1,

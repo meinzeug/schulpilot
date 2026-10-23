@@ -1033,6 +1033,7 @@ void main() {
       final requests = <http.Request>[];
       await workspace.mount(t, requests);
       await press(t, find.widgetWithText(ChoiceChip, 'Familientarife'));
+      await press(t, find.text('Suche & Haushaltsfilter'));
       await t.enterText(field('Familie suchen'), 'no-such-fixture');
       await t.pumpAndSettle();
       await press(t, find.widgetWithText(FilledButton, 'Suchen'));

@@ -543,7 +543,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                 sendError != null ||
                 MediaQuery.textScalerOf(context).scale(1) > 1.3;
             final header = Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 12, 12),
+              padding: EdgeInsets.fromLTRB(16, 0, 8, 12),
               child: Row(
                 children: [
                   Icon(
@@ -555,7 +555,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                     child: MathText(
                       editable ? 'Frag zu deinem Stoff' : 'Fragen zum Stoff',
                       style: TextStyle(
-                        fontSize: 21,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -580,7 +580,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               ),
             );
             final content = Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -588,7 +588,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                     Notice('Bitte melde dich erneut an.')
                   else if (loading)
                     Padding(
-                      padding: EdgeInsets.all(32),
+                      padding: EdgeInsets.all(24),
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else ...[
@@ -684,7 +684,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
                 ? SizedBox.shrink()
                 : Padding(
                     key: composerKey,
-                    padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -955,7 +955,7 @@ class _TutorSheetState extends State<_TutorSheet> with WidgetsBindingObserver {
               alignment: Alignment.centerLeft,
               child: Tag('Ergänzendes Grundwissen · nicht aus deinem Heft'),
             ),
-          LearningContent(answer, style: TextStyle(fontSize: 17, height: 1.55)),
+          LearningContent(answer, style: TextStyle(fontSize: 17, height: 1.5)),
           if (!collapsed && turn['source_changed'] != true)
             LearningTips(
               state,

@@ -59,8 +59,7 @@ class ParentCollectionSearch extends StatelessWidget {
   );
 }
 
-/// An open page header shared by parent workspaces in both visual variants.
-/// The local emblem is decorative and never represents measured progress.
+/// Explicit saved selections stay separate from page headings and results.
 class ParentChoiceFilter extends StatelessWidget {
   final String label, value;
   final List<(String, String)> choices;
@@ -118,94 +117,61 @@ class ParentWorkspaceHero extends StatelessWidget {
       return _CompactParentHero(this);
     }
     final palette = context.palette;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide =
-            constraints.maxWidth > 700 &&
-            MediaQuery.textScalerOf(context).scale(1) <= 1.3;
-        return Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (eyebrow.trim().toLowerCase() != title.trim().toLowerCase()) ...[
+            Text(
+              eyebrow,
+              style: TextStyle(
+                color: palette.cyanInk,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(icon, color: palette.electric, size: 19),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Text(
-                                eyebrow,
-                                style: TextStyle(
-                                  color: palette.cyanInk,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.1,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(
-                                color: palette.ink,
-                                fontSize: wide ? 37 : 30,
-                                height: 1.14,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -.8,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: palette.muted,
-                            fontSize: 15,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      color: palette.ink,
+                      fontSize: 28,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -.5,
                     ),
                   ),
-                  if (wide) ...[
-                    const SizedBox(width: 28),
-                    ExcludeSemantics(
-                      child: SizedBox(
-                        width: 96,
-                        height: 96,
-                        child: CustomPaint(
-                          painter: _WorkspaceEmblem(
-                            primary: palette.teal,
-                            accent: palette.electric,
-                            line: palette.surfaceBorder,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-              if (facts.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Wrap(spacing: 24, runSpacing: 12, children: facts),
-              ],
-              if (actions.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Wrap(spacing: 10, runSpacing: 10, children: actions),
-              ],
+              const SizedBox(width: 12),
+              ExcludeSemantics(
+                child: Icon(icon, color: palette.cyanInk, size: 24),
+              ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(color: palette.muted, fontSize: 15, height: 1.45),
+          ),
+          if (facts.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 16, runSpacing: 8, children: facts),
+          ],
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: actions),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -360,7 +326,7 @@ class ParentSectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.only(bottom: 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -380,7 +346,7 @@ class ParentSectionHeading extends StatelessWidget {
                     title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: context.palette.ink,
-                      fontSize: 22,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -398,9 +364,16 @@ class ParentSectionHeading extends StatelessWidget {
                 ],
               ),
             ),
+            if (action is IconButton) ...[
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                child: action!,
+              ),
+            ],
           ],
         ),
-        if (action != null)
+        if (action != null && action is! IconButton)
           Align(alignment: Alignment.centerRight, child: action!),
       ],
     ),
@@ -421,7 +394,7 @@ class ParentManagementRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    padding: const EdgeInsets.symmetric(vertical: 12),
     decoration: BoxDecoration(
       border: Border(bottom: BorderSide(color: context.palette.surfaceBorder)),
     ),
@@ -447,7 +420,7 @@ class ParentManagementRow extends StatelessWidget {
                   DefaultTextStyle.merge(
                     style: TextStyle(
                       color: context.palette.muted,
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                     child: subtitle,
                   ),
@@ -463,54 +436,6 @@ class ParentManagementRow extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _WorkspaceEmblem extends CustomPainter {
-  final Color primary, accent, line;
-  const _WorkspaceEmblem({
-    required this.primary,
-    required this.accent,
-    required this.line,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final center = Offset(size.width / 2, size.height / 2);
-    canvas.drawCircle(center, size.width * .42, stroke..color = line);
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(-.18);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(-23, -30, 46, 60),
-        const Radius.circular(8),
-      ),
-      stroke..color = primary,
-    );
-    canvas.drawLine(const Offset(-11, -13), const Offset(12, -13), stroke);
-    canvas.drawLine(const Offset(-11, 0), const Offset(7, 0), stroke);
-    canvas.drawLine(const Offset(-11, 13), const Offset(12, 13), stroke);
-    canvas.restore();
-    canvas.drawCircle(
-      Offset(size.width * .85, size.height * .28),
-      6,
-      Paint()..color = accent,
-    );
-    canvas.drawCircle(
-      Offset(size.width * .2, size.height * .8),
-      4,
-      Paint()..color = primary,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_WorkspaceEmblem oldDelegate) =>
-      primary != oldDelegate.primary ||
-      accent != oldDelegate.accent ||
-      line != oldDelegate.line;
 }
 
 /// A date range is applied explicitly; unsubmitted edits never relabel results.

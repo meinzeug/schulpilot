@@ -109,7 +109,7 @@ class TrialOfferCard extends StatelessWidget {
           heading('Erst kennenlernen. Dann entscheiden.'),
           const SizedBox(height: 8),
           TrialTermsSummary(offer),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: onStart,
             icon: const Icon(Icons.arrow_forward_rounded),

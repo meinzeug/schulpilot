@@ -330,7 +330,7 @@ void main() {
     );
     expect(find.text(description), findsOneWidget);
     expect(find.text('Anderes Kind'), findsOneWidget);
-    expect(tester.widget<Text>(find.text(childName)).style!.fontSize, 21);
+    expect(tester.widget<Text>(find.text(childName)).style!.fontSize, 18);
     expect(find.byTooltip('Aktualisieren').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

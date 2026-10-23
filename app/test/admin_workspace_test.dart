@@ -198,6 +198,7 @@ void main() {
       await mount(tester, requests);
       await tap(tester, find.widgetWithText(ChoiceChip, 'Familientarife'));
       expect(find.textContaining('synthetic-family-a'), findsOneWidget);
+      await tap(tester, find.text('Suche & Haushaltsfilter'));
       final search = find.widgetWithText(TextField, 'Familie suchen');
       await tester.ensureVisible(search);
       await tester.enterText(search, 'Plus');

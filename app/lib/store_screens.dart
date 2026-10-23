@@ -87,7 +87,7 @@ class StoreSection extends StatelessWidget {
                 ? '30 Tage kostenlos testen'
                 : 'Zu meinem Familienkonto',
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 20),
         ],
         const Tag('IHR ENTSCHEIDET, WIE ES WEITERGEHT'),
         const SizedBox(height: 16),
@@ -108,7 +108,7 @@ class StoreSection extends StatelessWidget {
             'Tarifvorschau · noch nicht bestellbar. Der kostenlose Testzugang ist davon getrennt.',
           ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         if (plans.isNotEmpty) StorePlanComparison(plans),
         const SizedBox(height: 16),
         if (plans.isEmpty)
@@ -143,20 +143,20 @@ class StoreSection extends StatelessWidget {
                             '${plan['name']}',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
                           Text(
                             euro(plan['price_cents']),
                             style: const TextStyle(
-                              fontSize: 38,
+                              fontSize: 28,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: -1.5,
+                              letterSpacing: -.6,
                             ),
                           ),
                           Text(
                             'einmalig für $duration Tage',
                             style: TextStyle(color: context.palette.muted),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
                           Text(
                             '${plan['children']} ${plan['children'] == 1 ? 'Kinderzugang' : 'Kinderzugänge'}',
                           ),
@@ -167,7 +167,7 @@ class StoreSection extends StatelessWidget {
                           Text(
                             'Heftfotos · Lernpakete · Lernhilfe\nEigene Zugänge · Elternübersicht',
                             style: TextStyle(
-                              height: 1.7,
+                              height: 1.5,
                               color: context.palette.muted,
                             ),
                           ),
@@ -185,7 +185,7 @@ class StoreSection extends StatelessWidget {
             catalog['tax_notice'] as String,
             style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         if (offer.available)
           const ExpansionTile(
             title: Text('Was passiert nach den 30 kostenlosen Tagen?'),
@@ -1173,7 +1173,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ),
                       ],
                     ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Text(
                     'Die ${orders.length} zuletzt geladenen Bestellungen (höchstens 100) · ${shown.length} angezeigt. Ältere Bestellungen können außerhalb dieses Ausschnitts liegen.',
                   ),
@@ -1680,7 +1680,7 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                     label: const Text('Widerrufe prüfen'),
                   ),
                 ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               AdminContextTabs(
                 selected: section,
                 items: const [
@@ -1692,7 +1692,7 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> {
                   setState(() => section = index);
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Offstage(
                 offstage: section != 1,
                 child: ExcludeFocus(
@@ -2343,7 +2343,7 @@ class _StoreAdminFormState extends State<StoreAdminForm> {
               ? null
               : (value) => setState(() => trialEnabled = value),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         heading('Kostenpflichtigen Verkauf vorbereiten'),
         if ((baseline['missing'] as List).isNotEmpty) ...[
           for (final item in baseline['missing'] as List)

@@ -682,7 +682,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
             const SizedBox(height: 12),
             Text(
               '${topic['subject']} · ${topic['topic']}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             if ((topic['note'] ?? '').toString().isNotEmpty) ...[
               const SizedBox(height: 10),
@@ -830,7 +830,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                   subtitle: 'KI-Schwerpunkte, deine Themen und die konkrete Wochenübersicht an einem Ort.',
                   icon: Icons.route_outlined,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -847,7 +847,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 if (loading) const LinearProgressIndicator(),
                 if (loading && section != 1)
                   Semantics(
@@ -883,7 +883,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                     const Text(
                       'Bereits gespeicherte KI-Schritte in den Lernrunden',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1380,7 +1380,7 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           const Text(
                             'Zeit & Rahmen',
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

@@ -661,6 +661,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await click(tester, 'KI-Lernkompass');
       expect(
         find.text(
           '3 von 10 Themen in dieser Vorschau. Alle Belege stehen im Lernstand.',
@@ -789,6 +790,7 @@ void main() {
       final f = _Fixture();
       f.homework['photos'][0]['task_count'] = 5;
       await f.mount(tester, path: '/homework/child-a');
+      await click(tester, 'Suche & Hausaufgabenfilter');
       await click(tester, 'Mit Häkchen');
       expect(
         find.text(
@@ -823,6 +825,7 @@ void main() {
       await f.mount(tester, path: '/homework/child-a');
       await click(tester, 'Weitere Fotos laden');
       final count = f.requests.length;
+      await click(tester, 'Suche & Hausaufgabenfilter');
       await click(tester, 'Alle Fotos');
       expect(f.requests.length, count);
       expect(find.text('Erstes künstliches Foto'), findsOneWidget);

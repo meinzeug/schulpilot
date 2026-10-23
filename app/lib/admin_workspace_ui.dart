@@ -114,96 +114,58 @@ class AdminWorkspaceHeader extends StatelessWidget {
       return _CompactAdminHeader(this);
     }
     final p = context.palette;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 650;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (currentPath != '/admin') ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () => openRoute(context, '/admin'),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.arrow_back_rounded, size: 17),
-                      const SizedBox(width: 8),
-                      const Flexible(child: Text('Betriebsübersicht')),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
-            Row(
-              children: [
-                Icon(icon, color: p.cyanInk, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'SCHULPILOT · BETRIEB',
-                    style: TextStyle(
-                      color: p.cyanInk,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (currentPath != '/admin') ...[
+            IconButton(
+              tooltip: 'Betriebsübersicht',
+              onPressed: () => openRoute(context, '/admin'),
+              icon: const Icon(Icons.arrow_back_rounded),
             ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Semantics(
-                        header: true,
-                        child: Text(
-                          title,
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(
-                                color: p.ink,
-                                fontSize: wide ? 40 : 30,
-                                height: 1.12,
-                                letterSpacing: -1.1,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        subtitle,
-                        style: TextStyle(color: p.muted, height: 1.55),
-                      ),
-                    ],
-                  ),
-                ),
-                if (wide) ...[
-                  const SizedBox(width: 36),
-                  ExcludeSemantics(
-                    child: SizedBox(
-                      width: 112,
-                      height: 112,
-                      child: CustomPaint(
-                        painter: _OperationsCircuitPainter(
-                          line: p.isDark ? p.electric : p.cyanInk,
-                          surface: p.mint,
-                          accent: p.teal,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            const SizedBox(width: 8),
           ],
-        );
-      },
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'SCHULPILOT · BETRIEB',
+                  style: TextStyle(
+                    color: p.cyanInk,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      color: p.ink,
+                      fontSize: 28,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: p.muted, fontSize: 15, height: 1.45),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ExcludeSemantics(child: Icon(icon, color: p.cyanInk, size: 24)),
+        ],
+      ),
     );
   }
 }
@@ -323,7 +285,7 @@ class AdminContextTabs extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: p.panelSurface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Semantics(
         container: true,
@@ -384,7 +346,7 @@ class AdminSectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -401,7 +363,8 @@ class AdminSectionHeading extends StatelessWidget {
                   header: true,
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(fontSize: 18),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -424,17 +387,21 @@ class AdminWorkSurface extends StatelessWidget {
     super.key,
     required this.child,
     this.color,
-    this.padding = const EdgeInsets.all(24),
+    this.padding = const EdgeInsets.all(18),
   });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     return Container(
-      padding: padding,
+      padding:
+          MediaQuery.sizeOf(context).width < 720 &&
+              padding == const EdgeInsets.all(18)
+          ? const EdgeInsets.all(16)
+          : padding,
       decoration: BoxDecoration(
         color: color ?? p.panelSurface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: p.surfaceBorder),
       ),
       child: child,
@@ -461,10 +428,10 @@ class AdminActionRow extends StatelessWidget {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         foregroundColor: p.ink,
         alignment: Alignment.centerLeft,
-        minimumSize: const Size(0, 64),
+        minimumSize: const Size(48, 60),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: Row(
@@ -484,7 +451,7 @@ class AdminActionRow extends StatelessWidget {
                   subtitle,
                   style: TextStyle(
                     color: p.muted,
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -557,75 +524,4 @@ class AdminStatusLine extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Decorative circuit, with no invented metrics or progress information.
-class _OperationsCircuitPainter extends CustomPainter {
-  final Color line, surface, accent;
-  const _OperationsCircuitPainter({
-    required this.line,
-    required this.surface,
-    required this.accent,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(8, 30)
-      ..lineTo(32, 30)
-      ..lineTo(48, 46)
-      ..lineTo(84, 46)
-      ..lineTo(102, 28)
-      ..moveTo(17, 85)
-      ..lineTo(35, 67)
-      ..lineTo(82, 67)
-      ..lineTo(100, 85);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = line.withValues(alpha: .65)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    final center = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(37, 37, 38, 38),
-      const Radius.circular(11),
-    );
-    canvas.drawRRect(center, Paint()..color = surface);
-    canvas.drawRRect(
-      center,
-      Paint()
-        ..color = accent
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    for (final offset in [
-      const Offset(8, 30),
-      const Offset(102, 28),
-      const Offset(17, 85),
-      const Offset(100, 85),
-    ]) {
-      canvas.drawCircle(offset, 4, Paint()..color = line);
-    }
-    canvas.drawLine(
-      const Offset(48, 51),
-      const Offset(64, 51),
-      Paint()
-        ..color = accent
-        ..strokeWidth = 2,
-    );
-    canvas.drawLine(
-      const Offset(48, 60),
-      const Offset(58, 60),
-      Paint()
-        ..color = accent
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _OperationsCircuitPainter oldDelegate) =>
-      line != oldDelegate.line ||
-      surface != oldDelegate.surface ||
-      accent != oldDelegate.accent;
 }

@@ -382,7 +382,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   subtitle: 'Vom Fach bis zur einzelnen Antwort. Selbstständige Lösungen und genutzte Hilfe bleiben getrennt sichtbar.',
                   icon: Icons.insights_rounded,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
               ],
               if (subject != null)
                 Align(
@@ -604,7 +604,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   'Jede Übung zählt. Wiederholte Versuche bleiben sichtbar.',
                   style: TextStyle(color: context.palette.muted, fontSize: 13),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 heading(
                   data!['level'] == 'subjects'
                       ? 'Fächer'
@@ -691,7 +691,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   ],
                 ),
                 if (!widget.state.isChild && subject == null) ...[
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   ParentInsightsPanel(
                     widget.state,
                     childId: widget.childId,

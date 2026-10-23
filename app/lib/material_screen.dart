@@ -1827,7 +1827,7 @@ class _MaterialReviewState extends State<MaterialReview>
               children: [
                 heading('Bereit für eine kleine Lerneinheit?'),
                 Text('Übe deinen bestätigten Stoff.'),
-                SizedBox(height: 20),
+                SizedBox(height: 16),
                 if (!readonly)
                   ActionButton(
                     label: widget.state.isChild
@@ -2223,7 +2223,7 @@ class _MaterialReviewState extends State<MaterialReview>
             label: Text('Eigene Korrektur zurücknehmen'),
           ),
         if (confirmed && widget.showUnitAction) ...[
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           ActionButton(
             label: languageMaterial ? 'Wörter & Sprache üben' : 'Jetzt lernen',
             icon: Icons.play_arrow_rounded,

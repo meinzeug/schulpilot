@@ -578,7 +578,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760, maxHeight: 850),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: !current || closing
                 ? const SizedBox.shrink()
                 : Column(
@@ -595,7 +595,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
                             child: Text(
                               'Notenimport',
                               style: const TextStyle(
-                                fontSize: 21,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -679,12 +679,12 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                     size: 64,
                                     color: context.palette.teal,
                                   ),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: 12),
                                   const Text(
                                     'Fuxnoten-PDF hochladen',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontSize: 22,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -709,7 +709,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                       ),
                                       child: Text('Gewählte Datei: $fileLabel'),
                                     ),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: 12),
                                 ],
                               )
                             : CustomScrollView(

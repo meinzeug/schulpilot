@@ -563,7 +563,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
             maxHeight: MediaQuery.sizeOf(ctx).height * .9,
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1392,7 +1392,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: Color(0xFFE0E7F1),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: context.palette.surfaceBorder),
                   ),
                   child: Padding(

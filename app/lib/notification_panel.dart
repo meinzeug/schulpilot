@@ -32,6 +32,13 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool? filtersExpanded;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
+  }
+
   final _devicePanel = GlobalKey();
   final search = TextEditingController();
   String? selectedChild, selectedKind;
@@ -218,102 +225,153 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ],
                   ),
-                  if (inbox.items.isNotEmpty || filtered) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: search,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        labelText: 'Geladene Neuigkeiten durchsuchen',
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        suffixIcon: search.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Neuigkeitensuche leeren',
-                                onPressed: () {
-                                  search.clear();
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                  setState(() {});
-                                },
-                                icon: const Icon(Icons.close_rounded),
+                  if (inbox.items.isNotEmpty || filtered)
+                    ExpansionTile(
+                      key: const ValueKey('notification-list-filters'),
+                      title: const Text('Suche & Neuigkeitenfilter'),
+                      subtitle: filtered
+                          ? Text(
+                              [
+                                if (query.isNotEmpty) 'Suche: $query',
+                                if (selectedChild != null)
+                                  children[selectedChild] ??
+                                      'Ausgewähltes Kind',
+                                if (selectedKind != null)
+                                  noticeKindLabel(selectedKind!),
+                              ].join(' · '),
+                            )
+                          : null,
+                      tilePadding: EdgeInsets.zero,
+                      initiallyExpanded: (filtersExpanded ?? false),
+                      maintainState: true,
+                      onExpansionChanged: (value) {
+                        if (mounted && identical(widget.state.user, owner)) {
+                          setState(() => filtersExpanded = value);
+                        }
+                      },
+                      children: [
+                        ExcludeFocus(
+                          excluding: !(filtersExpanded ?? false),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: search,
+                                textInputAction: TextInputAction.search,
+                                decoration: InputDecoration(
+                                  labelText: 'Geladene Neuigkeiten durchsuchen',
+                                  prefixIcon: const Icon(Icons.search_rounded),
+                                  suffixIcon: search.text.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          tooltip: 'Neuigkeitensuche leeren',
+                                          onPressed: () {
+                                            search.clear();
+                                            FocusManager.instance.primaryFocus
+                                                ?.unfocus();
+                                            setState(() {});
+                                          },
+                                          icon: const Icon(Icons.close_rounded),
+                                        ),
+                                ),
+                                onChanged: (_) => setState(() {}),
+                                onSubmitted: (_) => FocusManager
+                                    .instance
+                                    .primaryFocus
+                                    ?.unfocus(),
                               ),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) =>
-                          FocusManager.instance.primaryFocus?.unfocus(),
+                              if (widget.state.isParent &&
+                                  (children.length > 1 ||
+                                      selectedChild != null)) ...[
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  key: ValueKey((
+                                    'notice-child',
+                                    selectedChild,
+                                  )),
+                                  initialValue: selectedChild ?? '',
+                                  isExpanded: true,
+                                  itemHeight: null,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Neuigkeiten für ein Kind',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem(
+                                      value: '',
+                                      child: Text('Alle Kinder'),
+                                    ),
+                                    for (final entry in children.entries)
+                                      DropdownMenuItem(
+                                        value: entry.key,
+                                        child: Text(entry.value),
+                                      ),
+                                  ],
+                                  onChanged: (value) {
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    setState(
+                                      () => selectedChild = value == ''
+                                          ? null
+                                          : value,
+                                    );
+                                  },
+                                ),
+                              ],
+                              if (kinds.length > 1 || selectedKind != null) ...[
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  key: ValueKey(('notice-kind', selectedKind)),
+                                  initialValue: selectedKind ?? '',
+                                  isExpanded: true,
+                                  itemHeight: null,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Art der Neuigkeit',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem(
+                                      value: '',
+                                      child: Text('Alle Arten'),
+                                    ),
+                                    for (final kind in kinds)
+                                      DropdownMenuItem(
+                                        value: kind,
+                                        child: Text(noticeKindLabel(kind)),
+                                      ),
+                                  ],
+                                  onChanged: (value) {
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    setState(
+                                      () => selectedKind = value == ''
+                                          ? null
+                                          : value,
+                                    );
+                                  },
+                                ),
+                              ],
+                              if (filtered)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    setState(() {
+                                      search.clear();
+                                      selectedChild = selectedKind = null;
+                                    });
+                                  },
+                                  icon: const Icon(
+                                    Icons.filter_alt_off_outlined,
+                                  ),
+                                  label: const Text(
+                                    'Suche und Zusatzfilter leeren',
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    if (widget.state.isParent &&
-                        (children.length > 1 || selectedChild != null)) ...[
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        key: ValueKey(('notice-child', selectedChild)),
-                        initialValue: selectedChild ?? '',
-                        isExpanded: true,
-                        itemHeight: null,
-                        decoration: const InputDecoration(
-                          labelText: 'Neuigkeiten für ein Kind',
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text('Alle Kinder'),
-                          ),
-                          for (final entry in children.entries)
-                            DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          setState(
-                            () => selectedChild = value == '' ? null : value,
-                          );
-                        },
-                      ),
-                    ],
-                    if (kinds.length > 1 || selectedKind != null) ...[
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        key: ValueKey(('notice-kind', selectedKind)),
-                        initialValue: selectedKind ?? '',
-                        isExpanded: true,
-                        itemHeight: null,
-                        decoration: const InputDecoration(
-                          labelText: 'Art der Neuigkeit',
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text('Alle Arten'),
-                          ),
-                          for (final kind in kinds)
-                            DropdownMenuItem(
-                              value: kind,
-                              child: Text(noticeKindLabel(kind)),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          setState(
-                            () => selectedKind = value == '' ? null : value,
-                          );
-                        },
-                      ),
-                    ],
-                    if (filtered)
-                      TextButton.icon(
-                        onPressed: () {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          setState(() {
-                            search.clear();
-                            selectedChild = selectedKind = null;
-                          });
-                        },
-                        icon: const Icon(Icons.filter_alt_off_outlined),
-                        label: const Text('Suche und Zusatzfilter leeren'),
-                      ),
-                  ],
                   if (inbox.loading) ...[
                     const LinearProgressIndicator(),
                     Semantics(
@@ -471,7 +529,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             );
           },
         ),
-        SizedBox(height: 20),
+        SizedBox(height: 12),
         KeyedSubtree(key: _devicePanel, child: NotificationPanel(widget.state)),
       ],
     ),
@@ -544,7 +602,10 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
     final data = snapshot!;
     String entries(dynamic value, Set<String> allowed) => value is Map
         ? value.entries
-              .where((e) => allowed.contains(e.key) && e.value is int && e.value >= 0)
+              .where(
+                (e) =>
+                    allowed.contains(e.key) && e.value is int && e.value >= 0,
+              )
               .map((e) => '${e.key}: ${e.value}')
               .join(', ')
         : 'nicht gemeldet';
@@ -617,7 +678,7 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
                 currentPath: '/admin/push',
                 icon: Icons.notifications_outlined,
               ),
-              SizedBox(height: 28),
+              SizedBox(height: 16),
               if (loading) const LinearProgressIndicator(),
               if (loadedAt != null)
                 Text(
@@ -924,7 +985,7 @@ class _PushAdminScreenState extends State<PushAdminScreen> {
                                       CrossAxisAlignment.stretch,
                                   children: [
                                     devices,
-                                    SizedBox(height: 20),
+                                    SizedBox(height: 12),
                                     config,
                                   ],
                                 ),

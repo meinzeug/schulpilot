@@ -899,3 +899,18 @@ Materialansicht im Browser. Keine neuen Fremdassets oder Anbieteraufträge.
 Der bestehende Quellen-/Darstellungsvertrag bleibt maßgeblich; Quellenblöcke
 werden nur bei exakter Rekonstruktion des unveränderten Originaltexts verwendet.
 Nachweise und Grenzen: [RELEASE_101_2026_10_23.md](RELEASE_101_2026_10_23.md).
+
+
+### Rollenübergreifender Designumbau102 ·23.10.2026
+
+Erneut tatsächlich im angemeldeten Browser betrachtet: Simpleclub-Home bei
+1280×800 und390×844px, mobile Bibliothek und mobiler Lernplandialog. Letzterer
+wurde ohne Speicherung geschlossen. Referenzen: https://app.simpleclub.com/home
+und https://app.simpleclub.com/library. Kompakte Kopf-/Such-/Aktionszeilen und
+offene Abschnittshierarchie dienen als Muster für eigene Komponenten; keine
+fremden Texte, Icons, Schriftdateien oder Bilder in das Produkt übernommen.
+
+[47-Routen-Inventar](COMPACT_DESIGN_102_2026_10_23.md) erfasst Kinder-, Eltern-,
+Admin- und öffentliche Seiten. Quellprüfung, synthetische Browserfixtures,
+Widgettests und spätere reguläre Veröffentlichung sind getrennte Belege.
+Keine zusätzliche Modellanfrage oder physische Geräteprüfung in dieser Runde.

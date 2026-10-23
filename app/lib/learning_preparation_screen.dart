@@ -163,9 +163,9 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
                       ? Icons.cloud_off_rounded
                       : Icons.auto_awesome_rounded,
                   color: context.palette.teal,
-                  size: 46,
+                  size: 32,
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: 16),
                 Text(
                   ready
                       ? planning
@@ -182,7 +182,7 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
                       : planning
                       ? 'Dein Lernplan entsteht …'
                       : 'Deine Runde entsteht …',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 25),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22),
                 ),
                 SizedBox(height: 14),
                 if (waiting && error == null) ...[
@@ -205,7 +205,7 @@ class _LearningPreparationScreenState extends State<_LearningPreparationBody>
                   ),
                   SizedBox(height: 12),
                 ],
-                SizedBox(height: 20),
+                SizedBox(height: 16),
                 if (ready)
                   ActionButton(
                     label: widget.state.isChild

@@ -261,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
           ],
           if (!state.isParent || parentSection == 'account') ...[
             Panel(
@@ -295,7 +295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             if (state.isParent) ...[
               LoadView<Json>(
                 key: ValueKey(('google', ObjectKey(scope.account), version)),
@@ -358,11 +358,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
             ],
             if (!state.isAdmin) ...[
               section('notifications', NotificationPanel(state)),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
             ],
             section('devices', heading('Angemeldete Geräte')),
             confirmation('devices'),
@@ -444,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text('Open-Source-Lizenzen'),
             ),
             if (state.demoCredentials != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               demoAccess(context, state),
             ],
             if (state.isChild)
@@ -592,7 +592,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
             section(
               'children',
               const ParentSectionHeading(
@@ -872,7 +872,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
             section(
               'privacy',
               const ParentSectionHeading(
@@ -911,7 +911,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   ActionButton(
                     label: 'Eigenes Elternkonto löschen',
                     secondary: true,
@@ -1170,7 +1170,7 @@ Future<String?> passwordDialog(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(body),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         _SettingsPasswordField(
           controller: controller,
           enabled: !busy,
@@ -1717,7 +1717,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         onOpenPush: () => openRoute(context, '/admin/push'),
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 16),
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final provider = LoadView<Json>(
@@ -1842,7 +1842,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   provider,
-                                  const SizedBox(height: 20),
+                                  const SizedBox(height: 12),
                                   tools,
                                 ],
                               );
@@ -1870,7 +1870,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         key: providerForm,
                         onRefresh: refresh,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       AiRoutingPanel(widget.state),
                     ],
                   ),
@@ -2080,6 +2080,13 @@ class AdminFamilyList extends StatefulWidget {
 }
 
 class _AdminFamilyListState extends State<AdminFamilyList> {
+  bool? filtersExpanded;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    filtersExpanded ??= MediaQuery.sizeOf(context).width >= 720;
+  }
+
   final search = TextEditingController();
   late final Object? owner = widget.state.user;
   int page = 1, generation = 0;
@@ -2240,70 +2247,99 @@ class _AdminFamilyListState extends State<AdminFamilyList> {
           subtitle: 'Berechtigungen und Kontingente. Private Lerninhalte bleiben geschützt.',
           icon: Icons.family_restroom_rounded,
         ),
-        TextField(
-          controller: search,
-          maxLength: 80,
-          autocorrect: false,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => applySearch(),
-          decoration: InputDecoration(
-            labelText: 'Familie suchen',
-            hintText: 'Familienkennung oder Tarif',
-            helperText: 'Mit Suchen bestätigen. Alle berechtigten Metadaten durchsuchen.',
-            helperMaxLines: 3,
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: search.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Familiensuche leeren',
-                    onPressed: loading ? null : clearSearch,
-                    icon: const Icon(Icons.clear_rounded),
+        ExpansionTile(
+          key: const ValueKey('admin-family-filters'),
+          title: const Text('Suche & Haushaltsfilter'),
+          subtitle: appliedSearch.isEmpty && kind == 'all'
+              ? null
+              : Text(
+                  [
+                    if (appliedSearch.isNotEmpty) 'Suche: $appliedSearch',
+                    if (kind != 'all')
+                      kind == 'synthetic' ? 'Demo / Test' : 'Regulär',
+                  ].join(' · '),
+                ),
+          tilePadding: EdgeInsets.zero,
+          initiallyExpanded: (filtersExpanded ?? false),
+          maintainState: true,
+          onExpansionChanged: (value) {
+            if (own) setState(() => filtersExpanded = value);
+          },
+          children: [
+            ExcludeFocus(
+              excluding: !(filtersExpanded ?? false),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: search,
+                    maxLength: 80,
+                    autocorrect: false,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => applySearch(),
+                    decoration: InputDecoration(
+                      labelText: 'Familie suchen',
+                      hintText: 'Familienkennung oder Tarif',
+                      helperText: 'Mit Suchen bestätigen. Alle berechtigten Metadaten durchsuchen.',
+                      helperMaxLines: 3,
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Familiensuche leeren',
+                              onPressed: loading ? null : clearSearch,
+                              icon: const Icon(Icons.clear_rounded),
+                            ),
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-          ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: loading ? null : applySearch,
-              icon: const Icon(Icons.search_rounded),
-              label: const Text('Suchen'),
-            ),
-            OutlinedButton.icon(
-              onPressed: loading ? null : load,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Familienliste aktualisieren'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final filter in [
-              ('all', 'Alle Haushalte'),
-              ('regular', 'Regulär'),
-              ('synthetic', 'Demo / Test'),
-            ])
-              ChoiceChip(
-                label: Text(filter.$2),
-                selected: kind == filter.$1,
-                onSelected: loading
-                    ? null
-                    : (_) {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        kind = filter.$1;
-                        page = 1;
-                        load();
-                      },
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: loading ? null : applySearch,
+                        icon: const Icon(Icons.search_rounded),
+                        label: const Text('Suchen'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: loading ? null : load,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Familienliste aktualisieren'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final filter in [
+                        ('all', 'Alle Haushalte'),
+                        ('regular', 'Regulär'),
+                        ('synthetic', 'Demo / Test'),
+                      ])
+                        ChoiceChip(
+                          label: Text(filter.$2),
+                          selected: kind == filter.$1,
+                          onSelected: loading
+                              ? null
+                              : (_) {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  kind = filter.$1;
+                                  page = 1;
+                                  load();
+                                },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
+            ),
           ],
         ),
-        const SizedBox(height: 16),
         if (loading)
           Padding(
             padding: const EdgeInsets.all(24),
@@ -2937,7 +2973,7 @@ class AdminOperationCards extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final queue = ActionPanel(
@@ -2949,42 +2985,57 @@ class AdminOperationCards extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.hub_outlined, color: p.teal, size: 23),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'AUFTRAGSLEITSTAND',
-                          style: TextStyle(
-                            color: p.teal,
-                            fontSize: 11,
-                            letterSpacing: 1.4,
-                            fontWeight: FontWeight.w800,
+                  LayoutBuilder(
+                    builder: (context, headerConstraints) => Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: headerConstraints.maxWidth,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.hub_outlined, color: p.teal, size: 23),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  'AUFTRAGSLEITSTAND',
+                                  style: TextStyle(
+                                    color: p.teal,
+                                    fontSize: 12,
+                                    letterSpacing: .4,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    queued?.toString() ?? 'Unbekannt',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: p.ink,
-                      fontSize: queued == null ? 28 : 64,
-                      height: 1,
+                        Text(
+                          queued?.toString() ?? 'Unbekannt',
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                color: p.ink,
+                                fontSize: queued == null ? 24 : 32,
+                                height: 1.1,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
                   Text(
                     'Wartende Aufträge',
                     style: TextStyle(
                       color: p.ink,
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   Text(
                     'Gespeicherte Aufträge in der Warteschlange. Diese Ansicht startet keine neue Verarbeitung.',
                     style: TextStyle(color: p.muted, fontSize: 14),
@@ -3695,7 +3746,7 @@ class _ProviderFormState extends State<ProviderForm> {
                 );
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
           ],
           for (final key in ['reserve_micros', 'global_limit_micros'])
             ValueListenableBuilder<TextEditingValue>(

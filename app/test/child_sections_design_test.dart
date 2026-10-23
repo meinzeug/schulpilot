@@ -413,7 +413,7 @@ void main() {
                   .first,
             )
             .height,
-        greaterThanOrEqualTo(52),
+        greaterThanOrEqualTo(48),
       );
     }
   });

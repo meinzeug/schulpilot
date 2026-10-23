@@ -1014,7 +1014,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xff091422),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1236,7 +1236,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                 ),
               ),
               if (live && calls.joined) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 if (!calls.isChild && media?.hasRemoteScreen == true) ...[
                   _video(
                     context,
@@ -1387,7 +1387,7 @@ class _FamilyCallScreenState extends State<FamilyCallScreen> {
                 ],
               ],
               if (live) ...[
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.error,

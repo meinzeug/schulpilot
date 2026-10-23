@@ -290,8 +290,14 @@ class _InstallationScreenState extends State<InstallationScreen>
       ('operator_address', 'Anschrift'),
       ('operator_support_email', 'Support-E-Mail'),
       ('operator_phone', 'Telefonnummer für Kunden'),
-      ('operator_complaints_address', 'Beschwerdeanschrift (nur falls abweichend)'),
-      ('operator_legal_info', 'Register, Vertretung und USt-IdNr. (falls erforderlich)'),
+      (
+        'operator_complaints_address',
+        'Beschwerdeanschrift (nur falls abweichend)',
+      ),
+      (
+        'operator_legal_info',
+        'Register, Vertretung und USt-IdNr. (falls erforderlich)',
+      ),
     ],
     [
       ('smtp_host', 'SMTP-Server'),
@@ -803,7 +809,7 @@ class _InstallationScreenState extends State<InstallationScreen>
         endpoint: widget.initial ? '/setup/provider' : '/admin/provider',
         onRefresh: load,
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
       OperatorProbePanel(
         widget.state,
         endpoint: widget.initial ? '/setup/provider' : '/admin/provider',
@@ -849,7 +855,7 @@ class _InstallationScreenState extends State<InstallationScreen>
           children: [
             heading('SCHULPILOT wird eingerichtet'),
             const Text('Bitte die Ersteinrichtung im Browser abschließen.'),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             ActionButton(
               label: 'Im Browser öffnen',
               onPressed: () async {
@@ -892,7 +898,7 @@ class _InstallationScreenState extends State<InstallationScreen>
             const Text(
               'Öffne die Ersteinrichtung mit dem Installationscode deines Servers.',
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             TextField(
               controller: code,
               focusNode: inputFocus('unlock_code'),
@@ -912,7 +918,7 @@ class _InstallationScreenState extends State<InstallationScreen>
                 errorMaxLines: 3,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             ActionButton(
               label: 'Einrichtung öffnen',
               icon: Icons.lock_open_rounded,
@@ -1061,7 +1067,7 @@ class _InstallationScreenState extends State<InstallationScreen>
                     }
                   }),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           TextField(
             controller: recipient,
             focusNode: inputFocus('test_recipient'),
@@ -1223,7 +1229,7 @@ class _InstallationScreenState extends State<InstallationScreen>
             child: const Text('Gespeicherten KI-Stand prüfen'),
           ),
           if (widget.initial) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             if (completionUncertain) ...[
               const Notice(
                 'Der Abschluss ist noch nicht sicher abgeglichen. Zuerst den gespeicherten Einrichtungsstatus lesen; kein erneuter Abschluss durch Neuladen.',
@@ -1287,7 +1293,7 @@ class _InstallationScreenState extends State<InstallationScreen>
             ],
           ),
         if (widget.initial) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Semantics(
             label: 'Einrichtungsfortschritt',
             value: 'Schritt ${step + 1} von ${labels.length}: ${labels[step]}',
@@ -1298,7 +1304,7 @@ class _InstallationScreenState extends State<InstallationScreen>
             ),
           ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1320,7 +1326,7 @@ class _InstallationScreenState extends State<InstallationScreen>
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -1478,7 +1484,7 @@ class _InstallationScreenState extends State<InstallationScreen>
               currentPath: '/admin/settings',
               icon: Icons.tune_rounded,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             child,
           ],
         ),
@@ -1490,8 +1496,8 @@ class _InstallationScreenState extends State<InstallationScreen>
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 820),
             child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [brand(), const SizedBox(height: 36), child],
+              padding: const EdgeInsets.all(18),
+              children: [brand(), const SizedBox(height: 20), child],
             ),
           ),
         ),

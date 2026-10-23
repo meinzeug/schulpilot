@@ -45,6 +45,7 @@ void main() {
       f.respond = (r) async =>
           r.url.queryParameters['q'] == 'Flächen' ? pending.future : null;
       await f.mount(tester, '/parent-homework/child');
+      await tap(tester, find.text('Suche & Hausaufgabenfilter'));
       final before = f.requests.length;
       await tester.enterText(input('Hausaufgaben suchen'), ' Flächen ');
       expect(f.requests.length, before);
@@ -85,6 +86,7 @@ void main() {
       metadata(f);
       f.homework['next_cursor'] = 'old-photo-cursor';
       await f.mount(tester, '/parent-homework/child');
+      await tap(tester, find.text('Suche & Hausaufgabenfilter'));
       await choose(tester, 'Fach der Hausaufgaben', 'Mathematik');
       expect(f.requests.last.url.queryParameters['subject'], 'Mathematik');
       expect(
@@ -256,6 +258,9 @@ void main() {
           tester,
           page == 'plan' ? '/parent-plan/child' : '/parent-homework/child',
         );
+        if (page == 'homework') {
+          await tap(tester, find.text('Suche & Hausaufgabenfilter'));
+        }
         expect(
           find.textContaining('auf diesem Server noch nicht verfügbar.'),
           findsOneWidget,
@@ -300,6 +305,8 @@ void main() {
         expect(tester.takeException(), isNull);
         if (page == 'plan') {
           await tap(tester, find.text('Suche & alle Themenfilter'));
+        } else {
+          await tap(tester, find.text('Suche & Hausaufgabenfilter'));
         }
         final search = find.byType(ParentCollectionSearch);
         await tester.ensureVisible(search);

@@ -1132,7 +1132,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                 ),
             ],
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 16),
           if (loading)
             Center(child: CircularProgressIndicator())
           else if (day == null) ...[
@@ -1475,7 +1475,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                   padding: EdgeInsets.all(22),
                   decoration: BoxDecoration(
                     color: context.palette.mint,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     Icons.add_a_photo_rounded,
@@ -1484,7 +1484,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 16),
               Text(
                 hasPhotos
                     ? 'Hast du alle Seiten?'
@@ -1508,7 +1508,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                 Notice(
                   'Alle 24 Plätze für heute sind belegt. Du kannst die vorgemerkten Fotos noch abgeben. Deine Seiten bleiben gespeichert.',
                 ),
-              SizedBox(height: 20),
+              SizedBox(height: 16),
               if (allowUploads && day!['synthetic'] == true && pages.isEmpty)
                 ActionButton(
                   label: 'Beispielseiten öffnen',
@@ -1620,7 +1620,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
             ),
           ),
         if (hasPhotos) ...[
-          SizedBox(height: 20),
+          SizedBox(height: 16),
           Text(
             '${freshPages.length + pendingPhotos.length} neue ${freshPages.length + pendingPhotos.length == 1 ? 'Seite' : 'Seiten'} gesammelt',
             style: TextStyle(fontWeight: FontWeight.w700),
@@ -1851,7 +1851,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           children: [
             heading('Deine Fotos sind gespeichert'),
             Text('Lass den Text im Hintergrund vorbereiten.'),
-            SizedBox(height: 20),
+            SizedBox(height: 16),
             ActionButton(
               label: 'Im Hintergrund vorbereiten',
               icon: Icons.auto_awesome_outlined,
@@ -2348,7 +2348,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               ],
             ],
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 16),
           if (loading) Center(child: CircularProgressIndicator()),
           if (error != null) Notice(error!, warning: true),
           importStatus(),
@@ -2499,7 +2499,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                     ],
                   ],
                 ),
-              SizedBox(height: 20),
+              SizedBox(height: 16),
             ],
             if (stage != 'ready') ...[
               for (final page in pages)
@@ -2671,7 +2671,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                   onPressed: () => run(prepareInBackground),
                 ),
               if (selected != null && !locked && !readOnly) ...[
-                SizedBox(height: 22),
+                SizedBox(height: 16),
                 heading(
                   'Seite ${selected['page_number']} prüfen',
                   subtitle: 'Stimmt alles? Prüfe Fach, Thema und Text. Frage bei unleserlichen Stellen nach Hilfe.',
@@ -2686,7 +2686,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                 ),
               ],
               if (!locked && !parent && !readOnly) ...[
-                SizedBox(height: 20),
+                SizedBox(height: 16),
                 TextButton.icon(
                   onPressed: () => run(() async {
                     await state.api.put('/school-days/${day!['id']}/stage', {
@@ -2713,7 +2713,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                       'Gespeichertes Paket weiter nutzen · Ergänzungen später',
                     ),
                   ),
-                SizedBox(height: 24),
+                SizedBox(height: 16),
                 heading(
                   'Dein Paket für heute',
                   subtitle: 'Passende Einheiten für deine Zeit. Notierte Hausaufgaben bleiben eigene Aufträge.',
@@ -2863,7 +2863,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
                 icon: Icon(Icons.event_note),
                 label: Text('Gespeicherten Stoff für später einplanen'),
               ),
-            SizedBox(height: 24),
+            SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: () => openRoute(context, '/app'),
               icon: Icon(Icons.home_outlined),

@@ -258,6 +258,13 @@ class _ParentProfileEditorState extends State<_ParentProfileEditor> {
           },
           child: AlertDialog(
             scrollable: true,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 20,
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+            contentPadding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            actionsPadding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
             title: const Text('Notwendige Lernangaben'),
             content: SizedBox(
               width: 460,
@@ -280,7 +287,7 @@ class _ParentProfileEditorState extends State<_ParentProfileEditor> {
                     const Text(
                       'Benutzername, Passwörter und gespeicherte Antworten werden hier nicht geändert.',
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     for (final item in [
                       (name, 'Anzeigename'),
                       (grade, 'Klassenstufe'),
@@ -289,7 +296,7 @@ class _ParentProfileEditorState extends State<_ParentProfileEditor> {
                       (region, 'Bundesland (optional)'),
                     ])
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.only(bottom: 10),
                         child: TextFormField(
                           controller: item.$1,
                           enabled: !busy && !comparing,

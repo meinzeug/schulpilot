@@ -156,10 +156,9 @@ class DashboardScreen extends StatelessWidget {
                     ),
                 ],
               ),
-              SizedBox(height: 26),
+              SizedBox(height: 16),
               ParentSectionHeading(
                 title: 'Deine Kinder',
-                subtitle: 'Öffne den Lernüberblick oder gehe direkt zu einem Bereich.',
                 icon: Icons.diversity_1_rounded,
                 action: IconButton(
                   tooltip: 'Aktualisieren',
@@ -192,7 +191,7 @@ class DashboardScreen extends StatelessWidget {
                       _FamilyChildCard(child: Json.from(child)),
                   ],
                 ),
-              SizedBox(height: 28),
+              SizedBox(height: 16),
               if (state.demoCredentials != null) demoAccess(context, state),
             ],
           );
@@ -229,8 +228,8 @@ class _FamilyChildCard extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 54,
-              height: 54,
+              width: 44,
+              height: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: palette.mint,
@@ -240,7 +239,7 @@ class _FamilyChildCard extends StatelessWidget {
                 name.characters.first.toUpperCase(),
                 style: TextStyle(
                   color: palette.teal,
-                  fontSize: 27,
+                  fontSize: 23,
                   height: 1,
                   fontWeight: FontWeight.w800,
                 ),
@@ -255,7 +254,7 @@ class _FamilyChildCard extends StatelessWidget {
                     name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: palette.ink,
-                      fontSize: 25,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -332,7 +331,7 @@ class _FamilyChildCard extends StatelessWidget {
           );
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: 26),
+      padding: EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: palette.surfaceBorder)),
       ),
@@ -344,14 +343,14 @@ class _FamilyChildCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(flex: 5, child: identity),
-                SizedBox(width: 40),
+                SizedBox(width: 24),
                 Expanded(flex: 3, child: measuredTime),
               ],
             );
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [identity, SizedBox(height: 20), measuredTime],
+            children: [identity, SizedBox(height: 16), measuredTime],
           );
         },
       ),
@@ -658,14 +657,14 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         subtitle: 'Vorschläge und verbindliche Aufträge getrennt im Blick.',
                         icon: Icons.event_note_rounded,
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: 16),
                       if ((plan['week'] as List? ?? []).isNotEmpty) ...[
                         DailyPlanPanel(
                           plan: plan,
                           state: state,
                           childId: child['id'],
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 16),
                       ],
                       ParentSectionHeading(
                         title: 'Heute eingeplant',
@@ -695,7 +694,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                               Notice(notice),
                           ],
                         ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 16),
                       ParentSectionHeading(
                         title: 'Lernziele & Einstellungen',
                         icon: Icons.tune_rounded,
@@ -733,7 +732,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                           ],
                         ),
                       ),
-                      SizedBox(height: 26),
+                      SizedBox(height: 16),
                       ActionPanel(
                         actionLabel: 'Lernaufträge und Klassenarbeiten im Lernplan ansehen',
                         onPressed: () {
@@ -771,7 +770,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         subtitle: 'Gespeicherte Antworten und genutzte Hilfen nachvollziehen. Begonnene und abgeschlossene Runden bleiben unterscheidbar.',
                         icon: Icons.history_rounded,
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: 16),
                       PagedCollection(
                         state,
                         key: ValueKey('parent-learning-${child['id']}'),
@@ -779,7 +778,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                         learning: true,
                         initialSection: 'completed',
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 16),
                       LoadView<List<dynamic>>(
                         key: ValueKey('parent-activity:${child['id']}'),
                         revision: (state.revision, data),
@@ -1005,7 +1004,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             ? 'Deine letzte Antwort'
             : guidance?['title'] ?? next['topic'] ?? 'Mit deinem Stoff weiter',
         subtitle:
-            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''}${progress == null ? '' : '\n$progress'}${details['estimated_minutes'] is num ? '\nEtwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
+            '$obligation${next['subject']}${guidance != null && next['topic'] != null ? ' · ${next['topic']}' : ''}${progress == null ? '' : ' · $progress'}${details['estimated_minutes'] is num ? ' · Etwa ${counted(details['estimated_minutes'], 'Minute', 'Minuten')}' : ''}',
         action: ActionButton(
           label: learnLabel,
           icon: feedbackWaiting
@@ -1120,8 +1119,8 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
                       'Hallo, $name!',
                       style: TextStyle(
                         fontSize: MediaQuery.sizeOf(context).width >= 720
-                            ? 34
-                            : 22,
+                            ? 28
+                            : 24,
                         fontWeight: FontWeight.w800,
                         color: context.palette.ink,
                         height: 1.2,
@@ -1167,7 +1166,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ] else if (needsCapture && !photosWaiting)
           noPagesButton,
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Semantics(
           button: true,
           excludeSemantics: true,
@@ -1190,8 +1189,8 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
               onFocusChange: (value) => setState(() => searchFocused = value),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
@@ -1199,7 +1198,7 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
                       child: Icon(
                         Icons.search_rounded,
                         color: context.palette.muted,
-                        size: 27,
+                        size: 22,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -1218,17 +1217,6 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
                 ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 30),
-        Text(
-          'Was möchtest du heute machen?',
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: MediaQuery.sizeOf(context).width >= 720 ? 25 : 16,
-            fontWeight: FontWeight.w800,
-            color: context.palette.ink,
-            height: 1.3,
           ),
         ),
         const SizedBox(height: 16),
@@ -1254,15 +1242,6 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             onTap: () => openSaved('/homework/${child['id']}'),
           ),
         ],
-        if (otherTopics)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => openSaved('/learn/${child['id']}'),
-              icon: Icon(Icons.explore_outlined, size: 20),
-              label: Text('Anderes Thema'),
-            ),
-          ),
         if (canLearn && learningJob != null) ...[
           SizedBox(height: 10),
           ChildTodayTile(
@@ -1300,10 +1279,17 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
               label: Text('Heftseite prüfen'),
             ),
           ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 16),
         Divider(color: context.palette.surfaceBorder, height: 1),
-        const SizedBox(height: 22),
+        const SizedBox(height: 12),
         ChildTodayTools(
+          secondaryAction: otherTopics
+              ? TextButton.icon(
+                  onPressed: () => openSaved('/learn/${child['id']}'),
+                  icon: Icon(Icons.explore_outlined, size: 20),
+                  label: Text('Anderes Thema'),
+                )
+              : null,
           learningTime: activeMinutes is num && dailyGoal is num
               ? ChildTodayProgress(
                   activeMinutes: activeMinutes.toDouble(),
@@ -2084,7 +2070,7 @@ class MessagesScreen extends StatelessWidget {
                       subtitle: 'Hilfewünsche, Ideen und Antworten an einem Ort. Der Lernstand bleibt davon getrennt.',
                       icon: Icons.forum_outlined,
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 16),
                   ],
                   messages(context, state, data, refresh, standalone: true),
                 ],
@@ -2692,7 +2678,7 @@ Widget messages(
               ),
           ],
         ),
-      SizedBox(height: 20),
+      SizedBox(height: 16),
       if ((data['messages'] as List).isEmpty)
         Notice('Hier erscheinen eure Nachrichten, Hilfewünsche und Antworten.'),
       for (final m in data['messages'] as List)

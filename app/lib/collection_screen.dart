@@ -430,7 +430,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         if (!active) closeOwnedRoutes();
         return StatefulBuilder(
           builder: (ctx, set) => Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -440,7 +440,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                     'Ansicht anpassen',
                     style: Theme.of(ctx).textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   if (!widget.learning && widget.onSelect == null) ...[
                     DropdownButtonFormField<String>(
                       initialValue: draftStatus,
@@ -536,7 +536,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
                         child: const Text('Zeitraum entfernen'),
                       ),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => Navigator.pop(ctx, true),
                     child: const Text('Anwenden'),
@@ -1289,7 +1289,7 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
               ),
             if (loading)
               const Padding(
-                padding: EdgeInsets.all(28),
+                padding: EdgeInsets.all(20),
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (error != null) ...[

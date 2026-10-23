@@ -392,6 +392,7 @@ void main() {
         }),
       );
       await fixture.open(tester, state, 'homework');
+      await fixture.tap(tester, 'Suche & Hausaufgabenfilter');
       await fixture.tap(tester, 'Mit Häkchen');
       expect(find.text('Mathematik · Flächen'), findsNothing);
       expect(
