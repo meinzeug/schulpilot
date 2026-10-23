@@ -401,3 +401,22 @@ verwenden; Schema nicht zurückstufen und keine alten Daten über neue Antworten
 rücksichern. Die Nachprüfung zeigte dreimal0, nur als datierte Momentaufnahme.
 Vorheriger Release `20261023T061617Z-a02314d` erhalten.
 Vollständige Belege: [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
+
+## Neue JSON-Aufgabenformate ab Version99
+
+`grouped` und `text_probe` erweitern persistierte JSONs ohne SQL-Migration;
+Schema0031 allein beweist deshalb keine Rückwegkompatibilität. Nach einem
+möglichen Start der neuen API/Worker stoppt die Aktivierung bei einem späten
+Fehler beide Dienste und erhält den neuen Releasezeiger. Sie startet den alten
+Code nicht automatisch wieder, auch nicht mit `--rollback-compatible`.
+Kompatiblen99-Leser reparieren beziehungsweise einen Vorwärtsfix deployen.
+Fehler vor dem möglichen neuen Writerstart behalten den bisherigen Rückweg
+nur bei unverändertem Schema.
+
+Vor jeder gesonderten Rückwegentscheidung `learning_units.questions`,
+`unit_coaching.report`, `jobs.result` und `jobs.payload` auf neue Verträge prüfen;
+auch gespeicherte Coaching-Beobachtungen können gruppierte Aufgabentypen
+referenzieren. Einzelne aggregierte Abfragen im laufenden Betrieb sind nur
+datierte Beobachtungen, keine gemeinsame schreibgesperrte Momentaufnahme.
+Vorhandene neue Antworten erhalten, keine alte Gesamtdatenbank darüberlegen.
+Details und tatsächliche Veröffentlichung: [Release99](RELEASE_99_2026_10_23.md).

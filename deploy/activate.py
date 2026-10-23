@@ -26,6 +26,7 @@ before = caddy.read_text()
 fragment = Path("/etc/caddy/schulpilot.caddy")
 fragment_before = fragment.read_text() if fragment.exists() else None
 migration_started = False
+new_writers_may_have_started = False
 schema_before = None
 environment = None
 
@@ -139,6 +140,9 @@ try:
             env=environment,
             check=True,
         )
+    # A failed restart can still have started one writer. SQL schema equality
+    # cannot prove compatibility with JSON formats persisted by the new code.
+    new_writers_may_have_started = True
     subprocess.run(["systemctl", "restart", "schulpilot-api", "schulpilot-worker"], check=True)
     subprocess.run(["systemctl", "start", *timers], check=True)
     healthy = False
@@ -160,13 +164,17 @@ try:
         prior.symlink_to(previous)
     print("SCHULPILOT activated: " + release_id)
 except Exception:
+    if new_writers_may_have_started:
+        # Stop possible writers before any recovery checks; retain this release
+        # as the reader for JSON it may already have stored.
+        subprocess.run(["systemctl", "stop", "schulpilot-api", "schulpilot-worker"], check=False)
     caddy.write_text(before)
     if fragment_before is not None:
         fragment.write_text(fragment_before)
     elif fragment.exists():
         fragment.unlink()
-    compatible = not migration_started
-    if migration_started:
+    compatible = not migration_started and not new_writers_may_have_started
+    if migration_started and not new_writers_may_have_started:
         try:
             compatible = database_revision() == schema_before
         except Exception:
@@ -176,8 +184,16 @@ except Exception:
         current.symlink_to(previous)
         subprocess.run(["systemctl", "restart", "schulpilot-api", "schulpilot-worker"], check=False)
     else:
-        subprocess.run(["systemctl", "stop", "schulpilot-api", "schulpilot-worker"], check=False)
-        if migration_started and not compatible:
+        if not new_writers_may_have_started:
+            subprocess.run(["systemctl", "stop", "schulpilot-api", "schulpilot-worker"], check=False)
+        if new_writers_may_have_started:
+            print(
+                "New release writers may have persisted incompatible JSON: services stopped and current release retained. "
+                "Use a compatible forward fix or explicitly verify data/code compatibility before any rollback; "
+                "unchanged SQL schema and --rollback-compatible are not sufficient.",
+                file=sys.stderr,
+            )
+        elif migration_started and not compatible:
             print(
                 "Schema changed: services stopped. Restore the verified pre-deployment database backup before activating the previous release.",
                 file=sys.stderr,
