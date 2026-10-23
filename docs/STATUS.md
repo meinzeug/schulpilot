@@ -1,3 +1,30 @@
+# Produktionsstand1.26.1+98 ·23.10.2026
+
+Live: https://schulpilot.dorfspy.de
+Produktcommit `91b3de8ef5c45224018ca50db7bf2d064d02b0cd`, Release `20261023T102329Z-91b3de8`, main gepusht.
+
+Lernrunde und Fotoeinstieg stehen auf der Startseite vor Suche und weiteren
+Tagesaktionen. PDF-Import prüft Rechte und Idempotenz nach sperrfreier Extraktion
+erneut; lokale SQLite-Katalogjobs serialisieren parallele Kontextänderungen.
+Der KI-Darstellungskatalog aus97 mit24Fachprofilen bleibt maßgeblich.
+
+Vollständige [CI39922708482](https://github.com/meinzeug/schulpilot/actions/runs/39922708482)
+grün:2096Backend-/2633Flutterfälle bestanden,33/19übersprungen, Analyse/Ruff
+und Webbuild erfolgreich. Zusätzlich79betroffene Backendfälle auf PostgreSQL16
+und SQLite sowie190gezielte Flutterfälle bestanden. Reguläre signierte Builds,
+Quell-/Signatur-/Geheimnisprüfung und öffentliche APK-/JS-Hashprüfung bestanden.
+Alle fünf Dienste aktiv, Schema0031,17Konfigurationsdateien bytegleich erhalten.
+
+Nachweise: [RELEASE_98_2026_10_23.md](RELEASE_98_2026_10_23.md).
+Weitere tatsächlich bediente Referenzen und priorisierte eigene Ausbauideen:
+[SIMPLECLUB_ROUND_2_2026_10_23.md](SIMPLECLUB_ROUND_2_2026_10_23.md).
+Keine weitere kostenpflichtige KI-Probe; die einmalige verworfene97-Probe bleibt
+vom lokalen Renderer-/Mocknachweis getrennt.97 liest das persistierte Format,
+96 nach gespeicherten Szenen weiterhin ungeeignet; keine alte Gesamtdatenbank
+über neue Kinderantworten zurückspielen.
+
+## Vorheriger Stand97
+
 # Produktionsstand1.26.0+97 ·23.10.2026
 
 Live: https://schulpilot.dorfspy.de

@@ -10,7 +10,7 @@ Die folgenden Abschnitte unterscheiden drei Belegarten:
 - **Nur offiziell öffentlich beschrieben:** gelesene Simpleclub-Lektions-, Blog- oder Hilfeseiten. Ein dort sichtbarer Appverweis oder ein benannter Knopf beweist keine von uns ausgeführte Interaktion.
 - **Eigener Vorschlag:** eine mögliche Schulpilot-Erweiterung. Sie ist weder eine vorhandene Simpleclub-Funktion noch bereits in Schulpilot umgesetzt, sofern nicht ausdrücklich anders angegeben.
 
-Die angemeldeten Beobachtungen stammen aus der Browserprüfung der Hauptaufgabe. Die drei dazugehörigen lokalen Screenshots wurden für diese Dokumentation zusätzlich angesehen. Ein anderer parallel arbeitender Agent hat in dieser zweiten Runde keine neuen App-Aufgaben bedient; seine früher dokumentierten öffentlichen Referenzen werden unten nur als solche eingeordnet.
+Die angemeldeten Beobachtungen stammen aus der tatsächlichen Browserprüfung. Die zugehörigen lokalen Screenshots ergänzen das Handlungsprotokoll. Weitere öffentliche Referenzen werden unten ausdrücklich nur als solche eingeordnet.
 
 Es wurden keine fremden Lerntexte, Grafiken, Animationen oder Assets ins Produkt übernommen. Die URLs enthalten Inhaltskennungen, keine Zugangsdaten. Kurze Bezeichnungen von Bedienelementen dienen ausschließlich der nachvollziehbaren Beschreibung.
 
@@ -50,7 +50,7 @@ Für Kunst und Musik ergab diese öffentliche Recherche keine belastbaren neuen 
 
 ## Frühere öffentliche Referenzen: weiterhin nur Beschreibung
 
-Die erste Runde führte unter anderem [Kreuzprodukt](https://simpleclub.com/lessons/mathematik-kreuzprodukt), [PCR](https://simpleclub.com/lessons/biologie-pcr) und [Queue](https://simpleclub.com/lessons/fachinformatikerin-queue) auf. Die Seiten wurden für die Einordnung erneut gelesen: Das Kreuzprodukt beschreibt einen Schrittregler; PCR benennt aktivierbare Phasen; Queue erklärt einzelne Operationen an beschrifteten Objekten. Das ist keine neue Abnahme ihrer Aufgaben oder sämtlicher App-Steuerungen. Nur für den oben eng beschriebenen Queue-Ausschnitt liegt nun zusätzlich echte angemeldete Bedienung vor.
+Die erste Runde führte unter anderem [Kreuzprodukt](https://simpleclub.com/lessons/mathematik-kreuzprodukt), [PCR](https://simpleclub.com/lessons/biologie-pcr) und [Queue](https://simpleclub.com/lessons/fachinformatikerin-queue) auf. Die Seiten wurden für die Einordnung erneut gelesen: Das Kreuzprodukt beschreibt einen Schrittregler; PCR benennt aktivierbare Phasen; Queue erklärt einzelne Operationen an beschrifteten Objekten. Das ist keine neue Abnahme ihrer Aufgaben oder sämtlicher App-Steuerungen. Zu diesem anfänglichen Recherchezeitpunkt lag nur für den oben eng beschriebenen Queue-Ausschnitt zusätzlich echte angemeldete Bedienung vor. Die nachfolgende Vertiefung ergänzt Kreuzprodukt und PCR.
 
 Die öffentliche [Satzglieder-Lektion](https://simpleclub.com/lessons/deutsch-ermittlung-satzglieder) nennt außerdem vorgegebene Umstellungs- und Ersetzungsoptionen. Sie ergänzt die beobachteten Umstellungsschalter; eine selbst ausgeführte Ersatzprobe wird für diese Runde nicht behauptet. Die Methode [Textmarkierung](https://simpleclub.com/lessons/deutsch-textmarkierung) beschreibt Auswahl und Überprüfung wichtiger Wörter. Daraus folgt kein Nachweis einer bedienten digitalen Textstellenlupe.
 
@@ -97,3 +97,32 @@ Der aktuelle [Darstellungskatalog](AI_RENDER_CAPABILITIES.md) bleibt maßgeblich
 Ein vorhandener Grafikname oder eine allgemeine Szene beweist nicht diese zusätzlichen Fähigkeiten. Neue Fähigkeiten dürfen erst nach Datenvertrag, fachlicher Validierung, Renderer-/Eingabeunterstützung, Offenlegungsprüfung und gezielter Abnahme in `answer_ui` oder `local_interactions` angekündigt werden. Der Katalog wird aus dem endgültig erreichbaren Schema abgeleitet; andere Fächer eines Pakets erweitern das einzelne Fachprofil nicht. Sprachprojektschemas ohne `presentation` und reine Rückblicke erhalten weiterhin keinen Grafikauftrag.
 
 Bestätigte Quellen, Fragen-/Quellenrevisionen, Familien-/Kontorechte, Entwurfsschutz, explizites Prüfen und die Trennung zwischen Exploration und Lernbelegen bleiben erhalten. Diese Forschung führt keine Provideraufrufe, freien Modellcode, fremden Assets oder neuen Dienste ein und erhöht weder Token-, Kosten-, Zeit- noch Wiederholungsgrenzen. Eine spätere Umsetzung braucht eigene synthetische Tests und eine reale Bedienprüfung; die Referenzrecherche ist dafür weder Implementierungs- noch Wirksamkeitsnachweis.
+
+
+## Weitere tatsächlich bediente Vertiefung nach dem Produktcommit
+
+Während des abgeschlossenen Release98-Laufs wurde dieselbe zweite Runde
+fortgeführt. Damit wurden sieben weitere Themen konkret vertieft; dies bedeutet
+nicht, dass alle Aufgaben dieser Themen oder aller Fächer geprüft wurden.
+
+| Inhalt | Tatsächlich beobachtet | Begrenzung und eigene Ableitung |
+| --- | --- | --- |
+| [Mathematik: Kreuzprodukt-Lernsequenz](https://app.simpleclub.com/topic/H5bfbGV8FeADUSdmijeK/story/wUoqa4po5lhHf2kjCw7V) | Voraussetzungen gelesen, zwei kleine Auswahlfragen ausdrücklich richtig geprüft, erster Berechnungsschritt geöffnet. Der Schrittregler wurde auf den nächsten Teilstrich geklickt: Die Grafik wechselte von zwei geklammerten Vektoren zu wiederholten Komponentenreihen. Die Voraussetzungskarte zusätzlich bei390×844px mit fester Fußleiste angesehen. | Keine abgeschlossene Lektion, kein allgemeiner Vektorrechner oder3D-Editor nachgewiesen; keine mobile Reglergeste. Eigene Idee: quellgebundene Formelzustände und eine Vorhersagefrage vor dem erklärenden nächsten Schritt. |
+| [Biologie: PCR](https://app.simpleclub.com/topic/53U9YDbQjx7WnOU7bBmN) und [Aufgabenrunde](https://app.simpleclub.com/topic/53U9YDbQjx7WnOU7bBmN/story/ct9I5cUuFlPkqZ3W5WxE) | Denaturierung gewählt; zwei getrennte Stränge und höheres Thermometer visuell bestätigt. Danach Primerhybridisierung und Elongation gewählt; die Schalter schließen einander aus. Erste von fünf Aufgaben als vierteilige Einfachauswahl gelesen, nicht beantwortet. | Vorgegebene Phasen, kein freier Molekülsimulator. Eine benannte Zustandswahl kann mit beschrifteter Fachgrafik und einer passenden skalaren Anzeige verbunden werden; ohne Interaktion als Kompetenzbeleg. |
+| [Wirtschaft: Überschussangebot/-nachfrage](https://app.simpleclub.com/topic/woDBH6TsL5yP0OeoQsZy) und [Aufgabenrunde](https://app.simpleclub.com/topic/woDBH6TsL5yP0OeoQsZy/story/B6pVUHfQcGLHiH1W8THg) | Start der Angebotsanimation bedient; Preislinie und zwei Mengenmarkierungen bewegen sich sichtbar zum selben Schnittpunkt. Rücksetzen geklickt, dessen Ergebnis nicht gesondert bestätigt. Erste von fünf Aufgaben mit zwei Dropdown-Zuordnungszeilen gelesen, nicht beantwortet. | Keine freie Preissteuerung, Prognose oder zweite Nachfrageanimation geprüft. Ein Wirtschaftsexplorer benötigte einen eigenen geprüften Preis-/Mengenvertrag; das Fach erbt nicht automatisch function_graph oder data_plot. |
+| [Englisch: indirekte Rede](https://app.simpleclub.com/topic/cpU7G7pPIAk0UuYr3BFP) und [schwere Aufgabenrunde](https://app.simpleclub.com/topic/cpU7G7pPIAk0UuYr3BFP/story/SCatcdsaqzCh1kKkFnLU) | Dialog zweimal mit Weiter bedient: zunächst zwei Sprecher, danach ein dritter Antwortender sichtbar. Pronomenvergleich auf eingeschaltet gesetzt; der veränderte Grafikzustand wurde wegen einer responsiven Ansichtsänderung nicht zusätzlich bestätigt. Erste von drei schweren Aufgaben mit einem Textfeld für den fehlenden Satzteil gelesen, nicht beantwortet. Responsive Themenkarten und untere Mobilnavigation zusätzlich gesehen. | Kein freier Grammatiktransformator und keine Audiofunktion nachgewiesen. Eigene Idee: vorgegebene Dialogschritte mit stabilen Sprecherrollen und sichtbarem Perspektivwechsel. |
+
+Weitere lokale Bildbelege: simpleclub-round2-kreuzprodukt.jpg,
+simpleclub-round2-kreuzprodukt-step.jpg, simpleclub-round2-kreuzprodukt-mobile.jpg,
+simpleclub-round2-pcr-denaturation.jpg, simpleclub-round2-market.jpg und
+simpleclub-round2-reported-dialog.jpg. Sie enthalten Referenzansichten, keine
+übernommenen Produktassets. Die englische responsive Themenansicht wurde in
+der Datei simpleclub-round2-reported-pronouns.jpg gespeichert; dieser Dateiname
+ist kein Nachweis einer geänderten Pronomenanimation.
+
+Die zusätzlichen Beobachtungen stärken die drei priorisierten Ideen oben.
+Formelzustände und kleine Vorhersagefragen sind ein weiteres Unterrichtsmuster;
+ein interaktives Formelumformungsmodell ist dadurch noch nicht implementiert
+oder im KI-Katalog freigegeben. Prüfung der Referenzantworten kann nur den
+Simpleclub-Referenzkontofortschritt ändern; keine Schulpilot-Kinderantworten
+oder zusätzlichen externen KI-Aufträge wurden erzeugt.

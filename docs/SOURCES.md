@@ -844,3 +844,15 @@ acht plus zwei betroffener Dateien ohne Befund. Künstliche1440px-/390px-Probe
 mit Abspielen, Schrittwechsel, Reglergeste und Tippzuordnung abgeschlossen.
 Physische Geräteabnahme und erfolgreiche echte KI-Szenenerzeugung bleiben offen;
 Build/Deployment ausschließlich gemäß RELEASE_97_2026_10_23.md bewerten.
+
+
+## 23.10.2026 · Weitere Aufgabenformen und Patch98
+
+Die [zweite Forschungsrunde](SIMPLECLUB_ROUND_2_2026_10_23.md) unterscheidet
+tatsächlich bediente angemeldete Ansichten, ausschließlich öffentliche
+Beschreibungen und eigene Vorschläge. Weitere Quelllinks, konkrete Handlungen
+und Grenzen stehen dort; keine vollständige Prüfung aller Fachaufgaben behauptet.
+Der [Release98-Bericht](RELEASE_98_2026_10_23.md) dokumentiert die vollständige
+CI39922708482, mobile Anordnung, SQLite-/PostgreSQL-Regressionen und tatsächliche
+Build-/Deploymentbelege. Diese späteren Gesamtnachweise ergänzen die früheren
+gezielten97-Testzahlen. Keine weiteren Modellaufrufe oder fremden Assets.
