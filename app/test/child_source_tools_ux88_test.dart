@@ -91,17 +91,17 @@ void main() {
     },
   );
   testWidgets(
-    'KK088 source lookup finds whole verified lines and has a clear zero result at 200 percent',
+    'KK088 source lookup finds whole verified blocks and has a clear zero result at 200 percent',
     (tester) async {
       final calls = <http.Request>[];
       await open(tester, calls, scale: 2, saved: true);
       await f.tap(tester, find.text('Im Seitentext nachsehen'));
       await tester.enterText(f.input('Wort oder Textstelle finden'), 'Volumen');
       await tester.pumpAndSettle();
-      expect(find.textContaining('1 passende Textzeilen'), findsOneWidget);
+      expect(find.text('Treffer 1 von 1 Textabschnitten'), findsOneWidget);
       await tester.enterText(f.input('Wort oder Textstelle finden'), 'nichts');
       await tester.pumpAndSettle();
-      expect(find.text('Keine passende Textzeile gefunden.'), findsOneWidget);
+      expect(find.text('Kein passender Textabschnitt'), findsOneWidget);
       await f.tap(tester, find.text('Zurück zur Heftseite'));
       expect(tester.takeException(), isNull);
       expect(calls.where((r) => r.method != 'GET'), isEmpty);
