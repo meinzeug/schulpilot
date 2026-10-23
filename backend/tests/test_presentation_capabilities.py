@@ -71,6 +71,10 @@ def test_catalog_covers_every_existing_kind_and_does_not_export_one_subject_unio
         ({"required_subject": "Technik", "material": {"subject": "Chemie"}}, ["Technik"]),
         ({"required_subject": "Technik", "selected_groups": [{"subject": "Chemie"}, {"subject": "Deutsch"}]},
          ["Chemie", "Deutsch"]),
+        ({"material": "synthetic"}, []),
+        ({"goal": "legacy goal"}, []),
+        ({"material": "synthetic", "materials": [None, "legacy text", {"subject": "Physik"}]}, ["Physik"]),
+        ({"material": None, "goal": {"subject": "Geschichte"}}, ["Geschichte"]),
         ({}, []),
     ],
 )

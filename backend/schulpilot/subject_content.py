@@ -438,18 +438,23 @@ def rules_for(subjects):
 
 
 def generation_subjects(payload):
-    """Use the requested scope first, otherwise the confirmed source's subject."""
-    groups = payload.get("selected_groups") or []
-    if groups:
-        values = [group.get("subject") for group in groups]
+    """Use requested scope, then mapping-shaped confirmed-source metadata.
+
+    Legacy adapters can pass material/goal as plain text. That text remains
+    source data and is never interpreted as a subject or rewritten here.
+    """
+    groups = payload.get("selected_groups")
+    material, goal = payload.get("material"), payload.get("goal")
+    if isinstance(groups, list) and groups:
+        values = [group.get("subject") for group in groups if isinstance(group, dict)]
     elif payload.get("required_subject"):
         values = [payload["required_subject"]]
-    elif (payload.get("material") or {}).get("subject"):
-        values = [payload["material"]["subject"]]
-    elif (payload.get("goal") or {}).get("subject"):
-        values = [payload["goal"]["subject"]]
+    elif isinstance(material, dict) and material.get("subject"):
+        values = [material["subject"]]
+    elif isinstance(goal, dict) and goal.get("subject"):
+        values = [goal["subject"]]
     else:
-        values = [material.get("subject") for material in payload.get("materials", [])]
+        values = [source.get("subject") for source in (payload.get("materials") or []) if isinstance(source, dict)]
     return list(dict.fromkeys(value for value in values if isinstance(value, str) and value))
 
 

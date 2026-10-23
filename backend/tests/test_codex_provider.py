@@ -148,7 +148,12 @@ def test_followup_transport_sends_identical_sources_once_without_mutating_revisi
     assert payload == original
     import json
 
-    assert len(json.dumps(sent)) < len(json.dumps(original)) - len(combined) + 100
+    # The representation guide is new server metadata, not duplicated source.
+    source_payload = {key: value for key, value in sent.items() if key != "content_context"}
+    assert len(json.dumps(source_payload)) < len(json.dumps(original)) - len(combined) + 100
+    assert len(json.dumps(sent["content_context"], ensure_ascii=False).encode()) < 13000
+    serialized = json.dumps(sent, ensure_ascii=False)
+    assert all(serialized.count(json.dumps(source["content"], ensure_ascii=False)) == 1 for source in sources)
     assert "vollständig enthaltenen Quellen" in calls[0]["system"]
 
 
