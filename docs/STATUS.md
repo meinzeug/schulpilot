@@ -1,3 +1,30 @@
+# Produktionsstand 1.27.0+99 · 23.10.2026
+
+Live: https://schulpilot.dorfspy.de
+Produktcommit `76ca7e560c23a3e58f11d1cfe192fe679d6c598d`, Release `20261023T120940Z-76ca7e5`, main gepusht.
+
+[20 neue sichtbare Funktionen](LEARNING_ELEMENTS_20_2026_10_23.md): Mehrfeldaufgaben
+mit Text und Auswahl, lesbare Feldrückblicke, Textlupe und belegte Umstellungen,
+Vergleich vorhandener Grafikzustände mit Legende sowie Rundenübersicht mit
+Filtern. Kleine Displays erhalten eingeklappte Zoomhinweise. Die KI kennt die
+neuen Formate über den endgültigen fachgetrennten Schema-Katalog.
+
+Vollständige [CI39935538876](https://github.com/meinzeug/schulpilot/actions/runs/39935538876)
+grün: 2207 Backendtests und 2710 Fluttertests bestanden; 33/19 übersprungen. Analyse/Ruff/Webbuild erfolgreich.
+Zusätzlich400gezielte SQLite-,180PostgreSQL-,183Flutter- und16Aktivierungsfälle grün.
+Mobile/Desktopsichtung mit künstlicher schreibgesperrter Vorschau; keine
+erfolgreiche echte KI-Erzeugung der neuen99-Verträge behauptet.
+
+Reguläres Web, signierte Direct-APK und Play-AAB exakt an Produktcommit gebunden.
+Öffentliche APK-/JS-Bytes identisch; alle fünf Dienste aktiv, Schema0031,
+17Konfigurationsdateien/Google-Nachweis erhalten, verschlüsselte Sicherung grün.
+Neue grouped/text_probe-JSONs benötigen99-kompatiblen Leser oder Vorwärtsfix;
+98 nach Speicherung dieser Formate kein vollständiger Rückweg.
+
+Nachweise und Grenzen: [RELEASE_99_2026_10_23.md](RELEASE_99_2026_10_23.md).
+
+## Vorheriger Stand98
+
 # Produktionsstand1.26.1+98 ·23.10.2026
 
 Live: https://schulpilot.dorfspy.de

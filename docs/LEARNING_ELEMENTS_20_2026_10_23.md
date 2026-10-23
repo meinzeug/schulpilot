@@ -4,7 +4,8 @@ Auftrag: weitere nützliche Simpleclub-Muster untersuchen und mindestens20konkre
 Verbesserungen umsetzen. Diese Liste zählt sichtbare Funktionen in vier
 zusammenhängenden Bereichen, keine Testfälle, Schutzprüfungen oder bloßen
 Umbenennungen. Alle20Funktionen implementiert; gezielte Tests und Browserprobe
-bestanden. Vollständige CI und Veröffentlichung werden im Releasebeleg ergänzt.
+bestanden. Vollständige CI und Veröffentlichung ebenfalls bestanden; siehe
+[Release99](RELEASE_99_2026_10_23.md).
 
 Die Referenzen sind Anregungen für eine eigene Implementierung. Keine fremden
 Lerntexte, Abbildungen, Animationen oder Icons werden als Produktassets kopiert.

@@ -856,3 +856,21 @@ Der [Release98-Bericht](RELEASE_98_2026_10_23.md) dokumentiert die vollständige
 CI39922708482, mobile Anordnung, SQLite-/PostgreSQL-Regressionen und tatsächliche
 Build-/Deploymentbelege. Diese späteren Gesamtnachweise ergänzen die früheren
 gezielten97-Testzahlen. Keine weiteren Modellaufrufe oder fremden Assets.
+
+
+## 23.10.2026 · Zwanzig weitere Lernfunktionen99
+
+[20-Punkte-Liste](LEARNING_ELEMENTS_20_2026_10_23.md) mit direkt bedienten
+Referenzen: Lernplan-Vorlagenauswahl, Geschichte-NRW-Vorschau in Desktop/Mobil
+und mobile Themeninhalte der Kieler-Matrosenaufstand-Aufgabenrunde. Kein Plan
+übernommen und die dort gelesene erste Aufgabe nicht beantwortet. Die vorherige
+zweite Runde liefert die weiteren tatsächlich bedienten Aufgabenreferenzen.
+Gruppenlupe, explizite Vergleiche und Offen/Bearbeitet sind eigene Ausarbeitungen
+dieser Muster; keine identische Referenzfunktion oder vollständige Fachabnahme
+behauptet. Keine fremden Assets übernommen.
+
+[Release99](RELEASE_99_2026_10_23.md) enthält vollständige CI, lokale SQLite-/
+PostgreSQL-/Flutterproben, schreibgesperrte künstliche Browserfixtures sowie
+exakte reguläre Build-, Signatur-, Hash- und SSH-Deploymentnachweise. Keine
+weiteren kostenpflichtigen KI-Aufrufe; Modellmocks/Rendererfixtures getrennt
+von noch ausstehender echter99-Erzeugungsabnahme.
