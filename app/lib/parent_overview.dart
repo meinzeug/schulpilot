@@ -772,8 +772,9 @@ class _CompactPracticeCategoryState extends State<_CompactPracticeCategory> {
               canRequestFocus: enabled,
               onTap: enabled ? activateCategory : null,
               onFocusChange: (value) {
-                if (mounted && focused != value)
+                if (mounted && focused != value) {
                   setState(() => focused = value);
+                }
               },
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
