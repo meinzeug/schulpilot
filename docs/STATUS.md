@@ -1,3 +1,36 @@
+# Produktionsstand1.28.1+101 · 23.10.2026
+
+Live: https://schulpilot.dorfspy.de
+
+Produktcommit `39a0dc58482ec4847f318260e8ae8d2dc0b691b0`,
+Release `20261023T150847Z-39a0dc5`, main gepusht.
+
+Nach gespeicherter Erklärung führt „Weiter üben“ wieder zur selben prüfbaren
+Aufgabe mit erhaltenem Entwurf; verbindliche Schritte und Antwortfeedback
+behalten Vorrang. Zusätzliche Lernproben brauchen belegte Quellen und Ziele.
+Der Materialleser zeigt Text zuerst, mobil bildschirmfüllend mit festem
+Schließenknopf; Suche, Inhalt und Schrift bleiben bewusst aufrufbar.
+
+Vollständige [CI39956909320](https://github.com/meinzeug/schulpilot/actions/runs/39956909320)
+grün: 2211 Backend-/2904 Fluttertests bestanden, 33/19 übersprungen;
+Ruff, vollständige Analyse und Webbuild erfolgreich. Zusätzlich 173 gezielte
+Flutter- und 25 Backendfälle grün; diese Läufe überschneiden sich mit der CI.
+Reguläre signierte Artefakte an den Produktcommit gebunden, öffentliche APK-/JS-
+Bytes identisch. Fünf Dienste aktiv, Schema0031, 17 Konfigurationen/Google-
+Nachweis erhalten, Sicherung erfolgreich, Reparaturquelle mit 588 Dateien geprüft.
+
+Livebrowser: Desktop1280×800 und Quelle mobil390×844; Suche und 20px-Schrift
+bedient. Die künstliche Lernrunde erreichte nach Erklärung und erhaltenem
+Entwurf regulär 4/4; mobiler Rückblick zeigt drei selbstständige und eine
+unterstützte Aufgabe. API bestätigt vier Fragen/fünf Versuche/kein offenes
+Feedback; Testhaushalt normal gelöscht, alte Sitzung HTTP401. Der echte
+Fünfer-Wortschatzfall wurde nur auditierbar gelesen, Entwurf/Versuche unverändert.
+Keine externe KI-Anforderung oder physische Androidprüfung in dieser Abnahme.
+Nachweise und konservativer Rückweg100/99:
+[RELEASE_101_2026_10_23.md](RELEASE_101_2026_10_23.md).
+
+## Vorheriger Stand100
+
 # Produktionsstand1.28.0+100 ·23.10.2026
 
 Live: https://schulpilot.dorfspy.de
@@ -16,7 +49,7 @@ Reguläre signierte Artefakte an den Produktcommit gebunden; öffentliche APK-/J
 Bytes identisch. Fünf Dienste aktiv, Schema0031,17Konfigurationen und Google-
 Nachweis erhalten, verschlüsselte Sicherung erfolgreich. Nachweise und Grenzen:
 [RELEASE_100_2026_10_23.md](RELEASE_100_2026_10_23.md).
-Die zusätzlich gemeldete Lernrunden-/Materialkorrektur wird getrennt abgenommen.
+Die zusätzliche Lernrunden-/Materialkorrektur ist mit Release101 veröffentlicht.
 
 ## Vorheriger Stand99
 
