@@ -1,3 +1,9 @@
+Schulbuddy23.10.2026: ausdrücklich bereitgestellter mobiler Screenshot und
+bestehende gemeinsame Flutter-Implementierung. Beide allgemeinen Hinweise
+nach Gesprächsstart kompakt, Abruf über Info-Symbol; echte Sperr-/Fehlerhinweise
+erhalten.47Flutterfälle, lokale künstliche Browserprobe, gebundener1.24.1+95-
+Build und tatsächlicher SSH-/Hashnachweis: RELEASE_95_2026_10_23.md.
+
 Deployment23.10.2026: vorhandene fixierte Flutter-/Android-Toolchain und
 projektspezifische SSH-Deployskripte tatsächlich ausgeführt. Regulärer gebundener
 Build1.24.0+94, Paket-/Signatur-/Quellprüfung und öffentlicher Bytevergleich.

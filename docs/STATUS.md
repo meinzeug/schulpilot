@@ -1,4 +1,21 @@
-# Produktionsstand 1.24.0+94 · 23.10.2026
+# Produktionsstand 1.24.1+95 · 23.10.2026
+
+Live `20261023T054250Z-4ae6f3e`, Produktcommit
+`4ae6f3e48d56ba225616b2fdc15fb32aad681cbd`, Schema0031. Schulbuddy klappt
+beide allgemeinen Einleitungsblöcke beim ersten Senden und bei vorhandenem
+Verlauf automatisch ein. Das Info-Symbol macht sie wieder zugänglich;
+konkrete Fehler-/Sperrhinweise bleiben sichtbar.
+
+47gezielte Flutterfälle grün, Analyse ohne Befund, künstliche390px-Browserprobe
+bestanden. Reguläres Web, signierte Direct-APK und Play-AAB aus sauberem Commit
+gebaut; Signaturen und öffentlicher Web-/APK-Bytevergleich geprüft. Kein
+Storeupload oder tatsächliche native Updateinstallation. Alle fünf Dienste aktiv,
+Sicherungen und kompatibler Rückweg auf94 erhalten. Vollständige Belege:
+[RELEASE_95_2026_10_23.md](RELEASE_95_2026_10_23.md).
+
+---
+
+# Historischer Produktionsstand 1.24.0+94 · 23.10.2026
 
 Live auf https://schulpilot.dorfspy.de: `20261023T051618Z-de5e0a8`,
 Quellcommit `de5e0a878a5a215c76e60d97b05963dca91022cf`, Schema0031.

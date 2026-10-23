@@ -1,5 +1,13 @@
 # Betrieb
 
+## Schulbuddy1.24.1+95 · 23.10.2026
+
+Aktiv `20261023T054250Z-4ae6f3e`, Schema0031. Alle fünf Dienste aktiv,
+öffentliche APK-/Webdatei bytegleich zum gebundenen Build. Geschützte
+Konfiguration `buddy95-config-20261023T033900Z`, Datenbankbackups034427Z/034430Z,
+Result=success. Vorheriger Release94 bleibt nach Quellen-/Schema-/Jobprüfung
+kompatibel aktivierbar. Details: [RELEASE_95_2026_10_23.md](RELEASE_95_2026_10_23.md).
+
 ## Gestaltungsrelease1.24.0+94 · 23.10.2026
 
 Aktiv `20261023T051618Z-de5e0a8`, Schema0031, alle fünf Schulpilotdienste aktiv.
