@@ -1,3 +1,23 @@
+# Aktuell: kompakte Oberfläche in allen Rollen · 1.29.0+102
+
+Live https://schulpilot.dorfspy.de · Produktcommit `40d6ec1bd1357d170e686d3032637ddbedac85ac` · Release `20261023T165444Z-40d6ec1`.
+44 Oberflächendateien und gemeinsame Komponenten decken alle 47 Routenmuster ab.
+Kinder-, Eltern- und Adminansichten wurden in Web/Mobil mit künstlichen Daten
+verglichen, die öffentliche Produktion nach Deployment separat geprüft.
+Kleinere Köpfe/Karten, kompakte Ergebniskategorien, lokale Filter und KI-Details;
+fachliche Inhalte, Lernstand und ausdrückliche Aktionen bleiben erhalten.
+
+Vollständige CI grün: 2211 Backendtests (33 übersprungen),
+2993 Fluttertests (19 übersprungen), Analyse, Ruff und CI-Webbuild.
+Regulärer Webbuild, Direct-APK und Play-AAB aus demselben sauberen Commit;
+öffentliche APK/JS bytegleich, 5 Dienste aktiv, Schema 0031, 17 Konfigurationen
+beim Deployment erhalten. Eine vorherige globale Caddy-Änderung ist über das
+unmittelbare Aktivierungsbackup getrennt belegt; 16 Dateien sind zum frühen
+Snapshot bytegleich. 89 neue Tests. Keine neuen Modellaufrufe oder echte Kinderänderungen.
+[Release102](RELEASE_102_2026_10_23.md) · [47-Routeninventar](COMPACT_DESIGN_102_2026_10_23.md).
+
+---
+
 # Produktionsstand1.28.1+101 · 23.10.2026
 
 Live: https://schulpilot.dorfspy.de

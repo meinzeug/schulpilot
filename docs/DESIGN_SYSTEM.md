@@ -1,22 +1,25 @@
 # Schulpilot: gemeinsame Lernoberfläche
 
-## Rollenübergreifende Verdichtung102
+## Rollenübergreifende Verdichtung 102
 
-Arbeitsstand1.29.0+102: Kinder, Eltern, Administration und öffentliche Formulare
-verwenden einen gemeinsamen kompakteren Rahmen. Alle47Routen sind im
-[Änderungsinventar](COMPACT_DESIGN_102_2026_10_23.md) einzeln erfasst.
-Abnahme und Veröffentlichung laufen; der Produktionsstand bleibt bis zum
-geprüften Wechsel101.
+Veröffentlicht als **1.29.0+102**, Produktcommit `40d6ec1bd1357d170e686d3032637ddbedac85ac`. Kinder, Eltern,
+Administration und öffentliche Formulare verwenden einen gemeinsamen kompakten
+Rahmen. Alle 47 Routen sind im
+[Änderungsinventar](COMPACT_DESIGN_102_2026_10_23.md) einzeln erfasst;
+[Release und Abnahme](RELEASE_102_2026_10_23.md) sind dokumentiert.
 
-Seitenköpfe nutzen24px mobil und28px am Desktop, Abschnittstitel18px.
-Karten haben standardmäßig16px Innenraum mobil beziehungsweise18px breit
-und16px Radius. Abstände folgen12/16/20px. Felder und Hauptaktionen behalten
-mindestens48px große Bedienflächen und dürfen bei großer Schrift wachsen.
-Normale Lerntexte werden nicht mit einem begrenzten TextScaler verkleinert.
-Bereichssuche und Tastaturhilfe stehen im Desktopkopf, ohne eine weitere
-Werkzeugzeile vor dem Inhalt. Optionale Filter und KI-Details öffnen sich
-bewusst; aktive Bedingungen und gespeicherte Fakten bleiben erkennbar.
-Der101-Leser und der normale geprüfte Lernrundenabschluss bleiben erhalten.
+Seitentitel nutzen 24 px mobil und 28 px am Desktop, Abschnittstitel 18 px.
+Karten haben standardmäßig 16 px Innenraum mobil beziehungsweise 18 px breit
+und 16 px Radius. Abstände folgen 12/16/20 px. Hauptaktionen behalten mindestens
+48 px große Bedienflächen und dürfen bei großer Schrift wachsen. Natürliche
+Textskalierung und lesbare fachliche Aufgaben bleiben erhalten.
+
+Bereichssuche und Tastaturhilfe stehen im Desktopkopf. Themenwechsel und
+Zeitangaben sind kompakt gebündelt. Einspaltige Elternkategorien sind vollständig
+anklickbare Zeilen mit getrennten Ergebnisbelegen und deaktivierten Leerwerten.
+Optionale Filter und kompakte KI-Details öffnen sich bewusst; Entwürfe, aktive
+Bedingungen und gespeicherte Fakten bleiben erhalten. Der feste 101-Quellenleser
+und der normale geprüfte Lernrundenabschluss bleiben bestehen.
 
 Veröffentlichte Gestaltungsbasis **1.26.0+97** am23.10.2026, aufbauend auf
 **1.25.0+96**. Der interaktive Ausbau ist veröffentlicht. Die angemeldete

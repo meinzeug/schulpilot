@@ -1,6 +1,6 @@
 # Kompakte Oberfläche 102 — Routen- und Änderungsinventar
 
-Stand: 23.10.2026. **Implementiert, Abnahmeläufe laufen, noch nicht 102 veröffentlicht.**
+Stand: 23.10.2026. **Veröffentlicht als 1.29.0+102, Produktcommit `40d6ec1bd1357d170e686d3032637ddbedac85ac`.**
 
 Dieser Arbeitsstand erfasst alle **47 konkreten URL-Muster** des Routers in
 `app/lib/main.dart`: 40 direkt ausgeschriebene Muster und die sieben einzeln
@@ -12,8 +12,8 @@ bleiben maßgeblich.
 
 Das Inventar beruht auf Quellcode und dem aktuellen lokalen Diff. Es ist keine
 Behauptung, alle 47 Routen bereits im echten Browser oder mit allen Rollen live
-abgenommen zu haben. Test-, Build-, CI-, Vorschau- und Livefreigaben werden nach
-Abschluss der laufenden Gates ergänzt. Im gelesenen Zwischenstand sind **44
+abgenommen zu haben. Test-, Build-, CI-, Vorschau- und Livebelege stehen in
+[RELEASE_102_2026_10_23.md](RELEASE_102_2026_10_23.md). Im gelesenen Zwischenstand sind **44
 Produktdateien unter `app/lib`** geändert; der zunächst gemeldete Stand von 43
 Dateien ist durch die zusätzliche Verdichtung von `ai_cost_panel.dart` erweitert.
 
@@ -143,35 +143,23 @@ Die 47 Routen enthalten weitere sichtbare Arbeitsflächen. Auch diese sind im
 - Die Router-Fehleransicht ist kein zusätzliches URL-Muster. Ihr bestehender
   Rückweg bleibt erhalten und erhält die gemeinsame Buttongestaltung.
 
-## Abnahmegrenzen und laufende Nachweise
+## Abnahme und Grenzen
 
-Die neue Darstellung wird in den fokussierten Dateien
-`compact_workspace_102_test.dart`, `today_density_102_test.dart`,
-`compact_child_pages_102_test.dart`, `management_density_102_test.dart`,
-`compact_admin_queue_102_test.dart`, `parent_insights_compact_102_test.dart` und
-`parent_practice_rows_102_test.dart` sowie
-passenden Bestandsregressionen geprüft. Dazu gehören tatsächliche Seiten- und
-Dialoginteraktionen, 320/390-px-Ansichten, große Schrift und unveränderte
-bewusste Aktionen. Die Abnahmeläufe sind beim Anlegen dieses Dokuments noch
-nicht vollständig abgeschlossen. Einzelne zwischenzeitlich grüne Läufe sind
-keine vollständige Releasefreigabe.
+89 neue Fälle in sieben Dateien, saubere Analyse und die vollständige
+[CI39971618136](https://github.com/meinzeug/schulpilot/actions/runs/39971618136) sind grün: 2211 Backendtests/33 übersprungen,
+2993 Fluttertests/19 übersprungen. Lokale Fokusläufe 419/68/60 überlappen
+und werden nicht addiert. Der Releasebericht enthält ursprüngliche Fehler,
+Korrekturen, genaue Artefakt-/Quellbindung und öffentliche Nachweise.
 
-Das Today-Ziel einer deutlich kleineren Hauptkarte, unter anderem die
-ungefähr 220-px-Obergrenze bestimmter Testfixtures bei normaler Schrift, ist ein
-**Prüfziel**, hier kein behauptetes Messergebnis. Lange echte Titel und große
-Schrift dürfen natürliche zusätzliche Höhe und Scrollen benötigen. Die
-Gesamtseiten werden nicht über abgeschnittene Texte oder verkleinerte
-Trefferflächen verdichtet.
+Die konkrete Today-Dichtefixture erfüllt bei normaler Schrift die 220-px-Grenze,
+48-px-Hauptaktion und den Fotozugang innerhalb 550 px. Lange reale Titel und große
+Schrift dürfen zusätzliche Höhe benötigen. Alle drei Rollen wurden lokal mit
+künstlichen schreibgesperrten Daten bei390×844 und1280×800 im Browser betrachtet;
+zusätzlich mobile Fachhefte und Elternplanung. Die öffentliche Produktion und
+Anmeldung wurden nach Deployment getrennt betrachtet. Keine vollständige
+visuelle Liveabnahme aller 47 Muster oder aller Rollenkombinationen behauptet.
 
-Unverändert bindend sind Familien-/Rollen-/Token-/Quellen-/Route-/Lifecycleguards,
-Entwürfe, bestehende Antworten, explizite Quellenbestätigung und Feedback-ACK,
-Hilfenutzung, Bewertung, Lernzeit, Mindestziele, Providerreservierungen und
-Kontingente. Reine Listen-/Suchabrufe bleiben lesend; Darstellung oder
-Disclosurezustand darf keine neue KI, automatische Antwortprüfung oder
-Speicherung auslösen. Es wurden keine Backend- oder Antwortverträge für diese
-Gestaltungsrunde geändert.
-
-Root ergänzt nach den laufenden Gates die konkreten Logs/Ergebnisse,
-Vorschau-/Browserbelege sowie erst nach erfolgreicher Veröffentlichung die
-Quellen-, Versions- und Livebindung. Bis dahin bleibt der oben genannte Status
-maßgeblich.
+Familien-/Rollen-/Token-/Quellen-/Route-/Lifecycleguards, Entwürfe, Antworten,
+Quellenbestätigung, Feedback-ACK, Hilfen, Bewertung, Lernzeit, Mindestziele und
+Anbietergrenzen bleiben bindend. Keine Backend-/Antwortverträge oder externen
+Modellaufrufe in dieser Gestaltungsrunde geändert.
