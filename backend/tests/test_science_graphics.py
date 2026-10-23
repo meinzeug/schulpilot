@@ -129,3 +129,64 @@ def test_molecule_accepts_literal_typesetting_but_does_not_infer_bonds_from_sum_
     p["blocks"][0]["source_excerpt"] = r"\(\mathrm{C}_2\mathrm{H}_6\mathrm{O}\)"
     with pytest.raises(ValueError):
         Graphic.model_validate(p["blocks"][0])
+
+
+def _process_case(kind, labels, relation):
+    case = copy.deepcopy(next(case for case in CASES if case["id"] == "CYCLE01"))
+    source = "; ".join([*labels, relation])
+    connections = [{"start": 0, "end": 1, "relation": "next"}]
+    if kind == "process_cycle":
+        source += "; " + labels[1] + "→" + labels[0]
+        connections.append({"start": 1, "end": 0, "relation": "next"})
+    case["source"] = source
+    block = case["question"]["presentation"]["blocks"][0]
+    block.update(kind=kind, source_excerpt=source, labels=labels, connections=connections)
+    return case
+
+
+@pytest.mark.parametrize("kind", ["process_graph", "process_cycle"])
+@pytest.mark.parametrize(
+    "labels,relation",
+    [
+        (["A", "B"], "CA→B"),
+        (["A", "B"], "A→BC"),
+        (["A", "B"], "CA->BC"),
+        (["A", "B"], "2A→B"),
+        (["A", "B"], "A→B_2"),
+        (["Wasser", "Dampf"], "Salzwasser→Dampf"),
+        (["roter Apfel", "grünes Blatt"], "dunkelroter Apfel→grünes Blattwerk"),
+        (["roter Apfel", "grünes Blatt"], "roterApfel→grünesBlatt"),
+    ],
+)
+def test_process_arrows_reject_labels_inside_larger_words(kind, labels, relation):
+    case = _process_case(kind, labels, relation)
+    with pytest.raises(ValueError, match="Prozessrichtung"):
+        validate_question(
+            case["question"]["presentation"], case["question"], [case["source"]], PROFILES["Biologie"]
+        )
+
+
+@pytest.mark.parametrize("kind", ["process_graph", "process_cycle"])
+@pytest.mark.parametrize(
+    "labels,relation",
+    [
+        (["A", "B"], "A→B"),
+        (["A", "B"], "A -> B"),
+        (["A", "B"], "A\t→\nB"),
+        (["A", "B"], "A → B und weitere Beobachtungen"),
+        (["roter Apfel", "grünes Blatt"], "roter  Apfel\t->\ngrünes  Blatt"),
+        (["gelöstes Salz", "festes Salz"], "(gelöstes Salz → festes Salz)."),
+    ],
+)
+def test_process_arrows_accept_complete_labels_and_formatting_whitespace(kind, labels, relation):
+    case = _process_case(kind, labels, relation)
+    validate_question(case["question"]["presentation"], case["question"], [case["source"]], PROFILES["Biologie"])
+
+
+@pytest.mark.parametrize("kind", ["process_graph", "process_cycle"])
+def test_process_arrows_preserve_case_sensitive_relationship_evidence(kind):
+    case = _process_case(kind, ["A", "B"], "a→B")
+    with pytest.raises(ValueError, match="Prozessrichtung"):
+        validate_question(
+            case["question"]["presentation"], case["question"], [case["source"]], PROFILES["Biologie"]
+        )

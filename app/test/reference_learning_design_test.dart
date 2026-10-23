@@ -73,8 +73,11 @@ void main() {
         expect(find.byType(GraphicZoom), findsOneWidget);
         expect(find.text('Noch nicht freigegebene Hilfe'), findsNothing);
         expect(find.text('Noch nicht freigegebene Lösung'), findsNothing);
-        await t.ensureVisible(find.text('Grafik vergrößern'));
-        expect(find.text('Grafik vergrößern').hitTestable(), findsOneWidget);
+        await t.ensureVisible(find.byKey(const ValueKey('open-graphic-zoom')));
+        expect(
+          find.byKey(const ValueKey('open-graphic-zoom')).hitTestable(),
+          findsOneWidget,
+        );
         expect(t.takeException(), isNull);
         await t.pumpWidget(page({'given', 'hint1'}));
         await t.pumpAndSettle();
@@ -123,8 +126,8 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-      await t.ensureVisible(find.text('Grafik vergrößern'));
-      await t.tap(find.text('Grafik vergrößern'));
+      await t.ensureVisible(find.byKey(const ValueKey('open-graphic-zoom')));
+      await t.tap(find.byKey(const ValueKey('open-graphic-zoom')));
       await t.pumpAndSettle();
       expect(find.byType(InteractiveViewer), findsOneWidget);
       expect(find.byType(GraphicZoom), findsOneWidget);

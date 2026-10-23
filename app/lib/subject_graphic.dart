@@ -33,6 +33,7 @@ class SubjectPresentation extends StatelessWidget {
                 ? null
                 : GraphicZoom(
                     state: state!,
+                    compact: true,
                     block: Json.from(b),
                     render: (value) => SubjectGraphic(value, state: state),
                   ),
@@ -188,7 +189,7 @@ class SubjectGraphic extends StatelessWidget {
     }
     if (ScienceGraphic.kinds.contains(kind)) {
       final processScene = processLearningScene(block);
-      final graphic = ScienceGraphic(block, action: action);
+      final graphic = ScienceGraphic(block, state: state, action: action);
       if (processScene == null) return graphic;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

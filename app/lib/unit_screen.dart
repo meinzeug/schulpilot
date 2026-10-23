@@ -1003,6 +1003,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         child: LearningRoom(
           title: u?['topic']?.toString() ?? 'Deine Lernrunde',
           phase: phase,
+          questionTotal: questions.length,
+          questionCompleted: questions.where(done).length,
           progress: phase == 1 && number != null && number > 0
               ? progressLabel
               : null,
@@ -1396,13 +1398,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
-        if (measured != null)
-          Text(
-            'Diese Einheit ${clockText(currentUnit)}',
-            key: ValueKey('learning-unit-clock'),
-            style: TextStyle(fontSize: 12, color: context.palette.muted),
-          ),
-        if (required)
+        if (required &&
+            (clockDetails || met || waiting || u['status'] == 'completed'))
           Text(
             stateText,
             key: ValueKey('learning-goal-state'),
@@ -1414,6 +1411,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             style: TextStyle(fontSize: 12),
           ),
         if (clockDetails) ...[
+          if (measured != null)
+            Text(
+              'Diese Einheit ${clockText(currentUnit)}',
+              key: ValueKey('learning-unit-clock'),
+              style: TextStyle(fontSize: 12, color: context.palette.muted),
+            ),
           SizedBox(height: 8),
           if (required)
             LinearProgressIndicator(
@@ -1925,10 +1928,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           SizedBox(height: 12),
         ],
         if (u['synthetic'] == true) ...[sampleNotice(u), SizedBox(height: 8)],
-        Panel(
-          padding: EdgeInsets.all(
-            MediaQuery.sizeOf(context).width < 600 ? 18 : 24,
-          ),
+        Padding(
+          key: const ValueKey('learning-question-surface'),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1945,7 +1947,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 stages: {'given'},
               ),
               if (q['language'] is Map) languagePrompt(q),
-              SizedBox(height: 18),
+              SizedBox(height: 16),
               if (q['type'] == 'choice')
                 RadioGroup<String>(
                   groupValue: choice,
@@ -1957,13 +1959,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     children: [
                       for (final option in q['options'] as List)
                         Padding(
-                          padding: EdgeInsets.only(bottom: 10),
+                          padding: EdgeInsets.only(bottom: 8),
                           child: Material(
                             color: choice == option
                                 ? context.palette.mint
                                 : context.palette.surfaceLow,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(14),
                               side: BorderSide(
                                 color: choice == option
                                     ? context.palette.teal
@@ -1978,8 +1980,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                               title: MathText(
                                 option,
                                 style: TextStyle(
-                                  fontSize: 17,
-                                  height: 1.45,
+                                  fontSize: 16,
+                                  height: 1.4,
                                   fontWeight: choice == option
                                       ? FontWeight.w700
                                       : FontWeight.w500,
@@ -1989,7 +1991,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                 horizontal: 12,
                                 vertical: 5,
                               ),
-                              minTileHeight: 58,
+                              minTileHeight: 56,
                               activeColor: context.palette.teal,
                             ),
                           ),
@@ -2346,9 +2348,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           q['prompt'],
           style: TextStyle(
             fontFamily: 'Nunito',
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            height: 1.4,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            height: 1.35,
           ),
         ),
       ),

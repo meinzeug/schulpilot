@@ -328,9 +328,16 @@ void main() {
       final server = SavedRound();
       await openRound(tester, server);
       expect(find.byType(LearningRoom), findsOneWidget);
-      expect(find.text('Verstehen'), findsOneWidget);
-      expect(find.text('Üben'), findsOneWidget);
-      expect(find.text('Rückblick'), findsOneWidget);
+      expect(find.text('Üben · Aufgabe 1 von 2'), findsOneWidget);
+      expect(find.text('Bearbeitet 0 von 2'), findsOneWidget);
+      expect(
+        tester
+            .widget<LinearProgressIndicator>(
+              find.byKey(const ValueKey('learning-question-progress')),
+            )
+            .value,
+        0,
+      );
       expect(find.text('Hilfe'), findsOneWidget);
       expect(find.text('Konto'), findsNothing);
       expect(find.text('Erklärung'), findsNothing);

@@ -152,3 +152,48 @@ def test_fraction_value_and_requested_form_remain_distinct():
     reduced = {**q, "prompt": q["prompt"] + " Kürze vollständig."}
     assert evaluate(reduced, "6/16")["dimensions"] == {"content": "correct", "form": "incorrect"}
     assert evaluate(reduced, "3/8")["outcome"] == "correct"
+
+
+def _food_chain_question(labels, relation):
+    question = copy.deepcopy(next(case for case in CASES if case["id"] == "BIO02")["question"])
+    source = "; ".join([*labels, relation])
+    block = question["presentation"]["blocks"][0]
+    block.update(
+        source_excerpt=source,
+        labels=labels,
+        connections=[{"start": 0, "end": 1, "relation": "food_to_eater"}],
+    )
+    return question, source
+
+
+@pytest.mark.parametrize(
+    "labels,relation",
+    [
+        (["Gras", "Kaninchen"], "Seegras→Kaninchen"),
+        (["Gras", "Kaninchen"], "Gras→Kaninchenfloh"),
+        (["Gras", "Kaninchen"], "Seegras->Kaninchenfloh"),
+        (["A", "B"], "2A→B"),
+        (["A", "B"], "A→B_2"),
+        (["rotes Gras", "kleines Kaninchen"], "rotesGras→kleinesKaninchen"),
+        (["rotes Gras", "kleines Kaninchen"], "dunkelrotes Gras→kleines Kaninchenfell"),
+    ],
+)
+def test_food_chain_arrows_reject_partial_labels_or_collapsed_word_boundaries(labels, relation):
+    question, source = _food_chain_question(labels, relation)
+    with pytest.raises(ValueError, match="Nahrungskette"):
+        validate_question(question["presentation"], question, [source], PROFILES["Biologie"])
+
+
+@pytest.mark.parametrize(
+    "labels,relation",
+    [
+        (["Gras", "Kaninchen"], "Gras→Kaninchen"),
+        (["Gras", "Kaninchen"], "GRAS -> kaninchen"),
+        (["Gras", "Kaninchen"], "Gras\t→\nKaninchen und weitere Beobachtungen"),
+        (["rotes Gras", "kleines Kaninchen"], "rotes  Gras\t->\nkleines  Kaninchen"),
+        (["rotes Gras", "kleines Kaninchen"], "(rotes Gras → kleines Kaninchen)."),
+    ],
+)
+def test_food_chain_arrows_accept_complete_labels_whitespace_ascii_and_existing_case_folding(labels, relation):
+    question, source = _food_chain_question(labels, relation)
+    validate_question(question["presentation"], question, [source], PROFILES["Biologie"])

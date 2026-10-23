@@ -10,11 +10,13 @@ class GraphicZoom extends StatefulWidget {
   final AppState state;
   final Json block;
   final Widget Function(Json) render;
+  final bool compact;
   const GraphicZoom({
     super.key,
     required this.state,
     required this.block,
     required this.render,
+    this.compact = false,
   });
   @override
   State<GraphicZoom> createState() => _GraphicZoomState();
@@ -143,6 +145,9 @@ class _GraphicZoomState extends State<GraphicZoom> {
                       'scene',
                       'process_graph',
                       'process_cycle',
+                      'function_graph',
+                      'data_plot',
+                      'logic_table',
                     }.contains(block['kind']);
                     final width = responsive
                         ? constraints.maxWidth.clamp(0.0, 600.0)
@@ -179,10 +184,22 @@ class _GraphicZoomState extends State<GraphicZoom> {
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerRight,
-    child: OutlinedButton.icon(
-      onPressed: current ? open : null,
-      icon: const Icon(Icons.zoom_in_rounded),
-      label: const Text('Grafik vergrößern'),
-    ),
+    child: widget.compact
+        ? IconButton.outlined(
+            key: const ValueKey('open-graphic-zoom'),
+            tooltip: 'Grafik vergrößern',
+            onPressed: current ? open : null,
+            style: IconButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              padding: const EdgeInsets.all(12),
+            ),
+            icon: const Icon(Icons.zoom_in_rounded, size: 22),
+          )
+        : OutlinedButton.icon(
+            key: const ValueKey('open-graphic-zoom'),
+            onPressed: current ? open : null,
+            icon: const Icon(Icons.zoom_in_rounded),
+            label: const Text('Grafik vergrößern'),
+          ),
   );
 }

@@ -17,12 +17,36 @@ Lern-/Lebenskompetenzen; weitere19sind Berufsbereiche. Einzelne öffentliche
 Kataloge enthalten Platzhalterüberschriften/-texte; diese sind keine Lehrinhalte
 und werden nicht übernommen.
 
-In der angemeldeten App angesehen: Brüche, lineare Funktionen und
-Energieerhaltung/-umwandlung, Format-/Aufgabenlisten und zugängliche Texte.
-Die geöffneten Bruch-/Funktionsübungen zeigen die unlimited-Sperre; im Physikthema
-sind die entsprechenden Aufgaben mit Schloss markiert. Keine Sperre umgangen,
-kein Kauf und keine Einladung an Dritte gesendet. Eine vollständige Sichtung
-sämtlicher geschützter Aufgaben ist mit diesem Zugang nicht erfolgt.
+Die zunächst geöffneten Bruch-/Funktionsübungen waren unlimited-gesperrt.
+Nach der ausdrücklich mitgeteilten Freischaltung zeigte das Konto Unlimited Plus;
+die tatsächlichen Aufgaben wurden erneut geöffnet. Keine Sperre umgangen, kein
+Kauf, keine Bewertung oder Nachricht an Dritte. Der frühere Sperrbefund ist damit
+historisch und keine aktuelle Zugangsbeschränkung.
+
+Die Entdeckenansicht dieses Ausbildungsprofils zeigte neun Fachbereiche:
+Mathematik, Wirtschaft, Deutsch, Englisch, Informatik, Politik & GK, Physik,
+Biologie und Chemie, zusätzlich Lern-/Lebenskompetenzen. Alle neun Fachübersichten
+wurden angesehen. Die folgende Tabelle grenzt echte Aufgabenbedienung von bloß
+geöffneten Katalogen ab; sie behauptet keine vollständige Sichtung aller Aufgaben.
+
+| Fach / tatsächlicher Appbezug | Geprüfter Umfang und Beobachtung |
+| --- | --- |
+| [Physik: Energie](https://app.simpleclub.com/topic/8AD0Hwq6ZRaafDCBzzsd/story/7LXAFe89RFV6rwZOsasm) | Erste von vier Aufgaben: Pendel mit Start tatsächlich bewegt, gleichzeitig veränderte Energie-Kurven; Mehrfachauswahl. Keine Antwort abgegeben. |
+| [Biologie: Pflanzenzelle](https://app.simpleclub.com/topic/13PnNNzkkIa7zOKQigwk/story/QOhfiRCZDj9gzcUgqb4g) | Erste von drei Aufgaben: nummerierte Zellgrafik, aufklappbare Antwortbank „Tippe oder ziehe“. Tippen ordnete einen Begriff dem ersten Feld zu; anschließend zurückgesetzt, keine Bewertung. Kein erfolgreicher Browser-Drag behauptet. |
+| [Mathematik: lineare Funktionen](https://app.simpleclub.com/topic/50lniQrSvhQRkJ5bNWKk/story/fZdwKDjJJTLp3ZSAfb6O) | Alle drei Auswahlaufgaben durch Auswahl, explizites Prüfen, Erklärung und Weiter bis Rundenabschluss bedient; Tastenkürzel 4/2 beobachtet. Rating übersprungen. |
+| [Chemie: Gleichgewichtsreaktion](https://app.simpleclub.com/topic/zF27DKMTq0wMGB3F9jJJ/story/lxoBb1yUSYMLPH7pN8UN) | Zwei Aufgaben gelesen: Dropdown-Lückentext einmal geprüft und erklärt; danach Wahr/Falsch-Dropdown angesehen. |
+| [Englisch: simple present](https://app.simpleclub.com/topic/3qgVhClnnN2G58sgTWTj/story/rYVMD9A7BZlRWywMUFS4) | Alle vier Aufgaben durch explizites Prüfen bedient: Auswahl und kurze Texteingabe, direkte grammatische Erklärungen. Nach letzter Rückmeldung geschlossen. |
+| [Deutsch: Wortfiguren](https://app.simpleclub.com/topic/4cNCfA5NuFE4uDLBy0tp) | Akkumulation, Klimax, Neologismus: Text-/Videoliste und Tutorzugang angesehen; in dieser geöffneten Gruppe keine reguläre Aufgabenkarte sichtbar. Keine erfundene Aufgabenbedienung. |
+| [Informatik: Arrays](https://app.simpleclub.com/topic/OBsg1WTYkqO3ca96bhvI/story/6GP1kpHcxV86PosBPmhf) | Erste von drei Aufgaben: Codefragment und Code-Antwortkarten; Desktop und 390×844 px. Horizontales Scrollen innerhalb langer Codeblöcke sichtbar. Keine Antwort abgegeben. |
+| [Wirtschaft: Bedürfnisse](https://app.simpleclub.com/topic/REeBFRiCIt52gI4ebTf5/story/VFrIcVrYAHgyGoYkuHME) | Erste von fünf Aufgaben: Mehrfachauswahl mit ausdrücklich genanntem Mehrfachhinweis; keine Antwort abgegeben. |
+| [Politik & GK](https://app.simpleclub.com/topic/xxT39SycrC3wz3a5R4uy/story/rCw1pfEx4Hoq0kL458my) | Fachübersicht und Grundlagen politischer Systeme; erste von drei Aufgaben als kurze Texteingabe geöffnet, keine Antwort abgegeben. |
+
+Einige Referenzantworten wurden ausschließlich im ausdrücklich zur Untersuchung
+bereitgestellten simpleclub-Konto eingegeben; dessen Übungsfortschritt kann sich
+dadurch geändert haben. Keine echten Schulpilot-Kinderantworten erzeugt oder
+überschrieben. Referenzsterne/Prozentwerte werden nicht als Kompetenznachweis
+übernommen. Schon die geöffneten Gruppen enthalten mehrere Stunden Material;
+„alle verfügbaren Aufgaben vollständig geprüft“ wäre kein belegter Befund.
 
 Desktop und390×844px: Halfpipe-Grafik mit Einstiegshöhen, Energieanteilen,
 Geschwindigkeitsanzeige und erklärtem Modell ohne Reibung. Die Touch-Hotspots
@@ -54,6 +78,38 @@ beschreibt Autoren-/Designarbeit und Gegenprüfung. Er belegt keine heutige frei
 vollautomatische Erzeugung beliebiger Animationen. Die eigene Architektur unten
 ist eine Schulpilot-Entscheidung. Keine fremden Assets, Animationen, Lerntexte
 oder Zugangsdaten werden ins Produkt kopiert.
+
+## Weitere Gestaltung aus der freigeschalteten App
+
+Die tatsächlich betrachteten Desktopaufgaben bei1280×720 px verwenden eine
+ungefähr665px breite Inhaltsspalte, einen kleinen Fortschrittskopf, freistehenden
+Fragetext und eingerahmte Grafiken. Antwortkarten tragen links den Auswahlpunkt,
+rechts teils Tastenkürzel; die Prüftaste steht in einer festen unteren Fläche.
+Mobil füllt die Prüftaste die Breite. Schriftgrößen sind visuelle Näherungen,
+keine aus dem Canvas ausgelesenen Original-Designtokens.
+
+Schulpilot setzt daraus eigene, lokal konsistente Werte um:700px Inhaltsmaximum,
+Frage20px/700/1,35, Absatz17px/1,5, Antwort16px/1,4, Antwortkartenradius14px,
+8px Abstand und mindestens56px Höhe. Die feste Hauptaktion ist am Desktop
+höchstens320px breit und rechts ausgerichtet, mobil breit; Trefferflächen bleiben
+mindestens48px. Der äußere zusätzliche Fragenrahmen entfällt. Grafiküberschrift
+und kompakter Zoomknopf teilen bei ausreichendem Platz eine Zeile und stapeln
+bei langer Überschrift oder großer Schrift. Die Tageskarte wird flacher.
+„Bearbeitet“ zählt tatsächlich geschlossene Aufgaben, nicht die aktuelle
+Fragenposition und nicht vermeintliches Verständnis. Laufzeitdetails sind
+aufklappbar; verbindliche Warte-/Verbindungs-/Zielzustände bleiben erreichbar.
+
+Die offiziellen Repositories
+[design_tokens_builder](https://github.com/simpleclub/design_tokens_builder),
+[math_keyboard](https://github.com/simpleclub/math_keyboard),
+[flutter_math](https://github.com/simpleclub/flutter_math) und
+[tex_to_speech_flutter](https://github.com/simpleclub/tex_to_speech_flutter)
+zeigen Token→Flutter-Styles, mathematische Eingabe/Darstellung und zugängliche
+Mathematikwerkzeuge. Sie liefern keine verifizierten aktuellen Produktionswerte
+für Schriftgrößen oder einen vollständigen heutigen Animationsstack. Der
+[offizielle Rive-Bericht über Brilliant](https://rive.app/blog/how-brilliant-org-motivates-learners-with-rive-animations)
+ist nur ein technischer Vergleich, kein simpleclub-Nachweis. Die eigene Lösung
+verwendet vorhandenes Flutter-Zeichnen und lokale Zustandsübergänge.
 
 ## Eigene Umsetzung
 
@@ -95,6 +151,19 @@ Bereits vorhandene Prozessgraphen/-kreisläufe können zusätzlich lokal schritt
 angesehen werden. Vorhandene Begriffe und Beziehungen bleiben vollständig;
 Hervorhebung erzeugt keine weitere fachliche Behauptung oder KI-Anfrage.
 
+Die vorhandenen Funktions-, Messdaten- und Logikgrafiken bieten zusätzlich
+„Erkunden“ in bereits geöffneten Hinweisen/Lösungen mit gültigem Kontokontext.
+Ein Polynompunkt lässt sich in der dargestellten Spanne−4bis4 per Ziehen,
+Tastatur oder0,1-Schritten bewegen; berechnete X/Y-Werte sind als solche sichtbar.
+Messdiagramme wählen ausschließlich vorhandene Originalpaare, ohne erfundene
+Zwischenmesswerte oder Regression. UND/ODER/NICHT-Schalter zeigen A/B/Y und die
+entsprechende Tabellenzeile. Gemeinsame Plotgeometrie bindet Marker und Grafik.
+Keine eigene Netzwerk-/Antwort-/Fortschrittsfunktion; die bestehende
+Aufgabenraum-Interaktions-/Zeitmessung wird dadurch nicht umdefiniert.
+Sitzungs-, Familien-, Quellen-, Fragen-, Routen- und Lebenszykluswechsel verwerfen
+den lokalen Zustand einschließlich alter Rückrufe. Die drei Explorer passen auch
+im Mobilzoom in die verfügbare Breite.
+
 Native Flutter [Draggable](https://api.flutter.dev/flutter/widgets/Draggable-class.html)
 und [DragTarget](https://api.flutter.dev/flutter/widgets/DragTarget-class.html)
 sind vorhanden. Die Tippalternative folgt dem
@@ -102,52 +171,80 @@ sind vorhanden. Die Tippalternative folgt dem
 Die bestehenden Einschränkungen aus SCIENTIFIC_CONTENT.md gelten für alte
 Fachmodelle weiter; die ausdrückliche Erweiterung für Szenen steht in AGENTS.md.
 
+## Darstellungskatalog im KI-Auftrag
+
+Die nachfolgende Nutzerpräzisierung fordert ausdrücklich, dass die KI die
+verfügbaren Elemente kennt. Dafür ergänzt presentation_capabilities einen
+servereigenen fachgetrennten Auswahlkatalog im bestehenden content_context,
+nach dem endgültigen Schema-Zuschnitt und der Entfernung unerreichbarer Typen.
+Die KI erhält Lernzweck, tatsächliche Grafik-/Antwortbedienung und Grenzen;
+keine frei definierten controls-/interactive-/autoplay-Ausgabefelder.
+
+Eine konkrete Lücke im bisherigen Einstieg wurde geschlossen: Normale
+Materialaufgaben lieferten material.subject, die Darstellungsauswahl las jedoch
+nur required_subject/Paketgruppen. Jetzt werden ausdrücklich gewählte Gruppen
+bzw. Fächer vorrangig genutzt, sonst die bestätigten Material-/Zieldaten.
+Offene Fächerdaten erweitern keine explizite Anforderung. Codex-Paketprosa und
+Etappentypen bleiben choice/short; kompakte OpenRouter-Paare behalten2–4.
+Eine reine Rückblick-/Entscheidungs-/Sprachprojektantwort ohne presentation
+bekommt keinen Grafikauftrag. Bestehende Reservierung, feste Mathematikplanung
+und Offenlegungsprüfung bleiben maßgeblich. Die ausführliche tatsächliche
+Fach-/Fähigkeitsmatrix steht in [AI_RENDER_CAPABILITIES.md](AI_RENDER_CAPABILITIES.md).
+
 ## Abnahme
 
-571gezielte Flutterfälle aus16betroffenen Sammlungen bestanden, darunter echte
-Draggesten im vollständigen Aufgabenraum, Randscrollen, der explizite
-Prüfvorgang, Tastatur-/Tippalternative, Kontowechsel während des Ziehens,
-Szenenregler, reduzierte Bewegung und Offenlegungsstufen. Die Analyse der acht
-betroffenen Dartdateien ist ohne Befund. Diese gezielte Auswahl ist keine
-Behauptung einer vollständigen Projektsuite.
+684gezielte Flutterfälle in25Dateien bestanden nach dem Layout-/Explorerumbau.
+Sie decken Zuordnungen im echten Aufgabenraum, Langdruck-/Dropgesten,
+Randscrollen, explizites Prüfen, Tipp-/Tastaturalternative, Kontenbindung,
+Szenenregler, fachliche Grafiken, Entwürfe, Antwortwiederholungen, Hilfen,
+Lernzeit, Tageskarte,320/390px und200%Schrift ab. Nach einer äquivalenten
+Null-aware-Lintkorrektur zusätzlich33überschneidende Rahmen-/Layoutfälle grün.
+Analyse von21betroffenen Dartdateien ohne Befund. Drei neue Mobilzoomfälle
+bedienen Funktion, Datenplot und Logik mit AppState tatsächlich bei390px/200%,
+einschließlich Reglergeste/rechter Schalter/Reset ohne horizontales Verschieben.
+Dies ist eine gezielte Auswahl, keine vollständige Projektsuite.
 
-Die einmalige echte synthetische OpenRouter-Probe verwendet ausschließlich die
+488gezielte Backendfälle in18Dateien bestanden, Ruff für zwölf betroffene
+Dateien und Diffprüfung ohne Befund. Die unabhängige Prüfung schloss Beleglücken
+bei vollständigen Pfeilbegriffen, materialübergreifenden Zuordnungspaaren und
+gegebenen erklärenden Zuordnungsgrafiken. Die vollständigen Begriffsgrenzen
+werden auch für alte Prozess-/Nahrungskettentypen geprüft;42weitere Regressionen
+sichern diese letzte Erweiterung ab. Kein neuer kostenpflichtiger Modellaufruf.
+
+Die einmalige echte synthetische OpenRouter-Probe nutzte ausschließlich die
 serverseitige Wasser-/Wasserdampf-/Wolkenfixture, Luna/Azure, medium,
-maximal4000Ausgabetokens, ZDR und normale Reservierung/Abrechnung. Der erste
-Metadatenvorlauf scheiterte vor jeder Reservierung am optional fehlenden
+maximal4000Ausgabetokens, ZDR und normale Reservierung/Abrechnung. Ein erster
+Metadatenvorlauf scheiterte vor Reservierung/Aufruf am optional fehlenden
 Preiseintrag request; frischer Endpunkt, Katalog, API-Schema und dokumentierte
-Auslassungsregel werden nun gemeinsam geprüft. Der anschließende einzelne
-Modellaufruf kostete0,001436USD bei4115Eingabe- und2049Ausgabetokens.
-Seine Ausgabe bestand die sichere Aufgabenstrukturprüfung nicht und wurde
-verworfen. Kein automatischer Wiederholungsaufruf, keine Ersatzaufgabe und keine
-Lockerung der Quellenprüfung. Die fehlende Rohantwort erlaubt keine konkrete
-Fehlerursache oder erfolgreiche echte KI-Szenenabnahme zu behaupten.
-Das feste Falljournal verhindert einen neuen Auftrag durch bloßes Ändern des
-Berichtsverzeichnisses. Die Prüfobergrenze bleibt insgesamt0,25USD.
+Auslassungsregel werden gemeinsam geprüft. Der anschließende einzelne
+Modellaufruf kostete0,001436USD bei4115Eingabe-/2049Ausgabetokens.
+Die sichere Aufgabenstrukturprüfung verwarf seine Ausgabe. Keine gespeicherte
+Rohantwort, daher unbekannte genaue Ursache; kein automatischer Retry,
+keine Ersatzaufgabe und kein erfolgreicher echter KI-Szenennachweis.
+Das feste Falljournal verhindert Wiederholung durch einen anderen Berichtsordner;
+die gesamte Prüfobergrenze bleibt0,25USD. Der finale Code enthält nach der
+Probe strengere Quellenprüfungen und ist durch diese Probe nicht live validiert.
+Dispatch- und finale Quellhashes werden ausdrücklich getrennt ausgewiesen.
 
-446gezielte Backendfälle in18Dateien bestanden nach den letzten Korrekturen;
-Ruff ohne Befund. Die unabhängige Prüfung fand drei konkrete Lücken, jetzt mit
-Regressionen behoben: Pfeilbelege prüfen vollständige Begriffe, neue Zuordnungen
-erhalten keine gegebenen erklärenden Grafiken, Paarbelege dürfen keine
-Materialgrenze überbrücken. Diese letzten strengeren Änderungen liegen nach
-der abgelehnten echten Modellprobe; deren Quellhashes werden nicht als Nachweis
-des finalen Codes ausgegeben. Es gab keinen weiteren Modellaufruf.
+Die erste künstliche schreibgeschützte Browserprobe zeigte Szenenabspielen und
+Schrittwechsel bei1440px, Mobilzoom/Regler bei390px und vollständige Tippzuordnung
+vor Aktivierung von „Antwort prüfen“. Die CUA-Geste ohne Langdruck erbrachte
+keinen Drag-and-drop-Browsernachweis; die wirkliche Langdruck-/Dropfolge ist
+im Flutter-Aufgabenraumtest abgedeckt. Die finale Browserprobe mit dem neuen Code bestätigte bei1440×1000px den
+Graphregler von x=0 auf2,7 und bei390×844px im vollständig passenden Zoom
+von x=0 auf2,4. Die mobile UND-Tafel schaltete A/B von0/0 auf1/1, zeigte
+Y=1 und hob die passende Zeile hervor. Diese Fälle verwenden ausschließlich
+künstliche schreibgeschützte Rendererbeispiele, keine validierte KI-Ausgabe. Keine physische
+Touchgeräteabnahme, OCR-/Handschriftabnahme oder Lernwirkung behauptet.
+Rendererfixtures sind keine validierte echte KI-Ausgabe. Auch die finale
+Tippzuordnung wurde mit zwei Paaren vollständig ausgefüllt; „Antwort prüfen“
+wurde erst dann aktiv und nicht betätigt. Die eigene Vorschautab und der Server
+wurden beendet, der Browserviewport zurückgesetzt.
+Build-/Deploymentbelege folgen in RELEASE_97_2026_10_23.md.
 
-Zusätzlich13Mobilzoom-/Referenztests bestanden, davon sechs bereits im großen
-Flutterlauf enthalten. Szene/Prozessgraph/Prozesszyklus starten im Zoom mit
-höchstens der verfügbaren Breite;320/390px mit100/200%Schrift, echte
-Reglergesten und weiterhin verborgene Lösungen geprüft. Acht plus zwei betroffene
-Dartdateien wurden in getrennten Läufen ohne Befund analysiert.
-
-Künstliche schreibgeschützte Browserprobe:1440×1000Desktop mit Schrittwechsel
-und vollständigem Abspielen;390×844Mobil mit vollständig sichtbaren Zoomreglern
-und tatsächlicher Reglergeste von Schritt1auf2. Die Zuordnung wurde per
-Tippalternative vollständig ausgefüllt; erst danach ist „Antwort prüfen“ aktiv.
-Die CUA-Geste ohne Langdruck ergab keinen Browsernachweis für Drag-and-drop;
-die reale Langdruck-/Dropfolge ist im Flutter-Aufgabenraumtest geprüft. Keine
-physische Touchgeräteabnahme behauptet. Die Vorschau und ihr Server wurden
-beendet und der Browserviewport zurückgesetzt.
-
-Releasebelege werden nach ihrer Durchführung ergänzt.
-Künstliche Rendererfixtures sind keine echte KI-Ausgabe, keine Handschrift-/
-OCR-Abnahme und kein Nachweis einer Lernwirkung.
+Darstellungskatalog zusätzlich lokal abgenommen:35neue Registry-/Schemafälle
+und13neue vollständige Provider-Mockpfade bestanden. Sie prüfen alle24Profile,
+endgültige Frage-/Blockgrenzen, normale material.subject-Aufgaben auf drei
+Anbieterwegen, Fachtrennung im Paket, Codex-Grenzen und ausgeschlossene reine
+Rückblicke/Sprachprojekte.48neue Fälle, keine echten Modellaufrufe; die finale
+vereinte20-Dateien-Backendprüfung läuft vor Veröffentlichung.

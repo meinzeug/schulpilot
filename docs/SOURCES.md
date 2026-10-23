@@ -1,84 +1,51 @@
-Interaktiver Ausbau 23.10.2026 · Zielversion 1.26.0+97, noch kein Live-Deployment:
-Auf ausdrücklichen Nutzerauftrag die öffentliche und angemeldete simpleclub-
-Oberfläche weiter auf Animationen, Grafiken und Zuordnungen untersucht.
-Der öffentliche [Fächerkatalog](https://simpleclub.com/subjects) führte zu
-36 tatsächlich geöffneten Katalogseiten mit 372 Themenverweisen; dies sind
-keine 372 geprüften Aufgaben oder eindeutig verschiedenen Lektionen.
-In der angemeldeten App wurden Brüche, lineare Funktionen und Energie
-betrachtet. Die geöffneten Bruch-/Funktionsübungen waren Unlimited-gesperrt,
-Physikaufgaben mit Schloss markiert. Kein Kauf und keine Umgehung; keine
-vollständige Abnahme geschützter Übungsinhalte.
+Interaktiver Ausbau23.10.2026 · Zielversion1.26.0+97, Deployment noch offen:
+Die öffentliche und ausdrücklich bereitgestellte angemeldete simpleclub-App
+wurde im Browser auf Desktop und bei390×844px untersucht. Anfangs waren
+Übungen gesperrt; nach der mitgeteilten Unlimited-Plus-Freischaltung wurden
+sie erneut geöffnet. Neun im Profil sichtbare Fachkataloge, tatsächliche
+Aufgaben aus Mathematik, Physik, Biologie, Chemie, Englisch, Informatik,
+Wirtschaft und Politik/GK sowie Deutsch-Text-/Videoübersichten wurden betrachtet.
+Mathematik drei und Englisch vier Aufgaben bis zur Rückmeldung bedient;
+Biologie-Tippzuordnung, Chemie-Dropdown und gestartetes Physikpendel tatsächlich
+beobachtet. Nicht alle Aufgaben aller Kataloge wurden vollständig geprüft.
+Die36öffentlichen Fach-/Berufskataloge mit372erfassten Verweisen sind ebenfalls
+keine372abgenommenen Übungen. Genaue URLs, Bedienumfang und Grenzen:
+[INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md).
 
-Die [öffentlichen interaktiven Businessdemos](https://business.simpleclub.com/fur-bildungsanbieter)
-wurden tatsächlich bedient: Löten von Start auf Schritt 2 mit sichtbarem
-Werkzeug-/Drahtwechsel und 3D-Würfel von Ebene 0 auf 1 mit sichtbarer
-Positionsänderung. Die Halfpipe war auf Desktop und bei 390×844 px sichtbar;
-Hotspots wurden angewählt, ein vollständiger Bewegungsablauf dadurch nicht
-belegt. Sichtbare „rive“-Canvas-/Kontrollnamen sind ein Befund dieser Demos,
-kein Beleg für sämtliche Appgrafiken, Quelldateien oder Produktionswerkzeuge.
+Die [öffentlichen Businessdemos](https://business.simpleclub.com/fur-bildungsanbieter)
+zeigten beim Bedienen einen Lötprozess-Schrittwechsel und eine räumliche
+Würfelebene. „rive“-Namen dort belegen keinen vollständigen App-Animationsstack.
+Der [historische offizielle Produktionsbericht](https://b2b.simpleclub.com/blog/so-erstellen-wir-unsere-hochwertigen-lerninhalte-2)
+beschreibt Autoren-/Designarbeit und Gegenprüfung, keine aktuelle beliebige
+vollautomatische Animationserzeugung.
 
-Weitere gelesene öffentliche Primärbeispiele beschreiben Bedienmuster:
-[Kreuzprodukt](https://simpleclub.com/lessons/mathematik-kreuzprodukt),
-[Parallelogramm](https://simpleclub.com/lessons/mathematik-parallelogramm---flacheninhalt-umfang),
-[Energieerhaltung](https://simpleclub.com/lessons/physik-energieerhaltungssatz),
-[Gleichgewichtsreaktion](https://simpleclub.com/lessons/chemie-gleichgewichtsreaktion),
-[PCR](https://simpleclub.com/lessons/biologie-pcr),
-[Simple Past](https://simpleclub.com/lessons/englisch-simple-past),
-[Bildergeschichte](https://simpleclub.com/lessons/deutsch-bildergeschichte),
-[Queue](https://simpleclub.com/lessons/fachinformatikerin-queue) und
-[Deflation](https://simpleclub.com/lessons/wirtschaft-deflation).
-Eine dortige Aufforderung „App öffnen zum Interagieren“ gilt nicht als bediente
-Liveübung. [Gezeiten](https://simpleclub.com/lessons/erdkunde-gezeiten) beschreibt
-teilweise geplante Rive-Illustrationen; daraus wird keine fertige Animation
-abgeleitet. Der [historische offizielle Produktionsbericht](https://b2b.simpleclub.com/blog/so-erstellen-wir-unsere-hochwertigen-lerninhalte-2)
-beschreibt Autoren-/Designarbeit und Gegenprüfung, keine bewiesene aktuelle
-vollautomatische Szenenerzeugung.
+Offizielle technische Primärquellen:
+[design_tokens_builder](https://github.com/simpleclub/design_tokens_builder),
+[math_keyboard](https://github.com/simpleclub/math_keyboard),
+[flutter_math](https://github.com/simpleclub/flutter_math),
+[tex_to_speech_flutter](https://github.com/simpleclub/tex_to_speech_flutter).
+Sie zeigen Flutter-Werkzeuge für Styles, Mathematikeingabe/-darstellung und
+Sprachausgabe, keine verifizierten heutigen Produktionsschriftgrößen.
+Der [Rive-Bericht über Brilliant](https://rive.app/blog/how-brilliant-org-motivates-learners-with-rive-animations)
+ist ein Vergleichsbeispiel, kein Simpleclub-Nachweis. Visuelle Messungen der
+Canvasoberfläche sind Schätzwerte; Schulpilots20px-Frage,17px-Absatz,
+16px-Antwort und700px-Rahmen sind eigene Gestaltungsentscheidungen.
+Keine fremden Assets, Lerntexte, Animationen oder Zugangsdaten übernommen.
 
-Die offiziellen technischen Quellen
-[simpleclub math_keyboard](https://github.com/simpleclub/math_keyboard),
-[design_tokens_builder](https://github.com/simpleclub/design_tokens_builder)
-und [flutter_math_fork](https://pub.dev/packages/flutter_math_fork) belegen
-jeweils diese Flutter-Komponenten; sie belegen keine vollständige interne
-Animationstechnik. Die Schulpilot-Szenengrammatik und der lokale Player sind
-eigene Implementierungen. Übernommen wurden Bedienkonzepte, keine fremden
-Assets, Animationen, Lerntexte, Markenbestandteile oder Zugangsdaten.
-
-Eigene Umsetzung im bestehenden Flutter-/FastAPI-Pfad: versionierte individuelle
-`scene`-Kompositionen in allen 24 Fachprofilen; geprüfte endliche Fachmodelle
-bleiben erhalten. Begrenzte Formen, Slots, gerichtete Pfeile, belegte Schritte,
-private Quellenbelege und bestehende Offenlegungsstufen; kein ausführbarer
-Modellcode oder zusätzlicher Bild-/Animationsdienst. Der Player startet bewusst,
-bietet Pause, Wiederholen, Vor/Zurück und Schrittregler, berücksichtigt reduzierte
-Bewegung und stoppt bei Hintergrund, überdeckter Route oder Kontextwechsel.
-Vorhandene Prozessdiagramme erhalten optional lokale schrittweise Hervorhebung.
-Neue kompakte OpenRouter-Runden können im bisherigen Aufgaben-/Tokenumfang
-2–4 eindeutige, ausdrücklich gruppenlokal belegte Zuordnungspaare erzeugen;
-Codex-Pakete behalten choice/short. Drag-and-drop aktualisiert nur Entwürfe,
-Tippen/Tastatur bleibt vollständig möglich und erst „Antwort prüfen“ bewertet.
-
-Technische Primärbezüge:
+Eigene Umsetzung: quellgebundene individuelle SceneV1-Kompositionen, lokaler
+Player, Drag-and-drop mit Tipp-/Tastaturalternative und explizitem Prüfen.
+Bereits geöffnete Funktions-, Messdaten- und Logikhilfen bieten lokale,
+begrenzte Explorer. Quellen-/Offenlegungs-, Konten- und Budgetgrenzen bleiben
+maßgeblich; keine weiteren Dienstinstanzen oder Bilddienste. Technische Bezüge:
 [Flutter Draggable](https://api.flutter.dev/flutter/widgets/Draggable-class.html),
 [DragTarget](https://api.flutter.dev/flutter/widgets/DragTarget-class.html),
-[AnimationBehavior](https://api.flutter.dev/flutter/animation/AnimationBehavior.html)
-und [W3C Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html).
-Die Tippalternative ergänzt Tastaturbedienung; Tastatur allein würde das
-W3C-Kriterium für eine Einzeigeralternative nicht erfüllen.
+[AnimationBehavior](https://api.flutter.dev/flutter/animation/AnimationBehavior.html),
+[W3C Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html).
 
-Tatsächlicher Prüfstand: 571 gezielte Flutterfälle in 16 Dateien bestanden,
-Analyse der acht betroffenen Dartdateien ohne Befund; vollständiger geschützter
-OpenRouter-Mock für Szene und Zuordnung bestanden. Die einmalige echte
-synthetische Modellprobe wurde wegen ungültiger Aufgabenstruktur verworfen,
-normal mit 0,001436 USD bei 4115 Eingabe-/2049 Ausgabetokens abgerechnet,
-kein Retry. Die nicht gespeicherte Rohantwort erlaubt keine genaue Ursache
-oder erfolgreiche echte KI-Szenenabnahme. Rendererfixtures sind keine OCR-,
-Handschrift-, Anbieter- oder Lernwirkungsabnahme. Lokale Backend-/Browserbelege
-sind abgeschlossen; Build- und Deploymentbelege sind noch offen.
-Die unabhängige Codeprüfung meldete Quellenabgrenzung bei Pfeilbegriffen und
-Materialgrenzen sowie vorweggenommene Zuordnung durch gegebene Prozessgrafiken.
-Alle drei Korrekturen sind mit Regressionen abgeschlossen;446Backendfälle in18Dateien
-bestanden. Dies ist keine vollständige Sicherheits- oder Inhaltsauditgarantie.
-Quelle, Vertrag und Rückweg:
-[INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md),
+Die einmalige echte synthetische Modellprobe wurde wegen ungültiger Struktur
+verworfen, normal mit0,001436USD abgerechnet; kein Retry und kein erfolgreicher
+echter KI-Szenennachweis. Künstliche Rendererfixtures sind keine Modell-, OCR-,
+Handschrift- oder Lernwirkungsabnahme. Finale Prüf-/Build-/Betriebsnachweise:
 [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
 
 Gestaltungsfortsetzung 23.10.2026, veröffentlichte Version 1.25.0+96: tatsächliche

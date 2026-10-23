@@ -437,9 +437,26 @@ def rules_for(subjects):
     return RULES + science_graphics.rules_for(allowed) + (learning_scenes.RULES if "scene" in allowed else "")
 
 
-def generation_context(subjects):
-    return {"version": 1, "graphic_kinds": sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())}),
-            "scene_version": 1, "scene_limits": {"objects": 12, "steps": 8, "transition_ms": 800}}
+def generation_subjects(payload):
+    """Use the requested scope first, otherwise the confirmed source's subject."""
+    groups = payload.get("selected_groups") or []
+    if groups:
+        values = [group.get("subject") for group in groups]
+    elif payload.get("required_subject"):
+        values = [payload["required_subject"]]
+    elif (payload.get("material") or {}).get("subject"):
+        values = [payload["material"]["subject"]]
+    elif (payload.get("goal") or {}).get("subject"):
+        values = [payload["goal"]["subject"]]
+    else:
+        values = [material.get("subject") for material in payload.get("materials", [])]
+    return list(dict.fromkeys(value for value in values if isinstance(value, str) and value))
+
+
+def generation_context(subjects, *, schema=None, compact_matching=False):
+    from .presentation_capabilities import context
+
+    return context(subjects, PROFILES, schema=schema, compact_matching=compact_matching, symbol_words=PICTURE_WORDS)
 
 
 def _contains(haystack, needle):
@@ -514,9 +531,9 @@ def validate_question(presentation, question, sources, allowed_kinds):
             if direction.casefold() not in quoted.casefold():
                 raise ValueError("Absolute Zahnrad-Drehrichtung fehlt im Beleg oder in der gegebenen Aufgabe.")
         if block.kind == "food_chain":
-            normalized = re.sub(r"\s+", "", block.source_excerpt.casefold()).replace("->", "→")
             if not all(
-                (a + "→" + b).casefold().replace(" ", "") in normalized for a, b in zip(block.labels, block.labels[1:])
+                science_graphics.has_literal_arrow(block.source_excerpt, a, b, ignore_case=True)
+                for a, b in zip(block.labels, block.labels[1:])
             ):
                 raise ValueError("Nahrungskette ohne belegte Pfeilrichtung.")
         if block.disclosure == "given":

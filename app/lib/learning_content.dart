@@ -82,7 +82,7 @@ class _Section extends StatelessWidget {
   final Widget? figure;
   final TextStyle? style;
   const _Section(this.block, {this.figure, this.style});
-  TextStyle get body => style ?? const TextStyle(fontSize: 17, height: 1.6);
+  TextStyle get body => style ?? const TextStyle(fontSize: 17, height: 1.5);
 
   @override
   Widget build(BuildContext context) {

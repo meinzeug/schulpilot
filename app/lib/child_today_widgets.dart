@@ -91,22 +91,22 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                       children: [
                         ExcludeSemantics(
                           child: Container(
-                            width: 48,
-                            height: 48,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               color: palette.mint,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               action is ActionButton
                                   ? action.icon ?? Icons.auto_stories_outlined
                                   : Icons.auto_stories_outlined,
                               color: palette.teal,
-                              size: 25,
+                              size: 22,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             widget.eyebrow,
@@ -133,24 +133,24 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       widget.title,
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         color: palette.ink,
                         fontSize: wide
-                            ? 30
+                            ? 24
                             : compact
-                            ? 22
-                            : 24,
-                        height: 1.18,
+                            ? 20
+                            : 22,
+                        height: 1.25,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -.5,
+                        letterSpacing: -.2,
                       ),
                     ),
                     if (widget.subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
                         widget.subtitle,
                         style: TextStyle(
@@ -176,7 +176,7 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                     FilledButton.styleFrom(
                       backgroundColor: palette.actionPurple,
                       foregroundColor: Colors.white,
-                      minimumSize: const Size(48, 54),
+                      minimumSize: const Size(48, 48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(28),
                       ),
@@ -203,7 +203,7 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
                   : action,
             ),
             if (widget.learning) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 'Verstehen · Üben · Rückblick',
                 textAlign: TextAlign.center,
@@ -216,30 +216,30 @@ class _ChildTodayHeroState extends State<ChildTodayHero> {
           clipBehavior: Clip.antiAlias,
           padding: EdgeInsets.all(
             wide
-                ? 28
+                ? 20
                 : compact
-                ? 18
-                : 22,
+                ? 16
+                : 18,
           ),
           decoration: BoxDecoration(
             color: palette.panelSurface,
             border: Border.all(color: palette.surfaceBorder),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: wide
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: heading),
-                    const SizedBox(width: 32),
-                    SizedBox(width: 230, child: primaryAction),
+                    const SizedBox(width: 24),
+                    SizedBox(width: 224, child: primaryAction),
                   ],
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     heading,
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 16),
                     primaryAction,
                   ],
                 ),

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:schulpilot/api.dart';
+import 'package:schulpilot/learning_room.dart';
 import 'package:schulpilot/ui.dart';
 import 'package:schulpilot/unit_screen.dart';
 
@@ -70,12 +71,15 @@ void main() {
           MaterialApp.router(theme: appTheme(), routerConfig: first),
         );
         await tester.pumpAndSettle();
-        expect(find.bySemanticsLabel('1. Verstehen, jetzt'), findsOneWidget);
+        expect(find.bySemanticsLabel('Verstehen'), findsOneWidget);
+        expect(tester.widget<LearningRoom>(find.byType(LearningRoom)).phase, 0);
         expect(find.text('Was bedeutet cat?'), findsNothing);
         final next = find.text('Weiter zu den Übungen');
         await tester.ensureVisible(next);
         await tester.tap(next);
         await tester.pumpAndSettle();
+        expect(tester.widget<LearningRoom>(find.byType(LearningRoom)).phase, 1);
+        expect(find.bySemanticsLabel('Üben · Aufgabe 1 von 1'), findsOneWidget);
         expect(find.text('Was bedeutet cat?'), findsOneWidget);
         await tester.pumpWidget(const SizedBox());
         first.dispose();

@@ -54,6 +54,18 @@ sendet keine Anfrage, Antwort, Lernzeit oder Fortschrittsmeldung. Die bisherigen
 ansehen“ hebt auf Wunsch ausschließlich bereits freigegebene Knoten und
 Beziehungen lokal hervor, ohne neue Fakten oder Modellanfrage.
 
+Bereits geöffnete Hilfen/Lösungen der Typen `function_graph`, `data_plot` und
+`logic_table` erhalten mit gültigem Kontokontext eine lokale „Erkunden“-Ansicht.
+Polynommarker verwenden dieselbe Plotgeometrie wie der Graph und berechnen X/Y
+innerhalb−4bis4 in0,1-Schritten; sie sind keine Messung. Datenplots wählen nur
+vorhandene Originalpaare, ohne Interpolation oder Regression. UND/ODER/NICHT
+berechnen ihre endliche Wahrheitstafel und markieren die aktive Zeile. Given-
+Blöcke und Ansichten ohne Kontokontext bleiben statisch. Die Ansichten erzeugen
+keine eigenen Netzwerk-, Bewertungs-, Fortschritts- oder Zeittakte; die bestehende
+Aufgabenraum-Interaktions-/Zeitmessung bleibt bestehen. Kontext-, Routen- und
+Lebenszykluswechsel setzen lokale Auswahl und alte Rückrufe außer Kraft.
+Auch im Mobilzoom passen diese Bedienelemente in die verfügbare Breite.
+
 Bestehende Zuordnungen erhalten Drag-and-drop mit sichtbaren Antwortkarten,
 Zielen und mobilem Randscrollen. Tippen und Tastatur verwenden weiterhin die
 vollständige vorhandene Auswahl. Ein Drop aktualisiert nur den Entwurf;
@@ -68,19 +80,26 @@ Dies nutzt bestehende Aufgabenplätze, Anbieterreservierung und Token-/Zeitlimit
 Codex-Pakete behalten ihren bisherigen choice/short-Umfang. Kein zusätzlicher
 Dienst, keine neue Generierung durch OCR, Rückblick oder GET.
 
-Prüfstand dieses Ausbaus: 571 gezielte Flutterfälle aus 16 Dateien bestanden,
-Analyse der acht betroffenen Dartdateien ohne Befund. Ein vollständiger
-lokaler geschützter OpenRouter-Mock durchläuft Szene und Zuordnung; künstliche
-Rendererfixtures sind ausdrücklich keine echte KI-Ausgabe. Die einmalige echte
-synthetische Modellprobe wurde wegen ungültiger Aufgabenstruktur verworfen:
-0,001436 USD, 4115 Eingabe-/2049 Ausgabetokens, normal abgerechnet, kein Retry.
-Die Rohantwort wurde nicht gespeichert; die genaue Ursache ist unbekannt.
-Daraus folgt kein erfolgreicher echter KI-Szenennachweis. Die lokale Backend-/
-Browserabnahme ist abgeschlossen; Build-/Deploymentbelege folgen im Abschlussprotokoll.
-Die unabhängige Codeprüfung meldete Quellenabgrenzung bei Pfeilbegriffen und
-Materialgrenzen sowie vorweggenommene Zuordnung durch gegebene Prozessgrafiken.
-Alle drei Korrekturen sind mit Regressionen abgeschlossen;446Backendfälle in18Dateien
-bestanden. Dies ist keine vollständige Sicherheits- oder Inhaltsauditgarantie.
+Der bestehende KI-Erzeugungsauftrag erhält außerdem einen fachgetrennten
+Darstellungskatalog mit Lernzweck, tatsächlicher App-Bedienung und den aus dem
+endgültigen Schema abgeleiteten Fragearten/Blockgrenzen. Er verwendet dieselben
+Profile, erweitert keine Ausgabeformate und behebt die fehlende Fachableitung
+normaler Heftaufgaben aus material.subject. Hinweise/Lösungen werden im selben
+Auftrag geplant und später nur projiziert. Details:
+[AI_RENDER_CAPABILITIES.md](AI_RENDER_CAPABILITIES.md).
+
+Prüfstand dieses Ausbaus:684gezielte Flutterfälle in25Dateien bestanden,
+anschließend33überschneidende Fälle nach äquivalenter Null-aware-Lintkorrektur;
+Analyse von21betroffenen Dartdateien ohne Befund.488Backendfälle in18Dateien,
+Ruff und Diffprüfung grün. Die lokalen geschützten Mockpfade prüfen Szenen und
+Zuordnungen; künstliche Rendererfixtures sind keine echte KI-Ausgabe.
+Die einmalige echte synthetische Modellprobe wurde wegen ungültiger Struktur
+verworfen:0,001436USD,4115Eingabe-/2049Ausgabetokens, normal abgerechnet,
+kein Retry. Ohne gespeicherte Rohantwort ist die genaue Ursache unbekannt.
+Kein erfolgreicher echter KI-Szenennachweis; spätere strengere Quellenprüfungen
+sind offline geprüft. Quellenabgrenzung an Pfeilbegriffen und Materialgrenzen
+sowie vorweggenommene gegebene Zuordnungen sind mit Regressionen abgesichert.
+Das ist keine vollständige Sicherheits-, Inhalts- oder Lernwirkungsprüfung.
 Vertrag, Recherchegrenzen und Rückweg:
 [INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md),
 [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
@@ -263,3 +282,10 @@ acht plus zwei betroffener Dateien ohne Befund. Künstliche1440px-/390px-Probe
 mit Abspielen, Schrittwechsel, Reglergeste und Tippzuordnung abgeschlossen.
 Physische Geräteabnahme und erfolgreiche echte KI-Szenenerzeugung bleiben offen;
 Build/Deployment ausschließlich gemäß RELEASE_97_2026_10_23.md bewerten.
+
+Darstellungskatalog zusätzlich lokal abgenommen:35neue Registry-/Schemafälle
+und13neue vollständige Provider-Mockpfade bestanden. Sie prüfen alle24Profile,
+endgültige Frage-/Blockgrenzen, normale material.subject-Aufgaben auf drei
+Anbieterwegen, Fachtrennung im Paket, Codex-Grenzen und ausgeschlossene reine
+Rückblicke/Sprachprojekte.48neue Fälle, keine echten Modellaufrufe; die finale
+vereinte20-Dateien-Backendprüfung läuft vor Veröffentlichung.

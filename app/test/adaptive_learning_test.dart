@@ -126,7 +126,7 @@ void main() {
       await tester.pump();
       expect(writes.length, 1);
       await tester.enterText(find.byType(TextField).first, 'Neueste Eingabe');
-      await tester.tap(find.text('Pause'));
+      await tester.tap(find.byTooltip('Pause machen'));
       await tester.pump();
       expect(server.calls.where((v) => v.endsWith('/pause')), isEmpty);
       first.complete();

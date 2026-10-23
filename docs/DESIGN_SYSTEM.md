@@ -3,14 +3,14 @@
 Veröffentlichte Gestaltungsbasis **1.25.0+96**, interaktiver Ausbau zur
 Zielversion **1.26.0+97** am 23.10.2026; dessen Deployment ist noch offen. Die angemeldete
 simpleclub-App wurde auf ausdrücklichen Nutzerauftrag direkt bei
-1440×1000 px und mobil bei 390×844 px betrachtet. Die Beobachtung umfasst das
-Thema „Brüche“, den Planerstellungsassistenten und die Vorlagenvorschau
-„Mathe Abitur NRW“ sowie die ersten zugänglichen Seiten der Lektion
-„Berechnung von Bruchteilen“ mit endlicher Torten-/Bruchdarstellung.
-Die Übung „Brüche verstehen“ war durch die Unlimited-Bezahlschranke gesperrt.
-Es gab weder einen Kauf noch eine Umgehung; die geschützten Aufgaben wurden
-nicht bedient oder abgenommen. Die sichtbare Themenübersicht, zugängliche
-Lektionsführung und Planvorschau dienen ausschließlich als Gestaltungsreferenz.
+1440×1000 px und mobil bei 390×844 px betrachtet. Die anfängliche Beobachtung
+umfasste Themenübersichten, Planvorlagen und zugängliche Lektionsseiten;
+geschützte Übungen waren zunächst gesperrt. Nach der vom Nutzer mitgeteilten
+Unlimited-Plus-Freischaltung wurde die Referenzprüfung um tatsächlich zugängliche
+Aufgaben und Interaktionen erweitert. Umfang, konkrete Bedienbelege und Grenzen
+führt [INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md).
+Die Gestaltung ist von der fachlichen Aufgaben-/KI-Abnahme getrennt; eine
+beobachtete Referenzfunktion gilt nicht automatisch als in Schulpilot umgesetzt.
 
 Schulpilot übernimmt daraus ruhige Anthrazitflächen, klare Überschriften,
 kompakte Format-/Zeit-/Statusangaben, dünne Piktogramme und blaue pillenförmige
@@ -99,9 +99,9 @@ Darunter steht die eingerückte, abgerundete Touchnavigation mit sichtbarer
 Auswahl. Das Kontoziel bleibt unten in der Rail; Betrieb, Einrichtung, Verkauf
 und Push bleiben auch mobil erreichbar.
 Lokale Kontextreiter wiederholen keine zweite globale Menüleiste.
-Die geführte Lernrunde erhält ihren klaren Rückweg und die drei Phasen
-Verstehen, Üben, Rückblick. Frage, eigene Antwort und Rückmeldung bleiben
-zusammen. Antwortfeedback verschwindet erst nach ausdrücklichem Weitergehen.
+Die geführte Lernrunde erhält ihren klaren Rückweg und die bestehenden Phasen
+Verstehen, Üben, Rückblick als kompakten Kontext. Frage, eigene Antwort und
+Rückmeldung bleiben zusammen. Antwortfeedback verschwindet erst nach ausdrücklichem Weitergehen.
 Hilfe und Hauptaktion haben feste Plätze außerhalb der Tastatur.
 
 ## Lernpläne, Aufgaben und Fachgrafiken ab 1.25.0
@@ -116,12 +116,48 @@ Kinder-Kurzplan, nächste Lerntage, gespeicherter Lernweg und Elternwochenplan
 nutzen diese Formensprache. Reihenfolge, Termine, Verfügbarkeit, Pflichten,
 Mindestziele und Rückwege bestimmt weiterhin der bestehende Aufrufer.
 
-Der aktive `LearningRoom` verzichtet auf globale Navigation. Ein klarer Rückweg,
-dünne segmentartige Phasenführung und kompakte Fortschrittsangaben lassen Platz
-für die Aufgabe. Verstehen, Üben und Rückblick bleiben die vorhandenen drei
-Phasen. Die breite blaue Hauptaktion und die separate Hilfe haben ihren eigenen
-Platz außerhalb des Inhaltsscrollbereichs und oberhalb der Bildschirmtastatur.
-Große Schrift verwendet weiterhin den vorhandenen angepassten Aufbau.
+Der aktive `LearningRoom` verzichtet auf globale Navigation. Sein zentrierter
+Rahmen ist höchstens **700 px** breit; der Inhaltsscrollbereich hat zusätzlich
+je 16 px Seitenabstand. Titel, aktuelle Phase und bisherige Fortschrittstexte
+stehen im kompakten Kopf. Die drei Phasen Verstehen, Üben und Rückblick bleiben
+verständlich, erscheinen aber nicht mehr als drei große separate Phasenzeilen.
+Die Tagesuhr bleibt sichtbar; Einheit und Restzeit stehen in den vorhandenen
+Zeitdetails. Offlinezustand, noch ausstehende Speicherung und erreichte
+Mindestziele bleiben ausdrücklich erkennbar.
+
+`questionTotal` und `questionCompleted` liefern eine einzige Aufgabenanzeige:
+**„Bearbeitet x von y“**. Die Leiste verwendet ausschließlich tatsächlich nach
+der bestehenden `done()`-Definition abgeschlossene Aufgaben. Aktueller
+Frageindex, bloße Eingabe oder eine lokale Exploration erhöhen den Zähler
+nicht. „Bearbeitet“ bezeichnet weder richtige Antworten noch gesicherte
+Beherrschung; Kategorien und Unterstützung bleiben bei ihren bisherigen
+Antwortbelegen. Fehlen die neuen Gesamtwerte, bleibt der bisherige
+Phasen-/Fortschrittskontext ohne erfundene Aufgabenleiste lesbar.
+
+Die blaue Hauptaktion und die separate Hilfe liegen außerhalb des
+Inhaltsscrollbereichs und oberhalb der Bildschirmtastatur. Die Fußfläche reicht
+über die verfügbare Fensterbreite; ihr Inhalt folgt demselben 700-px-Rahmen.
+Am Desktop ist die Hauptaktion höchstens **320 px** breit und rechts
+angeordnet. Mobil nutzt sie die verbleibende Breite neben der Hilfe; bei großer
+Schrift stehen beide untereinander. Oberhalb von Schriftfaktor 1,4 wandert der
+ausführliche Kopf in den Scrollbereich; Rückweg, Pause und Assistent bleiben
+über mindestens 48 px große Trefferflächen erreichbar.
+
+Lokal umgesetzte Typografie im Aufgabenraum:
+
+| Rolle | Größe / Gewicht | Zeilenhöhe |
+| --- | --- | --- |
+| kompakter Rundentitel | 16 px / 800 | 1,25 |
+| Aufgabenfrage | 20 px / 700 | 1,35 |
+| normaler Erklärabsatz | 17 px / Standardgewicht | 1,5 |
+| Auswahlantwort | 16 px / 500, ausgewählt 700 | 1,4 |
+| Fortschritts-/Kontexttext | 12 px, kontextabhängig 700 | 1,3 |
+
+Diese Rollen überschreiben gezielt die vorhandene lokale Nunito-Schrift. Sie
+ändern keine globalen Fonts oder fachlich notwendigen Formelsatzgrößen.
+`ChildTodayHero` verwendet kleinere lokale Abstände und ein dekoratives
+40-px-Symbol; seine Titel sind je nach Platz 20/22/24 px groß. Der bestehende
+Aktionsinhalt, dessen Aufrufwachen und der ausdrückliche Einstieg bleiben erhalten.
 
 Aufgaben, Auswahlantworten und Erklärungen erhalten gleichmäßige Nunito-
 Typografie, ruhige Karten und eindeutige Auswahlrahmen. Auswahl bleibt eine echte
@@ -132,14 +168,16 @@ Unsicherheit, weitere Versuche und verwendete Unterstützung bleiben ausdrückli
 unterschieden; Gestaltung erzeugt keine zusätzlichen Lernerfolge.
 
 `LearningGraphicFrame` rahmt bereits freigegebene Fachgrafiken einheitlich mit
-Titel und gut lesbarer eingelagerter Fläche. Die Vergrößerungsaktion steht bei
-ausreichender Breite neben dem Titel, bei schmalem Platz oder großer Schrift
-darunter. Die vorhandene lokale Zoomansicht bleibt an Konto und Familie gebunden
+Titel und gut lesbarer eingelagerter Fläche. Die kompakte Vergrößerungsaktion
+ist ein zugänglich beschriftetes 48-px-Icon mit Tooltip. Sie steht
+neben dem Titel, wenn dessen tatsächlich gemessene Länge und Schriftgröße
+passen, sonst darunter; lange Titel werden nicht für die Aktion abgeschnitten.
+Die vorhandene lokale Zoomansicht bleibt an Konto und Familie gebunden
 und schließt bei Kontowechsel. Fachliche Daten, Geometrie, Farben mit fachlicher
 Bedeutung und Alternativtexte werden nicht dekorativ umgedeutet. `given`,
 `hint1`/`hint2`/`hint3` und `solution` bleiben die maßgeblichen Offenlegungsstufen.
 
-Diese Überarbeitung ändert keine Backendaufrufe, Berechtigungen, Quellen,
+Die Layoutüberarbeitung ändert keine Backendaufrufe, Berechtigungen, Quellen,
 Antworten, Bewertungen, Versuche, Lernzeit oder bewusst auszulösenden KI-Aktionen.
 Callbacks und Kontokontextprüfungen bleiben beim bestehenden Aufrufer. Die
 vorhandenen fachlichen Regeln gelten weiter:
@@ -147,15 +185,12 @@ vorhandenen fachlichen Regeln gelten weiter:
 
 ## Szenen und direkte Zuordnung ab Zielversion 1.26.0
 
-Die nächste Erweiterung übernimmt weitere beobachtete Bedienprinzipien:
-zusammenhängende Objekte, gezielt anwählbare Zustände, sichtbare Beziehungen und
-kurze Erläuterungen unmittelbar an der Grafik. Die öffentliche Referenzprüfung
-umfasst 36 Katalogseiten mit 372 Themenverweisen, keine entsprechende Zahl
-bedienter Aufgaben. Tatsächlich verändert wurden im öffentlichen Businessdemo
-der Lötschritt Start→2 und die Würfelebene 0→1. Eine sichtbare Halfpipe auf Web
-und Mobil sowie angetippte Hotspots belegen noch keine abgespielte Bewegung.
-Geschützte Bruch-/Funktionsübungen und Physikaufgaben waren gesperrt.
-Recherche und Grenzen: [INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md).
+Die Erweiterung übernimmt beobachtete Bedienprinzipien: zusammenhängende
+Objekte, gezielt anwählbare Zustände, sichtbare Beziehungen und kurze
+Erläuterungen unmittelbar an der Grafik. Frühere reine Katalogsichtung,
+öffentliche Demonstrationen und die später freigeschaltete Aufgabenprüfung
+bleiben unterschiedliche Nachweise. Recherche und Grenzen stehen in
+[INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md).
 
 Eigene Szenen verwenden den bestehenden `LearningGraphicFrame` und dieselbe
 lokale, kontogebundene Vergrößerung. Helle Formen, abgesetzte Farbtöne,
@@ -176,6 +211,41 @@ Schritte; ein Vorwärtsregler öffnet niemals eine spätere Hilfe. Vorhandene
 Prozessdiagramme bleiben zunächst statisch; „Schrittweise ansehen“ öffnet ihre
 optionale lokale Hervorhebung, ohne neue Beziehungen zu erzeugen.
 
+`ScienceExplorer` ergänzt bereits geöffnete Fachhilfen um eine ausdrücklich
+aktivierte lokale Schaltfläche **„Erkunden“**. Nur `hint1`/`hint2`/`hint3` oder
+`solution` mit gültigem Kontokontext erhalten die Steuerung; `given` und reine
+Ansichten ohne Konto bleiben statisch. Unterstützt werden genau diese Fälle:
+
+- `function_graph` mit `polynomial2`: Ein Marker untersucht dieselben geprüften
+  Koeffizienten im bestehenden Bereich x = −4 bis 4, in Schritten von 0,1.
+  Tippen/Ziehen, Regler und Vor-/Zurücktasten teilen dieselbe Koordinatenabbildung.
+  Der abgeleitete y-Wert ist als Näherung gekennzeichnet; Koeffizienten und
+  Quellen werden nicht verändert.
+- `data_plot`: Die Auswahl rastet auf einem der zwei bis acht vorhandenen
+  Messpaare ein. Sie erfindet keine zusätzlichen Messungen und interpoliert
+  keine neuen Antwortwerte.
+- `logic_table` für UND, ODER und NICHT: A und gegebenenfalls B werden lokal
+  zwischen 0 und 1 umgeschaltet. Die bestehende Wahrheitstafel hebt die passende
+  Zeile hervor und nennt den deterministischen Ausgang Y.
+
+Alle drei Explorer starten geschlossen und ohne automatischen Ablauf. Regler,
+Tasten und Eingänge bleiben auch mit reduzierter Bewegung bedienbar. Konto-,
+Familien-, Sitzungs-, Quellen- oder Aufgabenwechsel verwerfen die lokale
+Auswahl; überdeckte Route und App-Hintergrund setzen sie ebenfalls zurück.
+Veraltete Rückrufe dürfen keine neue Auswahl übernehmen. Die bestehenden
+Aufgaben-/Fragenkontextschlüssel gelten auch bei bytegleichem Grafikinhalt.
+Die Explorer besitzen keine eigenen Netzwerk-, Antwort-, Lernzeit- oder
+Bewertungsschreibpfade und erzeugen keine Kompetenzbelege. Die bestehende
+aufgabenweite Interaktions- und Zeitmessung bleibt beim Aufrufer. Die
+Freigabestufe des gesamten bereits geöffneten Blocks bleibt unverändert.
+
+Die lokale Zoomansicht muss die Bedienelemente responsiver Szenen und Explorer
+bereits in der Anfangsansicht innerhalb der verfügbaren Breite halten;
+horizontales Verschieben ist kein notwendiger Entdeckungsschritt für eine
+Steuerung. Vergrößern, Verschieben und Zurücksetzen bleiben eigene lokale
+Ansichtsaktionen. Bereits geprüfte andere Fachzeichnungen können weiterhin
+mit ihrem bisherigen breiteren Zeichenraum beginnen.
+
 Zuordnungen zeigen wiederverwendbare Antwortkarten und klar markierte Ziele.
 Langes Drücken beginnt den mobilen Drag; Randscrollen hält längere Aufgaben
 bedienbar. Die ganze Zielzeile öffnet weiterhin dieselbe Auswahl per Tippen
@@ -184,9 +254,10 @@ Antwortreihenfolge, Kontextwachen und ausdrückliches Prüfen bei. Erfolg,
 Bewertung und Hilfenutzung werden ausschließlich durch den vorhandenen Ablauf
 festgestellt, niemals durch Loslassen einer Karte oder Abspielen einer Szene.
 
-Lokaler Prüfstand: 571 gezielte Flutterfälle in 16 Dateien bestanden und acht
-betroffene Dartdateien ohne Analysebefund. Dies ist keine vollständige
-Projektsuite oder WCAG-Abnahme. Der geschützte vollständige OpenRouter-Mock
+Bisheriger lokaler Prüfstand der ersten Szenen-/Zuordnungsabnahme vor dem
+kompakten Aufgabenraum und den neuen Explorern: 571 gezielte Flutterfälle in
+16 Dateien bestanden und acht betroffene Dartdateien ohne Analysebefund.
+Dies ist keine vollständige Projektsuite oder WCAG-Abnahme. Der geschützte vollständige OpenRouter-Mock
 liefert Szene und Zuordnung; die einmalige echte synthetische Modellprobe
 wurde hingegen für 0,001436 USD normal abgerechnet und wegen ungültiger
 Aufgabenstruktur verworfen. Ohne gespeicherte Rohantwort bleibt die Ursache
@@ -204,9 +275,10 @@ Nunito für gemeinsame Überschriften und Fließtext; Space Grotesk bleibt für
 bestehende ausdrücklich gesetzte Zahlen-/Detailanzeigen lokal verfügbar. Beide
 Schriften sind mit OFL-Lizenz gebündelt. Keine Font-CDN-Abfrage. Formelsatz nutzt weiterhin
 die funktionalen KaTeX-Schriften; Code die lokale System-Monospace-Schrift.
-Fließtext15–17px, mindestens1,5-fache Zeilenhöhe. Hauptaktionen52px,
-andere Trefferflächen mindestens48px. Eingaben erhalten einen sichtbaren
-2,5px-Fokusrahmen. Sekundärtexte werden nicht mit Transparenz abgeschwächt.
+Erklärabsätze verwenden standardmäßig17px bei1,5-facher Zeilenhöhe;
+Auswahlantworten im Aufgabenraum16px bei1,4-facher Zeilenhöhe. Die Hauptaktion
+im Aufgabenraum ist mindestens52px hoch, andere Trefferflächen mindestens48px.
+Eingaben erhalten einen sichtbaren 2,5px-Fokusrahmen. Sekundärtexte werden nicht mit Transparenz abgeschwächt.
 
 `assets/illustrations/learning-companion.png` wurde mit dem eingebauten
 Bildwerkzeug aus einer rein künstlichen Beschreibung erzeugt. Es enthält keine
@@ -322,7 +394,8 @@ kann der gerade eingegebene Benutzername bzw. die E-Mail einmalig im RAM
 weitergegeben werden. Ein Kindername wird nicht als Eltern-E-Mail ausgegeben.
 Keine Passwörter, URL-Parameter oder persistente Speicherung für diese Übergabe.
 
-Abschluss der lokalen97-Abnahme:446Backendfälle in18Sammlungen bestanden nach
+Historischer Abschluss der ersten lokalen97-Szenen-/Zoomabnahme, vor dem
+kompakten Aufgabenraum und den lokalen Explorern:446Backendfälle in18Sammlungen bestanden nach
 allen drei strengeren Quellen-/Offenlegungsfixes; keine weiteren Modellaufrufe.
 571Flutterfälle plus13Zoom-/Referenzfälle (sechs überschneiden sich), Analyse
 acht plus zwei betroffener Dateien ohne Befund. Künstliche1440px-/390px-Probe

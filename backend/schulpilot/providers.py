@@ -1011,8 +1011,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
     review_only = function == "coach" and bool(payload.get("defer_practice"))
     visual_functions = function in ("unit", "package") or (function == "coach" and not review_only)
     if visual_functions:
-        subjects = [payload.get("required_subject", ""), *[g.get("subject", "") for g in payload.get("selected_groups", [])]]
-        payload = {**payload, "content_context": subject_content.generation_context(subjects)}
+        subjects = subject_content.generation_subjects(payload)
     excerpt_candidates = None
     if function == "coach" and not payload.get("learning_goals"):
         excerpt_candidates = source_excerpt_candidates(payload)
@@ -1150,8 +1149,6 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "geprüfte Darstellung in explanation; bei review_prerequisite nur ausdrücklich belegte Voraussetzungen "
             "innerhalb der angeforderten Ziele prüfen. Die festen practice_tasks, math_tasks und Quellen bleiben verbindlich. "
             "Keine bereits gezeigte Antwort als neuen selbstständigen Abruf ausgeben.")
-    if visual_functions:
-        instructions += subject_content.rules_for(subjects)
     if scene_fixture_request:
         instructions += (
             "\nDieser serverseitig festgelegte synthetische Szenentest fordert in mindestens einer Aufgabe "
@@ -1370,12 +1367,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Die kurze freie Begriffsabfrage folgt gezielt in der Etappe recall."
             )
         elif not math_examples:
-            instructions += " Erzeuge choice/short oder eine kleine ausdrücklich belegte match-Zuordnung."
+            instructions += (" Erzeuge choice/short oder eine kleine ausdrücklich belegte match-Zuordnung."
+                             if compact_openrouter else " Erzeuge ausschließlich choice/short.")
         if not is_mathematics(payload.get("required_subject")):
             for definition in schema.get("$defs", {}).values():
                 props = definition.get("properties", {})
                 if "prompt" in props and "type" in props:
-                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short", "match"]
+                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short"] + (["match"] if compact_openrouter else [])
                     props["accepted"].update(maxItems=0)
     package_targets = {}
     if (compact_openrouter or config.provider == "codex") and function == "package":
@@ -1390,16 +1388,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Jede kurze Texteingabe soll nur einen klaren Begriff oder Zusammenhang verlangen. "
                 "Bei Fächern außer Mathematik frage nach genau einem wörtlich im zugehörigen "
                 "materials.content belegten Begriff oder kurzen Ausdruck. Verwende ihn unverändert als answer. "
-                "Verwende dort choice, short oder eine kleine ausdrücklich belegte match-Zuordnung, keine gap-Aufgabe. Eine short-Antwort hat höchstens "
+                + ("Verwende dort choice, short oder eine kleine ausdrücklich belegte match-Zuordnung, keine gap-Aufgabe. "
+                   if compact_openrouter else "Verwende dort ausschließlich choice/short, keine gap- oder match-Aufgabe. ")
+                + "Eine short-Antwort hat höchstens "
                 "fünf Wörter und 80 Zeichen. Keine ganzen Gleichungen, Aufzählungen oder mehrteiligen Antworten. "
                 "accepted bleibt bei diesen Einheiten IMMER leer; keine weiteren nur verwandten Begriffe "
                 "als richtige Antworten ergänzen. Bei gap/short bleibt options immer leer. "
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
-    if compact_openrouter:
-        from .learning_scenes import MATCH_RULES
-
-        instructions += MATCH_RULES
     indexed_choices = (
         config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision") and not review_only
     )
@@ -1445,6 +1441,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Beginne mit 'Für das Addieren prüfen wir zuerst das Erweitern.' Danach kommt nur Erweitern, dann die vorbereiteten neuen Prüfaufgaben."
             )
     prune_schema(schema)
+    if visual_functions and "Graphic" in schema.get("$defs", {}):
+        from .presentation_capabilities import RULES as CAPABILITY_RULES
+
+        content_context = subject_content.generation_context(subjects, schema=schema, compact_matching=compact_openrouter)
+        payload = {**payload, "content_context": content_context}
+        instructions += subject_content.rules_for(subjects) + CAPABILITY_RULES
+        if "matching" in content_context:
+            instructions += subject_content.learning_scenes.MATCH_RULES
     outgoing_payload = transport_payload(function, payload)
     if outgoing_payload is not payload:
         instructions += "\nmaterial.content_ref verweist auf die vollständig enthaltenen Quellen in materials[].content."

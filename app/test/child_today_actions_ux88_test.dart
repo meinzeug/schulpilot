@@ -11,6 +11,7 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/child_today_widgets.dart';
 import 'package:schulpilot/dashboard.dart';
 import 'package:schulpilot/learning_next_step.dart';
+import 'package:schulpilot/learning_plan_ui.dart';
 import 'package:schulpilot/study_path_panel.dart';
 import 'package:schulpilot/ui.dart';
 
@@ -119,8 +120,8 @@ void main() {
       ];
       final (_, _, requests) = await open(tester, data: data);
       await tap(tester, find.text('Mein Plan'));
-      final future = tester.widget<ListTile>(
-        find.widgetWithText(ListTile, 'Späterer Auftrag'),
+      final future = tester.widget<PlanRow>(
+        find.widgetWithText(PlanRow, 'Späterer Auftrag'),
       );
       expect(future.onTap, isNull);
       await tap(tester, find.text('Aktueller Auftrag'));
@@ -243,23 +244,24 @@ void main() {
   testWidgets(
     'KK012 private plan removes exact old session and stale row cannot navigate',
     (tester) async {
-      final (state, router, _) = await open(tester);
+      final (state, router, calls) = await open(tester);
       await tap(tester, find.text('Mein Plan'));
-      final row = tester.widget<ListTile>(
-        find
-            .descendant(
-              of: find.byType(Dialog),
-              matching: find.byType(ListTile),
-            )
-            .first,
+      final row = tester.widget<PlanRow>(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.widgetWithText(PlanRow, 'Brüche'),
+        ),
       );
       state.user = {...state.user!};
       state.notifyListeners();
       await tester.pumpAndSettle();
       expect(find.byType(Dialog), findsNothing);
+      final requestCount = calls.length;
       row.onTap!();
       await tester.pumpAndSettle();
       expect(router.canPop(), isFalse);
+      expect(calls, hasLength(requestCount));
+      expect(calls.every((request) => request.method == 'GET'), isTrue);
       expect(tester.takeException(), isNull);
     },
   );

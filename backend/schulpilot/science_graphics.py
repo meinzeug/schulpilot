@@ -94,6 +94,16 @@ def chemical_notation(text):
     return text.replace("–", "-").replace("−", "-").replace("₃", "3").replace("₂", "2").replace("₄", "4")
 
 
+def has_literal_arrow(source, start, end, *, ignore_case=False):
+    """Match whole source labels, allowing formatting whitespace and ASCII arrows."""
+    if ignore_case:
+        source, start, end = (value.casefold() for value in (source, start, end))
+    normalized = " ".join(source.split()).replace("->", "→")
+    left = re.escape(" ".join(start.split()))
+    right = re.escape(" ".join(end.split()))
+    return bool(re.search(r"(?<!\w)" + left + r"\s*→\s*" + right + r"(?!\w)", normalized))
+
+
 def validate(block, question, sources):
     kind, n, labels, variant = block.kind, block.numbers, block.labels, block.variant
     if any(e.start == e.end or max(e.start, e.end) >= len(labels) for e in block.connections):
@@ -117,10 +127,9 @@ def validate(block, question, sources):
             or any(len(v) > 60 for v in labels)
         ):
             raise ValueError("Prozessmodell braucht zwei bis acht kurze eindeutige Knoten.")
-        normalized = re.sub(r"\s+", "", quote).replace("->", "→")
         if not block.connections or any(
             e.relation not in ("next", "branch")
-            or (labels[e.start] + "→" + labels[e.end]).replace(" ", "") not in normalized
+            or not has_literal_arrow(quote, labels[e.start], labels[e.end])
             for e in block.connections
         ):
             raise ValueError("Jede Prozessrichtung muss ausdrücklich im Beleg stehen.")

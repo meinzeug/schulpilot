@@ -187,6 +187,8 @@ void main() {
     final h = await openUnit(tester, (_) async {
       return reply(timedUnit(seconds: 385));
     });
+    await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+    await tester.pumpAndSettle();
     final clock = tester.widget<Text>(
       find.byKey(const ValueKey('learning-day-clock')),
     );
@@ -202,6 +204,8 @@ void main() {
       final h = await openUnit(tester, (_) async {
         return reply(timedUnit(status: 'completed', seconds: 0));
       });
+      await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+      await tester.pumpAndSettle();
       expect(find.text('Heute 0:00 / 20:00'), findsOneWidget);
       expect(
         find.text('Tagesziel noch offen · Noch 20:00 Min.'),
@@ -275,6 +279,8 @@ void main() {
         if (request.method == 'POST') posts++;
         return reply(timedUnit(status: 'completed', seconds: 720));
       });
+      await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+      await tester.pumpAndSettle();
       expect(find.text('Heute 12:00 / 20:00'), findsOneWidget);
       expect(find.text('Diese Einheit 2:00'), findsOneWidget);
       expect(
@@ -305,6 +311,8 @@ void main() {
         }
         return reply(timedUnit());
       });
+      await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+      await tester.pumpAndSettle();
       expect(find.text('Heute 12:03 / 20:00'), findsOneWidget);
       await h.clock.advance(tester, const Duration(seconds: 3));
       expect(find.text('Heute 12:06 / 20:00'), findsOneWidget);
@@ -374,9 +382,13 @@ void main() {
         return reply(timedUnit());
       });
       await h.clock.advance(tester, const Duration(seconds: 20));
+      await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+      await tester.pumpAndSettle();
       final frozen = unitClock(tester);
       await h.clock.advance(tester, const Duration(seconds: 30));
       expect(unitClock(tester), frozen);
+      await tester.tap(find.byKey(const ValueKey('learning-time-details')));
+      await tester.pumpAndSettle();
       expect(find.text('Zeit pausiert · Verbindung fehlt'), findsOneWidget);
       expect(find.text('Tagesminimum geschafft'), findsNothing);
       await h.close();
@@ -605,8 +617,8 @@ void main() {
     await h.clock.advance(tester, const Duration(seconds: 20));
     await h.clock.advance(tester, const Duration(seconds: 10));
     expect(beats, 1);
-    await tester.ensureVisible(find.text('Pause'));
-    await tester.tap(find.text('Pause'));
+    await tester.ensureVisible(find.byTooltip('Pause machen'));
+    await tester.tap(find.byTooltip('Pause machen'));
     await tester.pump();
     expect(pauses, 0);
     pending.complete(reply(heartbeat()));

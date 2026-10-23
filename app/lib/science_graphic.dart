@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'api.dart';
 import 'math_content.dart';
+import 'science_explorer.dart';
 import 'learning_graphic_frame.dart';
 import 'ui.dart';
 
@@ -22,7 +24,8 @@ class ScienceGraphic extends StatelessWidget {
   };
   final Map<String, dynamic> block;
   final Widget? action;
-  const ScienceGraphic(this.block, {super.key, this.action});
+  final AppState? state;
+  const ScienceGraphic(this.block, {super.key, this.action, this.state});
   List<double> get numbers =>
       (block['numbers'] as List).map((v) => (v as num).toDouble()).toList();
   List<String> get labels => (block['labels'] as List).cast<String>();
@@ -109,7 +112,18 @@ class ScienceGraphic extends StatelessWidget {
     'absolute': r'\(f(x)=|x|\)',
   };
   @override
-  Widget build(BuildContext context) => LearningGraphicFrame(
+  Widget build(BuildContext context) => ScienceExplorer(
+    block: block,
+    state: state,
+    builder: (selection, controls) =>
+        buildGraphic(context, selection, controls),
+  );
+
+  Widget buildGraphic(
+    BuildContext context,
+    ScienceExploration? selection,
+    Widget? controls,
+  ) => LearningGraphicFrame(
     title: block['title'],
     action: action,
     child: Column(
@@ -121,7 +135,11 @@ class ScienceGraphic extends StatelessWidget {
             children: [
               for (final row in logicRows.indexed)
                 TableRow(
-                  decoration: row.$1 == 0
+                  decoration: row.$1 == selection?.logicRow
+                      ? BoxDecoration(
+                          color: context.palette.teal.withValues(alpha: .18),
+                        )
+                      : row.$1 == 0
                       ? BoxDecoration(color: context.palette.surfaceLow)
                       : null,
                   children: [
@@ -131,7 +149,12 @@ class ScienceGraphic extends StatelessWidget {
                         child: Text(
                           cell,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 18),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: row.$1 == selection?.logicRow
+                                ? FontWeight.w800
+                                : null,
+                          ),
                         ),
                       ),
                   ],
@@ -148,18 +171,72 @@ class ScienceGraphic extends StatelessWidget {
                     block['kind'] == 'molecule' && block['variant'] == 'ethanol'
                     ? 280
                     : 250,
-                child: CustomPaint(
-                  painter: SciencePainter(
-                    block,
-                    Theme.of(context).colorScheme.onSurface,
-                    MediaQuery.textScalerOf(context).scale(14).clamp(14, 20),
-                    Theme.of(context).textTheme.bodyMedium?.fontFamily,
-                    palette: context.palette,
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    void pick(Offset local) {
+                      if (selection?.point == null) return;
+                      final geometry = SciencePlotGeometry(
+                        sciencePlotPoints(block),
+                        Size(constraints.maxWidth, 250),
+                      );
+                      if (block['kind'] == 'function_graph') {
+                        final x = geometry.xAt(local.dx).clamp(-4.0, 4.0);
+                        selection!.choose(((x + 4) * 10).round());
+                      } else {
+                        var nearest = 0;
+                        var distance = double.infinity;
+                        for (final point in geometry.points.indexed) {
+                          final next = (geometry.position(point.$2) - local)
+                              .distanceSquared;
+                          if (next < distance) {
+                            nearest = point.$1;
+                            distance = next;
+                          }
+                        }
+                        selection!.choose(nearest);
+                      }
+                    }
+
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: selection?.point == null
+                          ? null
+                          : (details) => pick(details.localPosition),
+                      onTapUp: selection?.point == null
+                          ? null
+                          : (details) => pick(details.localPosition),
+                      onHorizontalDragStart: selection?.point == null
+                          ? null
+                          : (details) => pick(details.localPosition),
+                      onHorizontalDragUpdate: selection?.point == null
+                          ? null
+                          : (details) => pick(details.localPosition),
+                      onVerticalDragStart: selection?.point == null
+                          ? null
+                          : (details) => pick(details.localPosition),
+                      onVerticalDragUpdate: selection?.point == null
+                          ? null
+                          : (details) => pick(details.localPosition),
+                      child: CustomPaint(
+                        key: const ValueKey('science-plot'),
+                        painter: SciencePainter(
+                          block,
+                          Theme.of(context).colorScheme.onSurface,
+                          MediaQuery.textScalerOf(context)
+                              .scale(14)
+                              .clamp(14, 20),
+                          Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                          palette: context.palette,
+                          selectedPoint: selection?.point,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
           ),
+        ?controls,
         const SizedBox(height: 12),
         if (block['kind'] == 'logic_table')
           MathText(
@@ -187,18 +264,98 @@ class ScienceGraphic extends StatelessWidget {
   );
 }
 
+List<Offset> sciencePlotPoints(Map<String, dynamic> block) {
+  final numbers = (block['numbers'] as List)
+      .map((v) => (v as num).toDouble())
+      .toList();
+  final points = <Offset>[];
+  if (block['kind'] == 'function_graph') {
+    for (var i = 0; i <= 160; i++) {
+      final x = -4 + i / 20;
+      points.add(Offset(x, numbers[0] * x * x + numbers[1] * x + numbers[2]));
+    }
+  } else if (block['kind'] == 'function_curve') {
+    final variant = block['variant'];
+    final min = variant == 'logarithm'
+        ? .1
+        : variant == 'square_root'
+        ? 0.0
+        : variant == 'exponential'
+        ? -3.0
+        : -4.0;
+    final max = variant == 'square_root'
+        ? 9.0
+        : variant == 'exponential'
+        ? 3.0
+        : 4.0;
+    for (var i = 0; i <= 240; i++) {
+      final x = min + (max - min) * i / 240;
+      if (variant == 'reciprocal' && x.abs() < .15) continue;
+      final y = switch (variant) {
+        'sine' => math.sin(x),
+        'cosine' => math.cos(x),
+        'exponential' => math.exp(x),
+        'logarithm' => math.log(x),
+        'square_root' => math.sqrt(x),
+        'reciprocal' => 1 / x,
+        'cubic' => x * x * x,
+        _ => x.abs(),
+      };
+      points.add(Offset(x, y));
+    }
+  } else {
+    for (var i = 0; i < numbers.length; i += 2) {
+      points.add(Offset(numbers[i], numbers[i + 1]));
+    }
+  }
+  return points;
+}
+
+/// One coordinate system shared by the existing plot, inspection marker and hit testing.
+class SciencePlotGeometry {
+  final List<Offset> points;
+  final Size size;
+  late double minX, maxX, minY, maxY;
+  late final Rect rect;
+
+  SciencePlotGeometry(this.points, this.size) {
+    minX = math.min(0.0, points.map((p) => p.dx).reduce(math.min));
+    maxX = math.max(0.0, points.map((p) => p.dx).reduce(math.max));
+    minY = math.min(0.0, points.map((p) => p.dy).reduce(math.min));
+    maxY = math.max(0.0, points.map((p) => p.dy).reduce(math.max));
+    if (maxX == minX) {
+      minX -= 1;
+      maxX += 1;
+    }
+    if (maxY == minY) {
+      minY -= 1;
+      maxY += 1;
+    }
+    rect = Rect.fromLTRB(62, 20, size.width - 20, size.height - 38);
+  }
+
+  Offset position(Offset point) => Offset(
+    rect.left + (point.dx - minX) / (maxX - minX) * rect.width,
+    rect.bottom - (point.dy - minY) / (maxY - minY) * rect.height,
+  );
+  double xAt(double localX) =>
+      minX + (localX - rect.left) / rect.width * (maxX - minX);
+}
+
 class SciencePainter extends CustomPainter {
   final Map<String, dynamic> block;
   final Color ink;
   final double fontSize;
   final String? family;
   final AppPalette palette;
+  final Offset? selectedPoint;
   SciencePainter(
     this.block,
     this.ink,
     this.fontSize,
     this.family, {
     this.palette = const AppPalette(isDark: false),
+    this.selectedPoint,
   });
   List<double> get n =>
       (block['numbers'] as List).map((v) => (v as num).toDouble()).toList();
@@ -247,63 +404,12 @@ class SciencePainter extends CustomPainter {
       case 'function_graph':
       case 'function_curve':
       case 'data_plot':
-        final points = <Offset>[];
-        if (block['kind'] == 'function_graph') {
-          for (var i = 0; i <= 160; i++) {
-            final x = -4 + i / 20;
-            points.add(Offset(x, n[0] * x * x + n[1] * x + n[2]));
-          }
-        } else if (block['kind'] == 'function_curve') {
-          final variant = block['variant'];
-          final min = variant == 'logarithm'
-              ? .1
-              : variant == 'square_root'
-              ? 0.0
-              : variant == 'exponential'
-              ? -3.0
-              : -4.0;
-          final max = variant == 'square_root'
-              ? 9.0
-              : variant == 'exponential'
-              ? 3.0
-              : 4.0;
-          for (var i = 0; i <= 240; i++) {
-            final x = min + (max - min) * i / 240;
-            if (variant == 'reciprocal' && x.abs() < .15) continue;
-            final y = switch (variant) {
-              'sine' => math.sin(x),
-              'cosine' => math.cos(x),
-              'exponential' => math.exp(x),
-              'logarithm' => math.log(x),
-              'square_root' => math.sqrt(x),
-              'reciprocal' => 1 / x,
-              'cubic' => x * x * x,
-              _ => x.abs(),
-            };
-            points.add(Offset(x, y));
-          }
-        } else {
-          for (var i = 0; i < n.length; i += 2) {
-            points.add(Offset(n[i], n[i + 1]));
-          }
-        }
-        var minX = math.min(0.0, points.map((p) => p.dx).reduce(math.min)),
-            maxX = math.max(0.0, points.map((p) => p.dx).reduce(math.max));
-        var minY = math.min(0.0, points.map((p) => p.dy).reduce(math.min)),
-            maxY = math.max(0.0, points.map((p) => p.dy).reduce(math.max));
-        if (maxX == minX) {
-          minX -= 1;
-          maxX += 1;
-        }
-        if (maxY == minY) {
-          minY -= 1;
-          maxY += 1;
-        }
-        final rect = Rect.fromLTRB(62, 20, w - 20, h - 38);
-        Offset position(Offset p) => Offset(
-          rect.left + (p.dx - minX) / (maxX - minX) * rect.width,
-          rect.bottom - (p.dy - minY) / (maxY - minY) * rect.height,
-        );
+        final points = sciencePlotPoints(block);
+        final geometry = SciencePlotGeometry(points, size);
+        final minX = geometry.minX, maxX = geometry.maxX;
+        final minY = geometry.minY, maxY = geometry.maxY;
+        final rect = geometry.rect;
+        final position = geometry.position;
         final zero = position(Offset.zero);
         final ticks = w < 340 ? 2 : 4;
         for (var i = 0; i <= ticks; i++) {
@@ -368,6 +474,26 @@ class SciencePainter extends CustomPainter {
           for (final p in points) {
             canvas.drawCircle(position(p), 4, Paint()..color = palette.cyanInk);
           }
+        }
+        if (selectedPoint != null) {
+          final selected = position(selectedPoint!);
+          line(
+            canvas,
+            Offset(selected.dx, rect.bottom),
+            selected,
+            color: palette.teal,
+            width: 1,
+          );
+          canvas.drawCircle(selected, 8, Paint()..color = palette.panelSurface);
+          canvas.drawCircle(selected, 6, Paint()..color = palette.teal);
+          canvas.drawCircle(
+            selected,
+            8,
+            Paint()
+              ..color = ink
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
         }
         canvas.restore();
         text(canvas, 'x', Offset(w - 8, rect.bottom));
@@ -627,6 +753,7 @@ class SciencePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant SciencePainter oldDelegate) =>
       block != oldDelegate.block ||
+      selectedPoint != oldDelegate.selectedPoint ||
       ink != oldDelegate.ink ||
       fontSize != oldDelegate.fontSize ||
       family != oldDelegate.family ||
