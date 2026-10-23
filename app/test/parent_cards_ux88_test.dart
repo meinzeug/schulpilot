@@ -361,11 +361,14 @@ void main() {
   ) async {
     final f = Fixture();
     await f.mount(tester, '/overview');
-    final card = find.ancestor(
-      of: find.text('0 weiter üben'),
-      matching: find.byType(ActionPanel),
-    );
-    expect(tester.widget<ActionPanel>(card).enabled, isFalse);
+    final card = find
+        .ancestor(
+          of: find.text('0 weiter üben'),
+          matching: find.byType(InkWell),
+        )
+        .first;
+    expect(tester.widget<InkWell>(card).onTap, isNull);
+    expect(tester.widget<InkWell>(card).canRequestFocus, isFalse);
     await tapBody(tester, '0 weiter üben');
     expect(find.byType(ParentOverview), findsOneWidget);
   });
