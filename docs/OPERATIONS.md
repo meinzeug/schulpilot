@@ -1,5 +1,17 @@
 # Betrieb
 
+## Gestaltungsrelease1.24.0+94 · 23.10.2026
+
+Aktiv `20261023T051618Z-de5e0a8`, Schema0031, alle fünf Schulpilotdienste aktiv.
+Gebundener regulärer Web-/Direct-/Play-Build, öffentliche Hashprüfung und
+öffentliche Desktop-/Mobil-Browserprobe bestanden. Konfiguration geschützt
+unter `/var/backups/schulpilot/ui94-config-20261023T031038Z` gesichert;
+Datenbankbackups031754Z/031757Z, Result=success. Konfiguration bleibt bytegleich.
+Vorheriger Release `20261022T224256Z-da02551` bleibt erhalten und bei gleichem
+Schema nach kontrolliertem Anhalten der Reparaturdienste kompatibel aktivierbar.
+Details, Beleggrenzen und vollständige Hashes in
+[RELEASE_94_2026_10_23.md](RELEASE_94_2026_10_23.md).
+
 ## Adaptive Lernbegleitung / OpenRouter, Schema0023
 
 Operatoranleitung, Geldbeträge/Gebührenbelege, Datenschutzrouten, begrenzte Probe

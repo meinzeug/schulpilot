@@ -1,4 +1,27 @@
-# Lokaler Gestaltungsstand · 22.10.2026
+# Produktionsstand 1.24.0+94 · 23.10.2026
+
+Live auf https://schulpilot.dorfspy.de: `20261023T051618Z-de5e0a8`,
+Quellcommit `de5e0a878a5a215c76e60d97b05963dca91022cf`, Schema0031.
+Der vollständige Gestaltungsumbau einschließlich gemeinsamer Palette, Desktop-/
+Mobilnavigation, Icons, Fachbadges und Suche ist über `ssh dorfspy` veröffentlicht.
+Reguläres Web, signierte Direct-APK und Play-AAB erfolgreich gebaut und unabhängig
+geprüft; öffentliche Web-/APK-Dateien bytegleich. Kein Storeupload.
+
+Alle fünf Schulpilotdienste aktiv, lokale und HTTPS-Healthchecks erfolgreich,
+Datenbank-/Konfigurationssicherungen vorhanden. Schema, Konfiguration und
+Google-Nachweis erhalten. Vorheriger Release93 bleibt als kompatibler Rückweg.
+Öffentlicher Einstieg und mobile Anmeldung tatsächlich im Live-Browser geprüft;
+keine Produktionskonten, Formulare, Käufe oder KI-Aufträge zum Test erzeugt.
+Die255 Flutterfälle und anschließenden52 überlappenden Such-/Mobilfälle bleiben
+getrennt dokumentiert; zusätzlich15Release-/Deploytests und13Subtests grün.
+Keine vollständige Geräte-/Barrierefreiheitsabnahme behauptet.
+
+Genaue Buildbindung, Hashes, Sicherungen und Rückweg:
+[RELEASE_94_2026_10_23.md](RELEASE_94_2026_10_23.md).
+
+---
+
+# Historischer lokaler Gestaltungsstand · 22.10.2026
 
 Die bestehende Flutter-App in `~/schulpilot` hat eine neue gemeinsame Gestaltung
 nach der ausdrücklich beauftragten simpleclub-Referenz. Direkt im Browser wurden

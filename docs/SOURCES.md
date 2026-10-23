@@ -1,3 +1,9 @@
+Deployment23.10.2026: vorhandene fixierte Flutter-/Android-Toolchain und
+projektspezifische SSH-Deployskripte tatsächlich ausgeführt. Regulärer gebundener
+Build1.24.0+94, Paket-/Signatur-/Quellprüfung und öffentlicher Bytevergleich.
+Serverzustand, Schema0031, Sicherungen und Produktionsbrowser direkt geprüft;
+keine neuen Pakete oder Dienste. Belege: RELEASE_94_2026_10_23.md.
+
 Gestaltung22.10.2026: visuelle Primärreferenz auf ausdrücklichen Nutzerauftrag
 direkt im angemeldeten Browser geprüft: https://app.simpleclub.com/search,
 Home, Fach Mathematik, Bibliothek und Bruch-Lektionsansicht. Desktop sowie
