@@ -434,7 +434,14 @@ def draft(unit_id: str, data: Draft, p=Depends(child_user), db=Depends(get_db)):
     from .learning import get_unit, question
 
     unit = get_unit(db, p, unit_id, True, True)
-    question(unit, data.question_id)
+    q = question(unit, data.question_id)
+    if q.get("type") == "grouped":
+        from .grouped_questions import parse_answer
+
+        try:
+            parse_answer(q["field_group"], data.answer, partial=True)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
     previous = db.scalar(select(LearningEvent).where(LearningEvent.unit_id == unit.id, LearningEvent.event_key == "draft:" + data.request_key))
     evidence = [data.question_id, "draft:" + fingerprint([data.answer, data.input_method])]
     patch = {"draft": {"question_id": data.question_id, "answer": data.answer, "input_method": data.input_method},

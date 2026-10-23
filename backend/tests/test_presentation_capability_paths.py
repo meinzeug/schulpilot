@@ -174,7 +174,7 @@ def test_package_profiles_keep_group_boundaries_and_codex_question_limits(monkey
     assert "logic_table" in profiles["Informatik"]["graphic_kinds"]
     assert "logic_table" not in profiles["Geographie"]["graphic_kinds"]
     assert set(schema["$defs"]["Graphic"]["properties"]["kind"]["enum"]) == set(context["graphic_kinds"])
-    expected = {"choice", "short", "match"} if provider == "openrouter" else {"choice", "short"}
+    expected = {"choice", "short", "match", "grouped"} if provider == "openrouter" else {"choice", "short"}
     assert set(context["question_types"]) == expected
     assert set(context["answer_ui"]) == expected
     assert all(set(profile["question_types"]) == expected for profile in profiles.values())

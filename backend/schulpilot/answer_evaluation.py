@@ -244,6 +244,10 @@ def closed_concept(question, answer):
 def evaluate(question, answer):
     if (question.get("presentation") or {}).get("evidence_kind") in ("reflection", "creative", "self_report", "movement"):
         return result("uncertain", "Deine Idee ist gespeichert. Gefühle, kreative Ideen oder körperliche Ausführung werden hier nicht als richtig oder falsch gemessen.", method="open_learning_v1")
+    if question.get("type") == "grouped":
+        from .grouped_questions import evaluate as evaluate_group
+
+        return evaluate_group(question, answer)
     if checked := rectangle_area(question, answer):
         return checked
     if checked := triangle_area(question, answer):

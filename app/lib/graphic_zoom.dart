@@ -101,11 +101,16 @@ class _GraphicZoomState extends State<GraphicZoom> {
           ),
           body: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text(
-                  'Zum Vergrößern auseinanderziehen oder die Tasten verwenden. Die Grafik kannst du verschieben.',
-                ),
+              const ExpansionTile(
+                key: ValueKey('graphic-zoom-help'),
+                leading: Icon(Icons.info_outline_rounded),
+                title: Text('Zoomhinweise'),
+                childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                children: [
+                  Text(
+                    'Zum Vergrößern auseinanderziehen oder die Tasten verwenden. Die Grafik kannst du verschieben.',
+                  ),
+                ],
               ),
               Wrap(
                 spacing: 8,
@@ -148,6 +153,7 @@ class _GraphicZoomState extends State<GraphicZoom> {
                       'function_graph',
                       'data_plot',
                       'logic_table',
+                      'text_probe',
                     }.contains(block['kind']);
                     final width = responsive
                         ? constraints.maxWidth.clamp(0.0, 600.0)

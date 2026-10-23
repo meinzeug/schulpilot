@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from . import learning_scenes, science_graphics
+from . import grouped_questions, learning_scenes, science_graphics, text_probes
 
 KINDS = (
     "fraction",
@@ -51,6 +51,7 @@ KINDS = (
     "money",
     *science_graphics.KINDS,
     "scene",
+    "text_probe",
 )
 
 # The same profiles constrain generation and document the curriculum's limits.
@@ -91,7 +92,7 @@ for _subject, _kinds in {
     PROFILES[_subject] = (*PROFILES[_subject], *_kinds)
 
 for _subject in PROFILES:
-    PROFILES[_subject] = (*PROFILES[_subject], "process_graph", "process_cycle", "scene")
+    PROFILES[_subject] = (*PROFILES[_subject], "process_graph", "process_cycle", "scene", "text_probe")
 for _subject in ("Mathematik", "Physik", "Technik"):
     PROFILES[_subject] = (*PROFILES[_subject], "function_curve")
 PICTURE_WORDS = {
@@ -211,7 +212,7 @@ class Graphic(Bounded):
         "forces",
         "money",
         "function_graph", "data_plot", "cell", "molecule", "logic_table", "circuit_network", "technical_drawing", "function_curve", "process_graph", "process_cycle",
-        "scene",
+        "scene", "text_probe",
     ]
     title: str = Field(min_length=1, max_length=100)
     disclosure: Literal["given", "hint1", "hint2", "hint3", "solution"]
@@ -259,6 +260,7 @@ class Graphic(Bounded):
     ]
 
     scene: learning_scenes.SceneV1 | None = None
+    text_probe: text_probes.TextProbeV1 | None = None
 
     @model_validator(mode="after")
     def coherent(self):
@@ -268,6 +270,12 @@ class Graphic(Bounded):
                 raise ValueError("Lernszene benötigt Szenendaten und Textalternative, keine fachfremden Grafikparameter.")
         elif self.scene is not None:
             raise ValueError("Szenendaten gehören ausschließlich zu kind scene.")
+        if self.kind == "text_probe":
+            if (self.text_probe is None or self.disclosure == "given" or not labels
+                    or n or self.connections or self.marks or self.unit or self.variant):
+                raise ValueError("Textproben benötigen eine geöffnete Hilfe/Lösung und ausschließlich Textprobenparameter.")
+        elif self.text_probe is not None:
+            raise ValueError("Textprobendaten gehören ausschließlich zu kind text_probe.")
         if self.kind in science_graphics.KINDS:
             science_graphics.validate(self, {}, [self.source_excerpt])
         if self.variant in ("roots", "pollination") and self.disclosure != "solution":
@@ -434,7 +442,8 @@ solche Reflexionsaufgaben ausschließlich freie Texteingabe, Bewertung offen. Hi
 
 def rules_for(subjects):
     allowed = {kind for subject in subjects for kind in PROFILES.get(subject, ())}
-    return RULES + science_graphics.rules_for(allowed) + (learning_scenes.RULES if "scene" in allowed else "")
+    return (RULES + science_graphics.rules_for(allowed) + (learning_scenes.RULES if "scene" in allowed else "")
+            + (text_probes.RULES if "text_probe" in allowed else ""))
 
 
 def generation_subjects(payload):
@@ -481,6 +490,8 @@ def validate_question(presentation, question, sources, allowed_kinds):
             science_graphics.validate(block, question, sources)
         if block.kind == "scene":
             learning_scenes.validate(block, question, sources)
+        if block.kind == "text_probe":
+            text_probes.validate(block, sources)
         # Numeric values are given data, not newly invented source facts.
         quoted = (block.source_excerpt + " " + question["prompt"]).replace("−", "-")
         values_to_check = block.numbers
@@ -542,7 +553,7 @@ def validate_question(presentation, question, sources, allowed_kinds):
             ):
                 raise ValueError("Nahrungskette ohne belegte Pfeilrichtung.")
         if block.disclosure == "given":
-            if question.get("type") == "match":
+            if question.get("type") in ("match", "grouped"):
                 # A single label/value, arrow or layout can reveal one private
                 # pair even when the complete semicolon answer is absent.
                 # This validates new output; stored snapshots are not changed.
@@ -564,6 +575,7 @@ def validate_output(data, payload, *, bounded_matching=False):
         group = unit.get("group_id")
         sources = [m.get("content", "") for m in material_items if group is None or m.get("group_id") == group]
         for question in unit.get("questions", []):
+            grouped_questions.validate_question(question, sources)
             validate_question(question.get("presentation"), question, sources, PROFILES.get(subject, ()))
             if bounded_matching:
                 learning_scenes.validate_matching(question, sources)
@@ -578,8 +590,9 @@ def public_presentation(value, *, closed=False, hints=0):
         "version": 1,
         "evidence_kind": p.evidence_kind,
         "blocks": [
-            {**{k: v for k, v in b.model_dump(exclude={"source_excerpt", "scene"}).items()},
-             **({"scene": learning_scenes.public_scene(b.scene)} if b.scene is not None else {})}
+            {**{k: v for k, v in b.model_dump(exclude={"source_excerpt", "scene", "text_probe"}).items()},
+             **({"scene": learning_scenes.public_scene(b.scene)} if b.scene is not None else {}),
+             **({"text_probe": text_probes.public_probe(b.text_probe)} if b.text_probe is not None else {})}
             for b in p.blocks
             if b.disclosure in allowed
         ],

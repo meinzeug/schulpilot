@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "FIELDS01",
+      "subject": "Sachunterricht",
+      "source": "Planet: Erde. Stern: Sonne. Begleiter: Mond.",
+      "question": {
+        "id": "fields",
+        "type": "grouped",
+        "prompt": "Ergänze die beiden belegten Begriffe.",
+        "options": [],
+        "answer": "{\"fields\":{\"planet\":\"Erde\",\"stern\":\"Sonne\"},\"version\":1}",
+        "accepted": [],
+        "hints": [
+          "Lies die Beschriftungen im Heft."
+        ],
+        "explanation": "Planet: Erde. Stern: Sonne. Begleiter: Mond.",
+        "field_group": {
+          "version": 1,
+          "fields": [
+            {
+              "id": "planet",
+              "label": "Planet",
+              "kind": "text",
+              "options": [],
+              "answer": "Erde",
+              "source_excerpt": "Planet: Erde."
+            },
+            {
+              "id": "stern",
+              "label": "Stern",
+              "kind": "select",
+              "options": [
+                "Sonne",
+                "Erde"
+              ],
+              "answer": "Sonne",
+              "source_excerpt": "Stern: Sonne."
+            }
+          ]
+        }
+      },
+      "public_question": {
+        "id": "fields",
+        "type": "grouped",
+        "prompt": "Ergänze die beiden belegten Begriffe.",
+        "options": [],
+        "field_group": {
+          "version": 1,
+          "fields": [
+            {
+              "id": "planet",
+              "label": "Planet",
+              "kind": "text",
+              "options": []
+            },
+            {
+              "id": "stern",
+              "label": "Stern",
+              "kind": "select",
+              "options": [
+                "Sonne",
+                "Erde"
+              ]
+            }
+          ]
+        }
+      },
+      "public_projection": "Production public_group; outer private question fields omitted, without runtime progress."
+    }
+  ]
+}

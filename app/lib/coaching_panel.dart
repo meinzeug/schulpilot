@@ -10,6 +10,19 @@ import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'math_content.dart';
 import 'family_call_screen.dart';
+import 'grouped_answer_board.dart';
+
+/// A saved answer is formatted only with its own question's public schema.
+/// A normal text/code answer is never reinterpreted by looking at its JSON.
+String _savedAnswerText(Map question, Object? answer) {
+  final original = answer?.toString() ?? '';
+  if (question['type'] != 'grouped') return original;
+  final spec = GroupedAnswerSpec.tryParse(question['field_group']);
+  if (spec == null || spec.decode(original).isEmpty) {
+    return 'Die gespeicherte Feldantwort kann hier nicht vollständig angezeigt werden.';
+  }
+  return spec.readable(original);
+}
 
 class LearningProgressPanel extends StatelessWidget {
   final Json progress;
@@ -740,7 +753,7 @@ class _ChildCoachingPanel extends StatelessWidget {
                               ),
                             ),
                             MathText(
-                              '${attempt['answer']} · ${outcomeLabel(attempt['outcome'])}'
+                              '${_savedAnswerText(question, attempt['answer'])} · ${outcomeLabel(attempt['outcome'])}'
                               '${attempt['outcome'] == 'correct' && attempt['assisted'] == true ? ' · mit Hilfe oder erneut' : ''}',
                             ),
                             AnswerSupport(Json.from(attempt)),
@@ -929,7 +942,7 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
         if (chosen == category(item) &&
             (searchAnswers
                     ? (item['attempts'] as List? ?? [])
-                          .map((a) => a['answer'])
+                          .map((a) => _savedAnswerText(item, a['answer']))
                           .join(' ')
                     : item['prompt'].toString())
                 .toLowerCase()
@@ -1042,12 +1055,14 @@ class _SavedQuestionResult extends StatelessWidget {
             question['prompt'] ?? '',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          MathText('Deine Antwort: ${last['answer']}'),
+          MathText(
+            'Deine Antwort: ${_savedAnswerText(question, last['answer'])}',
+          ),
           MathText(label),
           AnswerSupport(Json.from(last)),
           ReadAloudButton(
             text: MathText.spoken(
-              '${question['prompt']} Deine Antwort: ${last['answer']}. $label',
+              '${question['prompt']} Deine Antwort: ${_savedAnswerText(question, last['answer'])}. $label',
             ),
           ),
           if (attempts.length > 1)
@@ -1064,7 +1079,9 @@ class _SavedQuestionResult extends StatelessWidget {
                           'Versuch ${index + 1}',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        MathText('Antwort: ${attempts[index]['answer']}'),
+                        MathText(
+                          'Antwort: ${_savedAnswerText(question, attempts[index]['answer'])}',
+                        ),
                         Text(outcomeLabel(attempts[index]['outcome'])),
                         AnswerSupport(Json.from(attempts[index])),
                         if (attempts[index]['feedback'] is String)

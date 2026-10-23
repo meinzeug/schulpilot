@@ -7,6 +7,7 @@ import 'math_content.dart';
 import 'learning_graphic_frame.dart';
 import 'learning_scene_player.dart';
 import 'science_graphic.dart';
+import 'text_probe_player.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
 
@@ -184,6 +185,9 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
+    if (kind == 'text_probe') {
+      return TextProbePlayer(block, state: state, action: action);
+    }
     if (kind == 'scene') {
       return LearningScenePlayer(block, state: state, action: action);
     }

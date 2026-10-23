@@ -31,6 +31,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
   bool invalidated = false;
   bool foreground = true;
   bool reducedMotion = false;
+  bool comparing = false;
+  int baseline = 0;
 
   @override
   void initState() {
@@ -55,6 +57,8 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
     family = widget.state?.familyId;
     token = widget.state?.api.token;
     invalidated = false;
+    comparing = false;
+    baseline = 0;
   }
 
   bool get current =>
@@ -70,6 +74,7 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
       active &&
       widget.state != null &&
       !reducedMotion &&
+      !comparing &&
       scene != null &&
       scene!.transitionMs > 0;
 
@@ -167,6 +172,162 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
     setState(() {});
   }
 
+  void compare() {
+    if (!active || scene == null || scene!.steps.length < 2) return;
+    controller.stop();
+    final last = scene!.steps.length - 1;
+    setState(() {
+      comparing = !comparing;
+      baseline = 0;
+      controller.value = comparing && controller.value == 0
+          ? 1
+          : (controller.value * last).round() / last;
+    });
+  }
+
+  void resetView() {
+    if (!active) return;
+    controller.stop();
+    setState(() {
+      comparing = false;
+      baseline = 0;
+      controller.value = 0;
+    });
+  }
+
+  List<String> differences(_Scene model, int selected) {
+    final a = model.steps[baseline], b = model.steps[selected];
+    final changes = <String>[];
+    for (final object in model.objects) {
+      final before = a.placements[object.id]!, after = b.placements[object.id]!;
+      if (before != after) {
+        changes.add('${object.label}: Platz ${before + 1} → ${after + 1}');
+      }
+      if (a.highlight.contains(object.id) != b.highlight.contains(object.id)) {
+        changes.add(
+          '${object.label}: ${b.highlight.contains(object.id) ? 'jetzt hervorgehoben' : 'nicht mehr hervorgehoben'}',
+        );
+      }
+    }
+    String edgeText(_Edge edge) =>
+        '${model.byId[edge.start]!.label} → ${model.byId[edge.end]!.label}${edge.label.isEmpty ? '' : ': ${edge.label}'}';
+    final beforeEdges = a.edges.map((edge) => edge.key).toSet();
+    final afterEdges = b.edges.map((edge) => edge.key).toSet();
+    for (final edge in a.edges.where(
+      (edge) => !afterEdges.contains(edge.key),
+    )) {
+      changes.add('Verbindung entfällt: ${edgeText(edge)}');
+    }
+    for (final edge in b.edges.where(
+      (edge) => !beforeEdges.contains(edge.key),
+    )) {
+      changes.add('Verbindung kommt hinzu: ${edgeText(edge)}');
+    }
+    return changes;
+  }
+
+  Widget comparison(_Scene model, int index, String description) {
+    Widget frame(int step, String label) => Column(
+      key: ValueKey(
+        'scene-compare-${label == 'Ausgang' ? 'baseline' : 'target'}',
+      ),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '$label · Schritt ${step + 1}',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          image: true,
+          label: '$label. $description ${model.steps[step].caption}',
+          child: ExcludeSemantics(
+            child: _SceneCanvas(scene: model, value: step.toDouble()),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          model.steps[step].caption,
+          style: const TextStyle(fontSize: 15, height: 1.4),
+        ),
+      ],
+    );
+    final changes = differences(model, index);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Ausgangsschritt wählen',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (var i = 0; i < model.steps.length; i++)
+              ChoiceChip(
+                key: ValueKey('scene-baseline-$i'),
+                label: Text('Schritt ${i + 1}'),
+                selected: baseline == i,
+                onSelected: active ? (_) => setState(() => baseline = i) : null,
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide =
+                constraints.maxWidth >= 620 &&
+                MediaQuery.textScalerOf(context).scale(1) <= 1.4;
+            return wide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: frame(baseline, 'Ausgang')),
+                      const SizedBox(width: 16),
+                      Expanded(child: frame(index, 'Vergleich')),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      frame(baseline, 'Ausgang'),
+                      const SizedBox(height: 16),
+                      frame(index, 'Vergleich'),
+                    ],
+                  );
+          },
+        ),
+        const SizedBox(height: 12),
+        Semantics(
+          liveRegion: true,
+          child: Column(
+            key: const ValueKey('scene-differences'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Was sich in der Grafik ändert',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              if (changes.isEmpty)
+                const Text(
+                  'Anordnung, Hervorhebungen und Verbindungen bleiben gleich.',
+                )
+              else
+                for (final change in changes)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(change),
+                  ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!current) {
@@ -210,13 +371,43 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Semantics(
-                image: true,
-                label: description,
-                child: ExcludeSemantics(
-                  child: _SceneCanvas(scene: model, value: value),
+              if (model.steps.length > 1) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('scene-compare'),
+                      onPressed: active ? compare : null,
+                      icon: Icon(
+                        comparing
+                            ? Icons.view_agenda_outlined
+                            : Icons.compare_arrows_rounded,
+                      ),
+                      label: Text(
+                        comparing ? 'Einzelansicht' : 'Zustände vergleichen',
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const ValueKey('scene-reset-view'),
+                      onPressed: active ? resetView : null,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: const Text('Ansicht zurücksetzen'),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 12),
+              ],
+              if (comparing)
+                comparison(model, index, description)
+              else
+                Semantics(
+                  image: true,
+                  label: description,
+                  child: ExcludeSemantics(
+                    child: _SceneCanvas(scene: model, value: value),
+                  ),
+                ),
               const SizedBox(height: 16),
               Semantics(
                 liveRegion: true,
@@ -242,6 +433,22 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
               ),
               if (model.steps.length > 1) ...[
                 const SizedBox(height: 8),
+                Wrap(
+                  key: const ValueKey('scene-step-picker'),
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 0; i < model.steps.length; i++)
+                      ChoiceChip(
+                        key: ValueKey('scene-direct-step-$i'),
+                        label: Text('Schritt ${i + 1}'),
+                        tooltip: model.steps[i].caption,
+                        selected: index == i,
+                        onSelected: active ? (_) => chooseStep(i) : null,
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                      ),
+                  ],
+                ),
                 Slider(
                   key: const ValueKey('scene-timeline'),
                   value: value,
@@ -332,6 +539,23 @@ class _LearningScenePlayerState extends State<LearningScenePlayer>
                 ),
               ],
               const SizedBox(height: 14),
+              ExpansionTile(
+                key: const ValueKey('scene-object-legend'),
+                title: const Text('Elemente der Grafik'),
+                children: [
+                  for (final entry in model.objects.indexed)
+                    ListTile(
+                      leading: CircleAvatar(child: Text('${entry.$1 + 1}')),
+                      title: Text(entry.$2.label),
+                      subtitle: Text(switch (entry.$2.shape) {
+                        'circle' => 'Kreis',
+                        'triangle' => 'Dreieck',
+                        'diamond' => 'Raute',
+                        _ => 'Rechteck',
+                      }),
+                    ),
+                ],
+              ),
               ExcludeSemantics(
                 child: Text(
                   description,

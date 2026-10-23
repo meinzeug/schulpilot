@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
+from .grouped_questions import FieldGroup
 from .subject_content import Presentation, SourceBlock
 
 Short = Annotated[str, Field(min_length=1, max_length=160)]
@@ -189,6 +190,7 @@ class MaterialConfirm(Strict):
 
 class Question(Strict):
     presentation: Presentation | None = None
+    field_group: FieldGroup | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -198,7 +200,7 @@ class Question(Strict):
         return canonical_choice(value)
 
     id: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9_-]+$")
-    type: Literal["choice", "gap", "match", "short"]
+    type: Literal["choice", "gap", "match", "short", "grouped"]
     prompt: str = Field(min_length=1, max_length=1000)
     options: list[Annotated[str, Field(max_length=200)]] = Field(
         max_length=8,
@@ -219,7 +221,19 @@ class Question(Strict):
     @model_validator(mode="after")
     def consistent(self):
         from .checks import expanded_fraction, fraction_parts, fraction_result
+        from .grouped_questions import canonical, parse_answer, requires_math_contract
 
+        if self.type == "grouped":
+            if self.field_group is None or self.options or self.accepted:
+                raise ValueError("Mehrfeldaufgabe benötigt eine Feldgruppe und leere äußere options/accepted.")
+            if requires_math_contract(self.prompt, self.field_group):
+                raise ValueError("Rechen- und Bruchdarstellungsaufgaben benötigen ein bestehendes geprüftes Einzelantwortformat.")
+            values = parse_answer(self.field_group, self.answer)
+            if values != {field.id: field.answer for field in self.field_group.fields}:
+                raise ValueError("Gemeinsame Musterantwort und private Feldlösungen widersprechen sich.")
+            self.answer = canonical(values)
+        elif self.field_group is not None:
+            raise ValueError("Feldgruppen gehören ausschließlich zu type grouped.")
         if self.type in ("choice", "gap", "short"):
             fraction_result(self.prompt, self.answer, self.accepted, question_type=self.type, options=self.options)
             expected_form = expanded_fraction(self.prompt)

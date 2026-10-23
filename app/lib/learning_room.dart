@@ -11,6 +11,7 @@ class LearningRoom extends StatelessWidget {
   final int? questionTotal, questionCompleted;
   final Widget? clock;
   final Widget? assistant;
+  final Widget? overview;
   final Widget child;
   final Widget? primaryAction;
   final Widget? actionMessage;
@@ -31,6 +32,7 @@ class LearningRoom extends StatelessWidget {
     this.questionCompleted,
     this.clock,
     this.assistant,
+    this.overview,
     this.primaryAction,
     this.actionMessage,
     this.onPause,
@@ -99,6 +101,7 @@ class LearningRoom extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             icon: const Icon(Icons.pause_rounded, size: 22),
           ),
+        ?overview,
         ?assistant,
       ],
     );

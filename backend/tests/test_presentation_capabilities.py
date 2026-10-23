@@ -32,11 +32,11 @@ def test_every_actual_subject_profile_has_complete_purpose_and_accurate_interact
     assert context["graphic_kinds"] == sorted(PROFILES[subject])
     assert set(context["use_for"]) == set(PROFILES[subject])
     assert context["subject_profiles"] == [{"subject": subject, "graphic_kinds": sorted(PROFILES[subject]),
-                                            "question_types": ["choice", "gap", "match", "short"]}]
+                                            "question_types": ["choice", "gap", "grouped", "match", "short"]}]
     assert set(context["local_interactions"]) == set(PROFILES[subject]) & INTERACTIONS.keys()
     assert "function_curve" not in context["local_interactions"]
     assert "matching" not in context
-    assert set(context["answer_ui"]) == {"choice", "gap", "match", "short"}
+    assert set(context["answer_ui"]) == {"choice", "gap", "grouped", "match", "short"}
     assert "Drag" in context["answer_ui"]["match"] and "Prüfen" in context["answer_ui"]["match"]
     assert context["max_blocks"] == 2
     assert "controls" not in schema["$defs"]["Graphic"]["properties"]

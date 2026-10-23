@@ -10,6 +10,7 @@ import 'learning_tips.dart';
 import 'coaching_panel.dart';
 import 'lesson_voice.dart';
 import 'learning_room.dart';
+import 'learning_round_overview.dart';
 import 'learning_explanation.dart';
 import 'learning_next_step.dart';
 import 'vocabulary_screen.dart';
@@ -18,6 +19,7 @@ import 'ui.dart';
 import 'parent_child_navigation.dart';
 import 'math_content.dart';
 import 'matching_answer_board.dart';
+import 'grouped_answer_board.dart';
 import 'subject_graphic.dart';
 import 'family_call_screen.dart';
 import 'practice_evidence.dart';
@@ -91,6 +93,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   String? choice;
   Map<String, String> matches = {};
   String? questionId;
+  String? groupedInputSignature;
   String? answerRequestKey, answerRequestBody;
   String? hintRequestKey;
   bool hintExhausted = false;
@@ -353,6 +356,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> saveDraft() async {
     final snapshot = draftSnapshot();
+    final groupedOverLimit =
+        currentQuestion?['type'] == 'grouped' &&
+        (snapshot?['answer']?.toString().runes.length ?? 0) > 1000;
     if (snapshot == null ||
         draftConflict ||
         ownerAccount == null ||
@@ -398,6 +404,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         if (state.user?['id'] != owner['id']) {
           await state.learningDrafts.remove(owner['id'] as String, id);
         }
+        return;
+      }
+      if (groupedOverLimit) {
+        setState(() => draftOffline = true);
         return;
       }
       final value = await state.api.put('/units/$id/learning-session/draft', {
@@ -668,7 +678,21 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
   void syncQuestionDraft() {
     if (awaitingContinue) return;
     final next = currentQuestion;
-    if (next?['id'] == questionId) return;
+    final signature = next?['type'] == 'grouped'
+        ? groupedSignature(next!)
+        : null;
+    if (next?['id'] == questionId) {
+      if (groupedInputSignature != signature) {
+        groupedInputSignature = signature;
+        updatingDraft = true;
+        text.clear();
+        updatingDraft = false;
+        resetInput = null;
+        savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
+      }
+      return;
+    }
+    groupedInputSignature = signature;
     questionId = next?['id'];
     savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
     draftOffline = draftConflict = false;
@@ -703,6 +727,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       for (var i = 0; i < labels.length && i < values.length; i++) {
         matches[labels[i]] = values[i];
       }
+    }
+    if (next?['type'] == 'grouped') {
+      final previous = (next?['attempts'] as List? ?? []).lastOrNull;
+      final spec = GroupedAnswerSpec.tryParse(next?['field_group']);
+      final saved = previous?['answer']?.toString() ?? '';
+      if (spec != null && spec.decode(saved).isNotEmpty) text.text = saved;
     }
     updatingDraft = false;
   }
@@ -1008,6 +1038,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
           progress: phase == 1 && number != null && number > 0
               ? progressLabel
               : null,
+          overview: u == null
+              ? null
+              : LearningRoundOverviewButton(
+                  state: state,
+                  unitId: widget.unitId,
+                  questions: questions.map((q) => Json.from(q)).toList(),
+                  currentQuestionId: currentQuestion?['id']?.toString(),
+                  completed: done,
+                ),
           scrollController: roomScroll,
           clock: u == null ? null : learningClock(u),
           assistant: SchulbuddyButton(
@@ -1084,6 +1123,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       ? choice != null
       : question['type'] == 'match'
       ? matches.length == (question['options'] as List).length
+      : question['type'] == 'grouped'
+      ? GroupedAnswerSpec.tryParse(question['field_group'])?.ready(text.text) ==
+            true
       : expectsFraction(question)
       ? RegExp(r'^-?\d+\s*/\s*[1-9]\d*$').hasMatch(text.text.trim())
       : text.text.trim().isNotEmpty;
@@ -1480,7 +1522,15 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       _ => verdict == parentQuestionFilter,
     };
     final haystack = parentSearchAnswers
-        ? attempts.map((a) => a['answer'].toString()).join('\n')
+        ? attempts
+              .map(
+                (a) => q['type'] == 'grouped'
+                    ? GroupedAnswerSpec.tryParse(q['field_group'])
+                              ?.readable(a['answer']?.toString() ?? '') ??
+                          'Die gespeicherte Feldantwort kann hier nicht vollständig angezeigt werden.'
+                    : a['answer'].toString(),
+              )
+              .join('\n')
         : q['prompt'].toString();
     return matchesOutcome &&
         haystack.toLowerCase().contains(
@@ -1652,7 +1702,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Tag(typeLabel(q['type'])),
+                      Tag(
+                        q['type'] == 'grouped'
+                            ? 'Feldgruppe'
+                            : typeLabel(q['type']),
+                      ),
                       SizedBox(height: 12),
                       MathText(
                         q['prompt'],
@@ -1676,8 +1730,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                               Text(
                                 'Versuch ${(q['attempts'] as List).indexOf(a) + 1}${a['created'] is num ? ' · ${friendlyDate(a['created'])}' : ''}',
                               ),
+                              if (q['type'] == 'grouped')
+                                GroupedAnswerSummary(
+                                  spec: GroupedAnswerSpec.tryParse(
+                                    q['field_group'],
+                                  ),
+                                  answer: a['answer']?.toString() ?? '',
+                                  parts: a['evaluation']?['parts'],
+                                ),
                               MathText(
-                                'Antwort: ${a['answer']}\n${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
+                                '${q['type'] == 'grouped' ? '' : 'Antwort: ${a['answer']}\n'}${outcomeLabel(a['outcome'])}${a['outcome'] == 'correct' ? ' · ${a['assisted'] ? 'mit Unterstützung oder erneut' : 'selbstständig'}' : ''}',
                               ),
                               AnswerSupport(Json.from(a)),
                               AssessmentTrail(
@@ -2010,6 +2072,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 SizedBox(height: 12),
               ],
               if (q['type'] == 'match') matchingBoard(q),
+              if (q['type'] == 'grouped') groupedBoard(q),
               if (!awaitingContinue &&
                   (choice != null ||
                       matches.isNotEmpty ||
@@ -2358,6 +2421,55 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     ],
   );
 
+  String groupedSignature(Json question) => jsonEncode([
+    question['id'],
+    question['prompt'],
+    question['field_group'],
+    unit?['learning_session']?['source_signature'],
+  ]);
+
+  Widget groupedBoard(Json q) {
+    final spec = GroupedAnswerSpec.tryParse(q['field_group']);
+    if (spec == null) {
+      return const Notice(
+        'Diese Feldgruppe kann hier nicht sicher angezeigt werden. Deine gespeicherten Antworten bleiben erhalten.',
+        warning: true,
+      );
+    }
+    final id = widget.unitId;
+    final owner = ownerAccount;
+    final family = ownerFamily;
+    final token = state.api.token;
+    final signature = groupedSignature(q);
+    return GroupedAnswerBoard(
+      questionId: q['id'],
+      sourceKey: (id, ObjectKey(owner), family, token, signature),
+      spec: spec,
+      answer: text.text,
+      disabled: actionBusy || awaitingContinue || draftConflict,
+      onChanged: (value) {
+        final current = currentQuestion;
+        if (!requestIsCurrent(id, owner) ||
+            state.familyId != family ||
+            state.api.token != token ||
+            !state.isChild ||
+            !visible ||
+            !routeVisible ||
+            actionBusy ||
+            awaitingContinue ||
+            draftConflict ||
+            unit?['status'] != 'active' ||
+            ModalRoute.of(context)?.isCurrent == false ||
+            current == null ||
+            current['type'] != 'grouped' ||
+            groupedSignature(current) != signature) {
+          return;
+        }
+        text.text = value;
+      },
+    );
+  }
+
   String matchSignature(Json question) => jsonEncode([
     question['id'],
     question['prompt'],
@@ -2544,6 +2656,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Future<void> submitAnswer(Json u, dynamic q) async {
     final requestedOwner = ownerAccount;
+    final groupedSource = q['type'] == 'grouped' ? groupedSignature(q) : null;
     final answer = q['type'] == 'choice'
         ? choice
         : q['type'] == 'match'
@@ -2556,11 +2669,25 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         matches.length != (q['options'] as List).length) {
       throw ApiError('Ordne noch alle Begriffe zu.');
     }
+    if (q['type'] == 'grouped' &&
+        GroupedAnswerSpec.tryParse(q['field_group'])?.ready(answer) != true) {
+      throw ApiError(
+        answer.runes.length > 1000
+            ? 'Kürze deine Eingaben, damit du sie gemeinsam prüfen kannst.'
+            : 'Fülle erst alle Felder aus.',
+      );
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     final id = u['id'];
     noteInteraction();
     await beat();
     if (!requestIsCurrent(id, requestedOwner) || !routeVisible) return;
+    if (groupedSource != null &&
+        (currentQuestion == null ||
+            currentQuestion?['type'] != 'grouped' ||
+            groupedSignature(currentQuestion!) != groupedSource)) {
+      return;
+    }
     if (q['language'] is Map || u['supports_answer_idempotency'] == true) {
       final body = '$id:${q['id']}:$answer:$speechAnswer';
       if (answerRequestBody != body) {
@@ -2675,7 +2802,13 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               SizedBox(height: 6),
               SurfaceInset(
                 tone: PanelTone.neutral,
-                child: q['type'] == 'match'
+                child: q['type'] == 'grouped'
+                    ? GroupedAnswerSummary(
+                        spec: GroupedAnswerSpec.tryParse(q['field_group']),
+                        answer: answer,
+                        parts: lastEvaluation?['parts'],
+                      )
+                    : q['type'] == 'match'
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

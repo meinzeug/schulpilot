@@ -23,7 +23,8 @@ mathematische Planung oder das technische Schema.
 
 ## Auswahl nach Fach
 
-Alle24Profile besitzen zusätzlich `process_graph`, `process_cycle` und `scene`.
+Ab1.27.0+99 besitzen alle24Profile zusätzlich `process_graph`, `process_cycle`,
+`scene` und den ausschließlich belegten Textvergleich `text_probe`.
 Die folgende Liste stammt aus den tatsächlichen Backendprofilen:
 
 | Fach | Weitere Darstellungen |
@@ -66,8 +67,10 @@ auf die vereinigten Fähigkeiten anderer Fächer eines Pakets zugreifen.
 | `data_plot` | Zwei bis acht originale X/Y-Paare; Auswahl ausschließlich dieser Messpunkte, keine erfundenen Zwischenmesswerte oder Regression. |
 | `logic_table` | Ausschließlich UND/ODER/NICHT; A/B-Schalter, AusgabeY und aktive Tabellenzeile. |
 | `process_graph` / `process_cycle` | Vollständige belegte gerichtete Beziehungen; optional lokale schrittweise Hervorhebung. Ein Kreislauf braucht die belegte Abschlusskante. |
-| `scene` | SceneV1: bis12Objekte,8Schritte und24Pfeile je Schritt; Formen, lokale Slots und belegte Texte, bewusster Start/Pause/Regler. Keine physikalische Simulation. |
+| `scene` | SceneV1: bis12Objekte,8Schritte und24Pfeile je Schritt; Formen, lokale Slots und belegte Texte, bewusster Start/Pause/Regler, direkte Schrittwahl, wählbarer Ausgangs-/Zielvergleich und rein beschreibende Änderungsliste. Keine physikalische Simulation. |
 | `type=match` | Zuordnung innerhalb der vorhandenen Antwortfläche per Langdruck/Drag oder Tippen/Tastatur; Drop ändert nur den Entwurf, explizites Prüfen bewertet. |
+| `type=grouped` | Zwei bis vier stabile Text-/Auswahlfelder, auch gemischt; bewusste gemeinsame Prüfung als ein Versuch, serverseitige Feldrückmeldungen. Eigener versionierter JSON-Antwortvertrag, keine Semikolon-Zweckentfremdung. |
+| `text_probe` | Zwei bis acht Textgruppen in zwei bis vier vollständig wörtlich belegten Reihenfolgen. Lupe, Kontextmarkierung, feste Gruppenidentität, Positionsvergleich und direkter Textvergleich. Keine freie Grammatikbewertung. |
 | Andere Fachgrafiken | Statische Fachmodelle/Begriffsfolgen und Zoom. `function_curve` besitzt keinen Explorer; `speech` erzeugt kein Audio, `keyboard` kein spielbares Instrument und `flashcard` keinen frei programmierbaren Flip. |
 
 „Erkunden“ für Funktion, Messdaten und Logik steht ausschließlich in bereits
@@ -85,6 +88,23 @@ vier ausdrücklich wörtlich belegte eindeutige Paare verwenden; fachliche
 Codex-Pakete behalten `choice/short`. Feste geplante Rechenaufgaben bleiben
 an ihre bestehende Planung und Lösung gebunden.
 
+Ab1.27.0+99 ist `grouped` ein eigenständiger zusätzlicher Fragetyp, nur wenn das
+endgültige Schema ihn wirklich zulässt. Jedes Feld braucht einen ausdrücklich
+belegten Zusammenhang wie Beschriftung:Antwort in einer einzigen Originalquelle.
+Unbekannte freie Formulierungen bleiben ungeklärt; Groß-/Kleinschreibung und
+mathematische Sonderzeichen werden nicht pauschal gleichgesetzt. Optionen,
+Feld-/JSON-Längen und Quellrevisionen bleiben begrenzt. Codex-Sachpakete und
+Etappen sowie feste Mathematik-/Reasoningpfade erweitern ihre Typen nicht.
+Ältere Clients ohne `grouped-v1` müssen für solche Runden aktualisiert werden.
+
+`text_probe` öffnet ausschließlich in einer bereits erlaubten Hilfe/Lösung.
+Eine vollständige Reihenfolge muss wörtlich belegt sein; keine erfundenen
+falschen Gegenbeispiele oder versteckten Grammatikurteile in Titel/Alttext.
+Die Bedienung beschreibt Textpositionen, keine allgemeine Sprachkorrektheit.
+Feldlösungen, Belegzitate und private Variantenzitate verlassen den normalen
+Clienttransport nicht. Rundenfilter und Modellvergleich sind lokale Ansichten,
+keine neue Bewertung, Freischaltung oder zusätzliche KI-Anfrage.
+
 `given` ist schon vor einer Antwort sichtbar. Vollständige richtige Zuordnungen,
 Zielwörter, Ergebnisse und erklärende Lösungsschritte gehören in eine passende
 geöffnete Hilfe oder Lösung. Eine Scene hat mit sämtlichen Schritten genau eine
@@ -100,3 +120,7 @@ Dienste, Reservierungen oder erhöhten Token-/Kostenlimits durch den Katalog.
 Prüfstand und Grenzen:
 [INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md),
 [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
+
+Die konkrete20-Punkte-Abnahme steht in
+[LEARNING_ELEMENTS_20_2026_10_23.md](LEARNING_ELEMENTS_20_2026_10_23.md);
+Veröffentlichungsstand und Grenzen in [RELEASE_99_2026_10_23.md](RELEASE_99_2026_10_23.md).

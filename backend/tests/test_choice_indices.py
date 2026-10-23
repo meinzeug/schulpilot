@@ -67,7 +67,7 @@ def test_package_choice_index_becomes_existing_full_answer_without_extra_call(tr
     PackageOutput.model_validate(result.data)
     assert result.cost_micros == 0 and len(calls) == 1
     schema = calls[0]["response_format"]["json_schema"]["schema"]
-    choice, written, matching = schema["$defs"]["Question"]["anyOf"]
+    choice, written, matching, grouped = schema["$defs"]["Question"]["anyOf"]
     assert choice["properties"]["answer"]["type"] == "integer"
     assert choice["properties"]["options"]["minItems"] == 2
     assert choice["properties"]["accepted"]["maxItems"] == 0
@@ -77,6 +77,10 @@ def test_package_choice_index_becomes_existing_full_answer_without_extra_call(tr
     assert matching["properties"]["options"]["minItems"] == 2
     assert matching["properties"]["options"]["maxItems"] == 4
     assert matching["properties"]["accepted"]["maxItems"] == 0
+    assert grouped["properties"]["type"]["enum"] == ["grouped"]
+    assert grouped["properties"]["field_group"] == {"$ref": "#/$defs/FieldGroup"}
+    assert grouped["properties"]["options"]["maxItems"] == grouped["properties"]["accepted"]["maxItems"] == 0
+    assert grouped["properties"]["answer"]["maxLength"] == 600
     assert calls[0]["provider"]["allow_fallbacks"] is False
     assert calls[0]["provider"]["data_collection"] == "deny"
 
@@ -336,12 +340,16 @@ def test_initial_factual_schema_requests_no_unchecked_aliases_or_math_examples(t
     result = request_provider(config, "package", payload)
     assert result.data["units"][0]["questions"][1]["answer"] == "Mond"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
-    choice, written, matching = schema["$defs"]["GroundedQuestion"]["anyOf"]
+    choice, written, matching, grouped = schema["$defs"]["GroundedQuestion"]["anyOf"]
     assert choice["properties"]["accepted"]["maxItems"] == 0
     assert written["properties"]["accepted"]["maxItems"] == 0
     assert written["properties"]["options"]["maxItems"] == 0
     assert matching["properties"]["type"]["enum"] == ["match"]
     assert matching["properties"]["accepted"]["maxItems"] == 0
+    assert grouped["properties"]["type"]["enum"] == ["grouped"]
+    assert grouped["properties"]["field_group"] == {"$ref": "#/$defs/FieldGroup"}
+    assert grouped["properties"]["options"]["maxItems"] == grouped["properties"]["accepted"]["maxItems"] == 0
+    assert grouped["properties"]["answer"]["maxLength"] == 600
     assert "pattern" not in matching["properties"]["answer"]
     assert providers.ARITHMETIC_RULES not in calls[0]["messages"][0]["content"]
     assert len(calls) == 1
@@ -398,7 +406,8 @@ def test_practice_schema_binds_each_unique_question_to_its_required_goal_without
     ]
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     branches = schema["$defs"]["PracticeQuestion"]["anyOf"]
-    assert len(branches) == 6
+    assert len(branches) == 8
+    assert sum(branch["properties"]["type"]["enum"] == ["grouped"] for branch in branches) == 2
     assert {(b["properties"]["id"]["enum"][0], b["properties"]["learning_goal_id"]["enum"][0]) for b in branches} == {
         ("q1", "g1"),
         ("q2", "g2"),

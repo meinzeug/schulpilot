@@ -285,6 +285,10 @@ def unit_data(db, unit, include_answers=False, *, include_progress=True):
     deferred_questions = adaptive_plan.deferred(db, unit) | instructional_deferred(db, unit)
     for q in unit.questions:
         value = dict(q)
+        if q.get("field_group"):
+            from .grouped_questions import public_group
+
+            value["field_group"] = public_group(q["field_group"])
         if unit.subject.strip().casefold() == "mathematik" and q.get("type") in ("short", "gap") and not q.get("language") and re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", str(q.get("answer", "")).strip()):
             value["input_kind"] = "number"
         if not include_answers:
@@ -386,6 +390,8 @@ def vocabulary_result(db, unit):
 
 
 def language_capability(unit, capabilities):
+    if any(q.get("type") == "grouped" for q in unit.questions) and "grouped-v1" not in (capabilities.split(",") if isinstance(capabilities, str) else []):
+        raise HTTPException(426, "Diese Runde enthält Mehrfeldaufgaben. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if any(q.get("presentation") for q in unit.questions) and "visual-v1" not in (capabilities.split(",") if isinstance(capabilities, str) else []):
         raise HTTPException(426, "Diese Runde enthält neue Lernbilder. Bitte die App aktualisieren oder die aktuelle Web-App öffnen.")
     if any(q.get("language") for q in unit.questions) and not language_supported(capabilities):
@@ -1519,6 +1525,14 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
            capabilities: str | None = Header(None, alias="X-Schulpilot-Capabilities")):
     unit = get_unit(db, p, unit_id, True, True)
     language_capability(unit, capabilities)
+    q = question(unit, question_id)
+    if q.get("type") == "grouped":
+        from .grouped_questions import canonical, parse_answer
+
+        try:
+            data.answer = canonical(parse_answer(q["field_group"], data.answer))
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
     from .vocabulary import fingerprint
 
     request_digest = fingerprint([question_id, data.answer, data.input_method, data.guided_feedback])
@@ -1532,7 +1546,6 @@ def answer(unit_id: str, question_id: str, data: s.AnswerRequest, p=Depends(chil
         raise HTTPException(409, "Bitte die Lerneinheit zuerst starten oder fortsetzen.")
     if reason := learning_block(db, unit):
         raise HTTPException(409, reason)
-    q = question(unit, question_id)
     from . import adaptive_plan
     from .db import LearningMemory
 

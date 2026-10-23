@@ -52,12 +52,14 @@ PURPOSES = {
     "process_graph": "Ausdrücklich belegte gerichtete Schritte und Verzweigungen überblicken.",
     "process_cycle": "Eine ausdrücklich belegte geschlossene Knotenfolge überblicken.",
     "scene": "Für diese Frage eigene belegte Objekte, Zustände und Beziehungen schematisch zusammensetzen.",
+    "text_probe": "Zwei bis vier vollständig im Original belegte Textreihenfolgen vergleichen; keine erfundenen Gegenbeispiele oder Grammatikurteile.",
 }
 
 ANSWER_UI = {
     "choice": "Genau eine Radioauswahl, keine Mehrfachauswahl.",
     "gap": "Freie Eingabe für genau eine Lücke, keine Inline-Dropdowns.",
     "short": "Freie kurze Eingabe; keine erfundenen Antwortregler oder Dropdowns.",
+    "grouped": "Zwei bis vier beschriftete Text-/Auswahlfelder gemeinsam ausfüllen und bewusst als EINEN Versuch prüfen. Private Lösungen/Belege bleiben unsichtbar; unbekannte freie Formulierungen bleiben offen.",
     "match": "Vorhandene Zuordnungsfläche per Langdruck/Drag oder Tippen/Tastatur; Drop ändert den Entwurf, erst bewusstes Prüfen bewertet.",
 }
 
@@ -67,7 +69,8 @@ INTERACTIONS = {
     "logic_table": "Automatisch Erkunden ab geöffneter Hilfe/Lösung: A/B=0 oder1 schalten und Y/Tabellenzeile hervorheben; feste UND/ODER/NICHT-Operation. Kein Schaltungseditor.",
     "process_graph": "Optionaler lokaler Knoten-Schrittplayer: gleiche Positionen und alle belegten Kanten, wechselnde Hervorhebung. Keine zusätzliche Prozesssimulation oder erfundene Zeitfolge.",
     "process_cycle": "Optionaler lokaler Knoten-Schrittplayer: gleiche Positionen und alle belegten Kanten, wechselnde Hervorhebung. Keine physikalische Simulation.",
-    "scene": "Lokaler Nutzerstart für Play/Pause/Schrittwahl; Animation nur mit mindestens zwei Schritten und transition_ms>0. Ohne Bewegungsfreigabe bleiben statische Schritte; niemals Autoplay.",
+    "scene": "Lokaler Nutzerstart für Play/Pause/Schrittwahl; Animation nur mit mindestens zwei Schritten und transition_ms>0. Ohne Bewegungsfreigabe bleiben statische Schritte; niemals Autoplay. Zustandsvergleich wählt zwei gespeicherte Schritte und benennt nur vorhandene Beschriftungs-/Platz-/Hervorhebungs-/Kantenänderungen.",
+    "text_probe": "Textprobe und Gruppe per Tipp/Tastatur auswählen und vergrößert lesen, vollständigen belegten Kontext weitersehen; Reset. Keine Umordnung, Bewertung oder automatische Grammatikbehauptung.",
 }
 
 RULES = """\nDARSTELLUNGSWAHL: content_context ist der serverseitige Katalog für DIESEN Auftrag, kein neues Ausgabefeld.
@@ -143,6 +146,13 @@ def context(subjects, profiles, *, schema=None, compact_matching=False, symbol_w
         "use_for": {kind: PURPOSES[kind] for kind in sorted(allowed)},
         "local_interactions": {kind: INTERACTIONS[kind] for kind in sorted(allowed) if kind in INTERACTIONS},
     }
+    if "grouped" in types:
+        value["field_group"] = {"version": 1, "fields_min": 2, "fields_max": 4,
+                                "source": "Jede label=answer/label:answer/label→answer-Zuordnung wörtlich in einem Originalbeleg derselben Gruppe.",
+                                "answer": "Ein JSON-String mit version1 und fields-Objekt; exakt die stabilen Feld-IDs, keine Semikolontrennung."}
+    if "text_probe" in allowed:
+        value["text_probe"] = {"version": 1, "segments_min": 2, "segments_max": 8, "variants_min": 2, "variants_max": 4,
+                               "source": "Jede vollständige Textreihenfolge in einem wörtlichen Originalbeleg; ausschließlich Hilfe/Lösung."}
     if "picture_words" in allowed:
         value["picture_word_labels"] = sorted(symbol_words)
     if compact_matching and "match" in types:

@@ -394,10 +394,23 @@ def indexed_choice_schema(schema, *, bounded_matches=False):
         choice["properties"]["accepted"]["maxItems"] = 0
         other = copy.deepcopy(definition)
         other["properties"]["type"]["enum"] = [kind for kind in types if kind != "choice"]
+        grouped = None
+        if "grouped" in other["properties"]["type"]["enum"]:
+            grouped = copy.deepcopy(definition)
+            grouped["properties"]["type"] = {"type": "string", "enum": ["grouped"]}
+            grouped["properties"]["field_group"] = {"$ref": "#/$defs/FieldGroup"}
+            grouped["properties"]["options"]["maxItems"] = 0
+            grouped["properties"]["accepted"]["maxItems"] = 0
+            grouped["properties"]["answer"] = {"type": "string", "minLength": 1, "maxLength": 600,
+                "description": 'JSON-String {"version":1,"fields":{"id":"Wert"}} mit exakt allen privaten Feldlösungen.'}
+            other["properties"]["type"]["enum"].remove("grouped")
+        choice["properties"]["field_group"] = {"type": "null"}
+        other["properties"]["field_group"] = {"type": "null"}
         matching = None
         if bounded_matches and "match" in other["properties"]["type"]["enum"]:
             matching = copy.deepcopy(definition)
             matching["properties"]["type"] = {"type": "string", "enum": ["match"]}
+            matching["properties"]["field_group"] = {"type": "null"}
             matching["properties"]["options"].update(minItems=2, maxItems=4)
             matching["properties"]["accepted"]["maxItems"] = 0
             # A grounded short answer has a stricter 80-character/no-semicolon
@@ -412,6 +425,8 @@ def indexed_choice_schema(schema, *, bounded_matches=False):
             branches.append(other)
         if matching is not None:
             branches.append(matching)
+        if grouped is not None:
+            branches.append(grouped)
         definition.clear()
         if len(branches) > 1:
             definition["anyOf"] = branches
@@ -563,7 +578,7 @@ def prepare_package_schema(schema, payload, *, allow_matching=False):
             # of accepting model-invented, potentially wrong aliases.
             if "GroundedQuestion" not in schema["$defs"]:
                 question = copy.deepcopy(schema["$defs"]["Question"])
-                question["properties"]["type"]["enum"] = ["choice", "short"] + (["match"] if allow_matching else [])
+                question["properties"]["type"]["enum"] = ["choice", "short"] + (["match", "grouped"] if allow_matching else [])
                 question["properties"]["accepted"]["maxItems"] = 0
                 question["properties"]["answer"].update(maxLength=80, pattern=r"^[^,;=+<>\n]{1,80}$")
                 question["properties"]["answer"]["description"] = (
@@ -594,6 +609,11 @@ def validate_factual_package(data, payload, *, allow_matching=False):
         ]
         source = normalized("\n".join(source_texts))
         for question in unit["questions"]:
+            if question["type"] == "grouped" and allow_matching:
+                from .grouped_questions import validate_question as validate_group
+
+                validate_group(question, source_texts)
+                continue
             if question["type"] == "match" and allow_matching:
                 from .learning_scenes import validate_matching
 
@@ -1307,7 +1327,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             else (
                 "Verwende in dieser Etappe ausschließlich Auswahlaufgaben zu Begründungen, Vergleichen oder Fehlerkorrekturen. "
                 if reasoning_stage
-                else "Wähle passende Auswahlaufgaben, kurze Eingaben (gap/short) oder eine kleine ausdrücklich belegte Zuordnung (match). "
+                else "Wähle passende Auswahlaufgaben, kurze Eingaben (gap/short), eine ausdrücklich belegte Zuordnung (match) oder eine belegte Mehrfeldaufgabe (grouped). "
             )
         )
         instructions += (
@@ -1367,13 +1387,13 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Die kurze freie Begriffsabfrage folgt gezielt in der Etappe recall."
             )
         elif not math_examples:
-            instructions += (" Erzeuge choice/short oder eine kleine ausdrücklich belegte match-Zuordnung."
+            instructions += (" Erzeuge choice/short, eine belegte match-Zuordnung oder eine belegte grouped-Mehrfeldaufgabe."
                              if compact_openrouter else " Erzeuge ausschließlich choice/short.")
         if not is_mathematics(payload.get("required_subject")):
             for definition in schema.get("$defs", {}).values():
                 props = definition.get("properties", {})
                 if "prompt" in props and "type" in props:
-                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short"] + (["match"] if compact_openrouter else [])
+                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short"] + (["match", "grouped"] if compact_openrouter else [])
                     props["accepted"].update(maxItems=0)
     package_targets = {}
     if (compact_openrouter or config.provider == "codex") and function == "package":
@@ -1388,7 +1408,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Jede kurze Texteingabe soll nur einen klaren Begriff oder Zusammenhang verlangen. "
                 "Bei Fächern außer Mathematik frage nach genau einem wörtlich im zugehörigen "
                 "materials.content belegten Begriff oder kurzen Ausdruck. Verwende ihn unverändert als answer. "
-                + ("Verwende dort choice, short oder eine kleine ausdrücklich belegte match-Zuordnung, keine gap-Aufgabe. "
+                + ("Verwende dort choice, short, eine belegte match-Zuordnung oder grouped mit explizitem Beleg je Feld, keine gap-Aufgabe. "
                    if compact_openrouter else "Verwende dort ausschließlich choice/short, keine gap- oder match-Aufgabe. ")
                 + "Eine short-Antwort hat höchstens "
                 "fünf Wörter und 80 Zeichen. Keine ganzen Gleichungen, Aufzählungen oder mehrteiligen Antworten. "
@@ -1447,6 +1467,8 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         content_context = subject_content.generation_context(subjects, schema=schema, compact_matching=compact_openrouter)
         payload = {**payload, "content_context": content_context}
         instructions += subject_content.rules_for(subjects) + CAPABILITY_RULES
+        if "grouped" in content_context["question_types"]:
+            instructions += subject_content.grouped_questions.RULES
         if "matching" in content_context:
             instructions += subject_content.learning_scenes.MATCH_RULES
     outgoing_payload = transport_payload(function, payload)
@@ -1725,7 +1747,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         def omit_absent_presentations(value):
             if isinstance(value, dict):
                 for key, item in list(value.items()):
-                    if key in ("presentation", "scene") and item is None:
+                    if key in ("presentation", "scene", "text_probe", "field_group") and item is None:
                         del value[key]
                     else:
                         omit_absent_presentations(item)

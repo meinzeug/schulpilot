@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "TEXT01",
+      "subject": "Deutsch",
+      "source": "Textgruppen: heute, lernt, Mika. Beispiele: heute lernt Mika; Mika lernt heute.",
+      "question": {
+        "id": "text",
+        "type": "short",
+        "prompt": "Welcher Name steht im Text?",
+        "options": [],
+        "answer": "Mika",
+        "accepted": [],
+        "hints": [
+          "Vergleiche die beiden gedruckten Texte."
+        ],
+        "explanation": "Beide Texte nennen Mika.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "text_probe",
+              "title": "Textgruppen",
+              "disclosure": "hint1",
+              "source_excerpt": "Textgruppen: heute, lernt, Mika. Beispiele: heute lernt Mika; Mika lernt heute.",
+              "labels": [
+                "heute",
+                "lernt",
+                "Mika"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "",
+              "text_probe": {
+                "version": 1,
+                "segments": [
+                  {
+                    "id": "time",
+                    "text": "heute"
+                  },
+                  {
+                    "id": "verb",
+                    "text": "lernt"
+                  },
+                  {
+                    "id": "person",
+                    "text": "Mika"
+                  }
+                ],
+                "variants": [
+                  {
+                    "id": "first",
+                    "order": [
+                      "time",
+                      "verb",
+                      "person"
+                    ],
+                    "source_excerpt": "heute lernt Mika"
+                  },
+                  {
+                    "id": "second",
+                    "order": [
+                      "person",
+                      "verb",
+                      "time"
+                    ],
+                    "source_excerpt": "Mika lernt heute"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "public_presentation_hint1": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": [
+          {
+            "kind": "text_probe",
+            "title": "Textgruppen",
+            "disclosure": "hint1",
+            "labels": [
+              "heute",
+              "lernt",
+              "Mika"
+            ],
+            "numbers": [],
+            "connections": [],
+            "marks": [],
+            "unit": "",
+            "variant": "",
+            "text_probe": {
+              "version": 1,
+              "segments": [
+                {
+                  "id": "time",
+                  "text": "heute"
+                },
+                {
+                  "id": "verb",
+                  "text": "lernt"
+                },
+                {
+                  "id": "person",
+                  "text": "Mika"
+                }
+              ],
+              "variants": [
+                {
+                  "id": "first",
+                  "order": [
+                    "time",
+                    "verb",
+                    "person"
+                  ]
+                },
+                {
+                  "id": "second",
+                  "order": [
+                    "person",
+                    "verb",
+                    "time"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
