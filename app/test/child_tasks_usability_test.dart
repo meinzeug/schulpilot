@@ -156,7 +156,8 @@ void main() {
       await _tap(tester, 'Weiter');
       expect(find.text('Was bedeutet dog?'), findsOneWidget);
       expect(find.text('Cat heißt Katze.'), findsNothing);
-      expect(find.text('Aufgabe 2 von 2'), findsOneWidget);
+      expect(find.text('Üben · Aufgabe 2 von 2'), findsOneWidget);
+      expect(find.text('Bearbeitet 1 von 2'), findsOneWidget);
       expect(answers, 1);
       expect(
         requests.where((request) => request.endsWith('/answer')).length,
@@ -216,7 +217,8 @@ void main() {
       expect(hints, 1);
       await _tap(tester, 'Noch einmal versuchen');
       expect(find.text('Was bedeutet cat?'), findsOneWidget);
-      expect(find.text('Aufgabe 1 von 1'), findsOneWidget);
+      expect(find.text('Üben · Aufgabe 1 von 1'), findsOneWidget);
+      expect(find.text('Bearbeitet 0 von 1'), findsOneWidget);
       expect(find.text('Eine Katze miaut.'), findsOneWidget);
       expect(answers, 1);
       expect(tester.takeException(), isNull);

@@ -1148,6 +1148,26 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             ],
           ),
         ),
+        hero,
+        if (!photoPrimary) ...[
+          SizedBox(height: 14),
+          ChildTodayTile(
+            title: photosWaiting
+                ? photoLabel
+                : needsCapture
+                ? 'Heutige Seiten scannen'
+                : 'Heutige Heftseiten',
+            subtitle: photosWaiting
+                ? 'Deine angefangenen Fotos sind noch da.'
+                : 'Neue Fotos aus der Schule hinzufügen.',
+            icon: Icons.add_a_photo_outlined,
+            accent: context.palette.cyanInk,
+            onTap: () => openSaved('/after-school/${child['id']}?capture=1'),
+            footer: needsCapture && !photosWaiting ? noPagesButton : null,
+          ),
+        ] else if (needsCapture && !photosWaiting)
+          noPagesButton,
+        const SizedBox(height: 24),
         Semantics(
           button: true,
           excludeSemantics: true,
@@ -1212,7 +1232,6 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
           ),
         ),
         const SizedBox(height: 16),
-        hero,
         if ((guidance?['reason'] ?? '').toString().trim().isNotEmpty)
           Align(
             alignment: Alignment.centerLeft,
@@ -1235,24 +1254,6 @@ class _ChildHomeContentState extends State<_ChildHomeContent> {
             onTap: () => openSaved('/homework/${child['id']}'),
           ),
         ],
-        if (!photoPrimary) ...[
-          SizedBox(height: 14),
-          ChildTodayTile(
-            title: photosWaiting
-                ? photoLabel
-                : needsCapture
-                ? 'Heutige Seiten scannen'
-                : 'Heutige Heftseiten',
-            subtitle: photosWaiting
-                ? 'Deine angefangenen Fotos sind noch da.'
-                : 'Neue Fotos aus der Schule hinzufügen.',
-            icon: Icons.add_a_photo_outlined,
-            accent: context.palette.cyanInk,
-            onTap: () => openSaved('/after-school/${child['id']}?capture=1'),
-            footer: needsCapture && !photosWaiting ? noPagesButton : null,
-          ),
-        ] else if (needsCapture && !photosWaiting)
-          noPagesButton,
         if (otherTopics)
           Align(
             alignment: Alignment.centerRight,

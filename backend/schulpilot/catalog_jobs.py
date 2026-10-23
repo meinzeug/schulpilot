@@ -6,8 +6,10 @@ checkpoint. Never wait for a child while holding a cascading queue row lock.
 """
 
 import logging
+import sqlite3
 
 from sqlalchemy import event, inspect, select, text, update
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session as SASession
 
 from .catalog_import import fingerprint, upsert
@@ -222,13 +224,29 @@ def refresh_context(db, kind, resource, annotation=None):
 
 def _claim():
     with DB.begin() as db:
-        # Only local deterministic work may resume after a lost lease. Provider
-        # jobs retain their strict no-automatic-retry policy.
-        db.execute(
-            update(CatalogRefresh)
-            .where(CatalogRefresh.status == "running", CatalogRefresh.updated < int(now()) - 120)
-            .values(status="queued", lease=None)
-        )
+        sqlite_timeout = None
+        if db.bind.dialect.name == "sqlite":
+            sqlite_timeout = db.scalar(text("PRAGMA busy_timeout"))
+            # SQLite has one writer, unlike PostgreSQL's skip-locked rows. A
+            # busy local queue stays queued for the next explicit worker tick.
+            db.execute(text("PRAGMA busy_timeout=0"))
+        try:
+            # Only local deterministic work may resume after a lost lease. Provider
+            # jobs retain their strict no-automatic-retry policy. This first write
+            # also serializes SQLite claims before reading the selected row.
+            db.execute(
+                update(CatalogRefresh)
+                .where(CatalogRefresh.status == "running", CatalogRefresh.updated < int(now()) - 120)
+                .values(status="queued", lease=None)
+            )
+        except OperationalError as error:
+            code = getattr(error.orig, "sqlite_errorcode", 0)
+            if sqlite_timeout is not None and code & 255 in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                return None
+            raise
+        finally:
+            if sqlite_timeout is not None:
+                db.execute(text(f"PRAGMA busy_timeout={int(sqlite_timeout)}"))
         query = (
             select(CatalogRefresh)
             .where(CatalogRefresh.status == "queued")
@@ -255,6 +273,10 @@ def _checkpoint(db, job, **values):
 
 def _locked_resource(db, kind, resource_id):
     model = MODELS[kind]
+    if db.bind.dialect.name == "sqlite":
+        # Batch and single-resource jobs can refer to the same context. Obtain
+        # SQLite's writer lock before reading it, so insert/update is atomic.
+        db.execute(update(model).where(model.id == resource_id).values(id=model.id))
     if kind == "unit" and db.bind.dialect.name == "postgresql":
         resource = db.scalar(select(model).where(model.id == resource_id).with_for_update(skip_locked=True))
         if resource is None and db.scalar(select(model.id).where(model.id == resource_id)):

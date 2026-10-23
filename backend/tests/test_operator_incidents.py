@@ -408,6 +408,7 @@ def test_patch_special_files_fail_quickly_in_an_independently_bounded_process(tm
     import os
     import subprocess
     import sys
+    from pathlib import Path
 
     root = incidents.settings.data_dir / "operator-repairs"
     root.mkdir(exist_ok=True)
@@ -430,5 +431,11 @@ except HTTPException as error:
 else:
     raise SystemExit('special file accepted')
 """
-    result = subprocess.run([sys.executable, "-c", source, str(path), identifier], capture_output=True, timeout=5)
+    result = subprocess.run(
+        [sys.executable, "-c", source, str(path), identifier],
+        capture_output=True,
+        timeout=5,
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(Path(incidents.__file__).resolve().parents[1])},
+    )
     assert result.returncode == 0 and result.stdout.strip() == b"409"

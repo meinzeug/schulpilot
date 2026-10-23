@@ -6,6 +6,7 @@ import uuid
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
+from threading import Barrier
 
 import httpx
 import pytest
@@ -214,6 +215,65 @@ def test_parallel_confirm_and_parallel_repeat_upload_do_not_duplicate(api, house
     with DB() as db:
         assert db.scalar(select(func.count()).select_from(SchoolGrade)) == 3
         assert db.scalar(select(func.count()).select_from(GradeSourceSlot)) == 3
+
+
+@pytest.mark.parametrize("changed_file", [False, True])
+def test_parallel_preview_upload_rechecks_idempotency_after_unlocked_parsing(api, household, monkeypatch, changed_file):
+    from schulpilot import grade_imports
+
+    _, child = household
+    year = today_year(child["id"])
+    first = pdf(year)
+    second = pdf(year, [("Englisch", 1, "other", 1, "3")]) if changed_file else first
+    original = grade_imports.isolated_extract
+    barrier = Barrier(2)
+
+    def read(raw):
+        parsed = original(raw)
+        barrier.wait(timeout=10)
+        return parsed
+
+    monkeypatch.setattr(grade_imports, "isolated_extract", read)
+    headers = dict(api.headers)
+
+    def preview(raw):
+        with TestClient(app, headers=headers) as client:
+            return upload(client, child, raw, key="synthetic-parallel-grade-preview")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(preview, [first, second]))
+    expected = [201, 409] if changed_file else [201, 201]
+    assert sorted(response.status_code for response in results) == expected, [r.text for r in results]
+    accepted = [response.json()["id"] for response in results if response.status_code == 201]
+    assert len(set(accepted)) == 1
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(GradeImport)) == 1
+        assert db.scalar(select(func.count()).select_from(SchoolGrade)) == 0
+        assert db.scalar(select(func.count()).select_from(GradeSourceSlot)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
+
+
+def test_failed_pdf_reads_remain_rate_limited_without_importing_or_calling_ai(api, household, monkeypatch):
+    from schulpilot import grade_imports
+
+    _, child = household
+    calls = []
+
+    def reject(raw):
+        calls.append(raw)
+        raise ValueError("Künstliche unlesbare PDF.")
+
+    monkeypatch.setattr(grade_imports, "isolated_extract", reject)
+    for number in range(12):
+        response = upload(api, child, b"%PDF-synthetic-unreadable", key=f"synthetic-failed-grade-{number}")
+        assert response.status_code == 422
+    response = upload(api, child, b"%PDF-synthetic-unreadable", key="synthetic-failed-grade-limit")
+    assert response.status_code == 429
+    assert len(calls) == 12
+    with DB() as db:
+        assert db.scalar(select(func.count()).select_from(GradeImport)) == 0
+        assert db.scalar(select(func.count()).select_from(SchoolGrade)) == 0
+        assert db.scalar(select(func.count()).select_from(Usage)) == 0
 
 
 def test_manual_match_requires_choice_and_one_grade_cannot_fill_two_slots(api, household):

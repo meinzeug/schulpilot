@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:schulpilot/api.dart';
+import 'package:schulpilot/learning_plan_ui.dart';
 import 'package:schulpilot/study_path_panel.dart';
 
 import 'child_local_tools_ux88_test.dart' as f;
@@ -42,7 +43,7 @@ void main() {
       });
       await open(tester, state);
       await f.tap(tester, find.text('Alle Etappen'));
-      await f.tap(tester, find.widgetWithText(ListTile, 'Thema Brüche'));
+      await f.tap(tester, find.widgetWithText(PlanRow, 'Thema Brüche'));
       expect(find.text('4 geplante Aufgaben'), findsOneWidget);
       expect(
         find.textContaining('Hier werden keine neuen Aufgaben vorbereitet.'),
@@ -63,8 +64,8 @@ void main() {
       await f.tap(tester, find.text('Alle Etappen'));
       await tester.enterText(f.input('Etappen durchsuchen'), 'Flächen');
       await tester.pump();
-      expect(find.widgetWithText(ListTile, 'Thema Flächen'), findsOneWidget);
-      expect(find.widgetWithText(ListTile, 'Thema Brüche'), findsNothing);
+      expect(find.widgetWithText(PlanRow, 'Thema Flächen'), findsOneWidget);
+      expect(find.widgetWithText(PlanRow, 'Thema Brüche'), findsNothing);
       await tester.enterText(f.input('Etappen durchsuchen'), 'Leer');
       await tester.pump();
       await f.tap(tester, find.text('Alle Etappen zeigen'));
@@ -88,10 +89,10 @@ void main() {
       await open(tester, state);
       await f.tap(tester, find.text('Alle Etappen'));
       await f.tap(tester, find.widgetWithText(ChoiceChip, 'Bereit'));
-      expect(find.widgetWithText(ListTile, 'Thema B'), findsOneWidget);
-      expect(find.widgetWithText(ListTile, 'Thema A'), findsNothing);
+      expect(find.widgetWithText(PlanRow, 'Thema B'), findsOneWidget);
+      expect(find.widgetWithText(PlanRow, 'Thema A'), findsNothing);
       await f.tap(tester, find.widgetWithText(ChoiceChip, 'Bearbeitet'));
-      expect(find.widgetWithText(ListTile, 'Thema C'), findsOneWidget);
+      expect(find.widgetWithText(PlanRow, 'Thema C'), findsOneWidget);
       expect(requests.every((r) => r.method == 'GET'), isTrue);
     },
   );

@@ -56,7 +56,7 @@ def live_parent(db, principal, child):
         or status.expires <= now()
     ):
         raise HTTPException(401, "Bitte erneut anmelden.")
-    child_access(db, principal, child.id, write=True)
+    return child_access(db, principal, child.id, write=True)
 
 
 def projection(db, child, batch):
@@ -139,11 +139,25 @@ def upload_pdf(child_id: str, file: UploadFile, idempotency_key: str = KEY, p=De
             raise HTTPException(409, "Dieser Uploadschlüssel gehört zu einer anderen PDF.")
         return projection(db, child, previous)
     rate_limit(db, "grade-pdf:" + p.user.id, 12, 3600, commit=False)
+    # Reserve the bounded parse attempt, then release all locks while reading
+    # untrusted PDF data. Logout and permission changes must remain possible.
+    db.commit()
+    db.expunge_all()
     try:
         parsed = isolated_extract(raw)
     except ValueError as error:
         raise HTTPException(422, str(error)) from None
-    live_parent(db, p, child)
+    # Another upload may have completed while parsing. Reacquire the same
+    # child lock and recheck fresh authority and idempotency before any write.
+    lock_child(db, child)
+    child = live_parent(db, p, child)
+    previous = db.scalar(
+        select(GradeImport).where(GradeImport.child_id == child.id, GradeImport.request_key == idempotency_key)
+    )
+    if previous:
+        if previous.file_digest != file_digest:
+            raise HTTPException(409, "Dieser Uploadschlüssel gehört zu einer anderen PDF.")
+        return projection(db, child, previous)
     if parsed["school_year_start"] != school_year(local_day(child)):
         raise HTTPException(422, "Bitte die Übersicht des aktuellen Schuljahres hochladen.")
     keys = [slot_key(parsed["school_year_start"], e) for e in parsed["entries"]]

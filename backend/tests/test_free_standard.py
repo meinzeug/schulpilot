@@ -36,6 +36,8 @@ def test_real_free_route_keeps_deny_fixed_endpoint_and_zero_price(api, household
     user, _ = household
     free_config(user)
     calls, catalog = [], []
+    output = sample_unit()
+    output["questions"] = output["questions"][:2]
     monkeypatch.setattr(providers, "verify_free_endpoint", lambda *args: catalog.append(args))
 
     class Client:
@@ -54,7 +56,7 @@ def test_real_free_route_keeps_deny_fixed_endpoint_and_zero_price(api, household
                 200,
                 json={
                     "choices": [
-                        {"finish_reason": "stop", "message": {"content": __import__("json").dumps(sample_unit())}}
+                        {"finish_reason": "stop", "message": {"content": __import__("json").dumps(output)}}
                     ],
                     "usage": {"prompt_tokens": 100, "completion_tokens": 200, "cost": 0},
                 },
@@ -64,7 +66,8 @@ def test_real_free_route_keeps_deny_fixed_endpoint_and_zero_price(api, household
     with DB() as db:
         config = db.get(ProviderConfig, 1)
         config.openrouter_require_zdr = require_zdr
-        result = request_provider(config, "unit", {"material": {"content": "Arbitrary synthetic school material"}})
+        source = "Arbitrary synthetic school material. " + output["explanation"]
+        result = request_provider(config, "unit", {"material": {"content": source}})
     route = calls[0]["provider"]
     assert calls[0]["temperature"] == 0
     assert calls[0]["reasoning"] == {"enabled": False, "exclude": True}
@@ -83,6 +86,8 @@ def test_real_free_route_keeps_deny_fixed_endpoint_and_zero_price(api, household
         "max_price": {"prompt": 0, "completion": 0, "request": 0},
     }
     assert catalog == [("fixture/model:free", "fixture-endpoint", False)]
+    assert len(result.data["questions"]) == 2
+    assert [q["type"] for q in result.data["questions"]] == ["choice", "gap"]
     assert result.cost_micros == 0
     assert "Arbitrary synthetic school material" in calls[0]["messages"][1]["content"][0]["text"]
 

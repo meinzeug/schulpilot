@@ -21,7 +21,9 @@ from schulpilot.db import DB, Activity, Attempt, Child, Job, Material, Subject, 
 from schulpilot.families import export_child
 from schulpilot.main import app
 from schulpilot.subject_registry import resolve
-from sqlalchemy import func, select
+from sqlalchemy import create_engine, func, select, update
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
 
 
 def install(data=None):
@@ -448,7 +450,12 @@ def test_local_refresh_defers_busy_units_and_resumes_without_retrying_any_model(
         unit_id = unit.id
         db.add(UnitSource(unit_id=unit.id, material_id=mid, revision=1))
     with DB.begin() as busy:
-        busy.scalar(select(LearningUnit).where(LearningUnit.id == unit_id).with_for_update())
+        if busy.bind.dialect.name == "sqlite":
+            # SQLite ignores FOR UPDATE; a real writer represents the same
+            # unavailable resource without assuming PostgreSQL row locking.
+            busy.execute(update(LearningUnit).where(LearningUnit.id == unit_id).values(topic=LearningUnit.topic))
+        else:
+            busy.scalar(select(LearningUnit).where(LearningUnit.id == unit_id).with_for_update())
         with ThreadPoolExecutor(max_workers=1) as pool:
             assert pool.submit(work_one).result(timeout=3) is False
     drain()
@@ -472,3 +479,17 @@ def test_interrupted_local_lease_is_recoverable_and_unknown_language_scope_empty
     assert not response["items"] and not response["has_known_level"]
     with DB() as db:
         assert db.scalar(select(CatalogRefresh.status)) == "completed"
+
+
+def test_sqlite_local_claim_does_not_hide_non_lock_database_errors(monkeypatch):
+    from schulpilot import catalog_jobs
+
+    isolated = create_engine("sqlite://")
+    monkeypatch.setattr(catalog_jobs, "DB", sessionmaker(isolated))
+    try:
+        with pytest.raises(OperationalError, match="no such table"):
+            catalog_jobs.work_one()
+        with isolated.connect() as connection:
+            assert connection.exec_driver_sql("PRAGMA busy_timeout").scalar() == 5000
+    finally:
+        isolated.dispose()

@@ -141,15 +141,16 @@ void main() {
                 .widget<NavigationBar>(find.byType(NavigationBar))
                 .onDestinationSelected!;
             saved = () => handler(1);
-          } else if (width < 1050) {
-            final handler = tester
-                .widget<NavigationRail>(find.byType(NavigationRail))
-                .onDestinationSelected!;
-            saved = () => handler(1);
           } else {
-            saved = tester
-                .widget<ListTile>(find.widgetWithText(ListTile, 'Wörter'))
-                .onTap!;
+            final rail = tester.widget<NavigationRail>(
+              find.byType(NavigationRail),
+            );
+            expect(
+              find.byWidget(rail.destinations[1].icon).hitTestable(),
+              findsOneWidget,
+            );
+            final handler = rail.onDestinationSelected!;
+            saved = () => handler(1);
           }
           state.familyId = 'new-family';
           saved();

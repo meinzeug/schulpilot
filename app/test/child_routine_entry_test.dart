@@ -208,6 +208,32 @@ void main() {
           lessThan(764),
           reason: 'Daily photos remain visible beside the primary saved round.',
         );
+        final learn = find
+            .ancestor(
+              of: find.text('Weiterlernen'),
+              matching: find.byType(FilledButton),
+            )
+            .first;
+        final scan = find
+            .ancestor(
+              of: find.text('Heutige Seiten scannen'),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        expect(learn.hitTestable(), findsOneWidget);
+        expect(scan.hitTestable(), findsOneWidget);
+        expect(tester.getSize(learn).height, greaterThanOrEqualTo(48));
+        expect(tester.getSize(scan).height, greaterThanOrEqualTo(48));
+        expect(
+          tester.getRect(learn).bottom,
+          lessThan(tester.getRect(scan).top),
+        );
+        expect(
+          tester.getRect(scan).bottom,
+          lessThan(
+            tester.getRect(find.byKey(const ValueKey('child-home-search'))).top,
+          ),
+        );
         expect(find.text('Heftseiten prüfen'), findsOneWidget);
         expect(find.text('Anderes Thema'), findsOneWidget);
         expect(find.text('Verstehen · Üben · Rückblick'), findsOneWidget);

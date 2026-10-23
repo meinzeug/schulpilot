@@ -10,6 +10,7 @@ import 'package:schulpilot/api.dart';
 import 'package:schulpilot/coaching_panel.dart';
 import 'package:schulpilot/dashboard.dart';
 import 'package:schulpilot/child_today_widgets.dart';
+import 'package:schulpilot/learning_plan_ui.dart';
 import 'package:schulpilot/ui.dart';
 
 Json _overview() =>
@@ -122,6 +123,29 @@ void main() {
       expect(
         tester.getRect(find.text('Heutige Seiten scannen')).bottom,
         lessThan(650),
+      );
+      final learn = find
+          .ancestor(
+            of: find.text('Weiterlernen'),
+            matching: find.byType(FilledButton),
+          )
+          .first;
+      final scan = find
+          .ancestor(
+            of: find.text('Heutige Seiten scannen'),
+            matching: find.byType(InkWell),
+          )
+          .first;
+      expect(learn.hitTestable(), findsOneWidget);
+      expect(scan.hitTestable(), findsOneWidget);
+      expect(tester.getSize(learn).height, greaterThanOrEqualTo(48));
+      expect(tester.getSize(scan).height, greaterThanOrEqualTo(48));
+      expect(tester.getRect(learn).bottom, lessThan(tester.getRect(scan).top));
+      expect(
+        tester.getRect(scan).bottom,
+        lessThan(
+          tester.getRect(find.byKey(const ValueKey('child-home-search'))).top,
+        ),
       );
       expect(tester.takeException(), isNull);
 
@@ -446,11 +470,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
     expect(requests.where((request) => request.method == 'POST'), isEmpty);
-    await tester.tap(
-      find
-          .descendant(of: find.byType(Dialog), matching: find.byType(ListTile))
-          .first,
+    final chosenRow = find.descendant(
+      of: find.byType(Dialog),
+      matching: find.widgetWithText(PlanRow, data['plan']['today'][0]['topic']),
     );
+    expect(chosenRow, findsOneWidget);
+    expect(tester.widget<PlanRow>(chosenRow).onTap, isNotNull);
+    final openRound = find.descendant(
+      of: chosenRow,
+      matching: find.byType(TextButton),
+    );
+    await tester.ensureVisible(openRound);
+    expect(openRound.hitTestable(), findsOneWidget);
+    await tester.tap(openRound);
     await tester.pumpAndSettle();
     expect(find.text('Lernrunde-Ziel'), findsOneWidget);
     expect(find.byType(Dialog), findsNothing);
