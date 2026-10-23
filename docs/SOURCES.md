@@ -1,4 +1,4 @@
-Interaktiver Ausbau23.10.2026 · Zielversion1.26.0+97, Deployment noch offen:
+Interaktiver Ausbau23.10.2026 · veröffentlicht als1.26.0+97:
 Die öffentliche und ausdrücklich bereitgestellte angemeldete simpleclub-App
 wurde im Browser auf Desktop und bei390×844px untersucht. Anfangs waren
 Übungen gesperrt; nach der mitgeteilten Unlimited-Plus-Freischaltung wurden

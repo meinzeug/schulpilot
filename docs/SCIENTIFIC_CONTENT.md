@@ -90,7 +90,7 @@ Auftrag geplant und später nur projiziert. Details:
 
 Prüfstand dieses Ausbaus:684gezielte Flutterfälle in25Dateien bestanden,
 anschließend33überschneidende Fälle nach äquivalenter Null-aware-Lintkorrektur;
-Analyse von21betroffenen Dartdateien ohne Befund.488Backendfälle in18Dateien,
+Analyse von21betroffenen Dartdateien ohne Befund.540Backendfälle in20Dateien,
 Ruff und Diffprüfung grün. Die lokalen geschützten Mockpfade prüfen Szenen und
 Zuordnungen; künstliche Rendererfixtures sind keine echte KI-Ausgabe.
 Die einmalige echte synthetische Modellprobe wurde wegen ungültiger Struktur
@@ -287,5 +287,5 @@ Darstellungskatalog zusätzlich lokal abgenommen:35neue Registry-/Schemafälle
 und13neue vollständige Provider-Mockpfade bestanden. Sie prüfen alle24Profile,
 endgültige Frage-/Blockgrenzen, normale material.subject-Aufgaben auf drei
 Anbieterwegen, Fachtrennung im Paket, Codex-Grenzen und ausgeschlossene reine
-Rückblicke/Sprachprojekte.48neue Fälle, keine echten Modellaufrufe; die finale
-vereinte20-Dateien-Backendprüfung läuft vor Veröffentlichung.
+Rückblicke/Sprachprojekte.Mit vier weiteren Legacy-Fallbackfällen52neue Fälle; keine echten
+Modellaufrufe. Die finale vereinte20-Dateien-Prüfung bestand540Fälle in196,40s.

@@ -1,3 +1,32 @@
+# Produktionsstand1.26.0+97 ·23.10.2026
+
+Live: https://schulpilot.dorfspy.de
+Produktcommit `11ab8d4e75d075ce3dabc111b9646f19b736c5e8`, Release `20261023T092606Z-11ab8d4`,
+main gepusht; Web, signierte Direct-APK und Play-AAB aus demselben sauberen Stand.
+
+Kompakter700px-Aufgabenraum mit angepasster Typografie, ehrlichem Bearbeitet-
+Zähler und fester Prüfleiste; Drag-and-drop mit Tippalternative, individuelle
+quellgebundene SceneV1-Animationen und begrenzte lokale Funktions-/Messdaten-/
+Logikexplorer. Die Aufgabenerstellung kennt jetzt je Fach Zweck und tatsächliche
+Fähigkeiten, abgeleitet aus dem endgültigen Schema. Normale Heftaufgaben leiten
+ihr Fach auch aus material.subject ab; Legacy-Textmaterial bleibt kompatibel.
+
+684gezielte Flutterfälle plus33überschneidende Nachprüfungen,540Backendfälle
+in20Dateien grün; Analyse/Ruff grün. Desktop-/Mobilbrowserprobe mit künstlichen
+Beispielen bestanden. Reguläre Paket-/Signatur-/Quell-/Geheimnisprüfungen bestanden,
+öffentliche APK und JavaScript bytegleich, fünf Dienste aktiv, Schema0031.
+Die einzige echte synthetische Modellprobe wurde verworfen und abgerechnet;
+kein weiterer Aufruf, kein erfolgreicher echter KI-Szenennachweis. Finale
+Quellen sind offline und mit Provider-Mocks geprüft. Vollständige GitHub-CI
+lief beim Releaseabschluss noch; deren Erfolg wird nicht vorweggenommen.
+
+Nachweise und Rückweg: [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
+Vor Rückweg gespeicherte scene-JSONs prüfen;96 ist nach neuen Szenen kein
+geeigneter Leser. Konfiguration, Google-Nachweis und verschlüsselte Sicherungen
+erhalten. Keine alten Datenbanken über neuere Kinderantworten zurückspielen.
+
+## Vorheriger Stand96
+
 # Produktionsstand 1.25.0+96 · 23.10.2026
 
 Live `20261023T061617Z-a02314d`, Produktcommit

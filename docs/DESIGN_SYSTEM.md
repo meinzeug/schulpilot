@@ -1,7 +1,7 @@
 # Schulpilot: gemeinsame Lernoberfläche
 
-Veröffentlichte Gestaltungsbasis **1.25.0+96**, interaktiver Ausbau zur
-Zielversion **1.26.0+97** am 23.10.2026; dessen Deployment ist noch offen. Die angemeldete
+Veröffentlichte Gestaltungsbasis **1.26.0+97** am23.10.2026, aufbauend auf
+**1.25.0+96**. Der interaktive Ausbau ist veröffentlicht. Die angemeldete
 simpleclub-App wurde auf ausdrücklichen Nutzerauftrag direkt bei
 1440×1000 px und mobil bei 390×844 px betrachtet. Die anfängliche Beobachtung
 umfasste Themenübersichten, Planvorlagen und zugängliche Lektionsseiten;

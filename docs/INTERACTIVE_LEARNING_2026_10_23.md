@@ -204,7 +204,7 @@ bedienen Funktion, Datenplot und Logik mit AppState tatsächlich bei390px/200%,
 einschließlich Reglergeste/rechter Schalter/Reset ohne horizontales Verschieben.
 Dies ist eine gezielte Auswahl, keine vollständige Projektsuite.
 
-488gezielte Backendfälle in18Dateien bestanden, Ruff für zwölf betroffene
+540gezielte Backendfälle in20Dateien bestanden, Ruff für zwölf betroffene
 Dateien und Diffprüfung ohne Befund. Die unabhängige Prüfung schloss Beleglücken
 bei vollständigen Pfeilbegriffen, materialübergreifenden Zuordnungspaaren und
 gegebenen erklärenden Zuordnungsgrafiken. Die vollständigen Begriffsgrenzen
@@ -240,11 +240,11 @@ Rendererfixtures sind keine validierte echte KI-Ausgabe. Auch die finale
 Tippzuordnung wurde mit zwei Paaren vollständig ausgefüllt; „Antwort prüfen“
 wurde erst dann aktiv und nicht betätigt. Die eigene Vorschautab und der Server
 wurden beendet, der Browserviewport zurückgesetzt.
-Build-/Deploymentbelege folgen in RELEASE_97_2026_10_23.md.
+Build-/Deploymentbelege stehen in RELEASE_97_2026_10_23.md.
 
 Darstellungskatalog zusätzlich lokal abgenommen:35neue Registry-/Schemafälle
 und13neue vollständige Provider-Mockpfade bestanden. Sie prüfen alle24Profile,
 endgültige Frage-/Blockgrenzen, normale material.subject-Aufgaben auf drei
 Anbieterwegen, Fachtrennung im Paket, Codex-Grenzen und ausgeschlossene reine
-Rückblicke/Sprachprojekte.48neue Fälle, keine echten Modellaufrufe; die finale
-vereinte20-Dateien-Backendprüfung läuft vor Veröffentlichung.
+Rückblicke/Sprachprojekte.Mit vier weiteren Legacy-Fallbackfällen52neue Fälle; keine echten
+Modellaufrufe. Die finale vereinte20-Dateien-Prüfung bestand540Fälle in196,40s.

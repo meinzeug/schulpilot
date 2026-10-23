@@ -383,3 +383,21 @@ kompatiblem Rückweg verwenden. Keine direkte SQL-Ausführung auf Familiendaten.
 Die lokalen Fachfixtures sind künstlich und ersetzen keinen externen Providerlauf,
 öffentlichen Browserlauf oder Android-Gerätetest. Der zugehörige Befundstatus und
 die Grenzen stehen in `docs/FACHTEST_2026_10_19.md`.
+
+## Interaktiver Ausbau1.26.0+97 ·23.10.2026
+
+Release `20261023T092606Z-11ab8d4`, Produktcode `11ab8d4e75d075ce3dabc111b9646f19b736c5e8`,
+Schema0031, fünf Dienste aktiv. Konfigurationsbackup:
+`/var/backups/schulpilot/interactive97-config-20261023T072723Z`; alle17Dateien und Google-Nachweis
+bytegleich erhalten, verschlüsselte Datenbank-/Upload-Sicherungen erfolgreich.
+Direct-APK, Play-AAB, Web und exaktes Reparaturarchiv geprüft; öffentliche APK
+und JavaScript stimmen bytegenau überein.
+
+Neues persistiertes kind=scene kann von96 nicht vollständig gelesen werden.
+Vor jedem Rückweg eigene Jobs abarbeiten lassen und aggregiert neueScene-JSONs
+in learning_units.questions, unit_coaching.report und jobs.result prüfen.
+Nach bereits gespeicherten Szenen kompatiblen97-Leser oder Vorwärts-Hotfix
+verwenden; Schema nicht zurückstufen und keine alten Daten über neue Antworten
+rücksichern. Die Nachprüfung zeigte dreimal0, nur als datierte Momentaufnahme.
+Vorheriger Release `20261023T061617Z-a02314d` erhalten.
+Vollständige Belege: [RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
