@@ -48,7 +48,9 @@ void main() {
     testWidgets(
       'unconfirmed availability $value stays closed without misleading starters',
       (t) async {
-        final data = f.contextResult('today')..remove('available');
+        final data = f.contextResult('today')
+          ..remove('available')
+          ..remove('notice');
         if (value != 'missing') data['available'] = value;
         final h = await f.open(t, respond: (_) async => f.reply(data));
         await f.tap(t, find.text('Buddy öffnen'));

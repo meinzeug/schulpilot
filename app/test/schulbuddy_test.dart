@@ -32,7 +32,9 @@ Json contextResult(
     'Worauf sollte ich achten?',
   ],
   'available': available,
-  if (!available) 'notice': 'Hier sind nur Bedienhinweise verfügbar.',
+  'notice': available
+      ? 'Schulbuddy erklärt und fragt nach. Chatantworten sind ungeprüfte Hilfe, keine bewerteten Aufgaben oder Kompetenznachweise.'
+      : 'Hier sind nur Bedienhinweise verfügbar.',
   'history': history,
 };
 Json turn({String status = 'ready', String? key}) => {

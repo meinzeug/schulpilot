@@ -293,6 +293,9 @@ class _SchulbuddyHostState extends State<SchulbuddyHost> {
   );
 }
 
+const _buddyIntroductionNotice =
+    'Schulbuddy erklärt und fragt nach. Chatantworten sind ungeprüfte Hilfe, keine bewerteten Aufgaben oder Kompetenznachweise.';
+
 String _buddyKey() =>
     'buddy-${List.generate(20, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
 String _buddyError(Object error) => error is ApiError
@@ -327,6 +330,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
   String? error, pendingKey;
   Json? pendingBody;
   String? replyTo;
+  bool? introductionExpanded;
   bool loading = true,
       sending = false,
       reading = false,
@@ -532,6 +536,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
       replyTo = null;
       newQuestionMode = false;
       restored = false;
+      introductionExpanded = null;
     });
     await load();
   }
@@ -580,6 +585,7 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       sending = true;
+      introductionExpanded = false;
       error = null;
       pendingBody = body;
       pendingKey = key;
@@ -761,6 +767,10 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
             .whereType<String>()
             .take(3)
             .toList();
+    final conversationStarted =
+        sending || pendingBody != null || turns.isNotEmpty;
+    final showIntroduction = introductionExpanded ?? !conversationStarted;
+    final notice = contextData?['notice'];
     final size = MediaQuery.sizeOf(context),
         keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final header = Padding(
@@ -811,9 +821,27 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Gespräch: ${contextData?['label'] ?? 'Dieser Bereich'}',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Gespräch: ${contextData?['label'] ?? 'Dieser Bereich'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (available)
+                IconButton(
+                  tooltip: showIntroduction
+                      ? 'Hinweise ausblenden'
+                      : 'Hinweise anzeigen',
+                  isSelected: showIntroduction,
+                  onPressed: () {
+                    if (!current || !available) return;
+                    setState(() => introductionExpanded = !showIntroduction);
+                  },
+                  icon: const Icon(Icons.info_outline_rounded),
+                ),
+            ],
           ),
           ValueListenableBuilder<SchulbuddyContext>(
             valueListenable: widget.currentPage,
@@ -826,14 +854,14 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
                   ),
           ),
           const SizedBox(height: 8),
-          if (available)
+          if (available && showIntroduction)
             Text(
               widget.state.isChild
                   ? 'Ich helfe dir Schritt für Schritt zu verstehen. Probiere selbst mit; ich verrate nicht gleich die Lösung. KI kann Fehler machen.'
                   : 'KI-Hilfe kann Fehler machen. Prüfe wichtige Angaben. Teile nur, was für deine Frage nötig ist.',
               style: TextStyle(color: context.palette.muted),
             )
-          else if (!loading)
+          else if (!available && !loading)
             Text(
               'Hier kannst du den vorhandenen Verlauf ansehen. Neue Fragen sind derzeit nicht möglich.',
               style: TextStyle(color: context.palette.muted),
@@ -843,8 +871,11 @@ class _SchulbuddyChatState extends State<_SchulbuddyChat>
               padding: EdgeInsets.all(12),
               child: LinearProgressIndicator(),
             ),
-          if (contextData?['notice'] is String)
-            Notice(contextData!['notice'])
+          if (notice is String &&
+              (notice != _buddyIntroductionNotice ||
+                  !available ||
+                  showIntroduction))
+            Notice(notice)
           else if (!loading && !available && error == null)
             const Notice(
               'Der Server hat den Chat in diesem Bereich nicht freigegeben. Du kannst den Status bewusst aktualisieren.',

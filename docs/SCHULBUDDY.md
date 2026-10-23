@@ -2,6 +2,23 @@
 
 Schulbuddy ist eine ausdrücklich gestartete, kontextbezogene Hilfe. Öffnen, Starter und Statusabfragen erzeugen weder KI-Aufträge noch Lernbelege. Ein eigener Kinderzugang oder ein berechtigter Elternzugang mit ausgewähltem Kind verwendet dessen vorhandenes Familien-/Kinderbudget. Nur leseberechtigte Eltern dürfen keinen neuen kostenpflichtigen Auftrag starten. Admins erhalten keine privaten Kinderkontexte und keinen unbudgetierten Chat.
 
+## Kompakter Gesprächsstart · 1.24.1+95
+
+Die beiden allgemeinen Einleitungsblöcke sind im leeren Chat sichtbar. Beim
+bewussten ersten Senden verschwinden sie sofort, auch während die Anfrage
+noch läuft oder ein Sendefehler angezeigt wird. Ein gespeicherter Verlauf
+startet ebenfalls eingeklappt, einschließlich wartender/fehlgeschlagener Turns
+und beim erneuten Öffnen. Ein reiner Entwurf startet noch kein Gespräch.
+
+Das Info-Symbol neben „Gespräch“ blendet die Hinweise auf Wunsch wieder ein.
+Ein ausdrücklicher Wechsel in einen neuen leeren Seitenkontext zeigt die
+Einleitung wieder. „Neue Frage ohne bisherigen Chat“ bleibt im bestehenden
+Verlauf kompakt. Konkrete Backend-Sperrgründe, unbekannte Serverhinweise,
+Sendefehler und Hinweise auf geänderte Quellen bleiben sichtbar. Nur der
+bekannte allgemeine Hinweis „Schulbuddy erklärt und fragt nach …“ wird mit
+der Einleitung eingeklappt. Dies ändert keine Freigaben, Requests, Aufträge,
+Antworten, Hilfemarker, Kosten oder Retry-Schlüssel.
+
 ## HTTP-Vertrag v1
 
 - `GET /api/schulbuddy/context`: `page_kind` aus `today, learn, words, homework, notebooks, account, messages, progress, plan, settings, admin, general`; optionale `child_id, unit_id, material_id, day_id, question_id`. `question_id` benötigt eine passende `unit_id` und muss zur tatsächlich sichtbaren Aufgabe gehören: zur jüngsten noch ungelesenen gespeicherten Rückmeldung oder anschließend zur aktuellen offenen Frage. Antwort: `context_key,label,starters` (höchstens drei), `available,notice,model,reasoning_effort,history` (höchstens acht eigene Turns).
