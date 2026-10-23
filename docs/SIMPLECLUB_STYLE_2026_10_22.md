@@ -35,5 +35,7 @@ Die konkreten Testergebnisse und verbleibenden Grenzen stehen in STATUS.md.
 Eine lokale Browservorschau mit ausschließlich künstlichen Daten dient der
 Sicht- und Navigationsprüfung. Sie kann keine KI-Anfrage, Zahlung oder andere
 schreibende Anfrage ausführen und ist kein neuer öffentlicher App-Modus.
-Die Änderung wird lokal gebaut; eine Veröffentlichung auf dem Produktionsserver
-ist in diesem Auftrag nicht enthalten.
+Am23.10.2026 wurde die Veröffentlichung über `ssh dorfspy` auf
+`schulpilot.dorfspy.de` ausdrücklich beauftragt. Der eigene Release1.24.0+94
+umfasst reguläres Web, signierte Direct-APK und Play-AAB. Build-, Deployment-
+und Rückwegnachweise stehen in RELEASE_94_2026_10_23.md.
