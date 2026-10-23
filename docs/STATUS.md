@@ -1,3 +1,25 @@
+# Produktionsstand1.28.0+100 ·23.10.2026
+
+Live: https://schulpilot.dorfspy.de
+Produktcommit `3fb4cb2bb9cecf28e4b3f935a6713fc1cfb265c7`, Release `20261023T143134Z-3fb4cb2`, main gepusht.
+
+[100 weitere sichtbare Bedien- und Lernverbesserungen](IDEAS_100_2026_10_23.md)
+für Aufgaben, Lesen, Plan, Hefte, Sammlungen, Wörter, Noten, Hausaufgaben und
+Navigation. Lokale Werkzeuge bewerten keine Antworten und erzeugen keine KI-Aufträge.
+
+Vollständige [CI39952366018](https://github.com/meinzeug/schulpilot/actions/runs/39952366018)
+grün:2207Backend-/2851Fluttertests,33/19übersprungen; Ruff, Analyse und Webbuild erfolgreich.
+Zusätzlich386Fälle im ursprünglichen24Dateien-Gate,211finaleRegressionsfälle
+in14Dateien und65Paging-/Ansichtsfälle; diese Läufe überschneiden sich.
+
+Reguläre signierte Artefakte an den Produktcommit gebunden; öffentliche APK-/JS-
+Bytes identisch. Fünf Dienste aktiv, Schema0031,17Konfigurationen und Google-
+Nachweis erhalten, verschlüsselte Sicherung erfolgreich. Nachweise und Grenzen:
+[RELEASE_100_2026_10_23.md](RELEASE_100_2026_10_23.md).
+Die zusätzlich gemeldete Lernrunden-/Materialkorrektur wird getrennt abgenommen.
+
+## Vorheriger Stand99
+
 # Produktionsstand 1.27.0+99 · 23.10.2026
 
 Live: https://schulpilot.dorfspy.de
