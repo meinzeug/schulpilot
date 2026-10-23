@@ -1333,7 +1333,9 @@ class WorkspaceShell extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: NavigationBar(
-                  height: 72,
+                  height: MediaQuery.textScalerOf(context).scale(1) > 1.4
+                      ? 96
+                      : 72,
                   labelBehavior:
                       NavigationDestinationLabelBehavior.onlyShowSelected,
                   selectedIndex: compactChild && selected >= 3 ? 3 : selected,
@@ -1503,6 +1505,7 @@ class _WorkspaceSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _WorkspaceIconRail(
     key: const ValueKey('workspace-sidebar'),
+    expanded: MediaQuery.textScalerOf(context).scale(1) <= 1.4,
     state: state,
     entries: entries,
     selected: selected,
@@ -1531,12 +1534,14 @@ class _WorkspaceRail extends StatelessWidget {
 
 /// A compact global navigation that leaves room for the actual learning content.
 class _WorkspaceIconRail extends StatelessWidget {
+  final bool expanded;
   final AppState state;
   final List<(IconData, String, String)> entries;
   final int selected;
 
   const _WorkspaceIconRail({
     super.key,
+    this.expanded = false,
     required this.state,
     required this.entries,
     required this.selected,
@@ -1553,6 +1558,7 @@ class _WorkspaceIconRail extends StatelessWidget {
     ];
 
     Widget destination(int index) => _WorkspaceNavButton(
+      expanded: expanded,
       icon: entries[index].$1,
       label: entries[index].$2,
       selected: index == selected,
@@ -1560,7 +1566,7 @@ class _WorkspaceIconRail extends StatelessWidget {
     );
 
     return Container(
-      width: 80,
+      width: expanded ? 224 : 80,
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: palette.panelSurface,
@@ -1576,7 +1582,7 @@ class _WorkspaceIconRail extends StatelessWidget {
                 key: const ValueKey('workspace-brand-home'),
                 tooltip: 'Zur Übersicht',
                 style: IconButton.styleFrom(
-                  fixedSize: const Size(48, 48),
+                  fixedSize: Size(expanded ? 208 : 48, 48),
                   padding: const EdgeInsets.all(8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -1587,25 +1593,57 @@ class _WorkspaceIconRail extends StatelessWidget {
                   state,
                   state.isAdmin ? '/admin' : '/app',
                 ),
-                icon: Container(
-                  padding: EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFEAF8FF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Image.asset(
-                    'assets/brand/schulpilot-mark.png',
-                    width: 28,
-                    height: 28,
-                    excludeFromSemantics: true,
-                  ),
+                icon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: expanded ? 40 : 32,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF8FF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Image.asset(
+                        'assets/brand/schulpilot-mark.png',
+                        width: 28,
+                        height: 28,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                    if (expanded) ...[
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'SCHULPILOT',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: palette.ink,
+                            fontFamily: 'Nunito',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
             Expanded(
               child: NavigationRail(
                 scrollable: true,
+                extended: expanded,
+                minExtendedWidth: 208,
                 minWidth: 64,
+                selectedLabelTextStyle: TextStyle(
+                  color: palette.ink,
+                  fontWeight: FontWeight.w800,
+                ),
+                unselectedLabelTextStyle: TextStyle(
+                  color: palette.muted,
+                  fontWeight: FontWeight.w600,
+                ),
                 groupAlignment: -1,
                 backgroundColor: Colors.transparent,
                 useIndicator: false,
@@ -1712,12 +1750,14 @@ class _WorkspaceRailIcon extends StatelessWidget {
 }
 
 class _WorkspaceNavButton extends StatefulWidget {
+  final bool expanded;
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onPressed;
 
   const _WorkspaceNavButton({
+    this.expanded = false,
     required this.icon,
     required this.label,
     required this.selected,
@@ -1745,7 +1785,7 @@ class _WorkspaceNavButtonState extends State<_WorkspaceNavButton> {
         selected: widget.selected,
         onTap: widget.onPressed,
         child: SizedBox(
-          width: 64,
+          width: widget.expanded ? 208 : 64,
           height: 48,
           child: Stack(
             children: [
@@ -1792,13 +1832,48 @@ class _WorkspaceNavButtonState extends State<_WorkspaceNavButton> {
                     focusColor: Colors.transparent,
                     hoverColor: Colors.transparent,
                     child: SizedBox(
-                      width: 48,
+                      width: widget.expanded ? 208 : 48,
                       height: 48,
-                      child: LearningNavIcon(
-                        widget.icon,
-                        size: 24,
-                        color: widget.selected ? palette.ink : palette.muted,
-                      ),
+                      child: widget.expanded
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  LearningNavIcon(
+                                    widget.icon,
+                                    size: 24,
+                                    color: widget.selected
+                                        ? palette.ink
+                                        : palette.muted,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: ExcludeSemantics(
+                                      child: Text(
+                                        widget.label,
+                                        style: TextStyle(
+                                          color: widget.selected
+                                              ? palette.ink
+                                              : palette.muted,
+                                          fontWeight: widget.selected
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : LearningNavIcon(
+                              widget.icon,
+                              size: 24,
+                              color: widget.selected
+                                  ? palette.ink
+                                  : palette.muted,
+                            ),
                     ),
                   ),
                 ),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'math_content.dart';
+import 'learning_graphic_frame.dart';
 import 'ui.dart';
 
 /// Finite source-validated scientific models, with no model-drawn paths.
@@ -20,7 +21,8 @@ class ScienceGraphic extends StatelessWidget {
     'process_cycle',
   };
   final Map<String, dynamic> block;
-  const ScienceGraphic(this.block, {super.key});
+  final Widget? action;
+  const ScienceGraphic(this.block, {super.key, this.action});
   List<double> get numbers =>
       (block['numbers'] as List).map((v) => (v as num).toDouble()).toList();
   List<String> get labels => (block['labels'] as List).cast<String>();
@@ -107,87 +109,80 @@ class ScienceGraphic extends StatelessWidget {
     'absolute': r'\(f(x)=|x|\)',
   };
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: SurfaceInset(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          MathText(
-            block['title'],
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-          ),
-          const SizedBox(height: 16),
-          if (block['kind'] == 'logic_table')
-            Table(
-              border: TableBorder.all(color: context.palette.surfaceBorder),
-              children: [
-                for (final row in logicRows.indexed)
-                  TableRow(
-                    decoration: row.$1 == 0
-                        ? BoxDecoration(color: context.palette.surfaceLow)
-                        : null,
-                    children: [
-                      for (final cell in row.$2)
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(
-                            cell,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 18),
-                          ),
+  Widget build(BuildContext context) => LearningGraphicFrame(
+    title: block['title'],
+    action: action,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (block['kind'] == 'logic_table')
+          Table(
+            border: TableBorder.all(color: context.palette.surfaceBorder),
+            children: [
+              for (final row in logicRows.indexed)
+                TableRow(
+                  decoration: row.$1 == 0
+                      ? BoxDecoration(color: context.palette.surfaceLow)
+                      : null,
+                  children: [
+                    for (final cell in row.$2)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          cell,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 18),
                         ),
-                    ],
-                  ),
-              ],
-            )
-          else
-            Semantics(
-              image: true,
-              label: MathText.spoken(description),
-              child: ExcludeSemantics(
-                child: SizedBox(
-                  height:
-                      block['kind'] == 'molecule' &&
-                          block['variant'] == 'ethanol'
-                      ? 280
-                      : 250,
-                  child: CustomPaint(
-                    painter: SciencePainter(
-                      block,
-                      Theme.of(context).colorScheme.onSurface,
-                      MediaQuery.textScalerOf(context).scale(14).clamp(14, 20),
-                      Theme.of(context).textTheme.bodyMedium?.fontFamily,
-                      palette: context.palette,
-                    ),
+                      ),
+                  ],
+                ),
+            ],
+          )
+        else
+          Semantics(
+            image: true,
+            label: MathText.spoken(description),
+            child: ExcludeSemantics(
+              child: SizedBox(
+                height:
+                    block['kind'] == 'molecule' && block['variant'] == 'ethanol'
+                    ? 280
+                    : 250,
+                child: CustomPaint(
+                  painter: SciencePainter(
+                    block,
+                    Theme.of(context).colorScheme.onSurface,
+                    MediaQuery.textScalerOf(context).scale(14).clamp(14, 20),
+                    Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                    palette: context.palette,
                   ),
                 ),
               ),
             ),
-          const SizedBox(height: 12),
-          if (block['kind'] == 'logic_table')
-            MathText(
+          ),
+        const SizedBox(height: 12),
+        if (block['kind'] == 'logic_table')
+          MathText(
+            description,
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          )
+        else
+          ExcludeSemantics(
+            child: MathText(
               description,
               style: const TextStyle(fontSize: 15, height: 1.5),
-            )
-          else
-            ExcludeSemantics(
-              child: MathText(
-                description,
-                style: const TextStyle(fontSize: 15, height: 1.5),
-              ),
             ),
-          if (block['kind'] == 'data_plot')
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                for (var i = 0; i < numbers.length; i += 2)
-                  Text('(${number(numbers[i])}; ${number(numbers[i + 1])})'),
-              ],
-            ),
-        ],
-      ),
+          ),
+        if (block['kind'] == 'data_plot')
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < numbers.length; i += 2)
+                Text('(${number(numbers[i])}; ${number(numbers[i + 1])})'),
+            ],
+          ),
+      ],
     ),
   );
 }

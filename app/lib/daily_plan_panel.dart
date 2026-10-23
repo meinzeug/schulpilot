@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'learning_tips.dart';
 import 'ui.dart';
+import 'learning_plan_ui.dart';
 
 class DailyPlanPanel extends StatelessWidget {
   final Json plan;
@@ -260,17 +261,14 @@ class DailyPlanPanel extends StatelessWidget {
           SizedBox(height: 12),
         ],
         if (childView && !showRemaining && availableDays.length > 3)
-          Text(
-            'Die nächsten drei Lerntage',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
+          PlanSectionTitle('Die nächsten drei Lerntage'),
         for (final day in days)
           LayoutBuilder(
             builder: (context, constraints) {
               final narrow =
                   constraints.maxWidth < 760 ||
                   MediaQuery.textScalerOf(context).scale(1) > 1.3;
-              return ListTile(
+              return PlanRow(
                 onTap:
                     state != null &&
                         childId != null &&
@@ -279,12 +277,11 @@ class DailyPlanPanel extends StatelessWidget {
                         if (current()) openTips(context, day);
                       }
                     : null,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  day['paused'] == true || day['free_day'] == true
+                leading: PlanDateMark(
+                  date: '${day['date']}',
+                  icon: day['paused'] == true || day['free_day'] == true
                       ? Icons.weekend_outlined
                       : Icons.calendar_today_outlined,
-                  color: context.palette.teal,
                 ),
                 title: Text(label(day['date'])),
                 subtitle: Column(
@@ -303,20 +300,14 @@ class DailyPlanPanel extends StatelessWidget {
                                 .join(' · '),
                     ),
                     if (narrow)
-                      Text(
-                        portion(day),
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      PlanPill(portion(day), icon: Icons.schedule_outlined),
                   ],
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (!narrow)
-                      Text(
-                        portion(day),
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      PlanPill(portion(day), icon: Icons.schedule_outlined),
                     if (state != null &&
                         childId != null &&
                         (day['items'] as List? ?? []).isNotEmpty)

@@ -1150,6 +1150,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       constraints: BoxConstraints(minHeight: 52),
       child: FilledButton.icon(
         key: ValueKey('learning-primary-action'),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         onPressed: actionBusy || !enabled ? null : () => perform(action),
         icon: actionBusy
             ? SizedBox(
@@ -1908,7 +1918,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         ],
         if (u['synthetic'] == true) ...[sampleNotice(u), SizedBox(height: 8)],
         Panel(
-          padding: EdgeInsets.all(20),
+          padding: EdgeInsets.all(
+            MediaQuery.sizeOf(context).width < 600 ? 18 : 24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1937,7 +1949,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                                 ? context.palette.mint
                                 : context.palette.surfaceLow,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(18),
                               side: BorderSide(
                                 color: choice == option
                                     ? context.palette.teal
@@ -1951,10 +1963,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                               enabled: !actionBusy,
                               title: MathText(
                                 option,
-                                style: TextStyle(fontSize: 17),
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  height: 1.45,
+                                  fontWeight: choice == option
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
                               ),
                               contentPadding: EdgeInsets.symmetric(
-                                horizontal: 10,
+                                horizontal: 12,
                                 vertical: 5,
                               ),
                               minTileHeight: 58,
@@ -2344,9 +2362,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         child: LearningContent(
           q['prompt'],
           style: TextStyle(
+            fontFamily: 'Nunito',
             fontSize: 22,
-            fontWeight: FontWeight.w700,
-            height: 1.35,
+            fontWeight: FontWeight.w800,
+            height: 1.4,
           ),
         ),
       ),
@@ -2569,11 +2588,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Panel(
-          tone: correct
-              ? PanelTone.success
-              : uncertain
-              ? PanelTone.info
-              : PanelTone.warning,
+          tone: PanelTone.neutral,
           padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2687,23 +2702,37 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      correct
-                          ? Icons.check_circle_rounded
-                          : Icons.lightbulb_outline_rounded,
-                      color: correct
-                          ? context.palette.successInk
-                          : uncertain
-                          ? context.palette.cyanInk
-                          : context.palette.warningInk,
-                      size: 28,
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: correct
+                            ? context.palette.successSurface
+                            : uncertain
+                            ? context.palette.cyanSurface
+                            : context.palette.warningSurface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        correct
+                            ? Icons.check_circle_rounded
+                            : Icons.lightbulb_outline_rounded,
+                        color: correct
+                            ? context.palette.successInk
+                            : uncertain
+                            ? context.palette.cyanInk
+                            : context.palette.warningInk,
+                        size: 22,
+                      ),
                     ),
                     SizedBox(width: 10),
                     Expanded(
                       child: MathText(
                         title,
                         style: TextStyle(
-                          fontSize: 23,
+                          fontFamily: 'Nunito',
+                          fontSize: 22,
+                          height: 1.3,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -2862,7 +2891,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   Widget inlineHelp(Json u, Json q) => Panel(
     key: hintTop,
-    tone: PanelTone.accent,
+    tone: PanelTone.neutral,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

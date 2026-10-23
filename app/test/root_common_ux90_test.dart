@@ -77,8 +77,18 @@ void main() {
           expect(find.text('Haus\naufgaben'), findsOneWidget);
           final node = t.getSemantics(find.bySemanticsLabel('Hausaufgaben'));
           expect(node.getSemanticsData().role, SemanticsRole.tab);
-          await t.tap(find.text('Haus\naufgaben'));
+          final destination = find.byWidgetPredicate(
+            (widget) =>
+                widget is NavigationDestination &&
+                widget.tooltip == 'Hausaufgaben',
+          );
+          expect(destination.hitTestable(), findsOneWidget);
+          await t.tap(destination);
           await t.pumpAndSettle();
+          expect(
+            t.getRect(find.text('Haus\naufgaben')).bottom,
+            lessThanOrEqualTo(650),
+          );
           expect(
             router.routeInformationProvider.value.uri.path,
             '/homework/synthetic-child',

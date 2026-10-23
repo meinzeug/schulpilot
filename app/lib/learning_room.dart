@@ -40,9 +40,9 @@ class LearningRoom extends StatelessWidget {
     const phases = ['Verstehen', 'Üben', 'Rückblick'];
     final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1.4;
     final header = Container(
-      padding: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: context.palette.panelSurface,
+        color: context.palette.cream,
         border: Border(
           bottom: BorderSide(color: context.palette.surfaceBorder),
         ),
@@ -58,7 +58,11 @@ class LearningRoom extends StatelessWidget {
                   IconButton(
                     tooltip: 'Lernrunde verlassen',
                     onPressed: onLeave,
-                    icon: Icon(Icons.arrow_back_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: context.palette.panelSurface,
+                      minimumSize: const Size(48, 48),
+                    ),
+                    icon: Icon(Icons.arrow_back_rounded, size: 22),
                   ),
                 Expanded(
                   child: Text(
@@ -67,7 +71,12 @@ class LearningRoom extends StatelessWidget {
                         : title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 18,
+                      height: 1.25,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 if (onPause != null && !enlarged)
@@ -82,7 +91,7 @@ class LearningRoom extends StatelessWidget {
           ),
           if (!keyboard)
             Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 4),
               child: Row(
                 children: [
                   for (var index = 0; index < phases.length; index++)
@@ -104,7 +113,7 @@ class LearningRoom extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Container(
-                                  height: 4,
+                                  height: 3,
                                   decoration: BoxDecoration(
                                     color: index < phase
                                         ? context.palette.successInk
@@ -114,7 +123,7 @@ class LearningRoom extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
-                                SizedBox(height: 8),
+                                SizedBox(height: 6),
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -125,7 +134,7 @@ class LearningRoom extends StatelessWidget {
                                           ? Icons.radio_button_checked_rounded
                                           : Icons
                                                 .radio_button_unchecked_rounded,
-                                      size: 14,
+                                      size: 13,
                                       color: index < phase
                                           ? context.palette.successInk
                                           : index == phase
@@ -166,7 +175,7 @@ class LearningRoom extends StatelessWidget {
             ),
           if (!keyboard && progress != null)
             Padding(
-              padding: EdgeInsets.fromLTRB(18, 6, 18, 0),
+              padding: EdgeInsets.fromLTRB(18, 4, 18, 0),
               child: Text(
                 progress!,
                 style: TextStyle(
@@ -186,7 +195,8 @@ class LearningRoom extends StatelessWidget {
             onPressed: onHelp,
             style: OutlinedButton.styleFrom(
               minimumSize: Size(60, 52),
-              padding: EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: 18),
+              shape: const StadiumBorder(),
             ),
             child: Text('Hilfe'),
           );
@@ -248,17 +258,10 @@ class LearningRoom extends StatelessWidget {
                 if (primaryAction != null || onHelp != null)
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      color: context.palette.panelSurface,
+                      color: context.palette.cream,
                       border: Border(
                         top: BorderSide(color: context.palette.surfaceBorder),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0x1414243D),
-                          blurRadius: 18,
-                          offset: Offset(0, -4),
-                        ),
-                      ],
                     ),
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(16, 10, 16, 10),

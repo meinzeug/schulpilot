@@ -35,19 +35,39 @@ class AdaptiveLearningStep extends StatelessWidget {
             ? 'Ein anderer Blick auf deine Aufgabe'
             : 'Schau dir den nächsten Schritt an');
     return Panel(
-      tone: PanelTone.info,
+      tone: PanelTone.neutral,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            Icons.explore_outlined,
-            size: 38,
-            color: context.palette.cyanInk,
-          ),
-          const SizedBox(height: 12),
-          MathText(
-            title,
-            style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: context.palette.cyanSurface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.explore_outlined,
+                  size: 22,
+                  color: context.palette.cyanInk,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: MathText(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 22,
+                    height: 1.3,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           if (checking)

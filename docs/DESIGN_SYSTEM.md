@@ -1,14 +1,28 @@
 # Schulpilot: gemeinsame Lernoberfläche
 
-Gestaltungsauftrag22.10.2026: Die angemeldete simpleclub-App wurde direkt im
-Browser auf Desktopbreite und bei390×844px angesehen. Die gemeinsame
-Schulpilot-Oberfläche übernimmt ruhige Anthrazitflächen, blaue Hauptaktionen,
-runde Karten, dünne Navigationsicons und farbige lokale Fachsymbole. Ab720px
-steht eine80px breite schwebende Iconleiste; mobil eine abgerundete, eingerückte
-Bottomnavigation. Kinderhefte starten als kompakte Fachliste; die bewusst
-gewählte Listen-/Kachelansicht bleibt beim Wiederöffnen erhalten. Die
-Startseitensuche öffnet den vorhandenen Fachfilter ohne Schreib-/KI-Aufruf.
-Details: [SIMPLECLUB_STYLE_2026_10_22.md](SIMPLECLUB_STYLE_2026_10_22.md).
+Gestaltungsstand 23.10.2026, geplant für **1.25.0+96**. Die angemeldete
+simpleclub-App wurde auf ausdrücklichen Nutzerauftrag direkt bei
+1440×1000 px und mobil bei 390×844 px betrachtet. Die Beobachtung umfasst das
+Thema „Brüche“, den Planerstellungsassistenten und die Vorlagenvorschau
+„Mathe Abitur NRW“ sowie die ersten zugänglichen Seiten der Lektion
+„Berechnung von Bruchteilen“ mit endlicher Torten-/Bruchdarstellung.
+Die Übung „Brüche verstehen“ war durch die Unlimited-Bezahlschranke gesperrt.
+Es gab weder einen Kauf noch eine Umgehung; die geschützten Aufgaben wurden
+nicht bedient oder abgenommen. Die sichtbare Themenübersicht, zugängliche
+Lektionsführung und Planvorschau dienen ausschließlich als Gestaltungsreferenz.
+
+Schulpilot übernimmt daraus ruhige Anthrazitflächen, klare Überschriften,
+kompakte Format-/Zeit-/Statusangaben, dünne Piktogramme und blaue pillenförmige
+Hauptaktionen. Marke, Icons, Vektorgrafiken und Lerninhalte bleiben eigene
+Schulpilot-Bestandteile; simpleclub-Assets, Lerntexte oder Kontodaten werden
+nicht übernommen. Die Darstellung verwendet die vorhandene gemeinsame
+Flutter-App und lokale Nunito-Schrift, ohne neue Pakete, externe Schriftabrufe
+oder Bilddienste. Frühere Gestaltungsgrundlage:
+[SIMPLECLUB_STYLE_2026_10_22.md](SIMPLECLUB_STYLE_2026_10_22.md).
+
+Die Kinderhefte starten als kompakte Fachliste; eine bewusst gewählte Listen-/
+Kachelansicht bleibt beim Wiederöffnen erhalten. Die Startseitensuche öffnet den
+vorhandenen Fachfilter ohne Schreib- oder KI-Aufruf.
 
 Bedienprüfung1.19.6: gespeicherte Übungsbelege stehen in der Elternübersicht vor
 der optionalen KI-Verwaltung. Listen kennzeichnen Laden, Fehler und leere
@@ -35,8 +49,8 @@ Hausaufgabenlisten kennzeichnen Selbstangaben ausdrücklich. Gemeinsame Palette,
 große Trefferflächen und begrenzte Kartenbreite bleiben erhalten. Fachlicher
 Ablauf und Datenschutz in [PARENT_LEARNING.md](PARENT_LEARNING.md).
 
-Stand20.10.2026, Zielversion1.15.0+65. Gemeinsame Flutter-Oberfläche für Web und
-Android; Kinder, Eltern und Administration verwenden dieselben semantischen
+Gemeinsame Flutter-Oberfläche für Web und Android; Kinder, Eltern und
+Administration verwenden dieselben semantischen
 Farben in `app/lib/app_palette.dart` und kontrollierten Komponenten in `ui.dart`.
 Der ausdrückliche Betreiberauftrag ersetzt die frühere reine Hellgestaltung.
 
@@ -76,14 +90,59 @@ reale Triage, priorisierte Betriebsaktionen und breite Verwaltungstabellen.
 Der jeweilige Rollenbereich folgt derselben Formensprache ohne Kinderfigur vor
 Berichten und Betriebsformularen.
 
-Eine globale Navigation: schwebende80px-Iconleiste ab720px, darunter eine
-eingerückte Touchnavigation mit sichtbarer Auswahl. Kontoziel unten in der Rail.
-Betrieb, Einrichtung, Verkauf und Push bleiben auch mobil erreichbar.
+Eine globale Navigation: Im Browser steht bei normaler Schrift ab 1050 px eine
+224 px breite beschriftete Rail. Bei 720–1049 px verwendet dieselbe Navigation
+80 px Breite; bei großer Schrift über dem Faktor 1,4 fällt auch die breite
+Browseransicht auf die kompakte 80 px-Rail mit zugänglichen Beschriftungen zurück.
+Darunter steht die eingerückte, abgerundete Touchnavigation mit sichtbarer
+Auswahl. Das Kontoziel bleibt unten in der Rail; Betrieb, Einrichtung, Verkauf
+und Push bleiben auch mobil erreichbar.
 Lokale Kontextreiter wiederholen keine zweite globale Menüleiste.
 Die geführte Lernrunde erhält ihren klaren Rückweg und die drei Phasen
 Verstehen, Üben, Rückblick. Frage, eigene Antwort und Rückmeldung bleiben
 zusammen. Antwortfeedback verschwindet erst nach ausdrücklichem Weitergehen.
 Hilfe und Hauptaktion haben feste Plätze außerhalb der Tastatur.
+
+## Lernpläne, Aufgaben und Fachgrafiken ab 1.25.0
+
+Die gemeinsamen Bausteine in `learning_plan_ui.dart` ordnen vorhandene Pläne:
+`PlanSectionTitle` zeigt kurze Abschnittstitel mit ruhiger Trennlinie;
+`PlanPill` bündelt bereits vorhandene Zeit-, Format- oder Statusangaben.
+`PlanSubjectMark` verwendet die eigenen lokalen Fachsymbole und
+`PlanDateMark` eine kompakte Datumsmarke. `PlanDayCard` gruppiert einen Lerntag,
+`PlanRow` stellt dessen tatsächliches Thema und die bestehende Aktion dar.
+Kinder-Kurzplan, nächste Lerntage, gespeicherter Lernweg und Elternwochenplan
+nutzen diese Formensprache. Reihenfolge, Termine, Verfügbarkeit, Pflichten,
+Mindestziele und Rückwege bestimmt weiterhin der bestehende Aufrufer.
+
+Der aktive `LearningRoom` verzichtet auf globale Navigation. Ein klarer Rückweg,
+dünne segmentartige Phasenführung und kompakte Fortschrittsangaben lassen Platz
+für die Aufgabe. Verstehen, Üben und Rückblick bleiben die vorhandenen drei
+Phasen. Die breite blaue Hauptaktion und die separate Hilfe haben ihren eigenen
+Platz außerhalb des Inhaltsscrollbereichs und oberhalb der Bildschirmtastatur.
+Große Schrift verwendet weiterhin den vorhandenen angepassten Aufbau.
+
+Aufgaben, Auswahlantworten und Erklärungen erhalten gleichmäßige Nunito-
+Typografie, ruhige Karten und eindeutige Auswahlrahmen. Auswahl bleibt eine echte
+Radio-Gruppe mit Tastaturbedienung; Texteingaben behalten ihre Controller und
+Entwürfe. Feedback zeigt die eigene Antwort zusammen mit dem bestehenden
+Urteil und einem kleinen farbigen Statussymbol auf neutraler Fläche.
+Unsicherheit, weitere Versuche und verwendete Unterstützung bleiben ausdrücklich
+unterschieden; Gestaltung erzeugt keine zusätzlichen Lernerfolge.
+
+`LearningGraphicFrame` rahmt bereits freigegebene Fachgrafiken einheitlich mit
+Titel und gut lesbarer eingelagerter Fläche. Die Vergrößerungsaktion steht bei
+ausreichender Breite neben dem Titel, bei schmalem Platz oder großer Schrift
+darunter. Die vorhandene lokale Zoomansicht bleibt an Konto und Familie gebunden
+und schließt bei Kontowechsel. Fachliche Daten, Geometrie, Farben mit fachlicher
+Bedeutung und Alternativtexte werden nicht dekorativ umgedeutet. `given`,
+`hint1`/`hint2`/`hint3` und `solution` bleiben die maßgeblichen Offenlegungsstufen.
+
+Diese Überarbeitung ändert keine Backendaufrufe, Berechtigungen, Quellen,
+Antworten, Bewertungen, Versuche, Lernzeit oder bewusst auszulösenden KI-Aktionen.
+Callbacks und Kontokontextprüfungen bleiben beim bestehenden Aufrufer. Die
+vorhandenen fachlichen Regeln gelten weiter:
+[SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
 
 ## Schrift und Grafik
 
@@ -127,6 +186,16 @@ Tastatur, tatsächliche Fokusrahmen, Entwurferhalt und reine Navigation ohne POS
 Zusätzliche Rendererfälle prüfen Wechsel beider Themen. Tatsächliche Browser-,
 Build- und Testergebnisse stehen in STATUS.md; diese Beschreibung ist keine
 vollständige WCAG-Zertifizierung, physische Android- oder Wirksamkeitsstudie.
+
+Abnahme des aktuellen Darstellungsstands: 717 Flutterfälle in 26 Dateien bestanden;
+die statische Analyse aller 20 geänderten Dartdateien blieb ohne Befund. Darunter
+sind die neuen Plan-/Grafikfälle für 320 px mit 200 % Schrift, 390 px und 1440 px,
+Freigabestufen, lokale Zoomaktionen und Kontowechsel sowie bestehende Lernraum-,
+Tastatur-, Antwort- und Zeitregressionen. Die eigene Browserprobe bei1440×1000 und390×844
+zeigt Planmodal, Aufgabenraum, Antwortkarten und lokalen Grafikzoom mit
+ausschließlich künstlichen Beispielen. Schreibende Requests sind dort gesperrt;
+keine echte KI oder Lernaktivität. Build-/Deploynachweise folgen in
+[RELEASE_96_2026_10_23.md](RELEASE_96_2026_10_23.md).
 
 Die gemeinsame Rechercheentscheidung mit Primärquellen und Grenzen ist in
 [CHILD_WORKSPACE_2026_10_20.md](CHILD_WORKSPACE_2026_10_20.md),

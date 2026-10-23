@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'learning_plan_ui.dart';
 
 class StudyPathPanel extends StatefulWidget {
   final AppState state;
@@ -673,8 +674,7 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                       child: Text('Alle Etappen zeigen'),
                     ),
                   for (final block in visibleBlocks)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
+                    PlanRow(
                       leading: Icon(
                         block['status'] == 'completed'
                             ? Icons.task_alt_rounded
@@ -684,8 +684,19 @@ class _StudyPathPanelState extends State<StudyPathPanel>
                       title: Text(
                         block['title'] ?? _phaseLabel(block['phase']),
                       ),
-                      subtitle: Text(
-                        '${block['label'] ?? _phaseLabel(block['phase'])} · ${block['question_count'] ?? 0} Aufgaben · ${_blockLabel(block['status'])}',
+                      subtitle: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          PlanPill(
+                            '${block['label'] ?? _phaseLabel(block['phase'])} · ${block['question_count'] ?? 0} Aufgaben · ${_blockLabel(block['status'])}',
+                            tone: block['status'] == 'completed'
+                                ? PlanPillTone.success
+                                : block['status'] == 'ready'
+                                ? PlanPillTone.info
+                                : PlanPillTone.neutral,
+                          ),
+                        ],
                       ),
                       trailing: Icon(
                         block['unit_id'] != null

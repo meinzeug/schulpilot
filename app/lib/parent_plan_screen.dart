@@ -15,6 +15,7 @@ import 'parent_insights_panel.dart';
 import 'parent_workspace_ui.dart';
 import 'parent_deadlines_dialog.dart';
 import 'ui.dart';
+import 'learning_plan_ui.dart';
 
 class ParentPlanScreen extends StatefulWidget {
   final AppState state;
@@ -1398,99 +1399,116 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                         ),
                       ),
                     for (final day in data!['plan']['week'])
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Panel(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                '${day['date'] == data!['plan']['date'] ? 'Heute · ' : ''}${weekDay(day['date'])}${friendlyDate(day['date'])}',
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              Text(
-                                '${day['planned_minutes']} Minuten vorgeschlagen',
-                              ),
-                              if (day['free_day'] == true ||
-                                  day['paused'] == true)
-                                const Text(
-                                  'Ohne festes Tagesziel · freiwilliges Lernen bleibt möglich',
-                                ),
-                              if ((day['items'] as List).isEmpty)
-                                const Text(
-                                  'Noch keine konkrete Runde eingeplant.',
-                                ),
-                              for (final item in day['items'])
-                                ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(Icons.menu_book_outlined),
-                                  title: Text(
-                                    '${item['subject']} · ${item['topic']}',
-                                  ),
-                                  subtitle: Text(
-                                    '${item['kind'] == 'unit'
-                                        ? 'Gespeicherte Runde · ${statusLabel(item['status'])} · '
-                                        : item['kind'] == 'material'
-                                        ? 'Heftseite als Grundlage · '
-                                        : item['kind'] == 'assignment'
-                                        ? 'Geplanter Elternauftrag · '
-                                        : item['kind'] == 'vocabulary'
-                                        ? 'Wortschatzvorschlag · '
-                                        : ''}${item['estimated_minutes']} Minuten vorgeschlagen${item['mandatory'] == true ? ' · verbindlicher Elternauftrag' : ''}${item['planning_source'] == 'ai_priority' ? ' · KI-Schwerpunkt' : ''}',
-                                  ),
-                                  trailing:
-                                      [
-                                        'unit',
-                                        'material',
-                                        'assignment',
-                                        'vocabulary',
-                                      ].contains(item['kind'])
-                                      ? const Icon(Icons.chevron_right)
-                                      : null,
-                                  onTap:
-                                      [
-                                        'unit',
-                                        'material',
-                                        'assignment',
-                                        'vocabulary',
-                                      ].contains(item['kind'])
-                                      ? () {
-                                          if (!own || loading) return;
-                                          if (item['kind'] == 'assignment') {
-                                            showTopic(
-                                              '${item['topic']}',
-                                              id: item['id'] as String?,
-                                            );
-                                          } else if (item['kind'] ==
-                                              'vocabulary') {
-                                            openRoute(
-                                              context,
-                                              Uri(
-                                                path:
-                                                    '/vocabulary/${widget.childId}',
-                                                queryParameters: {
-                                                  if (item['target_locale']
-                                                      is String)
-                                                    'locale':
-                                                        item['target_locale'],
-                                                },
-                                              ).toString(),
-                                            );
-                                          } else {
-                                            openRoute(
-                                              context,
-                                              '/${item['kind'] == 'unit' ? 'unit' : 'material'}/${item['id']}',
-                                            );
-                                          }
-                                        }
-                                      : null,
-                                ),
-                            ],
+                      PlanDayCard(
+                        title:
+                            '${day['date'] == data!['plan']['date'] ? 'Heute · ' : ''}${weekDay(day['date'])}${friendlyDate(day['date'])}',
+                        summary: Align(
+                          alignment: Alignment.centerLeft,
+                          child: PlanPill(
+                            '${day['planned_minutes']} Minuten vorgeschlagen',
+                            icon: Icons.schedule_outlined,
                           ),
                         ),
+                        children: [
+                          if (day['free_day'] == true || day['paused'] == true)
+                            const Text(
+                              'Ohne festes Tagesziel · freiwilliges Lernen bleibt möglich',
+                            ),
+                          if ((day['items'] as List).isEmpty)
+                            const Text('Noch keine konkrete Runde eingeplant.'),
+                          for (final item in day['items'])
+                            PlanRow(
+                              leading: PlanSubjectMark(
+                                subject: item['subject'] as String?,
+                                coverKey: item['cover_key'] as String?,
+                              ),
+                              title: Text(
+                                '${item['subject']} · ${item['topic']}',
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['kind'] == 'unit'
+                                        ? 'Gespeicherte Runde · ${statusLabel(item['status'])}'
+                                        : item['kind'] == 'material'
+                                        ? 'Heftseite als Grundlage'
+                                        : item['kind'] == 'assignment'
+                                        ? 'Geplanter Elternauftrag'
+                                        : item['kind'] == 'vocabulary'
+                                        ? 'Wortschatzvorschlag'
+                                        : '',
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      PlanPill(
+                                        '${item['estimated_minutes']} Minuten vorgeschlagen',
+                                        icon: Icons.schedule_outlined,
+                                      ),
+                                      if (item['mandatory'] == true)
+                                        const PlanPill(
+                                          'verbindlicher Elternauftrag',
+                                          tone: PlanPillTone.warning,
+                                        ),
+                                      if (item['planning_source'] ==
+                                          'ai_priority')
+                                        const PlanPill(
+                                          'KI-Schwerpunkt',
+                                          tone: PlanPillTone.info,
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              trailing:
+                                  [
+                                    'unit',
+                                    'material',
+                                    'assignment',
+                                    'vocabulary',
+                                  ].contains(item['kind'])
+                                  ? const Icon(Icons.chevron_right)
+                                  : null,
+                              onTap:
+                                  [
+                                    'unit',
+                                    'material',
+                                    'assignment',
+                                    'vocabulary',
+                                  ].contains(item['kind'])
+                                  ? () {
+                                      if (!own || loading) return;
+                                      if (item['kind'] == 'assignment') {
+                                        showTopic(
+                                          '${item['topic']}',
+                                          id: item['id'] as String?,
+                                        );
+                                      } else if (item['kind'] == 'vocabulary') {
+                                        openRoute(
+                                          context,
+                                          Uri(
+                                            path:
+                                                '/vocabulary/${widget.childId}',
+                                            queryParameters: {
+                                              if (item['target_locale']
+                                                  is String)
+                                                'locale': item['target_locale'],
+                                            },
+                                          ).toString(),
+                                        );
+                                      } else {
+                                        openRoute(
+                                          context,
+                                          '/${item['kind'] == 'unit' ? 'unit' : 'material'}/${item['id']}',
+                                        );
+                                      }
+                                    }
+                                  : null,
+                            ),
+                        ],
                       ),
                   ],
                 ],

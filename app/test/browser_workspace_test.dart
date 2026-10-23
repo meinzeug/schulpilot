@@ -188,6 +188,18 @@ void main() {
         };
         for (final label in labels) {
           expect(_navText(width, label), findsOneWidget);
+          if (width >= 1050) {
+            expect(
+              find
+                  .descendant(
+                    of: _navigation(width),
+                    matching: find.text(label),
+                  )
+                  .hitTestable(),
+              findsOneWidget,
+              reason: 'Wide navigation keeps $label visibly readable.',
+            );
+          }
         }
         for (final label in [
           'Heute',

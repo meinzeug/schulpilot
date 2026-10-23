@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'math_content.dart';
+import 'learning_graphic_frame.dart';
 import 'science_graphic.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
@@ -24,13 +25,16 @@ class SubjectPresentation extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final b in blocks) ...[
-          SubjectGraphic(Json.from(b)),
-          if (state != null)
-            GraphicZoom(
-              state: state!,
-              block: Json.from(b),
-              render: (value) => SubjectGraphic(value),
-            ),
+          SubjectGraphic(
+            Json.from(b),
+            action: state == null
+                ? null
+                : GraphicZoom(
+                    state: state!,
+                    block: Json.from(b),
+                    render: (value) => SubjectGraphic(value),
+                  ),
+          ),
         ],
       ],
     );
@@ -39,7 +43,8 @@ class SubjectPresentation extends StatelessWidget {
 
 class SubjectGraphic extends StatelessWidget {
   final Json block;
-  const SubjectGraphic(this.block, {super.key});
+  final Widget? action;
+  const SubjectGraphic(this.block, {super.key, this.action});
   List<String> get labels => (block['labels'] as List? ?? []).cast<String>();
   List<num> get numbers => (block['numbers'] as List? ?? []).cast<num>();
   String number(num v) =>
@@ -175,259 +180,251 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
-    if (ScienceGraphic.kinds.contains(kind)) return ScienceGraphic(block);
+    if (ScienceGraphic.kinds.contains(kind)) {
+      return ScienceGraphic(block, action: action);
+    }
     final text = description;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: SurfaceInset(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            MathText(
-              block['title'] ?? 'Schau genau hin',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+    return LearningGraphicFrame(
+      title: block['title'] ?? 'Schau genau hin',
+      action: action,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (vectorKinds.contains(kind))
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  image: true,
+                  label: accessibleDescription,
+                  child: ExcludeSemantics(
+                    child: SizedBox(
+                      height: 220,
+                      child: CustomPaint(
+                        painter: SubjectVectorPainter(
+                          block,
+                          Theme.of(context).colorScheme.onSurface,
+                          MediaQuery.textScalerOf(context).scale(14) / 14,
+                          Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                          palette: context.palette,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (kind == 'colour_wheel')
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final (label, colour) in colorLegend)
+                        Chip(
+                          avatar: CircleAvatar(backgroundColor: colour),
+                          label: Text(label),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    ],
+                  ),
+              ],
             ),
-            const SizedBox(height: 12),
-            if (vectorKinds.contains(kind))
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+          if (kind == 'forms' && block['variant'] == 'pollination')
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final step in labels.indexed) ...[
                   Semantics(
                     image: true,
-                    label: accessibleDescription,
+                    label: step.$2,
                     child: ExcludeSemantics(
                       child: SizedBox(
-                        height: 220,
+                        height: 100,
                         child: CustomPaint(
-                          painter: SubjectVectorPainter(
-                            block,
-                            Theme.of(context).colorScheme.onSurface,
-                            MediaQuery.textScalerOf(context).scale(14) / 14,
-                            Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                          painter: PollinationPainter(
+                            step.$1,
                             palette: context.palette,
                           ),
                         ),
                       ),
                     ),
                   ),
-                  if (kind == 'colour_wheel')
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        for (final (label, colour) in colorLegend)
-                          Chip(
-                            avatar: CircleAvatar(backgroundColor: colour),
-                            label: Text(label),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                      ],
+                  if (step.$1 > 0)
+                    const Icon(
+                      Icons.arrow_downward_rounded,
+                      semanticLabel: 'Danach',
                     ),
-                ],
-              ),
-            if (kind == 'forms' && block['variant'] == 'pollination')
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final step in labels.indexed) ...[
-                    Semantics(
-                      image: true,
-                      label: step.$2,
-                      child: ExcludeSemantics(
-                        child: SizedBox(
-                          height: 100,
-                          child: CustomPaint(
-                            painter: PollinationPainter(
-                              step.$1,
-                              palette: context.palette,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (step.$1 > 0)
-                      const Icon(
-                        Icons.arrow_downward_rounded,
-                        semanticLabel: 'Danach',
-                      ),
-                    SurfaceInset(
-                      child: Text(
-                        '${step.$1 + 1}. ${step.$2}',
-                        style: const TextStyle(fontSize: 17),
-                      ),
-                    ),
-                  ],
-                ],
-              )
-            else if (kind == 'forms')
-              labels.map(formPair).every((pair) => pair != null)
-                  ? Table(
-                      border: TableBorder.all(
-                        color: context.palette.surfaceBorder,
-                      ),
-                      defaultVerticalAlignment:
-                          TableCellVerticalAlignment.middle,
-                      children: [
-                        for (final pair in labels.map(formPair))
-                          TableRow(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: MathText(pair![0]),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: MathText(pair[1]),
-                              ),
-                            ],
-                          ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final label in labels)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: SurfaceInset(child: MathText(label)),
-                          ),
-                      ],
-                    )
-            else if (kind == 'money' || kind == 'place_values') ...[
-              for (var i = 0; i < labels.length; i++)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  child: SurfaceInset(
-                    child: MathText(
-                      '${labels[i]}${kind == 'money' ? '  ${number(numbers[i])} €' : ''}',
+                  SurfaceInset(
+                    child: Text(
+                      '${step.$1 + 1}. ${step.$2}',
                       style: const TextStyle(fontSize: 17),
                     ),
                   ),
-                ),
-              if (kind == 'place_values')
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (var i = 0; i < numbers.length; i++)
-                      Chip(
-                        label: Text(
-                          '${math.pow(2, numbers.length - i - 1).toInt()}er: ${number(numbers[i])}',
-                        ),
-                      ),
-                  ],
-                ),
-            ] else if (!vectorKinds.contains(kind)) ...[
-              for (var i = 0; i < labels.length; i++) ...[
-                if (i > 0 &&
-                    {
-                      'food_chain',
-                      'water_cycle',
-                      'flowchart',
-                      'movement',
-                      'seasons',
-                      'timeline',
-                    }.contains(kind))
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 18),
-                      child: Icon(Icons.arrow_downward_rounded),
-                    ),
-                  ),
-                if (kind == 'flowchart')
-                  FlowNode(
-                    text: labels[i],
-                    role: i == 0 || i == labels.length - 1
-                        ? 'boundary'
-                        : i == 1 || i == labels.length - 2
-                        ? 'io'
-                        : 'process',
-                  )
-                else
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 5),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: context.palette.panelSurface,
-                      border: Border.all(color: context.palette.surfaceBorder),
-                      borderRadius: BorderRadius.circular(
-                        kind == 'speech' || kind == 'perspectives' ? 22 : 10,
-                      ),
-                    ),
-                    child: MathText(
-                      '${kind == 'sentence' ? '${i + 1}. ' : ''}${labels[i]}',
-                      style: TextStyle(
-                        fontSize: 17,
-                        decoration:
-                            (block['marks'] as List? ?? []).any(
-                              (m) => m['index'] == i,
-                            )
-                            ? TextDecoration.underline
-                            : null,
-                      ),
-                    ),
-                  ),
-                for (final mark in block['marks'] as List? ?? [])
-                  if (mark['index'] == i)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        mark['role'] == 'subject'
-                            ? 'Subjekt – wer oder was?'
-                            : 'Prädikat – was geschieht?',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: context.palette.cyanInk,
-                        ),
-                      ),
-                    ),
+                ],
               ],
-              if (kind == 'water_cycle' || kind == 'seasons')
-                const Row(
-                  children: [
-                    Icon(Icons.refresh_rounded),
-                    SizedBox(width: 8),
-                    Expanded(child: Text('Zurück zum Anfang')),
-                  ],
+            )
+          else if (kind == 'forms')
+            labels.map(formPair).every((pair) => pair != null)
+                ? Table(
+                    border: TableBorder.all(
+                      color: context.palette.surfaceBorder,
+                    ),
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      for (final pair in labels.map(formPair))
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: MathText(pair![0]),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: MathText(pair[1]),
+                            ),
+                          ],
+                        ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final label in labels)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: SurfaceInset(child: MathText(label)),
+                        ),
+                    ],
+                  )
+          else if (kind == 'money' || kind == 'place_values') ...[
+            for (var i = 0; i < labels.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                child: SurfaceInset(
+                  child: MathText(
+                    '${labels[i]}${kind == 'money' ? '  ${number(numbers[i])} €' : ''}',
+                    style: const TextStyle(fontSize: 17),
+                  ),
                 ),
+              ),
+            if (kind == 'place_values')
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (var i = 0; i < numbers.length; i++)
+                    Chip(
+                      label: Text(
+                        '${math.pow(2, numbers.length - i - 1).toInt()}er: ${number(numbers[i])}',
+                      ),
+                    ),
+                ],
+              ),
+          ] else if (!vectorKinds.contains(kind)) ...[
+            for (var i = 0; i < labels.length; i++) ...[
+              if (i > 0 &&
+                  {
+                    'food_chain',
+                    'water_cycle',
+                    'flowchart',
+                    'movement',
+                    'seasons',
+                    'timeline',
+                  }.contains(kind))
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 18),
+                    child: Icon(Icons.arrow_downward_rounded),
+                  ),
+                ),
+              if (kind == 'flowchart')
+                FlowNode(
+                  text: labels[i],
+                  role: i == 0 || i == labels.length - 1
+                      ? 'boundary'
+                      : i == 1 || i == labels.length - 2
+                      ? 'io'
+                      : 'process',
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 5),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.palette.panelSurface,
+                    border: Border.all(color: context.palette.surfaceBorder),
+                    borderRadius: BorderRadius.circular(
+                      kind == 'speech' || kind == 'perspectives' ? 22 : 10,
+                    ),
+                  ),
+                  child: MathText(
+                    '${kind == 'sentence' ? '${i + 1}. ' : ''}${labels[i]}',
+                    style: TextStyle(
+                      fontSize: 17,
+                      decoration:
+                          (block['marks'] as List? ?? []).any(
+                            (m) => m['index'] == i,
+                          )
+                          ? TextDecoration.underline
+                          : null,
+                    ),
+                  ),
+                ),
+              for (final mark in block['marks'] as List? ?? [])
+                if (mark['index'] == i)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      mark['role'] == 'subject'
+                          ? 'Subjekt – wer oder was?'
+                          : 'Prädikat – was geschieht?',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: context.palette.cyanInk,
+                      ),
+                    ),
+                  ),
             ],
-            const SizedBox(height: 8),
-            if (kind == 'picture_words' || kind == 'mindmap' || kind == 'plant')
-              for (var i = 0; i < labels.length; i++)
-                Text('${i + 1}: ${labels[i]}'),
-            if (vectorKinds.contains(kind))
-              ExcludeSemantics(
-                child: MathText(
-                  text,
-                  style: const TextStyle(fontSize: 15, height: 1.45),
-                ),
-              )
-            else
-              MathText(
+            if (kind == 'water_cycle' || kind == 'seasons')
+              const Row(
+                children: [
+                  Icon(Icons.refresh_rounded),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Zurück zum Anfang')),
+                ],
+              ),
+          ],
+          const SizedBox(height: 8),
+          if (kind == 'picture_words' || kind == 'mindmap' || kind == 'plant')
+            for (var i = 0; i < labels.length; i++)
+              Text('${i + 1}: ${labels[i]}'),
+          if (vectorKinds.contains(kind))
+            ExcludeSemantics(
+              child: MathText(
                 text,
                 style: const TextStyle(fontSize: 15, height: 1.45),
               ),
-            if (kind == 'timeline' && block['variant'] == 'centuries') ...[
-              const SizedBox(height: 8),
-              for (
-                var c = ((numbers[0] - 1) ~/ 100) + 1;
-                c <= ((numbers[1] - 1) ~/ 100) + 1 && c <= 30;
-                c++
-              )
-                Text('$c. Jahrhundert: ${100 * (c - 1) + 1}–${100 * c}'),
-            ],
-            if ([
-              'reflection',
-              'creative',
-              'self_report',
-              'movement',
-            ].contains(block['evidence_kind']))
-              const Text(
-                'Deine Idee zählt als eigener Beitrag, nicht als richtig/falsch gemessene Fähigkeit.',
-              ),
+            )
+          else
+            MathText(text, style: const TextStyle(fontSize: 15, height: 1.45)),
+          if (kind == 'timeline' && block['variant'] == 'centuries') ...[
+            const SizedBox(height: 8),
+            for (
+              var c = ((numbers[0] - 1) ~/ 100) + 1;
+              c <= ((numbers[1] - 1) ~/ 100) + 1 && c <= 30;
+              c++
+            )
+              Text('$c. Jahrhundert: ${100 * (c - 1) + 1}–${100 * c}'),
           ],
-        ),
+          if ([
+            'reflection',
+            'creative',
+            'self_report',
+            'movement',
+          ].contains(block['evidence_kind']))
+            const Text(
+              'Deine Idee zählt als eigener Beitrag, nicht als richtig/falsch gemessene Fähigkeit.',
+            ),
+        ],
       ),
     );
   }

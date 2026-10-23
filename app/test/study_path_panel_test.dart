@@ -257,7 +257,7 @@ void main() {
       expect(find.textContaining('4 Aufgaben · Bearbeitet'), findsOneWidget);
       expect(find.textContaining('4 Aufgaben · Bereit'), findsOneWidget);
       expect(find.textContaining('4 Aufgaben · Geplant'), findsOneWidget);
-      final stage = find.widgetWithText(ListTile, 'Brüche second');
+      final stage = find.widgetWithText(TextButton, 'Brüche second');
       await tester.ensureVisible(stage);
       await tester.tap(stage);
       await tester.pump();

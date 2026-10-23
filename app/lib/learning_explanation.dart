@@ -100,15 +100,20 @@ class _LearningExplanationState extends State<LearningExplanation> {
             liveRegion: true,
             child: MathText(
               'Schritt ${current + 1} von ${chunks.length}',
-              style: TextStyle(color: context.palette.muted, fontSize: 13),
+              style: TextStyle(
+                color: context.palette.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           SizedBox(height: 10),
         ],
         if (chunks.length > 1)
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TextButton.icon(
                 onPressed: () => setState(() => showAll = !showAll),
@@ -132,6 +137,12 @@ class _LearningExplanationState extends State<LearningExplanation> {
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Erklärungsschritt wählen',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      constraints: BoxConstraints(minHeight: 52),
                     ),
                     items: [
                       for (var i = 0; i < chunks.length; i++)
@@ -145,6 +156,7 @@ class _LearningExplanationState extends State<LearningExplanation> {
                 ),
             ],
           ),
+        if (chunks.length > 1) const SizedBox(height: 16),
         LearningContent(showAll ? widget.text : chunks[current]),
         SizedBox(height: 12),
         Wrap(

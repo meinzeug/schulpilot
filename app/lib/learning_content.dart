@@ -45,7 +45,13 @@ class LearningContent extends StatelessWidget {
       children: [
         for (final block in visible.indexed)
           Padding(
-            padding: const EdgeInsets.only(bottom: 18),
+            padding: EdgeInsets.only(
+              bottom:
+                  block.$1 == visible.length - 1 &&
+                      !(compact && parts.length > 3)
+                  ? 0
+                  : 16,
+            ),
             child: _Section(
               block.$2,
               style: style,
@@ -85,9 +91,10 @@ class _Section extends StatelessWidget {
       return MathText(
         text.replaceFirst(RegExp(r'^#{1,3}\s+'), ''),
         style: const TextStyle(
-          fontSize: 21,
+          fontFamily: 'Nunito',
+          fontSize: 22,
           height: 1.35,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
         ),
       );
     }

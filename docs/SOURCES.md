@@ -1,3 +1,39 @@
+Gestaltungsfortsetzung 23.10.2026, geplante Version 1.25.0+96: tatsächliche
+visuelle Primärreferenz war die auf Nutzerauftrag angemeldete
+[simpleclub-Webapp](https://app.simpleclub.com/search), direkt bedient bei
+1440×1000 px und 390×844 px. Angesehen wurden die Themenübersicht „Brüche“,
+der Planerstellungsassistent, die Vorlagenvorschau „Mathe Abitur NRW“ und die
+ersten zugänglichen Seiten von „Berechnung von Bruchteilen“ einschließlich
+einer endlichen Torten-/Bruchdarstellung. „Brüche verstehen“ zeigte eine
+Unlimited-Bezahlschranke; kein Kauf, keine Umgehung und kein Zugriff auf die
+gesperrten Aufgaben. Daraus folgt ausdrücklich keine Abnahme bezahlter Übungen
+oder der gesamten Lektion.
+
+Übernommen werden Gestaltungsprinzipien: ruhige dunkle Flächen, Nunito,
+kompakte beschriftete Lernplanzeilen, farbige Fachmarken, dünne Piktogramme,
+segmentartige Fortschrittsführung und eine feste blaue Pillen-Hauptaktion.
+Implementierungsquellen sind die eigene bestehende Flutter-App, eigene
+Canvas-Icons in `schulpilot_icons.dart`, lokale Fachsymbole, die neuen
+`PlanSectionTitle`/`PlanPill`/`PlanSubjectMark`/`PlanDateMark`/`PlanDayCard`/
+`PlanRow`-Bausteine und der gemeinsame `LearningGraphicFrame`. Die Browserrail
+ist ab 1050 px bei normaler Schrift 224 px breit und beschriftet, darunter ab 720 px
+80 px; große Schrift verwendet die kompakte Variante. Keine simpleclub-Assets,
+Lerntexte, Markenbestandteile oder Kontozugänge wurden in Schulpilot eingebaut.
+Keine neuen Pakete, externen Schrift-/Bildabrufe oder Inhaltsanbieter.
+
+Vorhandene Aufrufer behalten Callbacks, Daten, Rollen- und Kontoprüfungen,
+Quellenbindung, Antwort-/Versuchsbewertung, aktive Zeit und explizite KI-Aktionen.
+Fachgrafiken behalten ihre endlichen geprüften Modelle und Offenlegungsstufen;
+die responsive Rahmung und lokale Zoomansicht erzeugen keine Lernbelege.
+Tatsächlicher Prüfstand: 717 Flutterfälle in 26 Dateien bestanden; statische Analyse
+aller 20 geänderten Dartdateien ohne Befund. Eigene Browserprobe bei1440×1000
+und390×844: Planmodal, Aufgabenraum, Antwortkarten und Grafikzoom mit
+künstlichen Beispielen; alle schreibenden Requests gesperrt. Build-/Deploybelege
+stehen in [RELEASE_96_2026_10_23.md](RELEASE_96_2026_10_23.md). Kein bezahlter
+Inhalts- oder umfassender WCAG-Nachweis. Gestaltungsregeln:
+[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md); fachliche Grenzen:
+[SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
+
 Schulbuddy23.10.2026: ausdrücklich bereitgestellter mobiler Screenshot und
 bestehende gemeinsame Flutter-Implementierung. Beide allgemeinen Hinweise
 nach Gesprächsstart kompakt, Abruf über Info-Symbol; echte Sperr-/Fehlerhinweise
@@ -13,7 +49,7 @@ keine neuen Pakete oder Dienste. Belege: RELEASE_94_2026_10_23.md.
 Gestaltung22.10.2026: visuelle Primärreferenz auf ausdrücklichen Nutzerauftrag
 direkt im angemeldeten Browser geprüft: https://app.simpleclub.com/search,
 Home, Fach Mathematik, Bibliothek und Bruch-Lektionsansicht. Desktop sowie
-390×844px: dunkle Arbeitsfläche, abgesetzte Karten, schmale Iconleiste bzw.
+390×844 px: dunkle Arbeitsfläche, abgesetzte Karten, schmale Iconleiste bzw.
 schwebende Bottomnavigation, Reiterunterlinien, farbige Fachsymbole. Umsetzung
 in der vorhandenen Flutter3.47.7/Dart3.13.5-App mit lokalem Nunito, eigenen
 Canvas-Navigationsicons und eigenen Fachbadges. Keine neuen Pakete oder

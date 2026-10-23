@@ -33,9 +33,13 @@ class _GraphicZoomState extends State<GraphicZoom> {
     final old = view;
     view = null;
     if (old != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      final binding = WidgetsBinding.instance;
+      binding.addPostFrameCallback((_) {
         if (old.isActive) old.navigator?.removeRoute(old);
       });
+      // Account changes can arrive while the UI is idle. A post-frame callback
+      // alone would then leave the private dialog visible until another frame.
+      binding.ensureVisualUpdate();
     }
   }
 
@@ -70,7 +74,9 @@ class _GraphicZoomState extends State<GraphicZoom> {
   }
 
   Future<void> open() async {
-    if (!current || view != null || ModalRoute.of(context)?.isCurrent == false) {
+    if (!current ||
+        view != null ||
+        ModalRoute.of(context)?.isCurrent == false) {
       return;
     }
     final block = Json.from(jsonDecode(jsonEncode(widget.block)));

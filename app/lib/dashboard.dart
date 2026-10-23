@@ -19,6 +19,7 @@ import 'parent_activity_timeline.dart';
 import 'parent_workspace_ui.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'learning_plan_ui.dart';
 
 class DashboardScreen extends StatelessWidget {
   final AppState state;
@@ -659,12 +660,10 @@ class _ChildDetailScreenState extends State<ChildDetailScreen>
                       ),
                       SizedBox(height: 24),
                       if ((plan['week'] as List? ?? []).isNotEmpty) ...[
-                        Panel(
-                          child: DailyPlanPanel(
-                            plan: plan,
-                            state: state,
-                            childId: child['id'],
-                          ),
+                        DailyPlanPanel(
+                          plan: plan,
+                          state: state,
+                          childId: child['id'],
                         ),
                         SizedBox(height: 20),
                       ],
@@ -1579,6 +1578,7 @@ Future<void> _showChildPlan(
                             : 'Dein Tagesziel ist noch offen.',
                         style: TextStyle(color: context.palette.muted),
                       ),
+                    if (today.isNotEmpty) PlanSectionTitle('Heute eingeplant'),
                     for (final item in today)
                       _ChildPlanRow(
                         state: state,
@@ -1613,10 +1613,7 @@ Future<void> _showChildPlan(
                     ],
                     if ((plan['voluntary'] as List? ?? []).isNotEmpty) ...[
                       SizedBox(height: 16),
-                      Text(
-                        'Weitere passende Möglichkeiten',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      PlanSectionTitle('Weitere passende Möglichkeiten'),
                       Text(
                         'Dein Tagesziel und Elternaufträge gelten weiterhin. Du kannst auch einen dieser verfügbaren Schritte wählen.',
                       ),
@@ -1639,10 +1636,7 @@ Future<void> _showChildPlan(
                     ],
                     if ((plan['week'] as List? ?? []).isNotEmpty) ...[
                       SizedBox(height: 16),
-                      Text(
-                        'Die nächsten Lerntage',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
+                      PlanSectionTitle('Die nächsten Lerntage'),
                       SizedBox(height: 8),
                       DailyPlanPanel(
                         plan: plan,
@@ -1828,17 +1822,43 @@ class _ChildPlanRow extends StatelessWidget {
       children: [
         Semantics(
           button: available,
-          child: ListTile(
+          child: PlanRow(
             onTap: available ? open : null,
-            contentPadding: EdgeInsets.symmetric(horizontal: 4),
+            leading: PlanSubjectMark(
+              subject: item['subject'] as String?,
+              coverKey: item['cover_key'] as String?,
+            ),
             title: Text(
               item['topic'],
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            subtitle: Text(
-              '${item['subject']} · $obligation\n${scheduled != null && !available ? 'Ab ${_shortDate(scheduled)}' : statusLabel(item['status'])}${item['due'] != null ? '\nTermin: ${_shortDate(item['due'])}' : ''}',
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${item['subject']} · $obligation'),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    PlanPill(
+                      scheduled != null && !available
+                          ? 'Ab ${_shortDate(scheduled)}'
+                          : statusLabel(item['status']),
+                      tone: available
+                          ? PlanPillTone.info
+                          : PlanPillTone.neutral,
+                    ),
+                    if (item['due'] != null)
+                      PlanPill(
+                        'Termin: ${_shortDate(item['due'])}',
+                        icon: Icons.calendar_today_outlined,
+                        tone: PlanPillTone.warning,
+                      ),
+                  ],
+                ),
+              ],
             ),
-            isThreeLine: true,
             trailing: available
                 ? ExcludeSemantics(
                     child: Icon(
