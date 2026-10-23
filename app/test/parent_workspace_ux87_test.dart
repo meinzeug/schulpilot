@@ -243,6 +243,7 @@ void main() {
             .selected,
         isTrue,
       );
+      await click(tester, 'Suche & alle Themenfilter');
       expect(
         tester
             .widget<ParentChoiceFilter>(
@@ -271,6 +272,7 @@ void main() {
             .selected,
         isTrue,
       );
+      await click(tester, 'Suche & alle Themenfilter');
       expect(
         tester
             .widget<ParentChoiceFilter>(
@@ -766,7 +768,14 @@ void main() {
       expect(find.text('Künstliches Arbeitsblatt A'), findsOneWidget);
       expect(find.text('Noch nicht abgehakt'), findsNWidgets(2));
       expect(find.byType(LearningContent), findsNWidgets(3));
-      expect(find.text('2 weitere Aufgaben in den Details'), findsOneWidget);
+      expect(
+        find.text('Alle 5 mitgelieferten Aufgaben ansehen'),
+        findsOneWidget,
+      );
+      await click(tester, 'Alle 5 mitgelieferten Aufgaben ansehen');
+      expect(find.byType(LearningContent), findsNWidgets(5));
+      await click(tester, 'Aufgaben einklappen');
+      expect(find.byType(LearningContent), findsNWidgets(3));
       await click(tester, 'Foto & Begleitung ansehen');
       expect(find.text('Hausaufgabendetails photo'), findsOneWidget);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);

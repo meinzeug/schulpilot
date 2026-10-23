@@ -281,6 +281,7 @@ void main() {
     );
     await fixture.open(tester, state, 'plan', width: 320, scale: 2);
     await fixture.tap(tester, 'Meine Themen');
+    await fixture.tap(tester, 'Suche & alle Themenfilter');
     final toggle = find.byWidgetPredicate(
       (w) =>
           w is DropdownButtonFormField<String> &&

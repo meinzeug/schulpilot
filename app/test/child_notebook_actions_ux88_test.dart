@@ -301,7 +301,7 @@ void main() {
         },
       );
       expect(find.text('Heftseite'), findsOneWidget);
-      expect(find.text('Datum nicht angegeben · Geprüft'), findsOneWidget);
+      expect(find.text('Datum nicht angegeben · Bestätigt'), findsOneWidget);
       expect(find.text('null'), findsNothing);
       expect(tester.takeException(), isNull);
     },

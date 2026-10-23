@@ -1742,7 +1742,9 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                                         : width < 360
                                         ? 16
                                         : 20,
-                                    32,
+                                    // Keep final actions clear of the floating
+                                    // return-to-top target from the first scroll.
+                                    96,
                                   ),
                                   child: Center(
                                     child: ConstrainedBox(

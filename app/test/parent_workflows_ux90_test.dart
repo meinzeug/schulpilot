@@ -131,6 +131,7 @@ void main() {
     ) async {
       final f = collection();
       await f.mount(tester, '/parent-plan/child?ansicht=topics');
+      await tap(tester, find.text('Suche & alle Themenfilter'));
       await choose(tester, item.$1, item.$2);
       expect(f.requests.last.url.queryParameters[item.$3], item.$4);
       expect(f.requests.every((r) => r.method == 'GET'), isTrue);
@@ -146,6 +147,7 @@ void main() {
       (tester) async {
         final f = collection();
         await f.mount(tester, '/parent-plan/child?ansicht=topics');
+        await tap(tester, find.text('Suche & alle Themenfilter'));
         await tap(tester, find.text('Aufträge gezielt filtern'));
         await choose(tester, item.$1, item.$2);
         expect(f.requests.last.url.queryParameters[item.$3], item.$4);

@@ -562,6 +562,15 @@ class _GradePdfImportState extends State<GradePdfImport> {
     final fileLabel = fileName == null
         ? null
         : '$fileName · ${((fileSize ?? 0) / 1024).ceil()} KB';
+    final phaseTrack = ImportPhaseTrack(
+      result != null
+          ? 3
+          : preview != null
+          ? 2
+          : bytes != null
+          ? 1
+          : 0,
+    );
     return PopScope(
       canPop: !busy,
       child: Dialog(
@@ -606,15 +615,6 @@ class _GradePdfImportState extends State<GradePdfImport> {
                           ),
                         ],
                       ),
-                      ImportPhaseTrack(
-                        result != null
-                            ? 3
-                            : preview != null
-                            ? 2
-                            : bytes != null
-                            ? 1
-                            : 0,
-                      ),
                       if (busy)
                         Semantics(
                           liveRegion: true,
@@ -633,6 +633,8 @@ class _GradePdfImportState extends State<GradePdfImport> {
                         child: result != null
                             ? ListView(
                                 children: [
+                                  phaseTrack,
+                                  const SizedBox(height: 12),
                                   Text(
                                     'Für ${widget.childName}',
                                     style: const TextStyle(
@@ -663,6 +665,8 @@ class _GradePdfImportState extends State<GradePdfImport> {
                             : preview == null
                             ? ListView(
                                 children: [
+                                  phaseTrack,
+                                  const SizedBox(height: 12),
                                   Text(
                                     'Für ${widget.childName}',
                                     style: const TextStyle(
@@ -715,6 +719,8 @@ class _GradePdfImportState extends State<GradePdfImport> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
+                                        phaseTrack,
+                                        const SizedBox(height: 12),
                                         Text(
                                           'Für ${widget.childName}',
                                           style: const TextStyle(
@@ -1260,45 +1266,51 @@ class _GradePdfImportState extends State<GradePdfImport> {
                         accept: 'Vergleich schließen',
                         content: SizedBox(
                           width: 700,
-                          child: PrivateLocalView(
-                            state: widget.state,
-                            valid: () =>
-                                current &&
-                                preview?['id'] == previewId &&
-                                preview?['context_revision'] == previewRevision,
-                            child: LabeledComparison(
-                              leftLabel: 'Gelesene PDF-Position',
-                              left: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    '${row['subject']} · Wert ${number(row['value'])}',
-                                  ),
-                                  Text(
-                                    '${row['semester']}. Halbjahr · Position ${row['slot']}',
-                                  ),
-                                  const Text(
-                                    'Dieser Vergleich ändert keine Zuordnung.',
-                                  ),
-                                ],
-                              ),
-                              rightLabel: 'Vorhandene Vergleichseinträge',
-                              right: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (final match in row['matches']) ...[
+                          height: MediaQuery.sizeOf(context).height * .55,
+                          child: SingleChildScrollView(
+                            child: PrivateLocalView(
+                              state: widget.state,
+                              valid: () =>
+                                  current &&
+                                  preview?['id'] == previewId &&
+                                  preview?['context_revision'] ==
+                                      previewRevision,
+                              child: LabeledComparison(
+                                leftLabel: 'Gelesene PDF-Position',
+                                left: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
                                     Text(
-                                      '${match['assessed_on'] == null ? 'Kein Einzeldatum gespeichert' : friendlyDate(match['assessed_on'])} · Wert ${number(match['value'])} · ${match['weight'] ?? 1}-fach',
+                                      '${row['subject']} · Wert ${number(row['value'])}',
                                     ),
-                                    if (match['topic'] is String)
-                                      SelectableText(match['topic']),
-                                    if ((match['note'] ?? '')
-                                        .toString()
-                                        .isNotEmpty)
-                                      SelectableText(match['note']),
-                                    const Divider(),
+                                    Text(
+                                      '${row['semester']}. Halbjahr · Position ${row['slot']}',
+                                    ),
+                                    const Text(
+                                      'Diese Ansicht ändert keine Zuordnung.',
+                                    ),
                                   ],
-                                ],
+                                ),
+                                rightLabel: 'Vorhandene Vergleichseinträge',
+                                right: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    for (final match in row['matches']) ...[
+                                      Text(
+                                        '${match['assessed_on'] == null ? 'Kein Einzeldatum gespeichert' : friendlyDate(match['assessed_on'])} · Wert ${number(match['value'])} · ${match['weight'] ?? 1}-fach',
+                                      ),
+                                      if (match['topic'] is String)
+                                        SelectableText(match['topic']),
+                                      if ((match['note'] ?? '')
+                                          .toString()
+                                          .isNotEmpty)
+                                        SelectableText(match['note']),
+                                      const Divider(),
+                                    ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),

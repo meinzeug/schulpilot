@@ -309,7 +309,22 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
       await _tap(tester, find.text('Fällig oder neu'));
-      await _tap(tester, find.byTooltip('Nächste Wortseite'));
+      final nextPage = find.byWidgetPredicate(
+        (widget) =>
+            widget is IconButton && widget.tooltip == 'Nächste Wortseite',
+      );
+      await Scrollable.ensureVisible(tester.element(nextPage), alignment: .5);
+      await tester.pumpAndSettle();
+      expect(nextPage.hitTestable(), findsOneWidget);
+      await tester.tap(nextPage);
+      await tester.pumpAndSettle();
+      expect(
+        f.requests
+            .lastWhere((r) => r.url.path.endsWith('/vocabulary'))
+            .url
+            .queryParameters,
+        containsPair('page', '2'),
+      );
       await _tap(tester, find.text('Prüfen'));
       final cached = f.state.collectionViews.values.single;
       expect(cached.keys.toSet(), {
@@ -348,6 +363,37 @@ void main() {
       await f.close(tester);
     },
   );
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'Word pager stays reachable above page-top action at320px/$scale',
+      (tester) async {
+        final f = _Fixture('words');
+        await f.open(tester, width: 320, scale: scale);
+        await _tap(tester, find.text('Fällig oder neu'));
+        final nextPage = find.byWidgetPredicate(
+          (widget) =>
+              widget is IconButton && widget.tooltip == 'Nächste Wortseite',
+        );
+        await Scrollable.ensureVisible(tester.element(nextPage), alignment: .5);
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Zum Seitenanfang'), findsOneWidget);
+        expect(nextPage.hitTestable(), findsOneWidget);
+        await tester.tap(nextPage);
+        await tester.pumpAndSettle();
+        expect(
+          f.requests
+              .lastWhere((r) => r.url.path.endsWith('/vocabulary'))
+              .url
+              .queryParameters,
+          containsPair('page', '2'),
+        );
+        expect(f.requests.every((r) => r.method == 'GET'), isTrue);
+        expect(tester.takeException(), isNull);
+        await f.close(tester);
+      },
+    );
+  }
 
   testWidgets(
     'The all-pages shelf tab resumes after leaving and does not restore keyboard focus',

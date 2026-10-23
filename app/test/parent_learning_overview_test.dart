@@ -595,6 +595,7 @@ void main() {
       await tapText(tester, 'Meine Themen');
       expect(find.text('Mathematik · Brüche'), findsWidgets);
       expect(find.text('Englisch · Verben'), findsNothing);
+      await tapText(tester, 'Suche & alle Themenfilter');
       final status = find.byWidgetPredicate(
         (w) =>
             w is DropdownButtonFormField<String> &&

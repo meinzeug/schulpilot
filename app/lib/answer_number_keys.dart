@@ -27,6 +27,8 @@ class AnswerNumberKeys extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Focus(
     autofocus: true,
+    // The keyboard listener is not a separate screen-reader control.
+    includeSemantics: false,
     focusNode: focusNode,
     onKeyEvent: (node, event) {
       if (event is! KeyDownEvent ||
