@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'learning_tips.dart';
 import 'ui.dart';
+import 'ideas100_plan_ui.dart';
+import 'learning_navigation.dart';
 import 'learning_plan_ui.dart';
 
 class DailyPlanPanel extends StatelessWidget {
@@ -58,12 +60,15 @@ class DailyPlanPanel extends StatelessWidget {
 
   Future<void> openTips(BuildContext context, dynamic day) async {
     if (state == null || childId == null) return;
-    final owner = state!.user, family = state!.familyId;
+    final owner = state!.user,
+        family = state!.familyId,
+        session = state!.api.token;
     bool current() =>
         context.mounted &&
         owner != null &&
         identical(state!.user, owner) &&
-        state!.familyId == family;
+        state!.familyId == family &&
+        state!.api.token == session;
     if (!current()) return;
     final navigator = Navigator.of(context, rootNavigator: true);
     late DialogRoute<void> route;
@@ -122,78 +127,123 @@ class DailyPlanPanel extends StatelessWidget {
                         SizedBox(height: 16),
                         Text('Für diesen Tag ist noch kein Thema vorgemerkt.'),
                       ],
-                      for (final raw in day['items'] as List? ?? []) ...[
-                        SizedBox(height: 16),
-                        SurfaceInset(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                '${raw['subject'] ?? 'Fach noch offen'} · ${raw['topic'] ?? 'Thema noch offen'}',
-                                style: TextStyle(fontWeight: FontWeight.w800),
+                      Ideas100DayItems(
+                        items: day['items'] as List? ?? [],
+                        builder: (raw) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(height: 16),
+                            SurfaceInset(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    '${raw['subject'] ?? 'Fach noch offen'} · ${raw['topic'] ?? 'Thema noch offen'}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    raw['assignment_kind'] == 'homework'
+                                        ? 'Notierte Hausaufgabe'
+                                        : raw['mandatory'] == true
+                                        ? 'Elternauftrag'
+                                        : 'Vorgeschlagener Lernstoff',
+                                    style: TextStyle(color: ctx.palette.muted),
+                                  ),
+                                  if (raw['scheduled_for'] != null)
+                                    Text(
+                                      'Eingeplant für ${_dayLabel(raw['scheduled_for'])}',
+                                    ),
+                                  if (raw['kind'] == 'unit' &&
+                                      raw['id'] is String)
+                                    TextButton.icon(
+                                      onPressed: planItemDue(plan, raw)
+                                          ? () async {
+                                              if (!current() ||
+                                                  !route.isCurrent) {
+                                                return;
+                                              }
+                                              Navigator.pop(ctx);
+                                              try {
+                                                await openPlanItem(
+                                                  context,
+                                                  state!,
+                                                  {
+                                                    'child': {'id': childId},
+                                                    'plan': plan,
+                                                  },
+                                                  Json.from(raw),
+                                                );
+                                              } catch (error) {
+                                                if (context.mounted &&
+                                                    current()) {
+                                                  showError(context, error);
+                                                }
+                                              }
+                                            }
+                                          : null,
+                                      icon: const Icon(
+                                        Icons.auto_stories_outlined,
+                                      ),
+                                      label: Text(
+                                        planItemDue(plan, raw)
+                                            ? 'Gespeicherte Runde öffnen'
+                                            : 'Runde erst ab dem geplanten Beginn',
+                                      ),
+                                    ),
+                                  if (raw['kind'] == 'vocabulary')
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        if (ctx.mounted &&
+                                            current() &&
+                                            route.isCurrent) {
+                                          Navigator.pop(ctx);
+                                          openRoute(
+                                            context,
+                                            '/vocabulary/$childId?locale=${Uri.encodeQueryComponent(raw['target_locale'] ?? 'en-GB')}',
+                                          );
+                                        }
+                                      },
+                                      icon: Icon(Icons.translate_rounded),
+                                      label: Text('Wortschatz ansehen'),
+                                    ),
+                                  if (raw['kind'] == 'material' &&
+                                      raw['id'] is String)
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        if (ctx.mounted &&
+                                            current() &&
+                                            route.isCurrent) {
+                                          Navigator.pop(ctx);
+                                          openRoute(
+                                            context,
+                                            '/material/${raw['id']}',
+                                          );
+                                        }
+                                      },
+                                      icon: Icon(Icons.menu_book_outlined),
+                                      label: Text('Heftseite ansehen'),
+                                    ),
+                                ],
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                raw['assignment_kind'] == 'homework'
-                                    ? 'Notierte Hausaufgabe'
-                                    : raw['mandatory'] == true
-                                    ? 'Elternauftrag'
-                                    : 'Vorgeschlagener Lernstoff',
-                                style: TextStyle(color: ctx.palette.muted),
+                            ),
+                            if ([
+                                  'material',
+                                  'assignment',
+                                  'unit',
+                                ].contains(raw['kind']) &&
+                                raw['id'] is String)
+                              LearningTips(
+                                state!,
+                                childId: childId!,
+                                kind: raw['kind'],
+                                resourceId: raw['id'],
                               ),
-                              if (raw['scheduled_for'] != null)
-                                Text(
-                                  'Eingeplant für ${_dayLabel(raw['scheduled_for'])}',
-                                ),
-                              if (raw['kind'] == 'vocabulary')
-                                TextButton.icon(
-                                  onPressed: () {
-                                    if (ctx.mounted &&
-                                        current() &&
-                                        route.isCurrent) {
-                                      Navigator.pop(ctx);
-                                      openRoute(
-                                        context,
-                                        '/vocabulary/$childId?locale=${Uri.encodeQueryComponent(raw['target_locale'] ?? 'en-GB')}',
-                                      );
-                                    }
-                                  },
-                                  icon: Icon(Icons.translate_rounded),
-                                  label: Text('Wortschatz ansehen'),
-                                ),
-                              if (raw['kind'] == 'material' &&
-                                  raw['id'] is String)
-                                TextButton.icon(
-                                  onPressed: () {
-                                    if (ctx.mounted &&
-                                        current() &&
-                                        route.isCurrent) {
-                                      Navigator.pop(ctx);
-                                      openRoute(
-                                        context,
-                                        '/material/${raw['id']}',
-                                      );
-                                    }
-                                  },
-                                  icon: Icon(Icons.menu_book_outlined),
-                                  label: Text('Heftseite ansehen'),
-                                ),
-                            ],
-                          ),
+                          ],
                         ),
-                        if ([
-                              'material',
-                              'assignment',
-                              'unit',
-                            ].contains(raw['kind']) &&
-                            raw['id'] is String)
-                          LearningTips(
-                            state!,
-                            childId: childId!,
-                            kind: raw['kind'],
-                            resourceId: raw['id'],
-                          ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -240,121 +290,131 @@ class DailyPlanPanel extends StatelessWidget {
         context.mounted &&
         (state == null ||
             (identical(state!.user, owner) && state!.familyId == family));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (childView && availableDays.isEmpty) ...[
-          if (state != null && childId != null)
-            ActionPanel(
-              actionLabel: 'Mein Lernen öffnen',
-              onPressed: () {
-                if (current()) openRoute(context, '/learn/$childId');
+    return Ideas100WeekView(
+      days: plan['week'] as List? ?? [],
+      initialDays: days.toList(),
+      today: plan['date'] as String?,
+      onSelect: (day) {
+        if (current()) openTips(context, day);
+      },
+      builder: (visibleDays) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (childView && availableDays.isEmpty) ...[
+            if (state != null && childId != null)
+              ActionPanel(
+                actionLabel: 'Mein Lernen öffnen',
+                onPressed: () {
+                  if (current()) openRoute(context, '/learn/$childId');
+                },
+                child: Text(
+                  'Für die nächsten Tage ist noch keine weitere Portion vorgeschlagen. Deine gespeicherten Runden bleiben unter Lernen.',
+                ),
+              )
+            else
+              Text(
+                'Für die nächsten Tage ist noch keine weitere Portion vorgeschlagen.',
+              ),
+            SizedBox(height: 12),
+          ],
+          if (childView && !showRemaining && availableDays.length > 3)
+            PlanSectionTitle('Die nächsten drei Lerntage'),
+          for (final day in visibleDays)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow =
+                    constraints.maxWidth < 760 ||
+                    MediaQuery.textScalerOf(context).scale(1) > 1.3;
+                return PlanRow(
+                  onTap:
+                      state != null &&
+                          childId != null &&
+                          (day['items'] as List? ?? []).isNotEmpty
+                      ? () {
+                          if (current()) openTips(context, day);
+                        }
+                      : null,
+                  leading: PlanDateMark(
+                    date: '${day['date']}',
+                    icon: day['paused'] == true || day['free_day'] == true
+                        ? Icons.weekend_outlined
+                        : Icons.calendar_today_outlined,
+                  ),
+                  title: Text(label(day['date'])),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        day['paused'] == true || day['free_day'] == true
+                            ? hasObligation(day)
+                                  ? 'Elternauftrag · ohne allgemeines Tagesziel'
+                                  : 'Ohne festes Tagesziel'
+                            : (day['items'] as List? ?? []).isEmpty
+                            ? 'Noch offen'
+                            : (day['items'] as List)
+                                  .map((item) => item['subject'])
+                                  .toSet()
+                                  .join(' · '),
+                      ),
+                      if (narrow)
+                        PlanPill(portion(day), icon: Icons.schedule_outlined),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!narrow)
+                        PlanPill(portion(day), icon: Icons.schedule_outlined),
+                      if (state != null &&
+                          childId != null &&
+                          (day['items'] as List? ?? []).isNotEmpty)
+                        Icon(Icons.chevron_right_rounded, size: 18),
+                    ],
+                  ),
+                );
               },
-              child: Text(
-                'Für die nächsten Tage ist noch keine weitere Portion vorgeschlagen. Deine gespeicherten Runden bleiben unter Lernen.',
+            ),
+          if (childView && !showRemaining && availableDays.length > 3)
+            ExpansionTile(
+              title: Text(
+                'Weitere ${availableDays.length - 3} Lerntage ansehen',
               ),
-            )
-          else
+              children: [
+                DailyPlanPanel(
+                  plan: plan,
+                  childView: true,
+                  state: state,
+                  childId: childId,
+                  showRemaining: true,
+                ),
+              ],
+            ),
+          if (!showRemaining)
             Text(
-              'Für die nächsten Tage ist noch keine weitere Portion vorgeschlagen.',
+              childView
+                  ? 'Du lernst in kleinen Runden. Zum Tagesziel zählt deine aktive Zeit.'
+                  : 'Vorschlag für die nächsten Tage. Nach dem Mindestziel ist Weiterlernen freiwillig.',
+              style: TextStyle(color: context.palette.muted, fontSize: 12),
             ),
-          SizedBox(height: 12),
-        ],
-        if (childView && !showRemaining && availableDays.length > 3)
-          PlanSectionTitle('Die nächsten drei Lerntage'),
-        for (final day in days)
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow =
-                  constraints.maxWidth < 760 ||
-                  MediaQuery.textScalerOf(context).scale(1) > 1.3;
-              return PlanRow(
-                onTap:
-                    state != null &&
-                        childId != null &&
-                        (day['items'] as List? ?? []).isNotEmpty
-                    ? () {
-                        if (current()) openTips(context, day);
-                      }
-                    : null,
-                leading: PlanDateMark(
-                  date: '${day['date']}',
-                  icon: day['paused'] == true || day['free_day'] == true
-                      ? Icons.weekend_outlined
-                      : Icons.calendar_today_outlined,
-                ),
-                title: Text(label(day['date'])),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      day['paused'] == true || day['free_day'] == true
-                          ? hasObligation(day)
-                                ? 'Elternauftrag · ohne allgemeines Tagesziel'
-                                : 'Ohne festes Tagesziel'
-                          : (day['items'] as List? ?? []).isEmpty
-                          ? 'Noch offen'
-                          : (day['items'] as List)
-                                .map((item) => item['subject'])
-                                .toSet()
-                                .join(' · '),
-                    ),
-                    if (narrow)
-                      PlanPill(portion(day), icon: Icons.schedule_outlined),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!narrow)
-                      PlanPill(portion(day), icon: Icons.schedule_outlined),
-                    if (state != null &&
-                        childId != null &&
-                        (day['items'] as List? ?? []).isNotEmpty)
-                      Icon(Icons.chevron_right_rounded, size: 18),
-                  ],
-                ),
-              );
-            },
-          ),
-        if (childView && !showRemaining && availableDays.length > 3)
-          ExpansionTile(
-            title: Text('Weitere ${availableDays.length - 3} Lerntage ansehen'),
-            children: [
-              DailyPlanPanel(
-                plan: plan,
-                childView: true,
-                state: state,
-                childId: childId,
-                showRemaining: true,
+          if (!childView) ...[
+            SizedBox(height: 12),
+            Text(
+              'Mindestziele: ${plan['daily_goal_minutes'] ?? plan['daily_limit_minutes']} Min. am Tag · ${plan['weekly_goal_minutes'] ?? plan['weekly_limit_minutes']} Min. pro Woche.',
+              style: TextStyle(color: context.palette.muted, fontSize: 12),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Zum Ziel zählt aktive Lernzeit, keine geschätzte Rundendauer.',
+              style: TextStyle(color: context.palette.muted, fontSize: 12),
+            ),
+            for (final conflict in plan['conflicts'] as List? ?? [])
+              Notice(
+                'Termin prüfen: ${conflict['topic']} bis ${conflict['due']}. Mit dem vorgeschlagenen Lernumfang voraussichtlich nicht rechtzeitig fertig.',
+                warning: true,
               ),
-            ],
-          ),
-        if (!showRemaining)
-          Text(
-            childView
-                ? 'Du lernst in kleinen Runden. Zum Tagesziel zählt deine aktive Zeit.'
-                : 'Vorschlag für die nächsten Tage. Nach dem Mindestziel ist Weiterlernen freiwillig.',
-            style: TextStyle(color: context.palette.muted, fontSize: 12),
-          ),
-        if (!childView) ...[
-          SizedBox(height: 12),
-          Text(
-            'Mindestziele: ${plan['daily_goal_minutes'] ?? plan['daily_limit_minutes']} Min. am Tag · ${plan['weekly_goal_minutes'] ?? plan['weekly_limit_minutes']} Min. pro Woche.',
-            style: TextStyle(color: context.palette.muted, fontSize: 12),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Zum Ziel zählt aktive Lernzeit, keine geschätzte Rundendauer.',
-            style: TextStyle(color: context.palette.muted, fontSize: 12),
-          ),
-          for (final conflict in plan['conflicts'] as List? ?? [])
-            Notice(
-              'Termin prüfen: ${conflict['topic']} bis ${conflict['due']}. Mit dem vorgeschlagenen Lernumfang voraussichtlich nicht rechtzeitig fertig.',
-              warning: true,
-            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

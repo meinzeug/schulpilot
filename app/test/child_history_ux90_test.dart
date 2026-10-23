@@ -153,11 +153,11 @@ void main() {
       );
       await open(tester, state);
       await f.tap(tester, find.text('Diese Tagesansicht aktualisieren'));
-      expect(
-        find.textContaining('1 von 1 Einheit abgeschlossen'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('0 von 1 Einheit'), findsNothing);
+      expect(find.text('1 gespeicherte Runde'), findsOneWidget);
+      expect(find.text('1 Runde bearbeitet'), findsOneWidget);
+      expect(find.text('0 Runden bearbeitet'), findsNothing);
+      expect(find.text('Biologie'), findsOneWidget);
+      expect(find.text('Mathematik'), findsNothing);
       expect(
         find.textContaining('1 Treffer in 1 geladenen Tagespaketen'),
         findsOneWidget,

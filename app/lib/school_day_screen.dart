@@ -95,6 +95,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   late String? actor = widget.state.user?['id'];
   late Json? actorAccount = widget.state.user;
   late String? family = widget.state.familyId;
+  late String? session = widget.state.api.token;
   final privateRoutes = <Route<dynamic>>{};
   int generation = 0, readVersion = 0;
   bool queuedRead = false;
@@ -114,7 +115,8 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
   bool get ownerMatches =>
       actorAccount != null &&
       identical(state.user, actorAccount) &&
-      state.familyId == family;
+      state.familyId == family &&
+      state.api.token == session;
   bool get active => mounted && ownerMatches && foreground && routeVisible;
 
   @override
@@ -148,6 +150,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       actor = state.user?['id'];
       actorAccount = state.user;
       family = state.familyId;
+      session = state.api.token;
       unawaited(load());
     }
   }
@@ -428,7 +431,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
       if (!sameDay(version, id)) return;
       final saved = await state.api.upload(
         child,
-        base64Decode(photo['image']),
+        safeContactPhotoBytes(photo['image']),
         schoolDayId: photo['day'],
         uploadKey: photo['key'],
       );
@@ -711,7 +714,46 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
           );
           final raw = await files[i].readAsBytes();
           if (!mounted || !currentCapture()) return;
-          final bytes = await cropMaterialPhoto(context, raw);
+          CropFrame? cropFrame;
+          Uint8List? bytes;
+          var again = true;
+          while (again && currentCapture()) {
+            if (!mounted) return;
+            bytes = await cropMaterialPhoto(
+              context,
+              raw,
+              state: state,
+              initialFrame: cropFrame,
+              onFrameChanged: (value) => cropFrame = value,
+              batchIndex: i + 1,
+              batchTotal: files.length.clamp(0, remaining),
+            );
+            again = false;
+            if (bytes == null && currentCapture()) {
+              if (!mounted) return;
+              again =
+                  await showDayDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('Foto ${i + 1} noch einmal prüfen?'),
+                      content: const Text(
+                        'Der Zuschnitt bleibt für diesen Auswahlschritt erhalten. Bereits übernommene Fotos werden nicht verändert.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => closeDayDialog(ctx, false),
+                          child: const Text('Dieses Foto überspringen'),
+                        ),
+                        FilledButton(
+                          onPressed: () => closeDayDialog(ctx, true),
+                          child: const Text('Zuschnitt wieder aufnehmen'),
+                        ),
+                      ],
+                    ),
+                  ) ==
+                  true;
+            }
+          }
           if (!currentCapture()) return;
           if (bytes == null) {
             await receipt(keys[i], {
@@ -767,8 +809,12 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     try {
       if (!mounted || !currentCapture()) return;
       bytes = recovered && state.recoveredPhoto != null
-          ? await cropMaterialPhoto(context, state.recoveredPhoto!)
-          : await pickMaterialPhoto(context, source);
+          ? await cropMaterialPhoto(
+              context,
+              state.recoveredPhoto!,
+              state: state,
+            )
+          : await pickMaterialPhoto(context, source, state: state);
     } finally {
       if (nativeAndroid) await clearCameraSource(state);
     }
@@ -907,7 +953,7 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     Uint8List? bytes;
     try {
       if (!mounted || !currentReplacement()) return;
-      bytes = await pickMaterialPhoto(context, source);
+      bytes = await pickMaterialPhoto(context, source, state: state);
     } finally {
       if (ownerMatches) await clearCameraSource(state);
     }
@@ -1397,6 +1443,17 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     }
   }
 
+  Uint8List safeContactPhotoBytes(dynamic encoded) {
+    try {
+      if (encoded is! String || encoded.length > 4 * 1024 * 1024) {
+        return Uint8List(0);
+      }
+      return base64Decode(encoded);
+    } catch (_) {
+      return Uint8List(0);
+    }
+  }
+
   Widget childCollecting(BuildContext context) {
     final freshPages = pages
         .where((page) => page['confirmed'] != true)
@@ -1697,26 +1754,54 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
               ),
             ),
           if (pendingPhotos.isNotEmpty) ...[
-            for (final photo in pendingPhotos)
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => viewDraft(photo),
-                    icon: Icon(Icons.zoom_in_rounded),
-                    label: Text(
-                      'Vorgemerktes Foto ${pendingPhotos.indexOf(photo) + 1} ansehen',
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final (n, photo) in pendingPhotos.indexed)
+                  SizedBox(
+                    width: 156,
+                    child: Panel(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextButton(
+                            onPressed: () => viewDraft(photo),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 100,
+                                  child: Image.memory(
+                                    base64Decode(photo['image']),
+                                    cacheWidth: 200,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, _, _) =>
+                                        const Icon(Icons.broken_image_outlined),
+                                  ),
+                                ),
+                                Text('Vorgemerktes Foto ${n + 1} ansehen'),
+                              ],
+                            ),
+                          ),
+                          const Text('Nur lokal · noch nicht abgegeben'),
+                          if (photo['created'] is num)
+                            Text(
+                              'Bis ${DateFormat('dd.MM. HH:mm').format(DateTime.fromMillisecondsSinceEpoch((photo['created'] as num).toInt()).add(const Duration(hours: 24)).toLocal())}',
+                            ),
+                          IconButton(
+                            tooltip: 'Vorgemerktes Foto ${n + 1} entfernen',
+                            onPressed: locked
+                                ? null
+                                : () => removeLocalPhoto(photo),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  IconButton(
-                    tooltip:
-                        'Vorgemerktes Foto ${pendingPhotos.indexOf(photo) + 1} entfernen',
-                    onPressed: locked ? null : () => removeLocalPhoto(photo),
-                    icon: Icon(Icons.delete_outline_rounded),
-                  ),
-                ],
-              ),
+              ],
+            ),
             SizedBox(height: 10),
             if (pendingPhotos.every((photo) => photo['created'] is num))
               Text(
@@ -1779,6 +1864,26 @@ class _SchoolDayScreenState extends State<_SchoolDayContext>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const Text('Noch nicht bestätigte Seiten auswählen'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final page in unconfirmed)
+              OutlinedButton(
+                onPressed: !active || working || waiting
+                    ? null
+                    : () => setState(() => reviewId = page['id']),
+                child: Text(
+                  'Seite ${page['page_number']} · ${page['status'] == 'unreadable'
+                      ? 'Foto unlesbar'
+                      : page['status'] == 'uploaded'
+                      ? 'Erkennung offen'
+                      : 'Noch prüfen'}',
+                ),
+              ),
+          ],
+        ),
         heading(
           'Seite ${selected['page_number']} prüfen',
           subtitle: '${day!['confirmed_count']} von ${pages.length} geprüft',

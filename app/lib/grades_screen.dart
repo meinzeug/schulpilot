@@ -10,6 +10,7 @@ import 'api.dart';
 import 'parent_form_guard.dart';
 import 'grade_import_screen.dart';
 import 'ui.dart';
+import 'collection_view_tools.dart';
 import 'parent_child_navigation.dart';
 import 'parent_workspace_ui.dart';
 
@@ -74,7 +75,8 @@ class _GradesScreenState extends State<GradesScreen> {
       sourceFilter != 'all' ||
       goalFilter != 'all';
   int page = 1, generation = 0;
-  bool loading = true, saving = false;
+  bool loading = true, saving = false, monthlyView = false;
+  late final sessionToken = widget.state.api.token;
   late Json? owner;
   late String? family;
   String? childName;
@@ -85,7 +87,8 @@ class _GradesScreenState extends State<GradesScreen> {
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      sessionToken == widget.state.api.token;
   bool get manage =>
       current && widget.state.isParent && data?['can_manage'] == true;
 
@@ -983,8 +986,32 @@ class _GradesScreenState extends State<GradesScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  for (final raw in data!['items'] as List)
-                    _gradeCard(Json.from(raw)),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Notenkarten'),
+                        selected: !monthlyView,
+                        onSelected: loading
+                            ? null
+                            : (_) => setState(() => monthlyView = false),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Monatszeitleiste'),
+                        selected: monthlyView,
+                        onSelected: loading
+                            ? null
+                            : (_) => setState(() => monthlyView = true),
+                      ),
+                    ],
+                  ),
+                  if (monthlyView)
+                    const Text(
+                      'Zeitleiste der geladenen Seite · keine vollständige Notenbasis oder Prognose',
+                    ),
+                  const SizedBox(height: 12),
+                  gradeEntries(),
                   if ((data!['items'] as List).isEmpty)
                     Notice(
                       filtered
@@ -1169,6 +1196,53 @@ class _GradesScreenState extends State<GradesScreen> {
     );
   }
 
+  Widget gradeEntries() {
+    final items = (data?['items'] as List? ?? [])
+        .map((row) => Json.from(row))
+        .toList();
+    final dated = items.where((row) => row['assessed_on'] != null).toList();
+    final undated = items.where((row) => row['assessed_on'] == null).toList();
+    final months = <String, List<Json>>{};
+    if (monthlyView) {
+      dated.sort(
+        (a, b) =>
+            '${a['assessed_on']}'.compareTo('${b['assessed_on']}') *
+            (order == 'oldest' ? 1 : -1),
+      );
+      for (final row in dated) {
+        final date = DateTime.tryParse('${row['assessed_on']}');
+        final key = date == null
+            ? 'Datum nicht lesbar'
+            : '${const ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'][date.month - 1]} ${date.year}';
+        months.putIfAbsent(key, () => []).add(row);
+      }
+    }
+    final terms = <String, List<Json>>{};
+    for (final row in undated) {
+      terms.putIfAbsent(gradeDate(row), () => []).add(row);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!monthlyView)
+          for (final row in dated) _gradeCard(row),
+        if (monthlyView)
+          for (final month in months.entries) ...[
+            heading(month.key),
+            for (final row in month.value) _gradeCard(row),
+          ],
+        for (final term in terms.entries) ...[
+          heading(
+            'Ohne Einzeldatum · ${term.key}',
+            subtitle:
+                'Das Halbjahr ist belegt; ein genauer Tag wird nicht ergänzt.',
+          ),
+          for (final row in term.value) _gradeCard(row),
+        ],
+      ],
+    );
+  }
+
   Widget _gradeCard(Json grade) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Panel(
@@ -1231,17 +1305,22 @@ class _GradesScreenState extends State<GradesScreen> {
               ],
             ),
           ),
-          if (grade['note'] != '')
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(grade['note']),
+          if ((grade['note'] ?? '').toString().isNotEmpty)
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Private Notiz ansehen'),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SelectableText('${grade['note']}'),
+                ),
+              ],
             ),
+          const SizedBox(height: 10),
+          GradeScaleGuide('${grade['scale']}'),
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              'Gewichtung: ${grade['weight'] ?? 1}-fach',
-              style: TextStyle(color: context.palette.muted, fontSize: 13),
-            ),
+            child: GradeWeightVisual(grade['weight'] ?? 1),
           ),
           if (manage)
             Align(
@@ -1318,6 +1397,7 @@ class GradeEditor extends StatefulWidget {
 
 class _GradeEditorState extends State<GradeEditor> {
   final form = GlobalKey<FormState>();
+  late final sessionToken = widget.state.api.token;
   late final TextEditingController subject, topic, value, note, year;
   late String scale, kind;
   String? day;
@@ -1371,7 +1451,8 @@ class _GradeEditorState extends State<GradeEditor> {
       owner != null &&
       identical(widget.state.user, owner) &&
       family == widget.state.familyId &&
-      child == widget.childId;
+      child == widget.childId &&
+      sessionToken == widget.state.api.token;
   late String requestKey;
   bool saving = false;
   Object? error;
@@ -1795,6 +1876,54 @@ class _GradeEditorState extends State<GradeEditor> {
                           maxLines: 4,
                           decoration: const InputDecoration(
                             labelText: 'Notiz (optional)',
+                          ),
+                        ),
+                      ],
+                    ),
+                    ExpansionTile(
+                      title: const Text('Vorschau deiner Notenkarte'),
+                      children: [
+                        ListenableBuilder(
+                          listenable: Listenable.merge([
+                            subject,
+                            topic,
+                            value,
+                            note,
+                            year,
+                          ]),
+                          builder: (context, _) => SurfaceInset(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Lokale Vorschau · erst Speichern übernimmt die Note.',
+                                ),
+                                Text(
+                                  subject.text.trim().isEmpty
+                                      ? 'Fach noch offen'
+                                      : subject.text,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  value.text.trim().isEmpty
+                                      ? 'Wert noch offen'
+                                      : 'Eingegebener Wert: ${value.text}',
+                                ),
+                                Text(gradeKinds[kind] ?? kind),
+                                Text(
+                                  day == null
+                                      ? 'Einzeldatum unbekannt · ${semester ?? '?'} . Halbjahr ${year.text}'
+                                      : 'Datum: ${friendlyDate(day)}',
+                                ),
+                                if (topic.text.isNotEmpty) Text(topic.text),
+                                GradeScaleGuide(scale),
+                                GradeWeightVisual(weight),
+                                if (note.text.isNotEmpty)
+                                  Text('Deine private Notiz: ${note.text}'),
+                              ],
+                            ),
                           ),
                         ),
                       ],

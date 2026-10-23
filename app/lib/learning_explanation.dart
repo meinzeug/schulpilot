@@ -5,17 +5,25 @@ import 'ui.dart';
 import 'math_content.dart';
 import 'scientific_notation.dart';
 import 'learning_content.dart';
+import 'api.dart';
+import 'learning_tool_scope.dart';
 
 /// The same saved explanation, presented in readable steps, never new AI text.
 class LearningExplanation extends StatefulWidget {
   final String text;
   final String? prompt;
+  final AppState? state;
+  final Object? sourceKey;
+  final bool Function()? isCurrent;
   final int initialStep;
   final ValueChanged<int>? onStepChanged;
   const LearningExplanation({
     super.key,
     required this.text,
     this.prompt,
+    this.state,
+    this.sourceKey,
+    this.isCurrent,
     this.initialStep = 0,
     this.onStepChanged,
   });
@@ -47,19 +55,30 @@ class _LearningExplanationState extends State<LearningExplanation> {
   @override
   void didUpdateWidget(LearningExplanation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text ||
+    final sourceChanged = oldWidget.sourceKey != widget.sourceKey;
+    if (sourceChanged ||
+        oldWidget.text != widget.text ||
         oldWidget.prompt != widget.prompt ||
         oldWidget.initialStep != widget.initialStep) {
-      if (oldWidget.text != widget.text || oldWidget.prompt != widget.prompt) {
+      if (sourceChanged ||
+          oldWidget.text != widget.text ||
+          oldWidget.prompt != widget.prompt) {
         showAll = false;
       }
-      step = widget.initialStep;
+      step = sourceChanged ? 0 : widget.initialStep;
       revealBeginning();
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LearningToolScope(
+    state: widget.state,
+    sourceKey: widget.sourceKey ?? (widget.text, widget.prompt),
+    isCurrent: widget.isCurrent,
+    builder: content,
+  );
+
+  Widget content(BuildContext context) {
     final paragraphs = learningParagraphs(widget.text);
     final chunks = <String>[];
     var heading = '';
@@ -157,7 +176,16 @@ class _LearningExplanationState extends State<LearningExplanation> {
             ],
           ),
         if (chunks.length > 1) const SizedBox(height: 16),
-        LearningContent(showAll ? widget.text : chunks[current]),
+        _QuestionAndExplanation(
+          prompt: widget.prompt,
+          reader: LearningReader(
+            widget.text,
+            visibleText: showAll ? widget.text : chunks[current],
+            state: widget.state,
+            sourceKey: widget.sourceKey ?? (widget.text, widget.prompt),
+            isCurrent: widget.isCurrent,
+          ),
+        ),
         SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -194,6 +222,64 @@ class _LearningExplanationState extends State<LearningExplanation> {
       ],
     );
   }
+}
+
+class _QuestionAndExplanation extends StatefulWidget {
+  final String? prompt;
+  final Widget reader;
+  const _QuestionAndExplanation({required this.prompt, required this.reader});
+  @override
+  State<_QuestionAndExplanation> createState() =>
+      _QuestionAndExplanationState();
+}
+
+class _QuestionAndExplanationState extends State<_QuestionAndExplanation> {
+  bool compare = false;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (widget.prompt?.trim().isNotEmpty == true)
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Aufgabe daneben lesen'),
+          value: compare,
+          onChanged: (value) => setState(() => compare = value),
+        ),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final question = SurfaceInset(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Deine Aufgabe',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                LearningContent(widget.prompt ?? ''),
+              ],
+            ),
+          );
+          if (!compare || widget.prompt == null) return widget.reader;
+          if (constraints.maxWidth >= 640) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: question),
+                const SizedBox(width: 16),
+                Expanded(child: widget.reader),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [question, const SizedBox(height: 16), widget.reader],
+          );
+        },
+      ),
+    ],
+  );
 }
 
 /// A worked fraction example; only display after the explanation is opened.

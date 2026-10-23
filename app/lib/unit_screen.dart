@@ -20,6 +20,10 @@ import 'parent_child_navigation.dart';
 import 'math_content.dart';
 import 'matching_answer_board.dart';
 import 'grouped_answer_board.dart';
+import 'learning_tool_scope.dart';
+import 'answer_option_compare.dart';
+import 'answer_number_keys.dart';
+import 'answer_writing_tools.dart';
 import 'subject_graphic.dart';
 import 'family_call_screen.dart';
 import 'practice_evidence.dart';
@@ -90,6 +94,11 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
 
   final parentQuestionSearch = TextEditingController();
   final text = TextEditingController();
+  final answerFocus = FocusNode(debugLabel: 'Eigene Antwort');
+  final answerAreaFocus = FocusNode(debugLabel: 'Antwortauswahl');
+  final answerInputTop = GlobalKey();
+  final matchUndo = <Map<String, String>>[];
+  String? matchUndoSignature;
   String? choice;
   Map<String, String> matches = {};
   String? questionId;
@@ -293,6 +302,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     coachingPoll?.cancel();
     text.removeListener(draftChanged);
     text.dispose();
+    answerFocus.dispose();
+    answerAreaFocus.dispose();
     parentQuestionSearch.dispose();
     roomScroll.dispose();
     super.dispose();
@@ -535,6 +546,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       return;
     }
     resetInput = null;
+    matchUndo.clear();
+    matchUndoSignature = null;
     parentQuestionSearch.clear();
     closePrivateRoutes();
     explanationPositions.clear();
@@ -694,6 +707,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
     groupedInputSignature = signature;
     questionId = next?['id'];
+    matchUndo.clear();
+    matchUndoSignature = null;
     savedDraftSignature = pendingDraftKey = pendingDraftSignature = null;
     draftOffline = draftConflict = false;
     resetInput = null;
@@ -1022,6 +1037,9 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     } else if (['application', 'retry'].contains(shortPlan?['phase'])) {
       progressLabel = 'Neue Anwendung';
     }
+    final canChoose = question?['type'] != 'choice'
+        ? () => false
+        : capturedInputGuard(question!);
     return PopScope(
       canPop: leaving,
       onPopInvokedWithResult: (didPop, _) {
@@ -1030,69 +1048,74 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       child: Listener(
         onPointerDown: (_) => noteInteraction(),
         onPointerSignal: (_) => noteInteraction(),
-        child: LearningRoom(
-          title: u?['topic']?.toString() ?? 'Deine Lernrunde',
-          phase: phase,
-          questionTotal: questions.length,
-          questionCompleted: questions.where(done).length,
-          progress: phase == 1 && number != null && number > 0
-              ? progressLabel
-              : null,
-          overview: u == null
-              ? null
-              : LearningRoundOverviewButton(
-                  state: state,
-                  unitId: widget.unitId,
-                  questions: questions.map((q) => Json.from(q)).toList(),
-                  currentQuestionId: currentQuestion?['id']?.toString(),
-                  completed: done,
-                ),
-          scrollController: roomScroll,
-          clock: u == null ? null : learningClock(u),
-          assistant: SchulbuddyButton(
-            unitId: u?['id'],
-            questionId: currentQuestion?['id'],
-          ),
-          onLeave: () => unawaited(leaveLearning()),
-          onPause: u?['status'] == 'active' && !actionBusy
-              ? () => unawaited(perform(() => pauseUnit(u!)))
-              : null,
-          onHelp: u == null || actionBusy
-              ? null
-              : () => unawaited(perform(() => openHelp(u))),
-          primaryAction: u == null || error != null ? null : primaryAction(u),
-          actionMessage: actionError == null
-              ? null
-              : Semantics(
-                  liveRegion: true,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        actionError is ApiError
-                            ? (actionError as ApiError).message
-                            : 'Das hat gerade nicht geklappt. Deine Antworten bleiben gespeichert.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: context.palette.dangerInk,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: actionBusy
-                            ? null
-                            : () async {
-                                await load();
-                                if (mounted && error == null) {
-                                  setState(() => actionError = null);
-                                }
-                              },
-                        icon: Icon(Icons.refresh),
-                        label: Text('Gespeicherten Stand laden'),
-                      ),
-                    ],
+        child: AnswerNumberKeys(
+          isCurrent: canChoose,
+          optionCount: (question?['options'] as List? ?? []).length,
+          onSelect: (index) => chooseNumber(question!, index),
+          child: LearningRoom(
+            title: u?['topic']?.toString() ?? 'Deine Lernrunde',
+            phase: phase,
+            questionTotal: questions.length,
+            questionCompleted: questions.where(done).length,
+            progress: phase == 1 && number != null && number > 0
+                ? progressLabel
+                : null,
+            overview: u == null
+                ? null
+                : LearningRoundOverviewButton(
+                    state: state,
+                    unitId: widget.unitId,
+                    questions: questions.map((q) => Json.from(q)).toList(),
+                    currentQuestionId: currentQuestion?['id']?.toString(),
+                    completed: done,
                   ),
-                ),
-          child: content,
+            scrollController: roomScroll,
+            clock: u == null ? null : learningClock(u),
+            assistant: SchulbuddyButton(
+              unitId: u?['id'],
+              questionId: currentQuestion?['id'],
+            ),
+            onLeave: () => unawaited(leaveLearning()),
+            onPause: u?['status'] == 'active' && !actionBusy
+                ? () => unawaited(perform(() => pauseUnit(u!)))
+                : null,
+            onHelp: u == null || actionBusy
+                ? null
+                : () => unawaited(perform(() => openHelp(u))),
+            primaryAction: u == null || error != null ? null : primaryAction(u),
+            actionMessage: actionError == null
+                ? null
+                : Semantics(
+                    liveRegion: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          actionError is ApiError
+                              ? (actionError as ApiError).message
+                              : 'Das hat gerade nicht geklappt. Deine Antworten bleiben gespeichert.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: context.palette.dangerInk,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: actionBusy
+                              ? null
+                              : () async {
+                                  await load();
+                                  if (mounted && error == null) {
+                                    setState(() => actionError = null);
+                                  }
+                                },
+                          icon: Icon(Icons.refresh),
+                          label: Text('Gespeicherten Stand laden'),
+                        ),
+                      ],
+                    ),
+                  ),
+            child: content,
+          ),
         ),
       ),
     );
@@ -1558,6 +1581,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       text.clear();
       choice = null;
       matches = {};
+      matchUndo.clear();
+      matchUndoSignature = null;
       speechAnswer = false;
     });
     noteInteraction();
@@ -1577,6 +1602,8 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
       text.text = saved['text'];
       choice = saved['choice'];
       matches = Map<String, String>.from(saved['matches']);
+      matchUndo.clear();
+      matchUndoSignature = null;
       speechAnswer = saved['speech'];
       resetInput = null;
     });
@@ -1588,6 +1615,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final renderedOwner = ownerAccount;
     final renderedFamily = ownerFamily;
     final renderedUnit = widget.unitId;
+    final renderedSource = u['learning_session']?['source_signature'];
     final questions = u['questions'] as List;
     if (!state.isChild) {
       return Column(
@@ -1633,7 +1661,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                   !identical(unit, u)) {
                 return;
               }
-              showKnowledgeSheet(context, state, unitId: renderedUnit);
+              showKnowledgeSheet(
+                context,
+                state,
+                unitId: renderedUnit,
+                isCurrent: () =>
+                    requestIsCurrent(renderedUnit, renderedOwner) &&
+                    identical(unit, u) &&
+                    unit?['learning_session']?['source_signature'] ==
+                        renderedSource,
+              );
             },
             icon: const Icon(Icons.psychology_alt_outlined),
             label: const Text('Vorwissen & Lernziele ansehen'),
@@ -1888,7 +1925,18 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
             ),
             SizedBox(height: 16),
-            LearningExplanation(text: u['explanation']),
+            LearningExplanation(
+              text: u['explanation'],
+              state: state,
+              sourceKey: (
+                widget.unitId,
+                ObjectKey(ownerAccount),
+                state.familyId,
+                state.api.token,
+                u['learning_session']?['source_signature'],
+                u['explanation'],
+              ),
+            ),
             if (!['spaced_review', 'study_recall'].contains(u['round_kind']))
               unitTips(u),
             if (u['synthetic'] == true) ...[
@@ -1948,6 +1996,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (q == null) {
       return Panel(child: MathText('Deine Antworten sind gespeichert.'));
     }
+    final canInput = capturedInputGuard(q);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2010,54 +2059,75 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               ),
               if (q['language'] is Map) languagePrompt(q),
               SizedBox(height: 16),
+              SizedBox(key: answerInputTop, height: 0),
               if (q['type'] == 'choice')
-                RadioGroup<String>(
-                  groupValue: choice,
-                  onChanged: (value) {
-                    noteInteraction();
-                    setState(() => choice = value);
-                  },
-                  child: Column(
-                    children: [
-                      for (final option in q['options'] as List)
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 8),
-                          child: Material(
-                            color: choice == option
-                                ? context.palette.mint
-                                : context.palette.surfaceLow,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(
-                                color: choice == option
-                                    ? context.palette.teal
-                                    : context.palette.controlBorder,
-                                width: choice == option ? 2 : 1,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: RadioListTile<String>(
-                              value: option,
-                              enabled: !actionBusy,
-                              title: MathText(
-                                option,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  height: 1.4,
-                                  fontWeight: choice == option
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
+                Focus(
+                  focusNode: answerAreaFocus,
+                  child: RadioGroup<String>(
+                    groupValue: choice,
+                    onChanged: (value) {
+                      if (canInput()) chooseOption(q, value);
+                    },
+                    child: Column(
+                      children: [
+                        for (final option in q['options'] as List)
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: Material(
+                              color: choice == option
+                                  ? context.palette.mint
+                                  : context.palette.surfaceLow,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color: choice == option
+                                      ? context.palette.teal
+                                      : context.palette.controlBorder,
+                                  width: choice == option ? 2 : 1,
                                 ),
                               ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 5,
+                              clipBehavior: Clip.antiAlias,
+                              child: RadioListTile<String>(
+                                value: option,
+                                enabled: !actionBusy,
+                                title: MathText(
+                                  option,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    height: 1.4,
+                                    fontWeight: choice == option
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 5,
+                                ),
+                                minTileHeight: 56,
+                                activeColor: context.palette.teal,
                               ),
-                              minTileHeight: 56,
-                              activeColor: context.palette.teal,
                             ),
                           ),
-                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (q['type'] == 'choice')
+                LearningToolScope(
+                  state: state,
+                  sourceKey: toolKey(q),
+                  isCurrent: capturedSourceGuard(q),
+                  builder: (_) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Mit Zifferntasten 1–9 auswählen · geprüft wird erst mit „Antwort prüfen“.',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      AnswerOptionCompare(
+                        options: (q['options'] as List).cast<String>(),
+                      ),
                     ],
                   ),
                 ),
@@ -2071,8 +2141,10 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
                 SizedBox(height: 12),
               ],
-              if (q['type'] == 'match') matchingBoard(q),
-              if (q['type'] == 'grouped') groupedBoard(q),
+              if (q['type'] == 'match')
+                Focus(focusNode: answerAreaFocus, child: matchingBoard(q)),
+              if (q['type'] == 'grouped')
+                Focus(focusNode: answerAreaFocus, child: groupedBoard(q)),
               if (!awaitingContinue &&
                   (choice != null ||
                       matches.isNotEmpty ||
@@ -2102,15 +2174,19 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               if (q['type'] == 'short' || q['type'] == 'gap') ...[
                 if (expectsFraction(q))
-                  FractionAnswerInput(
-                    key: ValueKey('fraction-${q['id']}'),
-                    controller: text,
-                    readOnly: actionBusy,
+                  Focus(
+                    focusNode: answerAreaFocus,
+                    child: FractionAnswerInput(
+                      key: ValueKey('fraction-${q['id']}'),
+                      controller: text,
+                      readOnly: actionBusy,
+                    ),
                   )
                 else
                   TextField(
                     key: ValueKey('answer-${q['id']}'),
                     controller: text,
+                    focusNode: answerFocus,
                     keyboardType: q['input_kind'] == 'number'
                         ? const TextInputType.numberWithOptions(
                             decimal: true,
@@ -2125,6 +2201,24 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     maxLines: q['type'] == 'short' ? 4 : 2,
                     scrollPadding: EdgeInsets.all(20),
                     decoration: InputDecoration(labelText: 'Deine Antwort'),
+                  ),
+                if (!expectsFraction(q))
+                  Builder(
+                    builder: (_) {
+                      final token = state.api.token;
+                      final signature = inputSignature(q);
+                      return AnswerWritingTools(
+                        state: state,
+                        controller: text,
+                        sourceKey: toolKey(q),
+                        inputFocus: answerFocus,
+                        enabled: inputCurrent(q),
+                        isCurrent: () =>
+                            inputCurrent(q, token: token, checkToken: true) &&
+                            inputSignature(q) == signature,
+                        maxLength: q['type'] == 'short' ? 500 : 200,
+                      );
+                    },
                   ),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -2421,6 +2515,123 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     ],
   );
 
+  String inputSignature(Json question) => jsonEncode([
+    question['id'],
+    question['type'],
+    question['prompt'],
+    question['options'],
+    question['choices'],
+    question['field_group'],
+    unit?['learning_session']?['source_signature'],
+  ]);
+
+  bool Function() capturedSourceGuard(Json question) {
+    final requestedUnit = widget.unitId, requestedOwner = ownerAccount;
+    final family = state.familyId, token = state.api.token;
+    final signature = inputSignature(question);
+    return () =>
+        requestIsCurrent(requestedUnit, requestedOwner) &&
+        visible &&
+        state.familyId == family &&
+        state.api.token == token &&
+        currentQuestion != null &&
+        inputSignature(currentQuestion!) == signature;
+  }
+
+  bool Function() capturedInputGuard(Json question) {
+    final requestedUnit = widget.unitId, requestedOwner = ownerAccount;
+    final family = state.familyId, token = state.api.token;
+    final signature = inputSignature(question);
+    return () =>
+        requestIsCurrent(requestedUnit, requestedOwner) &&
+        state.familyId == family &&
+        state.api.token == token &&
+        inputCurrent(question) &&
+        currentQuestion != null &&
+        inputSignature(currentQuestion!) == signature;
+  }
+
+  Object toolKey(Json question) => (
+    widget.unitId,
+    ObjectKey(ownerAccount),
+    ownerFamily,
+    state.api.token,
+    inputSignature(question),
+  );
+
+  bool inputCurrent(Json question, {String? token, bool checkToken = false}) {
+    final current = currentQuestion;
+    return requestIsCurrent(widget.unitId, ownerAccount) &&
+        state.isChild &&
+        visible &&
+        routeVisible &&
+        ModalRoute.of(context)?.isCurrent != false &&
+        !actionBusy &&
+        !awaitingContinue &&
+        !draftConflict &&
+        unit?['status'] == 'active' &&
+        (!checkToken || state.api.token == token) &&
+        current != null &&
+        inputSignature(current) == inputSignature(question);
+  }
+
+  void chooseOption(Json question, String? value) {
+    if (!inputCurrent(question) ||
+        value == null ||
+        !(question['options'] as List).contains(value)) {
+      return;
+    }
+    noteInteraction();
+    setState(() => choice = value);
+  }
+
+  void chooseNumber(Json question, int number) {
+    // Unhandled text-editing keys keep bubbling to the existing input system.
+    if (AnswerNumberKeys.typingIntoField) return;
+    final options = question['options'] as List? ?? [];
+    if (number >= 0 && number < options.length) {
+      chooseOption(question, options[number].toString());
+    }
+  }
+
+  void rememberMatch(Json question) {
+    final signature = inputSignature(question);
+    if (matchUndoSignature != signature) {
+      matchUndo.clear();
+      matchUndoSignature = signature;
+    }
+    matchUndo.add(Map<String, String>.from(matches));
+    if (matchUndo.length > 12) matchUndo.removeAt(0);
+  }
+
+  void undoMatch(Json question) {
+    if (!inputCurrent(question) ||
+        matchUndoSignature != inputSignature(question) ||
+        matchUndo.isEmpty) {
+      return;
+    }
+    noteInteraction();
+    setState(() => matches = matchUndo.removeLast());
+  }
+
+  void returnToAnswer(Json question) {
+    if (!inputCurrent(question)) return;
+    final target = answerInputTop.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(
+        target,
+        alignment: .15,
+        duration: const Duration(milliseconds: 180),
+      );
+    }
+    if (['short', 'gap'].contains(question['type']) &&
+        !expectsFraction(question)) {
+      answerFocus.requestFocus();
+    } else {
+      answerAreaFocus.requestFocus();
+    }
+  }
+
   String groupedSignature(Json question) => jsonEncode([
     question['id'],
     question['prompt'],
@@ -2475,6 +2686,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     question['prompt'],
     question['options'],
     question['choices'],
+    unit?['learning_session']?['source_signature'],
   ]);
 
   Widget matchingBoard(Json q) {
@@ -2482,27 +2694,39 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     final requestedOwner = ownerAccount;
     final requestedFamily = ownerFamily;
     final signature = matchSignature(q);
+    final canInput = capturedInputGuard(q);
     return MatchingAnswerBoard(
       questionId: q['id'],
       sourceKey: (
         requestedUnit,
         ObjectKey(requestedOwner),
         requestedFamily,
+        state.api.token,
         signature,
       ),
       options: (q['options'] as List).cast<String>(),
       choices: (q['choices'] as List).cast<String>(),
       matches: Map<String, String>.unmodifiable(matches),
-      disabled: actionBusy || awaitingContinue,
-      onChoose: (pair) => chooseMatch(q, pair),
-      onDrop: (pair, value) => dropMatch(
-        pair,
-        value,
-        requestedUnit: requestedUnit,
-        requestedOwner: requestedOwner,
-        requestedFamily: requestedFamily,
-        signature: signature,
-      ),
+      disabled: !inputCurrent(q),
+      onUndo: matchUndoSignature == inputSignature(q) && matchUndo.isNotEmpty
+          ? () {
+              if (canInput()) undoMatch(q);
+            }
+          : null,
+      onChoose: (pair) {
+        if (canInput()) chooseMatch(q, pair);
+      },
+      onDrop: (pair, value) {
+        if (!canInput()) return;
+        dropMatch(
+          pair,
+          value,
+          requestedUnit: requestedUnit,
+          requestedOwner: requestedOwner,
+          requestedFamily: requestedFamily,
+          signature: signature,
+        );
+      },
     );
   }
 
@@ -2529,67 +2753,142 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         !(q['choices'] as List).contains(value)) {
       return;
     }
+    if (matches[pair] == value) return;
     noteInteraction();
+    rememberMatch(q);
     setState(() => matches[pair] = value);
   }
 
   Future<void> chooseMatch(Json q, String pair) async {
-    final id = widget.unitId;
-    final requestedOwner = ownerAccount;
-    final selected = await showUnitSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (sheet) => SizedBox(
-        height: MediaQuery.sizeOf(sheet).height * .72,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: MathText(
-                'Was passt zu „$pair“?',
-                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+    if (!inputCurrent(q)) return;
+    final id = widget.unitId, requestedOwner = ownerAccount;
+    final token = state.api.token, family = state.familyId;
+    final signature = inputSignature(q);
+    final search = TextEditingController();
+    String? selected;
+    try {
+      selected = await showUnitSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (sheet) => LearningToolScope(
+          state: state,
+          sourceKey: (id, ObjectKey(requestedOwner), family, token, signature),
+          closeRouteOnInvalid: true,
+          isCurrent: () =>
+              requestIsCurrent(id, requestedOwner) &&
+              visible &&
+              state.api.token == token &&
+              state.familyId == family &&
+              currentQuestion != null &&
+              inputSignature(currentQuestion!) == signature,
+          builder: (_) => StatefulBuilder(
+            builder: (sheet, update) => Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(sheet).bottom,
               ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: RadioGroup<String>(
-                  groupValue: matches[pair],
-                  onChanged: (value) => popUnitRoute(sheet, value),
-                  child: Column(
-                    children: [
-                      for (final value in (q['choices'] as List).reversed)
-                        RadioListTile<String>(
-                          value: value,
-                          title: MathText(
-                            value,
-                            style: TextStyle(fontSize: 17),
-                          ),
-                          minVerticalPadding: 16,
+              child: SizedBox(
+                height: MediaQuery.sizeOf(sheet).height * .72,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                              child: MathText(
+                                'Was passt zu „$pair“?',
+                                style: const TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: TextField(
+                                key: const ValueKey('match-choice-search'),
+                                controller: search,
+                                maxLength: 100,
+                                decoration: const InputDecoration(
+                                  labelText:
+                                      'In den vorhandenen Optionen suchen',
+                                ),
+                                onChanged: (_) => update(() {}),
+                                textInputAction: TextInputAction.search,
+                              ),
+                            ),
+                            RadioGroup<String>(
+                              groupValue: matches[pair],
+                              onChanged: (value) => popUnitRoute(sheet, value),
+                              child: Column(
+                                children: [
+                                  for (final value
+                                      in (q['choices'] as List).reversed)
+                                    if (value.toString().toLowerCase().contains(
+                                      search.text.trim().toLowerCase(),
+                                    ))
+                                      RadioListTile<String>(
+                                        value: value,
+                                        title: MathText(
+                                          value,
+                                          style: const TextStyle(fontSize: 17),
+                                        ),
+                                        minVerticalPadding: 16,
+                                      ),
+                                  if (!(q['choices'] as List).any(
+                                    (value) =>
+                                        value.toString().toLowerCase().contains(
+                                          search.text.trim().toLowerCase(),
+                                        ),
+                                  ))
+                                    const Padding(
+                                      padding: EdgeInsets.all(20),
+                                      child: Text(
+                                        'Keine vorhandene Option passt zur Suche.',
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: TextButton(
+                        onPressed: () => popUnitRoute(sheet),
+                        child: const Text('Zurück zur Aufgabe'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: TextButton(
-                onPressed: () => popUnitRoute(sheet),
-                child: Text('Zurück zur Aufgabe'),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      search.dispose();
+    }
     if (selected != null &&
         requestIsCurrent(id, requestedOwner) &&
-        currentQuestion?['id'] == q['id']) {
+        state.api.token == token &&
+        state.familyId == family &&
+        inputCurrent(q) &&
+        inputSignature(q) == signature &&
+        (q['choices'] as List).contains(selected)) {
+      if (matches[pair] == selected) return;
       noteInteraction();
-      setState(() => matches[pair] = selected);
+      rememberMatch(q);
+      setState(() => matches[pair] = selected!);
     }
   }
 
@@ -3082,78 +3381,122 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     }
   }
 
-  Widget inlineHelp(Json u, Json q) => Panel(
-    key: hintTop,
-    tone: PanelTone.neutral,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.lightbulb_outline_rounded, color: context.palette.teal),
-            SizedBox(width: 8),
-            Expanded(
-              child: MathText(
-                'Dein Tipp',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+  Widget inlineHelp(Json u, Json q) {
+    final shown = (q['shown_hints'] as List? ?? [])
+        .whereType<Map>()
+        .where((item) => item['text'] is String)
+        .toList();
+    final selected = shown.indexWhere((item) => item['text'] == hint);
+    final canInput = capturedInputGuard(q);
+    final canReadHint = capturedSourceGuard(q);
+    return Panel(
+      key: hintTop,
+      tone: PanelTone.neutral,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline_rounded,
+                color: context.palette.teal,
               ),
-            ),
-            if (hint != null)
-              ReadAloudButton(text: MathText.spoken(hint!), iconOnly: true),
-          ],
-        ),
-        if (hint != null)
-          LearningContent(hint!, style: TextStyle(fontSize: 17, height: 1.5)),
-        SubjectPresentation(
-          key: ValueKey((
-            'hint1-hint2-hint3',
-            widget.unitId,
-            q['id'],
-            ObjectKey(ownerAccount),
-          )),
-          q['presentation'] is Map ? Json.from(q['presentation']) : null,
-          state: state,
-          stages: {'hint1', 'hint2', 'hint3'},
-        ),
-        SizedBox(height: 8),
-        if (u['learning_session']?['action']?['reason_code'] ==
-            'denominators_added')
-          Text(
-            'Vergleiche gleich große Teile: Beim Addieren bleibt der gemeinsame Nenner stehen.',
+              SizedBox(width: 8),
+              Expanded(
+                child: MathText(
+                  'Dein Tipp',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                ),
+              ),
+              if (hint != null)
+                ReadAloudButton(text: MathText.spoken(hint!), iconOnly: true),
+            ],
           ),
-        if (hintExhausted)
-          Text(
-            'Du hast alle vorhandenen Tipps gesehen. Unter „Mehr Hilfe“ findest du andere Unterstützung.',
+          if (shown.length > 1)
+            DropdownButtonFormField<int>(
+              key: ValueKey(('shown-hints', q['id'], selected)),
+              initialValue: selected < 0 ? null : selected,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Bereits geöffnete Tipps',
+              ),
+              items: [
+                for (var i = 0; i < shown.length; i++)
+                  DropdownMenuItem(
+                    value: i,
+                    child: Text('Tipp ${shown[i]['number'] ?? i + 1}'),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null && canReadHint()) {
+                  setState(() => hint = shown[value]['text']);
+                }
+              },
+            ),
+          if (hint != null)
+            LearningContent(hint!, style: TextStyle(fontSize: 17, height: 1.5)),
+          SubjectPresentation(
+            key: ValueKey((
+              'hint1-hint2-hint3',
+              widget.unitId,
+              q['id'],
+              ObjectKey(ownerAccount),
+            )),
+            q['presentation'] is Map ? Json.from(q['presentation']) : null,
+            state: state,
+            stages: {'hint1', 'hint2', 'hint3'},
           ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            TextButton(
-              onPressed: actionBusy || hintExhausted
-                  ? null
-                  : () => perform(() => requestHint(u, q)),
-              child: Text('Noch ein Tipp'),
+          SizedBox(height: 8),
+          if (u['learning_session']?['action']?['reason_code'] ==
+              'denominators_added')
+            Text(
+              'Vergleiche gleich große Teile: Beim Addieren bleibt der gemeinsame Nenner stehen.',
             ),
-            TextButton(
-              onPressed: actionBusy ? null : () => perform(() => moreHelp(u)),
-              child: Text('Mehr Hilfe'),
+          if (hintExhausted)
+            Text(
+              'Du hast alle vorhandenen Tipps gesehen. Unter „Mehr Hilfe“ findest du andere Unterstützung.',
             ),
-            if ((u['learning_session']?['action']?['resources'] as List? ?? [])
-                .isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
               TextButton.icon(
-                onPressed: () => showTips(u),
-                icon: Icon(Icons.ondemand_video_outlined),
-                label: Text('Andere Erklärung ansehen'),
+                onPressed: canInput()
+                    ? () {
+                        if (canInput()) returnToAnswer(q);
+                      }
+                    : null,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Zur eigenen Eingabe'),
               ),
-          ],
-        ),
-      ],
-    ),
-  );
+              TextButton(
+                onPressed: actionBusy || hintExhausted
+                    ? null
+                    : () => perform(() => requestHint(u, q)),
+                child: Text('Noch ein Tipp'),
+              ),
+              TextButton(
+                onPressed: actionBusy ? null : () => perform(() => moreHelp(u)),
+                child: Text('Mehr Hilfe'),
+              ),
+              if ((u['learning_session']?['action']?['resources'] as List? ??
+                      [])
+                  .isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => showTips(u),
+                  icon: Icon(Icons.ondemand_video_outlined),
+                  label: Text('Andere Erklärung ansehen'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> moreHelp(Json u) async {
     final requestedOwner = ownerAccount;
+    final requestedSource = u['learning_session']?['source_signature'];
     final selected = await showUnitSheet<String>(
       context: context,
       useSafeArea: true,
@@ -3295,7 +3638,16 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         await requestParentHelp(context, u);
       case 'knowledge':
         if (identical(unit, u)) {
-          await showKnowledgeSheet(context, state, unitId: u['id']);
+          await showKnowledgeSheet(
+            context,
+            state,
+            unitId: u['id'],
+            isCurrent: () =>
+                requestIsCurrent(u['id'], requestedOwner) &&
+                identical(unit, u) &&
+                unit?['learning_session']?['source_signature'] ==
+                    requestedSource,
+          );
         }
       case 'difficulty':
         await showTaskFeedback(context, u);
@@ -3435,55 +3787,94 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     if (!requestIsCurrent(u['id'], requestedOwner)) return;
     final introduction = u['introduction_seen'] == false;
     final q = introduction ? null : currentQuestion;
+    final token = state.api.token, family = state.familyId;
+    final source = unit?['learning_session']?['source_signature'];
+    final questionSignature = q == null ? null : inputSignature(q);
+    bool currentExplanation() =>
+        requestIsCurrent(u['id'], requestedOwner) &&
+        visible &&
+        state.api.token == token &&
+        state.familyId == family &&
+        unit?['learning_session']?['source_signature'] == source &&
+        (q == null ||
+            currentQuestion != null &&
+                inputSignature(currentQuestion!) == questionSignature);
     final data = await state.api.post(
       '/units/${u['id']}/explanation',
       u['supports_question_explanation'] == true && q != null
           ? {'question_id': q['id']}
           : null,
     );
-    if (!context.mounted || !requestIsCurrent(u['id'], requestedOwner)) return;
+    if (!context.mounted || !currentExplanation()) return;
     final positionKey = (
-      q?['id']?.toString() ?? 'introduction',
+      jsonEncode([source, q?['id']?.toString() ?? 'introduction']),
       data['explanation'].toString(),
     );
     final continuePractice = await showUnitDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Kurz erklärt'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LearningExplanation(
-                text: data['explanation'],
-                initialStep: explanationPositions[positionKey] ?? 0,
-                onStepChanged: (value) {
-                  if (!requestIsCurrent(u['id'], requestedOwner)) return;
-                  explanationPositions[positionKey] = value;
-                  while (explanationPositions.length > 10) {
-                    explanationPositions.remove(
-                      explanationPositions.keys.first,
-                    );
-                  }
-                },
-                prompt: data['question_id'] != null && q != null
-                    ? q['prompt']
-                    : null,
+        content: SizedBox(
+          width: 720,
+          child: LearningToolScope(
+            state: state,
+            sourceKey: (
+              u['id'],
+              ObjectKey(requestedOwner),
+              family,
+              token,
+              source,
+              questionSignature,
+            ),
+            closeRouteOnInvalid: true,
+            isCurrent: currentExplanation,
+            builder: (_) => SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LearningExplanation(
+                    text: data['explanation'],
+                    state: state,
+                    sourceKey: (
+                      u['id'],
+                      ObjectKey(requestedOwner),
+                      state.familyId,
+                      state.api.token,
+                      u['learning_session']?['source_signature'],
+                      q?['id'],
+                      data['explanation'],
+                    ),
+                    isCurrent: currentExplanation,
+                    initialStep: explanationPositions[positionKey] ?? 0,
+                    onStepChanged: (value) {
+                      if (!requestIsCurrent(u['id'], requestedOwner)) return;
+                      explanationPositions[positionKey] = value;
+                      while (explanationPositions.length > 10) {
+                        explanationPositions.remove(
+                          explanationPositions.keys.first,
+                        );
+                      }
+                    },
+                    prompt: data['question_id'] != null && q != null
+                        ? q['prompt']
+                        : null,
+                  ),
+                  SubjectPresentation(
+                    key: ValueKey((
+                      'explanation-all',
+                      u['id'],
+                      data['question_id'] ?? q?['id'] ?? 'introduction',
+                      ObjectKey(requestedOwner),
+                    )),
+                    state: state,
+                    data['presentation'] is Map
+                        ? Json.from(data['presentation'])
+                        : null,
+                  ),
+                ],
               ),
-              SubjectPresentation(
-                key: ValueKey((
-                  'explanation-all',
-                  u['id'],
-                  data['question_id'] ?? q?['id'] ?? 'introduction',
-                  ObjectKey(requestedOwner),
-                )),
-                state: state,
-                data['presentation'] is Map
-                    ? Json.from(data['presentation'])
-                    : null,
-              ),
-            ],
+            ),
           ),
         ),
         actions: [

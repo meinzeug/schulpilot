@@ -38,10 +38,10 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   Json? data;
   String? error;
   late Json? owner;
-  late String? family;
+  late String? family, session;
   int generation = 0, section = 0, page = 1, refresh = 0, operation = 0;
   bool loading = false, includeCompleted = false, busy = false;
-  bool loadFailed = false;
+  bool loadFailed = false, compactTopics = false;
   final Map<String, String> preparationKeys = {};
   ModalRoute<dynamic>? editorRoute;
   final search = TextEditingController();
@@ -68,13 +68,15 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      session == widget.state.api.token;
 
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
     family = widget.state.familyId;
+    session = widget.state.api.token;
     restoreView();
     applyInitialSection();
     applyInitialFilters();
@@ -612,6 +614,31 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
   }
 
   Widget topicCard(Json topic) {
+    if (!compactTopics) return expandedTopicCard(topic);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Panel(
+        child: ExpansionTile(
+          title: Text(
+            '${topic['subject']} · ${topic['topic']}',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          subtitle: Text(
+            [
+              if (topic['source_status'] == 'needs_review')
+                'Quelle geändert · prüfen',
+              if (topic['mandatory'] == true) 'Verbindlich',
+              if (topic['due'] != null) 'Termin ${friendlyDate(topic['due'])}',
+              if (topic['done'] == true) 'Als erledigt markiert',
+            ].join(' · '),
+          ),
+          children: [expandedTopicCard(topic)],
+        ),
+      ),
+    );
+  }
+
+  Widget expandedTopicCard(Json topic) {
     final canManage = data!['can_manage'] == true;
     final existing = topic['available_unit'] as Map?;
     final pending = topic['preparation'] as Map?;
@@ -1027,115 +1054,162 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ),
                       ],
                     ),
-                    ParentCollectionSearch(
-                      controller: search,
-                      label: 'Lernaufträge suchen',
-                      appliedQuery: query,
-                      enabled: !loading && !busy,
-                      onSearch: applySearch,
-                      onClear: () => applySearch(clear: true),
-                    ),
-                    if ((data!['subjects'] as List? ?? []).isNotEmpty)
-                      ParentChoiceFilter(
-                        label: 'Fach der Lernaufträge',
-                        value: subjectFilter ?? 'all',
-                        enabled: !loading && !busy,
-                        choices: [
-                          ('all', 'Alle Fächer'),
-                          for (final value in data!['subjects'])
-                            (value as String, value),
-                        ],
-                        onChanged: (value) => filterTopics(
-                          () => subjectFilter = value == 'all' ? null : value,
-                        ),
-                      ),
                     ExpansionTile(
-                      title: const Text('Aufträge gezielt filtern'),
+                      key: ValueKey(('all-topic-filters', widget.childId)),
+                      initiallyExpanded: filtered,
+                      title: const Text('Suche & alle Themenfilter'),
                       subtitle: Text(
-                        'Quelle · ${obligation == 'all'
-                            ? 'alle Verbindlichkeiten'
-                            : obligation == 'mandatory'
-                            ? 'verbindlich'
-                            : 'freiwillig'} · ${timing == 'all' ? 'alle Termine' : 'Terminfilter aktiv'}',
+                        filtered
+                            ? 'Aktive Bedingungen bleiben oberhalb sichtbar.'
+                            : 'Gespeicherten Bestand eingrenzen',
                       ),
                       children: [
-                        ParentChoiceFilter(
-                          label: 'Quelle des Auftrags',
-                          value: sourceFilter,
+                        ParentCollectionSearch(
+                          controller: search,
+                          label: 'Lernaufträge suchen',
+                          appliedQuery: query,
                           enabled: !loading && !busy,
-                          choices: const [
-                            ('all', 'Alle Quellen'),
-                            ('notebook', 'Mit Heftquelle'),
-                            ('manual', 'Ohne Heftfoto'),
-                            ('changed', 'Geänderte Quelle prüfen'),
-                            ('confirmed', 'Bestätigte Auftragsgrundlage'),
+                          onSearch: applySearch,
+                          onClear: () => applySearch(clear: true),
+                        ),
+                        if ((data!['subjects'] as List? ?? []).isNotEmpty)
+                          ParentChoiceFilter(
+                            label: 'Fach der Lernaufträge',
+                            value: subjectFilter ?? 'all',
+                            enabled: !loading && !busy,
+                            choices: [
+                              ('all', 'Alle Fächer'),
+                              for (final value in data!['subjects'])
+                                (value as String, value),
+                            ],
+                            onChanged: (value) => filterTopics(
+                              () =>
+                                  subjectFilter = value == 'all' ? null : value,
+                            ),
+                          ),
+                        ExpansionTile(
+                          title: const Text('Aufträge gezielt filtern'),
+                          subtitle: Text(
+                            'Quelle · ${obligation == 'all'
+                                ? 'alle Verbindlichkeiten'
+                                : obligation == 'mandatory'
+                                ? 'verbindlich'
+                                : 'freiwillig'} · ${timing == 'all' ? 'alle Termine' : 'Terminfilter aktiv'}',
+                          ),
+                          children: [
+                            ParentChoiceFilter(
+                              label: 'Quelle des Auftrags',
+                              value: sourceFilter,
+                              enabled: !loading && !busy,
+                              choices: const [
+                                ('all', 'Alle Quellen'),
+                                ('notebook', 'Mit Heftquelle'),
+                                ('manual', 'Ohne Heftfoto'),
+                                ('changed', 'Geänderte Quelle prüfen'),
+                                ('confirmed', 'Bestätigte Auftragsgrundlage'),
+                              ],
+                              onChanged: (value) =>
+                                  filterTopics(() => sourceFilter = value),
+                            ),
+                            ParentChoiceFilter(
+                              label: 'Verbindlichkeit',
+                              value: obligation,
+                              enabled: !loading && !busy,
+                              choices: const [
+                                ('all', 'Alle Aufträge'),
+                                ('mandatory', 'Verbindlich'),
+                                ('voluntary', 'Freiwillig'),
+                              ],
+                              onChanged: (value) =>
+                                  filterTopics(() => obligation = value),
+                            ),
+                            ParentChoiceFilter(
+                              label: 'Auftragstermin',
+                              value: timing,
+                              enabled: !loading && !busy,
+                              choices: const [
+                                ('all', 'Alle Termine'),
+                                ('today', 'Termin heute'),
+                                ('past', 'Termin liegt zurück'),
+                                ('future', 'Zukünftiger Termin'),
+                                ('undated', 'Ohne Termin'),
+                              ],
+                              onChanged: (value) =>
+                                  filterTopics(() => timing = value),
+                            ),
+                            ParentChoiceFilter(
+                              label: 'Gespeicherte Runden',
+                              value: rounds,
+                              enabled: !loading && !busy,
+                              choices: const [
+                                ('all', 'Mit und ohne Runden'),
+                                ('open', 'Mit fortsetzbarer Runde'),
+                                ('none', 'Noch keine gespeicherte Runde'),
+                                ('finished', 'Mit abgeschlossener Runde'),
+                              ],
+                              onChanged: (v) => filterTopics(() => rounds = v),
+                            ),
+                            ParentChoiceFilter(
+                              label: 'Auftragsart',
+                              value: kindFilter,
+                              enabled: !loading && !busy,
+                              choices: const [
+                                ('all', 'Alle Auftragsarten'),
+                                ('parent', 'Lernauftrag'),
+                                ('exam', 'Klassenarbeit / Test'),
+                                ('homework', 'Notierte Hausaufgabe'),
+                                ('interest', 'Interesse'),
+                              ],
+                              onChanged: (v) =>
+                                  filterTopics(() => kindFilter = v),
+                            ),
+                            ParentChoiceFilter(
+                              label: 'Frühester Lernbeginn',
+                              value: startFilter,
+                              enabled: !loading && !busy,
+                              choices: const [
+                                ('all', 'Alle Startzeiten'),
+                                ('available', 'Heute bereits möglich'),
+                                ('later', 'Für später vorgesehen'),
+                              ],
+                              onChanged: (v) =>
+                                  filterTopics(() => startFilter = v),
+                            ),
                           ],
-                          onChanged: (value) =>
-                              filterTopics(() => sourceFilter = value),
                         ),
                         ParentChoiceFilter(
-                          label: 'Verbindlichkeit',
-                          value: obligation,
+                          label: 'Auftragsstatus',
+                          value: completion,
                           enabled: !loading && !busy,
                           choices: const [
-                            ('all', 'Alle Aufträge'),
-                            ('mandatory', 'Verbindlich'),
-                            ('voluntary', 'Freiwillig'),
+                            ('open', 'Offene Themen'),
+                            ('done', 'Erledigte Themen'),
+                            ('all', 'Offene und erledigte Themen'),
                           ],
-                          onChanged: (value) =>
-                              filterTopics(() => obligation = value),
+                          onChanged: (v) => filterTopics(() {
+                            completion = v;
+                            includeCompleted = v == 'all';
+                          }),
                         ),
                         ParentChoiceFilter(
-                          label: 'Auftragstermin',
-                          value: timing,
+                          label: 'Reihenfolge der Aufträge',
+                          value: order,
                           enabled: !loading && !busy,
                           choices: const [
-                            ('all', 'Alle Termine'),
-                            ('today', 'Termin heute'),
-                            ('past', 'Termin liegt zurück'),
-                            ('future', 'Zukünftiger Termin'),
-                            ('undated', 'Ohne Termin'),
+                            ('default', 'Verbindlich und zuletzt angelegt'),
+                            ('due', 'Nächster Termin zuerst'),
+                            ('oldest', 'Zuerst angelegte Ziele'),
+                            ('subject', 'Nach Fach und Thema'),
                           ],
-                          onChanged: (value) =>
-                              filterTopics(() => timing = value),
-                        ),
-                        ParentChoiceFilter(
-                          label: 'Gespeicherte Runden',
-                          value: rounds,
-                          enabled: !loading && !busy,
-                          choices: const [
-                            ('all', 'Mit und ohne Runden'),
-                            ('open', 'Mit fortsetzbarer Runde'),
-                            ('none', 'Noch keine gespeicherte Runde'),
-                            ('finished', 'Mit abgeschlossener Runde'),
-                          ],
-                          onChanged: (v) => filterTopics(() => rounds = v),
-                        ),
-                        ParentChoiceFilter(
-                          label: 'Auftragsart',
-                          value: kindFilter,
-                          enabled: !loading && !busy,
-                          choices: const [
-                            ('all', 'Alle Auftragsarten'),
-                            ('parent', 'Lernauftrag'),
-                            ('exam', 'Klassenarbeit / Test'),
-                            ('homework', 'Notierte Hausaufgabe'),
-                            ('interest', 'Interesse'),
-                          ],
-                          onChanged: (v) => filterTopics(() => kindFilter = v),
-                        ),
-                        ParentChoiceFilter(
-                          label: 'Frühester Lernbeginn',
-                          value: startFilter,
-                          enabled: !loading && !busy,
-                          choices: const [
-                            ('all', 'Alle Startzeiten'),
-                            ('available', 'Heute bereits möglich'),
-                            ('later', 'Für später vorgesehen'),
-                          ],
-                          onChanged: (v) => filterTopics(() => startFilter = v),
+                          onChanged: (v) => filterTopics(() => order = v),
                         ),
                       ],
+                    ),
+                    SwitchListTile(
+                      title: const Text('Kompakte Auftragsliste'),
+                      value: compactTopics,
+                      onChanged: (value) =>
+                          setState(() => compactTopics = value),
                     ),
                     const SizedBox(height: 16),
                     if (data!['can_manage'] == true) ...[
@@ -1193,32 +1267,6 @@ class _ParentPlanScreenState extends State<ParentPlanScreen> {
                           ],
                         ),
                     ],
-                    ParentChoiceFilter(
-                      label: 'Auftragsstatus',
-                      value: completion,
-                      enabled: !loading && !busy,
-                      choices: const [
-                        ('open', 'Offene Themen'),
-                        ('done', 'Erledigte Themen'),
-                        ('all', 'Offene und erledigte Themen'),
-                      ],
-                      onChanged: (v) => filterTopics(() {
-                        completion = v;
-                        includeCompleted = v == 'all';
-                      }),
-                    ),
-                    ParentChoiceFilter(
-                      label: 'Reihenfolge der Aufträge',
-                      value: order,
-                      enabled: !loading && !busy,
-                      choices: const [
-                        ('default', 'Verbindlich und zuletzt angelegt'),
-                        ('due', 'Nächster Termin zuerst'),
-                        ('oldest', 'Zuerst angelegte Ziele'),
-                        ('subject', 'Nach Fach und Thema'),
-                      ],
-                      onChanged: (v) => filterTopics(() => order = v),
-                    ),
                     if (assignmentId != null)
                       Panel(
                         child: Column(

@@ -141,6 +141,7 @@ class _GroupedAnswerBoardState extends State<GroupedAnswerBoard>
   final _controllers = <String, TextEditingController>{};
   final _focus = <String, FocusNode>{};
   final _targets = <String, GlobalKey>{};
+  final _cleared = <String, String>{};
   Object _epoch = Object();
   DialogRoute<String>? _selector;
   bool _resumed = true;
@@ -164,6 +165,7 @@ class _GroupedAnswerBoardState extends State<GroupedAnswerBoard>
 
   void _invalidate() {
     _epoch = Object();
+    _cleared.clear();
     for (final node in _focus.values) {
       node.unfocus();
     }
@@ -254,7 +256,11 @@ class _GroupedAnswerBoardState extends State<GroupedAnswerBoard>
 
   void _change(GroupedAnswerField field, String value) {
     if (_updating || !_enabled || value.runes.length > 160) return;
-    if (field.kind == 'select' && !field.options.contains(value)) return;
+    if (field.kind == 'select' &&
+        value.isNotEmpty &&
+        !field.options.contains(value)) {
+      return;
+    }
     final values = widget.spec.decode(widget.answer);
     values[field.id] = value;
     widget.onChanged(
@@ -382,6 +388,45 @@ class _GroupedAnswerBoardState extends State<GroupedAnswerBoard>
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (value.isNotEmpty)
+                        TextButton.icon(
+                          key: ValueKey('group-clear-${field.id}'),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                          ),
+                          onPressed: !_enabled
+                              ? null
+                              : () {
+                                  if (!identical(epoch, _epoch)) return;
+                                  _cleared[field.id] = value;
+                                  _change(field, '');
+                                },
+                          icon: const Icon(Icons.clear_rounded),
+                          label: const Text('Feld leeren'),
+                        ),
+                      if (_cleared.containsKey(field.id))
+                        TextButton.icon(
+                          key: ValueKey('group-undo-${field.id}'),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                          ),
+                          onPressed: !_enabled
+                              ? null
+                              : () {
+                                  if (!identical(epoch, _epoch)) return;
+                                  final previous = _cleared.remove(field.id);
+                                  if (previous != null) {
+                                    _change(field, previous);
+                                  }
+                                },
+                          icon: const Icon(Icons.undo_rounded),
+                          label: const Text('Feld wiederherstellen'),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   if (field.kind == 'text')
                     TextField(
@@ -473,6 +518,37 @@ class _GroupedAnswerBoardState extends State<GroupedAnswerBoard>
           ),
           const SizedBox(height: 16),
         ],
+        ExpansionTile(
+          title: const Text('Meine Eingaben überblicken'),
+          tilePadding: EdgeInsets.zero,
+          children: [
+            const Text(
+              'Dies ist deine ungeprüfte Eingabe. Erst „Antwort prüfen“ bewertet die ganze Aufgabe.',
+            ),
+            GroupedAnswerSummary(spec: widget.spec, answer: widget.answer),
+            for (final field in widget.spec.fields)
+              TextButton.icon(
+                onPressed: !_enabled
+                    ? null
+                    : () async {
+                        final epoch = _epoch;
+                        final target = _targets[field.id]?.currentContext;
+                        if (target != null) {
+                          await Scrollable.ensureVisible(
+                            target,
+                            alignment: .2,
+                            duration: const Duration(milliseconds: 180),
+                          );
+                        }
+                        if (mounted && identical(epoch, _epoch) && _enabled) {
+                          _focus[field.id]?.requestFocus();
+                        }
+                      },
+                icon: const Icon(Icons.edit_outlined),
+                label: Text('Zu „${field.label}“'),
+              ),
+          ],
+        ),
         if (widget.answer.runes.length > 1000)
           const Notice(
             'Die Eingaben sind zusammen zu lang. Kürze sie, damit du speichern und prüfen kannst.',

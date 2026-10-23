@@ -18,6 +18,7 @@ class MatchingAnswerBoard extends StatefulWidget {
   final Map<String, String> matches;
   final bool disabled;
   final ValueChanged<String> onChoose;
+  final VoidCallback? onUndo;
   final void Function(String option, String choice) onDrop;
 
   const MatchingAnswerBoard({
@@ -29,6 +30,7 @@ class MatchingAnswerBoard extends StatefulWidget {
     required this.matches,
     required this.disabled,
     required this.onChoose,
+    this.onUndo,
     required this.onDrop,
   });
 
@@ -168,6 +170,15 @@ class _MatchingAnswerBoardState extends State<MatchingAnswerBoard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.onUndo != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: widget.disabled ? null : widget.onUndo,
+                icon: const Icon(Icons.undo_rounded),
+                label: const Text('Letzte Zuordnung zurücknehmen'),
+              ),
+            ),
           Text(
             'Halte eine Antwort kurz gedrückt und ziehe sie zum passenden Begriff. Du kannst die Zuordnung auch antippen.',
             style: TextStyle(color: p.muted, fontSize: 13, height: 1.5),

@@ -19,6 +19,7 @@ import 'notebook_photo.dart';
 import 'lesson_voice.dart';
 import 'parent_child_navigation.dart';
 import 'ui.dart';
+import 'collection_view_tools.dart';
 
 String homeworkKey() =>
     'hw-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
@@ -35,6 +36,7 @@ class HomeworkScreen extends StatefulWidget {
 }
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
+  late final actorToken = widget.state.api.token;
   final List<Json> photos = [];
   String uploadPhase = '';
   final photoSearch = TextEditingController();
@@ -145,7 +147,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   bool get own =>
       actor != null &&
       identical(actor, widget.state.user) &&
-      actorFamily == widget.state.familyId;
+      actorFamily == widget.state.familyId &&
+      actorToken == widget.state.api.token;
   VoidCallback openPhotoAction(Json photo) {
     final child = widget.childId, id = photo['id'];
     final route = ModalRoute.of(context);
@@ -381,7 +384,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       Uint8List? bytes;
       try {
         if (!mounted || !photoCurrent(operation, child)) return;
-        bytes = await pickMaterialPhoto(context, source);
+        bytes = await pickMaterialPhoto(context, source, state: widget.state);
       } finally {
         if (photoCurrent(operation, child)) {
           await clearCameraSource(widget.state);
@@ -417,7 +420,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     final operation = ++photoOperation, child = widget.childId;
     setState(() => choosing = true);
     try {
-      final bytes = await cropMaterialPhoto(context, photo);
+      final bytes = await cropMaterialPhoto(
+        context,
+        photo,
+        state: widget.state,
+      );
       if (bytes == null || !photoCurrent(operation, child)) return;
       setState(() {
         pending = bytes;
@@ -942,6 +949,10 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     with WidgetsBindingObserver {
   final draft = TextEditingController(), question = TextEditingController();
   final draftFocus = FocusNode();
+  late final LocalTextHistory draftHistory;
+  late final actorToken = widget.state.api.token;
+  bool taskFocusMode = false;
+  String helpKind = 'all';
   final Map<String, String> drafts = {}, taskQuestions = {};
   final taskSearch = TextEditingController();
   String taskFilter = 'all';
@@ -975,7 +986,8 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   bool get own =>
       actor != null &&
       identical(actor, widget.state.user) &&
-      actorFamily == widget.state.familyId;
+      actorFamily == widget.state.familyId &&
+      actorToken == widget.state.api.token;
   bool get canWrite =>
       own &&
       widget.state.isChild &&
@@ -1011,6 +1023,11 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.state.addListener(identity);
+    draftHistory = LocalTextHistory(
+      draft,
+      canRecord: () =>
+          mounted && foreground && canWrite && !applying && selectedId != null,
+    );
     draft.addListener(edited);
     question.addListener(editedQuestion);
     unawaited(load());
@@ -1024,6 +1041,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
       debounce?.cancel();
       applying = true;
       draft.clear();
+      draftHistory.reset();
       question.clear();
       drafts.clear();
       taskQuestions.clear();
@@ -1058,6 +1076,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     foreground = state == AppLifecycleState.resumed;
     poll?.cancel();
     if (foreground && own && routeVisible) unawaited(load());
+    if (!foreground) closePrivateDialogs();
     if (!foreground && canWrite) unawaited(persist());
   }
 
@@ -1076,6 +1095,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     WidgetsBinding.instance.removeObserver(this);
     draft.removeListener(edited);
     question.removeListener(editedQuestion);
+    draftHistory.dispose();
     draft.dispose();
     draftFocus.dispose();
     question.dispose();
@@ -1111,6 +1131,21 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
       final material = result['material'] as Map;
       if (material['child_id'] != widget.childId) {
         throw ApiError('Dieses Foto gehört zu einem anderen Lernraum.');
+      }
+      Object? incomingAnalysis;
+      for (final turn in result['turns'] as List? ?? []) {
+        if (turn is Map &&
+            turn['status'] == 'ready' &&
+            turn['source_changed'] != true &&
+            (turn['homework'] as Map?)?['action'] == 'analyze') {
+          incomingAnalysis = turn['id'];
+        }
+      }
+      if (photo?['revision'] != material['revision'] ||
+          analysis?['id'] != incomingAnalysis) {
+        closePrivateDialogs();
+        taskFocusMode = false;
+        helpKind = 'all';
       }
       setState(() {
         data = result;
@@ -1156,6 +1191,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
           }
           applying = true;
           draft.text = drafts[selectedId] ?? '';
+          draftHistory.reset();
           question.text = same && canWrite ? (saved['question'] ?? '') : '';
           if (selectedId != null) taskQuestions[selectedId!] = question.text;
           lastSaved = draft.text;
@@ -1278,6 +1314,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     );
     applying = true;
     draft.text = drafts[selectedId] ?? '';
+    draftHistory.reset();
     question.text = taskQuestions[selectedId] ?? '';
     applying = false;
     edits++;
@@ -1657,6 +1694,223 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
     );
   }
 
+  Future<void> enlargeDraft() async {
+    if (!canWrite || selected == null || conflict || saving || busy) return;
+    final task = selectedId,
+        source = photo?['revision'],
+        analysisId = analysis?['id'];
+    bool valid() =>
+        mounted &&
+        foreground &&
+        canWrite &&
+        selectedId == task &&
+        photo?['revision'] == source &&
+        analysis?['id'] == analysisId;
+    late final DialogRoute<void> route;
+    route = DialogRoute<void>(
+      context: context,
+      builder: (ctx) => PrivateLocalView(
+        state: widget.state,
+        valid: valid,
+        child: Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          child: SizedBox(
+            width: 760,
+            height: MediaQuery.sizeOf(ctx).height * .82,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Dein eigener Versuch',
+                          style: Theme.of(ctx).textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Große Schreibansicht schließen',
+                        onPressed: () {
+                          if (ctx.mounted && valid() && route.isCurrent) {
+                            Navigator.pop(ctx);
+                          }
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Dieselbe Eingabe · keine zusätzliche Antwort oder Bewertung.',
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: draft,
+                            minLines: 8,
+                            maxLines: null,
+                            maxLength: 1200,
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'Mein eigener Versuch · große Schreibansicht',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                          TextHistoryButtons(draftHistory),
+                          const Text(
+                            'Der vorhandene Entwurfsschutz bleibt aktiv. Hier wird keine Hilfsanfrage ausgelöst.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    privateDialogs.add(route);
+    await Navigator.of(context).push(route);
+    privateDialogs.remove(route);
+    if (mounted &&
+        valid() &&
+        foreground &&
+        routeVisible &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      draftFocus.requestFocus();
+    }
+  }
+
+  Future<void> chooseHelpKind() async {
+    if (!canWrite ||
+        selected == null ||
+        busy ||
+        pending ||
+        extracting ||
+        conflict) {
+      return;
+    }
+    final task = selectedId,
+        source = photo?['revision'],
+        analysisId = analysis?['id'];
+    bool valid() =>
+        mounted &&
+        foreground &&
+        canWrite &&
+        selectedId == task &&
+        photo?['revision'] == source &&
+        analysis?['id'] == analysisId;
+    String? selectedHelp;
+    const choices = {
+      'explain': (
+        'Erklärung',
+        'Lass dir den vorhandenen Aufgabentext erklären. Deine eigene Lösung bleibt offen.',
+      ),
+      'hint': (
+        'Kleiner Hinweis',
+        'Ein Denkimpuls für den nächsten eigenen Versuch.',
+      ),
+      'plan': (
+        'In Schritte teilen',
+        'Eine mögliche Reihenfolge, um die Aufgabe selbst anzugehen.',
+      ),
+      'example': (
+        'Anderes Beispiel',
+        'Ein passendes anderes Beispiel zum Verständnis.',
+      ),
+    };
+    late final DialogRoute<String> route;
+    route = DialogRoute<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => PrivateLocalView(
+          state: widget.state,
+          valid: valid,
+          child: AlertDialog(
+            title: const Text('Welche Hilfe brauchst du?'),
+            scrollable: true,
+            content: SizedBox(
+              width: 620,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Das Auswählen einer Karte sendet noch keine Anfrage.',
+                  ),
+                  for (final entry in choices.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Semantics(
+                        selected: selectedHelp == entry.key,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            if (ctx.mounted && valid() && route.isCurrent) {
+                              update(() => selectedHelp = entry.key);
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: selectedHelp == entry.key
+                                ? context.palette.mint
+                                : null,
+                            padding: const EdgeInsets.all(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.value.$1,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(entry.value.$2),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  if (ctx.mounted && valid() && route.isCurrent) {
+                    Navigator.pop(ctx);
+                  }
+                },
+                child: const Text('Zurück'),
+              ),
+              FilledButton(
+                onPressed: selectedHelp == null
+                    ? null
+                    : () {
+                        if (ctx.mounted && valid() && route.isCurrent) {
+                          Navigator.pop(ctx, selectedHelp);
+                        }
+                      },
+                child: const Text('Diese Hilfe anfordern'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    privateDialogs.add(route);
+    final action = await Navigator.of(context).push(route);
+    privateDialogs.remove(route);
+    if (valid() && action is String && choices.containsKey(action)) {
+      await ask(action);
+    }
+  }
+
   Future<void> compareSaved() async {
     if (!canWrite || saving || busy || !conflict) return;
     final source = photo?['revision'], analysisId = analysis?['id'];
@@ -1688,32 +1942,19 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Auf diesem Gerät',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  TextVersionComparison(
+                    local: draft.text,
+                    saved: ((saved['drafts'] as Map?)?[selectedId] ?? '')
+                        .toString(),
                   ),
-                  SelectableText(
-                    draft.text.isEmpty
-                        ? 'Noch kein eigener Versuch.'
-                        : draft.text,
-                  ),
-                  if (question.text.isNotEmpty)
-                    Text('Meine Frage: ${question.text}'),
-                  SizedBox(height: 20),
-                  Text(
-                    'Gespeicherter Stand',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SelectableText(
-                    ((saved['drafts'] as Map?)?[selectedId] ?? '')
-                            .toString()
-                            .isEmpty
-                        ? 'Noch kein eigener Versuch.'
-                        : ((saved['drafts'] as Map?)?[selectedId] ?? '')
-                              .toString(),
-                  ),
-                  if ((saved['question'] ?? '').toString().isNotEmpty)
-                    Text('Meine Frage: ${saved['question']}'),
+                  if (question.text.isNotEmpty ||
+                      (saved['question'] ?? '').toString().isNotEmpty)
+                    LabeledComparison(
+                      leftLabel: 'Meine lokale Frage',
+                      rightLabel: 'Gespeicherte Frage',
+                      left: SelectableText(question.text),
+                      right: SelectableText('${saved['question'] ?? ''}'),
+                    ),
                   SizedBox(height: 12),
                   Text(
                     'Übernehmen ersetzt deinen lokalen Entwurf. Deine anderen Aufgaben bleiben beim gespeicherten Stand.',
@@ -2032,6 +2273,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   }
 
   Future<void> chooseTask(String taskId) async {
+    if (ModalRoute.of(context)?.isCurrent == false) return;
     if (!mounted ||
         !own ||
         busy ||
@@ -2063,9 +2305,11 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
           taskQuestions[previous] = question.text;
         }
         selectedId = taskId;
+        helpKind = 'all';
         if (canWrite) edits++;
         applying = true;
         draft.text = drafts[selectedId] ?? '';
+        draftHistory.reset();
         question.text = taskQuestions[selectedId] ?? '';
         lastSaved = draft.text;
         applying = false;
@@ -2389,13 +2633,20 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
   Widget build(BuildContext context) {
     final active =
         canWrite && !busy && !pending && !extracting && uncertainBody == null;
-    final relevant = turns
+    final allRelevant = turns
         .where(
           (t) =>
               (t['homework'] as Map?)?['task_id'] == selectedId &&
               (t['homework'] as Map?)?['analysis_id'] == analysis?['id'] &&
               t['source_changed'] != true &&
               (t['homework'] as Map?)?['action'] != 'analyze',
+        )
+        .toList();
+    final relevant = allRelevant
+        .where(
+          (turn) =>
+              helpKind == 'all' ||
+              (turn['homework'] as Map?)?['action'] == helpKind,
         )
         .toList();
     final displayedTasks = tasks;
@@ -2444,7 +2695,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
               selected: 'homework',
               subtitle: 'Gespeicherte Aufgaben & Lernhilfen',
             ),
-          if (widget.state.isChild) ...[
+          if (widget.state.isChild && !taskFocusMode) ...[
             ChildSectionHero(
               eyebrow: 'Hausaufgaben',
               compactTitle: (photo?['topic'] ?? '').toString().trim().isNotEmpty
@@ -2458,6 +2709,19 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
             ),
             SizedBox(height: 12),
           ],
+          if (analysis != null)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Aufgabenfokus'),
+              subtitle: const Text(
+                'Aufgabe, eigener Versuch und jüngste Hilfe im Mittelpunkt',
+              ),
+              value: taskFocusMode,
+              onChanged: (value) => setState(() {
+                taskFocusMode = value;
+                if (value) helpKind = 'all';
+              }),
+            ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -2480,7 +2744,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
             ),
           ],
           if (photo != null) ...[
-            if (canWrite) ...[
+            if (canWrite && !taskFocusMode) ...[
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
@@ -2491,7 +2755,7 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
               ),
               const SizedBox(height: 12),
             ],
-            if (photo!['has_image'] == true)
+            if (photo!['has_image'] == true && !taskFocusMode)
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -2584,12 +2848,13 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                 style: TextStyle(color: context.palette.muted),
               ),
               SizedBox(height: 12),
-              taskOverview(),
+              if (!taskFocusMode) taskOverview(),
               if ((analysis!['reply'] as Map?)?['more_tasks'] == true)
                 Notice(
                   'Auf dem Foto sind noch weitere Aufgaben. Fotografiere den übrigen Teil näher, wenn du damit weitermachen möchtest.',
                 ),
               if (canWrite &&
+                  !taskFocusMode &&
                   ((tasks.isNotEmpty && completed == tasks.length) ||
                       data?['practice'] != null ||
                       practiceKey != null)) ...[
@@ -2652,6 +2917,40 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                           Notice(practiceError!, warning: true),
                       ],
                     ),
+                  ),
+              ],
+              if (allRelevant.isNotEmpty && !taskFocusMode) ...[
+                const Text('Geladene Lernhilfen nach Anfrageart'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final kind in const {
+                      'all': 'Alle Hilfearten',
+                      'explain': 'Erklärung',
+                      'hint': 'Hinweis',
+                      'plan': 'Schritte',
+                      'example': 'Beispiel',
+                      'check': 'Eigener Weg',
+                      'question': 'Eigene Frage',
+                    }.entries)
+                      if (kind.key == 'all' ||
+                          allRelevant.any(
+                            (turn) =>
+                                (turn['homework'] as Map?)?['action'] ==
+                                kind.key,
+                          ))
+                        FilterChip(
+                          label: Text(kind.value),
+                          selected: helpKind == kind.key,
+                          onSelected: (_) =>
+                              setState(() => helpKind = kind.key),
+                        ),
+                  ],
+                ),
+                if (relevant.isEmpty)
+                  const Text(
+                    'In den geladenen Hilfen ist diese Anfrageart nicht vorhanden.',
                   ),
               ],
               SizedBox(height: 16),
@@ -2735,6 +3034,16 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                           ),
                         ],
                         SizedBox(height: 18),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: saving || busy || conflict
+                                ? null
+                                : enlargeDraft,
+                            icon: const Icon(Icons.open_in_full),
+                            label: const Text('Größere Schreibansicht'),
+                          ),
+                        ),
                         TextField(
                           controller: draft,
                           focusNode: draftFocus,
@@ -2746,6 +3055,10 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                             hintText:
                                 'Was weißt du schon? Wie würdest du anfangen?',
                           ),
+                        ),
+                        TextHistoryButtons(
+                          draftHistory,
+                          enabled: !saving && !busy && !conflict,
                         ),
                         Wrap(
                           spacing: 8,
@@ -2815,6 +3128,16 @@ class _HomeworkDetailScreenState extends State<_HomeworkDetailBody>
                             ),
                           ),
                         SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: active ? chooseHelpKind : null,
+                            icon: const Icon(Icons.help_outline),
+                            label: const Text(
+                              'Hilfearten ansehen und auswählen',
+                            ),
+                          ),
+                        ),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,

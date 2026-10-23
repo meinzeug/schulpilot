@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
-import 'learning_content.dart';
 import 'parent_child_navigation.dart';
 import 'parent_insights_panel.dart' show reviewDate;
 import 'parent_workspace_ui.dart';
 import 'ui.dart';
+import 'ideas100_local_views.dart';
 
 String parentHomeworkDate(Json photo, String? zone) {
   final local = photo['created_local'];
@@ -38,18 +38,20 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
   bool loading = false;
   bool retryMore = false;
   late Json? owner;
-  late String? family;
+  late String? family, session;
   bool get own =>
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      session == widget.state.api.token;
   String get cacheKey => 'parent-homework:${widget.childId}';
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
     family = widget.state.familyId;
+    session = widget.state.api.token;
     restoreView();
     widget.state.addListener(identityChanged);
     load();
@@ -608,25 +610,14 @@ class _ParentHomeworkScreenState extends State<ParentHomeworkScreen> {
                                 const Tag('Weitere Aufgaben im Foto möglich'),
                             ],
                           ),
-                          for (final task
-                              in (photo['tasks'] as List? ?? []).take(3))
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              leading: Icon(
-                                task['marked'] == true
-                                    ? Icons.check_circle_outline
-                                    : Icons.radio_button_unchecked,
-                              ),
-                              title: LearningContent(task['title']),
-                              subtitle: task['marked'] == true
-                                  ? const Text('Vom Kind abgehakt')
-                                  : const Text('Noch nicht abgehakt'),
-                            ),
-                          if ((photo['tasks'] as List? ?? []).length > 3)
-                            Text(
-                              '${(photo['tasks'] as List).length - 3} weitere Aufgaben in den Details',
-                            ),
+                          Ideas100TaskPreview(
+                            photo['tasks'] as List? ?? [],
+                            key: ValueKey((
+                              'tasks',
+                              widget.childId,
+                              photo['id'],
+                            )),
+                          ),
                         ],
                       ),
                     ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -10,18 +11,13 @@ import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'math_content.dart';
 import 'family_call_screen.dart';
-import 'grouped_answer_board.dart';
+import 'saved_attempt_tools.dart';
+import 'learning_tool_scope.dart';
 
 /// A saved answer is formatted only with its own question's public schema.
 /// A normal text/code answer is never reinterpreted by looking at its JSON.
 String _savedAnswerText(Map question, Object? answer) {
-  final original = answer?.toString() ?? '';
-  if (question['type'] != 'grouped') return original;
-  final spec = GroupedAnswerSpec.tryParse(question['field_group']);
-  if (spec == null || spec.decode(original).isEmpty) {
-    return 'Die gespeicherte Feldantwort kann hier nicht vollständig angezeigt werden.';
-  }
-  return spec.readable(original);
+  return readableSavedAnswer(question, answer);
 }
 
 class LearningProgressPanel extends StatelessWidget {
@@ -178,6 +174,17 @@ class CoachingPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SavedAttemptTools(
+          questions: unit['questions'] as List? ?? [],
+          state: state,
+          sourceKey: (
+            unit['id'],
+            ObjectKey(state.user),
+            state.familyId,
+            state.api.token,
+            jsonEncode(unit['questions']),
+          ),
+        ),
         Panel(
           color: context.palette.mint,
           child: Column(
@@ -429,9 +436,19 @@ class _ChildCoachingPanel extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 SizedBox(height: 12),
-                RoundAnswerExplorer(
-                  questions: questions,
-                  key: ValueKey(unit['id']),
+                LearningToolScope(
+                  state: state,
+                  sourceKey: (
+                    unit['id'],
+                    ObjectKey(state.user),
+                    state.familyId,
+                    state.api.token,
+                    jsonEncode(questions),
+                  ),
+                  builder: (_) => RoundAnswerExplorer(
+                    questions: questions,
+                    key: ValueKey(unit['id']),
+                  ),
                 ),
                 SizedBox(height: 18),
               ] else ...[
@@ -915,6 +932,12 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
   Widget build(BuildContext context) {
     final facts = _RoundFacts(widget.questions);
     final groups = [
+      (
+        'all',
+        facts.answered,
+        'alle gespeicherten Antworten',
+        Icons.list_alt_rounded,
+      ),
       ('independent', facts.independent, 'selbstständig', Icons.check_rounded),
       (
         'assisted',
@@ -939,7 +962,8 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
     ];
     final visible = [
       for (final item in widget.questions)
-        if (chosen == category(item) &&
+        if ((chosen == 'all' && (item['attempts'] as List? ?? []).isNotEmpty ||
+                chosen == category(item)) &&
             (searchAnswers
                     ? (item['attempts'] as List? ?? [])
                           .map((a) => _savedAnswerText(item, a['answer']))
@@ -961,7 +985,11 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
                 ChoiceChip(
                   selected: chosen == group.$1,
                   avatar: Icon(group.$4, size: 18),
-                  label: Text('${group.$2} ${group.$3}'),
+                  label: Text(
+                    group.$1 == 'all'
+                        ? 'Alle Antworten (${group.$2})'
+                        : '${group.$2} ${group.$3}',
+                  ),
                   tooltip: 'Gespeicherte Aufgaben ansehen: ${group.$3}',
                   onSelected: (selected) =>
                       setState(() => chosen = selected ? group.$1 : null),
@@ -1003,6 +1031,17 @@ class _RoundAnswerExplorerState extends State<RoundAnswerExplorer> {
                   const Text(
                     'Keine gespeicherte Aufgabe passt zu deiner Suche. Ändere die Suche oder die Ergebnisgruppe.',
                   ),
+                if (chosen == 'all') ...[
+                  SavedAttemptTools(
+                    questions: visible,
+                    sourceKey: jsonEncode(visible),
+                  ),
+                  const Text(
+                    'Letzte gespeicherte Antwort je Aufgabe · ohne Versuchsfilter',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 for (final question in visible) _SavedQuestionResult(question),
                 TextButton.icon(
                   onPressed: () => setState(() => chosen = null),

@@ -14,6 +14,7 @@ import 'material_actions.dart';
 import 'material_screen.dart';
 import 'notebook_photo.dart';
 import 'ui.dart';
+import 'ideas100_local_views.dart';
 import 'parent_child_navigation.dart';
 
 /// A bounded window of real pages from one stable school subject.
@@ -40,6 +41,9 @@ class NotebookScreen extends StatelessWidget {
               key: ValueKey((childId, subjectId, state.familyId)),
               childId: childId,
               subjectId: subjectId,
+              initialStatus: GoRouterState.of(context)
+                  .uri
+                  .queryParameters['status'],
             ),
           ),
   );
@@ -48,9 +52,11 @@ class NotebookScreen extends StatelessWidget {
 class _NotebookContext extends StatefulWidget {
   final AppState state;
   final String childId, subjectId;
+  final String? initialStatus;
   const _NotebookContext(
     this.state, {
     super.key,
+    this.initialStatus,
     required this.childId,
     required this.subjectId,
   });
@@ -63,7 +69,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
   final searchFocus = FocusNode();
   Timer? debounce;
   late final Json? owner;
-  late final String? family;
+  late final String? family, session;
   final privateRoutes = <Route<dynamic>>{};
   Json? subject, data;
   String? error;
@@ -76,13 +82,17 @@ class _NotebookScreenState extends State<_NotebookContext> {
   bool loading = true, showSearch = false;
   bool deleting = false, selecting = false, allMatching = false;
   final selectedIds = <String>{};
+  final comparePages = <String, Json>{};
+  final listPosition = ScrollController(), gridPosition = ScrollController();
+  bool groupDays = false;
   bool canManage = false;
   static const pageSize = 20;
   bool get current =>
       mounted &&
       owner != null &&
       identical(widget.state.user, owner) &&
-      widget.state.familyId == family;
+      widget.state.familyId == family &&
+      widget.state.api.token == session;
   String get memoryKey => 'notebook:${widget.childId}:${widget.subjectId}';
   List<Json> get items => [
     for (final item in data?['items'] as List? ?? []) Json.from(item),
@@ -98,12 +108,15 @@ class _NotebookScreenState extends State<_NotebookContext> {
     super.initState();
     owner = widget.state.user;
     family = widget.state.familyId;
+    session = widget.state.api.token;
     stateRevision = widget.state.revision;
     widget.state.addListener(identityChanged);
     final saved = widget.state.collectionViews[memoryKey];
     view = saved?['view'] ?? 'album';
     sort = saved?['sort'] ?? 'newest';
-    status = saved?['status'] ?? 'all';
+    status = widget.initialStatus == 'review'
+        ? 'review'
+        : saved?['status'] ?? 'all';
     search.text = saved?['q'] ?? '';
     showSearch = search.text.isNotEmpty;
     index = saved?['index'] ?? 0;
@@ -126,6 +139,7 @@ class _NotebookScreenState extends State<_NotebookContext> {
         error = null;
         search.clear();
         clearSelection();
+        comparePages.clear();
       });
     } else if (current && stateRevision != widget.state.revision) {
       stateRevision = widget.state.revision;
@@ -141,6 +155,8 @@ class _NotebookScreenState extends State<_NotebookContext> {
     closePrivateRoutes();
     search.dispose();
     searchFocus.dispose();
+    listPosition.dispose();
+    gridPosition.dispose();
     super.dispose();
   }
 
@@ -423,9 +439,34 @@ class _NotebookScreenState extends State<_NotebookContext> {
     }
   }
 
-  Widget pageActions(Json item) => Row(
-    mainAxisSize: MainAxisSize.min,
+  Widget pageActions(Json item) => Wrap(
+    alignment: WrapAlignment.end,
     children: [
+      if (item['has_image'] == true)
+        IconButton(
+          tooltip: comparePages.containsKey(item['id'])
+              ? 'Foto aus Vergleich nehmen'
+              : 'Foto zum Vergleich vormerken',
+          isSelected: comparePages.containsKey(item['id']),
+          onPressed: !current || loading
+              ? null
+              : () {
+                  setState(() {
+                    if (comparePages.containsKey(item['id'])) {
+                      comparePages.remove(item['id']);
+                    } else if (comparePages.length < 2) {
+                      comparePages[item['id']] = Json.from(item);
+                    } else {
+                      toast(
+                        context,
+                        'Vergleiche höchstens zwei Fotos. Nimm zuerst eines heraus.',
+                      );
+                    }
+                  });
+                },
+          icon: const Icon(Icons.compare_outlined),
+        ),
+
       if (materialCanReprocess(widget.state, item, canManage: canManage))
         IconButton(
           constraints: BoxConstraints(minWidth: 48, minHeight: 48),
@@ -510,6 +551,96 @@ class _NotebookScreenState extends State<_NotebookContext> {
       ],
     ),
   );
+
+  Future<void> comparePhotos() async {
+    if (!current || comparePages.length != 2) return;
+    final pair = comparePages.values.toList();
+    await privateDialog<void>(
+      (ctx) => Dialog(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 900,
+            maxHeight: MediaQuery.sizeOf(ctx).height * .9,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Zwei Heftfotos vergleichen',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                Ideas100ComparePanels(
+                  firstLabel: pageTitle(pair[0]),
+                  secondLabel: pageTitle(pair[1]),
+                  first: SizedBox(
+                    height: 420,
+                    child: NotebookPhoto(
+                      widget.state,
+                      materialId: pair[0]['id'],
+                      zoomable: true,
+                    ),
+                  ),
+                  second: SizedBox(
+                    height: 420,
+                    child: NotebookPhoto(
+                      widget.state,
+                      materialId: pair[1]['id'],
+                      zoomable: true,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (validDialog(ctx)) Navigator.pop(ctx);
+                  },
+                  child: const Text('Vergleich schließen'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget selectionTray() => ExpansionTile(
+    title: Text(
+      allMatching
+          ? 'Auswahlablage · $selectionCount passende Seiten'
+          : 'Auswahlablage · ${counted(selectedIds.length, 'Seite', 'Seiten')}',
+    ),
+    subtitle: const Text(
+      'Vorschau der hier geladenen Seiten. Erst die folgende Löschvorschau bestätigt den vollständigen Umfang.',
+    ),
+    children: [
+      for (final item in items.where(
+        (i) => canDelete(i) && (allMatching || selectedIds.contains(i['id'])),
+      ))
+        ListTile(
+          leading: SizedBox(
+            width: 44,
+            height: 56,
+            child: item['has_image'] == true
+                ? NotebookPhoto(
+                    widget.state,
+                    materialId: item['id'],
+                    thumbnail: true,
+                  )
+                : const Icon(Icons.description_outlined),
+          ),
+          title: Text(pageTitle(item)),
+          subtitle: Text(pageDate(item)),
+        ),
+    ],
+  );
+  String schoolDay(Json item) {
+    final raw = item['school_date'];
+    return raw is String && RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(raw)
+        ? raw
+        : 'Unbekannter Schultag';
+  }
 
   void change(VoidCallback action, {bool delayed = false}) {
     if (!current) return;
@@ -598,6 +729,9 @@ class _NotebookScreenState extends State<_NotebookContext> {
     FocusManager.instance.primaryFocus?.unfocus();
     var draftStatus = status, draftSort = sort;
     var draftDates = dates;
+    var draftGroupDays = groupDays;
+    final compactTools =
+        widget.state.isChild && MediaQuery.sizeOf(context).width < 720;
     final accepted = await privateDialog<bool>(
       (ctx) => Dialog(
         child: StatefulBuilder(
@@ -660,6 +794,15 @@ class _NotebookScreenState extends State<_NotebookContext> {
                   },
                 ),
                 SizedBox(height: 14),
+                if (compactTools && view != 'album')
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Geladene Seiten nach Schultag gliedern'),
+                    value: draftGroupDays,
+                    onChanged: (value) {
+                      if (validDialog(ctx)) set(() => draftGroupDays = value);
+                    },
+                  ),
                 OutlinedButton.icon(
                   icon: Icon(Icons.date_range_outlined),
                   label: Text(
@@ -715,11 +858,19 @@ class _NotebookScreenState extends State<_NotebookContext> {
     );
     FocusManager.instance.primaryFocus?.unfocus();
     if (current && accepted == true) {
-      change(() {
-        sort = draftSort;
-        status = draftStatus;
-        dates = draftDates;
-      });
+      if (groupDays != draftGroupDays &&
+          sort == draftSort &&
+          status == draftStatus &&
+          dates == draftDates) {
+        setState(() => groupDays = draftGroupDays);
+      } else {
+        change(() {
+          sort = draftSort;
+          status = draftStatus;
+          dates = draftDates;
+          groupDays = draftGroupDays;
+        });
+      }
     }
   }
 
@@ -1043,6 +1194,25 @@ class _NotebookScreenState extends State<_NotebookContext> {
               ],
             ),
           ),
+          if (comparePages.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Text('${comparePages.length} von 2 Fotos vorgemerkt'),
+                OutlinedButton.icon(
+                  onPressed: comparePages.length == 2 ? comparePhotos : null,
+                  icon: const Icon(Icons.compare),
+                  label: const Text('Fotos vergleichen'),
+                ),
+                TextButton(
+                  onPressed: () => setState(comparePages.clear),
+                  child: const Text('Vergleich leeren'),
+                ),
+              ],
+            ),
+          if (selecting && (allMatching || selectedIds.isNotEmpty))
+            selectionTray(),
           SizedBox(height: 16),
           if (loading)
             Padding(
@@ -1321,6 +1491,45 @@ class _NotebookScreenState extends State<_NotebookContext> {
           ),
         SizedBox(height: 8),
         pageControls(),
+        ExpansionTile(
+          title: const Text('Geladene Nachbarseiten als Filmstreifen'),
+          subtitle: const Text('Vorschaubilder nur beim Öffnen laden.'),
+          children: [
+            SizedBox(
+              height: 112,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, n) {
+                  final page = items[n];
+                  return SizedBox(
+                    width: 80,
+                    child: OutlinedButton(
+                      onPressed: () => move(batch * pageSize + n),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 48,
+                            child: page['has_image'] == true
+                                ? NotebookPhoto(
+                                    widget.state,
+                                    materialId: page['id'],
+                                    thumbnail: true,
+                                  )
+                                : const Icon(Icons.description_outlined),
+                          ),
+                          Text('${batch * pageSize + n + 1}'),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
         LearningTips(
           widget.state,
           key: ValueKey('tips:${item['id']}'),
@@ -1347,60 +1556,100 @@ class _NotebookScreenState extends State<_NotebookContext> {
             ? DateTime.fromMillisecondsSinceEpoch(created.toInt() * 1000)
                   .toLocal()
             : null);
-    return '${date == null ? 'Datum nicht angegeben' : DateFormat('dd.MM.yyyy').format(date)} · ${item['confirmed'] == true ? 'Geprüft' : 'Noch prüfen'}';
+    return '${date == null ? 'Datum nicht angegeben' : DateFormat('dd.MM.yyyy').format(date)} · ${ideas100PageStatus(item)}';
   }
 
-  Widget overview() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      if (canEdit &&
-          items.any(
-            (item) =>
-                materialCanDelete(widget.state, item, canManage: canManage),
-          ))
-        selectionToolbar(),
-      pageControls(overview: true),
-      SizedBox(height: 10),
-      SizedBox(
-        height: (MediaQuery.sizeOf(context).height * 0.65).clamp(340.0, 850.0),
-        child: view == 'list'
-            ? ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => SizedBox(height: 10),
-                itemBuilder: (_, n) => overviewCard(items[n], n, list: true),
-              )
-            : LayoutBuilder(
-                builder: (_, constraints) => GridView.builder(
-                  scrollCacheExtent: ScrollCacheExtent.pixels(0),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:
-                        MediaQuery.textScalerOf(context).scale(16) > 24 ||
-                            constraints.maxWidth < 340
-                        ? 1
-                        : constraints.maxWidth < 500
-                        ? 2
-                        : constraints.maxWidth < 800
-                        ? 3
-                        : 4,
-                    mainAxisExtent:
-                        294 +
-                        (MediaQuery.textScalerOf(context).scale(16) - 16).clamp(
-                              0,
-                              48,
-                            ) *
-                            5,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (_, n) => overviewCard(items[n], n),
-                ),
+  Widget overview() {
+    final ordered = [...items];
+    if (groupDays) ordered.sort((a, b) => schoolDay(b).compareTo(schoolDay(a)));
+    Widget row(int n, {bool list = false}) {
+      final item = ordered[n];
+      final actual = items.indexWhere((i) => i['id'] == item['id']);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (groupDays &&
+              (n == 0 || schoolDay(ordered[n - 1]) != schoolDay(item)))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                schoolDay(item) == 'Unbekannter Schultag'
+                    ? schoolDay(item)
+                    : friendlyDate(schoolDay(item)),
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-      ),
-      SizedBox(height: 10),
-      pageControls(overview: true),
-    ],
-  );
+            ),
+          if (list)
+            overviewCard(item, actual, list: true)
+          else
+            Expanded(child: overviewCard(item, actual)),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (canEdit &&
+            items.any(
+              (item) =>
+                  materialCanDelete(widget.state, item, canManage: canManage),
+            ))
+          selectionToolbar(),
+        pageControls(overview: true),
+        if (!widget.state.isChild || MediaQuery.sizeOf(context).width >= 720)
+          SwitchListTile(
+            title: const Text('Geladene Seiten nach Schultag gliedern'),
+            value: groupDays,
+            onChanged: (v) => setState(() => groupDays = v),
+          ),
+        SizedBox(height: 10),
+        SizedBox(
+          height: (MediaQuery.sizeOf(context).height * 0.65).clamp(
+            340.0,
+            850.0,
+          ),
+          child: view == 'list'
+              ? ListView.separated(
+                  key: PageStorageKey('$memoryKey-list'),
+                  controller: listPosition,
+                  itemCount: ordered.length,
+                  separatorBuilder: (_, _) => SizedBox(height: 10),
+                  itemBuilder: (_, n) => row(n, list: true),
+                )
+              : LayoutBuilder(
+                  builder: (_, constraints) => GridView.builder(
+                    key: PageStorageKey('$memoryKey-grid'),
+                    controller: gridPosition,
+                    scrollCacheExtent: ScrollCacheExtent.pixels(0),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount:
+                          MediaQuery.textScalerOf(context).scale(16) > 24 ||
+                              constraints.maxWidth < 340
+                          ? 1
+                          : constraints.maxWidth < 500
+                          ? 2
+                          : constraints.maxWidth < 800
+                          ? 3
+                          : 4,
+                      mainAxisExtent:
+                          294 +
+                          (MediaQuery.textScalerOf(context).scale(16) - 16)
+                                  .clamp(0, 48) *
+                              5,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
+                    ),
+                    itemCount: ordered.length,
+                    itemBuilder: (_, n) => row(n),
+                  ),
+                ),
+        ),
+        SizedBox(height: 10),
+        pageControls(overview: true),
+      ],
+    );
+  }
 
   Widget overviewCard(Json item, int position, {bool list = false}) {
     void select() {

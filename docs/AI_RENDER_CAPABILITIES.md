@@ -124,3 +124,11 @@ Prüfstand und Grenzen:
 Die konkrete20-Punkte-Abnahme steht in
 [LEARNING_ELEMENTS_20_2026_10_23.md](LEARNING_ELEMENTS_20_2026_10_23.md);
 Veröffentlichungsstand und Grenzen in [RELEASE_99_2026_10_23.md](RELEASE_99_2026_10_23.md).
+
+Die Runde1.28.0+100 ergänzt lokale Lese- und Eingabewerkzeuge für bereits
+vorhandene Daten: beschriftete Options-/Versuchsvergleiche, Abschnittssuche,
+Tabellenzeilenansicht, Codeumbruch, Formelansicht und eigene Zeichen-/Cursorhilfen.
+Das erweitert keinen KI-Ausgabevertrag und verlangt keine neue Generierung.
+Suche und Vergleiche gelten nur für bereits berechtigt sichtbare Inhalte;
+Vorschauen eigener Antworten bewerten nichts. Einzelne Funktionen und deren
+Prüfstand stehen in [IDEAS_100_2026_10_23.md](IDEAS_100_2026_10_23.md).

@@ -23,12 +23,15 @@ Future<void> showParentAssignmentDialog(
   bool Function()? isCurrent,
   ValueChanged<ModalRoute<bool>>? onRoute,
 }) async {
-  final account = state.user, family = state.familyId;
+  final account = state.user,
+      family = state.familyId,
+      session = state.api.token;
   bool current() =>
       context.mounted &&
       account != null &&
       identical(account, state.user) &&
       family == state.familyId &&
+      session == state.api.token &&
       state.isParent &&
       state.canManage &&
       (isCurrent?.call() ?? true);
@@ -526,6 +529,55 @@ class _AssignmentEditorState extends State<_AssignmentEditor> {
                         : 'Verknüpfung mit Lernrunde aufheben',
                   ),
                 ),
+              if (materialId != null)
+                Panel(
+                  tone: PanelTone.subtle,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Ausgewählte Heftquelle',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        sourceSubject?.trim().isNotEmpty == true
+                            ? sourceSubject!
+                            : 'Fach der Quelle nicht gemeldet',
+                      ),
+                      if (sourceTopic?.trim().isNotEmpty == true)
+                        Text(sourceTopic!),
+                      if (materialTitle?.trim().isNotEmpty == true)
+                        Text(materialTitle!),
+                      const Text(
+                        'Die bestehende Quellenverknüpfung wird erst mit dem Auftrag gespeichert.',
+                      ),
+                    ],
+                  ),
+                ),
+              ExpansionTile(
+                title: const Text('Auftragsvorschau vor dem Speichern'),
+                children: [
+                  ListTile(
+                    title: Text('${subject.text} · ${topic.text}'),
+                    subtitle: Text(
+                      [
+                        kind == 'exam' ? 'Klassenarbeit / Test' : 'Lernauftrag',
+                        mandatory ? 'Verbindlich' : 'Freiwillig',
+                        if (scheduled.text.trim().isNotEmpty)
+                          'Frühester Beginn: ${scheduled.text}',
+                        if (due.text.trim().isNotEmpty) 'Termin: ${due.text}',
+                        if (note.text.trim().isNotEmpty) note.text,
+                        materialId != null
+                            ? 'Mit ausgewählter Heftquelle'
+                            : 'Ohne Heftquelle',
+                      ].join('\n'),
+                    ),
+                  ),
+                  const Text(
+                    'Diese Vorschau speichert und erzeugt noch nichts.',
+                  ),
+                ],
+              ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Verbindlich einplanen'),

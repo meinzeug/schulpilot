@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'math_content.dart';
 import 'scientific_notation.dart';
 import 'ui.dart';
+import 'api.dart';
+import 'learning_tool_scope.dart';
 
 /// Reading projection of the saved transcript. Never edits or completes a source.
 class LearningContent extends StatelessWidget {
   final String text;
   final List<dynamic>? blocks;
   final bool compact;
+  final bool interactive;
   final TextStyle? style;
   final Widget? Function(int index, Map<String, dynamic> block)? figureBuilder;
   const LearningContent(
@@ -16,6 +19,7 @@ class LearningContent extends StatelessWidget {
     super.key,
     this.blocks,
     this.compact = false,
+    this.interactive = false,
     this.style,
     this.figureBuilder,
   });
@@ -55,6 +59,7 @@ class LearningContent extends StatelessWidget {
             child: _Section(
               block.$2,
               style: style,
+              interactive: interactive,
               figure:
                   block.$2['kind'] == 'diagram_text' &&
                       block.$2['image_region'] is Map &&
@@ -81,7 +86,13 @@ class _Section extends StatelessWidget {
   final Map<String, dynamic> block;
   final Widget? figure;
   final TextStyle? style;
-  const _Section(this.block, {this.figure, this.style});
+  final bool interactive;
+  const _Section(
+    this.block, {
+    this.figure,
+    this.style,
+    this.interactive = false,
+  });
   TextStyle get body => style ?? const TextStyle(fontSize: 17, height: 1.5);
 
   @override
@@ -99,6 +110,13 @@ class _Section extends StatelessWidget {
       );
     }
     if (block['kind'] == 'code' || text.trimLeft().startsWith('```')) {
+      if (interactive) {
+        return _CodeReader(
+          text
+              .replaceFirst(RegExp(r'^\s*```[^\n]*\n'), '')
+              .replaceFirst(RegExp(r'\n```\s*$'), ''),
+        );
+      }
       return SurfaceInset(
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -117,7 +135,9 @@ class _Section extends StatelessWidget {
     }
     if (block['kind'] == 'table' || _tableRows(text) != null) {
       final rows = _tableRows(text, explicit: block['kind'] == 'table');
-      if (rows != null) return _BookTable(rows);
+      if (rows != null) {
+        return interactive ? _TableReader(rows) : _BookTable(rows);
+      }
     }
     if (block['kind'] == 'diagram_text') {
       return SurfaceInset(
@@ -138,6 +158,41 @@ class _Section extends StatelessWidget {
             ),
           ],
         ),
+      );
+    }
+    final formulas = formulaSegments(text.trim());
+    final standaloneFormula =
+        formulas.length == 1 &&
+        formulas.first.start == 0 &&
+        formulas.first.end == text.trim().length;
+    if (interactive && (block['kind'] == 'formula' || standaloneFormula)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Section(block, style: style),
+          ExpansionTile(
+            title: const Text('Formel groß lesen'),
+            tilePadding: EdgeInsets.zero,
+            children: [
+              LayoutBuilder(
+                builder: (context, c) => SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: (c.maxWidth * 2).clamp(280, 1440).toDouble(),
+                    child: _Section(
+                      block,
+                      style: const TextStyle(fontSize: 28, height: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+              Text(
+                MathText.spoken(text),
+                style: TextStyle(color: context.palette.muted),
+              ),
+            ],
+          ),
+        ],
       );
     }
     if (block['kind'] == 'formula') {
@@ -233,7 +288,8 @@ List<String> _tableCells(String line) {
 
 class _BookTable extends StatelessWidget {
   final List<List<String>> rows;
-  const _BookTable(this.rows);
+  final int? selectedRow, selectedColumn;
+  const _BookTable(this.rows, {this.selectedRow, this.selectedColumn});
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
@@ -260,20 +316,25 @@ class _BookTable extends StatelessWidget {
                     ? BoxDecoration(color: context.palette.surfaceLow)
                     : null,
                 children: [
-                  for (final cell in row.$2)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      child: MathText(
-                        cell,
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.5,
-                          fontWeight: row.$1 == 0
-                              ? FontWeight.w700
-                              : FontWeight.normal,
+                  for (final cell in row.$2.indexed)
+                    Container(
+                      color: selectedRow == row.$1 || selectedColumn == cell.$1
+                          ? context.palette.mint
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: MathText(
+                          cell.$2,
+                          style: TextStyle(
+                            fontSize: 16,
+                            height: 1.5,
+                            fontWeight: row.$1 == 0
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                          ),
                         ),
                       ),
                     ),
@@ -335,4 +396,454 @@ List<String> learningParagraphs(String text) {
   }
   flush();
   return result;
+}
+
+class LearningHeading {
+  final int sectionIndex;
+  final String label;
+  const LearningHeading(this.sectionIndex, this.label);
+}
+
+List<LearningHeading> learningHeadings(String text, {List<dynamic>? blocks}) {
+  final sections = LearningContent(text, blocks: blocks).sections;
+  return [
+    for (final item in sections.indexed)
+      if (item.$2['kind'] == 'heading' ||
+          RegExp(r'^#{1,3}\s+').hasMatch(item.$2['text'] as String))
+        LearningHeading(
+          item.$1,
+          (item.$2['text'] as String).replaceFirst(RegExp(r'^#{1,3}\s+'), ''),
+        ),
+  ];
+}
+
+/// Shared by explanations and source readers; no generated headings or text.
+class LearningHeadingIndex extends StatelessWidget {
+  final List<LearningHeading> headings;
+  final ValueChanged<int> onSelected;
+  final int? selectedIndex;
+  const LearningHeadingIndex({
+    super.key,
+    required this.headings,
+    required this.onSelected,
+    this.selectedIndex,
+  });
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final heading in headings)
+        TextButton(
+          key: ValueKey('learning-heading-${heading.sectionIndex}'),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            alignment: Alignment.centerLeft,
+          ),
+          onPressed: () => onSelected(heading.sectionIndex),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                selectedIndex == heading.sectionIndex
+                    ? Icons.arrow_right_rounded
+                    : Icons.short_text_rounded,
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(heading.label)),
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
+class LearningReader extends StatelessWidget {
+  final String text;
+  final String? visibleText;
+  final List<dynamic>? blocks;
+  final AppState? state;
+  final Object sourceKey;
+  final bool Function()? isCurrent;
+  const LearningReader(
+    this.text, {
+    super.key,
+    this.visibleText,
+    this.blocks,
+    this.state,
+    required this.sourceKey,
+    this.isCurrent,
+  });
+  @override
+  Widget build(BuildContext context) => LearningToolScope(
+    state: state,
+    sourceKey: sourceKey,
+    isCurrent: isCurrent,
+    builder: (_) =>
+        _LearningReaderBody(text, visibleText: visibleText, blocks: blocks),
+  );
+}
+
+class _LearningReaderBody extends StatefulWidget {
+  final String text;
+  final String? visibleText;
+  final List<dynamic>? blocks;
+  const _LearningReaderBody(this.text, {this.visibleText, this.blocks});
+  @override
+  State<_LearningReaderBody> createState() => _LearningReaderBodyState();
+}
+
+class _LearningReaderBodyState extends State<_LearningReaderBody> {
+  final query = TextEditingController();
+  final targets = <int, GlobalKey>{};
+  int selected = 0, hit = 0;
+  bool focus = false;
+  @override
+  void dispose() {
+    query.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LearningReaderBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text ||
+        oldWidget.visibleText != widget.visibleText) {
+      selected = hit = 0;
+      focus = false;
+      query.clear();
+      targets.clear();
+    }
+  }
+
+  void jump(int index) {
+    setState(() {
+      selected = index;
+      focus = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = targets[index]?.currentContext;
+      if (mounted &&
+          target != null &&
+          ModalRoute.of(context)?.isCurrent != false) {
+        Scrollable.ensureVisible(
+          target,
+          alignment: .2,
+          duration: const Duration(milliseconds: 180),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = LearningContent(
+      widget.text,
+      blocks: widget.blocks,
+    ).sections;
+    if (sections.isEmpty) return const SizedBox.shrink();
+    selected = selected.clamp(0, sections.length - 1);
+    final term = query.text.trim().toLowerCase();
+    final matches = [
+      for (final entry in sections.indexed)
+        if (term.isNotEmpty &&
+            (entry.$2['text'] as String).toLowerCase().contains(term))
+          entry.$1,
+    ];
+    hit = matches.isEmpty ? 0 : hit.clamp(0, matches.length - 1);
+    final headings = learningHeadings(widget.text, blocks: widget.blocks);
+    final full = focus || term.isNotEmpty || widget.visibleText == null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text('Lesewerkzeuge'),
+          children: [
+            if (headings.isNotEmpty)
+              ExpansionTile(
+                title: const Text('Inhalt des geöffneten Textes'),
+                children: [
+                  LearningHeadingIndex(
+                    headings: headings,
+                    onSelected: jump,
+                    selectedIndex: focus ? selected : null,
+                  ),
+                ],
+              ),
+            TextField(
+              key: const ValueKey('learning-reader-search'),
+              controller: query,
+              maxLength: 120,
+              decoration: const InputDecoration(
+                labelText: 'Im geöffneten Text suchen',
+              ),
+              onChanged: (_) => setState(() {
+                hit = 0;
+              }),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) {
+                if (matches.isNotEmpty) jump(matches[hit]);
+              },
+            ),
+            if (term.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    matches.isEmpty
+                        ? 'Kein passender Abschnitt.'
+                        : 'Trefferabschnitt ${hit + 1} von ${matches.length}',
+                  ),
+                  IconButton(
+                    tooltip: 'Vorheriger Trefferabschnitt',
+                    onPressed: matches.isEmpty
+                        ? null
+                        : () {
+                            hit = (hit - 1 + matches.length) % matches.length;
+                            jump(matches[hit]);
+                          },
+                    icon: const Icon(Icons.chevron_left_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Nächster Trefferabschnitt',
+                    onPressed: matches.isEmpty
+                        ? null
+                        : () {
+                            hit = (hit + 1) % matches.length;
+                            jump(matches[hit]);
+                          },
+                    icon: const Icon(Icons.chevron_right_rounded),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      query.clear();
+                      hit = 0;
+                    }),
+                    child: const Text('Suche leeren'),
+                  ),
+                ],
+              ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Absatz-Lesefokus'),
+              value: focus,
+              subtitle: const Text(
+                'Markiert vorhandene Abschnitte. Formeln und Code bleiben vollständig.',
+              ),
+              onChanged: (value) => setState(() => focus = value),
+            ),
+          ],
+        ),
+        if (focus)
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Abschnitt ${selected + 1} von ${sections.length}'),
+              IconButton(
+                tooltip: 'Vorheriger Leseabschnitt',
+                onPressed: selected == 0 ? null : () => jump(selected - 1),
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              IconButton(
+                tooltip: 'Nächster Leseabschnitt',
+                onPressed: selected + 1 == sections.length
+                    ? null
+                    : () => jump(selected + 1),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
+        if (!full)
+          LearningContent(widget.visibleText!, interactive: true)
+        else
+          for (final entry in sections.indexed)
+            Container(
+              key: targets.putIfAbsent(entry.$1, GlobalKey.new),
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: focus && selected == entry.$1
+                  ? const EdgeInsets.all(12)
+                  : EdgeInsets.zero,
+              decoration: BoxDecoration(
+                color: focus && selected == entry.$1
+                    ? context.palette.mint
+                    : null,
+                borderRadius: BorderRadius.circular(12),
+                border: focus && selected == entry.$1
+                    ? Border.all(color: context.palette.teal, width: 2)
+                    : null,
+              ),
+              child: _Section(entry.$2, interactive: true),
+            ),
+      ],
+    );
+  }
+}
+
+class _CodeReader extends StatefulWidget {
+  final String text;
+  const _CodeReader(this.text);
+  @override
+  State<_CodeReader> createState() => _CodeReaderState();
+}
+
+class _CodeReaderState extends State<_CodeReader> {
+  bool wrap = false;
+  @override
+  Widget build(BuildContext context) {
+    final text = Text(
+      widget.text,
+      softWrap: wrap,
+      style: const TextStyle(
+        fontFamily: 'monospace',
+        fontSize: 16,
+        height: 1.6,
+      ),
+    );
+    return SurfaceInset(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextButton.icon(
+            onPressed: () => setState(() => wrap = !wrap),
+            icon: const Icon(Icons.wrap_text_rounded),
+            label: Text(
+              wrap
+                  ? 'Originale Zeilenbreite anzeigen'
+                  : 'Lange Codezeilen umbrechen',
+            ),
+          ),
+          if (wrap)
+            text
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: text,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TableReader extends StatefulWidget {
+  final List<List<String>> rows;
+  const _TableReader(this.rows);
+  @override
+  State<_TableReader> createState() => _TableReaderState();
+}
+
+class _TableReaderState extends State<_TableReader> {
+  bool cards = false;
+  int? row, column;
+  @override
+  Widget build(BuildContext context) {
+    final rows = widget.rows;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextButton.icon(
+          onPressed: () => setState(() => cards = !cards),
+          icon: Icon(
+            cards ? Icons.table_chart_outlined : Icons.view_agenda_outlined,
+          ),
+          label: Text(cards ? 'Als Tabelle lesen' : 'Als Zeilenkarten lesen'),
+        ),
+        ExpansionTile(
+          title: const Text('Zeile oder Spalte hervorheben'),
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                SizedBox(
+                  width: 220,
+                  child: DropdownButtonFormField<int>(
+                    key: ValueKey(('row', row)),
+                    initialValue: row,
+                    isExpanded: true,
+                    itemHeight: null,
+                    decoration: const InputDecoration(
+                      labelText: 'Tabellenzeile',
+                    ),
+                    items: [
+                      const DropdownMenuItem<int>(
+                        value: null,
+                        child: Text('Keine Auswahl'),
+                      ),
+                      for (var i = 1; i < rows.length; i++)
+                        DropdownMenuItem(value: i, child: Text('Zeile $i')),
+                    ],
+                    onChanged: (value) => setState(() => row = value),
+                  ),
+                ),
+                SizedBox(
+                  width: 220,
+                  child: DropdownButtonFormField<int>(
+                    key: ValueKey(('column', column)),
+                    initialValue: column,
+                    isExpanded: true,
+                    itemHeight: null,
+                    decoration: const InputDecoration(
+                      labelText: 'Tabellenspalte',
+                    ),
+                    items: [
+                      const DropdownMenuItem<int>(
+                        value: null,
+                        child: Text('Keine Auswahl'),
+                      ),
+                      for (var i = 0; i < rows.first.length; i++)
+                        DropdownMenuItem(value: i, child: Text(rows.first[i])),
+                    ],
+                    onChanged: (value) => setState(() => column = value),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        if (!cards)
+          _BookTable(rows, selectedRow: row, selectedColumn: column)
+        else
+          for (var i = 1; i < rows.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SurfaceInset(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Zeile $i',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    for (var j = 0; j < rows[i].length; j++)
+                      Container(
+                        color: row == i || column == j
+                            ? context.palette.mint
+                            : null,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MathText(
+                              rows.first[j],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            MathText(
+                              rows[i][j],
+                              style: const TextStyle(fontSize: 17, height: 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+      ],
+    );
+  }
 }

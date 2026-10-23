@@ -14,6 +14,8 @@ import 'material_actions.dart';
 import 'learning_tips.dart';
 import 'tutor_sheet.dart';
 import 'ui.dart';
+import 'ideas100_local_views.dart';
+import 'ideas100_source_tools.dart';
 import 'material_words.dart';
 import 'subject_picker.dart';
 import 'learning_content.dart';
@@ -86,7 +88,7 @@ Future<void> importMaterial(
   Uint8List? cropped;
   try {
     if (!context.mounted || !identical(owner, state.user)) return;
-    cropped = await pickMaterialPhoto(context, source);
+    cropped = await pickMaterialPhoto(context, source, state: state);
   } finally {
     if (identical(owner, state.user)) await clearCameraSource(state);
   }
@@ -101,8 +103,9 @@ Future<void> importMaterial(
 
 Future<Uint8List?> pickMaterialPhoto(
   BuildContext context,
-  ImageSource source,
-) async {
+  ImageSource source, {
+  AppState? state,
+}) async {
   final file = await ImagePicker().pickImage(
     source: source,
     maxWidth: 3200,
@@ -113,25 +116,82 @@ Future<Uint8List?> pickMaterialPhoto(
   if (file == null) return null;
   final bytes = await file.readAsBytes();
   if (!context.mounted) return null;
-  return cropMaterialPhoto(context, bytes);
+  return cropMaterialPhoto(context, bytes, state: state);
+}
+
+class CropFrame {
+  final double left, top, right, bottom;
+  final int turns;
+  const CropFrame({
+    this.left = 0,
+    this.top = 0,
+    this.right = 1,
+    this.bottom = 1,
+    this.turns = 0,
+  });
 }
 
 Future<Uint8List?> cropMaterialPhoto(
   BuildContext context,
-  Uint8List bytes,
-) async {
+  Uint8List bytes, {
+  AppState? state,
+  CropFrame? initialFrame,
+  ValueChanged<CropFrame>? onFrameChanged,
+  int? batchIndex,
+  int? batchTotal,
+}) async {
   if (bytes.length > 10 * 1024 * 1024) {
     throw ApiError('Das Bild darf höchstens 10 MB groß sein.');
   }
-  return showDialog<Uint8List>(
+  final owner = state?.user, family = state?.familyId, token = state?.api.token;
+  bool current() =>
+      context.mounted &&
+      (state == null ||
+          (owner != null &&
+              identical(state.user, owner) &&
+              state.familyId == family &&
+              state.api.token == token));
+  if (!current()) return null;
+  final route = DialogRoute<Uint8List>(
     context: context,
-    builder: (ctx) => CropDialog(bytes),
+    builder: (_) => CropDialog(
+      bytes,
+      initialFrame: initialFrame,
+      onFrameChanged: onFrameChanged,
+      batchIndex: batchIndex,
+      batchTotal: batchTotal,
+      isCurrent: current,
+    ),
   );
+  void changed() {
+    if (!current() && route.isActive) route.navigator?.removeRoute(route);
+  }
+
+  state?.addListener(changed);
+  try {
+    final result = await Navigator.of(context).push(route);
+    await route.completed;
+    return result;
+  } finally {
+    state?.removeListener(changed);
+  }
 }
 
 class CropDialog extends StatefulWidget {
   final Uint8List bytes;
-  const CropDialog(this.bytes, {super.key});
+  final CropFrame? initialFrame;
+  final ValueChanged<CropFrame>? onFrameChanged;
+  final int? batchIndex, batchTotal;
+  final bool Function()? isCurrent;
+  const CropDialog(
+    this.bytes, {
+    super.key,
+    this.initialFrame,
+    this.onFrameChanged,
+    this.batchIndex,
+    this.batchTotal,
+    this.isCurrent,
+  });
   @override
   State<CropDialog> createState() => _CropDialogState();
 }
@@ -141,6 +201,64 @@ class _CropDialogState extends State<CropDialog> {
   int quarterTurns = 0;
   int? dragCorner;
   bool encoding = false;
+  String photoView = 'edit';
+  final undoFrames = <CropFrame>[], redoFrames = <CropFrame>[];
+  late final Uint8List originalPreview = preview;
+  late final double originalAspect = image == null
+      ? 1
+      : image!.width / image!.height;
+  CropFrame get frame => CropFrame(
+    left: left,
+    top: top,
+    right: right,
+    bottom: bottom,
+    turns: quarterTurns,
+  );
+  void rememberFrame() {
+    if (encoding || widget.isCurrent?.call() == false) return;
+    undoFrames.add(frame);
+    if (undoFrames.length > 20) undoFrames.removeAt(0);
+    redoFrames.clear();
+  }
+
+  void publishFrame() => widget.onFrameChanged?.call(frame);
+  void restoreFrame(CropFrame value) {
+    image = orientedImage();
+    if (image != null && value.turns != 0) {
+      image = img.copyRotate(image!, angle: value.turns * 90);
+    }
+    quarterTurns = value.turns;
+    left = value.left;
+    top = value.top;
+    right = value.right;
+    bottom = value.bottom;
+    if (image != null) {
+      preview = Uint8List.fromList(img.encodeJpg(image!, quality: 85));
+    }
+    photoView = 'edit';
+    publishFrame();
+  }
+
+  Uint8List clippedPreview() {
+    if (image == null) return preview;
+    final cut = img.copyCrop(
+      image!,
+      x: (left * image!.width).floor(),
+      y: (top * image!.height).floor(),
+      width: math.max(1, ((right - left) * image!.width).floor()),
+      height: math.max(1, ((bottom - top) * image!.height).floor()),
+    );
+    return Uint8List.fromList(img.encodeJpg(cut, quality: 85));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    originalPreview;
+    originalAspect;
+    if (widget.initialFrame != null) restoreFrame(widget.initialFrame!);
+  }
+
   late img.Image? image = orientedImage();
   img.Image? orientedImage() {
     final decoded = img.decodeImage(widget.bytes);
@@ -160,7 +278,11 @@ class _CropDialogState extends State<CropDialog> {
       : Uint8List.fromList(img.encodeJpg(image!, quality: 85));
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text('Passt das Foto?'),
+    title: Text(
+      widget.batchIndex == null
+          ? 'Passt das Foto?'
+          : 'Foto ${widget.batchIndex} von ${widget.batchTotal} prüfen',
+    ),
     content: SizedBox(
       width: 590,
       child: SingleChildScrollView(
@@ -171,10 +293,53 @@ class _CropDialogState extends State<CropDialog> {
               'Namen bitte abschneiden. Der Text soll gut lesbar sein.',
               style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (id, label) in const [
+                  ('edit', 'Zuschnitt bearbeiten'),
+                  ('original', 'Original ansehen'),
+                  ('crop', 'Ergebnis ansehen'),
+                ])
+                  ChoiceChip(
+                    label: Text(label),
+                    selected: photoView == id,
+                    onSelected: encoding
+                        ? null
+                        : (_) => setState(() => photoView = id),
+                  ),
+                IconButton(
+                  tooltip: 'Zuschnitt rückgängig',
+                  onPressed: undoFrames.isEmpty || encoding
+                      ? null
+                      : () => setState(() {
+                          redoFrames.add(frame);
+                          restoreFrame(undoFrames.removeLast());
+                        }),
+                  icon: const Icon(Icons.undo),
+                ),
+                IconButton(
+                  tooltip: 'Zuschnitt wiederholen',
+                  onPressed: redoFrames.isEmpty || encoding
+                      ? null
+                      : () => setState(() {
+                          undoFrames.add(frame);
+                          restoreFrame(redoFrames.removeLast());
+                        }),
+                  icon: const Icon(Icons.redo),
+                ),
+              ],
+            ),
+            if (widget.batchIndex != null)
+              const Text(
+                'Jedes Foto hat einen eigenen Zuschnitt. Bereits übernommene Fotos bleiben erhalten.',
+              ),
             TextButton.icon(
               onPressed: image == null || encoding
                   ? null
                   : () => setState(() {
+                      rememberFrame();
                       image = img.copyRotate(image!, angle: 90);
                       quarterTurns = (quarterTurns + 1) % 4;
                       preview = Uint8List.fromList(
@@ -188,6 +353,7 @@ class _CropDialogState extends State<CropDialog> {
                       top = oldLeft;
                       right = 1 - oldTop;
                       bottom = oldRight;
+                      publishFrame();
                     }),
               icon: Icon(Icons.rotate_right),
               label: Text('Um 90° drehen'),
@@ -196,8 +362,10 @@ class _CropDialogState extends State<CropDialog> {
               onPressed: image == null || encoding
                   ? null
                   : () => setState(() {
+                      rememberFrame();
                       left = top = 0;
                       right = bottom = 1;
+                      publishFrame();
                     }),
               icon: Icon(Icons.crop_free_rounded),
               label: Text('Ganzes Foto verwenden'),
@@ -216,91 +384,116 @@ class _CropDialogState extends State<CropDialog> {
                 child: LayoutBuilder(
                   builder: (context, size) => Center(
                     child: AspectRatio(
-                      aspectRatio: image == null
+                      aspectRatio: photoView == 'original'
+                          ? originalAspect
+                          : photoView == 'crop' && image != null
+                          ? image!.width *
+                                (right - left) /
+                                (image!.height * (bottom - top))
+                          : image == null
                           ? 1
                           : image!.width / image!.height,
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.memory(preview, fit: BoxFit.fill),
-                          LayoutBuilder(
-                            builder: (context, bounds) => Semantics(
-                              label: 'Zuschneiderahmen. Ziehe eine Ecke. Darunter kannst du die Ränder mit Reglern verändern.',
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onPanStart: image == null || encoding
-                                    ? null
-                                    : (event) {
-                                        final corners = [
-                                          Offset(left, top),
-                                          Offset(right, top),
-                                          Offset(left, bottom),
-                                          Offset(right, bottom),
-                                        ];
-                                        final point = Offset(
-                                          event.localPosition.dx /
-                                              bounds.maxWidth,
-                                          event.localPosition.dy /
-                                              bounds.maxHeight,
-                                        );
-                                        var nearest = 0;
-                                        for (
-                                          var i = 1;
-                                          i < corners.length;
-                                          i++
-                                        ) {
-                                          if ((corners[i] - point).distance <
-                                              (corners[nearest] - point)
-                                                  .distance) {
-                                            nearest = i;
+                          Image.memory(
+                            photoView == 'original'
+                                ? originalPreview
+                                : photoView == 'crop'
+                                ? clippedPreview()
+                                : preview,
+                            fit: BoxFit.fill,
+                          ),
+                          if (photoView == 'edit')
+                            LayoutBuilder(
+                              builder: (context, bounds) => Semantics(
+                                label: 'Zuschneiderahmen. Ziehe eine Ecke. Darunter kannst du die Ränder mit Reglern verändern.',
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onPanStart: image == null || encoding
+                                      ? null
+                                      : (event) {
+                                          final corners = [
+                                            Offset(left, top),
+                                            Offset(right, top),
+                                            Offset(left, bottom),
+                                            Offset(right, bottom),
+                                          ];
+                                          final point = Offset(
+                                            event.localPosition.dx /
+                                                bounds.maxWidth,
+                                            event.localPosition.dy /
+                                                bounds.maxHeight,
+                                          );
+                                          var nearest = 0;
+                                          for (
+                                            var i = 1;
+                                            i < corners.length;
+                                            i++
+                                          ) {
+                                            if ((corners[i] - point).distance <
+                                                (corners[nearest] - point)
+                                                    .distance) {
+                                              nearest = i;
+                                            }
                                           }
-                                        }
-                                        final offset = corners[nearest] - point;
-                                        final pixelDistance = Offset(
-                                          offset.dx * bounds.maxWidth,
-                                          offset.dy * bounds.maxHeight,
-                                        ).distance;
-                                        dragCorner = pixelDistance <= 32
-                                            ? nearest
-                                            : null;
-                                      },
-                                onPanUpdate: image == null || encoding
-                                    ? null
-                                    : (event) => setState(() {
-                                        final x =
-                                            (event.localPosition.dx /
-                                                    bounds.maxWidth)
-                                                .clamp(0.0, 1.0);
-                                        final y =
-                                            (event.localPosition.dy /
-                                                    bounds.maxHeight)
-                                                .clamp(0.0, 1.0);
-                                        if (dragCorner == 0 ||
-                                            dragCorner == 2) {
-                                          left = x.clamp(0.0, right - .1);
-                                        }
-                                        if (dragCorner == 1 ||
-                                            dragCorner == 3) {
-                                          right = x.clamp(left + .1, 1.0);
-                                        }
-                                        if (dragCorner == 0 ||
-                                            dragCorner == 1) {
-                                          top = y.clamp(0.0, bottom - .1);
-                                        }
-                                        if (dragCorner == 2 ||
-                                            dragCorner == 3) {
-                                          bottom = y.clamp(top + .1, 1.0);
-                                        }
-                                      }),
-                                onPanEnd: (_) => dragCorner = null,
-                                child: CustomPaint(
-                                  painter: _CropPainter(
-                                    Rect.fromLTRB(left, top, right, bottom),
+                                          final offset =
+                                              corners[nearest] - point;
+                                          final pixelDistance = Offset(
+                                            offset.dx * bounds.maxWidth,
+                                            offset.dy * bounds.maxHeight,
+                                          ).distance;
+                                          if (pixelDistance <= 32) {
+                                            rememberFrame();
+                                          }
+                                          dragCorner = pixelDistance <= 32
+                                              ? nearest
+                                              : null;
+                                        },
+                                  onPanUpdate: image == null || encoding
+                                      ? null
+                                      : (event) => setState(() {
+                                          final x =
+                                              (event.localPosition.dx /
+                                                      bounds.maxWidth)
+                                                  .clamp(0.0, 1.0);
+                                          final y =
+                                              (event.localPosition.dy /
+                                                      bounds.maxHeight)
+                                                  .clamp(0.0, 1.0);
+                                          if (dragCorner == 0 ||
+                                              dragCorner == 2) {
+                                            left = x.clamp(0.0, right - .1);
+                                          }
+                                          if (dragCorner == 1 ||
+                                              dragCorner == 3) {
+                                            right = x.clamp(left + .1, 1.0);
+                                          }
+                                          if (dragCorner == 0 ||
+                                              dragCorner == 1) {
+                                            top = y.clamp(0.0, bottom - .1);
+                                          }
+                                          if (dragCorner == 2 ||
+                                              dragCorner == 3) {
+                                            bottom = y.clamp(top + .1, 1.0);
+                                          }
+                                        }),
+                                  onPanEnd: (_) {
+                                    dragCorner = null;
+                                    publishFrame();
+                                  },
+                                  onPanCancel: () {
+                                    dragCorner = null;
+                                    publishFrame();
+                                  },
+                                  child: CustomPaint(
+                                    painter: _CropPainter(
+                                      Rect.fromLTRB(left, top, right, bottom),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -356,6 +549,10 @@ class _CropDialogState extends State<CropDialog> {
                           value: item.$2,
                           min: item.$3,
                           max: item.$4,
+                          onChangeStart: encoding
+                              ? null
+                              : (_) => rememberFrame(),
+                          onChangeEnd: encoding ? null : (_) => publishFrame(),
                           onChanged: encoding ? null : item.$5,
                         ),
                       ),
@@ -373,6 +570,7 @@ class _CropDialogState extends State<CropDialog> {
             ? null
             : () {
                 if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+                  publishFrame();
                   Navigator.pop(context);
                 }
               },
@@ -383,7 +581,13 @@ class _CropDialogState extends State<CropDialog> {
         enabled: image != null && !encoding,
         onPressed: () async {
           final cropRoute = ModalRoute.of(context);
-          if (!mounted || encoding || cropRoute?.isCurrent != true) return;
+          if (!mounted ||
+              encoding ||
+              cropRoute?.isCurrent != true ||
+              widget.isCurrent?.call() == false) {
+            return;
+          }
+          publishFrame();
           if (image == null) {
             throw ApiError(
               'Dieses Bildformat konnte nicht gelesen werden. Bitte JPEG oder PNG auswählen.',
@@ -608,11 +812,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
   int version = 0;
   late final account = widget.state.user;
   late final family = widget.state.familyId;
+  late final session = widget.state.api.token;
   bool get current =>
       mounted &&
       account != null &&
       identical(account, widget.state.user) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      session == widget.state.api.token;
   @override
   void initState() {
     super.initState();
@@ -795,6 +1001,95 @@ class _MaterialReviewState extends State<MaterialReview> {
       spacing: 8,
       runSpacing: 8,
       children: [
+        if (data['has_image'] == true && content.text.trim().isNotEmpty)
+          TextButton.icon(
+            icon: const Icon(Icons.compare_outlined),
+            label: const Text('Foto und Text vergleichen'),
+            onPressed: () {
+              if (!sourceCurrent(data)) return;
+              showSourceTool<void>(
+                (ctx, route) => Dialog(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: 960,
+                      maxHeight: MediaQuery.sizeOf(ctx).height * .9,
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Ideas100ComparePanels(
+                            firstLabel: 'Dein Heftfoto',
+                            secondLabel: 'Aktueller Seitentext',
+                            first: SizedBox(
+                              height: 400,
+                              child: NotebookPhoto(
+                                widget.state,
+                                materialId: data['id'],
+                                zoomable: true,
+                              ),
+                            ),
+                            second: LearningContent(content.text),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              if (ctx.mounted &&
+                                  sourceCurrent(data) &&
+                                  route.isCurrent) {
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: const Text('Vergleich schließen'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        if (dirty)
+          TextButton.icon(
+            icon: const Icon(Icons.difference_outlined),
+            label: const Text('Korrektur mit gespeichertem Text vergleichen'),
+            onPressed: () {
+              if (!sourceCurrent(data)) return;
+              final before = '${data['content'] ?? ''}', after = content.text;
+              showSourceTool<void>(
+                (ctx, route) => Dialog(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: 900,
+                      maxHeight: MediaQuery.sizeOf(ctx).height * .9,
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text('Vergleich speichert keine Korrektur.'),
+                          Ideas100TextCompare(before, after),
+                          TextButton(
+                            onPressed: () {
+                              if (ctx.mounted &&
+                                  sourceCurrent(data) &&
+                                  route.isCurrent) {
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: const Text('Zum Korrigieren zurück'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
         if (content.text.trim().isNotEmpty)
           TextButton.icon(
             onPressed: () {
@@ -803,6 +1098,7 @@ class _MaterialReviewState extends State<MaterialReview> {
               showSourceTool<void>(
                 (ctx, route) => _SourceTextReader(
                   text: text,
+                  uncertainties: data['uncertainties'] as List? ?? [],
                   onClose: () {
                     if (ctx.mounted && sourceCurrent(data) && route.isCurrent) {
                       Navigator.pop(ctx);
@@ -1917,86 +2213,30 @@ class _MaterialReviewState extends State<MaterialReview> {
   }
 }
 
-class _SourceTextReader extends StatefulWidget {
+class _SourceTextReader extends StatelessWidget {
   final String text;
+  final List uncertainties;
   final VoidCallback onClose;
-  const _SourceTextReader({required this.text, required this.onClose});
+  const _SourceTextReader({
+    required this.text,
+    required this.onClose,
+    this.uncertainties = const [],
+  });
   @override
-  State<_SourceTextReader> createState() => _SourceTextReaderState();
-}
-
-class _SourceTextReaderState extends State<_SourceTextReader> {
-  final search = TextEditingController();
-  @override
-  void dispose() {
-    search.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final query = search.text.trim().toLowerCase();
-    final lines = widget.text
-        .split('\n')
-        .where((line) => line.toLowerCase().contains(query))
-        .toList();
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 720,
-          maxHeight: MediaQuery.sizeOf(context).height * .85,
-        ),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'In deinem Seitentext nachsehen',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-              ),
-              SizedBox(height: 12),
-              TextField(
-                controller: search,
-                textInputAction: TextInputAction.search,
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                decoration: InputDecoration(
-                  labelText: 'Wort oder Textstelle finden',
-                  suffixIcon: search.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Textsuche löschen',
-                          onPressed: () => setState(search.clear),
-                          icon: Icon(Icons.close_rounded),
-                        ),
-                ),
-              ),
-              SizedBox(height: 12),
-              if (query.isNotEmpty)
-                Text(
-                  lines.isEmpty
-                      ? 'Keine passende Textzeile gefunden.'
-                      : '${lines.length} passende Textzeilen im aktuellen Seitentext. Formeln werden als ganze Zeile gezeigt.',
-                ),
-              SizedBox(height: 12),
-              LearningContent(
-                query.isEmpty ? widget.text : lines.take(20).join('\n'),
-              ),
-              if (query.isNotEmpty && lines.length > 20)
-                Text(
-                  'Die ersten 20 passenden Zeilen sind sichtbar. Grenze die Suche weiter ein.',
-                ),
-              TextButton(
-                onPressed: widget.onClose,
-                child: Text('Zurück zur Heftseite'),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => Dialog(
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: 760,
+        maxHeight: MediaQuery.sizeOf(context).height * .9,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Ideas100SourceReader(
+          text: text,
+          uncertainties: uncertainties,
+          onClose: onClose,
         ),
       ),
-    );
-  }
+    ),
+  );
 }

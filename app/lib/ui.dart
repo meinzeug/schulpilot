@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -66,12 +67,14 @@ void openRoute(BuildContext context, String path) {
 VoidCallback _workspaceLink(BuildContext context, AppState state, String path) {
   final owner = state.user;
   final family = state.familyId;
+  final token = state.api.token;
   final route = ModalRoute.of(context);
   return () {
     if (!context.mounted ||
         owner == null ||
         !identical(state.user, owner) ||
         state.familyId != family ||
+        state.api.token != token ||
         route?.isCurrent == false) {
       return;
     }
@@ -1080,7 +1083,7 @@ class PageFrame extends StatelessWidget {
 }
 
 /// Shared page content with navigation suited to its browser or native host.
-class WorkspaceShell extends StatelessWidget {
+class WorkspaceShell extends StatefulWidget {
   final AppState state;
   final String title;
   final String? subtitle;
@@ -1100,6 +1103,279 @@ class WorkspaceShell extends StatelessWidget {
     this.showTitle = true,
   });
 
+  @override
+  State<WorkspaceShell> createState() => _WorkspaceShellState();
+}
+
+class _WorkspaceShellState extends State<WorkspaceShell>
+    with WidgetsBindingObserver {
+  AppState get state => widget.state;
+  String get title => widget.title;
+  String? get subtitle => widget.subtitle;
+  Widget get child => widget.child;
+  List<Widget> get actions => widget.actions;
+  bool get showTitle => widget.showTitle;
+  bool get browser => widget.browser;
+  final scroll = ScrollController();
+  final contentFocus = FocusNode(debugLabel: 'Hauptinhalt');
+  final skipFocus = FocusNode(debugLabel: 'Zum Hauptinhalt');
+  final workspaceFocus = FocusNode(
+    debugLabel: 'Workspace',
+    skipTraversal: true,
+  );
+  bool farDown = false;
+  ModalRoute<dynamic>? toolRoute;
+  Json? boundOwner;
+  String? boundFamily, boundToken;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    bindOwner();
+    state.addListener(ownerChanged);
+    scroll.addListener(scrolled);
+    skipFocus.addListener(skipFocused);
+    HardwareKeyboard.instance.addHandler(unfocusedShortcut);
+  }
+
+  bool unfocusedShortcut(KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        !ownerCurrent ||
+        !mounted ||
+        ModalRoute.of(context)?.isCurrent == false ||
+        (WidgetsBinding.instance.lifecycleState != null &&
+            WidgetsBinding.instance.lifecycleState !=
+                AppLifecycleState.resumed)) {
+      return false;
+    }
+    final primary = FocusManager.instance.primaryFocus;
+    // Descendant shortcuts use normal focus dispatch. This fallback only covers
+    // a fresh Navigator scope, so late field/album autofocus remains untouched.
+    if (primary == workspaceFocus ||
+        (primary?.ancestors.contains(workspaceFocus) ?? false)) {
+      return false;
+    }
+    final keyboard = HardwareKeyboard.instance;
+    if (event.logicalKey == LogicalKeyboardKey.keyK &&
+        (keyboard.isControlPressed || keyboard.isMetaPressed) &&
+        !keyboard.isAltPressed &&
+        !keyboard.isShiftPressed) {
+      unawaited(openWorkspaceTool());
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.f1 &&
+        !keyboard.isControlPressed &&
+        !keyboard.isMetaPressed &&
+        !keyboard.isAltPressed &&
+        !keyboard.isShiftPressed) {
+      unawaited(openWorkspaceTool(help: true));
+      return true;
+    }
+    return false;
+  }
+
+  void bindOwner() {
+    boundOwner = state.user;
+    boundFamily = state.familyId;
+    boundToken = state.api.token;
+  }
+
+  bool get ownerCurrent =>
+      boundOwner != null &&
+      identical(boundOwner, state.user) &&
+      boundFamily == state.familyId &&
+      boundToken == state.api.token;
+  void ownerChanged() {
+    if (ownerCurrent) return;
+    closeTool();
+    bindOwner();
+    if (mounted) setState(() {});
+  }
+
+  void closeTool() {
+    final old = toolRoute;
+    toolRoute = null;
+    if (old?.isActive == true) {
+      scheduleMicrotask(() {
+        if (old?.isActive == true) old!.navigator?.removeRoute(old);
+      });
+    }
+  }
+
+  void scrolled() {
+    final next = scroll.hasClients && scroll.offset > 500;
+    if (mounted && next != farDown) setState(() => farDown = next);
+  }
+
+  void skipFocused() {
+    if (mounted) setState(() {});
+  }
+
+  void goToTop({bool focus = false}) {
+    if (!ownerCurrent || ModalRoute.of(context)?.isCurrent == false) return;
+    if (scroll.hasClients) {
+      if (MediaQuery.disableAnimationsOf(context)) {
+        scroll.jumpTo(0);
+      } else {
+        scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+    if (focus) contentFocus.requestFocus();
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkspaceShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.state, state)) {
+      oldWidget.state.removeListener(ownerChanged);
+      closeTool();
+      bindOwner();
+      state.addListener(ownerChanged);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState value) {
+    if (value != AppLifecycleState.resumed) closeTool();
+  }
+
+  @override
+  void dispose() {
+    state.removeListener(ownerChanged);
+    WidgetsBinding.instance.removeObserver(this);
+    HardwareKeyboard.instance.removeHandler(unfocusedShortcut);
+    closeTool();
+    scroll.dispose();
+    contentFocus.dispose();
+    skipFocus.dispose();
+    workspaceFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> openWorkspaceTool({bool help = false}) async {
+    final hostRoute = ModalRoute.of(context);
+    if (!ownerCurrent || hostRoute?.isCurrent == false || toolRoute != null) {
+      return;
+    }
+    final account = boundOwner, family = boundFamily, token = boundToken;
+    final path = GoRouterState.of(context).uri.path;
+    final entries = _entries(sidebar: false);
+    bool current() =>
+        mounted &&
+        identical(state.user, account) &&
+        state.familyId == family &&
+        state.api.token == token &&
+        hostRoute?.isActive != false &&
+        GoRouterState.of(context).uri.path == path;
+    final query = TextEditingController();
+    ModalRoute<dynamic>? own;
+    try {
+      final destination = await showDialog<String>(
+        context: context,
+        builder: (ctx) {
+          own ??= ModalRoute.of(ctx);
+          toolRoute = own;
+          if (!current()) {
+            closeTool();
+            return const SizedBox.shrink();
+          }
+          return StatefulBuilder(
+            builder: (ctx, refresh) {
+              final needle = query.text.trim().toLowerCase();
+              final shown = entries
+                  .where((entry) => entry.$2.toLowerCase().contains(needle))
+                  .toList();
+              return AlertDialog(
+                title: Text(help ? 'Tastatur & Bedienung' : 'Bereich wechseln'),
+                content: SizedBox(
+                  width: 440,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: help
+                          ? [
+                              const Text('Strg / ⌘ + K: Bereiche durchsuchen'),
+                              const SizedBox(height: 12),
+                              const Text('F1: Diese Bedienhilfe öffnen'),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Tab / Umschalt + Tab: Zum nächsten / vorherigen Bedienelement',
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Am Seitenanfang erscheint bei Tastaturfokus „Zum Hauptinhalt“. Eingaben werden dabei nicht gesendet.',
+                              ),
+                              const SizedBox(height: 12),
+                              const Text('Escape: Diesen Dialog schließen'),
+                            ]
+                          : [
+                              TextField(
+                                controller: query,
+                                autofocus: true,
+                                maxLength: 80,
+                                decoration: const InputDecoration(
+                                  labelText: 'Bereich suchen',
+                                  counterText: '',
+                                ),
+                                onChanged: (_) {
+                                  if (current()) refresh(() {});
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              if (shown.isEmpty)
+                                const Text(
+                                  'Kein Bereich passt zu deiner Suche.',
+                                ),
+                              for (final entry in shown)
+                                ListTile(
+                                  leading: LearningNavIcon(entry.$1),
+                                  title: Text(entry.$2),
+                                  selected: path == entry.$3,
+                                  onTap: () {
+                                    if (current() &&
+                                        toolRoute?.isCurrent == true) {
+                                      Navigator.pop(ctx, entry.$3);
+                                    }
+                                  },
+                                ),
+                            ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      if (ctx.mounted && current() && own?.isCurrent == true) {
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    child: const Text('Schließen'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+      if (mounted &&
+          destination != null &&
+          current() &&
+          entries.any((entry) => entry.$3 == destination)) {
+        _workspaceLink(context, state, destination)();
+      }
+    } finally {
+      await own?.completed;
+      if (identical(toolRoute, own)) toolRoute = null;
+      query.dispose();
+    }
+  }
+
   Future<String?> _moreMenu(
     BuildContext context,
     List<(IconData, String, String)> entries,
@@ -1107,13 +1383,20 @@ class WorkspaceShell extends StatelessWidget {
   ) async {
     final account = state.user;
     final family = state.familyId;
+    final token = state.api.token;
     if (account == null) return null;
     ModalRoute<dynamic>? ownRoute;
     void closeOldMenu() {
-      if (identical(state.user, account) && state.familyId == family) return;
+      if (identical(state.user, account) &&
+          state.familyId == family &&
+          state.api.token == token) {
+        return;
+      }
       final route = ownRoute;
       scheduleMicrotask(() {
-        if ((!identical(state.user, account) || state.familyId != family) &&
+        if ((!identical(state.user, account) ||
+                state.familyId != family ||
+                state.api.token != token) &&
             route?.isActive == true) {
           route!.navigator?.removeRoute(route);
         }
@@ -1150,6 +1433,7 @@ class WorkspaceShell extends StatelessWidget {
                         if (ctx.mounted &&
                             identical(state.user, account) &&
                             state.familyId == family &&
+                            state.api.token == token &&
                             ownRoute?.isCurrent == true) {
                           Navigator.pop(ctx, entry.$3);
                         }
@@ -1161,7 +1445,9 @@ class WorkspaceShell extends StatelessWidget {
           );
         },
       );
-      return identical(state.user, account) && state.familyId == family
+      return identical(state.user, account) &&
+              state.familyId == family &&
+              state.api.token == token
           ? selected
           : null;
     } finally {
@@ -1264,11 +1550,13 @@ class WorkspaceShell extends StatelessWidget {
     final displayName = name == null || name.isEmpty ? 'Konto' : name;
     final owner = state.user;
     final family = state.familyId;
+    final token = state.api.token;
 
     Future<void> selectDestination(int i) async {
       if (owner == null ||
           !identical(state.user, owner) ||
           state.familyId != family ||
+          state.api.token != token ||
           ModalRoute.of(context)?.isCurrent == false) {
         return;
       }
@@ -1278,7 +1566,8 @@ class WorkspaceShell extends StatelessWidget {
         if (route != null &&
             context.mounted &&
             identical(state.user, owner) &&
-            state.familyId == family) {
+            state.familyId == family &&
+            state.api.token == token) {
           _workspaceLink(context, state, route)();
         }
       } else {
@@ -1288,202 +1577,387 @@ class WorkspaceShell extends StatelessWidget {
       }
     }
 
-    return Scaffold(
-      appBar: desktop
-          ? null
-          : AppBar(
-              title: width < 360
-                  ? Semantics(
-                      label: 'SCHULPILOT',
-                      child: ExcludeSemantics(
-                        child: Container(
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFEAF8FF),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Image.asset(
-                            'assets/brand/schulpilot-mark.png',
-                            width: 24,
-                            height: 24,
-                          ),
-                        ),
-                      ),
-                    )
-                  : brand(),
-              toolbarHeight: 56,
-              actions: [
-                SchulbuddyButton(),
-                AppearanceToggle(state),
-                NotificationBell(state),
-                AccountMenu(state, compact: true),
-                SizedBox(width: 8),
-              ],
-            ),
-      bottomNavigationBar: desktop
-          ? null
-          : SafeArea(
-              top: false,
-              child: Container(
-                margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: context.palette.panelSurface,
-                  border: Border.all(color: context.palette.surfaceBorder),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: NavigationBar(
-                  height: MediaQuery.textScalerOf(context).scale(1) > 1.4
-                      ? 96
-                      : 72,
-                  labelBehavior:
-                      NavigationDestinationLabelBehavior.onlyShowSelected,
-                  selectedIndex: compactChild && selected >= 3 ? 3 : selected,
-                  onDestinationSelected: selectDestination,
-                  destinations: [
-                    for (var i = 0; i < mobileEntries.length; i++)
-                      if (mobileEntries[i].$2 == 'Hausaufgaben')
-                        Semantics(
-                          label: 'Hausaufgaben',
-                          excludeSemantics: true,
-                          onTap: () => selectDestination(i),
-                          child: NavigationDestination(
-                            icon: LearningNavIcon(mobileEntries[i].$1),
-                            label: 'Haus\naufgaben',
-                            tooltip: 'Hausaufgaben',
-                          ),
-                        )
-                      else
-                        NavigationDestination(
-                          icon: LearningNavIcon(mobileEntries[i].$1),
-                          label: mobileEntries[i].$2,
-                        ),
-                    if (compactChild)
-                      NavigationDestination(
-                        icon: LearningNavIcon(Icons.more_horiz_rounded),
-                        label: 'Mehr',
-                        tooltip: 'Weitere Bereiche',
-                      ),
-                  ],
-                ),
-              ),
-            ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (sidebar)
-            _WorkspaceSidebar(
-              state: state,
-              entries: entries,
-              selected: selected,
-              roleLabel: _roleLabel,
-            ),
-          if (rail)
-            _WorkspaceRail(state: state, entries: entries, selected: selected),
-          Expanded(
-            child: Column(
-              children: [
-                if (desktop)
-                  _WorkspaceHeader(
-                    state: state,
-                    roleLabel: _roleLabel,
-                    section: state.isAdmin && path == '/admin/verkauf'
-                        ? 'Verkauf'
-                        : state.isAdmin && path == '/admin/push'
-                        ? 'Push'
-                        : path.startsWith('/messages/')
-                        ? 'Nachrichten & Wünsche'
-                        : path == '/notifications'
-                        ? 'Neuigkeiten'
-                        : entries[selected].$2,
-                    displayName: displayName,
-                    compact: rail,
-                    notificationBell: NotificationBell(state),
-                  ),
-                Expanded(
-                  child: SelectionArea(
-                    child: SingleChildScrollView(
-                      key: ValueKey('workspace-scroll'),
-                      padding: EdgeInsets.fromLTRB(
-                        desktop
-                            ? 24
-                            : width < 360
-                            ? 16
-                            : 20,
-                        desktop ? 20 : 12,
-                        desktop
-                            ? 24
-                            : width < 360
-                            ? 16
-                            : 20,
-                        32,
-                      ),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: maxWidth),
-                          child: Column(
-                            key: ValueKey('workspace-content'),
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (state.isDemo)
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: desktop ? 20 : 10,
+    final returnEntry = state.isChild && path != entries[selected].$3
+        ? entries[selected]
+        : null;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+            openWorkspaceTool(),
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () =>
+            openWorkspaceTool(),
+        const SingleActivator(LogicalKeyboardKey.f1): () =>
+            openWorkspaceTool(help: true),
+      },
+      child: Focus(
+        focusNode: workspaceFocus,
+        child: Stack(
+          children: [
+            Scaffold(
+              appBar: desktop
+                  ? null
+                  : AppBar(
+                      title: width < 360
+                          ? Semantics(
+                              label: 'SCHULPILOT',
+                              child: ExcludeSemantics(
+                                child: Container(
+                                  padding: EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFEAF8FF),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: Tag('Demo · nur Beispieldaten'),
+                                  child: Image.asset(
+                                    'assets/brand/schulpilot-mark.png',
+                                    width: 24,
+                                    height: 24,
+                                  ),
                                 ),
-                              if (!state.isDemo &&
-                                  !state.isAdmin &&
-                                  state.user?['real_data_enabled'] == false)
-                                Notice(
-                                  'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
+                              ),
+                            )
+                          : brand(),
+                      toolbarHeight: 56,
+                      actions: [
+                        SchulbuddyButton(),
+                        AppearanceToggle(state),
+                        NotificationBell(state),
+                        AccountMenu(
+                          state,
+                          compact: true,
+                          onChooseArea: () => openWorkspaceTool(),
+                          onKeyboardHelp: () => openWorkspaceTool(help: true),
+                        ),
+                        SizedBox(width: 8),
+                      ],
+                    ),
+              bottomNavigationBar: desktop
+                  ? null
+                  : SafeArea(
+                      top: false,
+                      child: Container(
+                        margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: context.palette.panelSurface,
+                          border: Border.all(
+                            color: context.palette.surfaceBorder,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: NavigationBar(
+                          height:
+                              MediaQuery.textScalerOf(context).scale(1) > 1.4
+                              ? 96
+                              : 72,
+                          labelBehavior: NavigationDestinationLabelBehavior
+                              .onlyShowSelected,
+                          selectedIndex: compactChild && selected >= 3
+                              ? 3
+                              : selected,
+                          onDestinationSelected: selectDestination,
+                          destinations: [
+                            for (var i = 0; i < mobileEntries.length; i++)
+                              if (mobileEntries[i].$2 == 'Hausaufgaben')
+                                Semantics(
+                                  label: 'Hausaufgaben',
+                                  excludeSemantics: true,
+                                  onTap: () => selectDestination(i),
+                                  child: NavigationDestination(
+                                    icon: LearningNavIcon(mobileEntries[i].$1),
+                                    label: 'Haus\naufgaben',
+                                    tooltip: 'Hausaufgaben',
+                                  ),
+                                )
+                              else
+                                NavigationDestination(
+                                  icon: LearningNavIcon(mobileEntries[i].$1),
+                                  label: mobileEntries[i].$2,
                                 ),
-                              if (showTitle || actions.isNotEmpty) ...[
-                                _WorkspaceHeading(
-                                  title: showTitle ? title : null,
-                                  subtitle: showTitle ? subtitle : null,
-                                  actions: actions,
-                                ),
-                                SizedBox(height: desktop ? 26 : 16),
-                              ],
-                              child,
-                              if (browser &&
-                                  state.user != null &&
-                                  !state.isChild &&
-                                  path == '/app') ...[
-                                SizedBox(height: 28),
-                                AndroidDownload(state.api),
-                              ],
-                              if (!state.isChild || path == '/settings') ...[
-                                SizedBox(height: 24),
-                                Wrap(
-                                  spacing: 12,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          openRoute(context, '/privacy'),
-                                      child: Text('Datenschutz'),
+                            if (compactChild)
+                              NavigationDestination(
+                                icon: LearningNavIcon(Icons.more_horiz_rounded),
+                                label: selected >= 3
+                                    ? entries[selected].$2
+                                    : 'Mehr',
+                                tooltip: selected >= 3
+                                    ? '${entries[selected].$2} · Weitere Bereiche'
+                                    : 'Weitere Bereiche',
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+              body: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (sidebar)
+                    _WorkspaceSidebar(
+                      state: state,
+                      entries: entries,
+                      selected: selected,
+                      roleLabel: _roleLabel,
+                    ),
+                  if (rail)
+                    _WorkspaceRail(
+                      state: state,
+                      entries: entries,
+                      selected: selected,
+                    ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        if (desktop)
+                          _WorkspaceHeader(
+                            state: state,
+                            roleLabel: _roleLabel,
+                            section: state.isAdmin && path == '/admin/verkauf'
+                                ? 'Verkauf'
+                                : state.isAdmin && path == '/admin/push'
+                                ? 'Push'
+                                : path.startsWith('/messages/')
+                                ? 'Nachrichten & Wünsche'
+                                : path == '/notifications'
+                                ? 'Neuigkeiten'
+                                : entries[selected].$2,
+                            displayName: displayName,
+                            compact: rail,
+                            notificationBell: NotificationBell(state),
+                          ),
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              SelectionArea(
+                                child: SingleChildScrollView(
+                                  key: ValueKey('workspace-scroll'),
+                                  controller: scroll,
+                                  padding: EdgeInsets.fromLTRB(
+                                    desktop
+                                        ? 24
+                                        : width < 360
+                                        ? 16
+                                        : 20,
+                                    desktop ? 20 : 12,
+                                    desktop
+                                        ? 24
+                                        : width < 360
+                                        ? 16
+                                        : 20,
+                                    32,
+                                  ),
+                                  child: Center(
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: maxWidth,
+                                      ),
+                                      child: Focus(
+                                        focusNode: contentFocus,
+                                        skipTraversal: true,
+                                        child: Column(
+                                          key: ValueKey('workspace-content'),
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (desktop)
+                                              Wrap(
+                                                spacing: 8,
+                                                runSpacing: 4,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  TextButton.icon(
+                                                    key: const ValueKey(
+                                                      'workspace-area-switch',
+                                                    ),
+                                                    onPressed: () =>
+                                                        openWorkspaceTool(),
+                                                    icon: const Icon(
+                                                      Icons.search_rounded,
+                                                      size: 20,
+                                                    ),
+                                                    label: const Text(
+                                                      'Bereiche',
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip:
+                                                        'Tastatur & Bedienung',
+                                                    onPressed: () =>
+                                                        openWorkspaceTool(
+                                                          help: true,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons.keyboard_outlined,
+                                                      size: 22,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            if (returnEntry != null)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 8,
+                                                ),
+                                                child: Wrap(
+                                                  spacing: 6,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment.center,
+                                                  children: [
+                                                    TextButton.icon(
+                                                      key: const ValueKey(
+                                                        'workspace-context-return',
+                                                      ),
+                                                      onPressed: _workspaceLink(
+                                                        context,
+                                                        state,
+                                                        returnEntry.$3,
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .arrow_back_rounded,
+                                                        size: 18,
+                                                      ),
+                                                      label: Text(
+                                                        'Zu ${returnEntry.$2}',
+                                                      ),
+                                                    ),
+                                                    const Icon(
+                                                      Icons
+                                                          .chevron_right_rounded,
+                                                      size: 18,
+                                                    ),
+                                                    Text(
+                                                      title,
+                                                      style: TextStyle(
+                                                        color: context
+                                                            .palette
+                                                            .muted,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            if (state.isDemo)
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                  bottom: desktop ? 20 : 10,
+                                                ),
+                                                child: Tag(
+                                                  'Demo · nur Beispieldaten',
+                                                ),
+                                              ),
+                                            if (!state.isDemo &&
+                                                !state.isAdmin &&
+                                                state.user?['real_data_enabled'] ==
+                                                    false)
+                                              Notice(
+                                                'Testbetrieb · Bitte noch keine echten Kinderdaten eingeben.',
+                                              ),
+                                            if (showTitle ||
+                                                actions.isNotEmpty) ...[
+                                              _WorkspaceHeading(
+                                                title: showTitle ? title : null,
+                                                subtitle: showTitle
+                                                    ? subtitle
+                                                    : null,
+                                                actions: actions,
+                                              ),
+                                              SizedBox(
+                                                height: desktop ? 26 : 16,
+                                              ),
+                                            ],
+                                            child,
+                                            if (browser &&
+                                                state.user != null &&
+                                                !state.isChild &&
+                                                path == '/app') ...[
+                                              SizedBox(height: 28),
+                                              AndroidDownload(state.api),
+                                            ],
+                                            if (!state.isChild ||
+                                                path == '/settings') ...[
+                                              SizedBox(height: 24),
+                                              Wrap(
+                                                spacing: 12,
+                                                children: [
+                                                  TextButton(
+                                                    onPressed: () => openRoute(
+                                                      context,
+                                                      '/privacy',
+                                                    ),
+                                                    child: Text('Datenschutz'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () => openRoute(
+                                                      context,
+                                                      '/about',
+                                                    ),
+                                                    child: Text(
+                                                      'Über SCHULPILOT',
+                                                    ),
+                                                  ),
+                                                  PublicLegalLinks(
+                                                    state.api.base,
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          openRoute(context, '/about'),
-                                      child: Text('Über SCHULPILOT'),
-                                    ),
-                                    PublicLegalLinks(state.api.base),
-                                  ],
+                                  ),
                                 ),
-                              ],
+                              ),
+                              if (farDown)
+                                Positioned(
+                                  right: 12,
+                                  bottom: 12,
+                                  child: FloatingActionButton.small(
+                                    heroTag: null,
+                                    tooltip: 'Zum Seitenanfang',
+                                    onPressed: () => goToTop(),
+                                    child: const Icon(
+                                      Icons.vertical_align_top_rounded,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 4,
+              left: 12,
+              right: 12,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  child: ExcludeSemantics(
+                    excluding: !skipFocus.hasFocus,
+                    child: IgnorePointer(
+                      ignoring: !skipFocus.hasFocus,
+                      child: Opacity(
+                        opacity: skipFocus.hasFocus ? 1 : 0,
+                        child: FilledButton(
+                          focusNode: skipFocus,
+                          key: const ValueKey('workspace-skip'),
+                          onPressed: () => goToTop(focus: true),
+                          child: const Text('Zum Hauptinhalt'),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2014,11 +2488,14 @@ class AccountMenu extends StatefulWidget {
   final AppState state;
   final bool compact;
   final double nameWidth;
+  final VoidCallback? onChooseArea, onKeyboardHelp;
   const AccountMenu(
     this.state, {
     super.key,
     this.compact = false,
     this.nameWidth = 200,
+    this.onChooseArea,
+    this.onKeyboardHelp,
   });
   @override
   State<AccountMenu> createState() => _AccountMenuState();
@@ -2114,6 +2591,31 @@ class _AccountMenuState extends State<AccountMenu> {
                 },
           child: Text('Einstellungen'),
         ),
+        if (widget.onChooseArea != null)
+          MenuItemButton(
+            key: const ValueKey('workspace-area-switch'),
+            leadingIcon: const Icon(Icons.search_rounded),
+            onPressed: _signingOut
+                ? null
+                : () {
+                    if (_sameHeaderAccount(state, snapshot)) {
+                      widget.onChooseArea!();
+                    }
+                  },
+            child: const Text('Bereich wechseln'),
+          ),
+        if (widget.onKeyboardHelp != null)
+          MenuItemButton(
+            leadingIcon: const Icon(Icons.keyboard_outlined),
+            onPressed: _signingOut
+                ? null
+                : () {
+                    if (_sameHeaderAccount(state, snapshot)) {
+                      widget.onKeyboardHelp!();
+                    }
+                  },
+            child: const Text('Tastatur & Bedienung'),
+          ),
         MenuItemButton(
           key: ValueKey('account-logout'),
           leadingIcon: Icon(Icons.logout_rounded),

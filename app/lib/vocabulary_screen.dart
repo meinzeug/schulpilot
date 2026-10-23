@@ -12,6 +12,7 @@ import 'language_options.dart';
 import 'material_screen.dart';
 import 'material_words.dart';
 import 'ui.dart';
+import 'collection_view_tools.dart';
 import 'parent_child_navigation.dart';
 
 export 'language_options.dart';
@@ -141,7 +142,8 @@ class _VocabularyScreenState extends State<_VocabularyBody>
   List<Json> collections = [];
   String? error, collection, loadedQuery, readingQuery;
   String locale = 'en-GB';
-  String section = 'words';
+  String section = 'words', wordLayout = 'cards';
+  late final sessionToken = widget.state.api.token;
   int page = 1, generation = 0, collectionsRevision = 0;
   int? pendingImports;
   bool busy = false, due = false, loading = true;
@@ -174,7 +176,8 @@ class _VocabularyScreenState extends State<_VocabularyBody>
       mounted &&
       owner != null &&
       identical(owner, widget.state.user) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      sessionToken == widget.state.api.token;
 
   @override
   void initState() {
@@ -313,7 +316,10 @@ class _VocabularyScreenState extends State<_VocabularyBody>
       error = null;
       // Filters already describe the next request. Never offer old words under
       // the new language/collection, including while the request fails.
-      if (query != loadedQuery) data = null;
+      if (query != loadedQuery) {
+        closeOwnedDialogs();
+        data = null;
+      }
     });
     try {
       final responses = await Future.wait([
@@ -352,7 +358,11 @@ class _VocabularyScreenState extends State<_VocabularyBody>
             'Diese Filter brauchen eine aktuelle Serverversion. Setze die Filter zurück, um deine Wörter zu sehen.',
           );
         }
-        data = responses[0];
+        final incoming = responses[0];
+        if (data != null && wordSnapshot(data) != wordSnapshot(incoming)) {
+          closeOwnedDialogs();
+        }
+        data = incoming;
         if (data!['pagination']?['page'] is int) {
           page = data!['pagination']['page'];
         }
@@ -405,6 +415,227 @@ class _VocabularyScreenState extends State<_VocabularyBody>
     } finally {
       if (request == generation) readingQuery = null;
     }
+  }
+
+  String wordSnapshot(Json? value) => jsonEncode([
+    for (final item in value?['items'] as List? ?? [])
+      [
+        item['id'],
+        item['revision'],
+        item['word'],
+        item['meaning'],
+        item['context'],
+        item['source_revisions'],
+      ],
+  ]);
+
+  Widget modeMatrix(Json item) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Text(
+        'Gespeicherte Modusstände',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
+      for (final review in item['reviews'] as List? ?? [])
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: SurfaceInset(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${languageSkill(review['skill'])} · ${languageDirection(review['direction'])}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  review['needs_clarification'] == true
+                      ? 'Antwort noch offen'
+                      : 'Wieder am ${friendlyDate(review['due'])}',
+                ),
+              ],
+            ),
+          ),
+        ),
+      if ((item['reviews'] as List? ?? []).isEmpty)
+        const Text('Noch kein Modusstand gespeichert.'),
+    ],
+  );
+
+  Future<void> inspectWord(Json item) async {
+    if (!current || loading || busy) return;
+    final items = (data?['items'] as List? ?? [])
+        .map((row) => Json.from(row))
+        .toList();
+    var index = items.indexWhere((row) => row['id'] == item['id']);
+    if (index < 0) return;
+    final snapshot = wordSnapshot(data);
+    var revealing = false;
+    String? issue;
+    await scopedDialog<void>(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) {
+          bool validReader() =>
+              ctx.mounted &&
+              current &&
+              foreground &&
+              snapshot == wordSnapshot(data) &&
+              ModalRoute.of(ctx)?.isCurrent == true;
+          final word = items[index];
+          final visible = !widget.state.isChild || isRevealed(word);
+          return PrivateLocalView(
+            state: widget.state,
+            valid: () => current && snapshot == wordSnapshot(data),
+            child: AlertDialog(
+              title: Text('Wort ${index + 1} von ${items.length}'),
+              scrollable: true,
+              content: SizedBox(
+                width: 620,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      learningLocales[word['target_locale']] ??
+                          learningLocales[locale] ??
+                          locale,
+                    ),
+                    const SizedBox(height: 12),
+                    VisibleSearchText(
+                      visible ? '${word['word']}' : '${word['meaning']}',
+                      query: visible ? search.text : '',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (visible) ...[
+                      const SizedBox(height: 12),
+                      VisibleSearchText(
+                        '${word['meaning']}',
+                        query: search.text,
+                      ),
+                    ],
+                    if ((word['context'] ?? '').toString().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: VisibleSearchText(
+                          visible
+                              ? '${word['context']}'
+                              : '${word['cue_context'] ?? ''}',
+                          query: visible ? search.text : '',
+                        ),
+                      ),
+                    if (!visible)
+                      FilledButton(
+                        onPressed: revealing
+                            ? null
+                            : () async {
+                                if (!validReader()) {
+                                  return;
+                                }
+                                update(() {
+                                  revealing = true;
+                                  issue = null;
+                                });
+                                try {
+                                  await widget.state.api.post(
+                                    '$base/${word['id']}/reveal?revision=${word['revision']}',
+                                  );
+                                  if (ctx.mounted &&
+                                      current &&
+                                      snapshot == wordSnapshot(data)) {
+                                    setState(
+                                      () => revealed[word['id']] =
+                                          word['revision'] as int?,
+                                    );
+                                    update(() => revealing = false);
+                                  }
+                                } catch (error) {
+                                  if (ctx.mounted && current) {
+                                    update(() {
+                                      revealing = false;
+                                      issue = error is ApiError
+                                          ? error.message
+                                          : 'Das Wort konnte gerade nicht aufgedeckt werden.';
+                                    });
+                                  }
+                                }
+                              },
+                        child: Text(
+                          revealing ? 'Wird aufgedeckt …' : 'Wort aufdecken',
+                        ),
+                      ),
+                    if (issue != null) Notice(issue!, warning: true),
+                    const SizedBox(height: 16),
+                    modeMatrix(word),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: revealing || index == 0
+                      ? null
+                      : () {
+                          if (validReader() && !revealing && index > 0) {
+                            update(() {
+                              index--;
+                              issue = null;
+                            });
+                          }
+                        },
+                  child: const Text('Vorheriges Wort'),
+                ),
+                TextButton(
+                  onPressed: revealing || index + 1 == items.length
+                      ? null
+                      : () {
+                          if (validReader() &&
+                              !revealing &&
+                              index + 1 < items.length) {
+                            update(() {
+                              index++;
+                              issue = null;
+                            });
+                          }
+                        },
+                  child: const Text('Nächstes Wort'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (validReader()) popCurrentRoute(ctx);
+                  },
+                  child: const Text('Schließen'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget compactWordRow(Json item) {
+    final visible = !widget.state.isChild || isRevealed(item);
+    return ActionPanel(
+      actionLabel: 'Wort einzeln ansehen',
+      enabled: current && !busy && !loading,
+      onPressed: () => inspectWord(item),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          VisibleSearchText(
+            visible ? '${item['word']}' : '${item['meaning']}',
+            query: visible ? search.text : '',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          if (visible)
+            VisibleSearchText('${item['meaning']}', query: search.text),
+          Text(
+            visible ? 'Wort und Bedeutung sichtbar' : 'Wort noch verdeckt',
+            style: TextStyle(color: context.palette.muted),
+          ),
+        ],
+      ),
+    );
   }
 
   bool get filtered =>
@@ -1641,6 +1872,15 @@ class _VocabularyScreenState extends State<_VocabularyBody>
     final pairs = ((restored ? memory!['pairs'] : row['pairs']) as List)
         .map((pair) => Json.from(pair))
         .toList();
+    final originalPairs = (row['pairs'] as List)
+        .map((pair) => Json.from(pair))
+        .toList();
+    final pairKeys = List.generate(pairs.length, (_) => GlobalKey());
+    final pairFocus = List.generate(
+      pairs.length,
+      (i) => FocusNode(debugLabel: 'Wortpaar ${i + 1}'),
+    );
+    var lastOpen = -1;
     final decisions = <int, String>{
       if (restored)
         for (final entry in (memory!['decisions'] as Map).entries)
@@ -1704,6 +1944,50 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                           ? null
                           : (v) => update(() => query = v.trim().toLowerCase()),
                     ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.arrow_downward),
+                      label: const Text('Zum nächsten offenen Wortpaar'),
+                      onPressed: saving
+                          ? null
+                          : () {
+                              if (!ctx.mounted ||
+                                  !current ||
+                                  ModalRoute.of(ctx)?.isCurrent != true) {
+                                return;
+                              }
+                              final open = [
+                                for (var i = 0; i < pairs.length; i++)
+                                  if (![
+                                    'confirm',
+                                    'skip',
+                                  ].contains(decisions[i]))
+                                    i,
+                              ];
+                              if (open.isEmpty) return;
+                              final next =
+                                  open.where((i) => i > lastOpen).firstOrNull ??
+                                  open.first;
+                              update(() {
+                                lastOpen = next;
+                                query = '';
+                                onlyUndecided = true;
+                              });
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!ctx.mounted || !current) return;
+                                final target = pairKeys[next].currentContext;
+                                if (target != null) {
+                                  Scrollable.ensureVisible(
+                                    target,
+                                    duration:
+                                        MediaQuery.disableAnimationsOf(ctx)
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 180),
+                                  );
+                                  pairFocus[next].requestFocus();
+                                }
+                              });
+                            },
+                    ),
                     FilterChip(
                       label: const Text('Noch nicht entschieden'),
                       selected: onlyUndecided,
@@ -1731,89 +2015,112 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                           '${pairs[index]['word']} ${pairs[index]['meaning']}'
                               .toLowerCase()
                               .contains(query))
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: SurfaceInset(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  '${pairs[index]['word']} → ${pairs[index]['meaning']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if ((pairs[index]['uncertainty'] ?? '')
-                                    .toString()
-                                    .isNotEmpty)
-                                  Notice(
-                                    '${pairs[index]['uncertainty']}',
-                                    warning: true,
-                                  ),
-                                if (decisions[index] == 'edit') ...[
-                                  const Text(
-                                    'Korrigiere das Paar und wähle danach ausdrücklich „Stimmt“.',
-                                  ),
-                                  for (final field in [
-                                    ('word', 'Wort oder Wendung', 200),
-                                    ('meaning', 'Was bedeutet das Wort?', 200),
-                                    (
-                                      'context',
-                                      'Ein Beispielsatz, wenn du möchtest',
-                                      500,
+                        Focus(
+                          key: pairKeys[index],
+                          focusNode: pairFocus[index],
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: SurfaceInset(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    '${pairs[index]['word']} → ${pairs[index]['meaning']}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                  ])
-                                    TextFormField(
-                                      key: ValueKey('pair-$index-${field.$1}'),
-                                      initialValue:
-                                          pairs[index][field.$1] ?? '',
-                                      readOnly: saving,
-                                      maxLength: field.$3,
-                                      decoration: InputDecoration(
-                                        labelText: field.$2,
+                                  ),
+                                  if ((pairs[index]['uncertainty'] ?? '')
+                                      .toString()
+                                      .isNotEmpty)
+                                    Notice(
+                                      '${pairs[index]['uncertainty']}',
+                                      warning: true,
+                                    ),
+                                  if (decisions[index] == 'edit') ...[
+                                    LabeledComparison(
+                                      leftLabel: 'Ursprünglicher Vorschlag',
+                                      rightLabel: 'Deine Korrektur',
+                                      left: Text(
+                                        '${originalPairs[index]['word']} → ${originalPairs[index]['meaning']}',
                                       ),
-                                      onChanged: (v) {
-                                        pairs[index][field.$1] = v;
-                                        remember();
-                                      },
+                                      right: Text(
+                                        '${pairs[index]['word']} → ${pairs[index]['meaning']}',
+                                      ),
                                     ),
-                                ],
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    for (final action in [
-                                      ('confirm', 'Stimmt'),
-                                      ('edit', 'Korrigieren'),
-                                      ('skip', 'Nicht übernehmen'),
-                                      ('later', 'Weiß ich noch nicht'),
+                                    const Text(
+                                      'Korrigiere das Paar und wähle danach ausdrücklich „Stimmt“.',
+                                    ),
+                                    for (final field in [
+                                      ('word', 'Wort oder Wendung', 200),
+                                      (
+                                        'meaning',
+                                        'Was bedeutet das Wort?',
+                                        200,
+                                      ),
+                                      (
+                                        'context',
+                                        'Ein Beispielsatz, wenn du möchtest',
+                                        500,
+                                      ),
                                     ])
-                                      ChoiceChip(
-                                        label: Text(action.$2),
-                                        selected: decisions[index] == action.$1,
-                                        onSelected: saving
-                                            ? null
-                                            : (_) => update(() {
-                                                decisions[index] = action.$1;
-                                                if (action.$1 == 'confirm') {
-                                                  pairs[index]['uncertainty'] =
-                                                      '';
-                                                }
-                                                remember();
-                                              }),
+                                      TextFormField(
+                                        key: ValueKey(
+                                          'pair-$index-${field.$1}',
+                                        ),
+                                        initialValue:
+                                            pairs[index][field.$1] ?? '',
+                                        readOnly: saving,
+                                        maxLength: field.$3,
+                                        decoration: InputDecoration(
+                                          labelText: field.$2,
+                                        ),
+                                        onChanged: (v) {
+                                          update(
+                                            () => pairs[index][field.$1] = v,
+                                          );
+                                          remember();
+                                        },
                                       ),
                                   ],
-                                ),
-                                if (decisions[index] == null ||
-                                    decisions[index] == 'later')
-                                  Text(
-                                    'Bleibt zum späteren Prüfen erhalten.',
-                                    style: TextStyle(
-                                      color: context.palette.muted,
-                                      fontSize: 13,
-                                    ),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final action in [
+                                        ('confirm', 'Stimmt'),
+                                        ('edit', 'Korrigieren'),
+                                        ('skip', 'Nicht übernehmen'),
+                                        ('later', 'Weiß ich noch nicht'),
+                                      ])
+                                        ChoiceChip(
+                                          label: Text(action.$2),
+                                          selected:
+                                              decisions[index] == action.$1,
+                                          onSelected: saving
+                                              ? null
+                                              : (_) => update(() {
+                                                  decisions[index] = action.$1;
+                                                  if (action.$1 == 'confirm') {
+                                                    pairs[index]['uncertainty'] =
+                                                        '';
+                                                  }
+                                                  remember();
+                                                }),
+                                        ),
+                                    ],
                                   ),
-                              ],
+                                  if (decisions[index] == null ||
+                                      decisions[index] == 'later')
+                                    Text(
+                                      'Bleibt zum späteren Prüfen erhalten.',
+                                      style: TextStyle(
+                                        color: context.palette.muted,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1946,6 +2253,9 @@ class _VocabularyScreenState extends State<_VocabularyBody>
         ),
       ),
     );
+    for (final node in pairFocus) {
+      node.dispose();
+    }
     if (saved == true && current) {
       widget.state.collectionViews.remove(reviewKey);
       locale = row['target_locale'];
@@ -1999,30 +2309,70 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                     'Suche und Ansichtsfilter begrenzen die Wörterrunde nicht. Die gewählte Sprache und Sammlung gelten weiterhin.',
                   ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: skill,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'So möchtest du üben',
-                  ),
-                  items: [
+                const Text(
+                  'So möchtest du üben',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
                     for (final key in [
                       'spelling',
                       'recognition',
                       'recall',
                       'listening',
                     ])
-                      DropdownMenuItem(
-                        value: key,
-                        child: Text(languageSkills[key]!),
+                      SizedBox(
+                        width: 240,
+                        child: Semantics(
+                          selected: skill == key,
+                          child: OutlinedButton(
+                            key: ValueKey('word-mode-$key'),
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: skill == key
+                                  ? context.palette.mint
+                                  : null,
+                              padding: const EdgeInsets.all(12),
+                            ),
+                            onPressed: () {
+                              if (!ctx.mounted ||
+                                  !current ||
+                                  ModalRoute.of(ctx)?.isCurrent != true) {
+                                return;
+                              }
+                              update(() {
+                                skill = key;
+                                direction =
+                                    ['recognition', 'listening'].contains(skill)
+                                    ? 'target_to_de'
+                                    : 'de_to_target';
+                              });
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  languageSkills[key]!,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(switch (key) {
+                                  'spelling' =>
+                                    'Bedeutung lesen · Wort schreiben',
+                                  'recognition' =>
+                                    'Wort lesen · Bedeutung auswählen',
+                                  'listening' =>
+                                    'Wort hören · Bedeutung auswählen',
+                                  _ => 'Wort oder Bedeutung selbst abrufen',
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                   ],
-                  onChanged: (value) => update(() {
-                    skill = value!;
-                    direction = ['recognition', 'listening'].contains(skill)
-                        ? 'target_to_de'
-                        : 'de_to_target';
-                  }),
                 ),
                 Text(switch (skill) {
                   'spelling' =>
@@ -2064,6 +2414,30 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                       ),
                   ],
                   onChanged: (value) => update(() => count = value!),
+                ),
+                SurfaceInset(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Deine Rundenauswahl',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      Text(learningLocales[locale] ?? locale),
+                      Text(
+                        collection == null
+                            ? 'Alle Sammlungen dieser Sprache'
+                            : 'Sammlung: ${collections.where((r) => r['id'] == collection).firstOrNull?['title'] ?? 'Gewählte Sammlung'}',
+                      ),
+                      Text(
+                        '${languageSkill(skill)} · ${languageDirection(direction)}',
+                      ),
+                      Text('Gewünscht: bis zu $count Vokabeln'),
+                      const Text(
+                        'Erst „Runde beginnen“ startet deine Auswahl.',
+                      ),
+                    ],
+                  ),
                 ),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
@@ -3074,6 +3448,27 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                           load();
                         },
                       ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Wortkarten'),
+                            selected: wordLayout == 'cards',
+                            onSelected: loading
+                                ? null
+                                : (_) => setState(() => wordLayout = 'cards'),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Kompakte Wortliste'),
+                            selected: wordLayout == 'list',
+                            onSelected: loading
+                                ? null
+                                : (_) => setState(() => wordLayout = 'list'),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -3105,276 +3500,319 @@ class _VocabularyScreenState extends State<_VocabularyBody>
                 for (final item in data?['items'] as List? ?? [])
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Panel(
-                      color: widget.state.isChild ? context.palette.mint : null,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (widget.state.isChild) ...[
-                            Text(
-                              isRevealed(item)
-                                  ? 'Wort und Bedeutung'
-                                  : 'Welches Wort passt?',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: context.palette.muted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  widget.state.isChild && !isRevealed(item)
-                                      ? item['meaning']
-                                      : item['word'],
-                                  textAlign: widget.state.isChild
-                                      ? TextAlign.center
-                                      : TextAlign.start,
-                                  style: TextStyle(
-                                    fontFamily: widget.state.isChild
-                                        ? 'SpaceGrotesk'
-                                        : null,
-                                    fontSize: widget.state.isChild ? 28 : 21,
-                                    color: context.palette.ink,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              if (widget.state.isChild ||
-                                  widget.state.canManage)
-                                IconButton(
-                                  tooltip: 'Wort korrigieren',
-                                  onPressed: busy
-                                      ? null
-                                      : itemAction(() => edit(Json.from(item))),
-                                  icon: const Icon(Icons.edit_outlined),
-                                ),
-                            ],
-                          ),
-                          if (widget.state.isChild && isRevealed(item))
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: itemAction(
-                                  () => setState(
-                                    () => revealed.remove(item['id']),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.visibility_off_outlined),
-                                label: const Text('Wieder verdecken'),
-                              ),
-                            ),
-                          if (!widget.state.isChild || isRevealed(item))
-                            Text(
-                              item['meaning'],
-                              style: const TextStyle(fontSize: 18),
-                            )
-                          else
-                            TextButton(
-                              onPressed: busy
-                                  ? null
-                                  : () => run(() async {
-                                      await widget.state.api.post(
-                                        '$base/${item['id']}/reveal?revision=${item['revision']}',
-                                      );
-                                      if (current) {
-                                        setState(() {
-                                          final live =
-                                              (data?['items'] as List? ?? [])
-                                                  .where(
-                                                    (row) =>
-                                                        row['id'] ==
-                                                            item['id'] &&
-                                                        row['revision'] ==
-                                                            item['revision'],
-                                                  );
-                                          if (live.isNotEmpty) {
-                                            revealed[item['id']] =
-                                                item['revision'] as int?;
-                                          }
-                                        });
-                                      }
-                                    }),
-                              child: const Text('Wort aufdecken'),
-                            ),
-                          if ((item['context'] ?? '').toString().isNotEmpty)
-                            Text(
-                              'Kontext: ${widget.state.isChild && !isRevealed(item) ? item['cue_context'] ?? '' : item['context']}',
-                            ),
-                          if (!widget.state.isChild || isRevealed(item))
-                            ExpansionTile(
-                              key: PageStorageKey(
-                                'word-details-${item['id']}-${item['revision']}',
-                              ),
-                              tilePadding: EdgeInsets.zero,
-                              title: const Text('Mehr zum Wort'),
+                    child: wordLayout == 'list'
+                        ? compactWordRow(Json.from(item))
+                        : Panel(
+                            color: widget.state.isChild
+                                ? context.palette.mint
+                                : null,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                if ((item['part_of_speech'] ?? '')
+                                if (widget.state.isChild) ...[
+                                  Text(
+                                    isRevealed(item)
+                                        ? 'Wort und Bedeutung'
+                                        : 'Welches Wort passt?',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: context.palette.muted,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: VisibleSearchText(
+                                        widget.state.isChild &&
+                                                !isRevealed(item)
+                                            ? item['meaning']
+                                            : item['word'],
+                                        query:
+                                            !widget.state.isChild ||
+                                                isRevealed(item)
+                                            ? search.text
+                                            : '',
+                                        textAlign: widget.state.isChild
+                                            ? TextAlign.center
+                                            : TextAlign.start,
+                                        style: TextStyle(
+                                          fontFamily: widget.state.isChild
+                                              ? 'SpaceGrotesk'
+                                              : null,
+                                          fontSize: widget.state.isChild
+                                              ? 28
+                                              : 21,
+                                          color: context.palette.ink,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Wort einzeln ansehen',
+                                      onPressed: busy || loading
+                                          ? null
+                                          : () => inspectWord(Json.from(item)),
+                                      icon: const Icon(Icons.open_in_full),
+                                    ),
+                                    if (widget.state.isChild ||
+                                        widget.state.canManage)
+                                      IconButton(
+                                        tooltip: 'Wort korrigieren',
+                                        onPressed: busy
+                                            ? null
+                                            : itemAction(
+                                                () => edit(Json.from(item)),
+                                              ),
+                                        icon: const Icon(Icons.edit_outlined),
+                                      ),
+                                  ],
+                                ),
+                                if (widget.state.isChild && isRevealed(item))
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton.icon(
+                                      onPressed: itemAction(
+                                        () => setState(
+                                          () => revealed.remove(item['id']),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.visibility_off_outlined,
+                                      ),
+                                      label: const Text('Wieder verdecken'),
+                                    ),
+                                  ),
+                                if (!widget.state.isChild || isRevealed(item))
+                                  VisibleSearchText(
+                                    item['meaning'],
+                                    query: search.text,
+                                    style: const TextStyle(fontSize: 18),
+                                  )
+                                else
+                                  TextButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () => run(() async {
+                                            await widget.state.api.post(
+                                              '$base/${item['id']}/reveal?revision=${item['revision']}',
+                                            );
+                                            if (current) {
+                                              setState(() {
+                                                final live =
+                                                    (data?['items'] as List? ??
+                                                            [])
+                                                        .where(
+                                                          (row) =>
+                                                              row['id'] ==
+                                                                  item['id'] &&
+                                                              row['revision'] ==
+                                                                  item['revision'],
+                                                        );
+                                                if (live.isNotEmpty) {
+                                                  revealed[item['id']] =
+                                                      item['revision'] as int?;
+                                                }
+                                              });
+                                            }
+                                          }),
+                                    child: const Text('Wort aufdecken'),
+                                  ),
+                                if ((item['context'] ?? '')
                                     .toString()
                                     .isNotEmpty)
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Wortart: ${item['part_of_speech']}',
-                                    ),
+                                  VisibleSearchText(
+                                    'Kontext: ${widget.state.isChild && !isRevealed(item) ? item['cue_context'] ?? '' : item['context']}',
+                                    query:
+                                        !widget.state.isChild ||
+                                            isRevealed(item)
+                                        ? search.text
+                                        : '',
                                   ),
-                                if ((item['variants'] as List? ?? [])
-                                    .isNotEmpty)
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Bestätigte Schreibweisen: ${(item['variants'] as List).join(', ')}',
+                                if (!widget.state.isChild || isRevealed(item))
+                                  ExpansionTile(
+                                    key: PageStorageKey(
+                                      'word-details-${item['id']}-${item['revision']}',
                                     ),
+                                    tilePadding: EdgeInsets.zero,
+                                    title: const Text('Mehr zum Wort'),
+                                    children: [
+                                      if ((item['part_of_speech'] ?? '')
+                                          .toString()
+                                          .isNotEmpty)
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Wortart: ${item['part_of_speech']}',
+                                          ),
+                                        ),
+                                      if ((item['variants'] as List? ?? [])
+                                          .isNotEmpty)
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Bestätigte Schreibweisen: ${(item['variants'] as List).join(', ')}',
+                                          ),
+                                        ),
+                                      if ((item['meaning_variants'] as List? ??
+                                              [])
+                                          .isNotEmpty)
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Bestätigte Bedeutungen: ${(item['meaning_variants'] as List).join(', ')}',
+                                          ),
+                                        ),
+                                      if (data?['supports_collections'] ==
+                                              true &&
+                                          (widget.state.isChild ||
+                                              widget.state.canManage))
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: TextButton.icon(
+                                            onPressed: itemAction(
+                                              () => wordCollections(
+                                                Json.from(item),
+                                              ),
+                                            ),
+                                            icon: const Icon(
+                                              Icons.folder_copy_outlined,
+                                            ),
+                                            label: const Text(
+                                              'Sammlungen zuordnen',
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                if ((item['meaning_variants'] as List? ?? [])
-                                    .isNotEmpty)
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Bestätigte Bedeutungen: ${(item['meaning_variants'] as List).join(', ')}',
-                                    ),
+                                if (item['source_changed'] == true)
+                                  const Notice(
+                                    'Heftseite geändert. Bitte diesen Eintrag prüfen oder korrigieren.',
+                                    warning: true,
                                   ),
-                                if (data?['supports_collections'] == true &&
-                                    (widget.state.isChild ||
+                                Text(
+                                  item['origin'] == 'material'
+                                      ? 'Aus deinem Heft'
+                                      : item['origin'] == 'text'
+                                      ? 'Aus deinem bestätigten Text'
+                                      : 'Selbst eingetragen',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: context.palette.muted,
+                                  ),
+                                ),
+                                if (item['origin'] == 'material')
+                                  for (final source
+                                      in item['source_revisions'] as List? ??
+                                          [])
+                                    if (source is Map &&
+                                        source['id'] is String &&
+                                        RegExp(r'^[0-9a-f]{32}$')
+                                            .hasMatch(source['id']))
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: TextButton.icon(
+                                          onPressed: () {
+                                            if (current) {
+                                              openRoute(
+                                                context,
+                                                '/material/${source['id']}',
+                                              );
+                                            }
+                                          },
+                                          icon: Icon(Icons.menu_book_outlined),
+                                          label: Text(
+                                            'Heftseite zum Wort ansehen',
+                                          ),
+                                        ),
+                                      ),
+                                if ((widget.state.isChild &&
+                                        isRevealed(item)) ||
+                                    (!widget.state.isChild &&
                                         widget.state.canManage))
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: TextButton.icon(
                                       onPressed: itemAction(
-                                        () => wordCollections(Json.from(item)),
+                                        () => removeWord(Json.from(item)),
                                       ),
                                       icon: const Icon(
-                                        Icons.folder_copy_outlined,
+                                        Icons.delete_outline_rounded,
                                       ),
-                                      label: const Text('Sammlungen zuordnen'),
+                                      label: const Text('Wort entfernen'),
                                     ),
                                   ),
+                                ExpansionTile(
+                                  tilePadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'Lernmodi · gespeicherten Stand ansehen',
+                                  ),
+                                  children: [modeMatrix(Json.from(item))],
+                                ),
+                                if (!widget.state.isChild || isRevealed(item))
+                                  Wrap(
+                                    children: [
+                                      ReadAloudButton(
+                                        text: item['word'],
+                                        locale: item['target_locale'],
+                                        beforeRead: !widget.state.isChild
+                                            ? null
+                                            : () async {
+                                                if (!current ||
+                                                    !routeVisible ||
+                                                    loading ||
+                                                    !(data?['items'] as List? ??
+                                                            [])
+                                                        .any(
+                                                          (row) => identical(
+                                                            row,
+                                                            item,
+                                                          ),
+                                                        )) {
+                                                  throw ApiError(
+                                                    'Öffne deine Wörter bitte erneut.',
+                                                  );
+                                                }
+                                                await widget.state.api.post(
+                                                  '$base/${item['id']}/reveal?revision=${item['revision']}',
+                                                );
+                                              },
+                                      ),
+                                      ReadAloudButton(
+                                        text: item['word'],
+                                        locale: item['target_locale'],
+                                        slow: true,
+                                        beforeRead: !widget.state.isChild
+                                            ? null
+                                            : () async {
+                                                if (!current ||
+                                                    !routeVisible ||
+                                                    loading ||
+                                                    !(data?['items'] as List? ??
+                                                            [])
+                                                        .any(
+                                                          (row) => identical(
+                                                            row,
+                                                            item,
+                                                          ),
+                                                        )) {
+                                                  throw ApiError(
+                                                    'Öffne deine Wörter bitte erneut.',
+                                                  );
+                                                }
+                                                await widget.state.api.post(
+                                                  '$base/${item['id']}/reveal?revision=${item['revision']}',
+                                                );
+                                              },
+                                      ),
+                                    ],
+                                  ),
                               ],
-                            ),
-                          if (item['source_changed'] == true)
-                            const Notice(
-                              'Heftseite geändert. Bitte diesen Eintrag prüfen oder korrigieren.',
-                              warning: true,
-                            ),
-                          Text(
-                            item['origin'] == 'material'
-                                ? 'Aus deinem Heft'
-                                : item['origin'] == 'text'
-                                ? 'Aus deinem bestätigten Text'
-                                : 'Selbst eingetragen',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: context.palette.muted,
                             ),
                           ),
-                          if (item['origin'] == 'material')
-                            for (final source
-                                in item['source_revisions'] as List? ?? [])
-                              if (source is Map &&
-                                  source['id'] is String &&
-                                  RegExp(r'^[0-9a-f]{32}$')
-                                      .hasMatch(source['id']))
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: TextButton.icon(
-                                    onPressed: () {
-                                      if (current) {
-                                        openRoute(
-                                          context,
-                                          '/material/${source['id']}',
-                                        );
-                                      }
-                                    },
-                                    icon: Icon(Icons.menu_book_outlined),
-                                    label: Text('Heftseite zum Wort ansehen'),
-                                  ),
-                                ),
-                          if ((widget.state.isChild && isRevealed(item)) ||
-                              (!widget.state.isChild && widget.state.canManage))
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: itemAction(
-                                  () => removeWord(Json.from(item)),
-                                ),
-                                icon: const Icon(Icons.delete_outline_rounded),
-                                label: const Text('Wort entfernen'),
-                              ),
-                            ),
-                          if ((item['reviews'] as List).isNotEmpty)
-                            ExpansionTile(
-                              tilePadding: EdgeInsets.zero,
-                              title: Text(
-                                '${counted((item['reviews'] as List).length, 'Lernmodus', 'Lernmodi')} · Stand ansehen',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                              children: [
-                                for (final state in item['reviews'] as List)
-                                  Text(
-                                    '${languageSkill(state['skill'])} · ${languageDirection(state['direction'])} · ${state['needs_clarification'] ? 'Antwort noch offen' : 'wieder am ${friendlyDate(state['due'])}'}',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                              ],
-                            ),
-                          if (!widget.state.isChild || isRevealed(item))
-                            Wrap(
-                              children: [
-                                ReadAloudButton(
-                                  text: item['word'],
-                                  locale: item['target_locale'],
-                                  beforeRead: !widget.state.isChild
-                                      ? null
-                                      : () async {
-                                          if (!current ||
-                                              !routeVisible ||
-                                              loading ||
-                                              !(data?['items'] as List? ?? [])
-                                                  .any(
-                                                    (row) =>
-                                                        identical(row, item),
-                                                  )) {
-                                            throw ApiError(
-                                              'Öffne deine Wörter bitte erneut.',
-                                            );
-                                          }
-                                          await widget.state.api.post(
-                                            '$base/${item['id']}/reveal?revision=${item['revision']}',
-                                          );
-                                        },
-                                ),
-                                ReadAloudButton(
-                                  text: item['word'],
-                                  locale: item['target_locale'],
-                                  slow: true,
-                                  beforeRead: !widget.state.isChild
-                                      ? null
-                                      : () async {
-                                          if (!current ||
-                                              !routeVisible ||
-                                              loading ||
-                                              !(data?['items'] as List? ?? [])
-                                                  .any(
-                                                    (row) =>
-                                                        identical(row, item),
-                                                  )) {
-                                            throw ApiError(
-                                              'Öffne deine Wörter bitte erneut.',
-                                            );
-                                          }
-                                          await widget.state.api.post(
-                                            '$base/${item['id']}/reveal?revision=${item['revision']}',
-                                          );
-                                        },
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
                   ),
                 if (data != null)
                   Row(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -12,6 +13,7 @@ import 'material_screen.dart';
 import 'material_actions.dart';
 import 'notebook_shelf.dart';
 import 'ui.dart';
+import 'ideas100_local_views.dart';
 import 'parent_child_navigation.dart';
 
 class CollectionScreen extends StatelessWidget {
@@ -190,6 +192,11 @@ class _PagedCollectionBody extends StatefulWidget {
 
 class _PagedCollectionState extends State<_PagedCollectionBody> {
   final search = TextEditingController();
+  final searchFocus = FocusNode();
+  final recentQueries = <String>[];
+  final rememberedRounds = <String, Json>{}, comparedRounds = <String, Json>{};
+  bool compactRows = false;
+  late String? family, session;
   final top = GlobalKey();
   Timer? debounce;
   Json? data;
@@ -208,7 +215,11 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
   String get cacheKey =>
       '${widget.learning ? 'learning' : 'materials'}:${widget.childId}';
   bool get active =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      widget.state.familyId == family &&
+      widget.state.api.token == session;
   bool get filtered =>
       search.text.trim().isNotEmpty ||
       subject != null ||
@@ -219,6 +230,8 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
   void initState() {
     super.initState();
     owner = widget.state.user;
+    family = widget.state.familyId;
+    session = widget.state.api.token;
     widget.state.addListener(identityChanged);
     section = widget.initialSection;
     final saved = widget.onSelect == null
@@ -250,6 +263,10 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
     widget.state.removeListener(identityChanged);
     debounce?.cancel();
     search.dispose();
+    searchFocus.dispose();
+    recentQueries.clear();
+    rememberedRounds.clear();
+    comparedRounds.clear();
     super.dispose();
   }
 
@@ -264,6 +281,9 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         selectedPages.clear();
         selectingPages = allMatchingPages = false;
         search.clear();
+        recentQueries.clear();
+        rememberedRounds.clear();
+        comparedRounds.clear();
       });
     }
   }
@@ -331,6 +351,12 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
         data = result;
         page = result['page'];
         loading = false;
+        final term = search.text.trim();
+        if (widget.learning && term.isNotEmpty) {
+          recentQueries.remove(term);
+          recentQueries.insert(0, term);
+          if (recentQueries.length > 8) recentQueries.removeLast();
+        }
       });
       remember();
       if (scroll) {
@@ -593,6 +619,196 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
     }
   }
 
+  void trackLocalRoute(ModalRoute<dynamic> route) {
+    ownedRoutes.removeWhere((r) => !r.isActive);
+    ownedRoutes.add(route);
+  }
+
+  Json roundMetadata(Json item) => {
+    for (final key in const [
+      'id',
+      'kind',
+      'subject',
+      'topic',
+      'title',
+      'status',
+      'question_count',
+      'closed_questions',
+      'created',
+      'completed',
+      'scheduled_for',
+      'mandatory',
+    ])
+      if (item.containsKey(key)) key: item[key],
+  };
+  Widget metadataCard(Json item) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        '${item['subject'] ?? 'Fach noch offen'} · ${item['topic'] ?? item['title'] ?? 'Lernrunde'}',
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 12),
+      Text(
+        'Gespeicherter Zustand: ${item['status'] == null ? 'nicht gemeldet' : statusLabel(item['status'])}',
+      ),
+      if (item['question_count'] is num)
+        Text(
+          '${item['closed_questions'] ?? 0} von ${item['question_count']} Aufgaben abgeschlossen',
+        ),
+      if (item['scheduled_for'] != null)
+        Text('Geplanter Beginn: ${friendlyDate(item['scheduled_for'])}'),
+      if (item['created'] is num)
+        Text(
+          'Gespeichert am ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.fromMillisecondsSinceEpoch((item['created'] as num).toInt() * 1000).toLocal())}',
+        ),
+      const SizedBox(height: 12),
+      const Text(
+        'Metadatenansicht · startet keine Runde und erzeugt keine Lernbelege.',
+      ),
+    ],
+  );
+  Future<void> roundDetails(Json item) async {
+    if (!active) return;
+    final snapshot = roundMetadata(item);
+    await ideas100Dialog<void>(
+      context,
+      widget.state,
+      'Gespeicherte Rundendetails',
+      metadataCard(snapshot),
+      current: () => active,
+      onRoute: trackLocalRoute,
+    );
+  }
+
+  void rememberRound(Json item) {
+    if (!active) return;
+    setState(() {
+      if (rememberedRounds.containsKey(item['id'])) {
+        rememberedRounds.remove(item['id']);
+      } else if (rememberedRounds.length < 12) {
+        rememberedRounds[item['id']] = roundMetadata(item);
+      } else {
+        toast(
+          context,
+          'Für diesen Besuch passen höchstens zwölf Runden in die Merkliste.',
+        );
+      }
+    });
+  }
+
+  void compareRound(Json item) {
+    if (!active) return;
+    if ('${item['topic'] ?? ''}'.trim().isEmpty) {
+      toast(context, 'Für diese Runde ist kein gemeinsames Thema gemeldet.');
+      return;
+    }
+    final id = item['id'] as String;
+    setState(() {
+      if (comparedRounds.containsKey(id)) {
+        comparedRounds.remove(id);
+        return;
+      }
+      if (comparedRounds.length >= 2) {
+        toast(context, 'Nimm zuerst eine Runde aus dem Vergleich.');
+        return;
+      }
+      if (comparedRounds.isNotEmpty) {
+        final first = comparedRounds.values.first;
+        if ('${first['subject']}'.trim().toLowerCase() !=
+                '${item['subject']}'.trim().toLowerCase() ||
+            '${first['topic']}'.trim().toLowerCase() !=
+                '${item['topic']}'.trim().toLowerCase()) {
+          toast(context, 'Wähle zwei Runden desselben Fachs und Themas.');
+          return;
+        }
+      }
+      comparedRounds[id] = roundMetadata(item);
+    });
+  }
+
+  Future<void> showRoundCompare() async {
+    if (!active || comparedRounds.length != 2) return;
+    final pair = comparedRounds.values.toList();
+    await ideas100Dialog<void>(
+      context,
+      widget.state,
+      'Zwei Runden desselben Themas',
+      Ideas100ComparePanels(
+        firstLabel: 'Erste Auswahl',
+        secondLabel: 'Zweite Auswahl',
+        first: metadataCard(pair[0]),
+        second: metadataCard(pair[1]),
+      ),
+      current: () => active,
+      onRoute: trackLocalRoute,
+    );
+  }
+
+  void focusLearningSearch() {
+    if (!active || !widget.learning) return;
+    setState(() => toolsExpanded = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (active && searchFocus.canRequestFocus) searchFocus.requestFocus();
+    });
+  }
+
+  Future<void> jumpToPage(int pages) async {
+    if (!active || loading) return;
+    final input = TextEditingController(text: '$page');
+    String? problem;
+    final chosen = await ideas100Dialog<int>(
+      context,
+      widget.state,
+      'Ergebnisseite auswählen',
+      StatefulBuilder(
+        builder: (ctx, set) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: input,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(7),
+              ],
+              decoration: InputDecoration(
+                labelText: 'Seite 1 bis $pages',
+                errorText: problem,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () {
+                if (!active ||
+                    !ctx.mounted ||
+                    ModalRoute.of(ctx)?.isCurrent != true) {
+                  return;
+                }
+                final value = int.tryParse(input.text);
+                if (value == null || value < 1 || value > pages) {
+                  set(
+                    () => problem = 'Wähle eine Seite zwischen 1 und $pages.',
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, value);
+              },
+              child: const Text('Seite laden'),
+            ),
+          ],
+        ),
+      ),
+      current: () => active,
+      onRoute: trackLocalRoute,
+    );
+    input.dispose();
+    if (chosen != null && active) {
+      setState(() => page = chosen);
+      await load(scroll: true);
+    }
+  }
+
   bool get canSelectPages =>
       !widget.learning &&
       widget.onSelect == null &&
@@ -779,259 +995,401 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
           : '$first–$last von ${counted(total, widget.learning ? 'Eintrag' : 'Seite', widget.learning ? 'Einträgen' : 'Seiten')}',
       style: TextStyle(color: context.palette.muted, fontSize: 13),
     );
-    return Column(
-      key: top,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (widget.learning) ...[
-          Row(
-            children: [
-              Expanded(
-                child: ChildSectionTabs(
-                  tabs: const [
-                    (
-                      id: 'ready',
-                      label: 'Offen',
-                      icon: Icons.play_circle_outline_rounded,
+    return CallbackShortcuts(
+      bindings: {
+        if (widget.learning)
+          const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+              focusLearningSearch,
+        if (widget.learning)
+          const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+              focusLearningSearch,
+      },
+      child: Focus(
+        autofocus: widget.learning,
+        child: Column(
+          key: top,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.learning) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ChildSectionTabs(
+                      tabs: const [
+                        (
+                          id: 'ready',
+                          label: 'Offen',
+                          icon: Icons.play_circle_outline_rounded,
+                        ),
+                        (
+                          id: 'later',
+                          label: 'Später',
+                          icon: Icons.event_outlined,
+                        ),
+                        (
+                          id: 'completed',
+                          label: 'Erledigt',
+                          icon: Icons.task_alt_rounded,
+                        ),
+                      ],
+                      selected: section,
+                      onSelected: (value) => change(() {
+                        section = value;
+                        subject = null;
+                        search.clear();
+                      }, scroll: true),
                     ),
-                    (id: 'later', label: 'Später', icon: Icons.event_outlined),
-                    (
-                      id: 'completed',
-                      label: 'Erledigt',
-                      icon: Icons.task_alt_rounded,
+                  ),
+                  if (compact)
+                    IconButton(
+                      tooltip: toolsExpanded
+                          ? 'Suche schließen'
+                          : 'Suchen & filtern',
+                      isSelected: toolsExpanded,
+                      onPressed: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        setState(() => toolsExpanded = !toolsExpanded);
+                      },
+                      icon: Badge(
+                        isLabelVisible: filtered,
+                        child: Icon(Icons.search_rounded),
+                      ),
+                    ),
+                ],
+              ),
+              if (data?['paused'] == true)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'Heute ist Lernpause. Dein Stoff bleibt gespeichert.',
+                  ),
+                ),
+              SizedBox(height: compact ? 8 : 16),
+            ],
+            if (simpleLearning && !compact)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        setState(() => toolsExpanded = !toolsExpanded);
+                      },
+                      icon: Badge(
+                        isLabelVisible: filtered,
+                        child: const Icon(Icons.search_rounded),
+                      ),
+                      label: Text(
+                        toolsExpanded ? 'Suche schließen' : 'Suchen & filtern',
+                      ),
+                    ),
+                  ),
+                  if (!toolsExpanded)
+                    IconButton(
+                      tooltip: 'Liste aktualisieren',
+                      onPressed: loading ? null : load,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                ],
+              ),
+            if (!simpleLearning || toolsExpanded) ...[
+              TextField(
+                controller: search,
+                focusNode: searchFocus,
+                maxLength: 120,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  labelText: widget.learning
+                      ? 'Thema suchen'
+                      : 'Heftseiten durchsuchen',
+                  counterText: '',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Suche löschen',
+                          onPressed: () => change(search.clear),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                ),
+                onChanged: (_) => change(() {}, delayed: true),
+                onSubmitted: (_) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  load();
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey(subject),
+                      initialValue: subject,
+                      isExpanded: true,
+                      hint: const Text('Alle Fächer'),
+                      decoration: const InputDecoration(labelText: 'Fach'),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Alle Fächer'),
+                        ),
+                        for (final value in choices)
+                          DropdownMenuItem(
+                            value: value,
+                            child: Text(
+                              value.isEmpty ? 'Fach noch offen' : value,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        change(() => subject = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    tooltip: 'Filter und Sortierung',
+                    onPressed: filters,
+                    icon: Badge(
+                      isLabelVisible:
+                          status != 'all' || dates != null || sort != 'subject',
+                      smallSize: 7,
+                      child: const Icon(Icons.tune_rounded),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Liste aktualisieren',
+                    onPressed: loading ? null : load,
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
+            if (widget.learning) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (!compact || toolsExpanded) ...[
+                    OutlinedButton.icon(
+                      onPressed: focusLearningSearch,
+                      icon: const Icon(Icons.keyboard),
+                      label: const Text('Suche fokussieren · Strg/⌘ F'),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Karten'),
+                      selected: !compactRows,
+                      onSelected: (_) => setState(() => compactRows = false),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Kompakte Zeilen'),
+                      selected: compactRows,
+                      onSelected: (_) => setState(() => compactRows = true),
                     ),
                   ],
-                  selected: section,
-                  onSelected: (value) => change(() {
-                    section = value;
-                    subject = null;
-                    search.clear();
-                  }, scroll: true),
-                ),
-              ),
-              if (compact)
-                IconButton(
-                  tooltip: toolsExpanded
-                      ? 'Suche schließen'
-                      : 'Suchen & filtern',
-                  isSelected: toolsExpanded,
-                  onPressed: () {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    setState(() => toolsExpanded = !toolsExpanded);
-                  },
-                  icon: Badge(
-                    isLabelVisible: filtered,
-                    child: Icon(Icons.search_rounded),
-                  ),
-                ),
-            ],
-          ),
-          if (data?['paused'] == true)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'Heute ist Lernpause. Dein Stoff bleibt gespeichert.',
-              ),
-            ),
-          SizedBox(height: compact ? 8 : 16),
-        ],
-        if (simpleLearning && !compact)
-          Row(
-            children: [
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    setState(() => toolsExpanded = !toolsExpanded);
-                  },
-                  icon: Badge(
-                    isLabelVisible: filtered,
-                    child: const Icon(Icons.search_rounded),
-                  ),
-                  label: Text(
-                    toolsExpanded ? 'Suche schließen' : 'Suchen & filtern',
-                  ),
-                ),
-              ),
-              if (!toolsExpanded)
-                IconButton(
-                  tooltip: 'Liste aktualisieren',
-                  onPressed: loading ? null : load,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-            ],
-          ),
-        if (!simpleLearning || toolsExpanded) ...[
-          TextField(
-            controller: search,
-            maxLength: 120,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              labelText: widget.learning
-                  ? 'Thema suchen'
-                  : 'Heftseiten durchsuchen',
-              counterText: '',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: search.text.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Suche löschen',
-                      onPressed: () => change(search.clear),
-                      icon: const Icon(Icons.close_rounded),
+                  if (search.text.trim().isNotEmpty)
+                    InputChip(
+                      label: Text('Suche: ${search.text.trim()}'),
+                      onDeleted: () => change(search.clear),
                     ),
-            ),
-            onChanged: (_) => change(() {}, delayed: true),
-            onSubmitted: (_) {
-              FocusManager.instance.primaryFocus?.unfocus();
-              load();
-            },
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: ValueKey(subject),
-                  initialValue: subject,
-                  isExpanded: true,
-                  hint: const Text('Alle Fächer'),
-                  decoration: const InputDecoration(labelText: 'Fach'),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('Alle Fächer'),
+                  if (subject != null)
+                    InputChip(
+                      label: Text('Fach: $subject'),
+                      onDeleted: () => change(() => subject = null),
                     ),
-                    for (final value in choices)
-                      DropdownMenuItem(
-                        value: value,
-                        child: Text(
-                          value.isEmpty ? 'Fach noch offen' : value,
-                          overflow: TextOverflow.ellipsis,
+                  if (sort != 'subject')
+                    InputChip(
+                      label: Text(
+                        sort == 'newest' ? 'Neueste zuerst' : 'Älteste zuerst',
+                      ),
+                      onDeleted: () => change(() => sort = 'subject'),
+                    ),
+                ],
+              ),
+              if (recentQueries.isNotEmpty)
+                ExpansionTile(
+                  title: const Text('Letzte Lernsuchbegriffe dieses Besuchs'),
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final term in recentQueries)
+                          ActionChip(
+                            label: Text(term),
+                            onPressed: () => change(() => search.text = term),
+                          ),
+                      ],
+                    ),
+                    TextButton(
+                      onPressed: () => setState(recentQueries.clear),
+                      child: const Text('Suchverlauf dieses Besuchs löschen'),
+                    ),
+                  ],
+                ),
+              if (rememberedRounds.isNotEmpty)
+                ExpansionTile(
+                  title: Text(
+                    'Für diesen Besuch gemerkt (${rememberedRounds.length}/12)',
+                  ),
+                  subtitle: const Text(
+                    'Metadaten beim Merken · nur in dieser Sitzung',
+                  ),
+                  children: [
+                    for (final item in rememberedRounds.values)
+                      ListTile(
+                        title: Text(
+                          '${item['subject']} · ${item['topic'] ?? item['title']}',
+                        ),
+                        onTap: () => roundDetails(item),
+                        trailing: IconButton(
+                          tooltip: 'Merker entfernen',
+                          onPressed: () => rememberRound(item),
+                          icon: const Icon(Icons.bookmark_remove_outlined),
                         ),
                       ),
+                    TextButton(
+                      onPressed: () => setState(rememberedRounds.clear),
+                      child: const Text('Alle Merker entfernen'),
+                    ),
                   ],
-                  onChanged: (value) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    change(() => subject = value);
-                  },
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Filter und Sortierung',
-                onPressed: filters,
-                icon: Badge(
-                  isLabelVisible:
-                      status != 'all' || dates != null || sort != 'subject',
-                  smallSize: 7,
-                  child: const Icon(Icons.tune_rounded),
+              if (comparedRounds.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Text(
+                      '${comparedRounds.length} von 2 Runden im Themenvergleich',
+                    ),
+                    OutlinedButton(
+                      onPressed: comparedRounds.length == 2
+                          ? showRoundCompare
+                          : null,
+                      child: const Text('Metadaten vergleichen'),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(comparedRounds.clear),
+                      child: const Text('Vergleich leeren'),
+                    ),
+                  ],
                 ),
-              ),
-              IconButton(
-                tooltip: 'Liste aktualisieren',
-                onPressed: loading ? null : load,
-                icon: const Icon(Icons.refresh_rounded),
-              ),
             ],
-          ),
-          const SizedBox(height: 14),
-        ],
-        if (filtered)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: reset,
-              icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
-              label: const Text('Filter zurücksetzen'),
-            ),
-          ),
-        if (loading)
-          const Padding(
-            padding: EdgeInsets.all(28),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (error != null) ...[
-          Notice(error!, warning: true),
-          OutlinedButton(onPressed: load, child: const Text('Erneut laden')),
-        ] else ...[
-          resultSummary,
-          SizedBox(height: compact ? 8 : 12),
-          if (items.isEmpty)
-            Panel(
-              child: Column(
-                children: [
-                  Icon(
-                    widget.learning
-                        ? Icons.auto_stories_outlined
-                        : Icons.folder_open_rounded,
-                    size: 36,
-                    color: context.palette.teal,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    filtered
-                        ? 'Nichts gefunden. Probiere einen anderen Filter.'
-                        : widget.learning
-                        ? section == 'completed'
-                              ? 'Hier erscheinen deine abgeschlossenen Runden.'
-                              : section == 'later'
-                              ? 'Für später ist gerade nichts offen.'
-                              : 'Gerade ist keine Lernrunde eingeplant.'
-                        : widget.onSelect != null
-                        ? 'Bestätige zuerst eine Heftseite. Danach kannst du sie hier auswählen.'
-                        : 'Hier sammeln sich deine Heftseiten.',
-                  ),
-                  if (simpleLearning && section == 'ready' && !filtered) ...[
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: () =>
-                          openRoute(context, '/after-school/${widget.childId}'),
-                      icon: const Icon(Icons.add_a_photo_outlined),
-                      label: const Text('Heftseiten hinzufügen'),
-                    ),
-                  ],
-                ],
+            if (filtered)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: reset,
+                  icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                  label: const Text('Filter zurücksetzen'),
+                ),
               ),
-            ),
-          if (canSelectPages && items.isNotEmpty) selectionTools(total),
-          ...rows(items),
-          if (pages > 1)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton.filledTonal(
-                    tooltip: 'Vorherige Seite',
-                    onPressed: page <= 1
-                        ? null
-                        : () {
-                            setState(() => page--);
-                            load(scroll: true);
-                          },
-                    icon: const Icon(Icons.chevron_left_rounded),
-                  ),
-                  Flexible(
-                    child: Text(
-                      'Seite $page von $pages',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  IconButton.filledTonal(
-                    tooltip: 'Nächste Seite',
-                    onPressed: page >= pages
-                        ? null
-                        : () {
-                            setState(() => page++);
-                            load(scroll: true);
-                          },
-                    icon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                ],
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.all(28),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (error != null) ...[
+              Notice(error!, warning: true),
+              OutlinedButton(
+                onPressed: load,
+                child: const Text('Erneut laden'),
               ),
-            ),
-        ],
-      ],
+            ] else ...[
+              resultSummary,
+              SizedBox(height: compact ? 8 : 12),
+              if (items.isEmpty)
+                Panel(
+                  child: Column(
+                    children: [
+                      Icon(
+                        widget.learning
+                            ? Icons.auto_stories_outlined
+                            : Icons.folder_open_rounded,
+                        size: 36,
+                        color: context.palette.teal,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        filtered
+                            ? 'Nichts gefunden. Probiere einen anderen Filter.'
+                            : widget.learning
+                            ? section == 'completed'
+                                  ? 'Hier erscheinen deine abgeschlossenen Runden.'
+                                  : section == 'later'
+                                  ? 'Für später ist gerade nichts offen.'
+                                  : 'Gerade ist keine Lernrunde eingeplant.'
+                            : widget.onSelect != null
+                            ? 'Bestätige zuerst eine Heftseite. Danach kannst du sie hier auswählen.'
+                            : 'Hier sammeln sich deine Heftseiten.',
+                      ),
+                      if (simpleLearning &&
+                          section == 'ready' &&
+                          !filtered) ...[
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () => openRoute(
+                            context,
+                            '/after-school/${widget.childId}',
+                          ),
+                          icon: const Icon(Icons.add_a_photo_outlined),
+                          label: const Text('Heftseiten hinzufügen'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              if (canSelectPages && items.isNotEmpty) selectionTools(total),
+              ...rows(items),
+              if (pages > 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton.filledTonal(
+                        tooltip: 'Vorherige Seite',
+                        onPressed: page <= 1
+                            ? null
+                            : () {
+                                setState(() => page--);
+                                load(scroll: true);
+                              },
+                        icon: const Icon(Icons.chevron_left_rounded),
+                      ),
+                      Flexible(
+                        child: widget.learning
+                            ? TextButton(
+                                onPressed: () => jumpToPage(pages),
+                                child: Text(
+                                  'Seite $page von $pages · springen',
+                                ),
+                              )
+                            : Text(
+                                'Seite $page von $pages',
+                                textAlign: TextAlign.center,
+                              ),
+                      ),
+                      IconButton.filledTonal(
+                        tooltip: 'Nächste Seite',
+                        onPressed: page >= pages
+                            ? null
+                            : () {
+                                setState(() => page++);
+                                load(scroll: true);
+                              },
+                        icon: const Icon(Icons.chevron_right_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -1064,8 +1422,9 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  item['topic'],
+                Ideas100Highlight(
+                  '${item['topic']}',
+                  search.text,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
@@ -1132,177 +1491,221 @@ class _PagedCollectionState extends State<_PagedCollectionBody> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Panel(
         tone: inset ? PanelTone.subtle : PanelTone.neutral,
-        padding: const EdgeInsets.all(14),
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: selectingPages && canDeleteMaterial(item)
-              ? Checkbox(
-                  value: allMatchingPages || selectedPages.contains(item['id']),
-                  semanticLabel: '$title auswählen',
-                  onChanged: deletingMaterial != null
-                      ? null
-                      : (_) => togglePage(item),
-                )
-              : Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: context.palette.mint,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    widget.learning
-                        ? item['status'] == 'completed'
-                              ? Icons.task_alt_rounded
-                              : Icons.auto_stories_outlined
-                        : Icons.description_outlined,
-                    color: context.palette.teal,
-                    size: 23,
-                  ),
+        padding: EdgeInsets.all(widget.learning && compactRows ? 8 : 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              dense: widget.learning && compactRows,
+              minTileHeight: 48,
+              contentPadding: EdgeInsets.zero,
+              leading: selectingPages && canDeleteMaterial(item)
+                  ? Checkbox(
+                      value:
+                          allMatchingPages ||
+                          selectedPages.contains(item['id']),
+                      semanticLabel: '$title auswählen',
+                      onChanged: deletingMaterial != null
+                          ? null
+                          : (_) => togglePage(item),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: context.palette.mint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        widget.learning
+                            ? item['status'] == 'completed'
+                                  ? Icons.task_alt_rounded
+                                  : Icons.auto_stories_outlined
+                            : Icons.description_outlined,
+                        color: context.palette.teal,
+                        size: 23,
+                      ),
+                    ),
+              title: Ideas100Highlight(
+                title,
+                widget.learning ? search.text : '',
+                style: TextStyle(
+                  fontFamily: simpleLearning ? 'SpaceGrotesk' : null,
+                  color: context.palette.ink,
+                  fontSize: simpleLearning && !compactRows ? 19 : 16,
+                  fontWeight: FontWeight.w700,
                 ),
-          title: Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: simpleLearning ? 'SpaceGrotesk' : null,
-              color: context.palette.ink,
-              fontSize: simpleLearning ? 19 : 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (sort != 'subject')
-                  Text(
-                    item['subject']?.toString().trim().isEmpty == false
-                        ? item['subject']
-                        : 'Fach noch offen',
-                  ),
-                if (!widget.learning)
-                  Text(
-                    [
-                      if (date != null) DateFormat('dd.MM.yyyy').format(date),
-                      if (item['page_number'] != null)
-                        'Seite ${item['page_number']}',
-                      if (item['confirmed'] != true) 'Bitte prüfen',
-                    ].join(' · '),
-                  ),
-                if (widget.learning) ...[
-                  Text(
-                    {
-                      if (count > 0)
-                        '$closed von $count Aufgaben'
-                      else
-                        item['assignment_kind'] == 'homework'
-                            ? 'Notierte Hausaufgabe'
-                            : item['mandatory'] == true
-                            ? 'Elternauftrag'
-                            : item['kind'] == 'review'
-                            ? 'Wiederholung'
-                            : 'Geplant',
-                      if (scheduled != null)
-                        'Ab ${DateFormat('dd.MM.').format(scheduled)}'
-                      else if (item['status'] != null)
-                        statusLabel(item['status']),
-                    }.join(' · '),
-                  ),
-                  if (date != null)
-                    Text(
-                      DateFormat('dd.MM.yyyy').format(date),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.palette.muted,
-                      ),
-                    ),
-                  if (item['review_status'] == 'pending')
-                    Text(
-                      'Rückblick wird vorbereitet',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.palette.muted,
-                      ),
-                    ),
-                  if (simpleLearning && item['status'] != 'completed' && !later)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 7),
-                      child: Text(
-                        ['active', 'paused'].contains(item['status'])
-                            ? 'Hier weiterlernen'
-                            : item['kind'] == 'unit'
-                            ? 'Runde starten'
-                            : 'Runde vorbereiten',
-                        style: TextStyle(
-                          color: context.palette.teal,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  if (count > 0 && item['status'] != 'completed')
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      // The same count is already spoken in the tile subtitle.
-                      // A nested progress role hides the tile's button role.
-                      child: ExcludeSemantics(
-                        child: LinearProgressIndicator(
-                          value: (closed / count).clamp(0, 1),
-                          minHeight: 3,
-                        ),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-          trailing: deletingMaterial == item['id']
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : canDeleteMaterial(item) && !selectingPages
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (materialCanReprocess(widget.state, item))
-                      IconButton(
-                        tooltip: 'Mit KI neu lesen',
-                        onPressed: deletingMaterial != null
-                            ? null
-                            : () => rereadPage(item),
-                        icon: const Icon(Icons.document_scanner_outlined),
+                    if (sort != 'subject')
+                      Text(
+                        item['subject']?.toString().trim().isEmpty == false
+                            ? item['subject']
+                            : 'Fach noch offen',
                       ),
-                    IconButton(
-                      tooltip: 'Heftseite löschen',
+                    if (!widget.learning)
+                      Text(
+                        [
+                          if (date != null)
+                            DateFormat('dd.MM.yyyy').format(date),
+                          if (item['page_number'] != null)
+                            'Seite ${item['page_number']}',
+                          if (item['confirmed'] != true) 'Bitte prüfen',
+                        ].join(' · '),
+                      ),
+                    if (widget.learning) ...[
+                      Text(
+                        {
+                          if (count > 0)
+                            '$closed von $count Aufgaben'
+                          else
+                            item['assignment_kind'] == 'homework'
+                                ? 'Notierte Hausaufgabe'
+                                : item['mandatory'] == true
+                                ? 'Elternauftrag'
+                                : item['kind'] == 'review'
+                                ? 'Wiederholung'
+                                : 'Geplant',
+                          if (scheduled != null)
+                            'Ab ${DateFormat('dd.MM.').format(scheduled)}'
+                          else if (item['status'] != null)
+                            statusLabel(item['status']),
+                        }.join(' · '),
+                      ),
+                      if (date != null)
+                        Text(
+                          DateFormat('dd.MM.yyyy').format(date),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.palette.muted,
+                          ),
+                        ),
+                      if (item['review_status'] == 'pending')
+                        Text(
+                          'Rückblick wird vorbereitet',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.palette.muted,
+                          ),
+                        ),
+                      if (simpleLearning &&
+                          item['status'] != 'completed' &&
+                          !later)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 7),
+                          child: Text(
+                            ['active', 'paused'].contains(item['status'])
+                                ? 'Hier weiterlernen'
+                                : item['kind'] == 'unit'
+                                ? 'Runde starten'
+                                : 'Runde vorbereiten',
+                            style: TextStyle(
+                              color: context.palette.teal,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      if (count > 0 && item['status'] != 'completed')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          // The same count is already spoken in the tile subtitle.
+                          // A nested progress role hides the tile's button role.
+                          child: ExcludeSemantics(
+                            child: LinearProgressIndicator(
+                              value: (closed / count).clamp(0, 1),
+                              minHeight: 3,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+              trailing: deletingMaterial == item['id']
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : canDeleteMaterial(item) && !selectingPages
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (materialCanReprocess(widget.state, item))
+                          IconButton(
+                            tooltip: 'Mit KI neu lesen',
+                            onPressed: deletingMaterial != null
+                                ? null
+                                : () => rereadPage(item),
+                            icon: const Icon(Icons.document_scanner_outlined),
+                          ),
+                        IconButton(
+                          tooltip: 'Heftseite löschen',
+                          onPressed: deletingMaterial != null
+                              ? null
+                              : () => deletePages(item: item),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                        ),
+                      ],
+                    )
+                  : canDeleteRound(item)
+                  ? IconButton(
+                      tooltip: 'Lernrunde löschen',
                       onPressed: deletingMaterial != null
                           ? null
-                          : () => deletePages(item: item),
+                          : () => deleteRound(item),
                       icon: const Icon(Icons.delete_outline_rounded),
+                    )
+                  : opening == item['id']
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.chevron_right_rounded,
+                      color: context.palette.muted,
+                    ),
+              onTap: selectingPages && canDeleteMaterial(item)
+                  ? () => togglePage(item)
+                  : actionable
+                  ? () => open(item)
+                  : null,
+            ),
+            if (widget.learning)
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => roundDetails(item),
+                    icon: const Icon(Icons.info_outline),
+                    label: const Text('Details ohne Start'),
+                  ),
+                  if (item['kind'] == 'unit') ...[
+                    IconButton(
+                      tooltip: rememberedRounds.containsKey(item['id'])
+                          ? 'Merker entfernen'
+                          : 'Für diesen Besuch merken',
+                      isSelected: rememberedRounds.containsKey(item['id']),
+                      onPressed: () => rememberRound(item),
+                      icon: const Icon(Icons.bookmark_outline),
+                    ),
+                    IconButton(
+                      tooltip: comparedRounds.containsKey(item['id'])
+                          ? 'Aus Vergleich nehmen'
+                          : 'Runde für Themenvergleich auswählen',
+                      isSelected: comparedRounds.containsKey(item['id']),
+                      onPressed: () => compareRound(item),
+                      icon: const Icon(Icons.compare_outlined),
                     ),
                   ],
-                )
-              : canDeleteRound(item)
-              ? IconButton(
-                  tooltip: 'Lernrunde löschen',
-                  onPressed: deletingMaterial != null
-                      ? null
-                      : () => deleteRound(item),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                )
-              : opening == item['id']
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(Icons.chevron_right_rounded, color: context.palette.muted),
-          onTap: selectingPages && canDeleteMaterial(item)
-              ? () => togglePage(item)
-              : actionable
-              ? () => open(item)
-              : null,
+                ],
+              ),
+          ],
         ),
       ),
     );

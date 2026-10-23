@@ -49,6 +49,7 @@ void main() {
       await fixture.tap(tester, 'Bestätigen');
       expect(requests.where((r) => r.method == 'POST').length, 1);
       expect(find.text('Als erledigt markieren'), findsNothing);
+      await fixture.tap(tester, 'Suche & alle Themenfilter');
       final status = find.byWidgetPredicate(
         (w) =>
             w is DropdownButtonFormField<String> &&

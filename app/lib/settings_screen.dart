@@ -18,6 +18,7 @@ import 'parent_operator_audit.dart';
 import 'ui.dart';
 import 'google_login.dart';
 import 'public_trial.dart';
+import 'settings_reading_tools.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState state;
@@ -32,12 +33,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String parentSection = 'account';
   AppState get state => widget.state;
   Json? account;
-  String? family;
+  String? family, sessionToken;
+  final sectionKeys = <String, GlobalKey>{
+    for (final id in [
+      'account',
+      'devices',
+      'notifications',
+      'family',
+      'children',
+      'usage',
+      'privacy',
+    ])
+      id: GlobalKey(),
+  };
+  final confirmations = <String, String>{};
+  Widget section(String id, Widget child) =>
+      KeyedSubtree(key: sectionKeys[id], child: child);
+  Widget confirmation(String id) => confirmations[id] == null
+      ? const SizedBox.shrink()
+      : ConfirmedSettingNotice(
+          message: confirmations[id]!,
+          onClose: () {
+            if (mounted) setState(() => confirmations.remove(id));
+          },
+        );
+  void confirmed(String id, String message) {
+    if (mounted) setState(() => confirmations[id] = message);
+  }
+
+  List<(String, String, IconData)> get settingSections => [
+    ('account', 'Konto und Zugang', Icons.person_outline_rounded),
+    ('devices', 'Angemeldete Geräte', Icons.devices_rounded),
+    if (!state.isAdmin)
+      ('notifications', 'Benachrichtigungen', Icons.notifications_outlined),
+    if (state.isParent && state.familyId != null) ...[
+      (
+        'family',
+        'Familie und Berechtigungen',
+        Icons.supervisor_account_outlined,
+      ),
+      ('children', 'Kinderzugänge und Passwörter', Icons.face_rounded),
+      ('usage', 'Enthaltener Lernumfang', Icons.data_usage_rounded),
+      ('privacy', 'Export und Kontoverwaltung', Icons.privacy_tip_outlined),
+    ],
+  ];
+  void openSettingSection(String id) {
+    final scope = _SettingsContext(state);
+    if (!mounted || !scope.current || !settingSections.any((s) => s.$1 == id)) {
+      return;
+    }
+    setState(
+      () => parentSection = ['family', 'children'].contains(id)
+          ? 'family'
+          : ['usage', 'privacy'].contains(id)
+          ? 'data'
+          : 'account',
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = sectionKeys[id]?.currentContext;
+      if (!mounted || !scope.current || target == null) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: .08,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     account = state.user;
     family = state.familyId;
+    sessionToken = state.api.token;
     parentSection = allowedSection(widget.initialSection);
     state.addListener(contextChanged);
   }
@@ -50,10 +120,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       : 'account';
 
   void contextChanged() {
-    if (identical(account, state.user) && family == state.familyId) return;
+    if (identical(account, state.user) &&
+        family == state.familyId &&
+        sessionToken == state.api.token) {
+      return;
+    }
     setState(() {
       account = state.user;
       family = state.familyId;
+      sessionToken = state.api.token;
+      confirmations.clear();
       parentSection = 'account';
       version++;
     });
@@ -67,6 +143,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       state.addListener(contextChanged);
       account = state.user;
       family = state.familyId;
+      sessionToken = state.api.token;
+      confirmations.clear();
       parentSection = allowedSection(widget.initialSection);
       version++;
     } else if (oldWidget.initialSection != widget.initialSection) {
@@ -131,6 +209,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SettingsSectionFinder(
+            key: ValueKey((
+              'settings-find',
+              ObjectKey(scope.account),
+              scope.familyId,
+              state.api.token,
+            )),
+            sections: settingSections,
+            bindingKey: (
+              ObjectKey(scope.account),
+              scope.familyId,
+              state.api.token,
+            ),
+            isCurrent: () => scope.current && mounted,
+            onSelected: openSettingSection,
+          ),
           if (state.isParent) ...[
             const ParentWorkspaceHero(
               eyebrow: 'DEIN ELTERNKONTO',
@@ -174,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  heading('Dein Zugang'),
+                  section('account', heading('Dein Zugang')),
                   Text(
                     state.user?['display_name'] ?? '',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
@@ -267,76 +361,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
             ],
             if (!state.isAdmin) ...[
-              NotificationPanel(state),
+              section('notifications', NotificationPanel(state)),
               const SizedBox(height: 24),
             ],
-            heading('Angemeldete Geräte'),
+            section('devices', heading('Angemeldete Geräte')),
+            confirmation('devices'),
             LoadView<List<dynamic>>(
               key: ValueKey(('sessions', ObjectKey(scope.account), version)),
               load: () => state.api.list('/auth/sessions'),
               builder: (sessions, _) => Panel(
-                child: Column(
-                  children: [
-                    for (final s in sessions)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                Icons.devices_rounded,
-                                color: context.palette.teal,
-                              ),
-                              title: Text(s['device']),
-                              subtitle: Text(
-                                '${s['current'] == true ? 'Dieses Gerät' : 'Weiteres angemeldetes Gerät'}${deviceDates(Json.from(s)).isEmpty ? '' : '\n${deviceDates(Json.from(s))}'}',
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ActionButton(
-                                label: s['current']
-                                    ? 'Hier abmelden'
-                                    : 'Gerät abmelden',
-                                secondary: true,
-                                onPressed: () async {
-                                  if (!scope.current) return;
-                                  if (s['current'] == true) {
-                                    await state.api.delete(
-                                      '/auth/sessions/${s['id']}',
-                                    );
-                                  } else {
-                                    final changed = await confirmAction(
-                                      scope,
-                                      'Dieses Gerät abmelden?',
-                                      '${s['device']}\n${deviceDates(Json.from(s))}\nDer Zugang auf diesem Gerät wird beendet.',
-                                      'Gerät abmelden',
-                                      () => state.api.delete(
-                                        '/auth/sessions/${s['id']}',
-                                      ),
-                                    );
-                                    if (!changed) return;
-                                  }
-                                  if (!scope.current) return;
-                                  if (s['current']) {
-                                    await state.clear(
-                                      expectedUser: scope.account,
-                                    );
-                                    if (context.mounted && state.user == null) {
-                                      context.go('/login');
-                                    }
-                                  } else {
-                                    refresh();
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
+                child: DeviceSessionGroups(
+                  sessions: sessions,
+                  rowBuilder: (s) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.devices_rounded,
+                            color: context.palette.teal,
+                          ),
+                          title: Text(s['device']),
+                          subtitle: Text(
+                            '${s['current'] == true ? 'Dieses Gerät' : 'Weiteres angemeldetes Gerät'}${deviceDates(Json.from(s)).isEmpty ? '' : '\n${deviceDates(Json.from(s))}'}',
+                          ),
                         ),
-                      ),
-                  ],
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ActionButton(
+                            label: s['current'] == true
+                                ? 'Hier abmelden'
+                                : 'Gerät abmelden',
+                            secondary: true,
+                            onPressed: () async {
+                              if (!scope.current) return;
+                              if (s['current'] == true) {
+                                await state.api.delete(
+                                  '/auth/sessions/${s['id']}',
+                                );
+                              } else {
+                                final changed = await confirmAction(
+                                  scope,
+                                  'Dieses Gerät abmelden?',
+                                  '${s['device']}\n${deviceDates(Json.from(s))}\nDer Zugang auf diesem Gerät wird beendet.',
+                                  'Gerät abmelden',
+                                  () => state.api.delete(
+                                    '/auth/sessions/${s['id']}',
+                                  ),
+                                );
+                                if (!changed) return;
+                              }
+                              if (!scope.current) return;
+                              if (s['current'] == true) {
+                                await state.clear(expectedUser: scope.account);
+                                if (context.mounted && state.user == null) {
+                                  context.go('/login');
+                                }
+                              } else {
+                                confirmed(
+                                  'devices',
+                                  'Die Anmeldung auf dem anderen Gerät wurde beendet.',
+                                );
+                                refresh();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -363,11 +458,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (state.isParent &&
               state.familyId != null &&
               parentSection == 'family') ...[
-            const ParentSectionHeading(
-              title: 'Elternzugänge',
-              subtitle: 'Berechtigungen und Einladungen für eure Familie.',
-              icon: Icons.supervisor_account_outlined,
+            section(
+              'family',
+              const ParentSectionHeading(
+                title: 'Elternzugänge',
+                subtitle: 'Berechtigungen und Einladungen für eure Familie.',
+                icon: Icons.supervisor_account_outlined,
+              ),
             ),
+            confirmation('family'),
             LoadView<List<dynamic>>(
               key: ValueKey('members-${state.familyId}-$version'),
               load: () => state.api.list('/families/${state.familyId}/members'),
@@ -375,6 +474,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    FamilyRightsMatrix(members),
                     for (final m in members)
                       ParentManagementRow(
                         leading: Icon(
@@ -405,7 +505,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       '/families/${scope.familyId}/members/${m['id']}',
                                     ),
                                   );
-                                  if (changed && scope.current) refresh();
+                                  if (changed && scope.current) {
+                                    confirmed(
+                                      'family',
+                                      'Der Familienzugriff wurde entzogen.',
+                                    );
+                                    refresh();
+                                  }
                                 },
                               )
                             : null,
@@ -469,6 +575,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               );
                               if (changed && scope.current) {
+                                confirmed(
+                                  'family',
+                                  'Die Einladung wurde widerrufen.',
+                                );
                                 refresh();
                                 if (context.mounted) {
                                   toast(context, 'Einladung widerrufen.');
@@ -483,10 +593,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 28),
-            const ParentSectionHeading(
-              title: 'Kinderzugänge verwalten',
-              subtitle: 'Angaben, Passwörter und angemeldete Geräte.',
-              icon: Icons.face_rounded,
+            section(
+              'children',
+              const ParentSectionHeading(
+                title: 'Kinderzugänge verwalten',
+                subtitle: 'Angaben, Passwörter und angemeldete Geräte.',
+                icon: Icons.face_rounded,
+              ),
             ),
             LoadView<Json>(
               key: ValueKey('children-${state.familyId}-$version'),
@@ -684,10 +797,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (state.isParent &&
               state.familyId != null &&
               parentSection == 'data') ...[
-            const ParentSectionHeading(
-              title: 'Enthaltener Lernumfang',
-              subtitle: 'Verfügbare KI-Schritte und zusätzliche Kostengrenzen.',
-              icon: Icons.data_usage_rounded,
+            section(
+              'usage',
+              const ParentSectionHeading(
+                title: 'Enthaltener Lernumfang',
+                subtitle:
+                    'Verfügbare KI-Schritte und zusätzliche Kostengrenzen.',
+                icon: Icons.data_usage_rounded,
+              ),
             ),
             LoadView<Json>(
               key: ValueKey('usage-${state.familyId}-$version'),
@@ -756,10 +873,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            const ParentSectionHeading(
-              title: 'Deine Familiendaten',
-              subtitle: 'Private Daten exportieren oder dein Konto verwalten.',
-              icon: Icons.privacy_tip_outlined,
+            section(
+              'privacy',
+              const ParentSectionHeading(
+                title: 'Deine Familiendaten',
+                subtitle:
+                    'Private Daten exportieren oder dein Konto verwalten.',
+                icon: Icons.privacy_tip_outlined,
+              ),
             ),
             Panel(
               child: Column(
@@ -832,14 +953,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 class _SettingsContext {
   final AppState state;
   final Json? account;
-  final String? familyId;
+  final String? familyId, token;
   _SettingsContext(this.state)
     : account = state.user,
-      familyId = state.familyId;
+      familyId = state.familyId,
+      token = state.api.token;
   bool get current =>
       account != null &&
       identical(state.user, account) &&
-      state.familyId == familyId;
+      state.familyId == familyId &&
+      state.api.token == token;
 }
 
 class _SettingsFormDialog extends StatefulWidget {
@@ -1180,6 +1303,7 @@ Future<void> resetChildDialog(
               ? 'Die neuen Passwörter müssen übereinstimmen.'
               : null,
         ),
+        PasswordRequirements(password: password, repeated: repeated),
       ],
     ),
     submit: () async {

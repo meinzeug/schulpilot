@@ -53,19 +53,30 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
   final search = TextEditingController();
   final searchFocus = FocusNode();
   late final Json? owner;
+  late final String? family, session;
   Json? data;
   String? error;
-  bool list = false, ownOnly = false, allPages = false, showSearch = false;
+  bool list = false,
+      ownOnly = false,
+      allPages = false,
+      showSearch = false,
+      reviewOnly = false;
   int generation = 0;
   int stateRevision = 0;
   bool get current =>
-      mounted && owner != null && identical(widget.state.user, owner);
+      mounted &&
+      owner != null &&
+      identical(widget.state.user, owner) &&
+      family == widget.state.familyId &&
+      session == widget.state.api.token;
   String get memoryKey => 'notebook-shelf:${widget.childId}';
 
   @override
   void initState() {
     super.initState();
     owner = widget.state.user;
+    family = widget.state.familyId;
+    session = widget.state.api.token;
     stateRevision = widget.state.revision;
     widget.state.addListener(identityChanged);
     final saved = widget.state.collectionViews[memoryKey];
@@ -132,7 +143,10 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
 
   void open(Json item) {
     if (!current) return;
-    openRoute(context, '/library/${widget.childId}/subject/${item['id']}');
+    openRoute(
+      context,
+      '/library/${widget.childId}/subject/${item['id']}${reviewOnly ? '?status=review' : ''}',
+    );
   }
 
   void toggleSearch() {
@@ -229,6 +243,7 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
         .where(
           (r) =>
               (!ownOnly || (r['page_count'] as num? ?? 0) > 0) &&
+              (!reviewOnly || (r['review_count'] as num? ?? 0) > 0) &&
               '${r['title']}'.toLowerCase().contains(query),
         )
         .toList();
@@ -242,7 +257,8 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
       final group = priority(a).compareTo(priority(b));
       return group != 0 ? group : order[a['id']]!.compareTo(order[b['id']]!);
     });
-    if ((data?['unassigned_count'] as num? ?? 0) > 0 &&
+    if (!reviewOnly &&
+        (data?['unassigned_count'] as num? ?? 0) > 0 &&
         ('noch zuordnen'.contains(query) || query.isEmpty)) {
       visible.add({
         'id': 'unassigned',
@@ -379,6 +395,27 @@ class _NotebookShelfState extends State<_NotebookShelfBody> {
           SizedBox(height: 10),
           searchField(),
         ],
+        if (!widget.state.isChild ||
+            MediaQuery.sizeOf(context).width >= 720 ||
+            showSearch ||
+            reviewOnly)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: const Text('Hefter mit offenen Prüfungen'),
+                selected: reviewOnly,
+                onSelected: (v) {
+                  if (current) setState(() => reviewOnly = v);
+                },
+              ),
+              if (reviewOnly)
+                const Text(
+                  'Nur gemeldete offene Prüfungen · Öffnen setzt den Seitenfilter.',
+                ),
+            ],
+          ),
         SizedBox(height: 12),
         if (error != null) ...[
           Notice(error!, warning: true),

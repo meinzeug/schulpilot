@@ -30,6 +30,7 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
   final search = TextEditingController();
   late final account = widget.state.user;
   late final family = widget.state.familyId;
+  late final sessionToken = widget.state.api.token;
   String? before, pageStart, error;
   String status = 'all', subject = 'all', order = 'newest';
   bool loading = true, more = true, requestActive = false;
@@ -40,7 +41,8 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
       mounted &&
       account != null &&
       identical(account, widget.state.user) &&
-      family == widget.state.familyId;
+      family == widget.state.familyId &&
+      sessionToken == widget.state.api.token;
   @override
   void initState() {
     super.initState();
@@ -217,6 +219,98 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
     setState(action);
     remember();
   }
+
+  void openDay(Json day) {
+    if (!current ||
+        loading ||
+        ModalRoute.of(context)?.isCurrent == false ||
+        !days.any((row) => row['id'] == day['id'])) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    openRoute(context, '/after-school/${widget.childId}?day=${day['id']}');
+  }
+
+  String compactDayLabel(Json day) {
+    final date = DateTime.tryParse('${day['date']}');
+    if (date == null) return schoolDate(day['date']);
+    const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    return '${names[date.weekday - 1]} ${DateFormat('dd.MM.').format(date)}';
+  }
+
+  String dayCount(Object? value, String singular, String plural) => value is num
+      ? counted(value, singular, plural)
+      : '$plural: nicht gemeldet';
+
+  String weekLabel(Json day) {
+    final date = DateTime.tryParse('${day['date']}');
+    if (date == null) return 'Datum nicht lesbar';
+    final monday = date.subtract(
+      Duration(days: date.weekday - DateTime.monday),
+    );
+    return 'Woche vom ${DateFormat('dd.MM.yyyy').format(monday)}';
+  }
+
+  Widget dayCards(List<Json> rows) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (var i = 0; i < rows.length; i++) ...[
+        if (i == 0 || weekLabel(rows[i]) != weekLabel(rows[i - 1]))
+          heading(weekLabel(rows[i])),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ActionPanel(
+            actionLabel: 'Tagespaket vom ${schoolDate(rows[i]['date'])} öffnen',
+            enabled: !loading,
+            onPressed: () => openDay(rows[i]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  schoolDate(rows[i]['date']),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                Text((rows[i]['subjects'] as List).join(' · ')),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      label: Text(
+                        dayCount(rows[i]['page_count'], 'Seite', 'Seiten'),
+                      ),
+                    ),
+                    Chip(
+                      label: Text(
+                        dayCount(
+                          rows[i]['unit_count'],
+                          'gespeicherte Runde',
+                          'gespeicherte Runden',
+                        ),
+                      ),
+                    ),
+                    Chip(
+                      label: Text(
+                        dayCount(
+                          rows[i]['completed_units'],
+                          'Runde bearbeitet',
+                          'Runden bearbeitet',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Text(
+                  'Bearbeitet ist ein Arbeitsstand, kein gesicherter Lernerfolg.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -408,37 +502,33 @@ class _SchoolDayHistoryState extends State<_SchoolDayHistoryBody> {
                   Text(
                     'Für diesen Datumausschnitt gibt es keine gespeicherten Tagespakete. Du kannst oben die neuesten Tage öffnen.',
                   ),
-                for (final day in visible)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: ActionPanel(
-                      actionLabel:
-                          'Tagespaket vom ${schoolDate(day['date'])} öffnen',
-                      onPressed: () {
-                        if (current &&
-                            !loading &&
-                            ModalRoute.of(context)?.isCurrent != false &&
-                            days.any((row) => row['id'] == day['id'])) {
-                          openRoute(
-                            context,
-                            '/after-school/${widget.childId}?day=${day['id']}',
-                          );
-                        }
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            schoolDate(day['date']),
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                if (visible.isNotEmpty) ...[
+                  const Text(
+                    'Geladene Tage direkt öffnen',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final day in visible)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Tooltip(
+                              message:
+                                  'Tagespaket vom ${schoolDate(day['date'])}',
+                              child: OutlinedButton(
+                                onPressed: loading ? null : () => openDay(day),
+                                child: Text(compactDayLabel(day)),
+                              ),
+                            ),
                           ),
-                          Text(
-                            '${(day['subjects'] as List).join(' · ')}\n${counted(day['page_count'] as num? ?? 0, 'Seite', 'Seiten')} · ${day['completed_units']} von ${counted(day['unit_count'] as num? ?? 0, 'Einheit', 'Einheiten')} abgeschlossen',
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                ],
+                dayCards(visible),
                 if (loading)
                   Semantics(
                     liveRegion: true,

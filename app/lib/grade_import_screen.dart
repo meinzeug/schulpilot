@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'collection_view_tools.dart';
 import 'parent_workspace_ui.dart';
 import 'vocabulary_screen.dart' show vocabularyKey;
 
@@ -30,6 +31,9 @@ class _GradePdfImportState extends State<GradePdfImport> {
   late final Json? owner;
   late final String? family;
   late final String child;
+  late final sessionToken = widget.state.api.token;
+  final focusedEntryKey = GlobalKey();
+  String? focusedSlot;
   Json? preview, result;
   Uint8List? bytes;
   String? error, requestKey, fileName;
@@ -60,7 +64,8 @@ class _GradePdfImportState extends State<GradePdfImport> {
       owner != null &&
       identical(widget.state.user, owner) &&
       family == widget.state.familyId &&
-      child == widget.childId;
+      child == widget.childId &&
+      sessionToken == widget.state.api.token;
   List<Json> get items => rows;
   bool get complete =>
       items.every((r) => choices[r['slot_key']] != null) &&
@@ -201,6 +206,7 @@ class _GradePdfImportState extends State<GradePdfImport> {
   }
 
   void usePreview(Json data) {
+    focusedSlot = null;
     choiceHistory.clear();
     final previous = {for (final row in rows) row['slot_key']: row};
     final saved = Map<String, String>.from(choices);
@@ -232,6 +238,31 @@ class _GradePdfImportState extends State<GradePdfImport> {
       };
       if (value != null) choices[key] = value;
     }
+  }
+
+  void nextOpenEntry() {
+    if (!current || busy || preview == null) return;
+    final open = rows.where((row) => choices[row['slot_key']] == null).toList();
+    if (open.isEmpty) return;
+    final previous = rows.indexWhere((row) => row['slot_key'] == focusedSlot);
+    final next =
+        open.where((row) => rows.indexOf(row) > previous).firstOrNull ??
+        open.first;
+    final snapshot = preview!['context_revision'];
+    setState(() => focusedSlot = next['slot_key']);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!current || snapshot != preview?['context_revision']) return;
+      final target = focusedEntryKey.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          alignment: 0,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 180),
+        );
+      }
+    });
   }
 
   Set<String> allowed(Json item) => switch (item['status']) {
@@ -575,6 +606,15 @@ class _GradePdfImportState extends State<GradePdfImport> {
                           ),
                         ],
                       ),
+                      ImportPhaseTrack(
+                        result != null
+                            ? 3
+                            : preview != null
+                            ? 2
+                            : bytes != null
+                            ? 1
+                            : 0,
+                      ),
                       if (busy)
                         Semantics(
                           liveRegion: true,
@@ -670,299 +710,348 @@ class _GradePdfImportState extends State<GradePdfImport> {
                               )
                             : CustomScrollView(
                                 slivers: [
-                                  SliverList.list(
-                                    children: [
-                                      Text(
-                                        'Für ${widget.childName}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
+                                  SliverToBoxAdapter(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Text(
+                                          'Für ${widget.childName}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
-                                      ),
-                                      if (error != null) message(),
-                                      if (fileLabel != null)
-                                        Text('Gewählte Datei: $fileLabel'),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'Schuljahr ${preview!['school_year']}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
+                                        if (error != null) message(),
+                                        if (fileLabel != null)
+                                          Text('Gewählte Datei: $fileLabel'),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Schuljahr ${preview!['school_year']}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        '${rows.length} Einzelnoten · ${preview!['counts']['existing']} bereits übernommen',
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Gleiche Note, neuer Eintrag? Ordne vorhandene Noten bewusst zu. Geänderte PDF-Werte werden erst nach deiner Auswahl übernommen.',
-                                        style: TextStyle(
-                                          color: context.palette.muted,
-                                          fontSize: 13,
+                                        Text(
+                                          '${rows.length} Einzelnoten · ${preview!['counts']['existing']} bereits übernommen',
                                         ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      ParentCollectionSearch(
-                                        controller: search,
-                                        label: 'PDF-Vorschau durchsuchen',
-                                        appliedQuery: query,
-                                        helperText: 'Sucht in den gelesenen Fächern und vorhandenen Vergleichseinträgen. Deine Übernahmeauswahl bleibt bei Filtern erhalten.',
-                                        enabled: !busy,
-                                        onSearch: () => changeView(
-                                          () => query = search.text.trim(),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Gleiche Note, neuer Eintrag? Ordne vorhandene Noten bewusst zu. Geänderte PDF-Werte werden erst nach deiner Auswahl übernommen.',
+                                          style: TextStyle(
+                                            color: context.palette.muted,
+                                            fontSize: 13,
+                                          ),
                                         ),
-                                        onClear: () => changeView(() {
-                                          query = '';
-                                          search.clear();
-                                        }),
-                                      ),
-                                      if (preview != null &&
-                                          result == null) ...[
+                                        const SizedBox(height: 12),
+                                        TextButton.icon(
+                                          onPressed: busy || unresolved == 0
+                                              ? null
+                                              : nextOpenEntry,
+                                          icon: const Icon(
+                                            Icons.arrow_downward,
+                                          ),
+                                          label: const Text(
+                                            'Zur nächsten offenen PDF-Zuordnung',
+                                          ),
+                                        ),
+                                        if (focusedSlot != null) ...[
+                                          Container(
+                                            key: focusedEntryKey,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                const Text(
+                                                  'Gezielt ausgewählte Zuordnung',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                                for (final focused
+                                                    in rows.where(
+                                                      (row) =>
+                                                          row['slot_key'] ==
+                                                          focusedSlot,
+                                                    ))
+                                                  entry(focused),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                        ParentCollectionSearch(
+                                          controller: search,
+                                          label: 'PDF-Vorschau durchsuchen',
+                                          appliedQuery: query,
+                                          helperText: 'Sucht in den gelesenen Fächern und vorhandenen Vergleichseinträgen. Deine Übernahmeauswahl bleibt bei Filtern erhalten.',
+                                          enabled: !busy,
+                                          onSearch: () => changeView(
+                                            () => query = search.text.trim(),
+                                          ),
+                                          onClear: () => changeView(() {
+                                            query = '';
+                                            search.clear();
+                                          }),
+                                        ),
+                                        if (preview != null &&
+                                            result == null) ...[
+                                          Semantics(
+                                            liveRegion: true,
+                                            child: Text(
+                                              'Übernahme der gesamten Vorschau: ${actionCounts['add'] ?? 0} neu · ${actionCounts['update'] ?? 0} aktualisieren · ${actionCounts['link'] ?? 0} zuordnen · ${actionCounts['skip'] ?? 0} auslassen.',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                          if (duplicateLinks.isNotEmpty) ...[
+                                            const Text(
+                                              'Eine vorhandene Note ist mehreren PDF-Positionen zugeordnet. Korrigiere die Zuordnung vor der Übernahme.',
+                                            ),
+                                            TextButton(
+                                              onPressed: busy
+                                                  ? null
+                                                  : () => question(
+                                                      title: 'Mehrfache Zuordnungen prüfen',
+                                                      accept: 'Zur Vorschau',
+                                                      content: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .stretch,
+                                                        children: [
+                                                          for (final group
+                                                              in duplicateLinks
+                                                                  .values)
+                                                            Text(
+                                                              group
+                                                                  .map(
+                                                                    (r) =>
+                                                                        '${r['subject']} · ${r['semester']}. Halbjahr · Position ${r['slot']}',
+                                                                  )
+                                                                  .join('\n'),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                              child: const Text(
+                                                'Mehrfache Zuordnungen ansehen',
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 8),
+                                        ],
+                                        ExpansionTile(
+                                          key: const PageStorageKey(
+                                            'grade-pdf-filters',
+                                          ),
+                                          title: const Text(
+                                            'PDF-Einträge gezielt prüfen',
+                                          ),
+                                          children: [
+                                            ParentChoiceFilter(
+                                              label: 'Fach in der PDF',
+                                              value: subjectFilter,
+                                              enabled: !busy,
+                                              choices: [
+                                                ('all', 'Alle Fächer'),
+                                                ...subjects.map((s) => (s, s)),
+                                              ],
+                                              onChanged: (v) => changeView(
+                                                () => subjectFilter = v,
+                                              ),
+                                            ),
+                                            ParentChoiceFilter(
+                                              label: 'Schulhalbjahr der PDF',
+                                              value: semesterFilter,
+                                              enabled: !busy,
+                                              choices: const [
+                                                ('all', 'Beide Halbjahre'),
+                                                ('1', '1. Halbjahr'),
+                                                ('2', '2. Halbjahr'),
+                                              ],
+                                              onChanged: (v) => changeView(
+                                                () => semesterFilter = v,
+                                              ),
+                                            ),
+                                            ParentChoiceFilter(
+                                              label: 'Leistungsart in der PDF',
+                                              value: kindFilter,
+                                              enabled: !busy,
+                                              choices: const [
+                                                ('all', 'Alle Leistungsarten'),
+                                                (
+                                                  'classwork',
+                                                  'Klassenarbeiten',
+                                                ),
+                                                (
+                                                  'other',
+                                                  'Sonstige Leistungen',
+                                                ),
+                                              ],
+                                              onChanged: (v) => changeView(
+                                                () => kindFilter = v,
+                                              ),
+                                            ),
+                                            ParentChoiceFilter(
+                                              label: 'Prüfstatus',
+                                              value: statusFilter,
+                                              enabled: !busy,
+                                              choices: const [
+                                                ('all', 'Alle Prüfzustände'),
+                                                ('new', 'Neue Einträge'),
+                                                (
+                                                  'possible_match',
+                                                  'Mögliche Doppelungen',
+                                                ),
+                                                (
+                                                  'changed',
+                                                  'Geänderte PDF-Werte',
+                                                ),
+                                                (
+                                                  'existing',
+                                                  'Bereits übernommen',
+                                                ),
+                                                (
+                                                  'ignored',
+                                                  'Zuvor ausgelassen',
+                                                ),
+                                              ],
+                                              onChanged: (v) => changeView(
+                                                () => statusFilter = v,
+                                              ),
+                                            ),
+                                            ParentChoiceFilter(
+                                              label: 'Deine Übernahmeauswahl',
+                                              value: choiceFilter,
+                                              enabled: !busy,
+                                              choices: const [
+                                                ('all', 'Alle Entscheidungen'),
+                                                (
+                                                  'changes',
+                                                  'Übernahmen und Änderungen',
+                                                ),
+                                                (
+                                                  'add',
+                                                  'Als zusätzliche Note gewählt',
+                                                ),
+                                                (
+                                                  'update',
+                                                  'Zum Aktualisieren gewählt',
+                                                ),
+                                                (
+                                                  'skip',
+                                                  'Bewusst nicht übernehmen',
+                                                ),
+                                                (
+                                                  'keep',
+                                                  'Bisherige Note behalten',
+                                                ),
+                                              ],
+                                              onChanged: (v) => changeView(
+                                                () => choiceFilter = v,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        ExpansionTile(
+                                          title: const Text(
+                                            'Fächer dieser PDF im Überblick',
+                                          ),
+                                          children: [
+                                            for (final name in subjects)
+                                              ListTile(
+                                                title: Text(name),
+                                                subtitle: Text(
+                                                  '${rows.where((r) => r['subject'] == name).length} gelesene Einträge · ${rows.where((r) => r['subject'] == name && choices[r['slot_key']] == null).length} Zuordnungen offen',
+                                                ),
+                                                trailing: const Icon(
+                                                  Icons.filter_alt_outlined,
+                                                ),
+                                                onTap: busy
+                                                    ? null
+                                                    : () => changeView(() {
+                                                        resetFilters();
+                                                        subjectFilter = name;
+                                                        unresolvedOnly = false;
+                                                      }),
+                                              ),
+                                          ],
+                                        ),
+                                        Wrap(
+                                          spacing: 12,
+                                          runSpacing: 8,
+                                          children: [
+                                            OutlinedButton.icon(
+                                              onPressed: busy || visible.isEmpty
+                                                  ? null
+                                                  : () => skipVisible(visible),
+                                              icon: const Icon(
+                                                Icons.playlist_remove,
+                                              ),
+                                              label: const Text(
+                                                'Angezeigte Übernahmen auslassen',
+                                              ),
+                                            ),
+                                            TextButton.icon(
+                                              onPressed:
+                                                  busy || choiceHistory.isEmpty
+                                                  ? null
+                                                  : undoChoice,
+                                              icon: const Icon(Icons.undo),
+                                              label: const Text(
+                                                'Letzte Zuordnung zurücknehmen',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (filtered)
+                                          TextButton.icon(
+                                            onPressed: busy
+                                                ? null
+                                                : () =>
+                                                      changeView(resetFilters),
+                                            icon: const Icon(
+                                              Icons.filter_alt_off_outlined,
+                                            ),
+                                            label: const Text(
+                                              'PDF-Filter zurücksetzen',
+                                            ),
+                                          ),
                                         Semantics(
                                           liveRegion: true,
                                           child: Text(
-                                            'Übernahme der gesamten Vorschau: ${actionCounts['add'] ?? 0} neu · ${actionCounts['update'] ?? 0} aktualisieren · ${actionCounts['link'] ?? 0} zuordnen · ${actionCounts['skip'] ?? 0} auslassen.',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                            '${visible.length} von ${rows.length} PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
                                           ),
                                         ),
-                                        if (duplicateLinks.isNotEmpty) ...[
-                                          const Text(
-                                            'Eine vorhandene Note ist mehreren PDF-Positionen zugeordnet. Korrigiere die Zuordnung vor der Übernahme.',
+                                        if (visible.isEmpty && filtered)
+                                          const Notice(
+                                            'Keine PDF-Einträge passen zu diesen Filtern. Deine bisherigen Zuordnungen bleiben erhalten.',
                                           ),
-                                          TextButton(
+                                        if (unresolved > 0 || unresolvedOnly)
+                                          TextButton.icon(
                                             onPressed: busy
                                                 ? null
-                                                : () => question(
-                                                    title: 'Mehrfache Zuordnungen prüfen',
-                                                    accept: 'Zur Vorschau',
-                                                    content: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .stretch,
-                                                      children: [
-                                                        for (final group
-                                                            in duplicateLinks
-                                                                .values)
-                                                          Text(
-                                                            group
-                                                                .map(
-                                                                  (r) =>
-                                                                      '${r['subject']} · ${r['semester']}. Halbjahr · Position ${r['slot']}',
-                                                                )
-                                                                .join('\n'),
-                                                          ),
-                                                      ],
-                                                    ),
+                                                : () => setState(
+                                                    () => unresolvedOnly =
+                                                        !unresolvedOnly,
                                                   ),
-                                            child: const Text(
-                                              'Mehrfache Zuordnungen ansehen',
-                                            ),
-                                          ),
-                                        ],
-                                        const SizedBox(height: 8),
-                                      ],
-                                      ExpansionTile(
-                                        key: const PageStorageKey(
-                                          'grade-pdf-filters',
-                                        ),
-                                        title: const Text(
-                                          'PDF-Einträge gezielt prüfen',
-                                        ),
-                                        children: [
-                                          ParentChoiceFilter(
-                                            label: 'Fach in der PDF',
-                                            value: subjectFilter,
-                                            enabled: !busy,
-                                            choices: [
-                                              ('all', 'Alle Fächer'),
-                                              ...subjects.map((s) => (s, s)),
-                                            ],
-                                            onChanged: (v) => changeView(
-                                              () => subjectFilter = v,
-                                            ),
-                                          ),
-                                          ParentChoiceFilter(
-                                            label: 'Schulhalbjahr der PDF',
-                                            value: semesterFilter,
-                                            enabled: !busy,
-                                            choices: const [
-                                              ('all', 'Beide Halbjahre'),
-                                              ('1', '1. Halbjahr'),
-                                              ('2', '2. Halbjahr'),
-                                            ],
-                                            onChanged: (v) => changeView(
-                                              () => semesterFilter = v,
-                                            ),
-                                          ),
-                                          ParentChoiceFilter(
-                                            label: 'Leistungsart in der PDF',
-                                            value: kindFilter,
-                                            enabled: !busy,
-                                            choices: const [
-                                              ('all', 'Alle Leistungsarten'),
-                                              ('classwork', 'Klassenarbeiten'),
-                                              ('other', 'Sonstige Leistungen'),
-                                            ],
-                                            onChanged: (v) => changeView(
-                                              () => kindFilter = v,
-                                            ),
-                                          ),
-                                          ParentChoiceFilter(
-                                            label: 'Prüfstatus',
-                                            value: statusFilter,
-                                            enabled: !busy,
-                                            choices: const [
-                                              ('all', 'Alle Prüfzustände'),
-                                              ('new', 'Neue Einträge'),
-                                              (
-                                                'possible_match',
-                                                'Mögliche Doppelungen',
-                                              ),
-                                              (
-                                                'changed',
-                                                'Geänderte PDF-Werte',
-                                              ),
-                                              (
-                                                'existing',
-                                                'Bereits übernommen',
-                                              ),
-                                              ('ignored', 'Zuvor ausgelassen'),
-                                            ],
-                                            onChanged: (v) => changeView(
-                                              () => statusFilter = v,
-                                            ),
-                                          ),
-                                          ParentChoiceFilter(
-                                            label: 'Deine Übernahmeauswahl',
-                                            value: choiceFilter,
-                                            enabled: !busy,
-                                            choices: const [
-                                              ('all', 'Alle Entscheidungen'),
-                                              (
-                                                'changes',
-                                                'Übernahmen und Änderungen',
-                                              ),
-                                              (
-                                                'add',
-                                                'Als zusätzliche Note gewählt',
-                                              ),
-                                              (
-                                                'update',
-                                                'Zum Aktualisieren gewählt',
-                                              ),
-                                              (
-                                                'skip',
-                                                'Bewusst nicht übernehmen',
-                                              ),
-                                              (
-                                                'keep',
-                                                'Bisherige Note behalten',
-                                              ),
-                                            ],
-                                            onChanged: (v) => changeView(
-                                              () => choiceFilter = v,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      ExpansionTile(
-                                        title: const Text(
-                                          'Fächer dieser PDF im Überblick',
-                                        ),
-                                        children: [
-                                          for (final name in subjects)
-                                            ListTile(
-                                              title: Text(name),
-                                              subtitle: Text(
-                                                '${rows.where((r) => r['subject'] == name).length} gelesene Einträge · ${rows.where((r) => r['subject'] == name && choices[r['slot_key']] == null).length} Zuordnungen offen',
-                                              ),
-                                              trailing: const Icon(
-                                                Icons.filter_alt_outlined,
-                                              ),
-                                              onTap: busy
-                                                  ? null
-                                                  : () => changeView(() {
-                                                      resetFilters();
-                                                      subjectFilter = name;
-                                                      unresolvedOnly = false;
-                                                    }),
-                                            ),
-                                        ],
-                                      ),
-                                      Wrap(
-                                        spacing: 12,
-                                        runSpacing: 8,
-                                        children: [
-                                          OutlinedButton.icon(
-                                            onPressed: busy || visible.isEmpty
-                                                ? null
-                                                : () => skipVisible(visible),
                                             icon: const Icon(
-                                              Icons.playlist_remove,
+                                              Icons.manage_search_rounded,
                                             ),
-                                            label: const Text(
-                                              'Angezeigte Übernahmen auslassen',
-                                            ),
-                                          ),
-                                          TextButton.icon(
-                                            onPressed:
-                                                busy || choiceHistory.isEmpty
-                                                ? null
-                                                : undoChoice,
-                                            icon: const Icon(Icons.undo),
-                                            label: const Text(
-                                              'Letzte Zuordnung zurücknehmen',
+                                            label: Text(
+                                              unresolvedOnly
+                                                  ? 'Alle Einzelnoten anzeigen'
+                                                  : '$unresolved offene Zuordnungen anzeigen',
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      if (filtered)
-                                        TextButton.icon(
-                                          onPressed: busy
-                                              ? null
-                                              : () => changeView(resetFilters),
-                                          icon: const Icon(
-                                            Icons.filter_alt_off_outlined,
+                                        if (unresolvedOnly && unresolved == 0)
+                                          const Text(
+                                            'Alle Zuordnungen sind geklärt. Prüfe deine Auswahl und übernimm sie bewusst.',
                                           ),
-                                          label: const Text(
-                                            'PDF-Filter zurücksetzen',
-                                          ),
-                                        ),
-                                      Semantics(
-                                        liveRegion: true,
-                                        child: Text(
-                                          '${visible.length} von ${rows.length} PDF-Einträgen angezeigt. Die Übernahme gilt für die Auswahl in der gesamten Vorschau.',
-                                        ),
-                                      ),
-                                      if (visible.isEmpty && filtered)
-                                        const Notice(
-                                          'Keine PDF-Einträge passen zu diesen Filtern. Deine bisherigen Zuordnungen bleiben erhalten.',
-                                        ),
-                                      if (unresolved > 0 || unresolvedOnly)
-                                        TextButton.icon(
-                                          onPressed: busy
-                                              ? null
-                                              : () => setState(
-                                                  () => unresolvedOnly =
-                                                      !unresolvedOnly,
-                                                ),
-                                          icon: const Icon(
-                                            Icons.manage_search_rounded,
-                                          ),
-                                          label: Text(
-                                            unresolvedOnly
-                                                ? 'Alle Einzelnoten anzeigen'
-                                                : '$unresolved offene Zuordnungen anzeigen',
-                                          ),
-                                        ),
-                                      if (unresolvedOnly && unresolved == 0)
-                                        const Text(
-                                          'Alle Zuordnungen sind geklärt. Prüfe deine Auswahl und übernimm sie bewusst.',
-                                        ),
-                                      const SizedBox(height: 12),
-                                    ],
+                                        const SizedBox(height: 12),
+                                      ],
+                                    ),
                                   ),
                                   SliverList.builder(
                                     itemCount: visible.length,
@@ -1170,28 +1259,48 @@ class _GradePdfImportState extends State<GradePdfImport> {
                         title: 'Vorhandene Noten vergleichen',
                         accept: 'Vergleich schließen',
                         content: SizedBox(
-                          width: 480,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                'PDF: ${row['subject']} · Note ${number(row['value'])} · ${row['semester']}. Halbjahr',
+                          width: 700,
+                          child: PrivateLocalView(
+                            state: widget.state,
+                            valid: () =>
+                                current &&
+                                preview?['id'] == previewId &&
+                                preview?['context_revision'] == previewRevision,
+                            child: LabeledComparison(
+                              leftLabel: 'Gelesene PDF-Position',
+                              left: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    '${row['subject']} · Wert ${number(row['value'])}',
+                                  ),
+                                  Text(
+                                    '${row['semester']}. Halbjahr · Position ${row['slot']}',
+                                  ),
+                                  const Text(
+                                    'Dieser Vergleich ändert keine Zuordnung.',
+                                  ),
+                                ],
                               ),
-                              const Text(
-                                'Diese Ansicht ändert keine Zuordnung. Entscheide danach im Feld Übernahme.',
+                              rightLabel: 'Vorhandene Vergleichseinträge',
+                              right: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (final match in row['matches']) ...[
+                                    Text(
+                                      '${match['assessed_on'] == null ? 'Kein Einzeldatum gespeichert' : friendlyDate(match['assessed_on'])} · Wert ${number(match['value'])} · ${match['weight'] ?? 1}-fach',
+                                    ),
+                                    if (match['topic'] is String)
+                                      SelectableText(match['topic']),
+                                    if ((match['note'] ?? '')
+                                        .toString()
+                                        .isNotEmpty)
+                                      SelectableText(match['note']),
+                                    const Divider(),
+                                  ],
+                                ],
                               ),
-                              for (final match in row['matches']) ...[
-                                const Divider(height: 24),
-                                Text(
-                                  '${match['assessed_on'] == null ? 'Kein Einzeldatum gespeichert' : friendlyDate(match['assessed_on'])} · Note ${number(match['value'])} · ${match['weight'] ?? 1}-fach',
-                                ),
-                                if (match['topic'] is String)
-                                  SelectableText(match['topic']),
-                                if ((match['note'] ?? '').toString().isNotEmpty)
-                                  SelectableText(match['note']),
-                              ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
