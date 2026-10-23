@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import 'tutor_sheet.dart';
 import 'ui.dart';
 import 'parent_child_navigation.dart';
 import 'math_content.dart';
+import 'matching_answer_board.dart';
 import 'subject_graphic.dart';
 import 'family_call_screen.dart';
 import 'practice_evidence.dart';
@@ -1683,6 +1685,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                         ),
                       Divider(height: 28),
                       SubjectPresentation(
+                        key: ValueKey((
+                          'parent-all',
+                          widget.unitId,
+                          q['id'],
+                          ObjectKey(ownerAccount),
+                        )),
                         state: state,
                         q['presentation'] is Map
                             ? Json.from(q['presentation'])
@@ -1926,6 +1934,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
             children: [
               questionPrompt(q),
               SubjectPresentation(
+                key: ValueKey((
+                  'question-given',
+                  widget.unitId,
+                  q['id'],
+                  ObjectKey(ownerAccount),
+                )),
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
                 state: state,
                 stages: {'given'},
@@ -1993,38 +2007,7 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
                 SizedBox(height: 12),
               ],
-              if (q['type'] == 'match')
-                for (final pair in q['options'] as List)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        MathText(
-                          pair,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          key: ValueKey('match-${q['id']}-$pair'),
-                          onPressed: actionBusy
-                              ? null
-                              : () => chooseMatch(q, pair),
-                          icon: Icon(Icons.swap_horiz_rounded),
-                          label: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: MathText(
-                              matches[pair] ?? 'Was passt dazu?',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              if (q['type'] == 'match') matchingBoard(q),
               if (!awaitingContinue &&
                   (choice != null ||
                       matches.isNotEmpty ||
@@ -2373,6 +2356,69 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
     ],
   );
 
+  String matchSignature(Json question) => jsonEncode([
+    question['id'],
+    question['prompt'],
+    question['options'],
+    question['choices'],
+  ]);
+
+  Widget matchingBoard(Json q) {
+    final requestedUnit = widget.unitId;
+    final requestedOwner = ownerAccount;
+    final requestedFamily = ownerFamily;
+    final signature = matchSignature(q);
+    return MatchingAnswerBoard(
+      questionId: q['id'],
+      sourceKey: (
+        requestedUnit,
+        ObjectKey(requestedOwner),
+        requestedFamily,
+        signature,
+      ),
+      options: (q['options'] as List).cast<String>(),
+      choices: (q['choices'] as List).cast<String>(),
+      matches: Map<String, String>.unmodifiable(matches),
+      disabled: actionBusy || awaitingContinue,
+      onChoose: (pair) => chooseMatch(q, pair),
+      onDrop: (pair, value) => dropMatch(
+        pair,
+        value,
+        requestedUnit: requestedUnit,
+        requestedOwner: requestedOwner,
+        requestedFamily: requestedFamily,
+        signature: signature,
+      ),
+    );
+  }
+
+  void dropMatch(
+    String pair,
+    String value, {
+    required String requestedUnit,
+    required Json? requestedOwner,
+    required String? requestedFamily,
+    required String signature,
+  }) {
+    final q = currentQuestion;
+    if (!requestIsCurrent(requestedUnit, requestedOwner) ||
+        state.familyId != requestedFamily ||
+        !state.isChild ||
+        actionBusy ||
+        awaitingContinue ||
+        unit?['status'] != 'active' ||
+        ModalRoute.of(context)?.isCurrent == false ||
+        q == null ||
+        q['type'] != 'match' ||
+        matchSignature(q) != signature ||
+        !(q['options'] as List).contains(pair) ||
+        !(q['choices'] as List).contains(value)) {
+      return;
+    }
+    noteInteraction();
+    setState(() => matches[pair] = value);
+  }
+
   Future<void> chooseMatch(Json q, String pair) async {
     final id = widget.unitId;
     final requestedOwner = ownerAccount;
@@ -2605,6 +2651,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
               if (languageContext.isNotEmpty)
                 MathText('Kontext: $languageContext'),
               SubjectPresentation(
+                key: ValueKey((
+                  'feedback-given',
+                  widget.unitId,
+                  q['id'],
+                  ObjectKey(ownerAccount),
+                )),
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
                 state: state,
                 stages: {'given'},
@@ -2830,6 +2882,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                 ),
               ],
               SubjectPresentation(
+                key: ValueKey((
+                  'feedback-solution',
+                  widget.unitId,
+                  q['id'],
+                  ObjectKey(ownerAccount),
+                )),
                 q['presentation'] is Map ? Json.from(q['presentation']) : null,
                 state: state,
                 stages: {'solution'},
@@ -2912,6 +2970,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
         if (hint != null)
           LearningContent(hint!, style: TextStyle(fontSize: 17, height: 1.5)),
         SubjectPresentation(
+          key: ValueKey((
+            'hint1-hint2-hint3',
+            widget.unitId,
+            q['id'],
+            ObjectKey(ownerAccount),
+          )),
           q['presentation'] is Map ? Json.from(q['presentation']) : null,
           state: state,
           stages: {'hint1', 'hint2', 'hint3'},
@@ -3273,6 +3337,12 @@ class _UnitScreenState extends State<UnitScreen> with WidgetsBindingObserver {
                     : null,
               ),
               SubjectPresentation(
+                key: ValueKey((
+                  'explanation-all',
+                  u['id'],
+                  data['question_id'] ?? q?['id'] ?? 'introduction',
+                  ObjectKey(requestedOwner),
+                )),
                 state: state,
                 data['presentation'] is Map
                     ? Json.from(data['presentation'])

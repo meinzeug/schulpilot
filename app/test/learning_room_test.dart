@@ -604,6 +604,10 @@ void main() {
       final server = SavedRound(questions: [q])
         ..expected['matching'] = '$left;$right';
       await openRound(tester, server);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('match-matching-Nomen')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('match-matching-Nomen')));
       await tester.pumpAndSettle();
       expect(tester.widget<Text>(find.text(left)).maxLines, isNull);

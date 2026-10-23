@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'math_content.dart';
 import 'learning_graphic_frame.dart';
+import 'learning_scene_player.dart';
 import 'science_graphic.dart';
 import 'ui.dart';
 import 'graphic_zoom.dart';
@@ -27,12 +28,13 @@ class SubjectPresentation extends StatelessWidget {
         for (final b in blocks) ...[
           SubjectGraphic(
             Json.from(b),
+            state: state,
             action: state == null
                 ? null
                 : GraphicZoom(
                     state: state!,
                     block: Json.from(b),
-                    render: (value) => SubjectGraphic(value),
+                    render: (value) => SubjectGraphic(value, state: state),
                   ),
           ),
         ],
@@ -44,7 +46,8 @@ class SubjectPresentation extends StatelessWidget {
 class SubjectGraphic extends StatelessWidget {
   final Json block;
   final Widget? action;
-  const SubjectGraphic(this.block, {super.key, this.action});
+  final AppState? state;
+  const SubjectGraphic(this.block, {super.key, this.action, this.state});
   List<String> get labels => (block['labels'] as List? ?? []).cast<String>();
   List<num> get numbers => (block['numbers'] as List? ?? []).cast<num>();
   String number(num v) =>
@@ -180,8 +183,25 @@ class SubjectGraphic extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = block['kind'];
+    if (kind == 'scene') {
+      return LearningScenePlayer(block, state: state, action: action);
+    }
     if (ScienceGraphic.kinds.contains(kind)) {
-      return ScienceGraphic(block, action: action);
+      final processScene = processLearningScene(block);
+      final graphic = ScienceGraphic(block, action: action);
+      if (processScene == null) return graphic;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          graphic,
+          ExpansionTile(
+            key: ValueKey('process-scene-${block['title']}'),
+            title: const Text('Schrittweise ansehen'),
+            leading: const Icon(Icons.play_circle_outline_rounded),
+            children: [LearningScenePlayer(processScene, state: state)],
+          ),
+        ],
+      );
     }
     final text = description;
     return LearningGraphicFrame(

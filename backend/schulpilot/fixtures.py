@@ -12,12 +12,26 @@ from .audit_fixtures import cases
 from .audit_fixtures import image as audit_image
 from .evaluation_corpus import CASES as ORIGINAL_CASES
 
-CASES = ORIGINAL_CASES | cases()
+SCENE_FIXTURE_ID = "learning-scene-flow-v1"
+SCENE_CASE = {
+    "subject": "Geographie", "topic": "Wasserkreislauf", "grade": 5,
+    "lines": [
+        "Wasserkreislauf.",
+        "Wasser → Wasserdampf.",
+        "Wasserdampf → Wolke.",
+        "Wolke → Wasser.",
+        "Wasser verdunstet. Wasserdampf kondensiert in der Wolke.",
+        "Wasser fällt als Niederschlag zurück.",
+        "Wasser = flüssig.",
+        "Wasserdampf = gasförmig.",
+    ],
+}
+CASES = ORIGINAL_CASES | cases() | {SCENE_FIXTURE_ID: SCENE_CASE}
 
 FIXTURE_ID = "fractions-v1"
 DAY_FIXTURE_IDS = ("fractions-day-1-v1", "fractions-day-2-v1")
 PACKAGE_FIXTURE_ID = "fractions-day-package-v1"
-LIVE_FIXTURE_IDS = (FIXTURE_ID, *DAY_FIXTURE_IDS, *ORIGINAL_CASES)
+LIVE_FIXTURE_IDS = (FIXTURE_ID, *DAY_FIXTURE_IDS, *ORIGINAL_CASES, SCENE_FIXTURE_ID)
 AUDIT_FIXTURE_IDS = tuple(cases())
 CONTENT = (
     "Ein Bruch beschreibt Teile eines Ganzen. Der Nenner steht unter dem Bruchstrich "
@@ -124,6 +138,10 @@ def trusted_payload(function, fixture_id=FIXTURE_ID):
         result["material"] = None if function == "extract" else {
             "subject": case["subject"], "topic": case["topic"], "content": "\n".join(case["lines"]),
         }
+        if fixture_id == SCENE_FIXTURE_ID and function == "unit":
+            result["required_subject"] = case["subject"]
+            result["required_topic"] = case["topic"]
+            result["scene_request"] = {"kind": "scene", "disclosure": "hint1", "steps": 3, "matching_pairs": 2}
         return result
     if fixture_id in DAY_FIXTURE_IDS:
         result["material"] = (

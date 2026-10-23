@@ -1,6 +1,7 @@
 # Schulpilot: gemeinsame Lernoberfläche
 
-Gestaltungsstand 23.10.2026, veröffentlicht als **1.25.0+96**. Die angemeldete
+Veröffentlichte Gestaltungsbasis **1.25.0+96**, interaktiver Ausbau zur
+Zielversion **1.26.0+97** am 23.10.2026; dessen Deployment ist noch offen. Die angemeldete
 simpleclub-App wurde auf ausdrücklichen Nutzerauftrag direkt bei
 1440×1000 px und mobil bei 390×844 px betrachtet. Die Beobachtung umfasst das
 Thema „Brüche“, den Planerstellungsassistenten und die Vorlagenvorschau
@@ -144,6 +145,59 @@ Callbacks und Kontokontextprüfungen bleiben beim bestehenden Aufrufer. Die
 vorhandenen fachlichen Regeln gelten weiter:
 [SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
 
+## Szenen und direkte Zuordnung ab Zielversion 1.26.0
+
+Die nächste Erweiterung übernimmt weitere beobachtete Bedienprinzipien:
+zusammenhängende Objekte, gezielt anwählbare Zustände, sichtbare Beziehungen und
+kurze Erläuterungen unmittelbar an der Grafik. Die öffentliche Referenzprüfung
+umfasst 36 Katalogseiten mit 372 Themenverweisen, keine entsprechende Zahl
+bedienter Aufgaben. Tatsächlich verändert wurden im öffentlichen Businessdemo
+der Lötschritt Start→2 und die Würfelebene 0→1. Eine sichtbare Halfpipe auf Web
+und Mobil sowie angetippte Hotspots belegen noch keine abgespielte Bewegung.
+Geschützte Bruch-/Funktionsübungen und Physikaufgaben waren gesperrt.
+Recherche und Grenzen: [INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md).
+
+Eigene Szenen verwenden den bestehenden `LearningGraphicFrame` und dieselbe
+lokale, kontogebundene Vergrößerung. Helle Formen, abgesetzte Farbtöne,
+gerichtete Pfeile und eine klare aktive Phase ordnen die dunkle Lernfläche.
+Bedeutung wird durch Form, Text und Hervorhebung gemeinsam vermittelt. Lange
+Beschriftungen und 200 % Schrift dürfen weder abgeschnittene Pflichtangaben
+noch unbedienbare Steuerungen erzeugen; der Inhaltsbereich berücksichtigt
+320 px ebenso wie große Browseransichten. Der konkrete Szenenvertrag steht in
+[SCIENTIFIC_CONTENT.md](SCIENTIFIC_CONTENT.md).
+
+Es gibt kein automatisches Abspielen. Bewusstes Starten/Pausieren, Vor/Zurück,
+Wiederholen und ein kontinuierlicher Schrittregler stehen neben sichtbarer
+Schrittzahl und Erläuterung. Reduzierte Bewegung zeigt statische Zustände.
+Die vollständige Beschreibung und Pfeilbeziehungen sind unabhängig von Bewegung
+lesbar. Hintergrund, überdeckte Route und ein anderer Aufgaben-/Kontokontext
+stoppen die Animation. Die gewählte Offenlegungsstufe gilt für sämtliche
+Schritte; ein Vorwärtsregler öffnet niemals eine spätere Hilfe. Vorhandene
+Prozessdiagramme bleiben zunächst statisch; „Schrittweise ansehen“ öffnet ihre
+optionale lokale Hervorhebung, ohne neue Beziehungen zu erzeugen.
+
+Zuordnungen zeigen wiederverwendbare Antwortkarten und klar markierte Ziele.
+Langes Drücken beginnt den mobilen Drag; Randscrollen hält längere Aufgaben
+bedienbar. Die ganze Zielzeile öffnet weiterhin dieselbe Auswahl per Tippen
+oder Tastatur. Ein Drop ändert den lokalen Entwurf und behält gespeicherte
+Antwortreihenfolge, Kontextwachen und ausdrückliches Prüfen bei. Erfolg,
+Bewertung und Hilfenutzung werden ausschließlich durch den vorhandenen Ablauf
+festgestellt, niemals durch Loslassen einer Karte oder Abspielen einer Szene.
+
+Lokaler Prüfstand: 571 gezielte Flutterfälle in 16 Dateien bestanden und acht
+betroffene Dartdateien ohne Analysebefund. Dies ist keine vollständige
+Projektsuite oder WCAG-Abnahme. Der geschützte vollständige OpenRouter-Mock
+liefert Szene und Zuordnung; die einmalige echte synthetische Modellprobe
+wurde hingegen für 0,001436 USD normal abgerechnet und wegen ungültiger
+Aufgabenstruktur verworfen. Ohne gespeicherte Rohantwort bleibt die Ursache
+offen; kein Retry und kein behaupteter erfolgreicher echter KI-Szenenlauf.
+Die unabhängige Codeprüfung meldete Quellenabgrenzung bei Pfeilbegriffen und
+Materialgrenzen sowie vorweggenommene Zuordnung durch gegebene Prozessgrafiken.
+Alle drei Korrekturen sind mit Regressionen abgeschlossen;446Backendfälle in18Dateien
+bestanden. Dies ist keine vollständige Sicherheits- oder Inhaltsauditgarantie.
+Die künstliche Desktop-/Mobil-Browserprobe ist abgeschlossen; das Deployment ist noch offen;
+[RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md) führt den tatsächlichen Stand.
+
 ## Schrift und Grafik
 
 Nunito für gemeinsame Überschriften und Fließtext; Space Grotesk bleibt für
@@ -187,7 +241,7 @@ Zusätzliche Rendererfälle prüfen Wechsel beider Themen. Tatsächliche Browser
 Build- und Testergebnisse stehen in STATUS.md; diese Beschreibung ist keine
 vollständige WCAG-Zertifizierung, physische Android- oder Wirksamkeitsstudie.
 
-Abnahme des aktuellen Darstellungsstands: 717 Flutterfälle in 26 Dateien bestanden;
+Abnahme der veröffentlichten Gestaltungsbasis 1.25.0+96: 717 Flutterfälle in 26 Dateien bestanden;
 die statische Analyse aller 20 geänderten Dartdateien blieb ohne Befund. Darunter
 sind die neuen Plan-/Grafikfälle für 320 px mit 200 % Schrift, 390 px und 1440 px,
 Freigabestufen, lokale Zoomaktionen und Kontowechsel sowie bestehende Lernraum-,
@@ -267,3 +321,11 @@ Beim bewussten Wechsel zwischen Anmeldung, Passwort-Hilfe und Registrierung
 kann der gerade eingegebene Benutzername bzw. die E-Mail einmalig im RAM
 weitergegeben werden. Ein Kindername wird nicht als Eltern-E-Mail ausgegeben.
 Keine Passwörter, URL-Parameter oder persistente Speicherung für diese Übergabe.
+
+Abschluss der lokalen97-Abnahme:446Backendfälle in18Sammlungen bestanden nach
+allen drei strengeren Quellen-/Offenlegungsfixes; keine weiteren Modellaufrufe.
+571Flutterfälle plus13Zoom-/Referenzfälle (sechs überschneiden sich), Analyse
+acht plus zwei betroffener Dateien ohne Befund. Künstliche1440px-/390px-Probe
+mit Abspielen, Schrittwechsel, Reglergeste und Tippzuordnung abgeschlossen.
+Physische Geräteabnahme und erfolgreiche echte KI-Szenenerzeugung bleiben offen;
+Build/Deployment ausschließlich gemäß RELEASE_97_2026_10_23.md bewerten.

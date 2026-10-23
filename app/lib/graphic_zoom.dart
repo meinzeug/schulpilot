@@ -137,13 +137,28 @@ class _GraphicZoomState extends State<GraphicZoom> {
                 ],
               ),
               Expanded(
-                child: InteractiveViewer(
-                  transformationController: controller,
-                  constrained: false,
-                  minScale: .5,
-                  maxScale: 4,
-                  boundaryMargin: const EdgeInsets.all(400),
-                  child: SizedBox(width: 600, child: widget.render(block)),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final responsive = {
+                      'scene',
+                      'process_graph',
+                      'process_cycle',
+                    }.contains(block['kind']);
+                    final width = responsive
+                        ? constraints.maxWidth.clamp(0.0, 600.0)
+                        : 600.0;
+                    return InteractiveViewer(
+                      transformationController: controller,
+                      constrained: false,
+                      minScale: .5,
+                      maxScale: 4,
+                      boundaryMargin: const EdgeInsets.all(400),
+                      child: SizedBox(
+                        width: width,
+                        child: widget.render(block),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

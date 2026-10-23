@@ -1,4 +1,4 @@
-"""Version 1, finite vector instructions. No markup, external assets or model coordinates.
+"""Version 1, source-bound vector instructions. No markup, assets or executable code.
 
 Private disclosure stages/quotes remain in question snapshots. Public projection
 never contains a future hint/solution, including its alternative description.
@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from . import science_graphics
+from . import learning_scenes, science_graphics
 
 KINDS = (
     "fraction",
@@ -50,6 +50,7 @@ KINDS = (
     "forces",
     "money",
     *science_graphics.KINDS,
+    "scene",
 )
 
 # The same profiles constrain generation and document the curriculum's limits.
@@ -90,7 +91,7 @@ for _subject, _kinds in {
     PROFILES[_subject] = (*PROFILES[_subject], *_kinds)
 
 for _subject in PROFILES:
-    PROFILES[_subject] = (*PROFILES[_subject], "process_graph", "process_cycle")
+    PROFILES[_subject] = (*PROFILES[_subject], "process_graph", "process_cycle", "scene")
 for _subject in ("Mathematik", "Physik", "Technik"):
     PROFILES[_subject] = (*PROFILES[_subject], "function_curve")
 PICTURE_WORDS = {
@@ -210,6 +211,7 @@ class Graphic(Bounded):
         "forces",
         "money",
         "function_graph", "data_plot", "cell", "molecule", "logic_table", "circuit_network", "technical_drawing", "function_curve", "process_graph", "process_cycle",
+        "scene",
     ]
     title: str = Field(min_length=1, max_length=100)
     disclosure: Literal["given", "hint1", "hint2", "hint3", "solution"]
@@ -256,9 +258,16 @@ class Graphic(Bounded):
         "sine", "cosine", "exponential", "logarithm", "square_root", "reciprocal", "cubic", "absolute",
     ]
 
+    scene: learning_scenes.SceneV1 | None = None
+
     @model_validator(mode="after")
     def coherent(self):
         n, labels = self.numbers, self.labels
+        if self.kind == "scene":
+            if self.scene is None or not labels or n or self.connections or self.marks or self.unit or self.variant:
+                raise ValueError("Lernszene benötigt Szenendaten und Textalternative, keine fachfremden Grafikparameter.")
+        elif self.scene is not None:
+            raise ValueError("Szenendaten gehören ausschließlich zu kind scene.")
         if self.kind in science_graphics.KINDS:
             science_graphics.validate(self, {}, [self.source_excerpt])
         if self.variant in ("roots", "pollination") and self.disclosure != "solution":
@@ -409,11 +418,12 @@ Bei ausdrücklich belegtem Pflanzenaufbau plant verwenden. Wurzelaufnahme und Ha
 Bestäubung und Befruchtung als zwei getrennte Schritte mit forms/variant pollination zeigen, nur mit wörtlich belegten Beschriftungen und disclosure solution.
 Satzmarkierungen marks geben Bausteinindex und ausdrücklich belegte Subjekt-/Prädikatrolle an; nur hint/solution, nie als vorweggenommene Lösung.
 Zahnrad-variant nennt die ausdrücklich vorgegebene Anfangsdrehrichtung clockwise/counterclockwise.
-Keine beliebigen SVG/HTML/Bilder/Koordinaten. Grafik nur wenn sie das konkrete Lernziel erklärt; keine Dekoration.
+Keine SVG/HTML/Bilder oder freien Koordinaten; scene verwendet ausschließlich lokale Layoutplätze. Grafik nur wenn sie das konkrete Lernziel erklärt; keine Dekoration.
 source_excerpt muss wörtlich im bestätigten Stoff stehen, bei neuen Rechenzahlen in der Aufgabenstellung.
 labels und Zahlen ausschließlich aus diesem Beleg und ausdrücklich gegebenen Werten. Kein geheimes Ergebnis in einer gegebenen Grafik.
 disclosure given ist vor der Antwort sichtbar; hint1/2/3 erst nach jeweiliger Hilfe, solution erst nach Abschluss der Aufgabe.
 Vollständige Rückseiten, richtige Zuordnungspaare, Zielwort oder Rechenergebnis gehören in solution, nicht in given.
+Bei type match erklärende Grafiken ausschließlich ab hint1/hint2/hint3/solution ergänzen, nie given.
 Nahrungspfeile: Nahrung→Fresser. Reflexion: beide Winkel zum Lot, nicht zum Spiegel. Senkrechte Dreieckshöhe und rechte Winkel beachten.
 Jahrhundert1=1–100, kein Jahr0. Schaltplan: Schalter offen trennt den Stromkreis; geschlossen verbindet.
 Notenwerte werden in Viertelschlägen benannt, deutsche Klaviertasten C D E F G A H C. RYB und RGB unterscheiden.
@@ -424,11 +434,12 @@ solche Reflexionsaufgaben ausschließlich freie Texteingabe, Bewertung offen. Hi
 
 def rules_for(subjects):
     allowed = {kind for subject in subjects for kind in PROFILES.get(subject, ())}
-    return RULES + science_graphics.rules_for(allowed)
+    return RULES + science_graphics.rules_for(allowed) + (learning_scenes.RULES if "scene" in allowed else "")
 
 
 def generation_context(subjects):
-    return {"version": 1, "graphic_kinds": sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())})}
+    return {"version": 1, "graphic_kinds": sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())}),
+            "scene_version": 1, "scene_limits": {"objects": 12, "steps": 8, "transition_ms": 800}}
 
 
 def _contains(haystack, needle):
@@ -446,6 +457,8 @@ def validate_question(presentation, question, sources, allowed_kinds):
             raise ValueError("Grafik ohne wörtlichen Quellenbeleg.")
         if block.kind in science_graphics.KINDS:
             science_graphics.validate(block, question, sources)
+        if block.kind == "scene":
+            learning_scenes.validate(block, question, sources)
         # Numeric values are given data, not newly invented source facts.
         quoted = (block.source_excerpt + " " + question["prompt"]).replace("−", "-")
         values_to_check = block.numbers
@@ -507,6 +520,11 @@ def validate_question(presentation, question, sources, allowed_kinds):
             ):
                 raise ValueError("Nahrungskette ohne belegte Pfeilrichtung.")
         if block.disclosure == "given":
+            if question.get("type") == "match":
+                # A single label/value, arrow or layout can reveal one private
+                # pair even when the complete semicolon answer is absent.
+                # This validates new output; stored snapshots are not changed.
+                raise ValueError("Gegebene Grafik darf kein richtiges Zuordnungspaar vorwegnehmen.")
             answer = question.get("answer", "").strip()
             caption = " ".join([block.title, *block.labels])
             if len(answer) > 2 and _contains(caption, answer) and not _contains(question["prompt"], answer):
@@ -515,7 +533,7 @@ def validate_question(presentation, question, sources, allowed_kinds):
             raise ValueError("Offene Reflexion oder Bewegung wird nicht als eindeutige Auswahl geprüft.")
 
 
-def validate_output(data, payload):
+def validate_output(data, payload, *, bounded_matching=False):
     units = data.get("units") or ([data["next_unit"]] if data.get("next_unit") else [data])
     material_items = payload.get("materials") or [payload.get("material") or {}]
     material_items = [item for item in material_items if isinstance(item, dict)]
@@ -525,6 +543,8 @@ def validate_output(data, payload):
         sources = [m.get("content", "") for m in material_items if group is None or m.get("group_id") == group]
         for question in unit.get("questions", []):
             validate_question(question.get("presentation"), question, sources, PROFILES.get(subject, ()))
+            if bounded_matching:
+                learning_scenes.validate_matching(question, sources)
 
 
 def public_presentation(value, *, closed=False, hints=0):
@@ -536,7 +556,8 @@ def public_presentation(value, *, closed=False, hints=0):
         "version": 1,
         "evidence_kind": p.evidence_kind,
         "blocks": [
-            {k: v for k, v in b.model_dump().items() if k != "source_excerpt"}
+            {**{k: v for k, v in b.model_dump(exclude={"source_excerpt", "scene"}).items()},
+             **({"scene": learning_scenes.public_scene(b.scene)} if b.scene is not None else {})}
             for b in p.blocks
             if b.disclosure in allowed
         ],
@@ -590,7 +611,7 @@ def open_learning_unit(unit):
 
 
 def bind_graphic_schema(schema, subjects):
-    """Use the selected finite profile in this private request, never a new call."""
+    """Bind selected subject renderers and declarative scenes in the same private request."""
     allowed = sorted({kind for subject in subjects for kind in PROFILES.get(subject, ())})
     graphic = schema.get('$defs', {}).get('Graphic')
     if allowed and graphic:

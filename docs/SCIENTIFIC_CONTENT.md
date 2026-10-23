@@ -6,6 +6,85 @@ Antwortfeedback und Heftfragen. Eingaben bleiben gewöhnliche fotografierte,
 auch handschriftliche Schulhefter. Gedruckte KI-Testseiten sind kein neues
 Eingabeformat, keine Produktbilder und keine Voraussetzung für diese Funktionen.
 
+## Individuelle Szenen und Zuordnungen · Zielversion 1.26.0+97
+
+Der ausdrückliche Ausbauauftrag vom 23.10.2026 erlaubt zusätzlich individuell
+von der bestehenden KI komponierte Grafiken und Animationen. Die bisherigen
+endlichen Fachmodelle und ihre fachlichen Prüfungen bleiben erhalten. Neu ist
+`Graphic.kind = scene` innerhalb derselben versionierten `presentation`;
+`scene.version = 1` beschreibt eine begrenzte, deklarative Komposition. Die
+Freigabe umfasst keine ausführbaren Modellprogramme, beliebigen SVG-/HTML-Code,
+freien Koordinaten, externen Assets oder zusätzlichen Bilddienst.
+
+| Bestandteil | Tatsächlicher Szenenvertrag |
+| --- | --- |
+| Aufbau | `grid`, `row` oder `cycle`; lokale schematische Plätze statt Messkoordinaten |
+| Objekte | 1–12 eindeutige IDs; belegte Beschriftungen bis 160 Zeichen; `box`, `circle`, `triangle`, `diamond`; semantische Farbtöne `neutral`, `accent`, `secondary` |
+| Schritte | 1–8; jeder platziert alle Objekte genau einmal auf eindeutigen Slots 0–11; Beschreibung bis 500 Zeichen |
+| Beziehungen | Bis 24 gerichtete Pfeile je Schritt, optionale Beschriftung bis 80 Zeichen; keine Selbstkante, doppelte gerichtete Kante oder unbekannte Objekt-ID |
+| Hervorhebung | Ausschließlich vorhandene, nicht doppelte Objekt-IDs |
+| Übergang | 0–800 ms; lokale Animation, keine physikalische Simulation oder fachliche Messung |
+| Textalternative | Nichtleere äußere `labels`, höchstens 16 Einträge bis 160 Zeichen; gesamte Szene zusätzlich als lesbare Beschreibung |
+
+Titel, Beschriftungen und Zustandsbeschreibungen benötigen wörtliche Belege.
+Jeder Schritt besitzt einen privaten `source_excerpt`; seine Beschreibung muss
+im Schrittbeleg enthalten sein. Fachliche Pfeile benötigen eine ausdrücklich
+bestätigte Richtung zwischen den vollständigen Begriffen, nicht bloß deren
+Vorkommen oder eine erfundene Beziehung im erzeugten Aufgabentext. Layout und
+Bewegung sind schematische Erläuterungen. Für Funktionsgleichungen, Messwerte,
+Molekülbindungen und Schaltungen bleibt das passende geprüfte Fachmodell
+maßgeblich. Die Szenengrammatik ist in allen 24 Fachprofilen freigegeben; dies
+ist keine Abnahme sämtlicher Fachinhalte oder Lehrpläne.
+
+Die gesamte Szene mit allen Objekten, Schritten und Alternativtexten gehört zu
+genau einer vorhandenen Offenlegungsstufe. Ein Regler öffnet keine spätere Hilfe
+oder Lösung. Der Server entfernt sowohl den äußeren Quellenbeleg als auch jeden
+Schrittbeleg aus der öffentlichen Projektion. Gegebene Darstellungen dürfen
+keine richtige Antwort oder Zuordnung vorwegnehmen; erklärende Szenen einer
+Zuordnungsaufgabe öffnen erst über die vorhandenen Hilfen bzw. die Lösung.
+
+Der eigene Flutter-Player startet ausschließlich bewusst. Start/Pause,
+Vor/Zurück, Wiederholen und ein kontinuierlicher Schrittregler steuern lokale
+Übergänge. Beschreibungen, Beziehungen und Alternativtexte bleiben lesbar.
+Reduzierte Bewegung verwendet statische Schritte. Hintergrund, überdeckte Route,
+Daten-/Frage-/Konto- oder Sitzungswechsel stoppen den Player. Ohne übergebenen
+Kontokontext steht nur statisches schrittweises Lesen zur Verfügung. Abspielen
+sendet keine Anfrage, Antwort, Lernzeit oder Fortschrittsmeldung. Die bisherigen
+`process_graph`-/`process_cycle`-Diagramme bleiben erhalten; „Schrittweise
+ansehen“ hebt auf Wunsch ausschließlich bereits freigegebene Knoten und
+Beziehungen lokal hervor, ohne neue Fakten oder Modellanfrage.
+
+Bestehende Zuordnungen erhalten Drag-and-drop mit sichtbaren Antwortkarten,
+Zielen und mobilem Randscrollen. Tippen und Tastatur verwenden weiterhin die
+vollständige vorhandene Auswahl. Ein Drop aktualisiert nur den Entwurf;
+„Antwort prüfen“ bleibt die ausdrückliche Bewertungsaktion. Neue kompakte
+OpenRouter-Runden dürfen zwei bis vier eindeutige, gruppenlokal wörtlich als
+`links = rechts`, `links: rechts`, `links → rechts`, `links -> rechts` oder
+`links | rechts` belegte Paare erzeugen. Bloß benachbarte Begriffe reichen nicht.
+`options` bleibt `links|rechts`, `answer` enthält die rechten Werte in linker
+Originalreihenfolge mit Semikolon, `accepted` bleibt leer. Die Begriffe enthalten
+keine Semikolons; richtige Paarungen dürfen im Prompt nicht bereits stehen.
+Dies nutzt bestehende Aufgabenplätze, Anbieterreservierung und Token-/Zeitlimits;
+Codex-Pakete behalten ihren bisherigen choice/short-Umfang. Kein zusätzlicher
+Dienst, keine neue Generierung durch OCR, Rückblick oder GET.
+
+Prüfstand dieses Ausbaus: 571 gezielte Flutterfälle aus 16 Dateien bestanden,
+Analyse der acht betroffenen Dartdateien ohne Befund. Ein vollständiger
+lokaler geschützter OpenRouter-Mock durchläuft Szene und Zuordnung; künstliche
+Rendererfixtures sind ausdrücklich keine echte KI-Ausgabe. Die einmalige echte
+synthetische Modellprobe wurde wegen ungültiger Aufgabenstruktur verworfen:
+0,001436 USD, 4115 Eingabe-/2049 Ausgabetokens, normal abgerechnet, kein Retry.
+Die Rohantwort wurde nicht gespeichert; die genaue Ursache ist unbekannt.
+Daraus folgt kein erfolgreicher echter KI-Szenennachweis. Die lokale Backend-/
+Browserabnahme ist abgeschlossen; Build-/Deploymentbelege folgen im Abschlussprotokoll.
+Die unabhängige Codeprüfung meldete Quellenabgrenzung bei Pfeilbegriffen und
+Materialgrenzen sowie vorweggenommene Zuordnung durch gegebene Prozessgrafiken.
+Alle drei Korrekturen sind mit Regressionen abgeschlossen;446Backendfälle in18Dateien
+bestanden. Dies ist keine vollständige Sicherheits- oder Inhaltsauditgarantie.
+Vertrag, Recherchegrenzen und Rückweg:
+[INTERACTIVE_LEARNING_2026_10_23.md](INTERACTIVE_LEARNING_2026_10_23.md),
+[RELEASE_97_2026_10_23.md](RELEASE_97_2026_10_23.md).
+
 ## Gemeinsame Darstellung
 
 `MathText`/`FormulaNotation` setzen Standard-TeX lokal mit dem exakt fixierten
@@ -176,3 +255,11 @@ Leerzeile, Überschriften beim ersten Inhalt, Erklärungsschritte wieder am Anfa
 889 Fluttertests vollständig bestanden; tatsächliche Web-/Menünachprüfung,
 Signaturen, Kostenabgrenzung und Rückweg in
 [MENU_REVIEW_2026_10_20.md](MENU_REVIEW_2026_10_20.md).
+
+Abschluss der lokalen97-Abnahme:446Backendfälle in18Sammlungen bestanden nach
+allen drei strengeren Quellen-/Offenlegungsfixes; keine weiteren Modellaufrufe.
+571Flutterfälle plus13Zoom-/Referenzfälle (sechs überschneiden sich), Analyse
+acht plus zwei betroffener Dateien ohne Befund. Künstliche1440px-/390px-Probe
+mit Abspielen, Schrittwechsel, Reglergeste und Tippzuordnung abgeschlossen.
+Physische Geräteabnahme und erfolgreiche echte KI-Szenenerzeugung bleiben offen;
+Build/Deployment ausschließlich gemäß RELEASE_97_2026_10_23.md bewerten.

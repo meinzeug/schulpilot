@@ -369,7 +369,7 @@ def bind_language_project_sources(schema, payload):
     return {**payload, "source_evidence": evidence}, quotes
 
 
-def indexed_choice_schema(schema):
+def indexed_choice_schema(schema, *, bounded_matches=False):
     """Bind a generated choice to an option without repeating its text.
 
     JSON Schema cannot express that an answer string must occur in a sibling
@@ -394,11 +394,27 @@ def indexed_choice_schema(schema):
         choice["properties"]["accepted"]["maxItems"] = 0
         other = copy.deepcopy(definition)
         other["properties"]["type"]["enum"] = [kind for kind in types if kind != "choice"]
+        matching = None
+        if bounded_matches and "match" in other["properties"]["type"]["enum"]:
+            matching = copy.deepcopy(definition)
+            matching["properties"]["type"] = {"type": "string", "enum": ["match"]}
+            matching["properties"]["options"].update(minItems=2, maxItems=4)
+            matching["properties"]["accepted"]["maxItems"] = 0
+            # A grounded short answer has a stricter 80-character/no-semicolon
+            # rule. Matching retains its existing semicolon wire contract.
+            matching["properties"]["answer"] = {"type": "string", "minLength": 1, "maxLength": 600,
+                "description": "Rechte Werte der belegten Paare in linker Originalreihenfolge, mit Semikolon verbunden."}
+            other["properties"]["type"]["enum"].remove("match")
         if "match" not in other["properties"]["type"]["enum"]:
             other["properties"]["options"]["maxItems"] = 0
-        definition.clear()
+        branches = [choice]
         if other["properties"]["type"]["enum"]:
-            definition["anyOf"] = [choice, other]
+            branches.append(other)
+        if matching is not None:
+            branches.append(matching)
+        definition.clear()
+        if len(branches) > 1:
+            definition["anyOf"] = branches
         else:
             definition.update(choice)
     return schema
@@ -496,7 +512,7 @@ def decode_choice_indices(data):
     return data
 
 
-def prepare_package_schema(schema, payload):
+def prepare_package_schema(schema, payload, *, allow_matching=False):
     """Spend the bounded exercise budget across confirmed topics and time."""
     groups = payload.get("selected_groups")
     if not isinstance(groups, list) or not groups:
@@ -547,7 +563,7 @@ def prepare_package_schema(schema, payload):
             # of accepting model-invented, potentially wrong aliases.
             if "GroundedQuestion" not in schema["$defs"]:
                 question = copy.deepcopy(schema["$defs"]["Question"])
-                question["properties"]["type"]["enum"] = ["choice", "short"]
+                question["properties"]["type"]["enum"] = ["choice", "short"] + (["match"] if allow_matching else [])
                 question["properties"]["accepted"]["maxItems"] = 0
                 question["properties"]["answer"].update(maxLength=80, pattern=r"^[^,;=+<>\n]{1,80}$")
                 question["properties"]["answer"]["description"] = (
@@ -561,7 +577,7 @@ def prepare_package_schema(schema, payload):
     return prepared, targets
 
 
-def validate_factual_package(data, payload):
+def validate_factual_package(data, payload, *, allow_matching=False):
     groups = {group["id"]: group for group in payload["selected_groups"]}
 
     def normalized(value):
@@ -571,14 +587,21 @@ def validate_factual_package(data, payload):
         group = groups.get(unit["group_id"])
         if not group or is_mathematics(group["subject"]):
             continue
-        source = normalized(
-            "\n".join(
-                material["content"]
-                for material in payload.get("materials", [])
-                if isinstance(material, dict) and material.get("group_id") == group["id"]
-            )
-        )
+        source_texts = [
+            material["content"]
+            for material in payload.get("materials", [])
+            if isinstance(material, dict) and material.get("group_id") == group["id"]
+        ]
+        source = normalized("\n".join(source_texts))
         for question in unit["questions"]:
+            if question["type"] == "match" and allow_matching:
+                from .learning_scenes import validate_matching
+
+                try:
+                    validate_matching(question, source_texts)
+                except ValueError as error:
+                    raise ProviderError(str(error)) from None
+                continue
             if (
                 question["type"] not in ("choice", "short")
                 or question["accepted"]
@@ -862,8 +885,9 @@ def transport_payload(function, payload):
 def request_provider(config, function, payload, image_bytes=None, *, synthetic_fixture=False, private_probe=False):
     started = time.monotonic()
     billing_result = None
+    scene_fixture_request = False
     if synthetic_fixture:
-        from .fixtures import FIXTURE_ID, PACKAGE_FIXTURE_ID, trusted_payload, worksheet
+        from .fixtures import FIXTURE_ID, PACKAGE_FIXTURE_ID, SCENE_FIXTURE_ID, trusted_payload, worksheet
 
         # Never forward caller-supplied text, images, preferences, names or goals.
         fixture_id = synthetic_fixture if isinstance(synthetic_fixture, str) else FIXTURE_ID
@@ -875,6 +899,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             payload = synthetic_payload()
         else:
             payload = trusted_payload(function, fixture_id)
+            scene_fixture_request = fixture_id == SCENE_FIXTURE_ID and function == "unit"
         image_bytes = worksheet(fixture_id) if function == "extract" else None
     external_allowed(config, bool(image_bytes), synthetic_fixture, operator_probe=private_probe)
     if function == "extract":
@@ -1127,6 +1152,18 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             "Keine bereits gezeigte Antwort als neuen selbstständigen Abruf ausgeben.")
     if visual_functions:
         instructions += subject_content.rules_for(subjects)
+    if scene_fixture_request:
+        instructions += (
+            "\nDieser serverseitig festgelegte synthetische Szenentest fordert in mindestens einer Aufgabe "
+            "eine individuell zusammengesetzte presentation mit kind=scene und disclosure=hint1. "
+            "Verwende genau drei Objekte mit den belegten Labels Wasser, Wasserdampf, Wolke und genau drei Schritte "
+            "mit den wörtlichen captions Wasser → Wasserdampf, Wasserdampf → Wolke, Wolke → Wasser. "
+            "Gestalte Formen, Farbtöne, Layout, Hervorhebungen und wechselnde lokale Plätze selbst innerhalb des Schemas. "
+            "Jeder Schritt zeichnet nur seinen belegten gerichteten Pfeil. Keine Szene oder Quelle aus dem Aufrufer übernehmen. "
+            "Die Runde enthält genau eine kleine match-Aufgabe mit den zwei wörtlich belegten Paaren "
+            "Wasser|flüssig und Wasserdampf|gasförmig, answer flüssig;gasförmig, accepted leer. "
+            "Die andere Aufgabe ist eine normale kurze Eingabe. Die Szene kann zur Zuordnung gehören und öffnet erst nach der ersten Hilfe."
+        )
     if catalog_context:
         from .catalog_ai import RULES
 
@@ -1273,14 +1310,14 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
             else (
                 "Verwende in dieser Etappe ausschließlich Auswahlaufgaben zu Begründungen, Vergleichen oder Fehlerkorrekturen. "
                 if reasoning_stage
-                else "Verwende sowohl Auswahlaufgaben als auch kurze Eingaben (gap oder short). "
+                else "Wähle passende Auswahlaufgaben, kurze Eingaben (gap/short) oder eine kleine ausdrücklich belegte Zuordnung (match). "
             )
         )
         instructions += (
             "\n"
             + task_count
             + variety
-            + "Verwende keine Zuordnungen. Je Aufgabe genau einen oder zwei kurze Hinweise. "
+            + "Zuordnungen haben zwei bis vier wörtlich belegte Paare. Je Aufgabe genau einen oder zwei kurze Hinweise. "
             "Erkläre den bestätigten Stoff in kurzen Absätzen und höchstens zehn kurzen Sätzen. "
         )
 
@@ -1291,8 +1328,6 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                     properties["questions"].update(minItems=block_count or 2, maxItems=block_count or 2)
                 if "hints" in properties:
                     properties["hints"]["maxItems"] = 2
-                if "type" in properties and properties["type"].get("enum") == ["choice", "gap", "match", "short"]:
-                    properties["type"]["enum"] = ["choice", "gap", "short"]
                 for item in node.values():
                     compact(item)
             elif isinstance(node, list):
@@ -1335,16 +1370,16 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Die kurze freie Begriffsabfrage folgt gezielt in der Etappe recall."
             )
         elif not math_examples:
-            instructions += " Erzeuge choice und short."
+            instructions += " Erzeuge choice/short oder eine kleine ausdrücklich belegte match-Zuordnung."
         if not is_mathematics(payload.get("required_subject")):
             for definition in schema.get("$defs", {}).values():
                 props = definition.get("properties", {})
                 if "prompt" in props and "type" in props:
-                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short"]
+                    props["type"]["enum"] = ["choice"] if reasoning_stage else ["choice", "short", "match"]
                     props["accepted"].update(maxItems=0)
     package_targets = {}
     if (compact_openrouter or config.provider == "codex") and function == "package":
-        payload, package_targets = prepare_package_schema(schema, payload)
+        payload, package_targets = prepare_package_schema(schema, payload, allow_matching=compact_openrouter)
         if package_targets:
             instructions += (
                 "\nDie topics jeder selected_groups-Gruppe stammen aus ALLEN bestätigten Heftseiten. "
@@ -1355,17 +1390,21 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Jede kurze Texteingabe soll nur einen klaren Begriff oder Zusammenhang verlangen. "
                 "Bei Fächern außer Mathematik frage nach genau einem wörtlich im zugehörigen "
                 "materials.content belegten Begriff oder kurzen Ausdruck. Verwende ihn unverändert als answer. "
-                "Verwende dort ausschließlich choice oder short, keine gap-Aufgabe. Eine short-Antwort hat höchstens "
+                "Verwende dort choice, short oder eine kleine ausdrücklich belegte match-Zuordnung, keine gap-Aufgabe. Eine short-Antwort hat höchstens "
                 "fünf Wörter und 80 Zeichen. Keine ganzen Gleichungen, Aufzählungen oder mehrteiligen Antworten. "
                 "accepted bleibt bei diesen Einheiten IMMER leer; keine weiteren nur verwandten Begriffe "
                 "als richtige Antworten ergänzen. Bei gap/short bleibt options immer leer. "
                 "Bleibe innerhalb der angegebenen Lernzeit; versprich damit keine vollständige Beherrschung."
             )
+    if compact_openrouter:
+        from .learning_scenes import MATCH_RULES
+
+        instructions += MATCH_RULES
     indexed_choices = (
         config.provider in ("openrouter", "codex") and function not in ("extract", "tutor", "schulbuddy", "vocabulary_import", "decision") and not review_only
     )
     if indexed_choices:
-        indexed_choice_schema(schema)
+        indexed_choice_schema(schema, bounded_matches=compact_openrouter)
         instructions += (
             "\nVERBINDLICHES AUSGABEFORMAT FÜR AUSWAHLAUFGABEN (type=choice): "
             "options enthält die vollständigen Antworttexte. answer ist ausschließlich der nullbasierte "
@@ -1682,7 +1721,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
         def omit_absent_presentations(value):
             if isinstance(value, dict):
                 for key, item in list(value.items()):
-                    if key == "presentation" and item is None:
+                    if key in ("presentation", "scene") and item is None:
                         del value[key]
                     else:
                         omit_absent_presentations(item)
@@ -1762,6 +1801,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                         "selected_groups": [{"id": "block", "subject": payload["required_subject"]}],
                         "materials": [{**payload["material"], "group_id": "block"}],
                     },
+                    allow_matching=compact_openrouter,
                 )
         if package_targets and (
             len(data["units"]) != len(package_targets)
@@ -1772,7 +1812,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 "Die KI hat den vorgegebenen Lernumfang nicht vollständig erstellt. Bitte das Paket erneut versuchen."
             )
         if package_targets:
-            validate_factual_package(data, payload)
+            validate_factual_package(data, payload, allow_matching=compact_openrouter)
         if function == "coach" and payload.get("learning_goals"):
             data["learning_goals"] = payload["learning_goals"]
             if model_type is s.AssignedCoachingReviewOutput:
@@ -1785,7 +1825,7 @@ def request_provider(config, function, payload, image_bytes=None, *, synthetic_f
                 if review["question_id"] in assigned_goals:
                     review["learning_goal_id"] = assigned_goals[review["question_id"]]
         if visual_functions:
-            subject_content.validate_output(data, payload)
+            subject_content.validate_output(data, payload, bounded_matching=compact_openrouter)
         cost = None
         reported = usage.get("cost") if config.provider == "openrouter" else None
         if (

@@ -1,0 +1,710 @@
+{
+  "version": 1,
+  "provenance": "Manually curated synthetic scenes; no OCR or live-provider claim. public_presentation is the already disclosed, quote-free renderer fixture.",
+  "cases": [
+    {
+      "id": "SCENE01",
+      "subject": "Geographie",
+      "source": "Verdunstung → Kondensation → Niederschlag.",
+      "question": {
+        "id": "scene01",
+        "type": "short",
+        "prompt": "Wie heißt der Übergang vom Wasserdampf zu kleinen Wassertröpfchen?",
+        "options": [],
+        "answer": "Kondensation",
+        "accepted": [],
+        "hints": [
+          "Vergleiche die belegten Begriffe."
+        ],
+        "explanation": "Verdunstung → Kondensation → Niederschlag.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "scene",
+              "title": "Verdunstung",
+              "disclosure": "hint1",
+              "source_excerpt": "Verdunstung → Kondensation → Niederschlag.",
+              "labels": [
+                "Verdunstung",
+                "Kondensation",
+                "Niederschlag"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "",
+              "scene": {
+                "version": 1,
+                "layout": "cycle",
+                "objects": [
+                  {
+                    "id": "o0",
+                    "label": "Verdunstung",
+                    "shape": "circle",
+                    "tone": "accent"
+                  },
+                  {
+                    "id": "o1",
+                    "label": "Kondensation",
+                    "shape": "box",
+                    "tone": "neutral"
+                  },
+                  {
+                    "id": "o2",
+                    "label": "Niederschlag",
+                    "shape": "diamond",
+                    "tone": "secondary"
+                  }
+                ],
+                "steps": [
+                  {
+                    "caption": "Verdunstung",
+                    "source_excerpt": "Verdunstung → Kondensation → Niederschlag.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 0
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 1
+                      },
+                      {
+                        "object_id": "o2",
+                        "slot": 2
+                      }
+                    ],
+                    "highlight": [
+                      "o0"
+                    ],
+                    "edges": [
+                      {
+                        "start": "o0",
+                        "end": "o1",
+                        "label": ""
+                      }
+                    ]
+                  },
+                  {
+                    "caption": "Kondensation",
+                    "source_excerpt": "Verdunstung → Kondensation → Niederschlag.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 1
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 2
+                      },
+                      {
+                        "object_id": "o2",
+                        "slot": 0
+                      }
+                    ],
+                    "highlight": [
+                      "o1"
+                    ],
+                    "edges": [
+                      {
+                        "start": "o1",
+                        "end": "o2",
+                        "label": ""
+                      }
+                    ]
+                  },
+                  {
+                    "caption": "Niederschlag",
+                    "source_excerpt": "Verdunstung → Kondensation → Niederschlag.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 2
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 0
+                      },
+                      {
+                        "object_id": "o2",
+                        "slot": 1
+                      }
+                    ],
+                    "highlight": [
+                      "o2"
+                    ],
+                    "edges": []
+                  }
+                ],
+                "transition_ms": 400
+              }
+            }
+          ]
+        }
+      },
+      "public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": [
+          {
+            "kind": "scene",
+            "title": "Verdunstung",
+            "disclosure": "hint1",
+            "labels": [
+              "Verdunstung",
+              "Kondensation",
+              "Niederschlag"
+            ],
+            "numbers": [],
+            "connections": [],
+            "marks": [],
+            "unit": "",
+            "variant": "",
+            "scene": {
+              "version": 1,
+              "layout": "cycle",
+              "objects": [
+                {
+                  "id": "o0",
+                  "label": "Verdunstung",
+                  "shape": "circle",
+                  "tone": "accent"
+                },
+                {
+                  "id": "o1",
+                  "label": "Kondensation",
+                  "shape": "box",
+                  "tone": "neutral"
+                },
+                {
+                  "id": "o2",
+                  "label": "Niederschlag",
+                  "shape": "diamond",
+                  "tone": "secondary"
+                }
+              ],
+              "steps": [
+                {
+                  "caption": "Verdunstung",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 0
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 1
+                    },
+                    {
+                      "object_id": "o2",
+                      "slot": 2
+                    }
+                  ],
+                  "highlight": [
+                    "o0"
+                  ],
+                  "edges": [
+                    {
+                      "start": "o0",
+                      "end": "o1",
+                      "label": ""
+                    }
+                  ]
+                },
+                {
+                  "caption": "Kondensation",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 1
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 2
+                    },
+                    {
+                      "object_id": "o2",
+                      "slot": 0
+                    }
+                  ],
+                  "highlight": [
+                    "o1"
+                  ],
+                  "edges": [
+                    {
+                      "start": "o1",
+                      "end": "o2",
+                      "label": ""
+                    }
+                  ]
+                },
+                {
+                  "caption": "Niederschlag",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 2
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 0
+                    },
+                    {
+                      "object_id": "o2",
+                      "slot": 1
+                    }
+                  ],
+                  "highlight": [
+                    "o2"
+                  ],
+                  "edges": []
+                }
+              ],
+              "transition_ms": 400
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "SCENE02",
+      "subject": "Geschichte",
+      "source": "Handel → Stadt → Markt.",
+      "question": {
+        "id": "scene02",
+        "type": "short",
+        "prompt": "Welcher Ort folgt in der belegten Folge auf die Stadt?",
+        "options": [],
+        "answer": "Markt",
+        "accepted": [],
+        "hints": [
+          "Vergleiche die belegten Begriffe."
+        ],
+        "explanation": "Handel → Stadt → Markt.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "scene",
+              "title": "Handel",
+              "disclosure": "solution",
+              "source_excerpt": "Handel → Stadt → Markt.",
+              "labels": [
+                "Handel",
+                "Stadt",
+                "Markt"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "",
+              "scene": {
+                "version": 1,
+                "layout": "row",
+                "objects": [
+                  {
+                    "id": "o0",
+                    "label": "Handel",
+                    "shape": "circle",
+                    "tone": "accent"
+                  },
+                  {
+                    "id": "o1",
+                    "label": "Stadt",
+                    "shape": "box",
+                    "tone": "neutral"
+                  },
+                  {
+                    "id": "o2",
+                    "label": "Markt",
+                    "shape": "diamond",
+                    "tone": "secondary"
+                  }
+                ],
+                "steps": [
+                  {
+                    "caption": "Handel",
+                    "source_excerpt": "Handel → Stadt → Markt.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 0
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 1
+                      },
+                      {
+                        "object_id": "o2",
+                        "slot": 2
+                      }
+                    ],
+                    "highlight": [
+                      "o0"
+                    ],
+                    "edges": [
+                      {
+                        "start": "o0",
+                        "end": "o1",
+                        "label": ""
+                      }
+                    ]
+                  },
+                  {
+                    "caption": "Stadt",
+                    "source_excerpt": "Handel → Stadt → Markt.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 1
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 2
+                      },
+                      {
+                        "object_id": "o2",
+                        "slot": 0
+                      }
+                    ],
+                    "highlight": [
+                      "o1"
+                    ],
+                    "edges": [
+                      {
+                        "start": "o1",
+                        "end": "o2",
+                        "label": ""
+                      }
+                    ]
+                  },
+                  {
+                    "caption": "Markt",
+                    "source_excerpt": "Handel → Stadt → Markt.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 2
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 0
+                      },
+                      {
+                        "object_id": "o2",
+                        "slot": 1
+                      }
+                    ],
+                    "highlight": [
+                      "o2"
+                    ],
+                    "edges": []
+                  }
+                ],
+                "transition_ms": 400
+              }
+            }
+          ]
+        }
+      },
+      "public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": [
+          {
+            "kind": "scene",
+            "title": "Handel",
+            "disclosure": "solution",
+            "labels": [
+              "Handel",
+              "Stadt",
+              "Markt"
+            ],
+            "numbers": [],
+            "connections": [],
+            "marks": [],
+            "unit": "",
+            "variant": "",
+            "scene": {
+              "version": 1,
+              "layout": "row",
+              "objects": [
+                {
+                  "id": "o0",
+                  "label": "Handel",
+                  "shape": "circle",
+                  "tone": "accent"
+                },
+                {
+                  "id": "o1",
+                  "label": "Stadt",
+                  "shape": "box",
+                  "tone": "neutral"
+                },
+                {
+                  "id": "o2",
+                  "label": "Markt",
+                  "shape": "diamond",
+                  "tone": "secondary"
+                }
+              ],
+              "steps": [
+                {
+                  "caption": "Handel",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 0
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 1
+                    },
+                    {
+                      "object_id": "o2",
+                      "slot": 2
+                    }
+                  ],
+                  "highlight": [
+                    "o0"
+                  ],
+                  "edges": [
+                    {
+                      "start": "o0",
+                      "end": "o1",
+                      "label": ""
+                    }
+                  ]
+                },
+                {
+                  "caption": "Stadt",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 1
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 2
+                    },
+                    {
+                      "object_id": "o2",
+                      "slot": 0
+                    }
+                  ],
+                  "highlight": [
+                    "o1"
+                  ],
+                  "edges": [
+                    {
+                      "start": "o1",
+                      "end": "o2",
+                      "label": ""
+                    }
+                  ]
+                },
+                {
+                  "caption": "Markt",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 2
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 0
+                    },
+                    {
+                      "object_id": "o2",
+                      "slot": 1
+                    }
+                  ],
+                  "highlight": [
+                    "o2"
+                  ],
+                  "edges": []
+                }
+              ],
+              "transition_ms": 400
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "SCENE03",
+      "subject": "Mathematik",
+      "source": "2 und 3 sind Summanden.",
+      "question": {
+        "id": "scene03",
+        "type": "short",
+        "prompt": "Addiere 2 und 3.",
+        "options": [],
+        "answer": "5",
+        "accepted": [],
+        "hints": [
+          "Vergleiche die belegten Begriffe."
+        ],
+        "explanation": "2 und 3 sind Summanden.",
+        "presentation": {
+          "version": 1,
+          "evidence_kind": "knowledge",
+          "blocks": [
+            {
+              "kind": "scene",
+              "title": "2",
+              "disclosure": "given",
+              "source_excerpt": "2 und 3 sind Summanden.",
+              "labels": [
+                "2",
+                "3"
+              ],
+              "numbers": [],
+              "connections": [],
+              "marks": [],
+              "unit": "",
+              "variant": "",
+              "scene": {
+                "version": 1,
+                "layout": "grid",
+                "objects": [
+                  {
+                    "id": "o0",
+                    "label": "2",
+                    "shape": "circle",
+                    "tone": "accent"
+                  },
+                  {
+                    "id": "o1",
+                    "label": "3",
+                    "shape": "box",
+                    "tone": "neutral"
+                  }
+                ],
+                "steps": [
+                  {
+                    "caption": "2",
+                    "source_excerpt": "2 und 3 sind Summanden.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 0
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 1
+                      }
+                    ],
+                    "highlight": [
+                      "o0"
+                    ],
+                    "edges": []
+                  },
+                  {
+                    "caption": "3",
+                    "source_excerpt": "2 und 3 sind Summanden.",
+                    "placements": [
+                      {
+                        "object_id": "o0",
+                        "slot": 1
+                      },
+                      {
+                        "object_id": "o1",
+                        "slot": 0
+                      }
+                    ],
+                    "highlight": [
+                      "o1"
+                    ],
+                    "edges": []
+                  }
+                ],
+                "transition_ms": 400
+              }
+            }
+          ]
+        }
+      },
+      "public_presentation": {
+        "version": 1,
+        "evidence_kind": "knowledge",
+        "blocks": [
+          {
+            "kind": "scene",
+            "title": "2",
+            "disclosure": "given",
+            "labels": [
+              "2",
+              "3"
+            ],
+            "numbers": [],
+            "connections": [],
+            "marks": [],
+            "unit": "",
+            "variant": "",
+            "scene": {
+              "version": 1,
+              "layout": "grid",
+              "objects": [
+                {
+                  "id": "o0",
+                  "label": "2",
+                  "shape": "circle",
+                  "tone": "accent"
+                },
+                {
+                  "id": "o1",
+                  "label": "3",
+                  "shape": "box",
+                  "tone": "neutral"
+                }
+              ],
+              "steps": [
+                {
+                  "caption": "2",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 0
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 1
+                    }
+                  ],
+                  "highlight": [
+                    "o0"
+                  ],
+                  "edges": []
+                },
+                {
+                  "caption": "3",
+                  "placements": [
+                    {
+                      "object_id": "o0",
+                      "slot": 1
+                    },
+                    {
+                      "object_id": "o1",
+                      "slot": 0
+                    }
+                  ],
+                  "highlight": [
+                    "o1"
+                  ],
+                  "edges": []
+                }
+              ],
+              "transition_ms": 400
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

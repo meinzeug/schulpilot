@@ -286,7 +286,13 @@ def test_openrouter_is_bound_to_model_upstream_and_has_safe_errors(api, househol
     monkeypatch.setattr(providers.httpx, "Client", Client)
     with DB() as db:
         config = db.get(ProviderConfig, 1)
-    assert len(request_provider(config, "unit", {}).data["questions"]) == 4
+    # The fixture includes a match question. New compact rounds require its
+    # exact pair evidence, just as the real confirmed-material path does.
+    source = sample_unit()["explanation"] + (
+        " Zähler = Anzahl ausgewählter Teile. Nenner = Anzahl aller gleich großen Teile."
+    )
+    payload = {"required_subject": "Mathematik", "materials": [{"content": source}]}
+    assert len(request_provider(config, "unit", payload).data["questions"]) == 4
     assert calls[0]["provider"]["only"] == ["fixture-upstream"] and calls[0]["provider"]["allow_fallbacks"] is False
 
     class Failed(Client):

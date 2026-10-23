@@ -117,6 +117,9 @@ def test_fixture_rejects_private_edits_and_records_real_provider(api, monkeypatc
 def test_provider_replaces_all_caller_data_with_owned_fixture(api, monkeypatch):
     setup_free()
     captured = []
+    output = sample_unit()
+    # The owned first-page fixture teaches addition and fraction terminology.
+    output["questions"] = [q for q in output["questions"] if q["type"] in ("choice", "short")]
 
     class Client:
         def __init__(self, **_):
@@ -134,7 +137,7 @@ def test_provider_replaces_all_caller_data_with_owned_fixture(api, monkeypatch):
                 200,
                 json={
                     "choices": [
-                        {"finish_reason": "stop", "message": {"content": __import__("json").dumps(sample_unit())}}
+                        {"finish_reason": "stop", "message": {"content": __import__("json").dumps(output)}}
                     ],
                     "usage": {"prompt_tokens": 1, "completion_tokens": 1, "cost": 0},
                 },
@@ -151,6 +154,8 @@ def test_provider_replaces_all_caller_data_with_owned_fixture(api, monkeypatch):
     assert all(value not in json.dumps(body) for value in ["PRIVATE-NAME", "PRIVATE-ANSWER", "PRIVATE-IMAGE"])
     assert body["provider"]["max_price"] == {"prompt": 0, "completion": 0, "request": 0}
     assert body["provider"]["allow_fallbacks"] is False and body["provider"]["only"] == ["test-text"]
+    assert len(result.data["questions"]) == 2
+    assert [q["type"] for q in result.data["questions"]] == ["choice", "short"]
     assert result.cost_micros == 0
     config.model = "test-fixture/paid"
     with pytest.raises(ProviderError):
